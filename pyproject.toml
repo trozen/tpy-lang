@@ -5,3 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[project.scripts]
+tpyc = "tpyc.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["tpyc*", "runtime*"]
