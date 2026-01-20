@@ -14,12 +14,12 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, INT32, VOID, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, StrType, INT32, VOID, STR, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor,
-    TpyIntLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
+    TpyIntLiteral, TpyStrLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
 )
 
 
@@ -79,6 +79,10 @@ class SemanticAnalyzer:
         # Fourth pass: analyze function bodies
         for func in module.functions:
             self._analyze_function(func)
+
+        # Fifth pass: analyze top-level statements
+        if module.top_level_stmts:
+            self._analyze_top_level(module.top_level_stmts)
 
     def _register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
@@ -159,6 +163,13 @@ class SemanticAnalyzer:
         self.current_function = None
         self.current_scope = None
 
+    def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:
+        """Analyze top-level statements (for generated main())."""
+        self.current_scope = Scope()
+        for stmt in stmts:
+            self._analyze_stmt(stmt)
+        self.current_scope = None
+
     def _analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         if isinstance(stmt, TpyVarDecl):
@@ -219,6 +230,8 @@ class SemanticAnalyzer:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
             typ = INT32
+        elif isinstance(expr, TpyStrLiteral):
+            typ = STR
         elif isinstance(expr, TpyName):
             typ = self._analyze_name(expr)
         elif isinstance(expr, TpyBinOp):
@@ -271,6 +284,12 @@ class SemanticAnalyzer:
 
     def _analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
+        # Built-in print()
+        if expr.func == "print":
+            for arg in expr.args:
+                self._analyze_expr(arg)
+            return VOID
+
         # Check if it's a type constructor
         if expr.func == "Int32":
             if len(expr.args) > 1:

@@ -41,6 +41,12 @@ class TpyIntLiteral(TpyExpr):
 
 
 @dataclass
+class TpyStrLiteral(TpyExpr):
+    """String literal."""
+    value: str
+
+
+@dataclass
 class TpyName(TpyExpr):
     """Variable reference."""
     name: str
@@ -164,6 +170,7 @@ class TpyModule:
     """Top-level module."""
     records: list[TpyRecord]
     functions: list[TpyFunction]
+    top_level_stmts: list[TpyStmt] = field(default_factory=list)
 
 
 class Parser:
@@ -189,6 +196,7 @@ class Parser:
         """Parse a module."""
         records = []
         functions = []
+        top_level_stmts = []
 
         for node in tree.body:
             if isinstance(node, ast.ImportFrom):
@@ -205,10 +213,13 @@ class Parser:
             elif isinstance(node, ast.FunctionDef):
                 func = self._parse_function(node)
                 functions.append(func)
+            elif isinstance(node, ast.Expr):
+                # Top-level expression (e.g., function call)
+                top_level_stmts.append(TpyExprStmt(self._parse_expr(node.value)))
             else:
                 raise ParseError(f"Unsupported top-level construct: {type(node).__name__}", node)
 
-        return TpyModule(records=records, functions=functions)
+        return TpyModule(records=records, functions=functions, top_level_stmts=top_level_stmts)
 
     def _check_import(self, node: ast.ImportFrom) -> None:
         """Check that import is from allowed module."""
@@ -415,6 +426,8 @@ class Parser:
         if isinstance(node, ast.Constant):
             if isinstance(node.value, int):
                 return TpyIntLiteral(node.value)
+            elif isinstance(node.value, str):
+                return TpyStrLiteral(node.value)
             else:
                 raise ParseError(f"Unsupported literal type: {type(node.value).__name__}", node)
 

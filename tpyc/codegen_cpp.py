@@ -18,7 +18,7 @@ from .typesys import (
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor,
-    TpyIntLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
+    TpyIntLiteral, TpyStrLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
 )
 from .sema import SemanticAnalyzer
 
@@ -53,6 +53,12 @@ class CodeGenerator:
             self._gen_function_def(cpp, func)
             cpp.write("\n")
 
+        # Generate main() if there are top-level statements
+        # But skip if user already defined a main() function
+        has_user_main = any(f.name == "main" for f in module.functions)
+        if module.top_level_stmts and not has_user_main:
+            self._gen_main(cpp, module.top_level_stmts)
+
         self._write_header_epilogue(hpp)
 
         return hpp.getvalue(), cpp.getvalue()
@@ -68,6 +74,15 @@ class CodeGenerator:
 
     def _write_header_epilogue(self, out: TextIO) -> None:
         pass
+
+    def _gen_main(self, out: TextIO, stmts: list) -> None:
+        """Generate C++ main() function from top-level statements."""
+        out.write("int main() {\n")
+        self.indent_level = 1
+        for stmt in stmts:
+            self._gen_stmt(out, stmt)
+        out.write("  return 0;\n")
+        out.write("}\n")
 
     def _gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
@@ -118,18 +133,28 @@ class CodeGenerator:
     def _gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function declaration."""
         ret_type = func.return_type.to_cpp()
+        # Special case: main() must return int
+        if func.name == "main":
+            ret_type = "int"
         params = self._gen_params(func.params)
         out.write(f"{ret_type} {func.name}({params});\n")
 
     def _gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
         ret_type = func.return_type.to_cpp()
+        # Special case: main() must return int
+        if func.name == "main":
+            ret_type = "int"
         params = self._gen_params(func.params)
         out.write(f"{ret_type} {func.name}({params}) {{\n")
 
         self.indent_level = 1
         for stmt in func.body:
             self._gen_stmt(out, stmt)
+
+        # Add return 0 for main() if not already returning
+        if func.name == "main" and isinstance(func.return_type, VoidType):
+            out.write("  return 0;\n")
         self.indent_level = 0
 
         out.write("}\n")
@@ -238,6 +263,11 @@ class CodeGenerator:
         if isinstance(expr, TpyIntLiteral):
             return str(expr.value)
 
+        elif isinstance(expr, TpyStrLiteral):
+            # Escape string for C++
+            escaped = expr.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+            return f'"{escaped}"'
+
         elif isinstance(expr, TpyName):
             return expr.name
 
@@ -256,6 +286,9 @@ class CodeGenerator:
                 if len(expr.args) == 0:
                     return "0"
                 return self._gen_expr(expr.args[0])
+            # print() maps to std::printf
+            if expr.func == "print":
+                return self._gen_print(expr.args)
             args = ", ".join(self._gen_expr(a) for a in expr.args)
             return f"{expr.func}({args})"
 
@@ -273,3 +306,32 @@ class CodeGenerator:
             return f"{obj}.{expr.field}"
 
         return "/* unknown expr */"
+
+    def _gen_print(self, args: list[TpyExpr]) -> str:
+        """Generate printf call for print().
+
+        TODO: Make print() output configurable via plugin/policy settings.
+        Different environments may need different output mechanisms.
+        """
+        if not args:
+            return 'std::printf("\\n")'
+
+        fmt_parts = []
+        fmt_args = []
+        for arg in args:
+            if isinstance(arg, TpyStrLiteral):
+                # Inline string into format
+                escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%')
+                fmt_parts.append(escaped)
+            elif isinstance(arg, TpyIntLiteral):
+                fmt_parts.append("%d")
+                fmt_args.append(str(arg.value))
+            else:
+                # Assume int32_t for now
+                fmt_parts.append("%d")
+                fmt_args.append(self._gen_expr(arg))
+
+        fmt = " ".join(fmt_parts) + "\\n"
+        if fmt_args:
+            return f'std::printf("{fmt}", {", ".join(fmt_args)})'
+        return f'std::printf("{fmt}")'

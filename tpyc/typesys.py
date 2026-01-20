@@ -50,6 +50,17 @@ class VoidType(TpyType):
 
 
 @dataclass(frozen=True)
+class StrType(TpyType):
+    """String literal type (const char*)."""
+
+    def to_cpp(self) -> str:
+        return "const char*"
+
+    def __str__(self) -> str:
+        return "str"
+
+
+@dataclass(frozen=True)
 class RecordType(TpyType):
     """User-defined record type (class)."""
     name: str
@@ -107,6 +118,7 @@ class StaticListType(TpyType):
 # Singleton instances for built-in types
 INT32 = Int32Type()
 VOID = VoidType()
+STR = StrType()
 
 
 @dataclass
