@@ -1,13 +1,16 @@
 [project]
 name = "tpy-poc"
 version = "0.1.0"
-description = "Add your description here"
+description = "TurboPython compiler - translates restricted Python-syntax to C++ for ultra-low-latency applications"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
 [project.scripts]
 tpyc = "tpyc.cli:main"
+
+[tool.uv]
+package = true
 
 [tool.setuptools.packages.find]
 include = ["tpyc*", "runtime*"]

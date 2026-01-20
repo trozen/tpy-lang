@@ -16,9 +16,63 @@ tpyc examples/hello.tp.py -o out/ -v    # verbose mode
 # Alternative invocation
 python -m tpyc examples/hello.tp.py -o out/
 
+# Compile and run generated C++
+g++ -std=c++17 -I runtime -o out/program out/generated.cpp
+./out/program
+
 # Install for development (uses uv package manager)
-uv pip install -e .
+uv sync
 ```
+
+## Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test
+pytest tests/test_compiler.py::test_hello_codegen
+
+# Run tests for one case (pattern matching)
+pytest -k hello
+
+# Run all codegen or output tests
+pytest -k codegen
+pytest -k output
+
+# Update expected snapshots after intentional changes
+python tests/update_snapshots.py           # all cases
+python tests/update_snapshots.py hello     # specific case
+```
+
+### Test Structure
+
+```
+tests/
+├── cases/                    # Test cases (auto-discovered)
+│   └── {name}/
+│       ├── src/              # TurboPython source files
+│       │   └── main.tp.py
+│       └── expected/         # Expected outputs (snapshots)
+│           ├── generated.hpp
+│           ├── generated.cpp
+│           └── output.txt
+├── harness/tpy/              # CPython simulation module
+├── test_compiler.py          # Test runner
+└── update_snapshots.py       # Snapshot update utility
+```
+
+### Adding a New Test Case
+
+1. Create `tests/cases/{name}/src/main.tp.py`
+2. Run `python tests/update_snapshots.py {name}` to generate expected outputs
+3. Run `pytest -k {name}` to verify
+
+## Code Style
+
+For `tpyc/` compiler modules:
+- Imports at top of file only (avoid internal imports unless unavoidable)
+- Use type annotations
 
 ## Architecture
 
