@@ -15,6 +15,40 @@ from .sema import SemanticAnalyzer, SemanticError
 from .codegen_cpp import CodeGenerator
 
 
+def compile_file(input_path: str, output_dir: str) -> None:
+    """Compile a TurboPython file to C++.
+
+    Args:
+        input_path: Path to the input .tp.py file
+        output_dir: Directory to write generated .hpp and .cpp files
+    """
+    input_path = Path(input_path)
+    output_dir = Path(output_dir)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    source = input_path.read_text()
+
+    # Parse
+    p = Parser()
+    module = p.parse(source)
+
+    # Semantic analysis
+    analyzer = SemanticAnalyzer()
+    analyzer.analyze(module)
+
+    # Code generation
+    codegen = CodeGenerator(analyzer)
+    hpp_code, cpp_code = codegen.generate(module)
+
+    # Write output files
+    hpp_path = output_dir / "generated.hpp"
+    cpp_path = output_dir / "generated.cpp"
+
+    hpp_path.write_text(hpp_code)
+    cpp_path.write_text(cpp_code)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="tpyc",

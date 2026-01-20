@@ -11,3 +11,8 @@ tpyc = "tpyc.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["tpyc*", "runtime*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
