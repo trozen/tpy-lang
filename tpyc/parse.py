@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, INT32, VOID, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, INT32, VOID, STR, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 
 
@@ -72,6 +72,7 @@ class TpyCall(TpyExpr):
     """Function or constructor call."""
     func: str
     args: list[TpyExpr]
+    call_type: Optional[TpyType] = None  # For generic instantiation like StaticList[T, N]()
 
 
 @dataclass
@@ -216,6 +217,9 @@ class Parser:
             elif isinstance(node, ast.Expr):
                 # Top-level expression (e.g., function call)
                 top_level_stmts.append(TpyExprStmt(self._parse_expr(node.value)))
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                # Top-level variable declaration
+                top_level_stmts.append(self._parse_stmt(node))
             else:
                 raise ParseError(f"Unsupported top-level construct: {type(node).__name__}", node)
 
@@ -246,6 +250,16 @@ class Parser:
                 default_val = None
                 if item.value is not None:
                     default_val = self._get_default_value(item.value)
+                fields.append(FieldInfo(field_name, field_type, default_val))
+            elif isinstance(item, ast.Assign):
+                # Field with inferred type: name = Int32(0)
+                if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
+                    raise ParseError("Invalid field declaration", item)
+                field_name = item.targets[0].id
+                field_type = self._infer_type_from_expr(item.value)
+                if field_type is None:
+                    raise ParseError(f"Cannot infer type for field '{field_name}'", item)
+                default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val))
             elif isinstance(item, ast.FunctionDef):
                 if item.name == "__init__":
@@ -465,6 +479,12 @@ class Parser:
             elif isinstance(node.func, ast.Attribute):
                 obj = self._parse_expr(node.func.value)
                 return TpyMethodCall(obj, node.func.attr, args)
+            elif isinstance(node.func, ast.Subscript):
+                # Generic type instantiation: StaticList[T, N]()
+                call_type = self._parse_type_annotation(node.func)
+                if isinstance(node.func.value, ast.Name):
+                    return TpyCall(node.func.value.id, args, call_type)
+                raise ParseError("Unsupported generic call target", node)
             else:
                 raise ParseError("Unsupported call target", node)
 
@@ -500,10 +520,32 @@ class Parser:
         return ops.get(type(op), "?")
 
     def _get_default_value(self, node: ast.expr) -> str:
-        """Get string representation of a default value."""
+        """Get string representation of a default value for C++."""
         if isinstance(node, ast.Constant):
             return str(node.value)
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            # Int32(x) just becomes x in C++
+            if node.func.id == "Int32":
+                if not node.args:
+                    return "0"
+                return self._get_default_value(node.args[0])
             args = ", ".join(str(self._get_default_value(a)) for a in node.args)
             return f"{node.func.id}({args})"
         return "0"
+
+    def _infer_type_from_expr(self, node: ast.expr) -> Optional[TpyType]:
+        """Infer type from an expression (for field declarations without annotations)."""
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, int):
+                return INT32
+            elif isinstance(node.value, str):
+                return STR
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            type_name = node.func.id
+            if type_name == "Int32":
+                return INT32
+            # Check if it's a known record type
+            record_info = self.registry.get_record(type_name)
+            if record_info:
+                return RecordType(type_name)
+        return None

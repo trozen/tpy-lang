@@ -289,7 +289,13 @@ class CodeGenerator:
             # print() maps to std::printf
             if expr.func == "print":
                 return self._gen_print(expr.args)
+            # len() maps to .size()
+            if expr.func == "len":
+                return f"{self._gen_expr(expr.args[0])}.size()"
             args = ", ".join(self._gen_expr(a) for a in expr.args)
+            # Generic type instantiation (e.g., StaticList[T, N]())
+            if expr.call_type is not None:
+                return f"{expr.call_type.to_cpp()}({args})"
             return f"{expr.func}({args})"
 
         elif isinstance(expr, TpyMethodCall):

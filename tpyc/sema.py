@@ -284,11 +284,26 @@ class SemanticAnalyzer:
 
     def _analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
+        # Generic type instantiation (e.g., StaticList[T, N]())
+        if expr.call_type is not None:
+            for arg in expr.args:
+                self._analyze_expr(arg)
+            return expr.call_type
+
         # Built-in print()
         if expr.func == "print":
             for arg in expr.args:
                 self._analyze_expr(arg)
             return VOID
+
+        # Built-in len()
+        if expr.func == "len":
+            if len(expr.args) != 1:
+                raise SemanticError("len() takes exactly 1 argument")
+            arg_type = self._analyze_expr(expr.args[0])
+            if not isinstance(arg_type, StaticListType):
+                raise SemanticError(f"len() argument must be StaticList, got {arg_type}")
+            return INT32
 
         # Check if it's a type constructor
         if expr.func == "Int32":
