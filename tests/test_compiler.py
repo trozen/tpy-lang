@@ -14,7 +14,7 @@ import pytest
 # Import the compiler
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from tpyc.cli import compile_file
+from tpyc.cli import compile_file, get_module_name
 
 # Paths
 TESTS_DIR = Path(__file__).parent
@@ -42,9 +42,10 @@ def run_cpython(src_file: Path) -> str:
     return result.stdout
 
 
-def compile_and_run_cpp(build_dir: Path) -> str:
+def compile_and_run_cpp(build_dir: Path, module_name: str) -> str:
     """Compile generated C++ and run the executable."""
-    cpp_file = build_dir / "generated.cpp"
+    module_dir = build_dir / f"{module_name}.d"
+    cpp_file = module_dir / f"{module_name}.cpp"
     exe_file = build_dir / "program"
 
     result = subprocess.run(
@@ -75,17 +76,22 @@ def make_codegen_test(case_name: str):
         assert src_files, f"No .tp.py files found in {src_dir}"
 
         main_src = src_files[0]
+        module_name = get_module_name(main_src)
         compile_file(str(main_src), str(tmp_path))
 
-        for expected_file in expected_dir.glob("generated.*"):
-            generated_file = tmp_path / expected_file.name
-            assert generated_file.exists(), f"Expected {expected_file.name} to be generated"
+        # Generated files are in {module_name}.d/ subdirectory
+        module_dir = tmp_path / f"{module_name}.d"
+
+        for ext in [".hpp", ".cpp"]:
+            expected_file = expected_dir / f"{module_name}{ext}"
+            generated_file = module_dir / f"{module_name}{ext}"
+            assert generated_file.exists(), f"Expected {module_name}{ext} to be generated"
 
             expected_content = expected_file.read_text()
             generated_content = generated_file.read_text()
 
             assert generated_content == expected_content, (
-                f"Generated {expected_file.name} differs from expected.\n"
+                f"Generated {module_name}{ext} differs from expected.\n"
                 f"--- Expected ---\n{expected_content}\n"
                 f"--- Generated ---\n{generated_content}"
             )
@@ -104,13 +110,14 @@ def make_output_test(case_name: str):
         assert src_files, f"No .tp.py files found in {src_dir}"
 
         main_src = src_files[0]
+        module_name = get_module_name(main_src)
 
         # Run with CPython
         cpython_output = run_cpython(main_src)
 
         # Compile to C++ and run
         compile_file(str(main_src), str(tmp_path))
-        cpp_output = compile_and_run_cpp(tmp_path)
+        cpp_output = compile_and_run_cpp(tmp_path, module_name)
 
         # Compare outputs
         assert cpp_output == cpython_output, (

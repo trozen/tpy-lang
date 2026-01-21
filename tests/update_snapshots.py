@@ -7,8 +7,10 @@ Usage:
 """
 
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).parent
@@ -17,7 +19,7 @@ HARNESS_DIR = TESTS_DIR / "harness"
 PROJECT_ROOT = TESTS_DIR.parent
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from tpyc.cli import compile_file
+from tpyc.cli import compile_file, get_module_name
 
 
 def run_cpython(src_file: Path) -> str:
@@ -52,13 +54,21 @@ def update_case(case_name: str) -> None:
         return
 
     main_src = src_files[0]
+    module_name = get_module_name(main_src)
     expected_dir.mkdir(parents=True, exist_ok=True)
 
-    # Compile and save generated C++
+    # Compile to temp directory (creates {tmp}/{module}.d/{module}.{hpp,cpp})
     print(f"Updating {case_name}...")
-    compile_file(str(main_src), str(expected_dir))
-    print(f"  Generated: {expected_dir}/generated.hpp")
-    print(f"  Generated: {expected_dir}/generated.cpp")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        compile_file(str(main_src), tmp_dir)
+
+        # Copy generated files to expected directory with module name
+        module_dir = Path(tmp_dir) / f"{module_name}.d"
+        for ext in [".hpp", ".cpp"]:
+            src = module_dir / f"{module_name}{ext}"
+            dst = expected_dir / f"{module_name}{ext}"
+            shutil.copy(src, dst)
+            print(f"  Generated: {dst}")
 
     # Run CPython and save output
     output = run_cpython(main_src)

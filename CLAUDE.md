@@ -9,16 +9,20 @@ TurboPython (tpyc) is a proof-of-concept compiler that translates a restricted P
 ## Commands
 
 ```bash
-# Compile a TurboPython file
+# Compile and run (simplest workflow)
+tpyc examples/hello.tp.py --run
+
+# Compile to C++ and build binary
+tpyc examples/hello.tp.py --build
+
+# Compile to C++ only (output in __tpyc__/ next to source)
+tpyc examples/hello.tp.py
+
+# Compile to specific output directory
 tpyc examples/hello.tp.py -o out/
-tpyc examples/hello.tp.py -o out/ -v    # verbose mode
 
-# Alternative invocation
-python -m tpyc examples/hello.tp.py -o out/
-
-# Compile and run generated C++
-g++ -std=c++17 -I runtime -o out/program out/generated.cpp
-./out/program
+# Verbose mode
+tpyc examples/hello.tp.py --run -v
 
 # Install for development (uses uv package manager)
 uv sync
