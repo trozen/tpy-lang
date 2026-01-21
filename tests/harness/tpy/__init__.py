@@ -80,8 +80,19 @@ class _ConstPtr(Generic[T]):
     def __init__(self, obj: T):
         self._obj = obj
 
+    @property
+    def value(self):
+        """Dereference to get the underlying value."""
+        return self._obj
+
     def __getattr__(self, name: str):
         return getattr(self._obj, name)
+
+    def __int__(self):
+        return int(self._obj)
+
+    def __index__(self):
+        return int(self._obj)
 
 
 class _PtrMeta(type):
@@ -143,10 +154,10 @@ class StaticList(metaclass=StaticListMeta):
         return Ptr(obj)
 
     def get(self, index: int):
-        """Get read-only pointer to element at index."""
+        """Get element at index (returns value directly)."""
         if index < 0 or index >= len(self._data):
             raise RuntimeError(f"StaticList index out of bounds: {index}")
-        return ConstPtr(self._data[index])
+        return self._data[index]
 
     def get_mut(self, index: int):
         """Get mutable pointer to element at index."""
