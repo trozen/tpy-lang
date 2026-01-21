@@ -56,15 +56,23 @@ public:
     }
 
     /**
-     * Get a const pointer to element at index.
+     * Get a reference to element at index.
      * Panics if index is out of bounds.
      */
-    const T* get(int32_t index) const {
+    T& get(int32_t index) {
         auto i = static_cast<std::size_t>(index);
         if (i >= size_) {
             tpy_panic("StaticList index out of bounds in get()");
         }
-        return &data_[i];
+        return data_[i];
+    }
+
+    const T& get(int32_t index) const {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds in get()");
+        }
+        return data_[i];
     }
 
     /**

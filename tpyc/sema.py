@@ -57,6 +57,7 @@ class SemanticAnalyzer:
 
     def __init__(self):
         self.registry = TypeRegistry()
+        self.global_scope: Scope = Scope()  # Module-level scope
         self.current_scope: Optional[Scope] = None
         self.current_function: Optional[TpyFunction] = None
         self.expr_types: dict[int, TpyType] = {}  # id(expr) -> type
@@ -71,16 +72,19 @@ class SemanticAnalyzer:
         for func in module.functions:
             self._register_function(func)
 
-        # Third pass: analyze record methods
-        for record in module.records:
-            if record.init_method:
-                self._analyze_init_method(record)
+        # Third pass: register top-level variable declarations (globals)
+        if module.top_level_stmts:
+            self._register_globals(module.top_level_stmts)
 
-        # Fourth pass: analyze function bodies
+        # Fourth pass: analyze record methods
+        for record in module.records:
+            self._analyze_record_methods(record)
+
+        # Fifth pass: analyze function bodies
         for func in module.functions:
             self._analyze_function(func)
 
-        # Fifth pass: analyze top-level statements
+        # Sixth pass: analyze top-level statements
         if module.top_level_stmts:
             self._analyze_top_level(module.top_level_stmts)
 
@@ -95,11 +99,25 @@ class SemanticAnalyzer:
             for pname, ptype in record.init_method.params:
                 init_params.append((pname, ptype, None))
 
+        # Register all methods
+        methods = {}
+        for method in record.methods:
+            for pname, ptype in method.params:
+                self._validate_type(ptype)
+            self._validate_type(method.return_type)
+            methods[method.name] = FunctionInfo(
+                name=method.name,
+                params=method.params,
+                return_type=method.return_type,
+                is_method=True
+            )
+
         info = RecordInfo(
             name=record.name,
             fields=record.fields,
             has_init=record.init_method is not None,
-            init_params=init_params
+            init_params=init_params,
+            methods=methods
         )
         self.registry.register_record(info)
 
@@ -128,29 +146,42 @@ class SemanticAnalyzer:
         elif isinstance(typ, StaticListType):
             self._validate_type(typ.element_type)
 
-    def _analyze_init_method(self, record: TpyRecord) -> None:
-        """Analyze __init__ method."""
-        if not record.init_method:
-            return
+    def _register_globals(self, stmts: list[TpyStmt]) -> None:
+        """Register top-level variable declarations in global scope."""
+        for stmt in stmts:
+            if isinstance(stmt, TpyVarDecl):
+                if stmt.type:
+                    self.global_scope.define(stmt.name, stmt.type)
+                elif stmt.init:
+                    # Infer type from initializer
+                    self.current_scope = self.global_scope
+                    typ = self._analyze_expr(stmt.init)
+                    self.global_scope.define(stmt.name, typ)
+                    self.current_scope = None
 
-        self.current_scope = Scope()
-        # Add 'self' as the record type
-        self.current_scope.define("self", RecordType(record.name))
+    def _analyze_record_methods(self, record: TpyRecord) -> None:
+        """Analyze all methods of a record."""
+        for method in record.methods:
+            self.current_function = method
+            self.current_scope = Scope(parent=self.global_scope)
+            # Add 'self' as the record type
+            self.current_scope.define("self", RecordType(record.name))
 
-        # Add parameters
-        for pname, ptype in record.init_method.params:
-            self.current_scope.define(pname, ptype)
+            # Add parameters
+            for pname, ptype in method.params:
+                self.current_scope.define(pname, ptype)
 
-        # Analyze body
-        for stmt in record.init_method.body:
-            self._analyze_stmt(stmt)
+            # Analyze body
+            for stmt in method.body:
+                self._analyze_stmt(stmt)
 
-        self.current_scope = None
+            self.current_scope = None
+            self.current_function = None
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         self.current_function = func
-        self.current_scope = Scope()
+        self.current_scope = Scope(parent=self.global_scope)
 
         # Add parameters to scope
         for pname, ptype in func.params:
@@ -165,7 +196,7 @@ class SemanticAnalyzer:
 
     def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:
         """Analyze top-level statements (for generated main())."""
-        self.current_scope = Scope()
+        self.current_scope = Scope(parent=self.global_scope)
         for stmt in stmts:
             self._analyze_stmt(stmt)
         self.current_scope = None
@@ -266,6 +297,10 @@ class SemanticAnalyzer:
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
             return INT32
 
+        # Logical operators return Int32 (used as bool)
+        if expr.op in ("&&", "||"):
+            return INT32
+
         # Arithmetic operators require Int32
         if isinstance(left_type, Int32Type) and isinstance(right_type, Int32Type):
             return INT32
@@ -356,7 +391,7 @@ class SemanticAnalyzer:
                 if len(expr.args) != 1:
                     raise SemanticError("get() takes exactly 1 argument")
                 self._analyze_expr(expr.args[0])
-                return ConstPtrType(elem_type)
+                return elem_type  # Returns T& in C++, value semantics for primitives
             elif expr.method == "get_mut":
                 if len(expr.args) != 1:
                     raise SemanticError("get_mut() takes exactly 1 argument")
@@ -375,6 +410,23 @@ class SemanticAnalyzer:
                 return INT32
             else:
                 raise SemanticError(f"Unknown StaticList method: '{expr.method}'")
+
+        # User-defined record methods
+        if isinstance(obj_type, RecordType):
+            record_info = self.registry.get_record(obj_type.name)
+            if record_info and record_info.get_method(expr.method):
+                method_info = record_info.get_method(expr.method)
+                # Check argument count
+                if len(expr.args) != len(method_info.params):
+                    raise SemanticError(
+                        f"Method '{expr.method}' expects {len(method_info.params)} arguments, "
+                        f"got {len(expr.args)}"
+                    )
+                # Type-check arguments
+                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
+                    arg_type = self._analyze_expr(arg)
+                    self._check_type_compatible(arg_type, ptype, f"argument '{pname}'")
+                return method_info.return_type
 
         raise SemanticError(f"Cannot call method '{expr.method}' on type {obj_type}")
 

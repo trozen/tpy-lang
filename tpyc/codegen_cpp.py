@@ -30,6 +30,7 @@ class CodeGenerator:
         self.analyzer = analyzer
         self.indent_level = 0
         self.module_name = "generated"
+        self.declared_vars: set[str] = set()  # Track declared variables in current scope
 
     def generate(self, module: TpyModule, module_name: str = "generated") -> tuple[str, str]:
         """Generate C++ header and source files.
@@ -45,6 +46,23 @@ class CodeGenerator:
         self._write_header_preamble(hpp)
         self._write_source_preamble(cpp)
 
+        # Separate global declarations from other top-level statements early
+        # (needed for extern declarations in header before records)
+        global_decls = []
+        main_stmts = []
+        for stmt in module.top_level_stmts:
+            # Top-level variable declarations with type annotation are globals
+            if isinstance(stmt, TpyVarDecl) and stmt.type:
+                global_decls.append(stmt)
+            else:
+                main_stmts.append(stmt)
+
+        # Generate extern declarations in header (before records so methods can see them)
+        if global_decls:
+            for stmt in global_decls:
+                self._gen_global_extern(hpp, stmt)
+            hpp.write("\n")
+
         # Generate records
         for record in module.records:
             self._gen_record_decl(hpp, record)
@@ -55,6 +73,12 @@ class CodeGenerator:
             self._gen_function_decl(hpp, func)
         hpp.write("\n")
 
+        # Generate global definitions in source (before functions)
+        if global_decls:
+            for stmt in global_decls:
+                self._gen_global_decl(cpp, stmt)
+            cpp.write("\n")
+
         # Generate function definitions
         for func in module.functions:
             self._gen_function_def(cpp, func)
@@ -63,8 +87,8 @@ class CodeGenerator:
         # Generate main() if there are top-level statements
         # But skip if user already defined a main() function
         has_user_main = any(f.name == "main" for f in module.functions)
-        if module.top_level_stmts and not has_user_main:
-            self._gen_main(cpp, module.top_level_stmts)
+        if main_stmts and not has_user_main:
+            self._gen_main(cpp, main_stmts)
 
         self._write_header_epilogue(hpp)
 
@@ -85,11 +109,26 @@ class CodeGenerator:
     def _gen_main(self, out: TextIO, stmts: list) -> None:
         """Generate C++ main() function from top-level statements."""
         out.write("int main() {\n")
+        self.declared_vars = set()
         self.indent_level = 1
         for stmt in stmts:
             self._gen_stmt(out, stmt)
         out.write("  return 0;\n")
         out.write("}\n")
+
+    def _gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
+        """Generate a global variable definition in source file."""
+        cpp_type = stmt.type.to_cpp()
+        if stmt.init:
+            init_expr = self._gen_expr(stmt.init)
+            out.write(f"{cpp_type} {stmt.name} = {init_expr};\n")
+        else:
+            out.write(f"{cpp_type} {stmt.name};\n")
+
+    def _gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
+        """Generate an extern declaration for a global variable in header file."""
+        cpp_type = stmt.type.to_cpp()
+        out.write(f"extern {cpp_type} {stmt.name};\n")
 
     def _gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
@@ -105,23 +144,64 @@ class CodeGenerator:
 
         out.write("\n")
 
-        # Default constructor
-        out.write(f"  {record.name}() = default;\n")
-
-        # Parameterized constructor if __init__ exists
-        if record.init_method and record.init_method.params:
-            params = ", ".join(
-                f"{ptype.to_cpp()} {pname}"
-                for pname, ptype in record.init_method.params
-            )
-            out.write(f"  explicit {record.name}({params})")
-
-            # Generate initializer list from __init__ body
+        # Determine constructor generation strategy
+        if record.init_method:
+            has_params = bool(record.init_method.params)
             inits = self._extract_field_inits(record.init_method)
-            if inits:
-                out.write(" : ")
-                out.write(", ".join(f"{name}({val})" for name, val in inits))
-            out.write(" {}\n")
+            non_init_stmts = self._get_non_init_stmts(record.init_method)
+
+            if has_params:
+                # Generate default constructor for C++ compatibility (e.g., StaticList<T>)
+                out.write(f"  {record.name}() = default;\n")
+
+                # Generate parameterized constructor from __init__
+                params = ", ".join(
+                    f"{ptype.to_cpp()} {pname}"
+                    for pname, ptype in record.init_method.params
+                )
+                out.write(f"  explicit {record.name}({params})")
+                if inits:
+                    out.write(" : ")
+                    out.write(", ".join(f"{name}({val})" for name, val in inits))
+                if non_init_stmts:
+                    out.write(" {\n")
+                    self.declared_vars = {pname for pname, _ in record.init_method.params}
+                    self.indent_level = 2
+                    self.in_method = True
+                    for stmt in non_init_stmts:
+                        self._gen_stmt(out, stmt)
+                    self.in_method = False
+                    self.indent_level = 0
+                    out.write("  }\n")
+                else:
+                    out.write(" {}\n")
+            else:
+                # No params: generate default constructor with body
+                out.write(f"  {record.name}()")
+                if inits:
+                    out.write(" : ")
+                    out.write(", ".join(f"{name}({val})" for name, val in inits))
+                if non_init_stmts:
+                    out.write(" {\n")
+                    self.declared_vars = set()
+                    self.indent_level = 2
+                    self.in_method = True
+                    for stmt in non_init_stmts:
+                        self._gen_stmt(out, stmt)
+                    self.in_method = False
+                    self.indent_level = 0
+                    out.write("  }\n")
+                else:
+                    out.write(" {}\n")
+        else:
+            # No __init__, use default constructor
+            out.write(f"  {record.name}() = default;\n")
+
+        # Generate methods (excluding __init__)
+        for method in record.methods:
+            if method.name == "__init__":
+                continue
+            self._gen_method(out, method)
 
         out.write("};\n")
 
@@ -136,6 +216,39 @@ class CodeGenerator:
                         value = self._gen_expr(stmt.value)
                         inits.append((field_name, value))
         return inits
+
+    def _get_non_init_stmts(self, init_method: TpyFunction) -> list[TpyStmt]:
+        """Get statements from __init__ that aren't simple field assignments.
+
+        These need to go in the constructor body, not the initializer list.
+        """
+        non_init = []
+        for stmt in init_method.body:
+            is_field_init = False
+            if isinstance(stmt, TpyAssign):
+                if isinstance(stmt.target, TpyFieldAccess):
+                    if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
+                        is_field_init = True
+            if not is_field_init:
+                non_init.append(stmt)
+        return non_init
+
+    def _gen_method(self, out: TextIO, method: TpyFunction) -> None:
+        """Generate a method definition inside a struct."""
+        ret_type = method.return_type.to_cpp()
+        params = self._gen_params(method.params)
+        out.write(f"\n  {ret_type} {method.name}({params}) {{\n")
+
+        # Reset declared vars and add parameters
+        self.declared_vars = {pname for pname, _ in method.params}
+        self.indent_level = 2
+        self.in_method = True
+        for stmt in method.body:
+            self._gen_stmt(out, stmt)
+        self.in_method = False
+        self.indent_level = 0
+
+        out.write("  }\n")
 
     def _gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function declaration."""
@@ -155,6 +268,8 @@ class CodeGenerator:
         params = self._gen_params(func.params)
         out.write(f"{ret_type} {func.name}({params}) {{\n")
 
+        # Reset declared vars and add parameters
+        self.declared_vars = {pname for pname, _ in func.params}
         self.indent_level = 1
         for stmt in func.body:
             self._gen_stmt(out, stmt)
@@ -170,8 +285,8 @@ class CodeGenerator:
         """Generate function parameter list."""
         parts = []
         for pname, ptype in params:
-            # Pass StaticList by reference
-            if isinstance(ptype, StaticListType):
+            # Pass StaticList and Record types by reference
+            if isinstance(ptype, (StaticListType, RecordType)):
                 parts.append(f"{ptype.to_cpp()}& {pname}")
             else:
                 parts.append(f"{ptype.to_cpp()} {pname}")
@@ -202,7 +317,17 @@ class CodeGenerator:
             self._gen_for(out, stmt, indent)
 
     def _gen_var_decl(self, out: TextIO, stmt: TpyVarDecl, indent: str) -> None:
-        """Generate a variable declaration."""
+        """Generate a variable declaration or assignment."""
+        # Check if variable is already declared (reassignment)
+        if stmt.name in self.declared_vars:
+            if stmt.init:
+                init_expr = self._gen_expr(stmt.init)
+                out.write(f"{indent}{stmt.name} = {init_expr};\n")
+            return
+
+        # First declaration
+        self.declared_vars.add(stmt.name)
+
         if stmt.type:
             cpp_type = stmt.type.to_cpp()
         else:
@@ -295,7 +420,7 @@ class CodeGenerator:
                 return self._gen_expr(expr.args[0])
             # print() maps to std::printf
             if expr.func == "print":
-                return self._gen_print(expr.args)
+                return self._gen_print(expr.args, expr.kwargs)
             # len() maps to .size()
             if expr.func == "len":
                 return f"{self._gen_expr(expr.args[0])}.size()"
@@ -306,11 +431,17 @@ class CodeGenerator:
             return f"{expr.func}({args})"
 
         elif isinstance(expr, TpyMethodCall):
-            obj = self._gen_expr(expr.obj)
             args = ", ".join(self._gen_expr(a) for a in expr.args)
+            # Handle self.method() -> just method() (inside method, implicit this)
+            if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
+                return f"{expr.method}({args})"
+            obj = self._gen_expr(expr.obj)
             return f"{obj}.{expr.method}({args})"
 
         elif isinstance(expr, TpyFieldAccess):
+            # Handle self.field -> just field (inside method, implicit this)
+            if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
+                return expr.field
             obj = self._gen_expr(expr.obj)
             # Check if obj is a pointer type - use -> instead of .
             obj_type = self.analyzer.get_expr_type(expr.obj)
@@ -320,14 +451,28 @@ class CodeGenerator:
 
         return "/* unknown expr */"
 
-    def _gen_print(self, args: list[TpyExpr]) -> str:
+    def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
         """Generate printf call for print().
 
         TODO: Make print() output configurable via plugin/policy settings.
         Different environments may need different output mechanisms.
         """
+        kwargs = kwargs or {}
+
+        # Determine line ending (default is newline)
+        end_str = "\\n"
+        if "end" in kwargs:
+            end_expr = kwargs["end"]
+            if isinstance(end_expr, TpyStrLiteral):
+                end_str = end_expr.value.replace('\\', '\\\\').replace('"', '\\"')
+            else:
+                # For non-literal end values, we'd need more complex handling
+                pass
+
         if not args:
-            return 'std::printf("\\n")'
+            if end_str:
+                return f'std::printf("{end_str}")'
+            return ""
 
         fmt_parts = []
         fmt_args = []
@@ -344,7 +489,7 @@ class CodeGenerator:
                 fmt_parts.append("%d")
                 fmt_args.append(self._gen_expr(arg))
 
-        fmt = " ".join(fmt_parts) + "\\n"
+        fmt = " ".join(fmt_parts) + end_str
         if fmt_args:
             return f'std::printf("{fmt}", {", ".join(fmt_args)})'
         return f'std::printf("{fmt}")'

@@ -73,6 +73,7 @@ class TpyCall(TpyExpr):
     func: str
     args: list[TpyExpr]
     call_type: Optional[TpyType] = None  # For generic instantiation like StaticList[T, N]()
+    kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
 
 
 @dataclass
@@ -163,7 +164,15 @@ class TpyRecord:
     """Record (class) definition."""
     name: str
     fields: list[FieldInfo]
-    init_method: Optional[TpyFunction] = None
+    methods: list[TpyFunction] = field(default_factory=list)
+
+    @property
+    def init_method(self) -> Optional[TpyFunction]:
+        """Get __init__ method if present."""
+        for m in self.methods:
+            if m.name == "__init__":
+                return m
+        return None
 
 
 @dataclass
@@ -220,6 +229,9 @@ class Parser:
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 # Top-level variable declaration
                 top_level_stmts.append(self._parse_stmt(node))
+            elif isinstance(node, ast.For):
+                # Top-level for loop
+                top_level_stmts.append(self._parse_stmt(node))
             else:
                 raise ParseError(f"Unsupported top-level construct: {type(node).__name__}", node)
 
@@ -238,7 +250,7 @@ class Parser:
             raise ParseError(f"Decorators not allowed on class '{node.name}'", node)
 
         fields = []
-        init_method = None
+        methods = []
 
         for item in node.body:
             if isinstance(item, ast.AnnAssign):
@@ -262,35 +274,37 @@ class Parser:
                 default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val))
             elif isinstance(item, ast.FunctionDef):
-                if item.name == "__init__":
-                    init_method = self._parse_init_method(item, node.name)
-                else:
-                    raise ParseError(f"Only __init__ method allowed in class '{node.name}'", item)
+                methods.append(self._parse_method(item, node.name))
             elif isinstance(item, ast.Pass):
                 pass
             else:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 
-        return TpyRecord(name=node.name, fields=fields, init_method=init_method)
+        return TpyRecord(name=node.name, fields=fields, methods=methods)
 
-    def _parse_init_method(self, node: ast.FunctionDef, class_name: str) -> TpyFunction:
-        """Parse __init__ method."""
+    def _parse_method(self, node: ast.FunctionDef, class_name: str) -> TpyFunction:
+        """Parse a method definition."""
         params = []
         for i, arg in enumerate(node.args.args):
             if i == 0:
                 if arg.arg != "self":
-                    raise ParseError("First parameter of __init__ must be 'self'", node)
+                    raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
                 continue
             if arg.annotation is None:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
             param_type = self._parse_type_annotation(arg.annotation)
             params.append((arg.arg, param_type))
 
+        # Get return type (default to Void for __init__)
+        return_type = VOID
+        if node.name != "__init__" and node.returns:
+            return_type = self._parse_type_annotation(node.returns)
+
         body = [self._parse_stmt(stmt) for stmt in node.body]
         return TpyFunction(
-            name="__init__",
+            name=node.name,
             params=params,
-            return_type=VOID,
+            return_type=return_type,
             body=body,
             is_method=True
         )
@@ -469,13 +483,32 @@ class Parser:
             op = self._unaryop_to_str(node.op)
             return TpyUnaryOp(op, operand)
 
+        elif isinstance(node, ast.BoolOp):
+            # Handle 'and' / 'or' - chain as binary ops
+            op = "&&" if isinstance(node.op, ast.And) else "||"
+            result = self._parse_expr(node.values[0])
+            for val in node.values[1:]:
+                result = TpyBinOp(result, op, self._parse_expr(val))
+            return result
+
         elif isinstance(node, ast.Call):
             args = [self._parse_expr(a) for a in node.args]
+            kwargs = {}
+
+            # Handle keyword arguments (limited support for print)
             if node.keywords:
-                raise ParseError("Keyword arguments not supported", node)
+                func_name = node.func.id if isinstance(node.func, ast.Name) else None
+                if func_name == "print":
+                    for kw in node.keywords:
+                        if kw.arg == "end":
+                            kwargs["end"] = self._parse_expr(kw.value)
+                        else:
+                            raise ParseError(f"print() does not support keyword argument '{kw.arg}'", node)
+                else:
+                    raise ParseError("Keyword arguments not supported", node)
 
             if isinstance(node.func, ast.Name):
-                return TpyCall(node.func.id, args)
+                return TpyCall(node.func.id, args, kwargs=kwargs)
             elif isinstance(node.func, ast.Attribute):
                 obj = self._parse_expr(node.func.value)
                 return TpyMethodCall(obj, node.func.attr, args)

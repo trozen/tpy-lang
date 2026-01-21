@@ -13,6 +13,6 @@ void algo_function(StaticList<Data, 1024>& l) {
 int main() {
   auto lst = StaticList<Data, 1024>();
   algo_function(lst);
-  std::printf("%d %d\n", lst.get(0)->value, lst.size());
+  std::printf("%d %d\n", lst.get(0).value, lst.size());
   return 0;
 }

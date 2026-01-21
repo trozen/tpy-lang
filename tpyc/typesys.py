@@ -136,10 +136,16 @@ class RecordInfo:
     fields: list[FieldInfo]
     has_init: bool = False
     init_params: list[tuple[str, TpyType, Optional[str]]] = None  # (name, type, default)
+    methods: dict[str, 'FunctionInfo'] = None  # method_name -> FunctionInfo
 
     def __post_init__(self):
         if self.init_params is None:
             self.init_params = []
+        if self.methods is None:
+            self.methods = {}
+
+    def get_method(self, name: str) -> Optional['FunctionInfo']:
+        return self.methods.get(name)
 
 
 @dataclass
