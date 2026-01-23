@@ -3,10 +3,14 @@
 
 #include "tpy_runtime.hpp"
 
+extern int32_t a;
+extern int32_t b;
+
 struct Counter {
   int32_t value;
 
-  Counter() : value(0) {}
+  Counter() = default;
+  explicit Counter(int32_t start) : value(start) {}
 
   void increment() {
     value = (value + 1);

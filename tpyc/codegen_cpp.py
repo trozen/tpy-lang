@@ -17,8 +17,8 @@ from .typesys import (
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
-    TpyVarDecl, TpyAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor,
-    TpyIntLiteral, TpyStrLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
+    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
+    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
 )
 from .sema import SemanticAnalyzer
 
@@ -300,6 +300,8 @@ class CodeGenerator:
             self._gen_var_decl(out, stmt, indent)
         elif isinstance(stmt, TpyAssign):
             self._gen_assign(out, stmt, indent)
+        elif isinstance(stmt, TpyAugAssign):
+            self._gen_aug_assign(out, stmt, indent)
         elif isinstance(stmt, TpyExprStmt):
             expr = self._gen_expr(stmt.expr)
             out.write(f"{indent}{expr};\n")
@@ -315,6 +317,10 @@ class CodeGenerator:
             self._gen_while(out, stmt, indent)
         elif isinstance(stmt, TpyFor):
             self._gen_for(out, stmt, indent)
+        elif isinstance(stmt, TpyBreak):
+            out.write(f"{indent}break;\n")
+        elif isinstance(stmt, TpyContinue):
+            out.write(f"{indent}continue;\n")
 
     def _gen_var_decl(self, out: TextIO, stmt: TpyVarDecl, indent: str) -> None:
         """Generate a variable declaration or assignment."""
@@ -345,6 +351,12 @@ class CodeGenerator:
         target = self._gen_expr(stmt.target)
         value = self._gen_expr(stmt.value)
         out.write(f"{indent}{target} = {value};\n")
+
+    def _gen_aug_assign(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
+        """Generate an augmented assignment."""
+        target = self._gen_expr(stmt.target)
+        value = self._gen_expr(stmt.value)
+        out.write(f"{indent}{target} {stmt.op}= {value};\n")
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
@@ -394,6 +406,9 @@ class CodeGenerator:
         """Generate an expression."""
         if isinstance(expr, TpyIntLiteral):
             return str(expr.value)
+
+        elif isinstance(expr, TpyBoolLiteral):
+            return "true" if expr.value else "false"
 
         elif isinstance(expr, TpyStrLiteral):
             # Escape string for C++

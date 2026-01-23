@@ -11,6 +11,10 @@ from typing import Generic, TypeVar, get_args, get_origin
 T = TypeVar('T')
 
 
+# Bool is just Python's built-in bool for CPython simulation
+Bool = bool
+
+
 class Int32(int):
     """32-bit signed integer with overflow behavior."""
 

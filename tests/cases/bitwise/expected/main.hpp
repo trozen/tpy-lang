@@ -3,5 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
-int main();
+extern int32_t a;
+extern int32_t b;
+extern int32_t c;
+
 

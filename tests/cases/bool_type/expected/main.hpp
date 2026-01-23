@@ -3,6 +3,5 @@
 
 #include "tpy_runtime.hpp"
 
-void print_range(int32_t start, int32_t end);
-int32_t sum_range(int32_t n);
+void test_bool();
 

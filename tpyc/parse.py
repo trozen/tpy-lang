@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, INT32, VOID, STR, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 
 
@@ -44,6 +44,12 @@ class TpyIntLiteral(TpyExpr):
 class TpyStrLiteral(TpyExpr):
     """String literal."""
     value: str
+
+
+@dataclass
+class TpyBoolLiteral(TpyExpr):
+    """Boolean literal."""
+    value: bool
 
 
 @dataclass
@@ -113,6 +119,14 @@ class TpyAssign(TpyStmt):
 
 
 @dataclass
+class TpyAugAssign(TpyStmt):
+    """Augmented assignment (+=, -=, etc.)"""
+    target: TpyExpr
+    op: str
+    value: TpyExpr
+
+
+@dataclass
 class TpyExprStmt(TpyStmt):
     """Expression statement (e.g., function call)."""
     expr: TpyExpr
@@ -146,6 +160,18 @@ class TpyFor(TpyStmt):
     start: TpyExpr
     end: TpyExpr
     body: list[TpyStmt]
+
+
+@dataclass
+class TpyBreak(TpyStmt):
+    """Break statement."""
+    pass
+
+
+@dataclass
+class TpyContinue(TpyStmt):
+    """Continue statement."""
+    pass
 
 
 @dataclass
@@ -345,6 +371,8 @@ class Parser:
             name = node.id
             if name == "Int32":
                 return INT32
+            elif name == "Bool":
+                return BOOL
             elif name == "None":
                 return VOID
             elif self.registry.is_known_type(name) or name[0].isupper():
@@ -404,6 +432,13 @@ class Parser:
                 return TpyVarDecl(target.name, None, value)
             return TpyAssign(target, value)
 
+        elif isinstance(node, ast.AugAssign):
+            # Augmented assignment: x += expr
+            target = self._parse_expr(node.target)
+            value = self._parse_expr(node.value)
+            op = self._binop_to_str(node.op)
+            return TpyAugAssign(target, op, value)
+
         elif isinstance(node, ast.Expr):
             return TpyExprStmt(self._parse_expr(node.value))
 
@@ -446,13 +481,21 @@ class Parser:
         elif isinstance(node, ast.Pass):
             return TpyExprStmt(TpyIntLiteral(0))  # No-op
 
+        elif isinstance(node, ast.Break):
+            return TpyBreak()
+
+        elif isinstance(node, ast.Continue):
+            return TpyContinue()
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
     def _parse_expr(self, node: ast.expr) -> TpyExpr:
         """Parse an expression."""
         if isinstance(node, ast.Constant):
-            if isinstance(node.value, int):
+            if isinstance(node.value, bool):
+                return TpyBoolLiteral(node.value)
+            elif isinstance(node.value, int):
                 return TpyIntLiteral(node.value)
             elif isinstance(node.value, str):
                 return TpyStrLiteral(node.value)

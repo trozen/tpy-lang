@@ -61,6 +61,17 @@ class StrType(TpyType):
 
 
 @dataclass(frozen=True)
+class BoolType(TpyType):
+    """Boolean type."""
+
+    def to_cpp(self) -> str:
+        return "bool"
+
+    def __str__(self) -> str:
+        return "Bool"
+
+
+@dataclass(frozen=True)
 class RecordType(TpyType):
     """User-defined record type (class)."""
     name: str
@@ -119,6 +130,7 @@ class StaticListType(TpyType):
 INT32 = Int32Type()
 VOID = VoidType()
 STR = StrType()
+BOOL = BoolType()
 
 
 @dataclass
@@ -165,7 +177,7 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         # Built-in types
-        self.builtins = {"Int32", "Ptr", "ConstPtr", "StaticList"}
+        self.builtins = {"Int32", "Bool", "Ptr", "ConstPtr", "StaticList"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info

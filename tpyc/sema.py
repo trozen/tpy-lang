@@ -14,12 +14,12 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, StrType, INT32, VOID, STR, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, StrType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
-    TpyVarDecl, TpyAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor,
-    TpyIntLiteral, TpyStrLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
+    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
+    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
 )
 
 
@@ -61,6 +61,7 @@ class SemanticAnalyzer:
         self.current_scope: Optional[Scope] = None
         self.current_function: Optional[TpyFunction] = None
         self.expr_types: dict[int, TpyType] = {}  # id(expr) -> type
+        self.loop_depth: int = 0  # Track nesting depth of loops
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
@@ -207,6 +208,8 @@ class SemanticAnalyzer:
             self._analyze_var_decl(stmt)
         elif isinstance(stmt, TpyAssign):
             self._analyze_assign(stmt)
+        elif isinstance(stmt, TpyAugAssign):
+            self._analyze_aug_assign(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self._analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
@@ -222,8 +225,10 @@ class SemanticAnalyzer:
                 self._analyze_stmt(s)
         elif isinstance(stmt, TpyWhile):
             self._analyze_expr(stmt.condition)
+            self.loop_depth += 1
             for s in stmt.body:
                 self._analyze_stmt(s)
+            self.loop_depth -= 1
         elif isinstance(stmt, TpyFor):
             self._analyze_expr(stmt.start)
             self._analyze_expr(stmt.end)
@@ -231,9 +236,17 @@ class SemanticAnalyzer:
             inner_scope.define(stmt.var, INT32)
             old_scope = self.current_scope
             self.current_scope = inner_scope
+            self.loop_depth += 1
             for s in stmt.body:
                 self._analyze_stmt(s)
+            self.loop_depth -= 1
             self.current_scope = old_scope
+        elif isinstance(stmt, TpyBreak):
+            if self.loop_depth == 0:
+                raise SemanticError("'break' outside loop")
+        elif isinstance(stmt, TpyContinue):
+            if self.loop_depth == 0:
+                raise SemanticError("'continue' outside loop")
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
@@ -257,12 +270,24 @@ class SemanticAnalyzer:
         value_type = self._analyze_expr(stmt.value)
         self._check_type_compatible(value_type, target_type, "assignment")
 
+    def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
+        """Analyze an augmented assignment (+=, -=, etc.)."""
+        target_type = self._analyze_expr(stmt.target)
+        value_type = self._analyze_expr(stmt.value)
+        # Both must be Int32 for arithmetic augmented assignment
+        if not isinstance(target_type, Int32Type):
+            raise SemanticError(f"Augmented assignment target must be Int32, got {target_type}")
+        if not isinstance(value_type, Int32Type):
+            raise SemanticError(f"Augmented assignment value must be Int32, got {value_type}")
+
     def _analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
             typ = INT32
         elif isinstance(expr, TpyStrLiteral):
             typ = STR
+        elif isinstance(expr, TpyBoolLiteral):
+            typ = BOOL
         elif isinstance(expr, TpyName):
             typ = self._analyze_name(expr)
         elif isinstance(expr, TpyBinOp):
