@@ -4,6 +4,8 @@
 void test_bool() {
   bool a = true;
   bool b = false;
+  auto inferred_true = true;
+  auto inferred_false = false;
   if (a) {
     std::printf("%d\n", 1);
   } else {
@@ -14,7 +16,13 @@ void test_bool() {
   } else {
     std::printf("%d\n", 0);
   }
-  bool flag = true;
+  if (inferred_true) {
+    std::printf("%d\n", 1);
+  }
+  if (inferred_false) {
+    std::printf("%d\n", 0);
+  }
+  auto flag = true;
   int32_t count = 0;
   while (flag) {
     count = (count + 1);
