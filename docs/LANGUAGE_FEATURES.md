@@ -94,49 +94,75 @@ Possible syntax options:
 
 ### Containers
 - **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)
-- **Planned**: Array literals `[1, 2, 3]` → `std::array<T, N>` (size inferred from literal)
-- **Planned**: `Span[T]` - non-owning view into contiguous memory → `std::span<T>`
+- **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` (size inferred from literal)
+- **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
+- **Working**: `Span[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
 - **Planned**: `Tuple[T1, T2, ...]`
 - **Planned**: `list` - dynamic list (requires allocation)
 - **Planned**: `dict` - hash map (requires allocation)
 - **Planned**: `set` - hash set (requires allocation)
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
 
-#### Array Literals and Span (Planned)
+#### Array Literals and Span (Working)
 
 Array literals compile to fixed-size stack arrays with inferred size:
 ```python
-nums = [1, 2, 3]        # → std::array<int32_t, 3> nums = {1, 2, 3};
-points = [p1, p2]       # → std::array<Point, 2> points = {p1, p2};
+nums = [1, 2, 3]                    # type inferred as Array[Int32, 3]
+arr: Array[Int32, 3] = [10, 20, 30] # explicit type annotation
 ```
 
-`Span[T]` is a non-owning view that accepts any contiguous memory:
+`Span[T]` is a non-owning read-only view that accepts any contiguous memory:
 ```python
 def sum_values(values: Span[Int32]) -> Int32:
     total: Int32 = 0
-    for i in range(len(values)):
+    i: Int32 = 0
+    while i < len(values):
         total += values[i]
+        i += 1
     return total
 
-nums = [1, 2, 3]
-print(sum_values(nums))  # array converts to span implicitly
+# All of these work:
+print(sum_values([1, 2, 3, 4, 5]))  # array literal passed directly
+nums = [10, 20, 30]
+print(sum_values(nums))             # array variable
+arr: Array[Int32, 3] = [100, 200, 300]
+print(sum_values(arr))              # explicit Array type
+
+# StaticList also converts to Span:
+items: StaticList[Int32, 4] = StaticList[Int32, 4]()
+items.append(1000)
+items.append(2000)
+print(sum_values(items))
 ```
 
 Generated C++:
 ```cpp
-int32_t sum_values(std::span<int32_t> values) {
+int32_t sum_values(std::span<const int32_t> values) {
     int32_t total = 0;
-    for (int32_t i = 0; i < values.size(); ++i) {
+    int32_t i = 0;
+    while (i < static_cast<int32_t>(values.size())) {
         total += values[i];
+        i += 1;
     }
     return total;
 }
 
-std::array<int32_t, 3> nums = {1, 2, 3};
+// Array literal passed directly creates temporary std::array
+std::printf("%d\n", sum_values(std::array<int32_t, 5>{1, 2, 3, 4, 5}));
+
+// Array variable
+std::array<int32_t, 3> nums = {10, 20, 30};
 sum_values(nums);  // implicit conversion to span
+
+// StaticList requires explicit span construction
+std::printf("%d\n", sum_values(std::span(items.data(), items.size())));
 ```
 
-This enables zero-allocation passing of fixed-size arrays to functions that work with any size. `StaticList` data can also convert to `Span`.
+Key features:
+- Uses `std::span<const T>` (read-only) to allow conversion from temporaries
+- Requires C++20 (`-std=c++20`)
+- Standard Python `len()` and `[]` indexing work for both Array and Span
+- Zero-allocation passing of fixed-size arrays to functions that work with any size
 
 ### Pointers/References
 - **Working**: `Ptr[T]` → `T*`
