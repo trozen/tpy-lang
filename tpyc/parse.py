@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, ArrayType, SpanType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 
 
@@ -95,6 +95,19 @@ class TpyFieldAccess(TpyExpr):
     """Field access on a value or pointer."""
     obj: TpyExpr
     field: str
+
+
+@dataclass
+class TpyArrayLiteral(TpyExpr):
+    """Array literal: [expr, expr, ...]"""
+    elements: list[TpyExpr]
+
+
+@dataclass
+class TpySubscript(TpyExpr):
+    """Subscript indexing: obj[index]"""
+    obj: TpyExpr
+    index: TpyExpr
 
 
 @dataclass
@@ -403,6 +416,22 @@ class Parser:
                         return StaticListType(elem_type, capacity)
                     else:
                         raise ParseError("StaticList requires [T, N] syntax", node)
+                elif container == "Array":
+                    if isinstance(node.slice, ast.Tuple):
+                        if len(node.slice.elts) != 2:
+                            raise ParseError("Array requires exactly 2 type parameters", node)
+                        elem_type = self._parse_type_annotation(node.slice.elts[0])
+                        size_node = node.slice.elts[1]
+                        if isinstance(size_node, ast.Constant) and isinstance(size_node.value, int):
+                            size = size_node.value
+                        else:
+                            raise ParseError("Array size must be an integer literal", node)
+                        return ArrayType(elem_type, size)
+                    else:
+                        raise ParseError("Array requires [T, N] syntax", node)
+                elif container == "Span":
+                    elem_type = self._parse_type_annotation(node.slice)
+                    return SpanType(elem_type)
                 else:
                     raise ParseError(f"Unknown generic type: {container}", node)
 
@@ -567,6 +596,20 @@ class Parser:
         elif isinstance(node, ast.Attribute):
             obj = self._parse_expr(node.value)
             return TpyFieldAccess(obj, node.attr)
+
+        elif isinstance(node, ast.List):
+            elements = [self._parse_expr(elt) for elt in node.elts]
+            return TpyArrayLiteral(elements=elements)
+
+        elif isinstance(node, ast.Subscript):
+            # Subscript can be indexing (values[i]) or type annotation (Array[T, N])
+            # If the value is a name that's a known generic type, it's a type annotation context
+            # Otherwise, it's indexing
+            if isinstance(node.value, ast.Name) and node.value.id in ("Array", "Span", "StaticList", "Ptr", "ConstPtr"):
+                raise ParseError(f"Generic type '{node.value.id}' cannot be used as a value", node)
+            obj = self._parse_expr(node.value)
+            index = self._parse_expr(node.slice)
+            return TpySubscript(obj=obj, index=index)
 
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)

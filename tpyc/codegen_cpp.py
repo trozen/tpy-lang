@@ -13,12 +13,13 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, INT32, VOID
+    StaticListType, ArrayType, SpanType, INT32, VOID
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
-    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
+    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyArrayLiteral, TpySubscript
 )
 from .sema import SemanticAnalyzer
 
@@ -285,8 +286,11 @@ class CodeGenerator:
         """Generate function parameter list."""
         parts = []
         for pname, ptype in params:
-            # Pass StaticList and Record types by reference
-            if isinstance(ptype, (StaticListType, RecordType)):
+            # SpanType is lightweight (pointer+size), pass by value
+            if isinstance(ptype, SpanType):
+                parts.append(f"{ptype.to_cpp()} {pname}")
+            # Pass StaticList, Array, and Record types by reference
+            elif isinstance(ptype, (StaticListType, ArrayType, RecordType)):
                 parts.append(f"{ptype.to_cpp()}& {pname}")
             else:
                 parts.append(f"{ptype.to_cpp()} {pname}")
@@ -336,6 +340,10 @@ class CodeGenerator:
 
         if stmt.type:
             cpp_type = stmt.type.to_cpp()
+        elif stmt.init and isinstance(stmt.init, TpyArrayLiteral):
+            # Array literals need explicit type (auto with {...} creates initializer_list)
+            inferred_type = self.analyzer.get_expr_type(stmt.init)
+            cpp_type = inferred_type.to_cpp() if inferred_type else "auto"
         else:
             # Infer type from initializer (auto)
             cpp_type = "auto"
@@ -438,7 +446,27 @@ class CodeGenerator:
                 return self._gen_print(expr.args, expr.kwargs)
             # len() maps to .size()
             if expr.func == "len":
+                arg_type = self.analyzer.get_expr_type(expr.args[0])
+                # std::array and std::span return std::size_t, cast to int32_t
+                if isinstance(arg_type, (ArrayType, SpanType)):
+                    return f"static_cast<int32_t>({self._gen_expr(expr.args[0])}.size())"
                 return f"{self._gen_expr(expr.args[0])}.size()"
+            # Check if this is a function call that needs argument conversion for Span params
+            func_info = self.analyzer.registry.get_function(expr.func)
+            if func_info:
+                gen_args = []
+                for arg, (pname, ptype) in zip(expr.args, func_info.params):
+                    arg_type = self.analyzer.get_expr_type(arg)
+                    gen_arg = self._gen_expr(arg)
+                    # Convert StaticList -> Span
+                    if isinstance(ptype, SpanType) and isinstance(arg_type, StaticListType):
+                        gen_args.append(f"std::span({gen_arg}.data(), {gen_arg}.size())")
+                    # Array literal passed to Span: wrap in std::array (implicit conversion to span<const T>)
+                    elif isinstance(ptype, SpanType) and isinstance(arg, TpyArrayLiteral):
+                        gen_args.append(f"{arg_type.to_cpp()}{gen_arg}")
+                    else:
+                        gen_args.append(gen_arg)
+                return f"{expr.func}({', '.join(gen_args)})"
             args = ", ".join(self._gen_expr(a) for a in expr.args)
             # Generic type instantiation (e.g., StaticList[T, N]())
             if expr.call_type is not None:
@@ -451,6 +479,13 @@ class CodeGenerator:
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return f"{expr.method}({args})"
             obj = self._gen_expr(expr.obj)
+            obj_type = self.analyzer.get_expr_type(expr.obj)
+            # Array and Span: .get(i) -> [i], .size() -> .size()
+            if isinstance(obj_type, (ArrayType, SpanType)):
+                if expr.method == "get":
+                    return f"{obj}[{args}]"
+                elif expr.method == "size":
+                    return f"static_cast<int32_t>({obj}.size())"
             return f"{obj}.{expr.method}({args})"
 
         elif isinstance(expr, TpyFieldAccess):
@@ -463,6 +498,19 @@ class CodeGenerator:
             if obj_type and obj_type.is_pointer():
                 return f"{obj}->{expr.field}"
             return f"{obj}.{expr.field}"
+
+        elif isinstance(expr, TpyArrayLiteral):
+            elements = ", ".join(self._gen_expr(e) for e in expr.elements)
+            return f"{{{elements}}}"
+
+        elif isinstance(expr, TpySubscript):
+            obj = self._gen_expr(expr.obj)
+            index = self._gen_expr(expr.index)
+            obj_type = self.analyzer.get_expr_type(expr.obj)
+            # StaticList uses .get() method, Array and Span use []
+            if isinstance(obj_type, StaticListType):
+                return f"{obj}.get({index})"
+            return f"{obj}[{index}]"
 
         return "/* unknown expr */"
 

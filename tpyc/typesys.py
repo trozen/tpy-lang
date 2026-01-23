@@ -126,6 +126,31 @@ class StaticListType(TpyType):
         return f"StaticList[{self.element_type}, {self.capacity}]"
 
 
+@dataclass(frozen=True)
+class ArrayType(TpyType):
+    """Fixed-size array: Array[T, N] -> std::array<T, N>"""
+    element_type: TpyType
+    size: int
+
+    def to_cpp(self) -> str:
+        return f"std::array<{self.element_type.to_cpp()}, {self.size}>"
+
+    def __str__(self) -> str:
+        return f"Array[{self.element_type}, {self.size}]"
+
+
+@dataclass(frozen=True)
+class SpanType(TpyType):
+    """Non-owning read-only view: Span[T] -> std::span<const T>"""
+    element_type: TpyType
+
+    def to_cpp(self) -> str:
+        return f"std::span<const {self.element_type.to_cpp()}>"
+
+    def __str__(self) -> str:
+        return f"Span[{self.element_type}]"
+
+
 # Singleton instances for built-in types
 INT32 = Int32Type()
 VOID = VoidType()
@@ -177,7 +202,7 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         # Built-in types
-        self.builtins = {"Int32", "Bool", "Ptr", "ConstPtr", "StaticList"}
+        self.builtins = {"Int32", "Bool", "Ptr", "ConstPtr", "StaticList", "Array", "Span"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info

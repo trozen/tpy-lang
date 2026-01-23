@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
+#include <array>
+#include <span>
 
 namespace tpy {
 
@@ -111,6 +113,17 @@ public:
      */
     static constexpr std::size_t capacity() noexcept {
         return N;
+    }
+
+    /**
+     * Return pointer to underlying data (for Span conversion).
+     */
+    T* data() noexcept {
+        return data_;
+    }
+
+    const T* data() const noexcept {
+        return data_;
     }
 
 private:

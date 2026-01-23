@@ -188,6 +188,106 @@ class StaticList(metaclass=StaticListMeta):
         return len(self._data)
 
 
+class ArrayMeta(type):
+    """Metaclass to support Array[T, N] syntax."""
+
+    def __getitem__(cls, params):
+        if not isinstance(params, tuple) or len(params) != 2:
+            raise TypeError("Array requires [T, N] syntax")
+        elem_type, size = params
+
+        class BoundArray(Array):
+            _elem_type = elem_type
+            _size = size
+
+        return BoundArray
+
+
+class Array(metaclass=ArrayMeta):
+    """Fixed-size array: Array[T, N] -> std::array<T, N>"""
+
+    _elem_type = None
+    _size = 0
+
+    def __init__(self, data: list = None):
+        if data is None:
+            self._data = [self._elem_type() for _ in range(self._size)]
+        else:
+            if len(data) != self._size:
+                raise ValueError(f"Array size mismatch: expected {self._size}, got {len(data)}")
+            self._data = list(data)
+
+    def get(self, index: int):
+        """Get element at index."""
+        if index < 0 or index >= self._size:
+            raise RuntimeError(f"Array index out of bounds: {index}")
+        return self._data[index]
+
+    def set(self, index: int, value) -> None:
+        """Set element at index."""
+        if index < 0 or index >= self._size:
+            raise RuntimeError(f"Array index out of bounds: {index}")
+        self._data[index] = value
+
+    def __getitem__(self, index: int):
+        return self.get(index)
+
+    def __setitem__(self, index: int, value) -> None:
+        self.set(index, value)
+
+    def size(self) -> Int32:
+        return Int32(self._size)
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __iter__(self):
+        return iter(self._data)
+
+
+class SpanMeta(type):
+    """Metaclass to support Span[T] syntax."""
+
+    def __getitem__(cls, elem_type):
+        class BoundSpan(Span):
+            _elem_type = elem_type
+
+        return BoundSpan
+
+
+class Span(metaclass=SpanMeta):
+    """Non-owning view: Span[T] -> std::span<T>"""
+
+    _elem_type = None
+
+    def __init__(self, data):
+        if isinstance(data, (list, Array, StaticList)):
+            if hasattr(data, '_data'):
+                self._data = data._data
+            else:
+                self._data = data
+        else:
+            self._data = list(data)
+
+    def get(self, index: int):
+        """Get element at index."""
+        if index < 0 or index >= len(self._data):
+            raise RuntimeError(f"Span index out of bounds: {index}")
+        return self._data[index]
+
+    def __getitem__(self, index: int):
+        return self.get(index)
+
+    def size(self) -> Int32:
+        return Int32(len(self._data))
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __iter__(self):
+        return iter(self._data)
+
+
 def noalloc(func):
     """Decorator marking a function as no-allocation.
 

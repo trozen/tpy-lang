@@ -14,12 +14,13 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, StrType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, ArrayType, SpanType, StrType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
-    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess
+    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyArrayLiteral, TpySubscript
 )
 
 
@@ -145,6 +146,10 @@ class SemanticAnalyzer:
         elif isinstance(typ, (PtrType, ConstPtrType)):
             self._validate_type(typ.pointee)
         elif isinstance(typ, StaticListType):
+            self._validate_type(typ.element_type)
+        elif isinstance(typ, ArrayType):
+            self._validate_type(typ.element_type)
+        elif isinstance(typ, SpanType):
             self._validate_type(typ.element_type)
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
@@ -300,6 +305,10 @@ class SemanticAnalyzer:
             typ = self._analyze_method_call(expr)
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)
+        elif isinstance(expr, TpyArrayLiteral):
+            typ = self._analyze_array_literal(expr)
+        elif isinstance(expr, TpySubscript):
+            typ = self._analyze_subscript(expr)
         else:
             raise SemanticError(f"Unknown expression type: {type(expr).__name__}")
 
@@ -361,8 +370,8 @@ class SemanticAnalyzer:
             if len(expr.args) != 1:
                 raise SemanticError("len() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, StaticListType):
-                raise SemanticError(f"len() argument must be StaticList, got {arg_type}")
+            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType)):
+                raise SemanticError(f"len() argument must be StaticList, Array, or Span, got {arg_type}")
             return INT32
 
         # Check if it's a type constructor
@@ -436,6 +445,36 @@ class SemanticAnalyzer:
             else:
                 raise SemanticError(f"Unknown StaticList method: '{expr.method}'")
 
+        # Array methods
+        if isinstance(obj_type, ArrayType):
+            elem_type = obj_type.element_type
+            if expr.method == "get":
+                if len(expr.args) != 1:
+                    raise SemanticError("get() takes exactly 1 argument")
+                self._analyze_expr(expr.args[0])
+                return elem_type
+            elif expr.method == "size":
+                if expr.args:
+                    raise SemanticError("size() takes no arguments")
+                return INT32
+            else:
+                raise SemanticError(f"Unknown Array method: '{expr.method}'")
+
+        # Span methods
+        if isinstance(obj_type, SpanType):
+            elem_type = obj_type.element_type
+            if expr.method == "get":
+                if len(expr.args) != 1:
+                    raise SemanticError("get() takes exactly 1 argument")
+                self._analyze_expr(expr.args[0])
+                return elem_type
+            elif expr.method == "size":
+                if expr.args:
+                    raise SemanticError("size() takes no arguments")
+                return INT32
+            else:
+                raise SemanticError(f"Unknown Span method: '{expr.method}'")
+
         # User-defined record methods
         if isinstance(obj_type, RecordType):
             record_info = self.registry.get_record(obj_type.name)
@@ -475,6 +514,41 @@ class SemanticAnalyzer:
 
         raise SemanticError(f"Cannot access field '{expr.field}' on type {obj_type}")
 
+    def _analyze_array_literal(self, expr: TpyArrayLiteral) -> TpyType:
+        """Analyze an array literal [expr, expr, ...]"""
+        if not expr.elements:
+            raise SemanticError("Empty array literal requires explicit type annotation")
+
+        # Analyze first element to get the expected type
+        first_type = self._analyze_expr(expr.elements[0])
+
+        # Check all elements have the same type
+        for i, elem in enumerate(expr.elements[1:], 2):
+            elem_type = self._analyze_expr(elem)
+            if elem_type != first_type:
+                raise SemanticError(
+                    f"Array literal element {i} has type {elem_type}, expected {first_type}"
+                )
+
+        return ArrayType(first_type, len(expr.elements))
+
+    def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
+        """Analyze subscript indexing: obj[index]"""
+        obj_type = self._analyze_expr(expr.obj)
+        index_type = self._analyze_expr(expr.index)
+
+        if not isinstance(index_type, Int32Type):
+            raise SemanticError(f"Subscript index must be Int32, got {index_type}")
+
+        if isinstance(obj_type, ArrayType):
+            return obj_type.element_type
+        elif isinstance(obj_type, SpanType):
+            return obj_type.element_type
+        elif isinstance(obj_type, StaticListType):
+            return obj_type.element_type
+        else:
+            raise SemanticError(f"Cannot index type {obj_type}")
+
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str) -> None:
         """Check if actual type is compatible with expected type."""
         if actual == expected:
@@ -496,6 +570,16 @@ class SemanticAnalyzer:
 
         if isinstance(actual, ConstPtrType) and isinstance(expected, ConstPtrType):
             if actual.pointee == expected.pointee:
+                return
+
+        # Allow ArrayType -> SpanType if element types match
+        if isinstance(actual, ArrayType) and isinstance(expected, SpanType):
+            if actual.element_type == expected.element_type:
+                return
+
+        # Allow StaticListType -> SpanType if element types match
+        if isinstance(actual, StaticListType) and isinstance(expected, SpanType):
+            if actual.element_type == expected.element_type:
                 return
 
         raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}")
