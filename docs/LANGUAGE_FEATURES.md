@@ -82,11 +82,10 @@ Possible syntax options:
 ## Types
 
 ### Numeric
-- **Working**: `Int32`
+- **Working**: `Int32`, `Bool`
 - **Planned**: `int` (Python's int → platform int or arbitrary precision with allocation)
 - **Planned**: `Int64`, `Int8`, `Int16`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
 - **Planned**: `Float32`, `Float64`, `float`
-- **Planned**: `Bool`
 
 ### Strings
 - **Working**: String literals (`"hello"` → `const char*`)
@@ -95,12 +94,49 @@ Possible syntax options:
 
 ### Containers
 - **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)
-- **Planned**: `StaticArray[T, N]` (fixed-size, all elements initialized)
+- **Planned**: Array literals `[1, 2, 3]` → `std::array<T, N>` (size inferred from literal)
+- **Planned**: `Span[T]` - non-owning view into contiguous memory → `std::span<T>`
 - **Planned**: `Tuple[T1, T2, ...]`
 - **Planned**: `list` - dynamic list (requires allocation)
 - **Planned**: `dict` - hash map (requires allocation)
 - **Planned**: `set` - hash set (requires allocation)
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
+
+#### Array Literals and Span (Planned)
+
+Array literals compile to fixed-size stack arrays with inferred size:
+```python
+nums = [1, 2, 3]        # → std::array<int32_t, 3> nums = {1, 2, 3};
+points = [p1, p2]       # → std::array<Point, 2> points = {p1, p2};
+```
+
+`Span[T]` is a non-owning view that accepts any contiguous memory:
+```python
+def sum_values(values: Span[Int32]) -> Int32:
+    total: Int32 = 0
+    for i in range(len(values)):
+        total += values[i]
+    return total
+
+nums = [1, 2, 3]
+print(sum_values(nums))  # array converts to span implicitly
+```
+
+Generated C++:
+```cpp
+int32_t sum_values(std::span<int32_t> values) {
+    int32_t total = 0;
+    for (int32_t i = 0; i < values.size(); ++i) {
+        total += values[i];
+    }
+    return total;
+}
+
+std::array<int32_t, 3> nums = {1, 2, 3};
+sum_values(nums);  // implicit conversion to span
+```
+
+This enables zero-allocation passing of fixed-size arrays to functions that work with any size. `StaticList` data can also convert to `Span`.
 
 ### Pointers/References
 - **Working**: `Ptr[T]` → `T*`
@@ -133,11 +169,10 @@ Possible syntax options:
 - **Working**: `and`, `or`, `not`
 
 ### Bitwise
-- **Planned**: `&`, `|`, `^`, `~`, `<<`, `>>`
+- **Working**: `&`, `|`, `^`, `~`, `<<`, `>>`
 
 ### Assignment
-- **Working**: `=`
-- **Planned**: `+=`, `-=`, `*=`, `//=`, `%=`, etc.
+- **Working**: `=`, `+=`, `-=`, `*=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
 
 ---
 
@@ -150,9 +185,9 @@ Possible syntax options:
 ### Loops
 - **Working**: `while`
 - **Working**: `for i in range(n)`, `for i in range(start, end)`
+- **Working**: `break`, `continue`
 - **Planned**: `for i in range(start, end, step)`
 - **Planned**: `for item in container`
-- **Planned**: `break`, `continue`
 - **Open**: `for/else`, `while/else` → flag variable pattern
 
 ### Other
