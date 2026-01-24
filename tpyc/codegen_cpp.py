@@ -356,6 +356,20 @@ class CodeGenerator:
 
     def _gen_assign(self, out: TextIO, stmt: TpyAssign, indent: str) -> None:
         """Generate an assignment."""
+        # Special handling for subscript assignment
+        if isinstance(stmt.target, TpySubscript):
+            obj = self._gen_expr(stmt.target.obj)
+            index = self._gen_expr(stmt.target.index)
+            value = self._gen_expr(stmt.value)
+            obj_type = self.analyzer.get_expr_type(stmt.target.obj)
+
+            if isinstance(obj_type, StaticListType):
+                out.write(f"{indent}{obj}.set({index}, {value});\n")
+            else:
+                out.write(f"{indent}{obj}[{index}] = {value};\n")
+            return
+
+        # Default: simple assignment
         target = self._gen_expr(stmt.target)
         value = self._gen_expr(stmt.value)
         out.write(f"{indent}{target} = {value};\n")

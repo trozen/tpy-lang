@@ -273,6 +273,13 @@ class SemanticAnalyzer:
         """Analyze an assignment."""
         target_type = self._analyze_expr(stmt.target)
         value_type = self._analyze_expr(stmt.value)
+
+        # Prevent assignment to Span elements (read-only view)
+        if isinstance(stmt.target, TpySubscript):
+            obj_type = self.get_expr_type(stmt.target.obj)
+            if isinstance(obj_type, SpanType):
+                raise SemanticError("Cannot assign to elements of Span (read-only view)")
+
         self._check_type_compatible(value_type, target_type, "assignment")
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
