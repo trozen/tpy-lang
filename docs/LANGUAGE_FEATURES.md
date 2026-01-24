@@ -7,39 +7,105 @@ Status legend:
 
 ---
 
-## Allocation Policy
+## Design Philosophy
 
-Dynamic allocation is not forbidden - it's **controllable**. Different use cases have different needs:
+**Python-first**: Idiomatic Python should work out of the box. The everyday constructs used 99% of the time (`int`, `str`, `list`, `dict`, functions, classes) should just work without special annotations or restrictions.
 
-- **Hot paths** (trading, real-time audio): No allocation allowed
-- **Startup/initialization**: Allocation is fine
-- **General applications**: Allocation acceptable everywhere
+**Opt-in performance constraints**: Performance restrictions are applied selectively, not globally. The 80/20 rule applies - most code doesn't need ultra-low-latency guarantees, only hot paths do. Write convenient Python everywhere, then tighten constraints where it matters.
 
-### Control Mechanisms (Open - deciding on ergonomics)
+**Pluggable backends**: The mapping from TurboPython to C++ should be configurable. Different projects have different needs:
+- `Span[T]` → `std::span<const T>` or a custom span type
+- `print()` → `std::printf` or `std::cout` or a logging framework
+- `str` → `std::string` or a custom string class
 
-Option A: **Mark restricted functions** (current)
-- `@noalloc` decorator on functions that must not allocate
-- Verbose if many functions need it
+---
 
-Option B: **Mark permissive functions** (inverted)
-- Default is no-alloc, use `@alloc` to opt-in to allocation
-- Better for low-latency-first codebases
+## Performance Profiles
 
-Option C: **Module-level default**
-- `# tpy: noalloc` at top of file sets default
-- `@alloc` on specific functions that need it
-- Good balance of explicitness and brevity
+Different code paths have different requirements. Performance profiles control what operations are allowed:
 
-Option D: **Compiler flag sets default**
-- `tpyc --default-noalloc` makes no-alloc the default
-- `@alloc` marks exceptions
-- Same codebase can compile differently for different targets
+### Profile Levels (Open - designing the hierarchy)
 
-Option E: **Class-level**
-- `@noalloc class HotPath:` applies to all methods
-- Mix allocation policies within same module
+**Level 0: Unrestricted** (default)
+- All Python constructs allowed
+- Dynamic allocation permitted
+- Exceptions, virtual dispatch, etc.
+- Use for: initialization, configuration, tests, most application code
 
-These can be combined. The goal is flexibility with explicit control.
+**Level 1: Allocation-aware**
+- Allocations allowed but tracked/logged
+- Useful for profiling and finding unexpected allocations
+- Use for: development, debugging hot paths
+
+**Level 2: No heap allocation** (`@noalloc`)
+- No `new`, no container growth, no string concatenation
+- Stack and pre-allocated memory only
+- Use for: hot paths, real-time code
+
+**Level 3: Deterministic** (future)
+- No allocation + no unbounded loops + no recursion
+- Guaranteed O(1) or bounded O(n) operations
+- Use for: interrupt handlers, hard real-time
+
+### Applying Profiles
+
+Profiles can be set at multiple granularities:
+
+```python
+# Module-level default
+# tpy: profile=noalloc
+
+# Class-level
+@profile("noalloc")
+class HotPath:
+    def process(self, data: Span[Int32]) -> Int32:
+        ...
+
+# Function-level (overrides module/class default)
+@noalloc
+def critical_loop(data: Span[Int32]) -> Int32:
+    ...
+
+@alloc  # explicitly allow allocation in otherwise restricted context
+def setup() -> Config:
+    ...
+```
+
+Compiler flag can set project-wide default:
+```bash
+tpyc --default-profile=noalloc src/
+```
+
+---
+
+## Pluggable C++ Backends (Open)
+
+The mapping from TurboPython types/functions to C++ should be configurable via backend modules:
+
+```python
+# tpy.backend.default - ships with tpyc
+Span[T]     → std::span<const T>
+str         → std::string
+print(...)  → std::printf(...)
+list[T]     → std::vector<T>
+
+# tpy.backend.trading - custom for HFT
+Span[T]     → firm::span<T>
+str         → firm::fixed_string<256>
+print(...)  → LOG_INFO(...)
+list[T]     → firm::static_vector<T, N>
+
+# tpy.backend.embedded - custom for embedded
+print(...)  → uart_printf(...)
+list[T]     → etl::vector<T, N>
+```
+
+Usage:
+```bash
+tpyc --backend=trading src/order_handler.tp.py
+```
+
+This allows the same TurboPython source to target different environments without code changes.
 
 ---
 
@@ -91,6 +157,80 @@ Possible syntax options:
 - **Working**: String literals (`"hello"` → `const char*`)
 - **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
 - **Planned**: `str` - dynamic string (requires allocation, respects `@noalloc`)
+
+#### String Literal Assignment (Open)
+
+Plain string literals should be lightweight:
+```python
+s = "abc"  # → const char* or std::string_view (backend-configurable)
+```
+
+#### F-string Formatting (Open)
+
+F-strings behave differently based on context and profile:
+
+```python
+# Unrestricted mode - allocates std::string
+s = f"x={x}"
+# → std::string s = std::format("x={}", x);
+
+# Restricted mode (@noalloc) - error or warning
+s = f"x={x}"  # ERROR: f-string allocates in @noalloc context
+
+# Fixed-size string - no allocation
+buf: FixStr64 = f"x={x}"
+# → formats into pre-sized buffer, truncates if needed
+
+# Format string passthrough - zero overhead
+def log(fs: FormatString) -> None: ...
+log(f"x={x}")
+# → log("x={}", x)  # format string + args passed separately
+```
+
+The `FormatString` type enables C++ templates that accept format strings directly, avoiding intermediate string allocation.
+
+#### String Type Semantics (Open - deciding on design)
+
+The key question: what C++ type does `str` map to?
+
+**Option 1: `str` = `string_view` everywhere, `String` for owned**
+```python
+def process(name: str) -> String:  # view in, owned out
+    return f"Hello, {name}"
+
+class Config:
+    name: String  # owned field
+```
+- Matches Rust model (`&str` vs `String`)
+- Parameters are zero-copy by default
+- Downside: breaks Python compatibility - `-> str` becomes `-> String`
+
+**Option 2: `str` = `std::string` everywhere, `StrView` for borrowed**
+```python
+def process(name: StrView) -> str:  # explicit view in, owned out
+    return f"Hello, {name}"
+
+class Config:
+    name: str  # owned field
+```
+- Python code returning `str` works unchanged
+- Downside: parameters copy by default unless you use `StrView`
+
+**Option 3: Context-dependent (matches Python semantics)**
+```python
+def process(name: str) -> str:  # param=view, return=owned
+    return f"Hello, {name}"
+
+class Config:
+    name: str  # owned field
+```
+- Parameter: `std::string_view` (borrowed, like Python references)
+- Return/field/local: `std::string` (owned, like Python objects)
+- Use `StrView` for explicit non-owning fields when needed
+- Most Python-compatible, matches how Python actually works at runtime
+- Only "confusing" if thinking in C++ terms, but goal is Python-first
+
+**Leaning toward Option 3**: it matches Python's actual semantics (parameters are borrowed, returns/fields are owned), keeps code Python-compatible, and `StrView` provides an escape hatch for explicit non-owning references.
 
 ### Containers
 - **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)

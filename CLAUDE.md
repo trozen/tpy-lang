@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TurboPython (tpyc) is a proof-of-concept compiler that translates a restricted Python-syntax language to C++ for ultra-low-latency applications. It enforces allocation constraints and type safety at compile time.
+TurboPython (tpyc) is a proof-of-concept compiler that translates Python to C++. The goal is **Python-first**: idiomatic Python should work out of the box, with opt-in performance constraints for hot paths. Most code uses standard Python constructs (`int`, `str`, `list`), while critical sections can enforce allocation restrictions via performance profiles (`@noalloc`).
 
 ## Commands
 
@@ -58,11 +58,13 @@ tests/
 │       ├── src/              # TurboPython source files
 │       │   └── main.tp.py
 │       └── expected/         # Expected outputs (snapshots)
-│           ├── generated.hpp
-│           ├── generated.cpp
+│           ├── main.hpp      # Named after source module
+│           ├── main.cpp
 │           └── output.txt
 ├── harness/tpy/              # CPython simulation module
-├── test_compiler.py          # Test runner
+├── conftest.py               # Pytest fixtures
+├── test_codegen.py           # C++ code generation tests
+├── test_output.py            # Runtime output tests
 └── update_snapshots.py       # Snapshot update utility
 ```
 
@@ -92,30 +94,66 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
-| `typesys.py` | Type definitions (Int32, Void, Str, Record, Ptr, ConstPtr, StaticList) and TypeRegistry |
+| `typesys.py` | Type definitions (Int32, Bool, Void, Str, Record, Ptr, ConstPtr, StaticList, Array, Span) and TypeRegistry |
 | `sema.py` | Multi-pass semantic analysis: type checking, `@noalloc` validation |
 | `codegen_cpp.py` | Generates `.hpp` (header) and `.cpp` (source) files |
 
 ### Runtime (`runtime/`)
 
-`tpy_runtime.hpp` provides C++ template utilities, primarily `StaticList<T, N>` - a fixed-capacity container with zero dynamic allocation.
+`tpy_runtime.hpp` provides C++ template utilities, primarily `StaticList<T, N>` - a fixed-capacity container with zero dynamic allocation. Generated code requires C++20 (for `std::span`).
 
-## Language Constraints
+## Performance Profiles
 
-TurboPython enforces strict constraints for low-latency guarantees:
+TurboPython supports different performance profiles applied at function, class, or module level:
 
-- **Required type annotations** on all function parameters
-- **No inheritance** - classes are flat records with `__init__` only
-- **No dynamic allocation** in `@noalloc` functions
-- **Forbidden constructs**: `list`, `dict`, `set`, `tuple`, `str`, `try`, `raise`, `with`, `async`, `await`, `lambda`, `yield`, `global`, `nonlocal`
-- **Imports restricted** to `tpy` module only
+- **Default**: Standard Python constructs allowed (`list`, `dict`, `str`, etc.)
+- **`@noalloc`**: No heap allocation - for hot paths and real-time code
+
+See `docs/LANGUAGE_FEATURES.md` for full profile hierarchy and pluggable backend system.
+
+## Current Limitations
+
+The compiler is a proof-of-concept. Not yet implemented:
+- `list`, `dict`, `set`, `tuple` (use `StaticList`, `Array` for now)
+- `str` type (string literals work as `const char*`)
+- Exception handling (`try`/`except`/`raise`)
+- `async`/`await`, `lambda`, `yield`
+- Inheritance
 
 ## Type Mappings
 
 | TurboPython | C++ |
 |-------------|-----|
 | `Int32` | `int32_t` |
+| `Bool` | `bool` |
 | `Ptr[T]` | `T*` |
 | `ConstPtr[T]` | `const T*` |
 | `StaticList[T, N]` | `StaticList<T, N>` |
+| `Array[T, N]` | `std::array<T, N>` |
+| `Span[T]` | `std::span<const T>` |
 | String literals | `const char*` |
+
+## Supported Language Features
+
+### Control Flow
+- `if`/`elif`/`else` conditionals
+- `while` loops
+- `for i in range(n)` and `for i in range(start, end)`
+- `break` and `continue`
+
+### Operators
+- Arithmetic: `+`, `-`, `*`, `//`, `%`, unary `-`
+- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- Logical: `and`, `or`, `not`
+- Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
+- Augmented assignment: `+=`, `-=`, `*=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
+
+### Classes
+- Typed fields
+- `__init__` constructor
+- Instance methods with `self` parameter
+
+### Built-in Functions
+- `print()` - supports multiple arguments
+- `len()` - works with `StaticList`, `Array`, `Span`
+- `range()` - for loop iteration
