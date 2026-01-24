@@ -51,13 +51,24 @@ class VoidType(TpyType):
 
 @dataclass(frozen=True)
 class StrType(TpyType):
-    """String literal type (const char*)."""
+    """String type."""
 
     def to_cpp(self) -> str:
-        return "const char*"
+        return "std::string_view"
 
     def __str__(self) -> str:
         return "str"
+
+
+@dataclass(frozen=True)
+class CharType(TpyType):
+    """Character type (single character)."""
+
+    def to_cpp(self) -> str:
+        return "char"
+
+    def __str__(self) -> str:
+        return "Char"
 
 
 @dataclass(frozen=True)
@@ -155,6 +166,7 @@ class SpanType(TpyType):
 INT32 = Int32Type()
 VOID = VoidType()
 STR = StrType()
+CHAR = CharType()
 BOOL = BoolType()
 
 
@@ -202,7 +214,7 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         # Built-in types
-        self.builtins = {"Int32", "Bool", "Ptr", "ConstPtr", "StaticList", "Array", "Span"}
+        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "StaticList", "Array", "Span", "str"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info

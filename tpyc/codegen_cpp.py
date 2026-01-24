@@ -13,7 +13,7 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, INT32, VOID
+    StaticListType, ArrayType, SpanType, StrType, CharType, INT32, VOID
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
@@ -286,8 +286,8 @@ class CodeGenerator:
         """Generate function parameter list."""
         parts = []
         for pname, ptype in params:
-            # SpanType is lightweight (pointer+size), pass by value
-            if isinstance(ptype, SpanType):
+            # SpanType and StrType are lightweight views, pass by value
+            if isinstance(ptype, (SpanType, StrType)):
                 parts.append(f"{ptype.to_cpp()} {pname}")
             # Pass StaticList, Array, and Record types by reference
             elif isinstance(ptype, (StaticListType, ArrayType, RecordType)):
@@ -307,6 +307,9 @@ class CodeGenerator:
         elif isinstance(stmt, TpyAugAssign):
             self._gen_aug_assign(out, stmt, indent)
         elif isinstance(stmt, TpyExprStmt):
+            # Skip docstrings (string literal expression statements)
+            if isinstance(stmt.expr, TpyStrLiteral):
+                return
             expr = self._gen_expr(stmt.expr)
             out.write(f"{indent}{expr};\n")
         elif isinstance(stmt, TpyReturn):
@@ -433,7 +436,11 @@ class CodeGenerator:
             return "true" if expr.value else "false"
 
         elif isinstance(expr, TpyStrLiteral):
-            # Escape string for C++
+            if len(expr.value) == 1:
+                # Single char - output as C++ char literal
+                escaped = expr.value.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n')
+                return f"'{escaped}'"
+            # Multi-char string
             escaped = expr.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
             return f'"{escaped}"'
 
@@ -460,11 +467,19 @@ class CodeGenerator:
                 return self._gen_print(expr.args, expr.kwargs)
             # len() maps to .size()
             if expr.func == "len":
-                arg_type = self.analyzer.get_expr_type(expr.args[0])
-                # std::array and std::span return std::size_t, cast to int32_t
-                if isinstance(arg_type, (ArrayType, SpanType)):
-                    return f"static_cast<int32_t>({self._gen_expr(expr.args[0])}.size())"
-                return f"{self._gen_expr(expr.args[0])}.size()"
+                arg = expr.args[0]
+                arg_type = self.analyzer.get_expr_type(arg)
+                # For string literals, wrap in string_view to get .size()
+                if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
+                    escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+                    return f'static_cast<int32_t>(std::string_view("{escaped}").size())'
+                # std::array, std::span, and std::string_view return std::size_t, cast to int32_t
+                if isinstance(arg_type, (ArrayType, SpanType, StrType)):
+                    return f"static_cast<int32_t>({self._gen_expr(arg)}.size())"
+                return f"{self._gen_expr(arg)}.size()"
+            # chr() maps to static_cast<char>
+            if expr.func == "chr":
+                return f"static_cast<char>({self._gen_expr(expr.args[0])})"
             # Check if this is a function call that needs argument conversion for Span params
             func_info = self.analyzer.registry.get_function(expr.func)
             if func_info:
@@ -554,6 +569,7 @@ class CodeGenerator:
         fmt_parts = []
         fmt_args = []
         for arg in args:
+            arg_type = self.analyzer.get_expr_type(arg)
             if isinstance(arg, TpyStrLiteral):
                 # Inline string into format
                 escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%')
@@ -561,6 +577,9 @@ class CodeGenerator:
             elif isinstance(arg, TpyIntLiteral):
                 fmt_parts.append("%d")
                 fmt_args.append(str(arg.value))
+            elif isinstance(arg_type, CharType):
+                fmt_parts.append("%c")
+                fmt_args.append(self._gen_expr(arg))
             else:
                 # Assume int32_t for now
                 fmt_parts.append("%d")

@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, ArrayType, SpanType, BoolType, INT32, VOID, STR, CHAR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 
 
@@ -226,7 +226,7 @@ class Parser:
     """Parser for TurboPython source code."""
 
     FORBIDDEN_CONSTRUCTS = {
-        "list", "dict", "set", "tuple", "str",
+        "list", "dict", "set", "tuple",
         "try", "raise", "with", "async", "await",
         "lambda", "yield", "global", "nonlocal",
     }
@@ -388,6 +388,10 @@ class Parser:
                 return BOOL
             elif name == "None":
                 return VOID
+            elif name == "str":
+                return STR
+            elif name == "Char":
+                return CHAR
             elif self.registry.is_known_type(name) or name[0].isupper():
                 # Assume it's a record type (will be validated later)
                 return RecordType(name)

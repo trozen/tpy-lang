@@ -14,7 +14,8 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, StrType, BoolType, INT32, VOID, STR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, ArrayType, SpanType, StrType, CharType, BoolType,
+    INT32, VOID, STR, CHAR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
@@ -274,11 +275,13 @@ class SemanticAnalyzer:
         target_type = self._analyze_expr(stmt.target)
         value_type = self._analyze_expr(stmt.value)
 
-        # Prevent assignment to Span elements (read-only view)
+        # Prevent assignment to Span or str elements (read-only views)
         if isinstance(stmt.target, TpySubscript):
             obj_type = self.get_expr_type(stmt.target.obj)
             if isinstance(obj_type, SpanType):
                 raise SemanticError("Cannot assign to elements of Span (read-only view)")
+            if isinstance(obj_type, StrType):
+                raise SemanticError("Cannot assign to elements of str (read-only)")
 
         self._check_type_compatible(value_type, target_type, "assignment")
 
@@ -297,7 +300,11 @@ class SemanticAnalyzer:
         if isinstance(expr, TpyIntLiteral):
             typ = INT32
         elif isinstance(expr, TpyStrLiteral):
-            typ = STR
+            # Single-char string literals become Char type
+            if len(expr.value) == 1:
+                typ = CHAR
+            else:
+                typ = STR
         elif isinstance(expr, TpyBoolLiteral):
             typ = BOOL
         elif isinstance(expr, TpyName):
@@ -377,9 +384,18 @@ class SemanticAnalyzer:
             if len(expr.args) != 1:
                 raise SemanticError("len() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType)):
-                raise SemanticError(f"len() argument must be StaticList, Array, or Span, got {arg_type}")
+            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType, StrType)):
+                raise SemanticError(f"len() argument must be StaticList, Array, Span, or str, got {arg_type}")
             return INT32
+
+        # Built-in chr()
+        if expr.func == "chr":
+            if len(expr.args) != 1:
+                raise SemanticError("chr() takes exactly 1 argument")
+            arg_type = self._analyze_expr(expr.args[0])
+            if not isinstance(arg_type, Int32Type):
+                raise SemanticError(f"chr() argument must be Int32, got {arg_type}")
+            return CHAR
 
         # Check if it's a type constructor
         if expr.func == "Int32":
@@ -553,6 +569,8 @@ class SemanticAnalyzer:
             return obj_type.element_type
         elif isinstance(obj_type, StaticListType):
             return obj_type.element_type
+        elif isinstance(obj_type, StrType):
+            return CHAR
         else:
             raise SemanticError(f"Cannot index type {obj_type}")
 
