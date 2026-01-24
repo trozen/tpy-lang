@@ -14,14 +14,14 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, StrType, CharType, BoolType,
+    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BoolType,
     INT32, VOID, STR, CHAR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpySubscript
+    TpyArrayLiteral, TpyListRepeat, TpySubscript
 )
 
 
@@ -151,6 +151,8 @@ class SemanticAnalyzer:
         elif isinstance(typ, ArrayType):
             self._validate_type(typ.element_type)
         elif isinstance(typ, SpanType):
+            self._validate_type(typ.element_type)
+        elif isinstance(typ, ListType):
             self._validate_type(typ.element_type)
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
@@ -321,6 +323,8 @@ class SemanticAnalyzer:
             typ = self._analyze_field_access(expr)
         elif isinstance(expr, TpyArrayLiteral):
             typ = self._analyze_array_literal(expr)
+        elif isinstance(expr, TpyListRepeat):
+            typ = self._analyze_list_repeat(expr)
         elif isinstance(expr, TpySubscript):
             typ = self._analyze_subscript(expr)
         else:
@@ -384,8 +388,8 @@ class SemanticAnalyzer:
             if len(expr.args) != 1:
                 raise SemanticError("len() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType, StrType)):
-                raise SemanticError(f"len() argument must be StaticList, Array, Span, or str, got {arg_type}")
+            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType, ListType, StrType)):
+                raise SemanticError(f"len() argument must be StaticList, Array, Span, list, or str, got {arg_type}")
             return INT32
 
         # Built-in chr()
@@ -555,6 +559,16 @@ class SemanticAnalyzer:
 
         return ArrayType(first_type, len(expr.elements))
 
+    def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
+        """Analyze a list repetition: [element] * count"""
+        elem_type = self._analyze_expr(expr.element)
+        count_type = self._analyze_expr(expr.count)
+
+        if not isinstance(count_type, Int32Type):
+            raise SemanticError(f"List repetition count must be Int32, got {count_type}")
+
+        return ListType(elem_type)
+
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
         """Analyze subscript indexing: obj[index]"""
         obj_type = self._analyze_expr(expr.obj)
@@ -568,6 +582,8 @@ class SemanticAnalyzer:
         elif isinstance(obj_type, SpanType):
             return obj_type.element_type
         elif isinstance(obj_type, StaticListType):
+            return obj_type.element_type
+        elif isinstance(obj_type, ListType):
             return obj_type.element_type
         elif isinstance(obj_type, StrType):
             return CHAR

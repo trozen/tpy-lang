@@ -12,7 +12,7 @@ from typing import Optional, Union
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, BoolType, INT32, VOID, STR, CHAR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, ArrayType, SpanType, ListType, BoolType, INT32, VOID, STR, CHAR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 
 
@@ -101,6 +101,13 @@ class TpyFieldAccess(TpyExpr):
 class TpyArrayLiteral(TpyExpr):
     """Array literal: [expr, expr, ...]"""
     elements: list[TpyExpr]
+
+
+@dataclass
+class TpyListRepeat(TpyExpr):
+    """List repetition: [element] * count -> std::vector filled with element"""
+    element: TpyExpr
+    count: TpyExpr
 
 
 @dataclass
@@ -226,7 +233,7 @@ class Parser:
     """Parser for TurboPython source code."""
 
     FORBIDDEN_CONSTRUCTS = {
-        "list", "dict", "set", "tuple",
+        "dict", "set", "tuple",
         "try", "raise", "with", "async", "await",
         "lambda", "yield", "global", "nonlocal",
     }
@@ -436,6 +443,9 @@ class Parser:
                 elif container == "Span":
                     elem_type = self._parse_type_annotation(node.slice)
                     return SpanType(elem_type)
+                elif container == "list":
+                    elem_type = self._parse_type_annotation(node.slice)
+                    return ListType(elem_type)
                 else:
                     raise ParseError(f"Unknown generic type: {container}", node)
 
@@ -541,6 +551,13 @@ class Parser:
             return TpyName(node.id)
 
         elif isinstance(node, ast.BinOp):
+            # Handle list repetition: [x] * N -> TpyListRepeat
+            if isinstance(node.op, ast.Mult) and isinstance(node.left, ast.List):
+                if len(node.left.elts) != 1:
+                    raise ParseError("List repetition [x] * N requires exactly one element", node)
+                element = self._parse_expr(node.left.elts[0])
+                count = self._parse_expr(node.right)
+                return TpyListRepeat(element, count)
             left = self._parse_expr(node.left)
             right = self._parse_expr(node.right)
             op = self._binop_to_str(node.op)

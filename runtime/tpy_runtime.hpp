@@ -14,6 +14,7 @@
 #include <array>
 #include <span>
 #include <string_view>
+#include <vector>
 
 namespace tpy {
 

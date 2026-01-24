@@ -162,6 +162,18 @@ class SpanType(TpyType):
         return f"Span[{self.element_type}]"
 
 
+@dataclass(frozen=True)
+class ListType(TpyType):
+    """Dynamic list: list[T] -> std::vector<T>"""
+    element_type: TpyType
+
+    def to_cpp(self) -> str:
+        return f"std::vector<{self.element_type.to_cpp()}>"
+
+    def __str__(self) -> str:
+        return f"list[{self.element_type}]"
+
+
 # Singleton instances for built-in types
 INT32 = Int32Type()
 VOID = VoidType()
@@ -214,7 +226,7 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         # Built-in types
-        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "StaticList", "Array", "Span", "str"}
+        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "StaticList", "Array", "Span", "str", "list"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info

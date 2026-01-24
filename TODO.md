@@ -2,8 +2,7 @@
 
 ## Next
 - make examples/brainfuck.py work
-- str type and string handling (see docs/LANGUAGE_FEATURES.md#strings for design)
-- subscription assignment
+- int type
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 
 ## Random items

@@ -13,13 +13,13 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, StrType, CharType, INT32, VOID
+    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, INT32, VOID
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpySubscript
+    TpyArrayLiteral, TpyListRepeat, TpySubscript
 )
 from .sema import SemanticAnalyzer
 
@@ -289,8 +289,8 @@ class CodeGenerator:
             # SpanType and StrType are lightweight views, pass by value
             if isinstance(ptype, (SpanType, StrType)):
                 parts.append(f"{ptype.to_cpp()} {pname}")
-            # Pass StaticList, Array, and Record types by reference
-            elif isinstance(ptype, (StaticListType, ArrayType, RecordType)):
+            # Pass StaticList, Array, List, and Record types by reference
+            elif isinstance(ptype, (StaticListType, ArrayType, ListType, RecordType)):
                 parts.append(f"{ptype.to_cpp()}& {pname}")
             else:
                 parts.append(f"{ptype.to_cpp()} {pname}")
@@ -473,8 +473,8 @@ class CodeGenerator:
                 if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
                     escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
                     return f'static_cast<int32_t>(std::string_view("{escaped}").size())'
-                # std::array, std::span, and std::string_view return std::size_t, cast to int32_t
-                if isinstance(arg_type, (ArrayType, SpanType, StrType)):
+                # std::array, std::span, std::vector, and std::string_view return std::size_t, cast to int32_t
+                if isinstance(arg_type, (ArrayType, SpanType, ListType, StrType)):
                     return f"static_cast<int32_t>({self._gen_expr(arg)}.size())"
                 return f"{self._gen_expr(arg)}.size()"
             # chr() maps to static_cast<char>
@@ -531,6 +531,13 @@ class CodeGenerator:
         elif isinstance(expr, TpyArrayLiteral):
             elements = ", ".join(self._gen_expr(e) for e in expr.elements)
             return f"{{{elements}}}"
+
+        elif isinstance(expr, TpyListRepeat):
+            # [x] * N -> std::vector<T>(N, x)
+            expr_type = self.analyzer.get_expr_type(expr)
+            element = self._gen_expr(expr.element)
+            count = self._gen_expr(expr.count)
+            return f"{expr_type.to_cpp()}({count}, {element})"
 
         elif isinstance(expr, TpySubscript):
             obj = self._gen_expr(expr.obj)
