@@ -12,7 +12,8 @@ from typing import Optional, Union
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, ListType, BoolType, INT32, VOID, STR, CHAR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, ArrayType, SpanType, ListType, BoolType, BigIntType,
+    INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 
 
@@ -391,6 +392,8 @@ class Parser:
             name = node.id
             if name == "Int32":
                 return INT32
+            elif name == "int":
+                return BIGINT
             elif name == "Bool":
                 return BOOL
             elif name == "None":
@@ -677,13 +680,15 @@ class Parser:
         """Infer type from an expression (for field declarations without annotations)."""
         if isinstance(node, ast.Constant):
             if isinstance(node.value, int):
-                return INT32
+                return BIGINT
             elif isinstance(node.value, str):
                 return STR
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             type_name = node.func.id
             if type_name == "Int32":
                 return INT32
+            if type_name == "int":
+                return BIGINT
             # Check if it's a known record type
             record_info = self.registry.get_record(type_name)
             if record_info:

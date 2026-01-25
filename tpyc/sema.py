@@ -14,8 +14,8 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BoolType,
-    INT32, VOID, STR, CHAR, BOOL, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BoolType, BigIntType,
+    INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
@@ -258,11 +258,18 @@ class SemanticAnalyzer:
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
+        # Check if this is a reassignment (variable already exists in scope)
+        existing_type = self.current_scope.lookup(stmt.name)
+
         if stmt.init:
             init_type = self._analyze_expr(stmt.init)
             if stmt.type:
                 self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'")
                 var_type = stmt.type
+            elif existing_type:
+                # Reassignment: use existing type, check compatibility
+                self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'")
+                var_type = existing_type
             else:
                 var_type = init_type
         elif stmt.type:
@@ -291,16 +298,16 @@ class SemanticAnalyzer:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         target_type = self._analyze_expr(stmt.target)
         value_type = self._analyze_expr(stmt.value)
-        # Both must be Int32 for arithmetic augmented assignment
-        if not isinstance(target_type, Int32Type):
-            raise SemanticError(f"Augmented assignment target must be Int32, got {target_type}")
-        if not isinstance(value_type, Int32Type):
-            raise SemanticError(f"Augmented assignment value must be Int32, got {value_type}")
+        # Both must be integer types for arithmetic augmented assignment
+        if not isinstance(target_type, (Int32Type, BigIntType)):
+            raise SemanticError(f"Augmented assignment target must be an integer type, got {target_type}")
+        if not isinstance(value_type, (Int32Type, BigIntType)):
+            raise SemanticError(f"Augmented assignment value must be an integer type, got {value_type}")
 
     def _analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
-            typ = INT32
+            typ = BIGINT
         elif isinstance(expr, TpyStrLiteral):
             # Single-char string literals become Char type
             if len(expr.value) == 1:
@@ -345,28 +352,58 @@ class SemanticAnalyzer:
         left_type = self._analyze_expr(expr.left)
         right_type = self._analyze_expr(expr.right)
 
-        # Comparison operators return Int32 (used as bool)
+        # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
-            return INT32
+            # Allow comparisons between same integer types
+            if isinstance(left_type, (Int32Type, BigIntType)) and isinstance(right_type, (Int32Type, BigIntType)):
+                return BOOL
+            return BOOL
 
-        # Logical operators return Int32 (used as bool)
+        # Logical operators return Bool
         if expr.op in ("&&", "||"):
-            return INT32
+            return BOOL
 
-        # Arithmetic operators require Int32
+        # Arithmetic operators
         if isinstance(left_type, Int32Type) and isinstance(right_type, Int32Type):
             return INT32
+
+        # Check if operands are literals (literals can adapt to the other type)
+        left_is_literal = isinstance(expr.left, TpyIntLiteral)
+        right_is_literal = isinstance(expr.right, TpyIntLiteral)
+
+        # Int32 + literal -> Int32 (literal adapts to Int32)
+        if isinstance(left_type, Int32Type) and right_is_literal:
+            return INT32
+        if left_is_literal and isinstance(right_type, Int32Type):
+            return INT32
+
+        # BigInt arithmetic (both BigInt variables, or one BigInt variable + literal)
+        if isinstance(left_type, BigIntType) and isinstance(right_type, BigIntType):
+            # If both are literals, result is still BigInt (Python semantics)
+            if not left_is_literal or not right_is_literal:
+                return BIGINT
+            # Two literals: return BigInt
+            return BIGINT
+
+        # Int32 + BigInt variable -> BigInt (variable wins)
+        if isinstance(left_type, (Int32Type, BigIntType)) and isinstance(right_type, (Int32Type, BigIntType)):
+            return BIGINT
 
         raise SemanticError(f"Invalid operand types for '{expr.op}': {left_type} and {right_type}")
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
         operand_type = self._analyze_expr(expr.operand)
-        if expr.op in ("-", "~"):
+        if expr.op == "-":
+            if isinstance(operand_type, Int32Type):
+                return INT32
+            if isinstance(operand_type, BigIntType):
+                return BIGINT
+        elif expr.op == "~":
             if isinstance(operand_type, Int32Type):
                 return INT32
         elif expr.op == "!":
-            return INT32
+            return BOOL
         raise SemanticError(f"Invalid operand type for unary '{expr.op}': {operand_type}")
 
     def _analyze_call(self, expr: TpyCall) -> TpyType:
@@ -397,11 +434,20 @@ class SemanticAnalyzer:
             if len(expr.args) != 1:
                 raise SemanticError("chr() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, Int32Type):
-                raise SemanticError(f"chr() argument must be Int32, got {arg_type}")
+            if not isinstance(arg_type, (Int32Type, BigIntType)):
+                raise SemanticError(f"chr() argument must be an integer type, got {arg_type}")
             return CHAR
 
         # Check if it's a type constructor
+        if expr.func == "int":
+            if len(expr.args) > 1:
+                raise SemanticError("int() takes at most 1 argument")
+            if expr.args:
+                arg_type = self._analyze_expr(expr.args[0])
+                if not isinstance(arg_type, (Int32Type, BigIntType)):
+                    raise SemanticError(f"int() argument must be an integer type, got {arg_type}")
+            return BIGINT
+
         if expr.func == "Int32":
             if len(expr.args) > 1:
                 raise SemanticError("Int32() takes at most 1 argument")
@@ -546,12 +592,23 @@ class SemanticAnalyzer:
         if not expr.elements:
             raise SemanticError("Empty array literal requires explicit type annotation")
 
+        # Check if all elements are integer literals - use Int32 for practical array usage
+        all_int_literals = all(isinstance(e, TpyIntLiteral) for e in expr.elements)
+
         # Analyze first element to get the expected type
         first_type = self._analyze_expr(expr.elements[0])
+
+        # For arrays of integer literals, use Int32 instead of BigInt
+        # (arrays are typically used for fixed-size data with bounded integers)
+        if all_int_literals and isinstance(first_type, BigIntType):
+            first_type = INT32
 
         # Check all elements have the same type
         for i, elem in enumerate(expr.elements[1:], 2):
             elem_type = self._analyze_expr(elem)
+            # If using Int32 for int literals, treat BigInt literals as Int32 for comparison
+            if all_int_literals and isinstance(elem_type, BigIntType):
+                elem_type = INT32
             if elem_type != first_type:
                 raise SemanticError(
                     f"Array literal element {i} has type {elem_type}, expected {first_type}"
@@ -564,8 +621,8 @@ class SemanticAnalyzer:
         elem_type = self._analyze_expr(expr.element)
         count_type = self._analyze_expr(expr.count)
 
-        if not isinstance(count_type, Int32Type):
-            raise SemanticError(f"List repetition count must be Int32, got {count_type}")
+        if not isinstance(count_type, (Int32Type, BigIntType)):
+            raise SemanticError(f"List repetition count must be an integer type, got {count_type}")
 
         return ListType(elem_type)
 
@@ -574,8 +631,8 @@ class SemanticAnalyzer:
         obj_type = self._analyze_expr(expr.obj)
         index_type = self._analyze_expr(expr.index)
 
-        if not isinstance(index_type, Int32Type):
-            raise SemanticError(f"Subscript index must be Int32, got {index_type}")
+        if not isinstance(index_type, (Int32Type, BigIntType)):
+            raise SemanticError(f"Subscript index must be an integer type, got {index_type}")
 
         if isinstance(obj_type, ArrayType):
             return obj_type.element_type
@@ -599,6 +656,18 @@ class SemanticAnalyzer:
         if isinstance(actual, Int32Type) and isinstance(expected, Int32Type):
             return
 
+        # Allow BigInt compatibility
+        if isinstance(actual, BigIntType) and isinstance(expected, BigIntType):
+            return
+
+        # Allow Int32 -> BigInt implicit conversion (safe upcast)
+        if isinstance(actual, Int32Type) and isinstance(expected, BigIntType):
+            return
+
+        # Allow BigInt -> Int32 implicit conversion (truncation - safe for literals)
+        if isinstance(actual, BigIntType) and isinstance(expected, Int32Type):
+            return
+
         # Allow same record types
         if isinstance(actual, RecordType) and isinstance(expected, RecordType):
             if actual.name == expected.name:
@@ -617,10 +686,24 @@ class SemanticAnalyzer:
         if isinstance(actual, ArrayType) and isinstance(expected, SpanType):
             if actual.element_type == expected.element_type:
                 return
+            # Allow Array[BigInt] -> Span[Int32] (literal arrays)
+            if isinstance(actual.element_type, BigIntType) and isinstance(expected.element_type, Int32Type):
+                return
+
+        # Allow Array[BigInt] -> Array[Int32] if sizes match (literal arrays)
+        if isinstance(actual, ArrayType) and isinstance(expected, ArrayType):
+            if actual.size == expected.size:
+                if isinstance(actual.element_type, BigIntType) and isinstance(expected.element_type, Int32Type):
+                    return
 
         # Allow StaticListType -> SpanType if element types match
         if isinstance(actual, StaticListType) and isinstance(expected, SpanType):
             if actual.element_type == expected.element_type:
+                return
+
+        # Allow list[BigInt] -> list[Int32] (literal lists)
+        if isinstance(actual, ListType) and isinstance(expected, ListType):
+            if isinstance(actual.element_type, BigIntType) and isinstance(expected.element_type, Int32Type):
                 return
 
         raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}")

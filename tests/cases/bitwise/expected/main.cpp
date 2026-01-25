@@ -10,7 +10,7 @@ int main() {
   std::printf("%d\n", (a | b));
   std::printf("%d\n", (a ^ b));
   std::printf("%d\n", (~c));
-  std::printf("%d\n", (1 << 4));
-  std::printf("%d\n", (32 >> 2));
+  std::printf("%lld\n", static_cast<long long>((1 << 4)));
+  std::printf("%lld\n", static_cast<long long>((32 >> 2)));
   return 0;
 }

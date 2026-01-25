@@ -7,20 +7,20 @@ void test_bool() {
   auto inferred_true = true;
   auto inferred_false = false;
   if (a) {
-    std::printf("%d\n", 1);
+    std::printf("%lld\n", static_cast<long long>(1));
   } else {
-    std::printf("%d\n", 0);
+    std::printf("%lld\n", static_cast<long long>(0));
   }
   if (b) {
-    std::printf("%d\n", 1);
+    std::printf("%lld\n", static_cast<long long>(1));
   } else {
-    std::printf("%d\n", 0);
+    std::printf("%lld\n", static_cast<long long>(0));
   }
   if (inferred_true) {
-    std::printf("%d\n", 1);
+    std::printf("%lld\n", static_cast<long long>(1));
   }
   if (inferred_false) {
-    std::printf("%d\n", 0);
+    std::printf("%lld\n", static_cast<long long>(0));
   }
   auto flag = true;
   int32_t count = 0;

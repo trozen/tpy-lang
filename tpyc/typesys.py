@@ -83,6 +83,17 @@ class BoolType(TpyType):
 
 
 @dataclass(frozen=True)
+class BigIntType(TpyType):
+    """Arbitrary precision integer: int -> tpy::BigInt"""
+
+    def to_cpp(self) -> str:
+        return "tpy::BigInt"
+
+    def __str__(self) -> str:
+        return "int"
+
+
+@dataclass(frozen=True)
 class RecordType(TpyType):
     """User-defined record type (class)."""
     name: str
@@ -180,6 +191,7 @@ VOID = VoidType()
 STR = StrType()
 CHAR = CharType()
 BOOL = BoolType()
+BIGINT = BigIntType()
 
 
 @dataclass
@@ -226,7 +238,7 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         # Built-in types
-        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "StaticList", "Array", "Span", "str", "list"}
+        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "StaticList", "Array", "Span", "str", "list", "int"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info
