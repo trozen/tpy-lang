@@ -162,7 +162,8 @@ def main() -> int:
                 "g++", "-std=c++20",
                 "-I", str(runtime_dir),
                 "-o", str(binary_path),
-                str(cpp_path)
+                str(cpp_path),
+                "-lgmp"
             ]
 
             result = subprocess.run(compile_cmd, capture_output=True, text=True)

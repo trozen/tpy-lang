@@ -44,7 +44,7 @@ def compile_and_run_cpp(build_dir: Path, module_name: str) -> str:
     exe_file = build_dir / "program"
 
     result = subprocess.run(
-        ["g++", "-std=c++20", "-I", str(RUNTIME_DIR), "-o", str(exe_file), str(cpp_file)],
+        ["g++", "-std=c++20", "-I", str(RUNTIME_DIR), "-o", str(exe_file), str(cpp_file), "-lgmp"],
         capture_output=True,
         text=True,
     )

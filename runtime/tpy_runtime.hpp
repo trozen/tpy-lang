@@ -16,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <gmp.h>
 
 namespace tpy {
 
@@ -138,9 +139,9 @@ private:
  * BigInt - Arbitrary precision integer with small-int optimization.
  *
  * Uses pointer tagging to store small integers inline:
- * - Tag in lo_ & 1: 0 = small, 1 = big (heap allocated)
+ * - Tag in lo_ & 1: 0 = small, 1 = big (GMP mpz_t*)
  * - Small: value stored as lo_ >> 1 (63-bit signed range)
- * - Big: lo_ has size|tag, hi_ is pointer to uint64_t[] limbs
+ * - Big: hi_ is pointer to mpz_t
  *
  * Python semantics for division and modulo (floor division).
  */
@@ -155,7 +156,7 @@ public:
             lo_ = v << 1;
             hi_ = 0;
         } else {
-            init_from_large(v);
+            init_gmp(v);
         }
     }
 
@@ -164,7 +165,7 @@ public:
             lo_ = other.lo_;
             hi_ = 0;
         } else {
-            copy_big(other);
+            copy_gmp(other);
         }
     }
 
@@ -174,17 +175,17 @@ public:
     }
 
     ~BigInt() {
-        free_big();
+        free_gmp();
     }
 
     BigInt& operator=(const BigInt& other) noexcept {
         if (this != &other) {
-            free_big();
+            free_gmp();
             if (other.is_small()) {
                 lo_ = other.lo_;
                 hi_ = 0;
             } else {
-                copy_big(other);
+                copy_gmp(other);
             }
         }
         return *this;
@@ -192,7 +193,7 @@ public:
 
     BigInt& operator=(BigInt&& other) noexcept {
         if (this != &other) {
-            free_big();
+            free_gmp();
             lo_ = other.lo_;
             hi_ = other.hi_;
             other.lo_ = 0;
@@ -216,9 +217,8 @@ public:
                 r.lo_ = result << 1;
                 return r;
             }
-            return add_big(*this, rhs);
         }
-        return add_big(*this, rhs);
+        return add_gmp(*this, rhs);
     }
 
     BigInt operator-(const BigInt& rhs) const {
@@ -231,9 +231,8 @@ public:
                 r.lo_ = result << 1;
                 return r;
             }
-            return sub_big(*this, rhs);
         }
-        return sub_big(*this, rhs);
+        return sub_gmp(*this, rhs);
     }
 
     BigInt operator*(const BigInt& rhs) const {
@@ -246,9 +245,8 @@ public:
                 r.lo_ = result << 1;
                 return r;
             }
-            return mul_big(*this, rhs);
         }
-        return mul_big(*this, rhs);
+        return mul_gmp(*this, rhs);
     }
 
     BigInt operator/(const BigInt& rhs) const {
@@ -268,7 +266,7 @@ public:
                 return r;
             }
         }
-        return neg_big(*this);
+        return neg_gmp(*this);
     }
 
     // Compound assignment operators
@@ -309,7 +307,10 @@ public:
         if (is_small()) {
             return std::to_string(small_value());
         }
-        return big_to_string();
+        char* str = mpz_get_str(nullptr, 10, gmp_ptr());
+        std::string result(str);
+        std::free(str);
+        return result;
     }
 
     // Check if value is zero (useful for conditionals)
@@ -317,12 +318,12 @@ public:
         if (is_small()) {
             return small_value() != 0;
         }
-        return !is_big_zero();
+        return mpz_sgn(gmp_ptr()) != 0;
     }
 
 private:
-    int64_t lo_;  // bit 0: tag. small: value << 1. big: size | 1
-    int64_t hi_;  // small: unused. big: pointer to uint64_t[]
+    int64_t lo_;  // bit 0: tag. small: value << 1. big: 1
+    int64_t hi_;  // small: unused. big: pointer to mpz_t
 
     static constexpr int64_t SMALL_MAX = (INT64_MAX >> 1);
     static constexpr int64_t SMALL_MIN = (INT64_MIN >> 1);
@@ -331,53 +332,56 @@ private:
         return v >= SMALL_MIN && v <= SMALL_MAX;
     }
 
-    void init_from_large(int64_t v) {
-        // Allocate space for 1-2 limbs
-        bool negative = v < 0;
-        uint64_t abs_val = negative ? (v == INT64_MIN ? static_cast<uint64_t>(INT64_MAX) + 1 : static_cast<uint64_t>(-v)) : static_cast<uint64_t>(v);
-
-        auto* limbs = new uint64_t[2];
-        limbs[0] = abs_val;
-        limbs[1] = 0;
-
-        int32_t size = (abs_val > 0) ? 1 : 0;
-        if (negative) size = -size;
-
-        lo_ = (static_cast<int64_t>(size) << 32) | 1;
-        hi_ = reinterpret_cast<int64_t>(limbs);
+    mpz_ptr gmp_ptr() const noexcept {
+        return reinterpret_cast<mpz_ptr>(hi_);
     }
 
-    void free_big() noexcept {
+    void init_gmp(int64_t v) {
+        auto* z = new __mpz_struct;
+        mpz_init_set_si(z, v);
+        lo_ = 1;
+        hi_ = reinterpret_cast<int64_t>(z);
+    }
+
+    void free_gmp() noexcept {
         if (!is_small() && hi_ != 0) {
-            delete[] reinterpret_cast<uint64_t*>(hi_);
+            mpz_clear(gmp_ptr());
+            delete gmp_ptr();
         }
     }
 
-    void copy_big(const BigInt& other) {
-        int32_t size = static_cast<int32_t>(other.lo_ >> 32);
-        int32_t abs_size = size < 0 ? -size : size;
-        int32_t alloc = abs_size > 0 ? abs_size : 1;
+    void copy_gmp(const BigInt& other) {
+        auto* z = new __mpz_struct;
+        mpz_init_set(z, other.gmp_ptr());
+        lo_ = 1;
+        hi_ = reinterpret_cast<int64_t>(z);
+    }
 
-        auto* limbs = new uint64_t[alloc];
-        auto* src = reinterpret_cast<uint64_t*>(other.hi_);
-        for (int32_t i = 0; i < abs_size; ++i) {
-            limbs[i] = src[i];
+    void to_mpz(mpz_t z) const {
+        if (is_small()) {
+            mpz_init_set_si(z, small_value());
+        } else {
+            mpz_init_set(z, gmp_ptr());
         }
-
-        lo_ = other.lo_;
-        hi_ = reinterpret_cast<int64_t>(limbs);
     }
 
-    int32_t big_size() const noexcept {
-        return static_cast<int32_t>(lo_ >> 32);
-    }
-
-    uint64_t* big_limbs() const noexcept {
-        return reinterpret_cast<uint64_t*>(hi_);
-    }
-
-    bool is_big_zero() const {
-        return big_size() == 0;
+    static BigInt from_mpz(mpz_t z) {
+        BigInt result;
+        if (mpz_fits_slong_p(z)) {
+            long v = mpz_get_si(z);
+            if (fits_small(v)) {
+                result.lo_ = static_cast<int64_t>(v) << 1;
+                result.hi_ = 0;
+                mpz_clear(z);
+                return result;
+            }
+        }
+        auto* zp = new __mpz_struct;
+        mpz_init_set(zp, z);
+        mpz_clear(z);
+        result.lo_ = 1;
+        result.hi_ = reinterpret_cast<int64_t>(zp);
+        return result;
     }
 
     int compare(const BigInt& rhs) const {
@@ -387,203 +391,73 @@ private:
             return (a > b) - (a < b);
         }
 
-        // Convert both to sign and magnitude for comparison
-        bool neg_a = is_negative();
-        bool neg_b = rhs.is_negative();
-
-        if (neg_a != neg_b) {
-            return neg_a ? -1 : 1;
-        }
-
-        int mag_cmp = compare_magnitude(rhs);
-        return neg_a ? -mag_cmp : mag_cmp;
+        mpz_t a, b;
+        to_mpz(a);
+        rhs.to_mpz(b);
+        int result = mpz_cmp(a, b);
+        mpz_clear(a);
+        mpz_clear(b);
+        return result;
     }
 
-    bool is_negative() const {
-        if (is_small()) {
-            return small_value() < 0;
-        }
-        return big_size() < 0;
-    }
-
-    int compare_magnitude(const BigInt& rhs) const {
-        int32_t size_a = is_small() ? 1 : (big_size() < 0 ? -big_size() : big_size());
-        int32_t size_b = rhs.is_small() ? 1 : (rhs.big_size() < 0 ? -rhs.big_size() : rhs.big_size());
-
-        // Handle zero cases
-        if (is_small() && small_value() == 0) size_a = 0;
-        if (rhs.is_small() && rhs.small_value() == 0) size_b = 0;
-
-        if (size_a != size_b) {
-            return (size_a > size_b) - (size_a < size_b);
-        }
-
-        // Same size, compare limbs from most significant
-        for (int32_t i = size_a - 1; i >= 0; --i) {
-            uint64_t limb_a = get_limb(i);
-            uint64_t limb_b = rhs.get_limb(i);
-            if (limb_a != limb_b) {
-                return (limb_a > limb_b) - (limb_a < limb_b);
-            }
-        }
-        return 0;
-    }
-
-    uint64_t get_limb(int32_t idx) const {
-        if (is_small()) {
-            if (idx == 0) {
-                int64_t v = small_value();
-                return v < 0 ? static_cast<uint64_t>(-v) : static_cast<uint64_t>(v);
-            }
-            return 0;
-        }
-        int32_t abs_size = big_size() < 0 ? -big_size() : big_size();
-        if (idx < abs_size) {
-            return big_limbs()[idx];
-        }
-        return 0;
-    }
-
-    // Big integer arithmetic helpers
-    static BigInt add_big(const BigInt& a, const BigInt& b);
-    static BigInt sub_big(const BigInt& a, const BigInt& b);
-    static BigInt mul_big(const BigInt& a, const BigInt& b);
-    static BigInt neg_big(const BigInt& a);
+    // GMP-based arithmetic helpers
+    static BigInt add_gmp(const BigInt& a, const BigInt& b);
+    static BigInt sub_gmp(const BigInt& a, const BigInt& b);
+    static BigInt mul_gmp(const BigInt& a, const BigInt& b);
+    static BigInt neg_gmp(const BigInt& a);
 
     BigInt floor_div(const BigInt& rhs) const;
     BigInt floor_mod(const BigInt& rhs) const;
-
-    std::string big_to_string() const;
 };
 
-// Implementation of big integer operations
+// Implementation of GMP-based big integer operations
 
-inline BigInt BigInt::add_big(const BigInt& a, const BigInt& b) {
-    // For simplicity, convert to 128-bit arithmetic for medium values
-    // This handles the common case of values that overflow 63 bits but fit in 128
-    int64_t av = a.is_small() ? a.small_value() : 0;
-    int64_t bv = b.is_small() ? b.small_value() : 0;
-
-    if (a.is_small() && b.is_small()) {
-        // Use 128-bit arithmetic
-        __int128 result = static_cast<__int128>(av) + static_cast<__int128>(bv);
-        if (result >= SMALL_MIN && result <= SMALL_MAX) {
-            BigInt r;
-            r.lo_ = static_cast<int64_t>(result) << 1;
-            return r;
-        }
-        // Result doesn't fit in small, create big
-        BigInt r;
-        bool negative = result < 0;
-        unsigned __int128 abs_result = negative ? -result : result;
-
-        auto* limbs = new uint64_t[2];
-        limbs[0] = static_cast<uint64_t>(abs_result);
-        limbs[1] = static_cast<uint64_t>(abs_result >> 64);
-
-        int32_t size = limbs[1] ? 2 : 1;
-        if (negative) size = -size;
-
-        r.lo_ = (static_cast<int64_t>(size) << 32) | 1;
-        r.hi_ = reinterpret_cast<int64_t>(limbs);
-        return r;
-    }
-
-    // Full big integer addition (for very large numbers)
-    tpy_panic("BigInt overflow: numbers too large for current implementation");
+inline BigInt BigInt::add_gmp(const BigInt& a, const BigInt& b) {
+    mpz_t za, zb, result;
+    a.to_mpz(za);
+    b.to_mpz(zb);
+    mpz_init(result);
+    mpz_add(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
 }
 
-inline BigInt BigInt::sub_big(const BigInt& a, const BigInt& b) {
-    int64_t av = a.is_small() ? a.small_value() : 0;
-    int64_t bv = b.is_small() ? b.small_value() : 0;
-
-    if (a.is_small() && b.is_small()) {
-        __int128 result = static_cast<__int128>(av) - static_cast<__int128>(bv);
-        if (result >= SMALL_MIN && result <= SMALL_MAX) {
-            BigInt r;
-            r.lo_ = static_cast<int64_t>(result) << 1;
-            return r;
-        }
-        BigInt r;
-        bool negative = result < 0;
-        unsigned __int128 abs_result = negative ? -result : result;
-
-        auto* limbs = new uint64_t[2];
-        limbs[0] = static_cast<uint64_t>(abs_result);
-        limbs[1] = static_cast<uint64_t>(abs_result >> 64);
-
-        int32_t size = limbs[1] ? 2 : 1;
-        if (negative) size = -size;
-
-        r.lo_ = (static_cast<int64_t>(size) << 32) | 1;
-        r.hi_ = reinterpret_cast<int64_t>(limbs);
-        return r;
-    }
-
-    tpy_panic("BigInt overflow: numbers too large for current implementation");
+inline BigInt BigInt::sub_gmp(const BigInt& a, const BigInt& b) {
+    mpz_t za, zb, result;
+    a.to_mpz(za);
+    b.to_mpz(zb);
+    mpz_init(result);
+    mpz_sub(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
 }
 
-inline BigInt BigInt::mul_big(const BigInt& a, const BigInt& b) {
-    int64_t av = a.is_small() ? a.small_value() : 0;
-    int64_t bv = b.is_small() ? b.small_value() : 0;
-
-    if (a.is_small() && b.is_small()) {
-        __int128 result = static_cast<__int128>(av) * static_cast<__int128>(bv);
-        if (result >= SMALL_MIN && result <= SMALL_MAX) {
-            BigInt r;
-            r.lo_ = static_cast<int64_t>(result) << 1;
-            return r;
-        }
-        BigInt r;
-        bool negative = result < 0;
-        unsigned __int128 abs_result = negative ? -result : result;
-
-        auto* limbs = new uint64_t[2];
-        limbs[0] = static_cast<uint64_t>(abs_result);
-        limbs[1] = static_cast<uint64_t>(abs_result >> 64);
-
-        int32_t size = limbs[1] ? 2 : 1;
-        if (negative) size = -size;
-
-        r.lo_ = (static_cast<int64_t>(size) << 32) | 1;
-        r.hi_ = reinterpret_cast<int64_t>(limbs);
-        return r;
-    }
-
-    tpy_panic("BigInt overflow: numbers too large for current implementation");
+inline BigInt BigInt::mul_gmp(const BigInt& a, const BigInt& b) {
+    mpz_t za, zb, result;
+    a.to_mpz(za);
+    b.to_mpz(zb);
+    mpz_init(result);
+    mpz_mul(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
 }
 
-inline BigInt BigInt::neg_big(const BigInt& a) {
-    if (a.is_small()) {
-        int64_t v = a.small_value();
-        // Handle INT64_MIN edge case
-        if (v == INT64_MIN) {
-            // -INT64_MIN doesn't fit in int64_t, need big representation
-            BigInt r;
-            auto* limbs = new uint64_t[2];
-            limbs[0] = static_cast<uint64_t>(INT64_MAX) + 1;
-            limbs[1] = 0;
-            r.lo_ = (1LL << 32) | 1;  // size = 1 (positive)
-            r.hi_ = reinterpret_cast<int64_t>(limbs);
-            return r;
-        }
-        BigInt r;
-        r.lo_ = (-v) << 1;
-        return r;
-    }
-
-    // Negate big: just flip the sign
-    BigInt r;
-    r.copy_big(a);
-    int32_t size = r.big_size();
-    r.lo_ = (static_cast<int64_t>(-size) << 32) | 1;
-    return r;
+inline BigInt BigInt::neg_gmp(const BigInt& a) {
+    mpz_t za, result;
+    a.to_mpz(za);
+    mpz_init(result);
+    mpz_neg(result, za);
+    mpz_clear(za);
+    return from_mpz(result);
 }
 
 inline BigInt BigInt::floor_div(const BigInt& rhs) const {
     // Check for division by zero
-    if ((rhs.is_small() && rhs.small_value() == 0) ||
-        (!rhs.is_small() && rhs.is_big_zero())) {
+    bool rhs_zero = rhs.is_small() ? (rhs.small_value() == 0) : (mpz_sgn(rhs.gmp_ptr()) == 0);
+    if (rhs_zero) {
         tpy_panic("Division by zero");
     }
 
@@ -606,19 +480,27 @@ inline BigInt BigInt::floor_div(const BigInt& rhs) const {
             return result;
         }
 
-        // Overflow case (rare)
-        BigInt result;
-        result.init_from_large(q);
-        return result;
+        // Overflow case (rare) - use GMP
+        mpz_t z;
+        mpz_init_set_si(z, q);
+        return from_mpz(z);
     }
 
-    tpy_panic("BigInt division: numbers too large for current implementation");
+    // GMP floor division (fdiv rounds toward negative infinity)
+    mpz_t za, zb, result;
+    to_mpz(za);
+    rhs.to_mpz(zb);
+    mpz_init(result);
+    mpz_fdiv_q(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
 }
 
 inline BigInt BigInt::floor_mod(const BigInt& rhs) const {
     // Check for division by zero
-    if ((rhs.is_small() && rhs.small_value() == 0) ||
-        (!rhs.is_small() && rhs.is_big_zero())) {
+    bool rhs_zero = rhs.is_small() ? (rhs.small_value() == 0) : (mpz_sgn(rhs.gmp_ptr()) == 0);
+    if (rhs_zero) {
         tpy_panic("Division by zero");
     }
 
@@ -639,39 +521,15 @@ inline BigInt BigInt::floor_mod(const BigInt& rhs) const {
         return result;
     }
 
-    tpy_panic("BigInt modulo: numbers too large for current implementation");
-}
-
-inline std::string BigInt::big_to_string() const {
-    if (is_big_zero()) {
-        return "0";
-    }
-
-    int32_t size = big_size();
-    bool negative = size < 0;
-    int32_t abs_size = negative ? -size : size;
-    uint64_t* limbs = big_limbs();
-
-    // For 1-2 limb numbers, use 128-bit arithmetic for string conversion
-    if (abs_size <= 2) {
-        unsigned __int128 val = limbs[0];
-        if (abs_size == 2) {
-            val |= (static_cast<unsigned __int128>(limbs[1]) << 64);
-        }
-
-        std::string result;
-        while (val > 0) {
-            result = char('0' + val % 10) + result;
-            val /= 10;
-        }
-
-        if (negative) {
-            result = "-" + result;
-        }
-        return result;
-    }
-
-    tpy_panic("BigInt to_string: number too large for current implementation");
+    // GMP floor modulo (fdiv_r gives remainder with same sign as divisor)
+    mpz_t za, zb, result;
+    to_mpz(za);
+    rhs.to_mpz(zb);
+    mpz_init(result);
+    mpz_fdiv_r(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
 }
 
 } // namespace tpy
