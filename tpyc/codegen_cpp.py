@@ -13,7 +13,7 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BigIntType,
+    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BigIntType, IntLiteralType,
     INT32, VOID, BIGINT
 )
 from .parse import (
@@ -360,6 +360,12 @@ class CodeGenerator:
         target_type = stmt.type
         if target_type is None and stmt.init:
             target_type = self.analyzer.get_expr_type(stmt.init)
+            # Resolve IntLiteralType to BigInt for standalone variable declarations
+            if isinstance(target_type, IntLiteralType):
+                target_type = BIGINT
+            # Resolve Array[IntLiteralType] to Array[BigInt]
+            elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
+                target_type = ArrayType(BIGINT, target_type.size)
 
         # First declaration - track the type
         self.declared_vars.add(stmt.name)
@@ -370,12 +376,20 @@ class CodeGenerator:
         elif stmt.init:
             # Check inferred type - some types need explicit annotation
             inferred_type = self.analyzer.get_expr_type(stmt.init)
-            if isinstance(inferred_type, BigIntType):
+            # IntLiteralType -> BigInt for variable declarations
+            if isinstance(inferred_type, IntLiteralType):
+                cpp_type = BIGINT.to_cpp()
+            elif isinstance(inferred_type, BigIntType):
                 # BigInt needs explicit type (auto would infer int from literal)
                 cpp_type = inferred_type.to_cpp()
             elif isinstance(stmt.init, TpyArrayLiteral):
                 # Array literals need explicit type (auto with {...} creates initializer_list)
-                cpp_type = inferred_type.to_cpp() if inferred_type else "auto"
+                # Resolve IntLiteralType elements to BigInt (Python semantics: [1,2,3] is list of int)
+                if isinstance(inferred_type, ArrayType) and isinstance(inferred_type.element_type, IntLiteralType):
+                    resolved_type = ArrayType(BIGINT, inferred_type.size)
+                    cpp_type = resolved_type.to_cpp()
+                else:
+                    cpp_type = inferred_type.to_cpp() if inferred_type else "auto"
             else:
                 cpp_type = "auto"
         else:
@@ -396,9 +410,9 @@ class CodeGenerator:
             obj_type = self.analyzer.get_expr_type(stmt.target.obj)
             index_type = self.analyzer.get_expr_type(stmt.target.index)
 
-            # For literal indices, use them directly
-            if isinstance(stmt.target.index, TpyIntLiteral):
-                index_expr = str(stmt.target.index.value)
+            # IntLiteralType indices can be used directly as plain ints
+            if isinstance(index_type, IntLiteralType):
+                index_expr = self._gen_expr(stmt.target.index)
             elif isinstance(index_type, BigIntType):
                 index_expr = f"{self._gen_expr(stmt.target.index)}.to_int32()"
             else:
@@ -496,12 +510,10 @@ class CodeGenerator:
         elif isinstance(expr, TpyBinOp):
             left_type = self.analyzer.get_expr_type(expr.left)
             right_type = self.analyzer.get_expr_type(expr.right)
-            # Only promote literals to BigInt if the other operand is a non-literal BigInt
-            # (i.e., a BigInt variable, not just a BigInt-typed literal)
-            left_is_bigint_var = isinstance(left_type, BigIntType) and not isinstance(expr.left, TpyIntLiteral)
-            right_is_bigint_var = isinstance(right_type, BigIntType) and not isinstance(expr.right, TpyIntLiteral)
-            left_target = BIGINT if right_is_bigint_var else None
-            right_target = BIGINT if left_is_bigint_var else None
+            # IntLiteralType coerces to the other operand's concrete type
+            # BigInt variable + IntLiteral -> promote literal to BigInt
+            left_target = BIGINT if isinstance(right_type, BigIntType) else None
+            right_target = BIGINT if isinstance(left_type, BigIntType) else None
             left = self._gen_expr(expr.left, left_target)
             right = self._gen_expr(expr.right, right_target)
             return f"({left} {expr.op} {right})"
@@ -540,12 +552,12 @@ class CodeGenerator:
             # chr() maps to static_cast<char>
             if expr.func == "chr":
                 arg = expr.args[0]
-                # Literal integers can be used directly
-                if isinstance(arg, TpyIntLiteral):
-                    return f"static_cast<char>({arg.value})"
                 arg_type = self.analyzer.get_expr_type(arg)
                 gen_arg = self._gen_expr(arg)
-                # Non-literal BigInt needs .to_int32() conversion first
+                # IntLiteralType can be used directly
+                if isinstance(arg_type, IntLiteralType):
+                    return f"static_cast<char>({gen_arg})"
+                # BigInt needs .to_int32() conversion first
                 if isinstance(arg_type, BigIntType):
                     return f"static_cast<char>({gen_arg}.to_int32())"
                 return f"static_cast<char>({gen_arg})"
@@ -615,49 +627,29 @@ class CodeGenerator:
                 result_type = target_type
             else:
                 result_type = self.analyzer.get_expr_type(expr)
-            # For literal elements, use them directly
-            if isinstance(expr.element, TpyIntLiteral):
-                element = str(expr.element.value)
-            else:
-                element = self._gen_expr(expr.element)
-            # For literal counts, use them directly
-            if isinstance(expr.count, TpyIntLiteral):
-                count = str(expr.count.value)
-            else:
-                count = self._gen_expr(expr.count)
-                count_type = self.analyzer.get_expr_type(expr.count)
-                if isinstance(count_type, BigIntType):
-                    count = f"{count}.to_int32()"
+            element = self._gen_expr(expr.element)
+            count = self._gen_expr(expr.count)
+            count_type = self.analyzer.get_expr_type(expr.count)
+            # BigInt count needs conversion (IntLiteralType is already plain int)
+            if isinstance(count_type, BigIntType):
+                count = f"{count}.to_int32()"
             return f"{result_type.to_cpp()}({count}, {element})"
 
         elif isinstance(expr, TpySubscript):
             obj = self._gen_expr(expr.obj)
             obj_type = self.analyzer.get_expr_type(expr.obj)
             index_type = self.analyzer.get_expr_type(expr.index)
-            # For literal indices, use them directly (no BigInt wrapper needed)
-            if isinstance(expr.index, TpyIntLiteral):
-                index_expr = str(expr.index.value)
-            elif isinstance(index_type, BigIntType):
-                # Non-literal BigInt needs conversion to int32
-                index_expr = f"{self._gen_expr(expr.index)}.to_int32()"
-            else:
-                index_expr = self._gen_expr(expr.index)
+            # IntLiteralType indices are already plain ints
+            index_expr = self._gen_expr(expr.index)
+            # BigInt needs conversion to int32
+            if isinstance(index_type, BigIntType):
+                index_expr = f"{index_expr}.to_int32()"
             # StaticList uses .get() method, Array and Span use []
             if isinstance(obj_type, StaticListType):
                 return f"{obj}.get({index_expr})"
             return f"{obj}[{index_expr}]"
 
         return "/* unknown expr */"
-
-    def _is_literal_expr(self, expr: TpyExpr) -> bool:
-        """Check if an expression consists only of literals (no variables)."""
-        if isinstance(expr, TpyIntLiteral):
-            return True
-        if isinstance(expr, TpyBinOp):
-            return self._is_literal_expr(expr.left) and self._is_literal_expr(expr.right)
-        if isinstance(expr, TpyUnaryOp):
-            return self._is_literal_expr(expr.operand)
-        return False
 
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
         """Generate printf call for print().
@@ -690,22 +682,17 @@ class CodeGenerator:
                 # Inline string into format
                 escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('%', '%%')
                 fmt_parts.append(escaped)
-            elif isinstance(arg, TpyIntLiteral):
+            elif isinstance(arg_type, IntLiteralType):
                 # Integer literals can use %lld directly (handles large values)
                 fmt_parts.append("%lld")
-                fmt_args.append(f"static_cast<long long>({arg.value})")
+                fmt_args.append(f"static_cast<long long>({self._gen_expr(arg)})")
             elif isinstance(arg_type, CharType):
                 fmt_parts.append("%c")
                 fmt_args.append(self._gen_expr(arg))
             elif isinstance(arg_type, BigIntType):
-                # Check if this is a literal-only expression (no BigInt wrapper needed)
-                if self._is_literal_expr(arg):
-                    fmt_parts.append("%lld")
-                    fmt_args.append(f"static_cast<long long>({self._gen_expr(arg)})")
-                else:
-                    # BigInt variable/expression needs string conversion
-                    fmt_parts.append("%s")
-                    fmt_args.append(f"{self._gen_expr(arg)}.to_string().c_str()")
+                # BigInt variable/expression needs string conversion
+                fmt_parts.append("%s")
+                fmt_args.append(f"{self._gen_expr(arg)}.to_string().c_str()")
             elif isinstance(arg_type, Int32Type):
                 fmt_parts.append("%d")
                 fmt_args.append(self._gen_expr(arg))

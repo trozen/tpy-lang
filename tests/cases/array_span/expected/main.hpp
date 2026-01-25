@@ -3,6 +3,7 @@
 
 #include "tpy_runtime.hpp"
 
+extern std::array<int32_t, 3> nums;
 extern std::array<int32_t, 3> arr;
 extern StaticList<int32_t, 4> items;
 

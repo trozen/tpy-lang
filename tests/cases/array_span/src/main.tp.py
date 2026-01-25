@@ -11,8 +11,8 @@ def sum_span(values: Span[Int32]) -> Int32:
 # Test 1: Array literal passed directly to Span parameter
 print(sum_span([1, 2, 3, 4, 5]))
 
-# Test 2: Array literal assigned to variable, then passed
-nums = [10, 20, 30]
+# Test 2: Array literal assigned to variable with explicit type, then passed
+nums: Array[Int32, 3] = [10, 20, 30]
 print(sum_span(nums))
 
 # Test 3: Array with explicit type annotation

@@ -94,6 +94,26 @@ class BigIntType(TpyType):
 
 
 @dataclass(frozen=True)
+class IntLiteralType(TpyType):
+    """Unresolved integer literal - can coerce to Int32 or BigInt.
+
+    This type represents integer literals before they're resolved to a
+    concrete type. It coerces to Int32 or BigInt based on context:
+    - Int32 + IntLiteral -> Int32
+    - BigInt + IntLiteral -> BigInt
+    - IntLiteral + IntLiteral -> BigInt (Python default)
+    """
+    value: int = 0  # Store value for potential range checking
+
+    def to_cpp(self) -> str:
+        # Should be resolved before codegen; fallback to literal value
+        return str(self.value)
+
+    def __str__(self) -> str:
+        return f"IntLiteral({self.value})"
+
+
+@dataclass(frozen=True)
 class RecordType(TpyType):
     """User-defined record type (class)."""
     name: str

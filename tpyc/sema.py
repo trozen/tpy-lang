@@ -14,7 +14,7 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BoolType, BigIntType,
+    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BoolType, BigIntType, IntLiteralType,
     INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
@@ -165,6 +165,9 @@ class SemanticAnalyzer:
                     # Infer type from initializer
                     self.current_scope = self.global_scope
                     typ = self._analyze_expr(stmt.init)
+                    # Resolve IntLiteralType to BigInt for variable declarations
+                    if isinstance(typ, IntLiteralType):
+                        typ = BIGINT
                     self.global_scope.define(stmt.name, typ)
                     self.current_scope = None
 
@@ -271,7 +274,11 @@ class SemanticAnalyzer:
                 self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'")
                 var_type = existing_type
             else:
-                var_type = init_type
+                # New variable: resolve IntLiteralType to BigInt (Python default)
+                if isinstance(init_type, IntLiteralType):
+                    var_type = BIGINT
+                else:
+                    var_type = init_type
         elif stmt.type:
             var_type = stmt.type
         else:
@@ -299,15 +306,15 @@ class SemanticAnalyzer:
         target_type = self._analyze_expr(stmt.target)
         value_type = self._analyze_expr(stmt.value)
         # Both must be integer types for arithmetic augmented assignment
-        if not isinstance(target_type, (Int32Type, BigIntType)):
+        if not isinstance(target_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"Augmented assignment target must be an integer type, got {target_type}")
-        if not isinstance(value_type, (Int32Type, BigIntType)):
+        if not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"Augmented assignment value must be an integer type, got {value_type}")
 
     def _analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
-            typ = BIGINT
+            typ = IntLiteralType(expr.value)
         elif isinstance(expr, TpyStrLiteral):
             # Single-char string literals become Char type
             if len(expr.value) == 1:
@@ -352,10 +359,13 @@ class SemanticAnalyzer:
         left_type = self._analyze_expr(expr.left)
         right_type = self._analyze_expr(expr.right)
 
+        # Helper to check if type is any integer type
+        def is_int_type(t: TpyType) -> bool:
+            return isinstance(t, (Int32Type, BigIntType, IntLiteralType))
+
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
-            # Allow comparisons between same integer types
-            if isinstance(left_type, (Int32Type, BigIntType)) and isinstance(right_type, (Int32Type, BigIntType)):
+            if is_int_type(left_type) and is_int_type(right_type):
                 return BOOL
             return BOOL
 
@@ -363,30 +373,34 @@ class SemanticAnalyzer:
         if expr.op in ("&&", "||"):
             return BOOL
 
-        # Arithmetic operators
-        if isinstance(left_type, Int32Type) and isinstance(right_type, Int32Type):
-            return INT32
+        # Arithmetic/bitwise operators - resolve integer types
+        if is_int_type(left_type) and is_int_type(right_type):
+            # IntLiteral coerces to the other operand's type
+            # Int32 + IntLiteral -> Int32
+            if isinstance(left_type, Int32Type) and isinstance(right_type, IntLiteralType):
+                return INT32
+            if isinstance(left_type, IntLiteralType) and isinstance(right_type, Int32Type):
+                return INT32
 
-        # Check if operands are literals (literals can adapt to the other type)
-        left_is_literal = isinstance(expr.left, TpyIntLiteral)
-        right_is_literal = isinstance(expr.right, TpyIntLiteral)
-
-        # Int32 + literal -> Int32 (literal adapts to Int32)
-        if isinstance(left_type, Int32Type) and right_is_literal:
-            return INT32
-        if left_is_literal and isinstance(right_type, Int32Type):
-            return INT32
-
-        # BigInt arithmetic (both BigInt variables, or one BigInt variable + literal)
-        if isinstance(left_type, BigIntType) and isinstance(right_type, BigIntType):
-            # If both are literals, result is still BigInt (Python semantics)
-            if not left_is_literal or not right_is_literal:
+            # BigInt + IntLiteral -> BigInt
+            if isinstance(left_type, BigIntType) and isinstance(right_type, IntLiteralType):
                 return BIGINT
-            # Two literals: return BigInt
-            return BIGINT
+            if isinstance(left_type, IntLiteralType) and isinstance(right_type, BigIntType):
+                return BIGINT
 
-        # Int32 + BigInt variable -> BigInt (variable wins)
-        if isinstance(left_type, (Int32Type, BigIntType)) and isinstance(right_type, (Int32Type, BigIntType)):
+            # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
+            if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
+                return IntLiteralType(0)  # Value not tracked for compound expressions
+
+            # Int32 + Int32 -> Int32
+            if isinstance(left_type, Int32Type) and isinstance(right_type, Int32Type):
+                return INT32
+
+            # BigInt + BigInt -> BigInt
+            if isinstance(left_type, BigIntType) and isinstance(right_type, BigIntType):
+                return BIGINT
+
+            # Int32 + BigInt -> BigInt (wider type wins)
             return BIGINT
 
         raise SemanticError(f"Invalid operand types for '{expr.op}': {left_type} and {right_type}")
@@ -399,8 +413,14 @@ class SemanticAnalyzer:
                 return INT32
             if isinstance(operand_type, BigIntType):
                 return BIGINT
+            if isinstance(operand_type, IntLiteralType):
+                # -literal stays as IntLiteral (can still coerce)
+                return IntLiteralType(-operand_type.value)
         elif expr.op == "~":
             if isinstance(operand_type, Int32Type):
+                return INT32
+            if isinstance(operand_type, IntLiteralType):
+                # Bitwise not on literal - treat as Int32
                 return INT32
         elif expr.op == "!":
             return BOOL
@@ -434,7 +454,7 @@ class SemanticAnalyzer:
             if len(expr.args) != 1:
                 raise SemanticError("chr() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, (Int32Type, BigIntType)):
+            if not isinstance(arg_type, (Int32Type, BigIntType, IntLiteralType)):
                 raise SemanticError(f"chr() argument must be an integer type, got {arg_type}")
             return CHAR
 
@@ -444,7 +464,7 @@ class SemanticAnalyzer:
                 raise SemanticError("int() takes at most 1 argument")
             if expr.args:
                 arg_type = self._analyze_expr(expr.args[0])
-                if not isinstance(arg_type, (Int32Type, BigIntType)):
+                if not isinstance(arg_type, (Int32Type, BigIntType, IntLiteralType)):
                     raise SemanticError(f"int() argument must be an integer type, got {arg_type}")
             return BIGINT
 
@@ -453,8 +473,8 @@ class SemanticAnalyzer:
                 raise SemanticError("Int32() takes at most 1 argument")
             if expr.args:
                 arg_type = self._analyze_expr(expr.args[0])
-                if not isinstance(arg_type, Int32Type):
-                    raise SemanticError(f"Int32() argument must be Int32, got {arg_type}")
+                if not isinstance(arg_type, (Int32Type, IntLiteralType)):
+                    raise SemanticError(f"Int32() argument must be Int32 or literal, got {arg_type}")
             return INT32
 
         # Check if it's a record constructor
@@ -592,23 +612,25 @@ class SemanticAnalyzer:
         if not expr.elements:
             raise SemanticError("Empty array literal requires explicit type annotation")
 
-        # Check if all elements are integer literals - use Int32 for practical array usage
-        all_int_literals = all(isinstance(e, TpyIntLiteral) for e in expr.elements)
+        # Analyze all elements first
+        elem_types = [self._analyze_expr(e) for e in expr.elements]
 
-        # Analyze first element to get the expected type
-        first_type = self._analyze_expr(expr.elements[0])
+        # Determine element type from first element
+        first_type = elem_types[0]
+        # Keep IntLiteralType so array can coerce to either Int32 or BigInt based on context
 
-        # For arrays of integer literals, use Int32 instead of BigInt
-        # (arrays are typically used for fixed-size data with bounded integers)
-        if all_int_literals and isinstance(first_type, BigIntType):
-            first_type = INT32
-
-        # Check all elements have the same type
-        for i, elem in enumerate(expr.elements[1:], 2):
-            elem_type = self._analyze_expr(elem)
-            # If using Int32 for int literals, treat BigInt literals as Int32 for comparison
-            if all_int_literals and isinstance(elem_type, BigIntType):
-                elem_type = INT32
+        # Check all elements are compatible
+        for i, elem_type in enumerate(elem_types[1:], 2):
+            # IntLiteralType elements are compatible with each other
+            if isinstance(first_type, IntLiteralType) and isinstance(elem_type, IntLiteralType):
+                continue
+            # IntLiteral coerces to concrete integer types
+            if isinstance(elem_type, IntLiteralType) and isinstance(first_type, (Int32Type, BigIntType)):
+                continue
+            if isinstance(first_type, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                # First was literal, but later element is concrete - update first_type
+                first_type = elem_type
+                continue
             if elem_type != first_type:
                 raise SemanticError(
                     f"Array literal element {i} has type {elem_type}, expected {first_type}"
@@ -621,8 +643,12 @@ class SemanticAnalyzer:
         elem_type = self._analyze_expr(expr.element)
         count_type = self._analyze_expr(expr.count)
 
-        if not isinstance(count_type, (Int32Type, BigIntType)):
+        if not isinstance(count_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"List repetition count must be an integer type, got {count_type}")
+
+        # Resolve IntLiteral element type to Int32 for list elements
+        if isinstance(elem_type, IntLiteralType):
+            elem_type = INT32
 
         return ListType(elem_type)
 
@@ -631,7 +657,7 @@ class SemanticAnalyzer:
         obj_type = self._analyze_expr(expr.obj)
         index_type = self._analyze_expr(expr.index)
 
-        if not isinstance(index_type, (Int32Type, BigIntType)):
+        if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"Subscript index must be an integer type, got {index_type}")
 
         if isinstance(obj_type, ArrayType):
@@ -651,6 +677,11 @@ class SemanticAnalyzer:
         """Check if actual type is compatible with expected type."""
         if actual == expected:
             return
+
+        # IntLiteral can coerce to any integer type
+        if isinstance(actual, IntLiteralType):
+            if isinstance(expected, (Int32Type, BigIntType, IntLiteralType)):
+                return
 
         # Allow Int32 literal coercion
         if isinstance(actual, Int32Type) and isinstance(expected, Int32Type):
@@ -682,18 +713,18 @@ class SemanticAnalyzer:
             if actual.pointee == expected.pointee:
                 return
 
-        # Allow ArrayType -> SpanType if element types match
+        # Allow ArrayType -> SpanType if element types match or are coercible
         if isinstance(actual, ArrayType) and isinstance(expected, SpanType):
             if actual.element_type == expected.element_type:
                 return
-            # Allow Array[BigInt] -> Span[Int32] (literal arrays)
-            if isinstance(actual.element_type, BigIntType) and isinstance(expected.element_type, Int32Type):
+            # IntLiteral element type coerces to expected element type
+            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                 return
 
-        # Allow Array[BigInt] -> Array[Int32] if sizes match (literal arrays)
+        # Allow Array element type coercion if sizes match
         if isinstance(actual, ArrayType) and isinstance(expected, ArrayType):
             if actual.size == expected.size:
-                if isinstance(actual.element_type, BigIntType) and isinstance(expected.element_type, Int32Type):
+                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                     return
 
         # Allow StaticListType -> SpanType if element types match
@@ -701,9 +732,9 @@ class SemanticAnalyzer:
             if actual.element_type == expected.element_type:
                 return
 
-        # Allow list[BigInt] -> list[Int32] (literal lists)
+        # Allow list element type coercion
         if isinstance(actual, ListType) and isinstance(expected, ListType):
-            if isinstance(actual.element_type, BigIntType) and isinstance(expected.element_type, Int32Type):
+            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                 return
 
         raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}")
