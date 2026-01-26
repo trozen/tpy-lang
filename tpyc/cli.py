@@ -193,7 +193,7 @@ def main() -> int:
         print(f"Parse error: {e}", file=sys.stderr)
         return 1
     except SemanticError as e:
-        print(f"Semantic error: {e}", file=sys.stderr)
+        print(e.format(input_path.name), file=sys.stderr)
         return 1
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)

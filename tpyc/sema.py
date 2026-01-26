@@ -19,6 +19,7 @@ from .typesys import (
     INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
+    SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
@@ -28,7 +29,16 @@ from .parse import (
 
 class SemanticError(Exception):
     """Error during semantic analysis."""
-    pass
+    def __init__(self, message: str, loc: SourceLocation | None = None):
+        self.message = message
+        self.loc = loc
+        super().__init__(message)
+
+    def format(self, filename: str = "<unknown>") -> str:
+        """Format error with file:line prefix."""
+        if self.loc:
+            return f"{filename}:{self.loc.line}: error: {self.message}"
+        return f"{filename}: error: {self.message}"
 
 
 @dataclass
@@ -73,6 +83,11 @@ class SemanticAnalyzer:
         self.variable_to_literal: dict[str, int] = {}  # var_name -> literal_id
         self.pending_resolutions: list[int] = []  # literal_ids to resolve after function analysis
         self.var_decl_by_name: dict[str, TpyVarDecl] = {}  # var_name -> TpyVarDecl node (current scope)
+
+    def _error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
+        """Create a SemanticError with location from a node."""
+        loc = getattr(node, 'loc', None) if node else None
+        return SemanticError(message, loc)
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
@@ -244,7 +259,8 @@ class SemanticAnalyzer:
             if stmt.value:
                 ret_type = self._analyze_expr(stmt.value)
                 expected = self.current_function.return_type if self.current_function else VOID
-                self._check_type_compatible(ret_type, expected, "return value")
+                self._check_type_compatible(ret_type, expected, "return value",
+                                            getattr(stmt.value, 'loc', None))
         elif isinstance(stmt, TpyIf):
             self._analyze_expr(stmt.condition)
             for s in stmt.then_body:
@@ -309,7 +325,8 @@ class SemanticAnalyzer:
                     info.explicit_type = stmt.type
 
             if stmt.type:
-                self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'")
+                self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'",
+                                            getattr(stmt.init, 'loc', None))
                 var_type = stmt.type
             elif existing_type:
                 # Reassignment: check if we need to upgrade IntLiteralType
@@ -322,7 +339,8 @@ class SemanticAnalyzer:
                         self.var_types[id(orig_decl)] = init_type
                 else:
                     # Normal reassignment: use existing type, check compatibility
-                    self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'")
+                    self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'",
+                                                getattr(stmt.init, 'loc', None))
                     var_type = existing_type
             else:
                 # New variable: keep IntLiteralType for now, will be resolved based on usage
@@ -564,7 +582,8 @@ class SemanticAnalyzer:
                 raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
             for (pname, ptype), arg in zip(func.params, expr.args):
                 arg_type = self._analyze_expr(arg)
-                self._check_type_compatible(arg_type, ptype, f"argument '{pname}'")
+                self._check_type_compatible(arg_type, ptype, f"argument '{pname}'",
+                                            getattr(arg, 'loc', None))
 
                 # Track parameter context for list inference
                 if isinstance(arg_type, PendingListType):
@@ -830,7 +849,8 @@ class SemanticAnalyzer:
         else:
             raise SemanticError(f"Cannot index type {obj_type}")
 
-    def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str) -> None:
+    def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,
+                                loc: SourceLocation | None = None) -> None:
         """Check if actual type is compatible with expected type."""
         if actual == expected:
             return
@@ -846,7 +866,8 @@ class SemanticAnalyzer:
                 if actual.value < INT32_MIN or actual.value > INT32_MAX:
                     raise SemanticError(
                         f"Integer literal {actual.value} is outside Int32 range "
-                        f"[{INT32_MIN}, {INT32_MAX}] in {context}"
+                        f"[{INT32_MIN}, {INT32_MAX}] in {context}",
+                        loc
                     )
                 return
 
@@ -941,7 +962,7 @@ class SemanticAnalyzer:
                     if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                         return
 
-        raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}")
+        raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
 
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""

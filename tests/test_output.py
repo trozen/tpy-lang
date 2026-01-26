@@ -60,6 +60,9 @@ def _generate_tests():
 
     for case_dir in sorted(CASES_DIR.iterdir()):
         if case_dir.is_dir() and (case_dir / "src").exists():
+            # Skip diagnostic-only tests (no output.txt)
+            if not (case_dir / "expected" / "output.txt").exists():
+                continue
             case_name = case_dir.name
             globals()[f"test_{case_name}_output"] = make_output_test(case_name)
 

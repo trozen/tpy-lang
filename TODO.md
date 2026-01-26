@@ -24,6 +24,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - BigInt: use second bit for int 63-126 bits long; do not allocate mzp_t, use low level GMP functions
 - game of life benchmark TPy vs CPy (two version: idiomatic python, optimized TPy types)
 - option to change divide semantics (negative): Python vs C++
+- do not stop at first error, generate source with special Invalid() type, that would be ignored in further lines, so that we get all errors from compilation
 
 ## ShedSkin examples
 - score4

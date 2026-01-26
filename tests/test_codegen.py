@@ -1,9 +1,13 @@
 """Codegen snapshot tests for the TurboPython compiler.
 
 Tests verify that code generation produces expected C++ output.
+Also supports diagnostic testing via expected/diag.txt and inline annotations.
 """
 
-from conftest import CASES_DIR, get_module_name, compile_file, TEST_CODEGEN_OPTIONS
+from conftest import (
+    CASES_DIR, get_module_name, compile_file, TEST_CODEGEN_OPTIONS,
+    compile_with_diagnostics, validate_annotations
+)
 
 
 def make_codegen_test(case_name: str):
@@ -18,9 +22,37 @@ def make_codegen_test(case_name: str):
 
         main_src = src_files[0]
         module_name = get_module_name(main_src)
-        compile_file(str(main_src), str(tmp_path), TEST_CODEGEN_OPTIONS)
 
-        # Generated files are in {module_name}.d/ subdirectory
+        # Check if this is a diagnostic test (has diag.txt)
+        expected_diag = expected_dir / "diag.txt"
+        has_diag_test = expected_diag.exists()
+
+        # Compile and capture diagnostics
+        result = compile_with_diagnostics(main_src, tmp_path)
+
+        # Compare diagnostics if diag.txt exists
+        if has_diag_test:
+            expected_diag_content = expected_diag.read_text()
+            assert result.diagnostics == expected_diag_content, (
+                f"Diagnostics differ from expected.\n"
+                f"--- Expected ---\n{expected_diag_content}\n"
+                f"--- Got ---\n{result.diagnostics}"
+            )
+
+        # Validate inline annotations
+        annotation_errors = validate_annotations(main_src, result.diagnostics)
+        assert not annotation_errors, (
+            f"Annotation validation failed:\n" + "\n".join(annotation_errors)
+        )
+
+        # If compilation failed, we're done (diagnostic test)
+        if not result.success:
+            # Make sure we expected failure (diag.txt should exist with errors)
+            if not has_diag_test:
+                assert False, f"Compilation failed unexpectedly:\n{result.diagnostics}"
+            return
+
+        # Compare generated code
         module_dir = tmp_path / f"{module_name}.d"
 
         for ext in [".hpp", ".cpp"]:
