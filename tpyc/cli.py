@@ -6,6 +6,8 @@ Usage:
     tpyc input.tp.py -o out/      # Compile to C++ in out/
     tpyc input.tp.py --build      # Compile to C++ and build binary
     tpyc input.tp.py --run        # Compile, build, and run
+    tpyc --repl                   # Start interactive REPL
+    tpyc --repl --verbose         # REPL with C++ output shown
 """
 
 from __future__ import annotations
@@ -86,14 +88,24 @@ def main() -> int:
         prog="tpyc",
         description="TurboPython Compiler - compiles TurboPython to C++"
     )
-    parser.add_argument("input", help="Input TurboPython source file (.tp.py)")
+    parser.add_argument("input", nargs="?", help="Input TurboPython source file (.tp.py)")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--build", action="store_true", help="Compile C++ to binary after generating")
     parser.add_argument("--run", action="store_true", help="Build and run the program")
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
+    parser.add_argument("--repl", action="store_true", help="Start interactive REPL")
 
     args = parser.parse_args()
+
+    # Handle REPL mode
+    if args.repl:
+        from .repl import REPLSession
+        return REPLSession(verbose=args.verbose).run()
+
+    # Require input file for non-REPL modes
+    if not args.input:
+        parser.error("the following arguments are required: input")
 
     input_path = Path(args.input).resolve()
 
