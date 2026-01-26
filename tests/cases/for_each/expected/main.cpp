@@ -17,7 +17,7 @@ int32_t sum_array() {
   // 19:     for n in nums:
   for (int32_t n : nums) {
     // 20:         result += n
-    result += n;
+    result = tpy::int32_add(result, n);
   }
   // 21:     return result
   return result;
@@ -45,7 +45,7 @@ int32_t nested_sum() {
     // 43:         for b in inner:
     for (int32_t b : inner) {
       // 44:             total += a * b
-      total += (a * b);
+      total = tpy::int32_add(total, (a * b));
     }
   }
   // 45:     return total
@@ -56,7 +56,7 @@ int main() {
   // 6: for x in items:
   for (int32_t x : items) {
     // 7:     total += x
-    total += x;
+    total = tpy::int32_add(total, x);
   }
   // 8: print(total)  # 15
   std::cout << total << "\n";

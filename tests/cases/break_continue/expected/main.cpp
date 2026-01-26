@@ -13,7 +13,7 @@ void test_break() {
       break;
     }
     // 9:         i += 1
-    i += 1;
+    i = tpy::int32_add(i, 1);
   }
   // 10:     print(i)  # 5
   std::cout << i << "\n";
@@ -26,12 +26,12 @@ void test_continue() {
   // 15:     for i in range(10):
   for (int32_t i = 0; i < 10; ++i) {
     // 16:         if i % 2 == 0:
-    if (((i % 2) == 0)) {
+    if ((tpy::int32_mod(i, 2) == 0)) {
       // 17:             continue
       continue;
     }
     // 18:         total += i
-    total += i;
+    total = tpy::int32_add(total, i);
   }
   // 19:     print(total)  # 1 + 3 + 5 + 7 + 9 = 25
   std::cout << total << "\n";
@@ -51,7 +51,7 @@ void test_nested_break() {
         break;
       }
       // 28:             count += 1
-      count += 1;
+      count = tpy::int32_add(count, 1);
     }
   }
   // 29:     print(count)  # 2 * 3 = 6 (j goes 0, 1 then breaks, 3 times)
@@ -72,7 +72,7 @@ void test_nested_continue() {
         continue;
       }
       // 38:             count += 1
-      count += 1;
+      count = tpy::int32_add(count, 1);
     }
   }
   // 39:     print(count)  # 3 * 3 = 9 (j skips 1, so 0, 2, 3 for each i)

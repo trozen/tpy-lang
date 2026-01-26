@@ -399,7 +399,11 @@ class CodeGenerator:
             if stmt.value:
                 # Pass return type for BigInt promotion
                 ret_type = self.current_return_type if hasattr(self, 'current_return_type') else None
+                value_type = self.analyzer.get_expr_type(stmt.value)
                 expr = self._gen_expr(stmt.value, ret_type)
+                # Convert BigInt -> Int32 if needed
+                if ret_type:
+                    expr = self._convert_to_int32_if_needed(expr, value_type, ret_type)
                 out.write(f"{indent}return {expr};\n")
             else:
                 out.write(f"{indent}return;\n")
@@ -423,7 +427,10 @@ class CodeGenerator:
             if stmt.init:
                 # For reassignment, use the existing variable's type as target
                 var_type = self.var_types.get(stmt.name)
+                init_type = self._get_resolved_type(stmt.init)
                 init_expr = self._gen_expr(stmt.init, var_type)
+                # Convert BigInt -> Int32 if needed
+                init_expr = self._convert_to_int32_if_needed(init_expr, init_type, var_type)
                 out.write(f"{indent}{stmt.name} = {init_expr};\n")
             return
 
@@ -476,7 +483,10 @@ class CodeGenerator:
             cpp_type = "auto"
 
         if stmt.init:
+            init_type = self._get_resolved_type(stmt.init)
             init_expr = self._gen_expr(stmt.init, target_type)
+            # Convert BigInt -> Int32 if needed
+            init_expr = self._convert_to_int32_if_needed(init_expr, init_type, target_type)
             out.write(f"{indent}{cpp_type} {stmt.name} = {init_expr};\n")
         else:
             out.write(f"{indent}{cpp_type} {stmt.name};\n")
@@ -499,14 +509,26 @@ class CodeGenerator:
 
         # Default: simple assignment
         target = self._gen_expr(stmt.target)
+        target_type = self.analyzer.get_expr_type(stmt.target)
+        value_type = self.analyzer.get_expr_type(stmt.value)
         value = self._gen_expr(stmt.value)
+        # Convert BigInt -> Int32 if needed
+        value = self._convert_to_int32_if_needed(value, value_type, target_type)
         out.write(f"{indent}{target} = {value};\n")
 
     def _gen_aug_assign(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
         """Generate an augmented assignment."""
         target = self._gen_expr(stmt.target)
         value = self._gen_expr(stmt.value)
-        out.write(f"{indent}{target} {stmt.op}= {value};\n")
+        target_type = self.analyzer.get_expr_type(stmt.target)
+
+        # Int32 arithmetic needs checked operations
+        if isinstance(target_type, Int32Type) and stmt.op in ("+", "-", "*", "/", "%"):
+            op_map = {"+": "int32_add", "-": "int32_sub", "*": "int32_mul",
+                      "/": "int32_div", "%": "int32_mod"}
+            out.write(f"{indent}{target} = tpy::{op_map[stmt.op]}({target}, {value});\n")
+        else:
+            out.write(f"{indent}{target} {stmt.op}= {value};\n")
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
@@ -543,6 +565,13 @@ class CodeGenerator:
         """Generate a for loop (range-based)."""
         start = self._gen_expr(stmt.start)
         end = self._gen_expr(stmt.end)
+        # Convert BigInt bounds to Int32 (range loops use Int32 counter)
+        start_type = self.analyzer.get_expr_type(stmt.start)
+        end_type = self.analyzer.get_expr_type(stmt.end)
+        if isinstance(start_type, BigIntType):
+            start = f"{start}.to_int32()"
+        if isinstance(end_type, BigIntType):
+            end = f"{end}.to_int32()"
         out.write(f"{indent}for (int32_t {stmt.var} = {start}; {stmt.var} < {end}; ++{stmt.var}) {{\n")
 
         self.indent_level += 1
@@ -665,19 +694,38 @@ class CodeGenerator:
             right_target = BIGINT if isinstance(left_type, BigIntType) else None
             left = self._gen_expr(expr.left, left_target)
             right = self._gen_expr(expr.right, right_target)
+
+            # Check if result is Int32 (needs checked arithmetic)
+            if self._is_int32_arithmetic(left_type, right_type, expr.op):
+                op_map = {"+": "int32_add", "-": "int32_sub", "*": "int32_mul",
+                          "/": "int32_div", "%": "int32_mod"}
+                if expr.op in op_map:
+                    return f"tpy::{op_map[expr.op]}({left}, {right})"
+
             return f"({left} {expr.op} {right})"
 
         elif isinstance(expr, TpyUnaryOp):
             # For negation, if target is BigInt, promote the operand
             operand = self._gen_expr(expr.operand, target_type)
+            operand_type = self.analyzer.get_expr_type(expr.operand)
+
+            # Int32 negation needs checked arithmetic (only for explicit Int32Type)
+            if expr.op == "-" and isinstance(operand_type, Int32Type):
+                return f"tpy::int32_neg({operand})"
+
             return f"({expr.op}{operand})"
 
         elif isinstance(expr, TpyCall):
-            # Int32() is just a cast/no-op, output the argument directly
+            # Int32() converts argument to Int32 (with range check for BigInt)
             if expr.func == "Int32":
                 if len(expr.args) == 0:
                     return "0"
-                return self._gen_expr(expr.args[0])
+                arg = expr.args[0]
+                arg_type = self.analyzer.get_expr_type(arg)
+                gen_arg = self._gen_expr(arg)
+                if isinstance(arg_type, BigIntType):
+                    return f"{gen_arg}.to_int32()"
+                return gen_arg
             # int() constructor for BigInt
             if expr.func == "int":
                 if len(expr.args) == 0:
@@ -718,6 +766,9 @@ class CodeGenerator:
                     arg_type = self._get_resolved_type(arg)
                     # Pass param type for BigInt promotion
                     gen_arg = self._gen_expr(arg, ptype)
+                    # Convert BigInt -> Int32 for Int32 parameters
+                    if isinstance(ptype, Int32Type) and isinstance(arg_type, BigIntType):
+                        gen_arg = f"{gen_arg}.to_int32()"
                     # Convert StaticList -> Span
                     if isinstance(ptype, SpanType) and isinstance(arg_type, StaticListType):
                         gen_args.append(f"std::span({gen_arg}.data(), {gen_arg}.size())")
@@ -766,6 +817,9 @@ class CodeGenerator:
                 elif expr.method == "insert":
                     # insert(index, value) -> insert(begin() + index, value)
                     idx = self._gen_expr(expr.args[0])
+                    idx_type = self.analyzer.get_expr_type(expr.args[0])
+                    if isinstance(idx_type, BigIntType):
+                        idx = f"{idx}.to_int32()"
                     val = self._gen_expr(expr.args[1])
                     return f"{obj}.insert({obj}.begin() + {idx}, {val})"
                 elif expr.method == "remove":
@@ -847,6 +901,23 @@ class CodeGenerator:
         # Default to True for safety
         return True
 
+    def _is_int32_arithmetic(self, left_type: TpyType, right_type: TpyType, op: str) -> bool:
+        """Check if binary op produces Int32 result (needs checked arithmetic).
+
+        Only applies when at least one operand is explicitly Int32Type.
+        IntLiteralType alone defaults to BigInt (Python semantics).
+        """
+        if op not in ("+", "-", "*", "/", "%"):
+            return False
+        # Need at least one explicit Int32 operand
+        has_int32 = isinstance(left_type, Int32Type) or isinstance(right_type, Int32Type)
+        if not has_int32:
+            return False
+        # The other operand must be Int32 or IntLiteral (coerces to Int32)
+        def is_int32_compatible(t: TpyType) -> bool:
+            return isinstance(t, (Int32Type, IntLiteralType))
+        return is_int32_compatible(left_type) and is_int32_compatible(right_type)
+
     def _is_runtime_bigint(self, expr: TpyExpr, expr_type: TpyType) -> bool:
         """Check if expression is stored as BigInt at runtime."""
         if isinstance(expr_type, BigIntType):
@@ -854,6 +925,12 @@ class CodeGenerator:
         if isinstance(expr_type, IntLiteralType):
             return self._involves_variables(expr)
         return False
+
+    def _convert_to_int32_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:
+        """Wrap expression with .to_int32() if converting BigInt to Int32."""
+        if isinstance(expected_type, Int32Type) and isinstance(actual_type, BigIntType):
+            return f"{gen_expr}.to_int32()"
+        return gen_expr
 
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
         """Generate std::cout call for print()."""

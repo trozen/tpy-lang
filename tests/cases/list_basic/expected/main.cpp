@@ -13,9 +13,9 @@ int32_t sum_list(std::vector<int32_t>& nums) {
   // 6:     while i < len(nums):
   while ((i < static_cast<int32_t>(nums.size()))) {
     // 7:         total += nums[i]
-    total += nums[i];
+    total = tpy::int32_add(total, nums[i]);
     // 8:         i += 1
-    i += 1;
+    i = tpy::int32_add(i, 1);
   }
   // 9:     return total
   return total;

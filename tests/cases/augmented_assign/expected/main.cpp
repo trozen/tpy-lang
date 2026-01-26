@@ -6,23 +6,23 @@ void test_aug_assign() {
   // 4:     x: Int32 = 10
   int32_t x = 10;
   // 7:     x += 5
-  x += 5;
+  x = tpy::int32_add(x, 5);
   // 8:     print(x)  # 15
   std::cout << x << "\n";
   // 11:     x -= 3
-  x -= 3;
+  x = tpy::int32_sub(x, 3);
   // 12:     print(x)  # 12
   std::cout << x << "\n";
   // 15:     x *= 2
-  x *= 2;
+  x = tpy::int32_mul(x, 2);
   // 16:     print(x)  # 24
   std::cout << x << "\n";
   // 19:     x //= 4
-  x /= 4;
+  x = tpy::int32_div(x, 4);
   // 20:     print(x)  # 6
   std::cout << x << "\n";
   // 23:     x %= 4
-  x %= 4;
+  x = tpy::int32_mod(x, 4);
   // 24:     print(x)  # 2
   std::cout << x << "\n";
   // 27:     x = 15

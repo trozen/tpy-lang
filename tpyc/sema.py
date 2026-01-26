@@ -545,8 +545,8 @@ class SemanticAnalyzer:
                 raise SemanticError("Int32() takes at most 1 argument")
             if expr.args:
                 arg_type = self._analyze_expr(expr.args[0])
-                if not isinstance(arg_type, (Int32Type, IntLiteralType)):
-                    raise SemanticError(f"Int32() argument must be Int32 or literal, got {arg_type}")
+                if not isinstance(arg_type, (Int32Type, IntLiteralType, BigIntType)):
+                    raise SemanticError(f"Int32() argument must be an integer type, got {arg_type}")
             return INT32
 
         # Check if it's a record constructor

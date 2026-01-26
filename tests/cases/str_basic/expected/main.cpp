@@ -13,10 +13,10 @@ int32_t count_char(std::string_view text, char target) {
     // 8:         if text[i] == target:
     if ((text[i] == target)) {
       // 9:             count += 1
-      count += 1;
+      count = tpy::int32_add(count, 1);
     }
     // 10:         i += 1
-    i += 1;
+    i = tpy::int32_add(i, 1);
   }
   // 11:     return count
   return count;

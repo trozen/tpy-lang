@@ -14,7 +14,7 @@ void process_list(StaticList<Item, 16>& items) {
   // 20:     first: Item = items.get(0)
   Item first = items.get(0);
   // 21:     items.set(1, Item(first.value + 5))
-  items.set(1, Item((first.value + 5)));
+  items.set(1, Item(tpy::int32_add(first.value, 5)));
 }
 
 // 24: def print_list(items: StaticList[Item, 16]) -> None:
