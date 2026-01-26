@@ -102,6 +102,40 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
 
 
 @dataclass
+class RunResult:
+    """Result of running a compiled program."""
+    success: bool      # exit code == 0
+    stdout: str
+    stderr: str
+    returncode: int
+
+
+def build_and_run(build_dir: Path, module_name: str) -> RunResult:
+    """Compile generated C++ and run, capturing all output (including panics)."""
+    module_dir = build_dir / f"{module_name}.d"
+    cpp_file = module_dir / f"{module_name}.cpp"
+    exe_file = build_dir / "program"
+
+    # Compile C++
+    result = subprocess.run(
+        ["g++", "-std=c++20", "-I", str(RUNTIME_DIR), "-o", str(exe_file), str(cpp_file), "-lgmp"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        pytest.fail(f"C++ compilation failed:\n{result.stderr}")
+
+    # Run and capture output
+    result = subprocess.run([str(exe_file)], capture_output=True, text=True)
+    return RunResult(
+        success=(result.returncode == 0),
+        stdout=result.stdout,
+        stderr=result.stderr,
+        returncode=result.returncode
+    )
+
+
+@dataclass
 class Annotation:
     """A diagnostic annotation from source code."""
     line: int

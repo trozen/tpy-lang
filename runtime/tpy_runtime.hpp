@@ -27,7 +27,7 @@ namespace tpy {
  */
 [[noreturn]] inline void tpy_panic(const char* msg) {
     std::fprintf(stderr, "TurboPython panic: %s\n", msg);
-    std::abort();
+    std::exit(1);
 }
 
 // --- Int32 checked arithmetic ---
