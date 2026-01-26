@@ -14,7 +14,8 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BigIntType, IntLiteralType,
+    StaticListType, ArrayType, SpanType, ListType, PendingListType,
+    StrType, CharType, BigIntType, IntLiteralType,
     INT32, VOID, BIGINT
 )
 from .parse import (
@@ -45,6 +46,25 @@ class CodeGenerator:
         self.var_types: dict[str, TpyType] = {}  # Track variable types for code generation
         self.source_lines: list[str] = []  # Source lines for emit_source_comments
 
+    def _get_resolved_type(self, expr: TpyExpr) -> TpyType:
+        """Get the resolved type of an expression, handling PendingListType.
+
+        PendingListType is used during semantic analysis but should be resolved
+        to concrete Array or list types before codegen. This method looks up
+        the resolved type if needed.
+        """
+        typ = self.analyzer.get_expr_type(expr)
+        if isinstance(typ, PendingListType):
+            # Look up the resolved type from the literal info
+            literal_id = typ.literal_id
+            if literal_id in self.analyzer.list_literals:
+                info = self.analyzer.list_literals[literal_id]
+                if info.resolved_type:
+                    return info.resolved_type
+            # Fallback: treat as ListType
+            return ListType(typ.element_type)
+        return typ
+
     def generate(self, module: TpyModule, module_name: str = "generated") -> tuple[str, str]:
         """Generate C++ header and source files.
 
@@ -65,8 +85,16 @@ class CodeGenerator:
         global_decls = []
         main_stmts = []
         for stmt in module.top_level_stmts:
-            # Top-level variable declarations with type annotation are globals
-            if isinstance(stmt, TpyVarDecl) and stmt.type:
+            # Top-level variable declarations with explicit type are globals
+            # Also treat unannotated list literals as globals (for list inference)
+            is_global = False
+            if isinstance(stmt, TpyVarDecl):
+                if stmt.type:
+                    is_global = True
+                elif isinstance(stmt.init, TpyArrayLiteral):
+                    # Unannotated list literal at top level -> global
+                    is_global = True
+            if is_global:
                 global_decls.append(stmt)
             else:
                 main_stmts.append(stmt)
@@ -134,16 +162,30 @@ class CodeGenerator:
     def _gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a global variable definition in source file."""
         self._emit_source_comment(out, stmt.loc)
-        cpp_type = stmt.type.to_cpp()
+        # Use explicit type if provided, otherwise infer from initializer
+        if stmt.type:
+            var_type = stmt.type
+        elif stmt.init:
+            var_type = self._get_resolved_type(stmt.init)
+        else:
+            raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
+        cpp_type = var_type.to_cpp()
         if stmt.init:
-            init_expr = self._gen_expr(stmt.init, stmt.type)
+            init_expr = self._gen_expr(stmt.init, var_type)
             out.write(f"{cpp_type} {stmt.name} = {init_expr};\n")
         else:
             out.write(f"{cpp_type} {stmt.name};\n")
 
     def _gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate an extern declaration for a global variable in header file."""
-        cpp_type = stmt.type.to_cpp()
+        # Use explicit type if provided, otherwise infer from initializer
+        if stmt.type:
+            var_type = stmt.type
+        elif stmt.init:
+            var_type = self._get_resolved_type(stmt.init)
+        else:
+            raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
+        cpp_type = var_type.to_cpp()
         out.write(f"extern {cpp_type} {stmt.name};\n")
 
     def _gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
@@ -567,7 +609,7 @@ class CodeGenerator:
             # len() maps to .size()
             if expr.func == "len":
                 arg = expr.args[0]
-                arg_type = self.analyzer.get_expr_type(arg)
+                arg_type = self._get_resolved_type(arg)
                 # For string literals, wrap in string_view to get .size()
                 if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
                     escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
@@ -593,7 +635,7 @@ class CodeGenerator:
             if func_info:
                 gen_args = []
                 for arg, (pname, ptype) in zip(expr.args, func_info.params):
-                    arg_type = self.analyzer.get_expr_type(arg)
+                    arg_type = self._get_resolved_type(arg)
                     # Pass param type for BigInt promotion
                     gen_arg = self._gen_expr(arg, ptype)
                     # Convert StaticList -> Span
@@ -604,6 +646,10 @@ class CodeGenerator:
                         # Use the expected element type from the span parameter, not the inferred type
                         expected_array_type = ArrayType(ptype.element_type, len(arg.elements))
                         gen_args.append(f"{expected_array_type.to_cpp()}{gen_arg}")
+                    # ListType (vector) passed to Span: implicit conversion in C++
+                    elif isinstance(ptype, SpanType) and isinstance(arg_type, ListType):
+                        # std::vector<T> implicitly converts to std::span<const T>
+                        gen_args.append(gen_arg)
                     else:
                         gen_args.append(gen_arg)
                 return f"{expr.func}({', '.join(gen_args)})"
@@ -619,13 +665,36 @@ class CodeGenerator:
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return f"{expr.method}({args})"
             obj = self._gen_expr(expr.obj)
-            obj_type = self.analyzer.get_expr_type(expr.obj)
+            obj_type = self._get_resolved_type(expr.obj)
             # Array and Span: .get(i) -> [i], .size() -> .size()
             if isinstance(obj_type, (ArrayType, SpanType)):
                 if expr.method == "get":
                     return f"{obj}[{args}]"
                 elif expr.method == "size":
                     return f"static_cast<int32_t>({obj}.size())"
+            # ListType (std::vector): map Python methods to C++ equivalents
+            if isinstance(obj_type, ListType):
+                if expr.method == "append":
+                    return f"{obj}.push_back({args})"
+                elif expr.method == "pop":
+                    # pop() returns and removes last element
+                    return f"tpy::pop_back({obj})"
+                elif expr.method == "clear":
+                    return f"{obj}.clear()"
+                elif expr.method == "size":
+                    return f"static_cast<int32_t>({obj}.size())"
+                elif expr.method == "insert":
+                    # insert(index, value) -> insert(begin() + index, value)
+                    idx = self._gen_expr(expr.args[0])
+                    val = self._gen_expr(expr.args[1])
+                    return f"{obj}.insert({obj}.begin() + {idx}, {val})"
+                elif expr.method == "remove":
+                    # remove(value) -> erase first occurrence
+                    return f"{obj}.erase(std::find({obj}.begin(), {obj}.end(), {args}))"
+                elif expr.method == "extend":
+                    # extend(other) -> insert(end(), other.begin(), other.end())
+                    other = self._gen_expr(expr.args[0])
+                    return f"{obj}.insert({obj}.end(), {other}.begin(), {other}.end())"
             return f"{obj}.{expr.method}({args})"
 
         elif isinstance(expr, TpyFieldAccess):

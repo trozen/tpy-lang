@@ -532,6 +532,21 @@ inline BigInt BigInt::floor_mod(const BigInt& rhs) const {
     return from_mpz(result);
 }
 
+/**
+ * pop_back - Python list.pop() equivalent for std::vector.
+ *
+ * Removes and returns the last element. Panics if vector is empty.
+ */
+template <typename T>
+T pop_back(std::vector<T>& v) {
+    if (v.empty()) {
+        tpy_panic("pop from empty list");
+    }
+    T result = std::move(v.back());
+    v.pop_back();
+    return result;
+}
+
 } // namespace tpy
 
 // Expose types in global namespace for TurboPython generated code

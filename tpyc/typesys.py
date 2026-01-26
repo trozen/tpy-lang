@@ -205,6 +205,42 @@ class ListType(TpyType):
         return f"list[{self.element_type}]"
 
 
+@dataclass(frozen=True)
+class PendingListType(TpyType):
+    """Unresolved list literal type - becomes Array or list based on usage.
+
+    This type is assigned to list literals in function-local contexts during
+    the first analysis phase. After analyzing the full function, we resolve
+    pending types based on collected usage information (mutation, parameter passing).
+    """
+    element_type: TpyType
+    size: int
+    literal_id: int
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(f"PendingListType should be resolved before codegen (literal_id={self.literal_id})")
+
+    def __str__(self) -> str:
+        return f"PendingList[{self.element_type}, {self.size}]#{self.literal_id}"
+
+
+@dataclass
+class ListLiteralInfo:
+    """Tracks usage information for a list literal to determine its resolved type."""
+    literal_id: int
+    expr: 'TpyArrayLiteral'  # Forward reference to avoid circular import
+    element_type: TpyType
+    size: int
+    variable_name: Optional[str] = None
+    is_global: bool = False
+    is_mutated: bool = False
+    passed_to_list_param: bool = False
+    passed_to_span_param: bool = False
+    has_explicit_annotation: bool = False
+    explicit_type: Optional[TpyType] = None
+    resolved_type: Optional[TpyType] = None
+
+
 # Singleton instances for built-in types
 INT32 = Int32Type()
 VOID = VoidType()

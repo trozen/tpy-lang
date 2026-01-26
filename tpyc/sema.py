@@ -14,7 +14,8 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
-    StaticListType, ArrayType, SpanType, ListType, StrType, CharType, BoolType, BigIntType, IntLiteralType,
+    StaticListType, ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
+    StrType, CharType, BoolType, BigIntType, IntLiteralType,
     INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .parse import (
@@ -64,6 +65,12 @@ class SemanticAnalyzer:
         self.current_function: Optional[TpyFunction] = None
         self.expr_types: dict[int, TpyType] = {}  # id(expr) -> type
         self.loop_depth: int = 0  # Track nesting depth of loops
+
+        # List literal inference tracking
+        self.literal_counter: int = 0
+        self.list_literals: dict[int, ListLiteralInfo] = {}  # literal_id -> info
+        self.variable_to_literal: dict[str, int] = {}  # var_name -> literal_id
+        self.pending_resolutions: list[int] = []  # literal_ids to resolve after function analysis
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
@@ -174,6 +181,7 @@ class SemanticAnalyzer:
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
         for method in record.methods:
+            self._reset_function_tracking()
             self.current_function = method
             self.current_scope = Scope(parent=self.global_scope)
             # Add 'self' as the record type
@@ -187,11 +195,15 @@ class SemanticAnalyzer:
             for stmt in method.body:
                 self._analyze_stmt(stmt)
 
+            # Resolve pending list types after analyzing the full method
+            self._resolve_pending_list_types()
+
             self.current_scope = None
             self.current_function = None
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
+        self._reset_function_tracking()
         self.current_function = func
         self.current_scope = Scope(parent=self.global_scope)
 
@@ -202,6 +214,9 @@ class SemanticAnalyzer:
         # Analyze body
         for stmt in func.body:
             self._analyze_stmt(stmt)
+
+        # Resolve pending list types after analyzing the full function
+        self._resolve_pending_list_types()
 
         self.current_function = None
         self.current_scope = None
@@ -266,6 +281,19 @@ class SemanticAnalyzer:
 
         if stmt.init:
             init_type = self._analyze_expr(stmt.init)
+
+            # Track list literal to variable mapping for mutation detection
+            if isinstance(init_type, PendingListType):
+                literal_id = init_type.literal_id
+                self.variable_to_literal[stmt.name] = literal_id
+                info = self.list_literals[literal_id]
+                info.variable_name = stmt.name
+
+                # If explicit annotation is provided, record it
+                if stmt.type:
+                    info.has_explicit_annotation = True
+                    info.explicit_type = stmt.type
+
             if stmt.type:
                 self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'")
                 var_type = stmt.type
@@ -445,7 +473,7 @@ class SemanticAnalyzer:
             if len(expr.args) != 1:
                 raise SemanticError("len() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType, ListType, StrType)):
+            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType, ListType, PendingListType, StrType)):
                 raise SemanticError(f"len() argument must be StaticList, Array, Span, list, or str, got {arg_type}")
             return INT32
 
@@ -493,6 +521,11 @@ class SemanticAnalyzer:
             for (pname, ptype), arg in zip(func.params, expr.args):
                 arg_type = self._analyze_expr(arg)
                 self._check_type_compatible(arg_type, ptype, f"argument '{pname}'")
+
+                # Track parameter context for list inference
+                if isinstance(arg_type, PendingListType):
+                    self._mark_list_param_context(arg, ptype)
+
             return func.return_type
 
         raise SemanticError(f"Unknown function or type: '{expr.func}'")
@@ -568,6 +601,55 @@ class SemanticAnalyzer:
             else:
                 raise SemanticError(f"Unknown Span method: '{expr.method}'")
 
+        # PendingListType and ListType methods
+        if isinstance(obj_type, (PendingListType, ListType)):
+            elem_type = obj_type.element_type
+
+            # Mutation methods - mark literal as mutated if it's a pending type
+            mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend"}
+            if expr.method in mutation_methods:
+                self._mark_list_mutated(expr.obj)
+
+            if expr.method == "append":
+                if len(expr.args) != 1:
+                    raise SemanticError("append() takes exactly 1 argument")
+                arg_type = self._analyze_expr(expr.args[0])
+                self._check_type_compatible(arg_type, elem_type, "append argument")
+                return VOID
+            elif expr.method == "pop":
+                if expr.args:
+                    raise SemanticError("pop() takes no arguments")
+                return elem_type
+            elif expr.method == "insert":
+                if len(expr.args) != 2:
+                    raise SemanticError("insert() takes exactly 2 arguments")
+                self._analyze_expr(expr.args[0])  # index
+                arg_type = self._analyze_expr(expr.args[1])  # value
+                self._check_type_compatible(arg_type, elem_type, "insert value")
+                return VOID
+            elif expr.method == "remove":
+                if len(expr.args) != 1:
+                    raise SemanticError("remove() takes exactly 1 argument")
+                arg_type = self._analyze_expr(expr.args[0])
+                self._check_type_compatible(arg_type, elem_type, "remove argument")
+                return VOID
+            elif expr.method == "clear":
+                if expr.args:
+                    raise SemanticError("clear() takes no arguments")
+                return VOID
+            elif expr.method == "extend":
+                if len(expr.args) != 1:
+                    raise SemanticError("extend() takes exactly 1 argument")
+                arg_type = self._analyze_expr(expr.args[0])
+                # Should be iterable of elem_type - for now accept list/array/span
+                return VOID
+            elif expr.method == "size":
+                if expr.args:
+                    raise SemanticError("size() takes no arguments")
+                return INT32
+            else:
+                raise SemanticError(f"Unknown list method: '{expr.method}'")
+
         # User-defined record methods
         if isinstance(obj_type, RecordType):
             record_info = self.registry.get_record(obj_type.name)
@@ -608,7 +690,12 @@ class SemanticAnalyzer:
         raise SemanticError(f"Cannot access field '{expr.field}' on type {obj_type}")
 
     def _analyze_array_literal(self, expr: TpyArrayLiteral) -> TpyType:
-        """Analyze an array literal [expr, expr, ...]"""
+        """Analyze an array literal [expr, expr, ...]
+
+        In function-local contexts, returns a PendingListType that will be
+        resolved to Array or list based on usage (mutation, parameter passing).
+        In global/module context, returns ListType directly.
+        """
         if not expr.elements:
             raise SemanticError("Empty array literal requires explicit type annotation")
 
@@ -636,7 +723,31 @@ class SemanticAnalyzer:
                     f"Array literal element {i} has type {elem_type}, expected {first_type}"
                 )
 
-        return ArrayType(first_type, len(expr.elements))
+        size = len(expr.elements)
+
+        # Global context (no current function) -> ListType (std::vector)
+        if self.current_function is None:
+            # Resolve IntLiteralType to Int32 for container elements
+            elem_type = first_type
+            if isinstance(elem_type, IntLiteralType):
+                elem_type = INT32
+            return ListType(elem_type)
+
+        # Function-local context -> create PendingListType for deferred resolution
+        literal_id = self.literal_counter
+        self.literal_counter += 1
+
+        info = ListLiteralInfo(
+            literal_id=literal_id,
+            expr=expr,
+            element_type=first_type,
+            size=size,
+            is_global=False
+        )
+        self.list_literals[literal_id] = info
+        self.pending_resolutions.append(literal_id)
+
+        return PendingListType(first_type, size, literal_id)
 
     def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
         """Analyze a list repetition: [element] * count"""
@@ -667,6 +778,8 @@ class SemanticAnalyzer:
         elif isinstance(obj_type, StaticListType):
             return obj_type.element_type
         elif isinstance(obj_type, ListType):
+            return obj_type.element_type
+        elif isinstance(obj_type, PendingListType):
             return obj_type.element_type
         elif isinstance(obj_type, StrType):
             return CHAR
@@ -732,13 +845,127 @@ class SemanticAnalyzer:
             if actual.element_type == expected.element_type:
                 return
 
+        # Allow ListType -> SpanType if element types match or are coercible
+        if isinstance(actual, ListType) and isinstance(expected, SpanType):
+            if actual.element_type == expected.element_type:
+                return
+            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                return
+
         # Allow list element type coercion
         if isinstance(actual, ListType) and isinstance(expected, ListType):
             if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                 return
+
+        # Allow ListType -> ArrayType for explicit annotations
+        # (global array literals become ListType but can be assigned to Array variables)
+        if isinstance(actual, ListType) and isinstance(expected, ArrayType):
+            if actual.element_type == expected.element_type:
+                return
+            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                return
+
+        # Allow PendingListType compatibility during first phase (before resolution)
+        if isinstance(actual, PendingListType):
+            # Compatible with list[T] if element types match
+            if isinstance(expected, ListType):
+                if actual.element_type == expected.element_type:
+                    return
+                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                    return
+            # Compatible with Span[T] if element types match
+            if isinstance(expected, SpanType):
+                if actual.element_type == expected.element_type:
+                    return
+                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                    return
+            # Compatible with Array[T, N] if element types and sizes match
+            if isinstance(expected, ArrayType):
+                if actual.size == expected.size:
+                    if actual.element_type == expected.element_type:
+                        return
+                    if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                        return
 
         raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}")
 
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""
         return self.expr_types.get(id(expr))
+
+    def _mark_list_mutated(self, obj_expr: TpyExpr) -> None:
+        """Mark a list literal as mutated if it can be traced to one."""
+        if isinstance(obj_expr, TpyName):
+            var_name = obj_expr.name
+            if var_name in self.variable_to_literal:
+                literal_id = self.variable_to_literal[var_name]
+                if literal_id in self.list_literals:
+                    self.list_literals[literal_id].is_mutated = True
+
+    def _mark_list_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
+        """Track parameter context for list literal inference."""
+        literal_id = None
+
+        # Direct variable reference
+        if isinstance(arg_expr, TpyName):
+            var_name = arg_expr.name
+            if var_name in self.variable_to_literal:
+                literal_id = self.variable_to_literal[var_name]
+
+        if literal_id is not None and literal_id in self.list_literals:
+            info = self.list_literals[literal_id]
+            if isinstance(param_type, ListType):
+                info.passed_to_list_param = True
+            elif isinstance(param_type, SpanType):
+                info.passed_to_span_param = True
+
+    def _resolve_pending_list_types(self) -> None:
+        """Resolve all pending list types after function analysis.
+
+        Resolution rules (in priority order):
+        1. Explicit annotation → use it
+        2. is_mutated → ListType
+        3. passed_to_list_param → ListType
+        4. Otherwise → ArrayType
+
+        Element type resolution:
+        - If passed to typed param (list[T] or Span[T]), use T
+        - IntLiteralType defaults to Int32 for containers
+        """
+        for literal_id in self.pending_resolutions:
+            if literal_id not in self.list_literals:
+                continue
+
+            info = self.list_literals[literal_id]
+
+            # Resolve element type: IntLiteralType -> Int32 for containers
+            elem_type = info.element_type
+            if isinstance(elem_type, IntLiteralType):
+                elem_type = INT32
+
+            # Determine resolved type
+            if info.has_explicit_annotation and info.explicit_type:
+                resolved = info.explicit_type
+            elif info.is_mutated:
+                resolved = ListType(elem_type)
+            elif info.passed_to_list_param:
+                resolved = ListType(elem_type)
+            else:
+                # Default: Array (stack-allocated, no mutation detected)
+                resolved = ArrayType(elem_type, info.size)
+
+            info.resolved_type = resolved
+
+            # Update expr_types for the literal expression
+            self.expr_types[id(info.expr)] = resolved
+
+            # Update scope binding if this literal was assigned to a variable
+            if info.variable_name and self.current_scope:
+                current_type = self.current_scope.lookup(info.variable_name)
+                if isinstance(current_type, PendingListType):
+                    self.current_scope.define(info.variable_name, resolved)
+
+    def _reset_function_tracking(self) -> None:
+        """Reset per-function tracking state between function analyses."""
+        self.variable_to_literal.clear()
+        self.pending_resolutions.clear()
