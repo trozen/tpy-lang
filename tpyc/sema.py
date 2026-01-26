@@ -64,6 +64,7 @@ class SemanticAnalyzer:
         self.current_scope: Optional[Scope] = None
         self.current_function: Optional[TpyFunction] = None
         self.expr_types: dict[int, TpyType] = {}  # id(expr) -> type
+        self.var_types: dict[int, TpyType] = {}  # id(TpyVarDecl) -> resolved type
         self.loop_depth: int = 0  # Track nesting depth of loops
 
         # List literal inference tracking
@@ -71,6 +72,7 @@ class SemanticAnalyzer:
         self.list_literals: dict[int, ListLiteralInfo] = {}  # literal_id -> info
         self.variable_to_literal: dict[str, int] = {}  # var_name -> literal_id
         self.pending_resolutions: list[int] = []  # literal_ids to resolve after function analysis
+        self.var_decl_by_name: dict[str, TpyVarDecl] = {}  # var_name -> TpyVarDecl node (current scope)
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
@@ -310,21 +312,30 @@ class SemanticAnalyzer:
                 self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'")
                 var_type = stmt.type
             elif existing_type:
-                # Reassignment: use existing type, check compatibility
-                self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'")
-                var_type = existing_type
-            else:
-                # New variable: resolve IntLiteralType to BigInt (Python default)
-                if isinstance(init_type, IntLiteralType):
-                    var_type = BIGINT
-                else:
+                # Reassignment: check if we need to upgrade IntLiteralType
+                if isinstance(existing_type, IntLiteralType) and isinstance(init_type, (Int32Type, BigIntType)):
+                    # Upgrade from IntLiteralType to concrete type
                     var_type = init_type
+                    # Update var_types so codegen knows the resolved type
+                    orig_decl = self.var_decl_by_name.get(stmt.name)
+                    if orig_decl:
+                        self.var_types[id(orig_decl)] = init_type
+                else:
+                    # Normal reassignment: use existing type, check compatibility
+                    self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'")
+                    var_type = existing_type
+            else:
+                # New variable: keep IntLiteralType for now, will be resolved based on usage
+                var_type = init_type
         elif stmt.type:
             var_type = stmt.type
         else:
             raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
 
         self.current_scope.define(stmt.name, var_type)
+        # Track var_decl for later type updates
+        if isinstance(var_type, IntLiteralType):
+            self.var_decl_by_name[stmt.name] = stmt
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
@@ -338,6 +349,18 @@ class SemanticAnalyzer:
                 raise SemanticError("Cannot assign to elements of Span (read-only view)")
             if isinstance(obj_type, StrType):
                 raise SemanticError("Cannot assign to elements of str (read-only)")
+
+        # When reassigning a variable with IntLiteralType to a concrete integer type,
+        # update the variable's type to the more specific type
+        if isinstance(stmt.target, TpyName) and isinstance(target_type, IntLiteralType):
+            if isinstance(value_type, (Int32Type, BigIntType)):
+                self.current_scope.define(stmt.target.name, value_type)
+                self.expr_types[id(stmt.target)] = value_type
+                # Update var_types so codegen knows the resolved type
+                var_decl = self.var_decl_by_name.get(stmt.target.name)
+                if var_decl:
+                    self.var_types[id(var_decl)] = value_type
+                return
 
         self._check_type_compatible(value_type, target_type, "assignment")
 

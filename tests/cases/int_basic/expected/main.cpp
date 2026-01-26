@@ -55,7 +55,7 @@ void test_comparison() {
     std::printf("x != y\n");
   }
   // 38:     if x == 42:
-  if ((x == tpy::BigInt(42))) {
+  if ((x == 42)) {
     // 39:         print("x == 42")
     std::printf("x == 42\n");
   }

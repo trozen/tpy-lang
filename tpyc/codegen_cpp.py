@@ -430,13 +430,18 @@ class CodeGenerator:
         # Determine target type for first declaration
         target_type = stmt.type
         if target_type is None and stmt.init:
-            target_type = self.analyzer.get_expr_type(stmt.init)
-            # Resolve IntLiteralType to BigInt for standalone variable declarations
-            if isinstance(target_type, IntLiteralType):
-                target_type = BIGINT
-            # Resolve Array[IntLiteralType] to Array[BigInt]
-            elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
-                target_type = ArrayType(BIGINT, target_type.size)
+            # Check if analyzer resolved the type based on usage
+            resolved_type = self.analyzer.var_types.get(id(stmt))
+            if resolved_type:
+                target_type = resolved_type
+            else:
+                target_type = self.analyzer.get_expr_type(stmt.init)
+                # Resolve IntLiteralType to BigInt for standalone variable declarations
+                if isinstance(target_type, IntLiteralType):
+                    target_type = BIGINT
+                # Resolve Array[IntLiteralType] to Array[BigInt]
+                elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
+                    target_type = ArrayType(BIGINT, target_type.size)
 
         # First declaration - track the type
         self.declared_vars.add(stmt.name)
@@ -445,24 +450,28 @@ class CodeGenerator:
         if stmt.type:
             cpp_type = stmt.type.to_cpp()
         elif stmt.init:
-            # Check inferred type - some types need explicit annotation
-            inferred_type = self.analyzer.get_expr_type(stmt.init)
-            # IntLiteralType -> BigInt for variable declarations
-            if isinstance(inferred_type, IntLiteralType):
-                cpp_type = BIGINT.to_cpp()
-            elif isinstance(inferred_type, BigIntType):
-                # BigInt needs explicit type (auto would infer int from literal)
-                cpp_type = inferred_type.to_cpp()
-            elif isinstance(stmt.init, TpyArrayLiteral):
-                # Array literals need explicit type (auto with {...} creates initializer_list)
-                # Resolve IntLiteralType elements to BigInt (Python semantics: [1,2,3] is list of int)
-                if isinstance(inferred_type, ArrayType) and isinstance(inferred_type.element_type, IntLiteralType):
-                    resolved_type = ArrayType(BIGINT, inferred_type.size)
-                    cpp_type = resolved_type.to_cpp()
-                else:
-                    cpp_type = inferred_type.to_cpp() if inferred_type else "auto"
+            # Check if analyzer resolved the type based on usage
+            resolved_type = self.analyzer.var_types.get(id(stmt))
+            if resolved_type:
+                cpp_type = resolved_type.to_cpp()
             else:
-                cpp_type = "auto"
+                # Check inferred type - some types need explicit annotation
+                inferred_type = self.analyzer.get_expr_type(stmt.init)
+                if isinstance(inferred_type, IntLiteralType):
+                    cpp_type = BIGINT.to_cpp()
+                elif isinstance(inferred_type, BigIntType):
+                    # BigInt needs explicit type (auto would infer int from literal)
+                    cpp_type = inferred_type.to_cpp()
+                elif isinstance(stmt.init, TpyArrayLiteral):
+                    # Array literals need explicit type (auto with {...} creates initializer_list)
+                    # Resolve IntLiteralType elements to BigInt (Python semantics: [1,2,3] is list of int)
+                    if isinstance(inferred_type, ArrayType) and isinstance(inferred_type.element_type, IntLiteralType):
+                        resolved_type = ArrayType(BIGINT, inferred_type.size)
+                        cpp_type = resolved_type.to_cpp()
+                    else:
+                        cpp_type = inferred_type.to_cpp() if inferred_type else "auto"
+                else:
+                    cpp_type = "auto"
         else:
             cpp_type = "auto"
 
@@ -821,6 +830,23 @@ class CodeGenerator:
 
         return "/* unknown expr */"
 
+    def _involves_variables(self, expr: TpyExpr) -> bool:
+        """Check if an expression involves any variable references."""
+        if isinstance(expr, TpyName):
+            return True
+        if isinstance(expr, TpyIntLiteral):
+            return False
+        if isinstance(expr, TpyBinOp):
+            return self._involves_variables(expr.left) or self._involves_variables(expr.right)
+        if isinstance(expr, TpyUnaryOp):
+            return self._involves_variables(expr.operand)
+        if isinstance(expr, TpyCall):
+            return True  # Function calls may return BigInt
+        if isinstance(expr, TpyMethodCall):
+            return True
+        # Default to True for safety
+        return True
+
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
         """Generate printf call for print().
 
@@ -853,9 +879,16 @@ class CodeGenerator:
                 escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('%', '%%')
                 fmt_parts.append(escaped)
             elif isinstance(arg_type, IntLiteralType):
-                # Integer literals can use %lld directly (handles large values)
-                fmt_parts.append("%lld")
-                fmt_args.append(f"static_cast<long long>({self._gen_expr(arg)})")
+                # Check if this expression involves variables (which are BigInt at runtime)
+                # or is purely literal-based (which stays as C++ int)
+                if self._involves_variables(arg):
+                    # Variable or expression with variables -> BigInt at runtime
+                    fmt_parts.append("%s")
+                    fmt_args.append(f"{self._gen_expr(arg)}.to_string().c_str()")
+                else:
+                    # Pure literal expression -> C++ int
+                    fmt_parts.append("%lld")
+                    fmt_args.append(f"static_cast<long long>({self._gen_expr(arg)})")
             elif isinstance(arg_type, CharType):
                 fmt_parts.append("%c")
                 fmt_args.append(self._gen_expr(arg))
