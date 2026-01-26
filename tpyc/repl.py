@@ -11,6 +11,7 @@ Provides an interactive Python-like experience with:
 from __future__ import annotations
 import ast
 import atexit
+import difflib
 import shutil
 import subprocess
 import sys
@@ -42,6 +43,7 @@ class REPLSession:
         self.verbose = verbose
         self.temp_dir = Path(tempfile.mkdtemp(prefix="tpyc_repl_"))
         self.counter = 0  # For unique file names
+        self.prev_cpp_lines: list[str] = []  # For verbose diff
         atexit.register(self.cleanup)
 
     def run(self) -> int:
@@ -191,55 +193,32 @@ class REPLSession:
         codegen = CodeGenerator(analyzer)
         hpp_code, cpp_code = codegen.generate(module, module_name)
 
-        # Verbose mode: show generated C++
+        # Verbose mode: show diff of generated C++
         verbose_output = ""
         if self.verbose:
-            lines = cpp_code.strip().split("\n")
-            output_lines = []
-
-            # Find global declarations (between #include and first function/main)
-            in_globals = False
-            for line in lines:
-                stripped = line.strip()
-                if stripped.startswith("#include"):
-                    in_globals = True
+            # Get current lines (stripped, non-empty, skip boilerplate)
+            current_lines = []
+            lines = [line.strip() for line in cpp_code.split("\n") if line.strip()]
+            for i, stripped in enumerate(lines):
+                # Skip boilerplate and noop
+                if stripped.startswith("//") or stripped.startswith("#"):
                     continue
-                if in_globals:
-                    if stripped.startswith("int main()") or (stripped and not stripped.startswith("//")):
-                        # Check if it's a global var declaration (not a function)
-                        if "=" in stripped and not stripped.startswith("int main"):
-                            output_lines.append(stripped)
-                        elif stripped.startswith("int main"):
-                            break
-
-            # Find main() body content
-            in_main = False
-            brace_depth = 0
-            for line in lines:
-                if "int main()" in line:
-                    in_main = True
-                    brace_depth = 1  # Opening brace of main
+                if stripped in ("return 0;", "0;", "int main() {"):
                     continue
-                if in_main:
-                    stripped = line.strip()
+                # Skip the final closing brace of main()
+                if stripped == "}" and i == len(lines) - 1:
+                    continue
+                current_lines.append(stripped)
 
-                    # Track brace depth
-                    brace_depth += stripped.count("{") - stripped.count("}")
+            # Use difflib to find added lines (preserves order and duplicates)
+            diff = difflib.unified_diff(self.prev_cpp_lines, current_lines, lineterm="", n=0)
+            new_lines = [line[1:] for line in diff if line.startswith("+") and not line.startswith("+++")]
 
-                    # Stop at end of main (depth returns to 0)
-                    if brace_depth <= 0:
-                        break
+            if new_lines:
+                verbose_output = "[C++] " + "\n[C++] ".join(new_lines) + "\n"
 
-                    if stripped == "return 0;":
-                        continue
-                    # Skip noop
-                    if stripped == "0;":
-                        continue
-                    if stripped:
-                        output_lines.append(stripped)
-
-            if output_lines:
-                verbose_output = "[C++] " + "\n[C++] ".join(output_lines) + "\n"
+            # Update previous lines for next diff
+            self.prev_cpp_lines = current_lines
 
         # Write to temp files
         hpp_path = self.temp_dir / f"{module_name}.hpp"

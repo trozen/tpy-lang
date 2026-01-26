@@ -302,11 +302,11 @@ class Parser:
             elif isinstance(node, ast.Expr):
                 # Top-level expression (e.g., function call)
                 top_level_stmts.append(TpyExprStmt(self._parse_expr(node.value), loc=self._loc(node)))
-            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
-                # Top-level variable declaration
+            elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                # Top-level variable declaration or augmented assignment
                 top_level_stmts.append(self._parse_stmt(node))
-            elif isinstance(node, ast.For):
-                # Top-level for loop
+            elif isinstance(node, (ast.For, ast.While, ast.If)):
+                # Top-level control flow
                 top_level_stmts.append(self._parse_stmt(node))
             else:
                 raise ParseError(f"Unsupported top-level construct: {type(node).__name__}", node)
