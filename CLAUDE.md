@@ -114,24 +114,27 @@ See `docs/LANGUAGE_FEATURES.md` for full profile hierarchy and pluggable backend
 ## Current Limitations
 
 The compiler is a proof-of-concept. Not yet implemented:
-- `list`, `dict`, `set`, `tuple` (use `StaticList`, `Array` for now)
-- `str` type (string literals work as `const char*`)
+- `dict`, `set`, `tuple`
 - Exception handling (`try`/`except`/`raise`)
 - `async`/`await`, `lambda`, `yield`
 - Inheritance
+- List slicing (`items[1:3]`)
 
 ## Type Mappings
 
 | TurboPython | C++ |
 |-------------|-----|
+| `int` | `tpy::BigInt` (arbitrary precision) |
 | `Int32` | `int32_t` |
 | `Bool` | `bool` |
-| `Ptr[T]` | `T*` |
-| `ConstPtr[T]` | `const T*` |
-| `StaticList[T, N]` | `StaticList<T, N>` |
+| `str` | `const char*` (parameters: `std::string_view`) |
+| `Char` | `char` |
+| `list[T]` | `std::vector<T>` |
 | `Array[T, N]` | `std::array<T, N>` |
 | `Span[T]` | `std::span<const T>` |
-| String literals | `const char*` |
+| `StaticList[T, N]` | `StaticList<T, N>` |
+| `Ptr[T]` | `T*` |
+| `ConstPtr[T]` | `const T*` |
 
 ## Supported Language Features
 
@@ -139,11 +142,13 @@ The compiler is a proof-of-concept. Not yet implemented:
 - `if`/`elif`/`else` conditionals
 - `while` loops
 - `for i in range(n)` and `for i in range(start, end)`
+- `for x in collection` (for-each over list, Array, Span, str)
 - `break` and `continue`
 
 ### Operators
 - Arithmetic: `+`, `-`, `*`, `//`, `%`, unary `-`
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- Membership: `in`, `not in` (for list, Array, Span, str)
 - Logical: `and`, `or`, `not`
 - Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
 - Augmented assignment: `+=`, `-=`, `*=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
@@ -155,5 +160,17 @@ The compiler is a proof-of-concept. Not yet implemented:
 
 ### Built-in Functions
 - `print()` - supports multiple arguments
-- `len()` - works with `StaticList`, `Array`, `Span`
+- `len()` - works with `list`, `Array`, `Span`, `StaticList`, `str`
 - `range()` - for loop iteration
+
+### List Methods
+- `append(x)`, `pop()`, `insert(i, x)`, `remove(x)`, `clear()`, `extend(other)`
+- Indexing: `items[i]`, `items[-1]` (negative indexing supported)
+
+## Development Guidelines
+
+When implementing new features:
+- If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
+- Check TODO.md for current priorities
+- Run `pytest` to verify no regressions after changes
+- Update test snapshots with `python tests/update_snapshots.py` when expected output changes intentionally

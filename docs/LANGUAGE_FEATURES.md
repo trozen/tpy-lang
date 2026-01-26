@@ -148,15 +148,16 @@ Possible syntax options:
 ## Types
 
 ### Numeric
-- **Working**: `Int32`, `Bool`
-- **Planned**: `int` (Python's int → platform int or arbitrary precision with allocation)
+- **Working**: `int` (Python's int → `tpy::BigInt` arbitrary precision using GMP)
+- **Working**: `Int32`, `Bool`, `Char`
 - **Planned**: `Int64`, `Int8`, `Int16`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
 - **Planned**: `Float32`, `Float64`, `float`
 
 ### Strings
-- **Working**: String literals (`"hello"` → `const char*`)
+- **Working**: `str` type with string literals, comparison, iteration
+- **Working**: `Char` type for single characters
 - **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
-- **Planned**: `str` - dynamic string (requires allocation, respects `@noalloc`)
+- **Planned**: String concatenation and formatting
 
 #### String Literal Assignment (Open)
 
@@ -233,12 +234,12 @@ class Config:
 **Leaning toward Option 3**: it matches Python's actual semantics (parameters are borrowed, returns/fields are owned), keeps code Python-compatible, and `StrView` provides an escape hatch for explicit non-owning references.
 
 ### Containers
+- **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
 - **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)
-- **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` (size inferred from literal)
+- **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
 - **Planned**: `Tuple[T1, T2, ...]`
-- **Planned**: `list` - dynamic list (requires allocation)
 - **Planned**: `dict` - hash map (requires allocation)
 - **Planned**: `set` - hash set (requires allocation)
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
@@ -251,11 +252,9 @@ nums = [1, 2, 3]                    # type inferred as Array[Int32, 3]
 arr: Array[Int32, 3] = [10, 20, 30] # explicit type annotation
 ```
 
-#### List Literal Inference (Planned)
+#### List Literal Inference (Working)
 
-**Current behavior**: `[1, 2, 3]` always infers to `Array` (fixed-size `std::array`).
-
-**Planned behavior**: Context-dependent inference for Python-first semantics:
+Context-dependent inference for Python-first semantics:
 
 | Context | Inferred Type | C++ Type | Rationale |
 |---------|---------------|----------|-----------|
@@ -383,6 +382,9 @@ Key features:
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
 
+### Membership
+- **Working**: `in`, `not in` (for list, Array, Span, str)
+
 ### Logical
 - **Working**: `and`, `or`, `not`
 
@@ -403,9 +405,9 @@ Key features:
 ### Loops
 - **Working**: `while`
 - **Working**: `for i in range(n)`, `for i in range(start, end)`
+- **Working**: `for item in container` (for-each over list, Array, Span, str)
 - **Working**: `break`, `continue`
 - **Planned**: `for i in range(start, end, step)`
-- **Planned**: `for item in container`
 - **Open**: `for/else`, `while/else` → flag variable pattern
 
 ### Other
@@ -457,7 +459,10 @@ Key features:
 ## Built-in Functions
 
 - **Working**: `print()`, `len()`, `range()`
+- **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
+- **Working**: Negative indexing: `items[-1]` (last element)
 - **Planned**: `abs()`, `min()`, `max()`
+- **Planned**: List slicing: `items[1:3]`
 - **Open**: `isinstance()` → compile-time type check / type narrowing
 - **Open**: `type()` → compile-time type info
 - **Open**: `str()`, `int()` → type conversion functions
