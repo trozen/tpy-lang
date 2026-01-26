@@ -139,6 +139,58 @@ print(z)
         assert "zero" in stderr.lower() or "panic" in stderr.lower()
 
 
+def analyze_source(source: str):
+    """Parse and analyze TurboPython source, raising SemanticError on issues."""
+    from tpyc.parse import Parser
+    from tpyc.sema import SemanticAnalyzer
+
+    parser = Parser()
+    module = parser.parse(source)
+    analyzer = SemanticAnalyzer()
+    analyzer.analyze(module)
+
+
+class TestInt32StaticOverflow:
+    """Test that literal values outside Int32 range are rejected at compile time."""
+
+    def test_literal_above_max(self):
+        """Literal > INT32_MAX should be rejected."""
+        from tpyc.sema import SemanticError
+
+        source = """
+from tpy import Int32
+x: Int32 = 2147483648  # INT32_MAX + 1
+"""
+        with pytest.raises(SemanticError) as exc_info:
+            analyze_source(source)
+        assert "outside Int32 range" in str(exc_info.value)
+
+    def test_literal_below_min(self):
+        """Literal < INT32_MIN should be rejected."""
+        from tpyc.sema import SemanticError
+
+        source = """
+from tpy import Int32
+x: Int32 = -2147483649  # INT32_MIN - 1
+"""
+        with pytest.raises(SemanticError) as exc_info:
+            analyze_source(source)
+        assert "outside Int32 range" in str(exc_info.value)
+
+    def test_large_positive_literal(self):
+        """Very large positive literal should be rejected."""
+        from tpyc.sema import SemanticError
+
+        source = """
+from tpy import Int32
+x: Int32 = 3000000000
+"""
+        with pytest.raises(SemanticError) as exc_info:
+            analyze_source(source)
+        assert "3000000000" in str(exc_info.value)
+        assert "outside Int32 range" in str(exc_info.value)
+
+
 class TestInt32ValidOperations:
     """Test that valid Int32 operations at boundary values work correctly."""
 

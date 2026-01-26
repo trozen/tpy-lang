@@ -837,7 +837,17 @@ class SemanticAnalyzer:
 
         # IntLiteral can coerce to any integer type
         if isinstance(actual, IntLiteralType):
-            if isinstance(expected, (Int32Type, BigIntType, IntLiteralType)):
+            if isinstance(expected, (BigIntType, IntLiteralType)):
+                return
+            if isinstance(expected, Int32Type):
+                # Check if literal value fits in Int32 range
+                INT32_MIN = -(2**31)
+                INT32_MAX = 2**31 - 1
+                if actual.value < INT32_MIN or actual.value > INT32_MAX:
+                    raise SemanticError(
+                        f"Integer literal {actual.value} is outside Int32 range "
+                        f"[{INT32_MIN}, {INT32_MAX}] in {context}"
+                    )
                 return
 
         # Allow Int32 literal coercion
