@@ -19,6 +19,7 @@ from pathlib import Path
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
+from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.lexers import PygmentsLexer
 from pygments.lexers import PythonLexer
 
@@ -45,39 +46,57 @@ class REPLSession:
 
     def run(self) -> int:
         """Main REPL loop. Returns exit code."""
-        print("TurboPython REPL v0.1 (Ctrl+D to exit)")
+        print("TurboPython REPL v0.1 (Ctrl+D to exit, Alt+Enter for newline)")
+
+        # Key bindings for multi-line input with auto-indent
+        bindings = KeyBindings()
+
+        @bindings.add("enter")
+        def _(event):
+            """Submit on Enter."""
+            event.current_buffer.validate_and_handle()
+
+        @bindings.add("escape", "enter")  # Alt+Enter
+        def _(event):
+            """Insert newline with auto-indent on Alt+Enter."""
+            buf = event.current_buffer
+            text = buf.text
+            cursor_pos = buf.cursor_position
+
+            # Get text up to cursor
+            text_before_cursor = text[:cursor_pos]
+            lines = text_before_cursor.split("\n")
+            current_line = lines[-1] if lines else ""
+
+            # Calculate indent
+            current_indent = len(current_line) - len(current_line.lstrip())
+            if current_line.rstrip().endswith(":"):
+                indent = " " * (current_indent + 4)
+            else:
+                indent = " " * current_indent
+
+            buf.insert_text("\n" + indent)
 
         history_path = Path.home() / ".tpyc_history"
         session: PromptSession[str] = PromptSession(
             lexer=PygmentsLexer(PythonLexer),
             history=FileHistory(str(history_path)),
+            key_bindings=bindings,
+            multiline=True,
         )
 
         while True:
             try:
-                line = session.prompt(">>> ")
+                text = session.prompt(">>> ", prompt_continuation="... ")
 
                 # Handle special commands
-                stripped = line.strip()
+                stripped = text.strip()
                 if stripped in ("exit", "quit"):
                     break
                 if not stripped:
                     continue
 
-                # Check for multi-line continuation
-                full_input = line
-                if self._needs_continuation(full_input):
-                    indent = self._get_indent_for_continuation(full_input)
-                    while True:
-                        cont_line = session.prompt("... ", default=indent)
-                        full_input += "\n" + cont_line
-                        if not cont_line.strip():
-                            break
-                        if not self._needs_continuation(full_input):
-                            break
-                        indent = self._get_indent_for_continuation(full_input)
-
-                self._process_input(full_input)
+                self._process_input(text)
 
             except EOFError:
                 print()
@@ -87,46 +106,6 @@ class REPLSession:
                 continue
 
         return 0
-
-    def _needs_continuation(self, source: str) -> bool:
-        """Check if input needs continuation lines."""
-        stripped = source.rstrip()
-
-        # Ends with colon (def, class, if, for, while, etc.)
-        if stripped.endswith(":"):
-            return True
-
-        # Check for unclosed brackets/parens
-        opens = source.count("(") + source.count("[") + source.count("{")
-        closes = source.count(")") + source.count("]") + source.count("}")
-        if opens > closes:
-            return True
-
-        # Check for incomplete block (has def/class/if/etc but only header)
-        try:
-            ast.parse(source)
-            return False
-        except SyntaxError:
-            return True
-
-    def _get_indent_for_continuation(self, source: str) -> str:
-        """Calculate indentation for the next continuation line."""
-        lines = source.split("\n")
-        last_line = lines[-1]
-
-        # Get current indentation of last line
-        current_indent = len(last_line) - len(last_line.lstrip())
-
-        # If last line ends with ':', increase indent
-        if last_line.rstrip().endswith(":"):
-            return " " * (current_indent + 4)
-
-        # Otherwise, maintain the same indentation as the last non-empty line
-        for line in reversed(lines):
-            if line.strip():
-                return " " * (len(line) - len(line.lstrip()))
-
-        return ""
 
     def _is_expression(self, source: str) -> bool:
         """Check if input is a bare expression that should auto-print."""
@@ -215,27 +194,52 @@ class REPLSession:
         # Verbose mode: show generated C++
         verbose_output = ""
         if self.verbose:
-            # Extract just the new statement's C++ (last few lines before closing brace)
             lines = cpp_code.strip().split("\n")
-            # Find main() and show its content
+            output_lines = []
+
+            # Find global declarations (between #include and first function/main)
+            in_globals = False
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith("#include"):
+                    in_globals = True
+                    continue
+                if in_globals:
+                    if stripped.startswith("int main()") or (stripped and not stripped.startswith("//")):
+                        # Check if it's a global var declaration (not a function)
+                        if "=" in stripped and not stripped.startswith("int main"):
+                            output_lines.append(stripped)
+                        elif stripped.startswith("int main"):
+                            break
+
+            # Find main() body content
             in_main = False
-            main_lines = []
+            brace_depth = 0
             for line in lines:
                 if "int main()" in line:
                     in_main = True
+                    brace_depth = 1  # Opening brace of main
                     continue
                 if in_main:
                     stripped = line.strip()
+
+                    # Track brace depth
+                    brace_depth += stripped.count("{") - stripped.count("}")
+
+                    # Stop at end of main (depth returns to 0)
+                    if brace_depth <= 0:
+                        break
+
                     if stripped == "return 0;":
                         continue
-                    if stripped == "}":
-                        break
                     # Skip noop
                     if stripped == "0;":
                         continue
-                    main_lines.append(line)
-            if main_lines:
-                verbose_output = "[C++] " + "\n[C++] ".join(line.strip() for line in main_lines if line.strip()) + "\n"
+                    if stripped:
+                        output_lines.append(stripped)
+
+            if output_lines:
+                verbose_output = "[C++] " + "\n[C++] ".join(output_lines) + "\n"
 
         # Write to temp files
         hpp_path = self.temp_dir / f"{module_name}.hpp"
