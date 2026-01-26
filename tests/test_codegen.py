@@ -1,9 +1,11 @@
 """Codegen snapshot tests for the TurboPython compiler.
 
 Tests are organized by type:
-- tests/cases/errors/   - Compile-time error tests (check diag.txt)
-- tests/cases/panics/   - Runtime panic tests (check panic.txt)
-- tests/cases/          - Normal codegen tests (check .hpp/.cpp)
+- tests/cases/errors/   - Compile-time error tests (must fail, check diag.txt)
+- tests/cases/panics/   - Runtime panic tests (check diag.txt, panic.txt, .hpp/.cpp)
+- tests/cases/          - Normal codegen tests (check diag.txt, .hpp/.cpp)
+
+All tests verify diag.txt (empty if no warnings/errors expected).
 """
 
 from conftest import (
@@ -60,8 +62,25 @@ def make_panic_test(case_dir):
         main_src = src_files[0]
         module_name = get_module_name(main_src)
 
-        # Compile (should succeed)
+        # Compile (should succeed, possibly with warnings)
         result = compile_with_diagnostics(main_src, tmp_path)
+
+        # Compare diagnostics
+        expected_diag = expected_dir / "diag.txt"
+        assert expected_diag.exists(), f"Missing {expected_diag}"
+        expected_diag_content = expected_diag.read_text()
+        assert result.diagnostics == expected_diag_content, (
+            f"Diagnostics differ from expected.\n"
+            f"--- Expected ---\n{expected_diag_content}\n"
+            f"--- Got ---\n{result.diagnostics}"
+        )
+
+        # Validate inline annotations
+        annotation_errors = validate_annotations(main_src, result.diagnostics)
+        assert not annotation_errors, (
+            f"Annotation validation failed:\n" + "\n".join(annotation_errors)
+        )
+
         assert result.success, f"Compilation failed unexpectedly:\n{result.diagnostics}"
 
         # Compare generated code
@@ -108,8 +127,25 @@ def make_codegen_test(case_dir):
         main_src = src_files[0]
         module_name = get_module_name(main_src)
 
-        # Compile (should succeed)
+        # Compile (should succeed, possibly with warnings)
         result = compile_with_diagnostics(main_src, tmp_path)
+
+        # Compare diagnostics
+        expected_diag = expected_dir / "diag.txt"
+        assert expected_diag.exists(), f"Missing {expected_diag}"
+        expected_diag_content = expected_diag.read_text()
+        assert result.diagnostics == expected_diag_content, (
+            f"Diagnostics differ from expected.\n"
+            f"--- Expected ---\n{expected_diag_content}\n"
+            f"--- Got ---\n{result.diagnostics}"
+        )
+
+        # Validate inline annotations
+        annotation_errors = validate_annotations(main_src, result.diagnostics)
+        assert not annotation_errors, (
+            f"Annotation validation failed:\n" + "\n".join(annotation_errors)
+        )
+
         assert result.success, f"Compilation failed unexpectedly:\n{result.diagnostics}"
 
         # Compare generated code

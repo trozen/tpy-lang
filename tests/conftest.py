@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import compile_file, get_module_name
 from tpyc.codegen_cpp import CodeGenOptions
 from tpyc.parse import Parser
-from tpyc.sema import SemanticAnalyzer, SemanticError
+from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
@@ -81,6 +81,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
     """Compile a TurboPython file and capture diagnostics.
 
     Returns CompileResult with success status, diagnostics, and output paths.
+    Warnings are collected but don't cause failure. Errors cause failure.
     """
     module_name = get_module_name(src_file)
     source = src_file.read_text()
@@ -92,9 +93,13 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
         analyzer = SemanticAnalyzer()
         analyzer.analyze(module)
 
-        # If we get here, compilation succeeded
+        # Collect warnings from analyzer
+        diag_lines = [d.format(src_file.name) for d in analyzer.diagnostics]
+        diagnostics = "\n".join(diag_lines) + "\n" if diag_lines else ""
+
+        # If we get here, compilation succeeded (possibly with warnings)
         hpp_path, cpp_path = compile_file(str(src_file), str(output_dir), TEST_CODEGEN_OPTIONS)
-        return CompileResult(success=True, diagnostics="", hpp_path=hpp_path, cpp_path=cpp_path)
+        return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path)
 
     except SemanticError as e:
         diag = e.format(src_file.name)

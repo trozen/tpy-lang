@@ -27,6 +27,20 @@ from .parse import (
 )
 
 
+@dataclass
+class Diagnostic:
+    """A compiler diagnostic (error or warning)."""
+    level: str  # "error" or "warning"
+    message: str
+    loc: SourceLocation | None = None
+
+    def format(self, filename: str = "<unknown>") -> str:
+        """Format diagnostic with file:line prefix."""
+        if self.loc:
+            return f"{filename}:{self.loc.line}: {self.level}: {self.message}"
+        return f"{filename}: {self.level}: {self.message}"
+
+
 class SemanticError(Exception):
     """Error during semantic analysis."""
     def __init__(self, message: str, loc: SourceLocation | None = None):
@@ -76,6 +90,7 @@ class SemanticAnalyzer:
         self.expr_types: dict[int, TpyType] = {}  # id(expr) -> type
         self.var_types: dict[int, TpyType] = {}  # id(TpyVarDecl) -> resolved type
         self.loop_depth: int = 0  # Track nesting depth of loops
+        self.diagnostics: list[Diagnostic] = []  # Collected warnings (errors raise immediately)
 
         # List literal inference tracking
         self.literal_counter: int = 0
@@ -88,6 +103,11 @@ class SemanticAnalyzer:
         """Create a SemanticError with location from a node."""
         loc = getattr(node, 'loc', None) if node else None
         return SemanticError(message, loc)
+
+    def _warning(self, message: str, node: TpyExpr | TpyStmt | None = None) -> None:
+        """Record a warning diagnostic (doesn't stop compilation)."""
+        loc = getattr(node, 'loc', None) if node else None
+        self.diagnostics.append(Diagnostic("warning", message, loc))
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
