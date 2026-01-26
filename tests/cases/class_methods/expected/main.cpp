@@ -10,22 +10,22 @@ int main() {
   // 22: c = Counter(100)
   auto c = Counter(100);
   // 23: print(c.get())
-  std::printf("%d\n", c.get());
+  std::cout << c.get() << "\n";
   // 26: c.increment()
   c.increment();
   // 27: print(c.get())
-  std::printf("%d\n", c.get());
+  std::cout << c.get() << "\n";
   // 29: c.add(5)
   c.add(5);
   // 30: print(c.get())
-  std::printf("%d\n", c.get());
+  std::cout << c.get() << "\n";
   // 32: c.reset()
   c.reset();
   // 33: print(c.get())
-  std::printf("%d\n", c.get());
+  std::cout << c.get() << "\n";
   // 38: print(a, b)
-  std::printf("%d %d\n", a, b);
+  std::cout << a << " " << b << "\n";
   // 41: print("done")
-  std::printf("done\n");
+  std::cout << "done" << "\n";
   return 0;
 }

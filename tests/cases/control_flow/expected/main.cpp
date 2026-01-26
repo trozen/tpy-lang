@@ -61,26 +61,26 @@ int32_t complex_condition(int32_t a, int32_t b) {
 
 int main() {
   // 33: print(classify(-5))
-  std::printf("%d\n", classify((-5)));
+  std::cout << classify((-5)) << "\n";
   // 34: print(classify(0))
-  std::printf("%d\n", classify(0));
+  std::cout << classify(0) << "\n";
   // 35: print(classify(5))
-  std::printf("%d\n", classify(5));
+  std::cout << classify(5) << "\n";
   // 36: print(check_range(5))
-  std::printf("%d\n", check_range(5));
+  std::cout << check_range(5) << "\n";
   // 37: print(check_range(15))
-  std::printf("%d\n", check_range(15));
+  std::cout << check_range(15) << "\n";
   // 38: print(check_bounds(-1))
-  std::printf("%d\n", check_bounds((-1)));
+  std::cout << check_bounds((-1)) << "\n";
   // 39: print(check_bounds(50))
-  std::printf("%d\n", check_bounds(50));
+  std::cout << check_bounds(50) << "\n";
   // 40: print(check_bounds(101))
-  std::printf("%d\n", check_bounds(101));
+  std::cout << check_bounds(101) << "\n";
   // 41: print(complex_condition(1, 1))
-  std::printf("%d\n", complex_condition(1, 1));
+  std::cout << complex_condition(1, 1) << "\n";
   // 42: print(complex_condition(-1, 1))
-  std::printf("%d\n", complex_condition((-1), 1));
+  std::cout << complex_condition((-1), 1) << "\n";
   // 43: print(complex_condition(0, 0))
-  std::printf("%d\n", complex_condition(0, 0));
+  std::cout << complex_condition(0, 0) << "\n";
   return 0;
 }

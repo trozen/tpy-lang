@@ -8,53 +8,53 @@ void test_aug_assign() {
   // 7:     x += 5
   x += 5;
   // 8:     print(x)  # 15
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 11:     x -= 3
   x -= 3;
   // 12:     print(x)  # 12
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 15:     x *= 2
   x *= 2;
   // 16:     print(x)  # 24
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 19:     x //= 4
   x /= 4;
   // 20:     print(x)  # 6
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 23:     x %= 4
   x %= 4;
   // 24:     print(x)  # 2
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 27:     x = 15
   x = 15;
   // 28:     x &= 9   # 0b1111 & 0b1001 = 0b1001
   x &= 9;
   // 29:     print(x)  # 9
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 32:     x = 9
   x = 9;
   // 33:     x |= 6   # 0b1001 | 0b0110 = 0b1111
   x |= 6;
   // 34:     print(x)  # 15
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 37:     x = 15
   x = 15;
   // 38:     x ^= 6   # 0b1111 ^ 0b0110 = 0b1001
   x ^= 6;
   // 39:     print(x)  # 9
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 42:     x = 1
   x = 1;
   // 43:     x <<= 4
   x <<= 4;
   // 44:     print(x)  # 16
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
   // 47:     x = 32
   x = 32;
   // 48:     x >>= 2
   x >>= 2;
   // 49:     print(x)  # 8
-  std::printf("%d\n", x);
+  std::cout << x << "\n";
 }
 
 int main() {

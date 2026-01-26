@@ -54,16 +54,16 @@ int32_t test_span_param() {
 
 int main() {
   // 37: print(global_list[0])  # 1
-  std::printf("%d\n", global_list[0]);
+  std::cout << global_list[0] << "\n";
   // 40: print(global_inferred[1])  # 20
-  std::printf("%d\n", global_inferred[1]);
+  std::cout << global_inferred[1] << "\n";
   // 43: print(test_no_mutation())  # 1
-  std::printf("%d\n", test_no_mutation());
+  std::cout << test_no_mutation() << "\n";
   // 46: print(test_mutation())  # 4
-  std::printf("%d\n", test_mutation());
+  std::cout << test_mutation() << "\n";
   // 49: test_list_param()
   test_list_param();
   // 52: print(test_span_param())  # 10
-  std::printf("%d\n", test_span_param());
+  std::cout << test_span_param() << "\n";
   return 0;
 }

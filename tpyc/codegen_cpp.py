@@ -848,11 +848,7 @@ class CodeGenerator:
         return True
 
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
-        """Generate printf call for print().
-
-        TODO: Make print() output configurable via plugin/policy settings.
-        Different environments may need different output mechanisms.
-        """
+        """Generate std::cout call for print()."""
         kwargs = kwargs or {}
 
         # Determine line ending (default is newline)
@@ -861,50 +857,35 @@ class CodeGenerator:
             end_expr = kwargs["end"]
             if isinstance(end_expr, TpyStrLiteral):
                 end_str = end_expr.value.replace('\\', '\\\\').replace('"', '\\"')
-            else:
-                # For non-literal end values, we'd need more complex handling
-                pass
 
         if not args:
             if end_str:
-                return f'std::printf("{end_str}")'
+                return f'std::cout << "{end_str}"'
             return ""
 
-        fmt_parts = []
-        fmt_args = []
-        for arg in args:
-            arg_type = self.analyzer.get_expr_type(arg)
-            if isinstance(arg, TpyStrLiteral):
-                # Inline string into format
-                escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('%', '%%')
-                fmt_parts.append(escaped)
-            elif isinstance(arg_type, IntLiteralType):
-                # Check if this expression involves variables (which are BigInt at runtime)
-                # or is purely literal-based (which stays as C++ int)
-                if self._involves_variables(arg):
-                    # Variable or expression with variables -> BigInt at runtime
-                    fmt_parts.append("%s")
-                    fmt_args.append(f"{self._gen_expr(arg)}.to_string().c_str()")
-                else:
-                    # Pure literal expression -> C++ int
-                    fmt_parts.append("%lld")
-                    fmt_args.append(f"static_cast<long long>({self._gen_expr(arg)})")
-            elif isinstance(arg_type, CharType):
-                fmt_parts.append("%c")
-                fmt_args.append(self._gen_expr(arg))
-            elif isinstance(arg_type, BigIntType):
-                # BigInt variable/expression needs string conversion
-                fmt_parts.append("%s")
-                fmt_args.append(f"{self._gen_expr(arg)}.to_string().c_str()")
-            elif isinstance(arg_type, Int32Type):
-                fmt_parts.append("%d")
-                fmt_args.append(self._gen_expr(arg))
-            else:
-                # Default to %d
-                fmt_parts.append("%d")
-                fmt_args.append(self._gen_expr(arg))
+        parts = []
+        for i, arg in enumerate(args):
+            if i > 0:
+                parts.append('" "')  # Space separator between args
 
-        fmt = " ".join(fmt_parts) + end_str
-        if fmt_args:
-            return f'std::printf("{fmt}", {", ".join(fmt_args)})'
-        return f'std::printf("{fmt}")'
+            arg_type = self.analyzer.get_expr_type(arg)
+
+            if isinstance(arg, TpyStrLiteral):
+                escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+                parts.append(f'"{escaped}"')
+            elif isinstance(arg_type, IntLiteralType):
+                if self._involves_variables(arg):
+                    parts.append(f'{self._gen_expr(arg)}.to_string()')
+                else:
+                    parts.append(self._gen_expr(arg))
+            elif isinstance(arg_type, BigIntType):
+                parts.append(f'{self._gen_expr(arg)}.to_string()')
+            else:
+                # Int32, Char, Bool, etc. - direct output
+                parts.append(self._gen_expr(arg))
+
+        # Add end string
+        if end_str:
+            parts.append(f'"{end_str}"')
+
+        return "std::cout << " + " << ".join(parts)

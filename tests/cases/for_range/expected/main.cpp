@@ -6,7 +6,7 @@ void print_range(int32_t start, int32_t end) {
   // 4:     for i in range(start, end):
   for (int32_t i = start; i < end; ++i) {
     // 5:         print(i)
-    std::printf("%d\n", i);
+    std::cout << i << "\n";
   }
 }
 
@@ -27,11 +27,11 @@ int main() {
   // 14: for i in range(5):
   for (int32_t i = 0; i < 5; ++i) {
     // 15:     print(i)
-    std::printf("%d\n", i);
+    std::cout << i << "\n";
   }
   // 18: print_range(10, 15)
   print_range(10, 15);
   // 21: print(sum_range(10))
-  std::printf("%d\n", sum_range(10));
+  std::cout << sum_range(10) << "\n";
   return 0;
 }

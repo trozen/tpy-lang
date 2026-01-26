@@ -14,28 +14,28 @@ void test_bool() {
   // 13:     if a:
   if (a) {
     // 14:         print(1)
-    std::printf("%lld\n", static_cast<long long>(1));
+    std::cout << 1 << "\n";
   } else {
     // 16:         print(0)
-    std::printf("%lld\n", static_cast<long long>(0));
+    std::cout << 0 << "\n";
   }
   // 18:     if b:
   if (b) {
     // 19:         print(1)
-    std::printf("%lld\n", static_cast<long long>(1));
+    std::cout << 1 << "\n";
   } else {
     // 21:         print(0)
-    std::printf("%lld\n", static_cast<long long>(0));
+    std::cout << 0 << "\n";
   }
   // 24:     if inferred_true:
   if (inferred_true) {
     // 25:         print(1)
-    std::printf("%lld\n", static_cast<long long>(1));
+    std::cout << 1 << "\n";
   }
   // 26:     if inferred_false:
   if (inferred_false) {
     // 27:         print(0)
-    std::printf("%lld\n", static_cast<long long>(0));
+    std::cout << 0 << "\n";
   }
   // 30:     flag = True
   auto flag = true;
@@ -52,7 +52,7 @@ void test_bool() {
     }
   }
   // 37:     print(count)
-  std::printf("%d\n", count);
+  std::cout << count << "\n";
 }
 
 int main() {

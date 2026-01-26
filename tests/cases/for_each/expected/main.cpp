@@ -28,7 +28,7 @@ void print_span(std::span<const int32_t> data) {
   // 27:     for x in data:
   for (int32_t x : data) {
     // 28:         print(x)
-    std::printf("%d\n", x);
+    std::cout << x << "\n";
   }
 }
 
@@ -59,14 +59,14 @@ int main() {
     total += x;
   }
   // 8: print(total)  # 15
-  std::printf("%d\n", total);
+  std::cout << total << "\n";
   // 12: for val in arr:
   for (int32_t val : arr) {
     // 13:     print(val)
-    std::printf("%d\n", val);
+    std::cout << val << "\n";
   }
   // 23: print(sum_array())  # 600
-  std::printf("%d\n", sum_array());
+  std::cout << sum_array() << "\n";
   // 30: print_span([7, 8, 9])
   print_span(std::array<int32_t, 3>{7, 8, 9});
   // 33: text = "AB"
@@ -74,9 +74,9 @@ int main() {
   // 34: for c in text:
   for (char c : std::string_view(text)) {
     // 35:     print(c)
-    std::printf("%c\n", c);
+    std::cout << c << "\n";
   }
   // 47: print(nested_sum())  # 1*10 + 1*20 + 2*10 + 2*20 = 90
-  std::printf("%d\n", nested_sum());
+  std::cout << nested_sum() << "\n";
   return 0;
 }

@@ -24,10 +24,10 @@ int32_t count_char(std::string_view text, char target) {
 
 int main() {
   // 13: print(count_char("xoxox", "x"))
-  std::printf("%d\n", count_char("xoxox", 'x'));
+  std::cout << count_char("xoxox", 'x') << "\n";
   // 14: print(len("hello"))
-  std::printf("%d\n", static_cast<int32_t>(std::string_view("hello").size()));
+  std::cout << static_cast<int32_t>(std::string_view("hello").size()) << "\n";
   // 15: print(chr(65))
-  std::printf("%c\n", static_cast<char>(65));
+  std::cout << static_cast<char>(65) << "\n";
   return 0;
 }

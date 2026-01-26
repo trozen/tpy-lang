@@ -27,8 +27,8 @@ int main() {
   // 13: mem[1] = 8
   mem[1] = 8;
   // 14: print(sum_list(mem))
-  std::printf("%d\n", sum_list(mem));
+  std::cout << sum_list(mem) << "\n";
   // 15: print(len(mem))
-  std::printf("%d\n", static_cast<int32_t>(mem.size()));
+  std::cout << static_cast<int32_t>(mem.size()) << "\n";
   return 0;
 }

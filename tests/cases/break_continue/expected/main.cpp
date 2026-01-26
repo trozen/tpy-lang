@@ -16,7 +16,7 @@ void test_break() {
     i += 1;
   }
   // 10:     print(i)  # 5
-  std::printf("%d\n", i);
+  std::cout << i << "\n";
 }
 
 // 12: def test_continue():
@@ -34,7 +34,7 @@ void test_continue() {
     total += i;
   }
   // 19:     print(total)  # 1 + 3 + 5 + 7 + 9 = 25
-  std::printf("%d\n", total);
+  std::cout << total << "\n";
 }
 
 // 21: def test_nested_break():
@@ -55,7 +55,7 @@ void test_nested_break() {
     }
   }
   // 29:     print(count)  # 2 * 3 = 6 (j goes 0, 1 then breaks, 3 times)
-  std::printf("%d\n", count);
+  std::cout << count << "\n";
 }
 
 // 31: def test_nested_continue():
@@ -76,7 +76,7 @@ void test_nested_continue() {
     }
   }
   // 39:     print(count)  # 3 * 3 = 9 (j skips 1, so 0, 2, 3 for each i)
-  std::printf("%d\n", count);
+  std::cout << count << "\n";
 }
 
 int main() {

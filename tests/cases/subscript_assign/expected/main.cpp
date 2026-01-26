@@ -14,11 +14,11 @@ int main() {
   // 7: arr[2] = 300
   arr[2] = 300;
   // 8: print(arr[0])
-  std::printf("%d\n", arr[0]);
+  std::cout << arr[0] << "\n";
   // 9: print(arr[1])
-  std::printf("%d\n", arr[1]);
+  std::cout << arr[1] << "\n";
   // 10: print(arr[2])
-  std::printf("%d\n", arr[2]);
+  std::cout << arr[2] << "\n";
   // 14: items.append(10)
   items.append(10);
   // 15: items.append(20)
@@ -28,8 +28,8 @@ int main() {
   // 17: items[1] = 88
   items.set(1, 88);
   // 18: print(items[0])
-  std::printf("%d\n", items.get(0));
+  std::cout << items.get(0) << "\n";
   // 19: print(items[1])
-  std::printf("%d\n", items.get(1));
+  std::cout << items.get(1) << "\n";
   return 0;
 }

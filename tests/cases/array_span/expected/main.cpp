@@ -27,11 +27,11 @@ int32_t sum_span(std::span<const int32_t> values) {
 
 int main() {
   // 12: print(sum_span([1, 2, 3, 4, 5]))
-  std::printf("%d\n", sum_span(std::array<int32_t, 5>{1, 2, 3, 4, 5}));
+  std::cout << sum_span(std::array<int32_t, 5>{1, 2, 3, 4, 5}) << "\n";
   // 16: print(sum_span(nums))
-  std::printf("%d\n", sum_span(nums));
+  std::cout << sum_span(nums) << "\n";
   // 20: print(sum_span(arr))
-  std::printf("%d\n", sum_span(arr));
+  std::cout << sum_span(arr) << "\n";
   // 24: items.append(1000)
   items.append(1000);
   // 25: items.append(2000)
@@ -41,6 +41,6 @@ int main() {
   // 27: items.append(4000)
   items.append(4000);
   // 28: print(sum_span(items))
-  std::printf("%d\n", sum_span(std::span(items.data(), items.size())));
+  std::cout << sum_span(std::span(items.data(), items.size())) << "\n";
   return 0;
 }

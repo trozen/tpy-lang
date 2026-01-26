@@ -14,12 +14,12 @@ tpy::BigInt factorial(const tpy::BigInt& n) {
 
 int main() {
   // 8: print(factorial(20))
-  std::printf("%s\n", factorial(tpy::BigInt(20)).to_string().c_str());
+  std::cout << factorial(tpy::BigInt(20)).to_string() << "\n";
   // 11: print(factorial(25))
-  std::printf("%s\n", factorial(tpy::BigInt(25)).to_string().c_str());
+  std::cout << factorial(tpy::BigInt(25)).to_string() << "\n";
   // 14: print(factorial(50))
-  std::printf("%s\n", factorial(tpy::BigInt(50)).to_string().c_str());
+  std::cout << factorial(tpy::BigInt(50)).to_string() << "\n";
   // 17: print(factorial(100))
-  std::printf("%s\n", factorial(tpy::BigInt(100)).to_string().c_str());
+  std::cout << factorial(tpy::BigInt(100)).to_string() << "\n";
   return 0;
 }

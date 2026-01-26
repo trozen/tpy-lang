@@ -24,7 +24,7 @@ void print_list(StaticList<Item, 16>& items) {
     // 26:         item: Item = items.get(i)
     Item item = items.get(i);
     // 27:         print(item.value)
-    std::printf("%d\n", item.value);
+    std::cout << item.value << "\n";
   }
 }
 
@@ -34,7 +34,7 @@ int main() {
   // 30: process_list(items)
   process_list(items);
   // 31: print(len(items))
-  std::printf("%d\n", items.size());
+  std::cout << items.size() << "\n";
   // 32: print_list(items)
   print_list(items);
   return 0;

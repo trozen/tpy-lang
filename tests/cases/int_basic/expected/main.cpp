@@ -19,23 +19,23 @@ void test_arithmetic() {
   // 12:     b = 3
   tpy::BigInt b = tpy::BigInt(3);
   // 15:     print(a + b)  # 13
-  std::printf("%s\n", (a + b).to_string().c_str());
+  std::cout << (a + b).to_string() << "\n";
   // 16:     print(a - b)  # 7
-  std::printf("%s\n", (a - b).to_string().c_str());
+  std::cout << (a - b).to_string() << "\n";
   // 17:     print(a * b)  # 30
-  std::printf("%s\n", (a * b).to_string().c_str());
+  std::cout << (a * b).to_string() << "\n";
   // 18:     print(a // b)  # 3 (floor division)
-  std::printf("%s\n", (a / b).to_string().c_str());
+  std::cout << (a / b).to_string() << "\n";
   // 19:     print(a % b)  # 1
-  std::printf("%s\n", (a % b).to_string().c_str());
+  std::cout << (a % b).to_string() << "\n";
   // 22:     c = -7
   tpy::BigInt c = (-tpy::BigInt(7));
   // 23:     d = 3
   tpy::BigInt d = tpy::BigInt(3);
   // 24:     print(c // d)  # -3 (not -2!)
-  std::printf("%s\n", (c / d).to_string().c_str());
+  std::cout << (c / d).to_string() << "\n";
   // 25:     print(c % d)   # 2 (not -1!)
-  std::printf("%s\n", (c % d).to_string().c_str());
+  std::cout << (c % d).to_string() << "\n";
 }
 
 // 28: def test_comparison():
@@ -47,26 +47,26 @@ void test_comparison() {
   // 32:     if x < y:
   if ((x < y)) {
     // 33:         print("x < y")
-    std::printf("x < y\n");
+    std::cout << "x < y" << "\n";
   }
   // 35:     if x != y:
   if ((x != y)) {
     // 36:         print("x != y")
-    std::printf("x != y\n");
+    std::cout << "x != y" << "\n";
   }
   // 38:     if x == 42:
   if ((x == 42)) {
     // 39:         print("x == 42")
-    std::printf("x == 42\n");
+    std::cout << "x == 42" << "\n";
   }
 }
 
 int main() {
   // 1: """Test basic int (BigInt) operations."""
   // 43: print(factorial(10))  # 3628800
-  std::printf("%s\n", factorial(tpy::BigInt(10)).to_string().c_str());
+  std::cout << factorial(tpy::BigInt(10)).to_string() << "\n";
   // 44: print(factorial(20))  # 2432902008176640000 (fits in 63 bits)
-  std::printf("%s\n", factorial(tpy::BigInt(20)).to_string().c_str());
+  std::cout << factorial(tpy::BigInt(20)).to_string() << "\n";
   // 46: test_arithmetic()
   test_arithmetic();
   // 47: test_comparison()
@@ -74,6 +74,6 @@ int main() {
   // 50: neg = -42
   tpy::BigInt neg = (-tpy::BigInt(42));
   // 51: print(neg)
-  std::printf("%s\n", neg.to_string().c_str());
+  std::cout << neg.to_string() << "\n";
   return 0;
 }

@@ -10,16 +10,16 @@ int32_t c = 0;
 
 int main() {
   // 7: print(a & b)       # 8 (0b1000)
-  std::printf("%d\n", (a & b));
+  std::cout << (a & b) << "\n";
   // 10: print(a | b)       # 14 (0b1110)
-  std::printf("%d\n", (a | b));
+  std::cout << (a | b) << "\n";
   // 13: print(a ^ b)       # 6 (0b0110)
-  std::printf("%d\n", (a ^ b));
+  std::cout << (a ^ b) << "\n";
   // 17: print(~c)          # -1
-  std::printf("%d\n", (~c));
+  std::cout << (~c) << "\n";
   // 20: print(1 << 4)      # 16
-  std::printf("%lld\n", static_cast<long long>((1 << 4)));
+  std::cout << (1 << 4) << "\n";
   // 23: print(32 >> 2)     # 8
-  std::printf("%lld\n", static_cast<long long>((32 >> 2)));
+  std::cout << (32 >> 2) << "\n";
   return 0;
 }
