@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- full `list` type support
+- full `list` type support (see LANGUAGE_FEATURES.md for inference rules: globals→vector, locals→array unless mutated or passed to list param)
 - generic `for` over lists/collections
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - Int32 etc operation range checks

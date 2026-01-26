@@ -133,6 +133,7 @@ class CodeGenerator:
 
     def _gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a global variable definition in source file."""
+        self._emit_source_comment(out, stmt.loc)
         cpp_type = stmt.type.to_cpp()
         if stmt.init:
             init_expr = self._gen_expr(stmt.init, stmt.type)

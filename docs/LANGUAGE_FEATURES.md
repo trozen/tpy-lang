@@ -251,6 +251,58 @@ nums = [1, 2, 3]                    # type inferred as Array[Int32, 3]
 arr: Array[Int32, 3] = [10, 20, 30] # explicit type annotation
 ```
 
+#### List Literal Inference (Planned)
+
+**Current behavior**: `[1, 2, 3]` always infers to `Array` (fixed-size `std::array`).
+
+**Planned behavior**: Context-dependent inference for Python-first semantics:
+
+| Context | Inferred Type | C++ Type | Rationale |
+|---------|---------------|----------|-----------|
+| Module-level (global) | `list` | `std::vector` | Cross-module safety - other modules might import and mutate |
+| Function local, no mutation | `Array` | `std::array` | Stack performance, no heap allocation |
+| Function local + `.append()`/`.pop()`/etc | `list` | `std::vector` | Explicit mutation requires growable container |
+| Function local, passed to `list[T]` param | `list` | `std::vector` | Callee expects mutable list |
+| Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is read-only view, no mutation possible |
+| Explicit annotation `x: Array[T, N]` | `Array` | `std::array` | User opted into fixed size |
+| Explicit annotation `x: list[T]` | `list` | `std::vector` | User opted into dynamic list |
+
+This gives the best of both worlds:
+- **Python semantics by default**: Globals behave like Python module variables (mutable, shareable)
+- **Performance for locals**: Function-local arrays stay on the stack when safe
+- **Escape analysis**: Compiler detects when mutation or list-typed parameters force dynamic allocation
+
+Example:
+```python
+# Global - always vector (other modules might mutate)
+config_values = [1, 2, 3]  # → std::vector<BigInt>
+
+def process():
+    # Local, no mutation - array (stack allocated)
+    lookup = [10, 20, 30]  # → std::array<BigInt, 3>
+    return lookup[1]
+
+def build_list():
+    # Local with mutation - vector
+    result = [1, 2]        # → std::vector<BigInt>
+    result.append(3)       # mutation detected
+    return result
+
+def use_list(items: list[int]):
+    items.append(42)
+
+def caller():
+    data = [1, 2, 3]       # → std::vector<BigInt> (passed to list param)
+    use_list(data)
+
+def reader(items: Span[int]) -> int:
+    return items[0]
+
+def caller2():
+    data = [1, 2, 3]       # → std::array<BigInt, 3> (Span is read-only)
+    return reader(data)
+```
+
 `Span[T]` is a non-owning read-only view that accepts any contiguous memory:
 ```python
 def sum_values(values: Span[Int32]) -> Int32:
