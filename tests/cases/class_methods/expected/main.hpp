@@ -13,18 +13,22 @@ struct Counter {
   explicit Counter(int32_t start) : value(start) {}
 
   void increment() {
+    // 10:         self.value = self.value + 1
     value = (value + 1);
   }
 
   void add(int32_t n) {
+    // 13:         self.value = self.value + n
     value = (value + n);
   }
 
   int32_t get() {
+    // 16:         return self.value
     return value;
   }
 
   void reset() {
+    // 19:         self.value = 0
     value = 0;
   }
 };

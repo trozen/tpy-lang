@@ -27,12 +27,22 @@ class ParseError(Exception):
         super().__init__(f"{message}{loc}")
 
 
+# Source location for error reporting and source mapping
+
+@dataclass
+class SourceLocation:
+    """Source code location for error reporting and source mapping."""
+    line: int  # 1-indexed line number
+    column: int = 0  # 0-indexed column
+    file: str | None = None  # Source file path (optional)
+
+
 # AST node types for TurboPython
 
 @dataclass
 class TpyExpr:
     """Base class for expressions."""
-    pass
+    loc: SourceLocation | None = field(default=None, kw_only=True)
 
 
 @dataclass
@@ -121,7 +131,7 @@ class TpySubscript(TpyExpr):
 @dataclass
 class TpyStmt:
     """Base class for statements."""
-    pass
+    loc: SourceLocation | None = field(default=None, kw_only=True)
 
 
 @dataclass
@@ -204,6 +214,7 @@ class TpyFunction:
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_method: bool = False
+    loc: SourceLocation | None = None
 
 
 @dataclass
@@ -228,6 +239,7 @@ class TpyModule:
     records: list[TpyRecord]
     functions: list[TpyFunction]
     top_level_stmts: list[TpyStmt] = field(default_factory=list)
+    source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
 
 
 class Parser:
@@ -243,9 +255,18 @@ class Parser:
 
     def __init__(self):
         self.registry = TypeRegistry()
+        self.source_lines: list[str] = []
+
+    def _loc(self, node: ast.AST) -> SourceLocation | None:
+        """Create a SourceLocation from an AST node."""
+        if hasattr(node, 'lineno'):
+            col = getattr(node, 'col_offset', 0)
+            return SourceLocation(line=node.lineno, column=col)
+        return None
 
     def parse(self, source: str) -> TpyModule:
         """Parse TurboPython source code into a TpyModule."""
+        self.source_lines = source.splitlines()
         tree = ast.parse(source)
         return self._parse_module(tree)
 
@@ -272,7 +293,7 @@ class Parser:
                 functions.append(func)
             elif isinstance(node, ast.Expr):
                 # Top-level expression (e.g., function call)
-                top_level_stmts.append(TpyExprStmt(self._parse_expr(node.value)))
+                top_level_stmts.append(TpyExprStmt(self._parse_expr(node.value), loc=self._loc(node)))
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 # Top-level variable declaration
                 top_level_stmts.append(self._parse_stmt(node))
@@ -282,7 +303,7 @@ class Parser:
             else:
                 raise ParseError(f"Unsupported top-level construct: {type(node).__name__}", node)
 
-        return TpyModule(records=records, functions=functions, top_level_stmts=top_level_stmts)
+        return TpyModule(records=records, functions=functions, top_level_stmts=top_level_stmts, source_lines=self.source_lines)
 
     def _check_import(self, node: ast.ImportFrom) -> None:
         """Check that import is from allowed module."""
@@ -353,7 +374,8 @@ class Parser:
             params=params,
             return_type=return_type,
             body=body,
-            is_method=True
+            is_method=True,
+            loc=self._loc(node)
         )
 
     def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
@@ -383,7 +405,8 @@ class Parser:
             params=params,
             return_type=return_type,
             body=body,
-            is_noalloc=is_noalloc
+            is_noalloc=is_noalloc,
+            loc=self._loc(node)
         )
 
     def _parse_type_annotation(self, node: ast.expr) -> TpyType:
@@ -459,13 +482,15 @@ class Parser:
 
     def _parse_stmt(self, node: ast.stmt) -> TpyStmt:
         """Parse a statement."""
+        loc = self._loc(node)
+
         if isinstance(node, ast.AnnAssign):
             # Annotated assignment: x: T = expr
             if not isinstance(node.target, ast.Name):
                 raise ParseError("Invalid assignment target", node)
             var_type = self._parse_type_annotation(node.annotation)
             init_expr = self._parse_expr(node.value) if node.value else None
-            return TpyVarDecl(node.target.id, var_type, init_expr)
+            return TpyVarDecl(node.target.id, var_type, init_expr, loc=loc)
 
         elif isinstance(node, ast.Assign):
             # Simple assignment: x = expr or x.field = expr
@@ -475,33 +500,33 @@ class Parser:
             value = self._parse_expr(node.value)
             # Check if this is a variable declaration (unannotated)
             if isinstance(target, TpyName):
-                return TpyVarDecl(target.name, None, value)
-            return TpyAssign(target, value)
+                return TpyVarDecl(target.name, None, value, loc=loc)
+            return TpyAssign(target, value, loc=loc)
 
         elif isinstance(node, ast.AugAssign):
             # Augmented assignment: x += expr
             target = self._parse_expr(node.target)
             value = self._parse_expr(node.value)
             op = self._binop_to_str(node.op)
-            return TpyAugAssign(target, op, value)
+            return TpyAugAssign(target, op, value, loc=loc)
 
         elif isinstance(node, ast.Expr):
-            return TpyExprStmt(self._parse_expr(node.value))
+            return TpyExprStmt(self._parse_expr(node.value), loc=loc)
 
         elif isinstance(node, ast.Return):
             value = self._parse_expr(node.value) if node.value else None
-            return TpyReturn(value)
+            return TpyReturn(value, loc=loc)
 
         elif isinstance(node, ast.If):
             cond = self._parse_expr(node.test)
             then_body = [self._parse_stmt(s) for s in node.body]
             else_body = [self._parse_stmt(s) for s in node.orelse]
-            return TpyIf(cond, then_body, else_body)
+            return TpyIf(cond, then_body, else_body, loc=loc)
 
         elif isinstance(node, ast.While):
             cond = self._parse_expr(node.test)
             body = [self._parse_stmt(s) for s in node.body]
-            return TpyWhile(cond, body)
+            return TpyWhile(cond, body, loc=loc)
 
         elif isinstance(node, ast.For):
             # Only support range-based for loops
@@ -522,36 +547,38 @@ class Parser:
             else:
                 raise ParseError("range() must have 1 or 2 arguments", node)
             body = [self._parse_stmt(s) for s in node.body]
-            return TpyFor(var, start, end, body)
+            return TpyFor(var, start, end, body, loc=loc)
 
         elif isinstance(node, ast.Pass):
-            return TpyExprStmt(TpyIntLiteral(0))  # No-op
+            return TpyExprStmt(TpyIntLiteral(0), loc=loc)  # No-op
 
         elif isinstance(node, ast.Break):
-            return TpyBreak()
+            return TpyBreak(loc=loc)
 
         elif isinstance(node, ast.Continue):
-            return TpyContinue()
+            return TpyContinue(loc=loc)
 
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
     def _parse_expr(self, node: ast.expr) -> TpyExpr:
         """Parse an expression."""
+        loc = self._loc(node)
+
         if isinstance(node, ast.Constant):
             if isinstance(node.value, bool):
-                return TpyBoolLiteral(node.value)
+                return TpyBoolLiteral(node.value, loc=loc)
             elif isinstance(node.value, int):
-                return TpyIntLiteral(node.value)
+                return TpyIntLiteral(node.value, loc=loc)
             elif isinstance(node.value, str):
-                return TpyStrLiteral(node.value)
+                return TpyStrLiteral(node.value, loc=loc)
             else:
                 raise ParseError(f"Unsupported literal type: {type(node.value).__name__}", node)
 
         elif isinstance(node, ast.Name):
             if node.id in self.FORBIDDEN_CONSTRUCTS:
                 raise ParseError(f"'{node.id}' is not allowed in TurboPython", node)
-            return TpyName(node.id)
+            return TpyName(node.id, loc=loc)
 
         elif isinstance(node, ast.BinOp):
             # Handle list repetition: [x] * N -> TpyListRepeat
@@ -560,11 +587,11 @@ class Parser:
                     raise ParseError("List repetition [x] * N requires exactly one element", node)
                 element = self._parse_expr(node.left.elts[0])
                 count = self._parse_expr(node.right)
-                return TpyListRepeat(element, count)
+                return TpyListRepeat(element, count, loc=loc)
             left = self._parse_expr(node.left)
             right = self._parse_expr(node.right)
             op = self._binop_to_str(node.op)
-            return TpyBinOp(left, op, right)
+            return TpyBinOp(left, op, right, loc=loc)
 
         elif isinstance(node, ast.Compare):
             if len(node.ops) != 1 or len(node.comparators) != 1:
@@ -572,19 +599,19 @@ class Parser:
             left = self._parse_expr(node.left)
             right = self._parse_expr(node.comparators[0])
             op = self._cmpop_to_str(node.ops[0])
-            return TpyBinOp(left, op, right)
+            return TpyBinOp(left, op, right, loc=loc)
 
         elif isinstance(node, ast.UnaryOp):
             operand = self._parse_expr(node.operand)
             op = self._unaryop_to_str(node.op)
-            return TpyUnaryOp(op, operand)
+            return TpyUnaryOp(op, operand, loc=loc)
 
         elif isinstance(node, ast.BoolOp):
             # Handle 'and' / 'or' - chain as binary ops
             op = "&&" if isinstance(node.op, ast.And) else "||"
             result = self._parse_expr(node.values[0])
             for val in node.values[1:]:
-                result = TpyBinOp(result, op, self._parse_expr(val))
+                result = TpyBinOp(result, op, self._parse_expr(val), loc=loc)
             return result
 
         elif isinstance(node, ast.Call):
@@ -604,26 +631,26 @@ class Parser:
                     raise ParseError("Keyword arguments not supported", node)
 
             if isinstance(node.func, ast.Name):
-                return TpyCall(node.func.id, args, kwargs=kwargs)
+                return TpyCall(node.func.id, args, kwargs=kwargs, loc=loc)
             elif isinstance(node.func, ast.Attribute):
                 obj = self._parse_expr(node.func.value)
-                return TpyMethodCall(obj, node.func.attr, args)
+                return TpyMethodCall(obj, node.func.attr, args, loc=loc)
             elif isinstance(node.func, ast.Subscript):
                 # Generic type instantiation: StaticList[T, N]()
                 call_type = self._parse_type_annotation(node.func)
                 if isinstance(node.func.value, ast.Name):
-                    return TpyCall(node.func.value.id, args, call_type)
+                    return TpyCall(node.func.value.id, args, call_type, loc=loc)
                 raise ParseError("Unsupported generic call target", node)
             else:
                 raise ParseError("Unsupported call target", node)
 
         elif isinstance(node, ast.Attribute):
             obj = self._parse_expr(node.value)
-            return TpyFieldAccess(obj, node.attr)
+            return TpyFieldAccess(obj, node.attr, loc=loc)
 
         elif isinstance(node, ast.List):
             elements = [self._parse_expr(elt) for elt in node.elts]
-            return TpyArrayLiteral(elements=elements)
+            return TpyArrayLiteral(elements=elements, loc=loc)
 
         elif isinstance(node, ast.Subscript):
             # Subscript can be indexing (values[i]) or type annotation (Array[T, N])
@@ -633,7 +660,7 @@ class Parser:
                 raise ParseError(f"Generic type '{node.value.id}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
             index = self._parse_expr(node.slice)
-            return TpySubscript(obj=obj, index=index)
+            return TpySubscript(obj=obj, index=index, loc=loc)
 
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)

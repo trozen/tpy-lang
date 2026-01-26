@@ -8,6 +8,7 @@ Generates C++ code from the analyzed TurboPython AST:
 """
 
 from __future__ import annotations
+from dataclasses import dataclass, field
 from typing import TextIO
 import io
 
@@ -17,6 +18,7 @@ from .typesys import (
     INT32, VOID, BIGINT
 )
 from .parse import (
+    SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
@@ -25,15 +27,23 @@ from .parse import (
 from .sema import SemanticAnalyzer
 
 
+@dataclass
+class CodeGenOptions:
+    """Options for C++ code generation."""
+    emit_source_comments: bool = False  # Embed Python source as comments in generated C++
+
+
 class CodeGenerator:
     """Generates C++ code from TurboPython AST."""
 
-    def __init__(self, analyzer: SemanticAnalyzer):
+    def __init__(self, analyzer: SemanticAnalyzer, options: CodeGenOptions | None = None):
         self.analyzer = analyzer
+        self.options = options or CodeGenOptions()
         self.indent_level = 0
         self.module_name = "generated"
         self.declared_vars: set[str] = set()  # Track declared variables in current scope
         self.var_types: dict[str, TpyType] = {}  # Track variable types for code generation
+        self.source_lines: list[str] = []  # Source lines for emit_source_comments
 
     def generate(self, module: TpyModule, module_name: str = "generated") -> tuple[str, str]:
         """Generate C++ header and source files.
@@ -43,6 +53,7 @@ class CodeGenerator:
             module_name: Name for the generated files (used in #include).
         """
         self.module_name = module_name
+        self.source_lines = module.source_lines
         hpp = io.StringIO()
         cpp = io.StringIO()
 
@@ -270,6 +281,8 @@ class CodeGenerator:
 
     def _gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
+        self._emit_source_comment(out, func.loc)
+
         ret_type = func.return_type.to_cpp()
         # Special case: main() must return int
         if func.name == "main":
@@ -310,9 +323,22 @@ class CodeGenerator:
                 parts.append(f"{ptype.to_cpp()} {pname}")
         return ", ".join(parts)
 
+    def _emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
+        """Emit the original Python source line as a comment if enabled."""
+        if not self.options.emit_source_comments:
+            return
+        if loc is None:
+            return
+        line_idx = loc.line - 1  # Convert 1-indexed to 0-indexed
+        if 0 <= line_idx < len(self.source_lines):
+            source_line = self.source_lines[line_idx].rstrip()
+            out.write(f"{indent}// {loc.line}: {source_line}\n")
+
     def _gen_stmt(self, out: TextIO, stmt: TpyStmt) -> None:
         """Generate a statement."""
         indent = "  " * self.indent_level
+
+        self._emit_source_comment(out, stmt.loc, indent)
 
         if isinstance(stmt, TpyVarDecl):
             self._gen_var_decl(out, stmt, indent)

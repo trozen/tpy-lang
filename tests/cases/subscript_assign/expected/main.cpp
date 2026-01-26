@@ -5,17 +5,29 @@ std::array<int32_t, 3> arr = {1, 2, 3};
 StaticList<int32_t, 4> items = StaticList<int32_t, 4>();
 
 int main() {
+  // 5: arr[0] = 100
   arr[0] = 100;
+  // 6: arr[1] = 200
   arr[1] = 200;
+  // 7: arr[2] = 300
   arr[2] = 300;
+  // 8: print(arr[0])
   std::printf("%d\n", arr[0]);
+  // 9: print(arr[1])
   std::printf("%d\n", arr[1]);
+  // 10: print(arr[2])
   std::printf("%d\n", arr[2]);
+  // 14: items.append(10)
   items.append(10);
+  // 15: items.append(20)
   items.append(20);
+  // 16: items[0] = 99
   items.set(0, 99);
+  // 17: items[1] = 88
   items.set(1, 88);
+  // 18: print(items[0])
   std::printf("%d\n", items.get(0));
+  // 19: print(items[1])
   std::printf("%d\n", items.get(1));
   return 0;
 }

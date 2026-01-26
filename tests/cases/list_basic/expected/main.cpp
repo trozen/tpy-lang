@@ -3,20 +3,31 @@
 
 std::vector<int32_t> mem = std::vector<int32_t>(10, 0);
 
+// 3: def sum_list(nums: list[Int32]) -> Int32:
 int32_t sum_list(std::vector<int32_t>& nums) {
+  // 4:     total: Int32 = 0
   int32_t total = 0;
+  // 5:     i: Int32 = 0
   int32_t i = 0;
+  // 6:     while i < len(nums):
   while ((i < static_cast<int32_t>(nums.size()))) {
+    // 7:         total += nums[i]
     total += nums[i];
+    // 8:         i += 1
     i += 1;
   }
+  // 9:     return total
   return total;
 }
 
 int main() {
+  // 12: mem[0] = 42
   mem[0] = 42;
+  // 13: mem[1] = 8
   mem[1] = 8;
+  // 14: print(sum_list(mem))
   std::printf("%d\n", sum_list(mem));
+  // 15: print(len(mem))
   std::printf("%d\n", static_cast<int32_t>(mem.size()));
   return 0;
 }

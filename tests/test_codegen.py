@@ -3,7 +3,7 @@
 Tests verify that code generation produces expected C++ output.
 """
 
-from conftest import CASES_DIR, get_module_name, compile_file
+from conftest import CASES_DIR, get_module_name, compile_file, TEST_CODEGEN_OPTIONS
 
 
 def make_codegen_test(case_name: str):
@@ -18,7 +18,7 @@ def make_codegen_test(case_name: str):
 
         main_src = src_files[0]
         module_name = get_module_name(main_src)
-        compile_file(str(main_src), str(tmp_path))
+        compile_file(str(main_src), str(tmp_path), TEST_CODEGEN_OPTIONS)
 
         # Generated files are in {module_name}.d/ subdirectory
         module_dir = tmp_path / f"{module_name}.d"

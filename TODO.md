@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- option to output python source in generated c++ code in comments, for inspection (with an option, should be enabled in tests)
 - full `list` type support
 - generic `for` over lists/collections
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)

@@ -20,6 +20,10 @@ PROJECT_ROOT = TESTS_DIR.parent
 
 sys.path.insert(0, str(PROJECT_ROOT))
 from tpyc.cli import compile_file, get_module_name
+from tpyc.codegen_cpp import CodeGenOptions
+
+# Same options as tests: emit source comments
+SNAPSHOT_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
 
 
 def run_cpython(src_file: Path) -> str:
@@ -60,7 +64,7 @@ def update_case(case_name: str) -> None:
     # Compile to temp directory (creates {tmp}/{module}.d/{module}.{hpp,cpp})
     print(f"Updating {case_name}...")
     with tempfile.TemporaryDirectory() as tmp_dir:
-        compile_file(str(main_src), tmp_dir)
+        compile_file(str(main_src), tmp_dir, SNAPSHOT_CODEGEN_OPTIONS)
 
         # Copy generated files to expected directory with module name
         module_dir = Path(tmp_dir) / f"{module_name}.d"

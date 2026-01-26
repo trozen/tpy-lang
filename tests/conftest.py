@@ -10,6 +10,10 @@ import pytest
 # Import the compiler
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import compile_file, get_module_name
+from tpyc.codegen_cpp import CodeGenOptions
+
+# Default options for tests: emit source comments for easier debugging
+TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
 
 # Paths
 TESTS_DIR = Path(__file__).parent

@@ -5,15 +5,25 @@ int32_t a = 42;
 int32_t b = 99;
 
 int main() {
+  // 22: c = Counter(100)
   auto c = Counter(100);
+  // 23: print(c.get())
   std::printf("%d\n", c.get());
+  // 26: c.increment()
   c.increment();
+  // 27: print(c.get())
   std::printf("%d\n", c.get());
+  // 29: c.add(5)
   c.add(5);
+  // 30: print(c.get())
   std::printf("%d\n", c.get());
+  // 32: c.reset()
   c.reset();
+  // 33: print(c.get())
   std::printf("%d\n", c.get());
+  // 38: print(a, b)
   std::printf("%d %d\n", a, b);
+  // 41: print("done")
   std::printf("done\n");
   return 0;
 }

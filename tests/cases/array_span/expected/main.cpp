@@ -5,24 +5,39 @@ std::array<int32_t, 3> nums = {10, 20, 30};
 std::array<int32_t, 3> arr = {100, 200, 300};
 StaticList<int32_t, 4> items = StaticList<int32_t, 4>();
 
+// 3: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {
+  // 4:     total: Int32 = 0
   int32_t total = 0;
+  // 5:     i: Int32 = 0
   int32_t i = 0;
+  // 6:     while i < len(values):
   while ((i < static_cast<int32_t>(values.size()))) {
+    // 7:         total += values[i]
     total += values[i];
+    // 8:         i += 1
     i += 1;
   }
+  // 9:     return total
   return total;
 }
 
 int main() {
+  // 12: print(sum_span([1, 2, 3, 4, 5]))
   std::printf("%d\n", sum_span(std::array<int32_t, 5>{1, 2, 3, 4, 5}));
+  // 16: print(sum_span(nums))
   std::printf("%d\n", sum_span(nums));
+  // 20: print(sum_span(arr))
   std::printf("%d\n", sum_span(arr));
+  // 24: items.append(1000)
   items.append(1000);
+  // 25: items.append(2000)
   items.append(2000);
+  // 26: items.append(3000)
   items.append(3000);
+  // 27: items.append(4000)
   items.append(4000);
+  // 28: print(sum_span(items))
   std::printf("%d\n", sum_span(std::span(items.data(), items.size())));
   return 0;
 }

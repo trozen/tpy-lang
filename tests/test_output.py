@@ -9,6 +9,7 @@ from conftest import (
     compile_file,
     run_cpython,
     compile_and_run_cpp,
+    TEST_CODEGEN_OPTIONS,
 )
 
 
@@ -29,7 +30,7 @@ def make_output_test(case_name: str):
         cpython_output = run_cpython(main_src)
 
         # Compile to C++ and run
-        compile_file(str(main_src), str(tmp_path))
+        compile_file(str(main_src), str(tmp_path), TEST_CODEGEN_OPTIONS)
         cpp_output = compile_and_run_cpp(tmp_path, module_name)
 
         # Compare outputs

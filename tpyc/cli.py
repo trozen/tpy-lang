@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .parse import Parser, ParseError
 from .sema import SemanticAnalyzer, SemanticError
-from .codegen_cpp import CodeGenerator
+from .codegen_cpp import CodeGenerator, CodeGenOptions
 
 
 def get_runtime_dir() -> Path:
@@ -37,12 +37,13 @@ def get_module_name(input_path: Path) -> str:
     return name
 
 
-def compile_file(input_path: str, output_dir: str) -> tuple[Path, Path]:
+def compile_file(input_path: str, output_dir: str, options: CodeGenOptions | None = None) -> tuple[Path, Path]:
     """Compile a TurboPython file to C++.
 
     Args:
         input_path: Path to the input .tp.py file
         output_dir: Root output directory (e.g., __tpyc__/)
+        options: Code generation options (optional)
 
     Returns:
         Tuple of (hpp_path, cpp_path) for the generated files.
@@ -67,7 +68,7 @@ def compile_file(input_path: str, output_dir: str) -> tuple[Path, Path]:
     analyzer.analyze(module)
 
     # Code generation
-    codegen = CodeGenerator(analyzer)
+    codegen = CodeGenerator(analyzer, options)
     hpp_code, cpp_code = codegen.generate(module, module_name)
 
     # Write output files with module name
@@ -90,6 +91,7 @@ def main() -> int:
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("--build", action="store_true", help="Compile C++ to binary after generating")
     parser.add_argument("--run", action="store_true", help="Build and run the program")
+    parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
 
     args = parser.parse_args()
 
@@ -135,7 +137,8 @@ def main() -> int:
             print("  Semantic analysis passed")
 
         # Code generation
-        codegen = CodeGenerator(analyzer)
+        options = CodeGenOptions(emit_source_comments=args.emit_source)
+        codegen = CodeGenerator(analyzer, options)
         hpp_code, cpp_code = codegen.generate(module, module_name)
 
         # Write output files with module name in per-module directory
