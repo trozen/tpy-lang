@@ -194,6 +194,14 @@ class TpyFor(TpyStmt):
 
 
 @dataclass
+class TpyForEach(TpyStmt):
+    """For-each loop over a collection."""
+    var: str
+    iterable: TpyExpr
+    body: list[TpyStmt]
+
+
+@dataclass
 class TpyBreak(TpyStmt):
     """Break statement."""
     pass
@@ -529,25 +537,29 @@ class Parser:
             return TpyWhile(cond, body, loc=loc)
 
         elif isinstance(node, ast.For):
-            # Only support range-based for loops
             if not isinstance(node.target, ast.Name):
                 raise ParseError("For loop target must be a simple variable", node)
-            if not (isinstance(node.iter, ast.Call) and
+            var = node.target.id
+            body = [self._parse_stmt(s) for s in node.body]
+
+            # Check if it's a range-based for loop
+            if (isinstance(node.iter, ast.Call) and
                     isinstance(node.iter.func, ast.Name) and
                     node.iter.func.id == "range"):
-                raise ParseError("For loops must use range()", node)
-            var = node.target.id
-            args = node.iter.args
-            if len(args) == 1:
-                start = TpyIntLiteral(0)
-                end = self._parse_expr(args[0])
-            elif len(args) == 2:
-                start = self._parse_expr(args[0])
-                end = self._parse_expr(args[1])
-            else:
-                raise ParseError("range() must have 1 or 2 arguments", node)
-            body = [self._parse_stmt(s) for s in node.body]
-            return TpyFor(var, start, end, body, loc=loc)
+                args = node.iter.args
+                if len(args) == 1:
+                    start = TpyIntLiteral(0)
+                    end = self._parse_expr(args[0])
+                elif len(args) == 2:
+                    start = self._parse_expr(args[0])
+                    end = self._parse_expr(args[1])
+                else:
+                    raise ParseError("range() must have 1 or 2 arguments", node)
+                return TpyFor(var, start, end, body, loc=loc)
+
+            # Otherwise it's a for-each loop over a collection
+            iterable = self._parse_expr(node.iter)
+            return TpyForEach(var, iterable, body, loc=loc)
 
         elif isinstance(node, ast.Pass):
             return TpyExprStmt(TpyIntLiteral(0), loc=loc)  # No-op

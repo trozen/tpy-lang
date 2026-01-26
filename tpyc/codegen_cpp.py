@@ -16,12 +16,12 @@ from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType,
     StrType, CharType, BigIntType, IntLiteralType,
-    INT32, VOID, BIGINT
+    INT32, VOID, BIGINT, CHAR
 )
 from .parse import (
     SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
-    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
+    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript
 )
@@ -409,6 +409,8 @@ class CodeGenerator:
             self._gen_while(out, stmt, indent)
         elif isinstance(stmt, TpyFor):
             self._gen_for(out, stmt, indent)
+        elif isinstance(stmt, TpyForEach):
+            self._gen_for_each(out, stmt, indent)
         elif isinstance(stmt, TpyBreak):
             out.write(f"{indent}break;\n")
         elif isinstance(stmt, TpyContinue):
@@ -540,6 +542,44 @@ class CodeGenerator:
         start = self._gen_expr(stmt.start)
         end = self._gen_expr(stmt.end)
         out.write(f"{indent}for (int32_t {stmt.var} = {start}; {stmt.var} < {end}; ++{stmt.var}) {{\n")
+
+        self.indent_level += 1
+        for s in stmt.body:
+            self._gen_stmt(out, s)
+        self.indent_level -= 1
+
+        out.write(f"{indent}}}\n")
+
+    def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
+        """Generate a for-each loop over a collection."""
+        iterable = self._gen_expr(stmt.iterable)
+        iterable_type = self._get_resolved_type(stmt.iterable)
+
+        # Determine element type for the loop variable
+        if isinstance(iterable_type, (ListType, ArrayType, SpanType, StaticListType)):
+            elem_type = iterable_type.element_type
+        elif isinstance(iterable_type, PendingListType):
+            elem_type = iterable_type.element_type
+        elif isinstance(iterable_type, StrType):
+            elem_type = CHAR
+        else:
+            elem_type = None
+
+        # Resolve IntLiteralType to Int32
+        if isinstance(elem_type, IntLiteralType):
+            elem_type = INT32
+
+        # For strings, wrap in std::string_view for range-based for
+        if isinstance(iterable_type, StrType):
+            iterable = f"std::string_view({iterable})"
+
+        # Generate C++ range-based for loop
+        if elem_type:
+            cpp_type = elem_type.to_cpp()
+            out.write(f"{indent}for ({cpp_type} {stmt.var} : {iterable}) {{\n")
+        else:
+            # Fallback: use auto
+            out.write(f"{indent}for (auto {stmt.var} : {iterable}) {{\n")
 
         self.indent_level += 1
         for s in stmt.body:

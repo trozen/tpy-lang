@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
+#include <algorithm>
 #include <array>
 #include <span>
 #include <string>

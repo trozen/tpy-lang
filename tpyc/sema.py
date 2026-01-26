@@ -20,7 +20,7 @@ from .typesys import (
 )
 from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
-    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyBreak, TpyContinue,
+    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript
 )
@@ -260,6 +260,18 @@ class SemanticAnalyzer:
             self._analyze_expr(stmt.end)
             inner_scope = Scope(self.current_scope)
             inner_scope.define(stmt.var, INT32)
+            old_scope = self.current_scope
+            self.current_scope = inner_scope
+            self.loop_depth += 1
+            for s in stmt.body:
+                self._analyze_stmt(s)
+            self.loop_depth -= 1
+            self.current_scope = old_scope
+        elif isinstance(stmt, TpyForEach):
+            iterable_type = self._analyze_expr(stmt.iterable)
+            elem_type = self._get_iterable_element_type(iterable_type)
+            inner_scope = Scope(self.current_scope)
+            inner_scope.define(stmt.var, elem_type)
             old_scope = self.current_scope
             self.current_scope = inner_scope
             self.loop_depth += 1
@@ -969,3 +981,13 @@ class SemanticAnalyzer:
         """Reset per-function tracking state between function analyses."""
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
+
+    def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
+        """Get the element type of an iterable for for-each loops."""
+        if isinstance(iterable_type, (ListType, ArrayType, SpanType, StaticListType)):
+            return iterable_type.element_type
+        if isinstance(iterable_type, PendingListType):
+            return iterable_type.element_type
+        if isinstance(iterable_type, StrType):
+            return CHAR
+        raise SemanticError(f"Cannot iterate over type {iterable_type}")

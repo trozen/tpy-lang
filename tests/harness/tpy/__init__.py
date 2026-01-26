@@ -298,7 +298,3 @@ def noalloc(func):
     The compiler enforces this constraint at compile time.
     """
     return func
-
-
-# Re-export list for type annotations (it's just Python's built-in list)
-list = list

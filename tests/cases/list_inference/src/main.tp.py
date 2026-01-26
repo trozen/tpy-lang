@@ -1,4 +1,4 @@
-from tpy import Int32, Span, list
+from tpy import Int32, Span
 
 # Global with annotation -> vector (ListType)
 global_list: list[Int32] = [1, 2, 3]
