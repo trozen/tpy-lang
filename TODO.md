@@ -1,9 +1,11 @@
 # TODO
 
 ## Next
+- std::vector printing
+- top-level expr -- should be converted to a init_module function, called when module is imported or directly started
 - extract built-in function defintions to separate files
+- instead of hardcoding Int32 ops, define it in code, use __add__ etc special methods
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
-- test diagnostic (compilation warnings and errors, annotate python test files which lines)
 
 ## Python features
 - dict full support
@@ -25,6 +27,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - game of life benchmark TPy vs CPy (two version: idiomatic python, optimized TPy types)
 - option to change divide semantics (negative): Python vs C++
 - do not stop at first error, generate source with special Invalid() type, that would be ignored in further lines, so that we get all errors from compilation
+- better handling of tpy_panic -- exceptions in first version (later generation policy)
 
 ## ShedSkin examples
 - score4
