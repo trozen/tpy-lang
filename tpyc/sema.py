@@ -409,6 +409,15 @@ class SemanticAnalyzer:
                 return BOOL
             return BOOL
 
+        # Membership operators (in, not in) return Bool
+        if expr.op in ("in", "not in"):
+            # Right side must be iterable
+            if isinstance(right_type, (ListType, ArrayType, SpanType, StaticListType, PendingListType)):
+                return BOOL
+            if isinstance(right_type, StrType):
+                return BOOL
+            raise SemanticError(f"Cannot use '{expr.op}' with non-iterable type {right_type}")
+
         # Logical operators return Bool
         if expr.op in ("&&", "||"):
             return BOOL

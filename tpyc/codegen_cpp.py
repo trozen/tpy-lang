@@ -480,14 +480,7 @@ class CodeGenerator:
             value = self._gen_expr(stmt.value)
             obj_type = self.analyzer.get_expr_type(stmt.target.obj)
             index_type = self.analyzer.get_expr_type(stmt.target.index)
-
-            # IntLiteralType indices can be used directly as plain ints
-            if isinstance(index_type, IntLiteralType):
-                index_expr = self._gen_expr(stmt.target.index)
-            elif isinstance(index_type, BigIntType):
-                index_expr = f"{self._gen_expr(stmt.target.index)}.to_int32()"
-            else:
-                index_expr = self._gen_expr(stmt.target.index)
+            index_expr = self._gen_index_expr(obj, stmt.target.index, index_type)
 
             if isinstance(obj_type, StaticListType):
                 out.write(f"{indent}{obj}.set({index_expr}, {value});\n")
@@ -588,6 +581,28 @@ class CodeGenerator:
 
         out.write(f"{indent}}}\n")
 
+    def _is_negative_literal(self, expr: TpyExpr) -> tuple[bool, int]:
+        """Check if expression is a negative integer literal.
+
+        Returns (True, abs_value) if it's a negative literal, (False, 0) otherwise.
+        """
+        if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+            if isinstance(expr.operand, TpyIntLiteral):
+                return (True, expr.operand.value)
+        return (False, 0)
+
+    def _gen_index_expr(self, obj: str, index: TpyExpr, index_type: TpyType) -> str:
+        """Generate index expression, handling negative indices with Python semantics."""
+        is_neg, abs_val = self._is_negative_literal(index)
+        if is_neg:
+            # Negative literal: items[-1] -> items[items.size() - 1]
+            return f"({obj}.size() - {abs_val})"
+
+        index_expr = self._gen_expr(index)
+        if isinstance(index_type, BigIntType):
+            index_expr = f"{index_expr}.to_int32()"
+        return index_expr
+
     def _gen_expr(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression.
 
@@ -619,6 +634,22 @@ class CodeGenerator:
         elif isinstance(expr, TpyBinOp):
             left_type = self.analyzer.get_expr_type(expr.left)
             right_type = self.analyzer.get_expr_type(expr.right)
+
+            # Handle 'in' and 'not in' operators
+            if expr.op in ("in", "not in"):
+                left = self._gen_expr(expr.left)
+                right = self._gen_expr(expr.right)
+                right_resolved = self._get_resolved_type(expr.right)
+                if isinstance(right_resolved, StrType):
+                    # String contains: use std::string_view::find
+                    find_expr = f"(std::string_view({right}).find({left}) != std::string_view::npos)"
+                else:
+                    # Collection: use std::find
+                    find_expr = f"(std::find({right}.begin(), {right}.end(), {left}) != {right}.end())"
+                if expr.op == "not in":
+                    return f"(!{find_expr})"
+                return find_expr
+
             # IntLiteralType coerces to the other operand's concrete type
             # BigInt variable + IntLiteral -> promote literal to BigInt
             left_target = BIGINT if isinstance(right_type, BigIntType) else None
@@ -732,9 +763,16 @@ class CodeGenerator:
                     # remove(value) -> erase first occurrence
                     return f"{obj}.erase(std::find({obj}.begin(), {obj}.end(), {args}))"
                 elif expr.method == "extend":
-                    # extend(other) -> insert(end(), other.begin(), other.end())
-                    other = self._gen_expr(expr.args[0])
-                    return f"{obj}.insert({obj}.end(), {other}.begin(), {other}.end())"
+                    # extend(other) -> insert at end
+                    arg = expr.args[0]
+                    if isinstance(arg, TpyArrayLiteral):
+                        # Array literal: use initializer_list overload directly
+                        other = self._gen_expr(arg)
+                        return f"{obj}.insert({obj}.end(), {other})"
+                    else:
+                        # Variable: use iterator overload
+                        other = self._gen_expr(arg)
+                        return f"{obj}.insert({obj}.end(), {other}.begin(), {other}.end())"
             return f"{obj}.{expr.method}({args})"
 
         elif isinstance(expr, TpyFieldAccess):
@@ -775,11 +813,7 @@ class CodeGenerator:
             obj = self._gen_expr(expr.obj)
             obj_type = self.analyzer.get_expr_type(expr.obj)
             index_type = self.analyzer.get_expr_type(expr.index)
-            # IntLiteralType indices are already plain ints
-            index_expr = self._gen_expr(expr.index)
-            # BigInt needs conversion to int32
-            if isinstance(index_type, BigIntType):
-                index_expr = f"{index_expr}.to_int32()"
+            index_expr = self._gen_index_expr(obj, expr.index, index_type)
             # StaticList uses .get() method, Array and Span use []
             if isinstance(obj_type, StaticListType):
                 return f"{obj}.get({index_expr})"

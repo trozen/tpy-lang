@@ -693,6 +693,7 @@ class Parser:
             ast.Eq: "==", ast.NotEq: "!=",
             ast.Lt: "<", ast.LtE: "<=",
             ast.Gt: ">", ast.GtE: ">=",
+            ast.In: "in", ast.NotIn: "not in",
         }
         return ops.get(type(op), "?")
 
