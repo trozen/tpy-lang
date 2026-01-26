@@ -12,17 +12,12 @@ from __future__ import annotations
 import ast
 import atexit
 import difflib
+import readline  # For history support
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-
-from prompt_toolkit import PromptSession
-from prompt_toolkit.history import FileHistory
-from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.lexers import PygmentsLexer
-from pygments.lexers import PythonLexer
 
 from .parse import Parser, ParseError
 from .sema import SemanticAnalyzer, SemanticError
@@ -48,57 +43,52 @@ class REPLSession:
 
     def run(self) -> int:
         """Main REPL loop. Returns exit code."""
-        print("TurboPython REPL v0.1 (Ctrl+D to exit, Alt+Enter for newline)")
+        print("TurboPython REPL v0.1 (Ctrl+D to exit)")
+        if self.verbose:
+            print(f"[src] {self.temp_dir}/")
 
-        # Key bindings for multi-line input with auto-indent
-        bindings = KeyBindings()
-
-        @bindings.add("enter")
-        def _(event):
-            """Submit on Enter."""
-            event.current_buffer.validate_and_handle()
-
-        @bindings.add("escape", "enter")  # Alt+Enter
-        def _(event):
-            """Insert newline with auto-indent on Alt+Enter."""
-            buf = event.current_buffer
-            text = buf.text
-            cursor_pos = buf.cursor_position
-
-            # Get text up to cursor
-            text_before_cursor = text[:cursor_pos]
-            lines = text_before_cursor.split("\n")
-            current_line = lines[-1] if lines else ""
-
-            # Calculate indent
-            current_indent = len(current_line) - len(current_line.lstrip())
-            if current_line.rstrip().endswith(":"):
-                indent = " " * (current_indent + 4)
-            else:
-                indent = " " * current_indent
-
-            buf.insert_text("\n" + indent)
-
+        # Setup readline history
         history_path = Path.home() / ".tpyc_history"
-        session: PromptSession[str] = PromptSession(
-            lexer=PygmentsLexer(PythonLexer),
-            history=FileHistory(str(history_path)),
-            key_bindings=bindings,
-            multiline=True,
-        )
+        try:
+            readline.read_history_file(history_path)
+        except FileNotFoundError:
+            pass
+        readline.set_history_length(1000)
+        atexit.register(readline.write_history_file, history_path)
 
         while True:
             try:
-                text = session.prompt(">>> ", prompt_continuation="... ")
+                line = input(">>> ")
 
                 # Handle special commands
-                stripped = text.strip()
+                stripped = line.strip()
                 if stripped in ("exit", "quit"):
                     break
                 if not stripped:
                     continue
 
-                self._process_input(text)
+                # Check for multi-line continuation
+                full_input = line
+                if self._needs_continuation(full_input):
+                    in_block = line.rstrip().endswith(":")
+                    indent = self._get_indent_for_continuation(full_input)
+                    while True:
+                        try:
+                            cont_line = input("... " + indent)
+                            # Prepend the indent we showed in the prompt
+                            full_input += "\n" + indent + cont_line
+                        except EOFError:
+                            break
+                        # Empty line ends multi-line input
+                        if not cont_line.strip():
+                            break
+                        # For blocks (def/class/if/etc), require empty line to end
+                        # For other continuations (unclosed parens), end when complete
+                        if not in_block and not self._needs_continuation(full_input):
+                            break
+                        indent = self._get_indent_for_continuation(full_input)
+
+                self._process_input(full_input)
 
             except EOFError:
                 print()
@@ -108,6 +98,46 @@ class REPLSession:
                 continue
 
         return 0
+
+    def _needs_continuation(self, source: str) -> bool:
+        """Check if input needs continuation lines."""
+        stripped = source.rstrip()
+
+        # Ends with colon (def, class, if, for, while, etc.)
+        if stripped.endswith(":"):
+            return True
+
+        # Check for unclosed brackets/parens
+        opens = source.count("(") + source.count("[") + source.count("{")
+        closes = source.count(")") + source.count("]") + source.count("}")
+        if opens > closes:
+            return True
+
+        # Check for incomplete block (has def/class/if/etc but only header)
+        try:
+            ast.parse(source)
+            return False
+        except SyntaxError:
+            return True
+
+    def _get_indent_for_continuation(self, source: str) -> str:
+        """Calculate indentation for the next continuation line."""
+        lines = source.split("\n")
+        last_line = lines[-1]
+
+        # Get current indentation of last line
+        current_indent = len(last_line) - len(last_line.lstrip())
+
+        # If last line ends with ':', increase indent
+        if last_line.rstrip().endswith(":"):
+            return " " * (current_indent + 4)
+
+        # Otherwise, maintain the same indentation as the last non-empty line
+        for line in reversed(lines):
+            if line.strip():
+                return " " * (len(line) - len(line.lstrip()))
+
+        return ""
 
     def _is_expression(self, source: str) -> bool:
         """Check if input is a bare expression that should auto-print."""
@@ -220,7 +250,7 @@ class REPLSession:
             # Update previous lines for next diff
             self.prev_cpp_lines = current_lines
 
-        # Write to temp files
+        # Write to temp files (do this before adding path to verbose output)
         hpp_path = self.temp_dir / f"{module_name}.hpp"
         cpp_path = self.temp_dir / f"{module_name}.cpp"
         binary_path = self.temp_dir / module_name

@@ -4,10 +4,7 @@ version = "0.1.0"
 description = "TurboPython compiler - translates restricted Python-syntax to C++ for ultra-low-latency applications"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "prompt_toolkit>=3.0.0",
-    "pygments>=2.0.0",
-]
+dependencies = []
 
 [project.scripts]
 tpyc = "tpyc.cli:main"
