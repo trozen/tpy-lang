@@ -608,7 +608,7 @@ class CodeGenerator:
             return f"({obj}.size() - {abs_val})"
 
         index_expr = self._gen_expr(index)
-        if isinstance(index_type, BigIntType):
+        if self._is_runtime_bigint(index, index_type):
             index_expr = f"{index_expr}.to_int32()"
         return index_expr
 
@@ -847,6 +847,14 @@ class CodeGenerator:
         # Default to True for safety
         return True
 
+    def _is_runtime_bigint(self, expr: TpyExpr, expr_type: TpyType) -> bool:
+        """Check if expression is stored as BigInt at runtime."""
+        if isinstance(expr_type, BigIntType):
+            return True
+        if isinstance(expr_type, IntLiteralType):
+            return self._involves_variables(expr)
+        return False
+
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
         """Generate std::cout call for print()."""
         kwargs = kwargs or {}
@@ -873,15 +881,10 @@ class CodeGenerator:
             if isinstance(arg, TpyStrLiteral):
                 escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
                 parts.append(f'"{escaped}"')
-            elif isinstance(arg_type, IntLiteralType):
-                if self._involves_variables(arg):
-                    parts.append(f'{self._gen_expr(arg)}.to_string()')
-                else:
-                    parts.append(self._gen_expr(arg))
-            elif isinstance(arg_type, BigIntType):
+            elif self._is_runtime_bigint(arg, arg_type):
                 parts.append(f'{self._gen_expr(arg)}.to_string()')
             else:
-                # Int32, Char, Bool, etc. - direct output
+                # Int32, Char, Bool, literals, etc. - direct output
                 parts.append(self._gen_expr(arg))
 
         # Add end string
