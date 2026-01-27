@@ -45,7 +45,7 @@ int32_t nested_sum() {
     // 43:         for b in inner:
     for (tpy::BigInt b : inner) {
       // 44:             total += a * b
-      total = tpy::int32_add(total, ((a * b)).to_int32());
+      total = tpy::int32_add(total, (((a) * (b))).to_int32());
     }
   }
   // 45:     return total

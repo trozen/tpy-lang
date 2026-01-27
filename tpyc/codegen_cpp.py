@@ -47,13 +47,39 @@ class CodeGenerator:
         self.var_types: dict[str, TpyType] = {}  # Track variable types for code generation
         self.source_lines: list[str] = []  # Source lines for emit_source_comments
 
-    def _get_resolved_type(self, expr: TpyExpr) -> TpyType:
+    def _get_resolved_type(self, expr: TpyExpr, target_type: TpyType | None = None) -> TpyType:
         """Get the resolved type of an expression, handling PendingListType.
 
         PendingListType is used during semantic analysis but should be resolved
         to concrete Array or list types before codegen. This method looks up
         the resolved type if needed.
+
+        Args:
+            expr: The expression to get the type of.
+            target_type: Optional hint for what type the expression will be coerced to.
+                         Used to determine if literal+literal should be Int32 or BigInt.
         """
+        # Check for codegen-overridden types (e.g., loop variables)
+        if isinstance(expr, TpyName) and expr.name in self.var_types:
+            return self.var_types[expr.name]
+
+        # For binary operations, compute type using resolved operand types
+        if isinstance(expr, TpyBinOp):
+            left_type = self._get_resolved_type(expr.left)
+            right_type = self._get_resolved_type(expr.right)
+            # If target is Int32 and both operands are literals, result is Int32
+            if (isinstance(target_type, Int32Type) and
+                isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType)):
+                return INT32
+            # Otherwise, result is BigInt if either operand is BigInt, or if both are IntLiteral
+            is_bigint_op = (
+                isinstance(left_type, BigIntType) or
+                isinstance(right_type, BigIntType) or
+                (isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType))
+            )
+            if is_bigint_op and expr.op in ("+", "-", "*", "//", "%", "**", "&", "|", "^", "<<", ">>"):
+                return BIGINT
+
         typ = self.analyzer.get_expr_type(expr)
         if isinstance(typ, PendingListType):
             # Look up the resolved type from the literal info
@@ -188,7 +214,11 @@ class CodeGenerator:
             raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
         cpp_type = var_type.to_cpp()
         if stmt.init:
+            # Pass var_type as target to determine if literal+literal is Int32 or BigInt
+            init_type = self._get_resolved_type(stmt.init, var_type)
             init_expr = self._gen_expr(stmt.init, var_type)
+            # Convert BigInt -> Int32 if needed
+            init_expr = self._convert_to_int32_if_needed(init_expr, init_type, var_type)
             out.write(f"{cpp_type} {stmt.name} = {init_expr};\n")
         else:
             out.write(f"{cpp_type} {stmt.name};\n")
@@ -444,7 +474,7 @@ class CodeGenerator:
             if stmt.init:
                 # For reassignment, use the existing variable's type as target
                 var_type = self.var_types.get(stmt.name)
-                init_type = self._get_resolved_type(stmt.init)
+                init_type = self._get_resolved_type(stmt.init, var_type)
                 init_expr = self._gen_expr(stmt.init, var_type)
                 # Convert BigInt -> Int32 if needed
                 init_expr = self._convert_to_int32_if_needed(init_expr, init_type, var_type)
@@ -500,7 +530,8 @@ class CodeGenerator:
             cpp_type = "auto"
 
         if stmt.init:
-            init_type = self._get_resolved_type(stmt.init)
+            # Pass target_type to get correct result type (e.g., Int32 for literal+literal)
+            init_type = self._get_resolved_type(stmt.init, target_type)
             init_expr = self._gen_expr(stmt.init, target_type)
             # Convert BigInt -> Int32 if needed
             init_expr = self._convert_to_int32_if_needed(init_expr, init_type, target_type)
@@ -540,15 +571,18 @@ class CodeGenerator:
         target_type = self.analyzer.get_expr_type(stmt.target)
         value_type = self._get_resolved_type(stmt.value)
 
-        # Int32 arithmetic needs checked operations
-        if isinstance(target_type, Int32Type) and stmt.op in ("+", "-", "*", "//", "%"):
-            # Convert BigInt to Int32 if needed
-            if self._is_runtime_bigint(stmt.value, value_type):
-                value = f"({value}).to_int32()"
-            op_map = {"+": "int32_add", "-": "int32_sub", "*": "int32_mul",
-                      "//": "int32_div", "%": "int32_mod"}
-            out.write(f"{indent}{target} = tpy::{op_map[stmt.op]}({target}, {value});\n")
+        # Try module system for augmented assignment (a += b is a = a + b)
+        if binop_result := builtin_modules.lookup_binop(target_type, stmt.op, value_type):
+            wrapped_left = binop_result.left_wrapper.replace("{self}", target).replace("{expr}", target)
+            wrapped_right = binop_result.right_wrapper.replace("{self}", value).replace("{expr}", value)
+            # For reverse operators, {self} is the right operand (receiver), {0} is left (argument)
+            if binop_result.is_reverse:
+                result = binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
+            else:
+                result = binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+            out.write(f"{indent}{target} = {result};\n")
         else:
+            # Fallback for operators not in module system
             cpp_op = "/" if stmt.op == "//" else stmt.op
             out.write(f"{indent}{target} {cpp_op}= {value};\n")
 
@@ -618,9 +652,9 @@ class CodeGenerator:
         else:
             elem_type = None
 
-        # Resolve IntLiteralType to Int32
+        # Resolve IntLiteralType to BigInt (Python default for int lists)
         if isinstance(elem_type, IntLiteralType):
-            elem_type = INT32
+            elem_type = BIGINT
 
         # For strings, wrap in std::string_view for range-based for
         if isinstance(iterable_type, StrType):
@@ -630,6 +664,8 @@ class CodeGenerator:
         if elem_type:
             cpp_type = elem_type.to_cpp()
             out.write(f"{indent}for ({cpp_type} {stmt.var} : {iterable}) {{\n")
+            # Track the loop variable's type for use in body expressions
+            self.var_types[stmt.var] = elem_type
         else:
             # Fallback: use auto
             out.write(f"{indent}for (auto {stmt.var} : {iterable}) {{\n")
@@ -640,6 +676,10 @@ class CodeGenerator:
         self.indent_level -= 1
 
         out.write(f"{indent}}}\n")
+
+        # Remove loop variable type after loop ends
+        if stmt.var in self.var_types:
+            del self.var_types[stmt.var]
 
     def _is_negative_literal(self, expr: TpyExpr) -> tuple[bool, int]:
         """Check if expression is a negative integer literal.
@@ -710,66 +750,88 @@ class CodeGenerator:
                     return f"(!{find_expr})"
                 return find_expr
 
-            # Shift operators need special handling
-            if expr.op in ("<<", ">>"):
-                # Int32 shifts use checked operations
-                if isinstance(left_type, Int32Type):
-                    left = self._gen_expr(expr.left)
-                    right = self._gen_expr(expr.right)
-                    if isinstance(right_type, BigIntType):
-                        right = f"({right}).to_int32()"
-                    op_func = "int32_lshift" if expr.op == "<<" else "int32_rshift"
-                    return f"tpy::{op_func}({left}, {right})"
-                # IntLiteralType uses BigInt (Python arbitrary precision semantics)
-                if isinstance(left_type, IntLiteralType):
-                    left = self._gen_expr(expr.left, BIGINT)
-                else:
-                    left = self._gen_expr(expr.left)
-                # Right operand (shift amount) should be int32
+            # Comparison operators - generate C++ directly
+            if expr.op in ("==", "!=", "<", ">", "<=", ">=", "&&", "||"):
+                left = self._gen_expr(expr.left)
                 right = self._gen_expr(expr.right)
-                if isinstance(right_type, BigIntType):
-                    right = f"({right}).to_int32()"
                 return f"({left} {expr.op} {right})"
 
-            # Power operator
-            if expr.op == "**":
-                # Int32 power uses checked int32_pow
-                if self._is_int32_arithmetic(left_type, right_type, expr.op):
-                    left = self._gen_expr(expr.left)
-                    right = self._gen_expr(expr.right)
-                    return f"tpy::int32_pow({left}, {right})"
-                # BigInt power
+            # Optimization: IntLiteral op IntLiteral with Int32 target → direct Int32 arithmetic
+            # This avoids unnecessary BigInt heap allocations
+            if (isinstance(target_type, Int32Type) and
+                isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType)):
+                left = self._gen_expr(expr.left)  # plain int literal
+                right = self._gen_expr(expr.right)  # plain int literal
+                int32_ops = {
+                    "+": "tpy::int32_add",
+                    "-": "tpy::int32_sub",
+                    "*": "tpy::int32_mul",
+                    "//": "tpy::int32_div",
+                    "%": "tpy::int32_mod",
+                    "**": "tpy::int32_pow",
+                }
+                if func := int32_ops.get(expr.op):
+                    return f"{func}({left}, {right})"
+                # Bitwise and shift ops don't need overflow checking
+                return f"({left} {expr.op} {right})"
+
+            # Try module system for arithmetic/bitwise operators
+            if binop_result := builtin_modules.lookup_binop(left_type, expr.op, right_type):
+                # Get types for proper literal promotion
+                param_type = binop_result.method.params[0].type if binop_result.method.params else None
+                receiver_type = binop_result.receiver_type
+                # For reverse operators, {self} is the right operand, {0} is left
+                # For forward operators, {self} is the left operand, {0} is right
+                if binop_result.is_reverse:
+                    # right is {self} (receiver), left is {0} (argument)
+                    left = self._gen_expr(expr.left, param_type)
+                    right = self._gen_expr(expr.right, receiver_type)
+                    # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
+                    left = self._convert_to_int32_if_needed(left, left_type, param_type)
+                else:
+                    # left is {self} (receiver), right is {0} (argument)
+                    left = self._gen_expr(expr.left, receiver_type)
+                    right = self._gen_expr(expr.right, param_type)
+                    # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
+                    right = self._convert_to_int32_if_needed(right, right_type, param_type)
+                # Apply wrappers for type promotion
+                wrapped_left = binop_result.left_wrapper.replace("{self}", left).replace("{expr}", left)
+                wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
+                # For reverse operators, {self} is the right operand (receiver), {0} is left (argument)
+                if binop_result.is_reverse:
+                    result = binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
+                else:
+                    result = binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+                # Wrap in parens to avoid precedence issues with cout << and other operators
+                return f"({result})"
+
+            # Fallback for IntLiteral + IntLiteral → BigInt (arbitrary precision)
+            # (Int32 case is handled earlier as an optimization)
+            if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
                 left = self._gen_expr(expr.left, BIGINT)
                 right = self._gen_expr(expr.right, BIGINT)
-                return f"({left}).pow({right})"
+                cpp_op = "/" if expr.op == "//" else expr.op
+                return f"({left} {cpp_op} {right})"
 
-            # IntLiteralType coerces to the other operand's concrete type
-            # BigInt variable + IntLiteral -> promote literal to BigInt
-            left_target = BIGINT if isinstance(right_type, BigIntType) else None
-            right_target = BIGINT if isinstance(left_type, BigIntType) else None
-            left = self._gen_expr(expr.left, left_target)
-            right = self._gen_expr(expr.right, right_target)
-
-            # Check if result is Int32 (needs checked arithmetic)
-            if self._is_int32_arithmetic(left_type, right_type, expr.op):
-                op_map = {"+": "int32_add", "-": "int32_sub", "*": "int32_mul",
-                          "//": "int32_div", "%": "int32_mod"}
-                if expr.op in op_map:
-                    return f"tpy::{op_map[expr.op]}({left}, {right})"
-
-            cpp_op = "/" if expr.op == "//" else expr.op
-            return f"({left} {cpp_op} {right})"
+            raise RuntimeError(f"No codegen for binary operator {expr.op} with {left_type} and {right_type}")
 
         elif isinstance(expr, TpyUnaryOp):
-            # For negation, if target is BigInt, promote the operand
             operand = self._gen_expr(expr.operand, target_type)
             operand_type = self.analyzer.get_expr_type(expr.operand)
 
-            # Int32 negation needs checked arithmetic (only for explicit Int32Type)
-            if expr.op == "-" and isinstance(operand_type, Int32Type):
-                return f"tpy::int32_neg({operand})"
+            # Logical not
+            if expr.op == "!":
+                return f"(!{operand})"
 
-            return f"({expr.op}{operand})"
+            # Try module system for unary operators
+            if unaryop_result := builtin_modules.lookup_unaryop(operand_type, expr.op):
+                return unaryop_result.method.cpp.format(self=operand)
+
+            # Fallback for IntLiteralType (not in module system)
+            if isinstance(operand_type, IntLiteralType):
+                return f"({expr.op}{operand})"
+
+            raise RuntimeError(f"No codegen for unary operator {expr.op} with {operand_type}")
 
         elif isinstance(expr, TpyCall):
             # Int32() converts argument to Int32 (with range check for BigInt)
@@ -1010,7 +1072,7 @@ class CodeGenerator:
     def _convert_to_int32_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:
         """Wrap expression with .to_int32() if converting BigInt to Int32."""
         if isinstance(expected_type, Int32Type) and isinstance(actual_type, BigIntType):
-            return f"{gen_expr}.to_int32()"
+            return f"({gen_expr}).to_int32()"
         return gen_expr
 
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
@@ -1040,7 +1102,8 @@ class CodeGenerator:
                 escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
                 parts.append(f'"{escaped}"')
             elif self._is_runtime_bigint(arg, arg_type):
-                parts.append(f'{self._gen_expr(arg)}.to_string()')
+                # BigInt has operator<< for std::ostream, no .to_string() needed
+                parts.append(self._gen_expr(arg))
             elif isinstance(arg_type, (ListType, ArrayType, SpanType, StaticListType)):
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD

@@ -28,31 +28,31 @@ void test_aug_assign() {
   // 27:     x = 15
   x = 15;
   // 28:     x &= 9   # 0b1111 & 0b1001 = 0b1001
-  x &= 9;
+  x = (x) & (9);
   // 29:     print(x)  # 9
   std::cout << x << "\n";
   // 32:     x = 9
   x = 9;
   // 33:     x |= 6   # 0b1001 | 0b0110 = 0b1111
-  x |= 6;
+  x = (x) | (6);
   // 34:     print(x)  # 15
   std::cout << x << "\n";
   // 37:     x = 15
   x = 15;
   // 38:     x ^= 6   # 0b1111 ^ 0b0110 = 0b1001
-  x ^= 6;
+  x = (x) ^ (6);
   // 39:     print(x)  # 9
   std::cout << x << "\n";
   // 42:     x = 1
   x = 1;
   // 43:     x <<= 4
-  x <<= 4;
+  x = tpy::int32_lshift(x, 4);
   // 44:     print(x)  # 16
   std::cout << x << "\n";
   // 47:     x = 32
   x = 32;
   // 48:     x >>= 2
-  x >>= 2;
+  x = tpy::int32_rshift(x, 2);
   // 49:     print(x)  # 8
   std::cout << x << "\n";
 }

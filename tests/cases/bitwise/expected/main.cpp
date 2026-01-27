@@ -10,21 +10,21 @@ int32_t c = 0;
 
 void __tpy_init_main() {
   // 7: print(a & b)       # 8 (0b1000)
-  std::cout << (a & b) << "\n";
+  std::cout << ((a) & (b)) << "\n";
   // 10: print(a | b)       # 14 (0b1110)
-  std::cout << (a | b) << "\n";
+  std::cout << ((a) | (b)) << "\n";
   // 13: print(a ^ b)       # 6 (0b0110)
-  std::cout << (a ^ b) << "\n";
+  std::cout << ((a) ^ (b)) << "\n";
   // 17: print(~c)          # -1
-  std::cout << (~c) << "\n";
+  std::cout << ~(c) << "\n";
   // 20: print(1 << 4)      # 16
-  std::cout << (tpy::BigInt(1) << 4) << "\n";
+  std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(4))) << "\n";
   // 23: print(32 >> 2)     # 8
-  std::cout << (tpy::BigInt(32) >> 2) << "\n";
+  std::cout << ((tpy::BigInt(32)) >> (tpy::BigInt(2))) << "\n";
   // 26: print(1 << 100)    # 1267650600228229401496703205376
-  std::cout << (tpy::BigInt(1) << 100) << "\n";
+  std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(100))) << "\n";
   // 27: print((1 << 100) >> 90)  # 1024
-  std::cout << ((tpy::BigInt(1) << 100) >> 90) << "\n";
+  std::cout << ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) >> (tpy::BigInt(90))) << "\n";
 }
 
 int main() {

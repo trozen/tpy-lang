@@ -38,6 +38,20 @@ def constructor_test(x: int) -> Int32:
     return Int32(x)
 
 
+# 7. Literal arithmetic: BigInt result assigned to Int32
+a: Int32 = 1 + 2           # addition
+b: Int32 = 10 - 3          # subtraction
+c: Int32 = 4 * 5           # multiplication
+d: Int32 = 17 // 3         # division
+e: Int32 = 2 ** 10         # power
+
+
+def literal_ops_local() -> Int32:
+    """Local variable with literal arithmetic."""
+    x: Int32 = 100 + 200
+    return x
+
+
 # Test all conversions
 n = 5
 
@@ -64,3 +78,13 @@ print(result5)
 # Int32() constructor
 result6 = constructor_test(25)
 print(result6)
+
+# Literal arithmetic (global)
+print(a)  # 3
+print(b)  # 7
+print(c)  # 20
+print(d)  # 5
+print(e)  # 1024
+
+# Literal arithmetic (local)
+print(literal_ops_local())  # 300

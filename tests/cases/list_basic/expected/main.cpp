@@ -37,7 +37,7 @@ void __tpy_init_main() {
   // 19: data[0] = 100
   data[0] = 100;
   // 20: print(data[0])
-  std::cout << data[0].to_string() << "\n";
+  std::cout << data[0] << "\n";
   // 24: print(chr(chars[0]), end='')
   std::cout << static_cast<char>((chars[0]).to_int32());
   // 25: print(chr(chars[1]))

@@ -6,7 +6,7 @@ int32_t x = 1;
 
 void __tpy_init_main() {
   // 4: print(x << 100)  # Should panic: shift count too large
-  std::cout << tpy::int32_lshift(x, 100) << "\n";
+  std::cout << (tpy::int32_lshift(x, 100)) << "\n";
 }
 
 int main() {

@@ -13,17 +13,17 @@ int32_t n = (-2);
 void __tpy_init_main() {
   // 1: """Test Int32 power operator."""
   // 6: print(x ** 10)  # 1024
-  std::cout << tpy::int32_pow(x, 10) << "\n";
+  std::cout << (tpy::int32_pow(x, 10)) << "\n";
   // 10: print(y ** 4)   # 81
-  std::cout << tpy::int32_pow(y, 4) << "\n";
+  std::cout << (tpy::int32_pow(y, 4)) << "\n";
   // 14: print(z ** 0)   # 1
-  std::cout << tpy::int32_pow(z, 0) << "\n";
+  std::cout << (tpy::int32_pow(z, 0)) << "\n";
   // 17: print(x ** 1)   # 2
-  std::cout << tpy::int32_pow(x, 1) << "\n";
+  std::cout << (tpy::int32_pow(x, 1)) << "\n";
   // 21: print(n ** 3)   # -8
-  std::cout << tpy::int32_pow(n, 3) << "\n";
+  std::cout << (tpy::int32_pow(n, 3)) << "\n";
   // 22: print(n ** 4)   # 16
-  std::cout << tpy::int32_pow(n, 4) << "\n";
+  std::cout << (tpy::int32_pow(n, 4)) << "\n";
 }
 
 int main() {

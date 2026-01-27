@@ -41,6 +41,9 @@ class Int32Type(TpyType):
     def __str__(self) -> str:
         return "Int32"
 
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.Int32"
+
 
 @dataclass(frozen=True)
 class VoidType(TpyType):
@@ -98,6 +101,9 @@ class BigIntType(TpyType):
 
     def __str__(self) -> str:
         return "int"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.int"
 
 
 @dataclass(frozen=True)

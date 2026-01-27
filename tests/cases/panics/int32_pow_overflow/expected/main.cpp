@@ -4,7 +4,7 @@
 // 4: x: Int32 = 2
 int32_t x = 2;
 // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
-int32_t y = tpy::int32_pow(x, 31);
+int32_t y = (tpy::int32_pow(x, 31));
 
 void __tpy_init_main() {
   // 1: """Test Int32 power overflow panic at runtime."""

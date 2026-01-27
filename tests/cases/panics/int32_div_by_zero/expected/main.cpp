@@ -6,7 +6,7 @@ int32_t x = 42;
 // 5: y: Int32 = 0
 int32_t y = 0;
 // 6: z: Int32 = x // y  # Should panic
-int32_t z = tpy::int32_div(x, y);
+int32_t z = (tpy::int32_div(x, y));
 
 void __tpy_init_main() {
   // 1: """Test Int32 division by zero panic at runtime."""

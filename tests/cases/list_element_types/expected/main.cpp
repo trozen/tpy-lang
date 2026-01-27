@@ -52,7 +52,7 @@ tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
   // 51:     for n in nums:
   for (tpy::BigInt n : nums) {
     // 52:         total += n
-    total += n;
+    total = (total) + (n);
   }
   // 53:     return total
   return total;
@@ -60,7 +60,7 @@ tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
 
 void __tpy_init_main() {
   // 5: print(pure_literals[0])
-  std::cout << pure_literals[0].to_string() << "\n";
+  std::cout << pure_literals[0] << "\n";
   // 9: print(mixed_int32[0])
   std::cout << mixed_int32[0] << "\n";
   // 13: print(mixed_int32_rev[1])
@@ -68,7 +68,7 @@ void __tpy_init_main() {
   // 17: print(annotated_int32[0])
   std::cout << annotated_int32[0] << "\n";
   // 21: print(annotated_bigint[0])
-  std::cout << annotated_bigint[0].to_string() << "\n";
+  std::cout << annotated_bigint[0] << "\n";
   // 28: print(local_mixed())
   std::cout << local_mixed() << "\n";
   // 39: print(sum_span(global_for_span))
@@ -76,7 +76,7 @@ void __tpy_init_main() {
   // 46: print(test_local_span())
   std::cout << test_local_span() << "\n";
   // 56: print(sum_span_bigint(bigint_list))
-  std::cout << sum_span_bigint(bigint_list).to_string() << "\n";
+  std::cout << sum_span_bigint(bigint_list) << "\n";
 }
 
 int main() {

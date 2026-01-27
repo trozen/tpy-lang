@@ -476,20 +476,6 @@ class SemanticAnalyzer:
         left_type = self._analyze_expr(expr.left)
         right_type = self._analyze_expr(expr.right)
 
-        # Power operator - returns the operand type (Int32 ** Int32 → Int32, int ** int → BigInt)
-        if expr.op == "**":
-            if not isinstance(left_type, (BigIntType, IntLiteralType, Int32Type)):
-                raise SemanticError(f"Power operator requires integer operands, got {left_type}", expr.loc)
-            if not isinstance(right_type, (BigIntType, IntLiteralType, Int32Type)):
-                raise SemanticError(f"Power operator requires integer operands, got {right_type}", expr.loc)
-            # Int32 ** Int32 → Int32, Int32 ** IntLiteral → Int32
-            if isinstance(left_type, Int32Type) and isinstance(right_type, (Int32Type, IntLiteralType)):
-                return INT32
-            if isinstance(left_type, IntLiteralType) and isinstance(right_type, Int32Type):
-                return INT32
-            # Default: BigInt
-            return BIGINT
-
         # Helper to check if type is any integer type
         def is_int_type(t: TpyType) -> bool:
             return isinstance(t, (Int32Type, BigIntType, IntLiteralType))
@@ -513,57 +499,36 @@ class SemanticAnalyzer:
         if expr.op in ("&&", "||"):
             return BOOL
 
-        # Arithmetic/bitwise operators - resolve integer types
-        if is_int_type(left_type) and is_int_type(right_type):
-            # IntLiteral coerces to the other operand's type
-            # Int32 + IntLiteral -> Int32
-            if isinstance(left_type, Int32Type) and isinstance(right_type, IntLiteralType):
-                return INT32
-            if isinstance(left_type, IntLiteralType) and isinstance(right_type, Int32Type):
-                return INT32
+        # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
+        if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
+            return IntLiteralType(0)  # Value not tracked for compound expressions
 
-            # BigInt + IntLiteral -> BigInt
-            if isinstance(left_type, BigIntType) and isinstance(right_type, IntLiteralType):
-                return BIGINT
-            if isinstance(left_type, IntLiteralType) and isinstance(right_type, BigIntType):
-                return BIGINT
-
-            # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
-            if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
-                return IntLiteralType(0)  # Value not tracked for compound expressions
-
-            # Int32 + Int32 -> Int32
-            if isinstance(left_type, Int32Type) and isinstance(right_type, Int32Type):
-                return INT32
-
-            # BigInt + BigInt -> BigInt
-            if isinstance(left_type, BigIntType) and isinstance(right_type, BigIntType):
-                return BIGINT
-
-            # Int32 + BigInt -> BigInt (wider type wins)
-            return BIGINT
+        # Arithmetic/bitwise operators - use module system
+        if result := builtin_modules.lookup_binop(left_type, expr.op, right_type):
+            return result.method.returns
 
         raise SemanticError(f"Invalid operand types for '{expr.op}': {left_type} and {right_type}")
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
         operand_type = self._analyze_expr(expr.operand)
-        if expr.op == "-":
-            if isinstance(operand_type, Int32Type):
-                return INT32
-            if isinstance(operand_type, BigIntType):
-                return BIGINT
-            if isinstance(operand_type, IntLiteralType):
-                # -literal stays as IntLiteral (can still coerce)
+
+        # Logical not always returns Bool
+        if expr.op == "!":
+            return BOOL
+
+        # IntLiteralType special cases - preserve literal nature when possible
+        if isinstance(operand_type, IntLiteralType):
+            if expr.op == "-":
                 return IntLiteralType(-operand_type.value)
-        elif expr.op == "~":
-            if isinstance(operand_type, Int32Type):
-                return INT32
-            if isinstance(operand_type, IntLiteralType):
+            if expr.op == "~":
                 # Bitwise not on literal - treat as Int32
                 return INT32
-        elif expr.op == "!":
-            return BOOL
+
+        # Use module system for unary operators
+        if result := builtin_modules.lookup_unaryop(operand_type, expr.op):
+            return result.method.returns
+
         raise SemanticError(f"Invalid operand type for unary '{expr.op}': {operand_type}")
 
     def _analyze_call(self, expr: TpyCall) -> TpyType:

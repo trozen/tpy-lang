@@ -56,7 +56,7 @@ void __tpy_init_main() {
   // 37: print(global_list[0])  # 1
   std::cout << global_list[0] << "\n";
   // 40: print(global_inferred[1])  # 20
-  std::cout << global_inferred[1].to_string() << "\n";
+  std::cout << global_inferred[1] << "\n";
   // 43: print(test_no_mutation())  # 1
   std::cout << test_no_mutation() << "\n";
   // 46: print(test_mutation())  # 4

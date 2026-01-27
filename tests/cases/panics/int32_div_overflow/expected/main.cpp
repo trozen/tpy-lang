@@ -6,7 +6,7 @@ int32_t x = (-2147483648);
 // 5: y: Int32 = -1
 int32_t y = (-1);
 // 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
-int32_t z = tpy::int32_div(x, y);
+int32_t z = (tpy::int32_div(x, y));
 
 void __tpy_init_main() {
   // 1: """Test Int32 division overflow panic at runtime."""

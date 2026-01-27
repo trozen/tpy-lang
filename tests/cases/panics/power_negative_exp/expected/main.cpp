@@ -7,7 +7,7 @@ void __tpy_init_main() {
   // 3: y = -1
   tpy::BigInt y = (-tpy::BigInt(1));
   // 4: z = x ** y  # Should panic
-  tpy::BigInt z = (x).pow(y);
+  tpy::BigInt z = ((x).pow(y));
 }
 
 int main() {

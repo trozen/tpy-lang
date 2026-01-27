@@ -14,12 +14,12 @@ struct Counter {
 
   void increment() {
     // 10:         self.value = self.value + 1
-    value = tpy::int32_add(value, 1);
+    value = (tpy::int32_add(value, 1));
   }
 
   void add(int32_t n) {
     // 13:         self.value = self.value + n
-    value = tpy::int32_add(value, n);
+    value = (tpy::int32_add(value, n));
   }
 
   int32_t get() {

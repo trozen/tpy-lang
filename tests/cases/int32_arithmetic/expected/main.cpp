@@ -9,15 +9,15 @@ void test_binary_ops() {
   // 8:     b: Int32 = 7
   int32_t b = 7;
   // 11:     print(a + b)  # 27
-  std::cout << tpy::int32_add(a, b) << "\n";
+  std::cout << (tpy::int32_add(a, b)) << "\n";
   // 14:     print(a - b)  # 13
-  std::cout << tpy::int32_sub(a, b) << "\n";
+  std::cout << (tpy::int32_sub(a, b)) << "\n";
   // 17:     print(a * b)  # 140
-  std::cout << tpy::int32_mul(a, b) << "\n";
+  std::cout << (tpy::int32_mul(a, b)) << "\n";
   // 20:     print(a // b)  # 2
-  std::cout << tpy::int32_div(a, b) << "\n";
+  std::cout << (tpy::int32_div(a, b)) << "\n";
   // 23:     print(a % b)  # 6
-  std::cout << tpy::int32_mod(a, b) << "\n";
+  std::cout << (tpy::int32_mod(a, b)) << "\n";
 }
 
 // 26: def test_unary_neg():
@@ -39,11 +39,11 @@ void test_mixed_literals() {
   // 37:     x: Int32 = 10
   int32_t x = 10;
   // 40:     print(x + 5)  # 15
-  std::cout << tpy::int32_add(x, 5) << "\n";
+  std::cout << (tpy::int32_add(x, 5)) << "\n";
   // 43:     print(5 + x)  # 15
-  std::cout << tpy::int32_add(5, x) << "\n";
+  std::cout << (tpy::int32_add(5, x)) << "\n";
   // 46:     print(x * 2 + 3)  # 23
-  std::cout << tpy::int32_add(tpy::int32_mul(x, 2), 3) << "\n";
+  std::cout << (tpy::int32_add((tpy::int32_mul(x, 2)), 3)) << "\n";
 }
 
 // 49: def test_negative_division():
@@ -54,9 +54,9 @@ void test_negative_division() {
   // 52:     b: Int32 = 5
   int32_t b = 5;
   // 55:     print(a // b)  # -4
-  std::cout << tpy::int32_div(a, b) << "\n";
+  std::cout << (tpy::int32_div(a, b)) << "\n";
   // 58:     print(a % b)  # 3
-  std::cout << tpy::int32_mod(a, b) << "\n";
+  std::cout << (tpy::int32_mod(a, b)) << "\n";
 }
 
 void __tpy_init_main() {

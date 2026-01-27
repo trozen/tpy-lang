@@ -11,15 +11,15 @@ void __tpy_init_main() {
   // 6: print(x)
   std::cout << x << "\n";
   // 7: print(x - 1)
-  std::cout << tpy::int32_sub(x, 1) << "\n";
+  std::cout << (tpy::int32_sub(x, 1)) << "\n";
   // 8: print(x // 2)
-  std::cout << tpy::int32_div(x, 2) << "\n";
+  std::cout << (tpy::int32_div(x, 2)) << "\n";
   // 12: print(y)
   std::cout << y << "\n";
   // 13: print(y + 1)
-  std::cout << tpy::int32_add(y, 1) << "\n";
+  std::cout << (tpy::int32_add(y, 1)) << "\n";
   // 14: print(y // 2)
-  std::cout << tpy::int32_div(y, 2) << "\n";
+  std::cout << (tpy::int32_div(y, 2)) << "\n";
 }
 
 int main() {

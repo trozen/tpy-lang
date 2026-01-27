@@ -26,7 +26,7 @@ void test_continue() {
   // 15:     for i in range(10):
   for (int32_t i = 0; i < 10; ++i) {
     // 16:         if i % 2 == 0:
-    if ((tpy::int32_mod(i, 2) == 0)) {
+    if (((tpy::int32_mod(i, 2)) == 0)) {
       // 17:             continue
       continue;
     }

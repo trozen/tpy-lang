@@ -4,7 +4,7 @@
 // 4: x: Int32 = 2147483647  # INT32_MAX
 int32_t x = 2147483647;
 // 5: y: Int32 = x + 1       # Should panic
-int32_t y = tpy::int32_add(x, 1);
+int32_t y = (tpy::int32_add(x, 1));
 
 void __tpy_init_main() {
   // 1: """Test Int32 addition overflow panic at runtime."""

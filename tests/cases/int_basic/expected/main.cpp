@@ -4,12 +4,12 @@
 // 4: def factorial(n: int) -> int:
 tpy::BigInt factorial(const tpy::BigInt& n) {
   // 5:     if n <= 1:
-  if ((n <= tpy::BigInt(1))) {
+  if ((n <= 1)) {
     // 6:         return 1
     return tpy::BigInt(1);
   }
   // 7:     return n * factorial(n - 1)
-  return (n * factorial((n - tpy::BigInt(1))));
+  return ((n) * (factorial(((n) - (tpy::BigInt(1))))));
 }
 
 // 10: def test_arithmetic():
@@ -19,23 +19,23 @@ void test_arithmetic() {
   // 12:     b = 3
   tpy::BigInt b = tpy::BigInt(3);
   // 15:     print(a + b)  # 13
-  std::cout << (a + b).to_string() << "\n";
+  std::cout << ((a) + (b)) << "\n";
   // 16:     print(a - b)  # 7
-  std::cout << (a - b).to_string() << "\n";
+  std::cout << ((a) - (b)) << "\n";
   // 17:     print(a * b)  # 30
-  std::cout << (a * b).to_string() << "\n";
+  std::cout << ((a) * (b)) << "\n";
   // 18:     print(a // b)  # 3 (floor division)
-  std::cout << (a / b).to_string() << "\n";
+  std::cout << ((a) / (b)) << "\n";
   // 19:     print(a % b)  # 1
-  std::cout << (a % b).to_string() << "\n";
+  std::cout << ((a) % (b)) << "\n";
   // 22:     c = -7
   tpy::BigInt c = (-tpy::BigInt(7));
   // 23:     d = 3
   tpy::BigInt d = tpy::BigInt(3);
   // 24:     print(c // d)  # -3 (not -2!)
-  std::cout << (c / d).to_string() << "\n";
+  std::cout << ((c) / (d)) << "\n";
   // 25:     print(c % d)   # 2 (not -1!)
-  std::cout << (c % d).to_string() << "\n";
+  std::cout << ((c) % (d)) << "\n";
 }
 
 // 28: def test_comparison():
@@ -64,9 +64,9 @@ void test_comparison() {
 void __tpy_init_main() {
   // 1: """Test basic int (BigInt) operations."""
   // 43: print(factorial(10))  # 3628800
-  std::cout << factorial(tpy::BigInt(10)).to_string() << "\n";
+  std::cout << factorial(tpy::BigInt(10)) << "\n";
   // 44: print(factorial(20))  # 2432902008176640000 (fits in 63 bits)
-  std::cout << factorial(tpy::BigInt(20)).to_string() << "\n";
+  std::cout << factorial(tpy::BigInt(20)) << "\n";
   // 46: test_arithmetic()
   test_arithmetic();
   // 47: test_comparison()
@@ -74,7 +74,7 @@ void __tpy_init_main() {
   // 50: neg = -42
   tpy::BigInt neg = (-tpy::BigInt(42));
   // 51: print(neg)
-  std::cout << neg.to_string() << "\n";
+  std::cout << neg << "\n";
 }
 
 int main() {

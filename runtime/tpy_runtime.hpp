@@ -423,6 +423,10 @@ public:
     BigInt& operator<<=(int32_t shift) { *this = *this << shift; return *this; }
     BigInt& operator>>=(int32_t shift) { *this = *this >> shift; return *this; }
 
+    // BigInt overloads for shift (convert to int32)
+    BigInt operator<<(const BigInt& shift) const { return *this << shift.to_int32(); }
+    BigInt operator>>(const BigInt& shift) const { return *this >> shift.to_int32(); }
+
     // Power operator (Python semantics: negative exponent not supported)
     BigInt pow(const BigInt& exp) const;
 
