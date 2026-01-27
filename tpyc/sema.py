@@ -468,6 +468,10 @@ class SemanticAnalyzer:
 
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""
+        # Check for unsupported operators
+        if expr.op == "**":
+            raise SemanticError("Power operator (**) not yet implemented", expr.loc)
+
         left_type = self._analyze_expr(expr.left)
         right_type = self._analyze_expr(expr.right)
 

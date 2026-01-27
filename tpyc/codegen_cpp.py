@@ -708,6 +708,20 @@ class CodeGenerator:
                     return f"(!{find_expr})"
                 return find_expr
 
+            # Shift operators need special handling for Python semantics
+            # IntLiteralType << anything should use BigInt (arbitrary precision)
+            if expr.op in ("<<", ">>"):
+                # Promote left operand to BigInt if it's a literal (Python semantics)
+                if isinstance(left_type, IntLiteralType):
+                    left = self._gen_expr(expr.left, BIGINT)
+                else:
+                    left = self._gen_expr(expr.left)
+                # Right operand (shift amount) should be int32
+                right = self._gen_expr(expr.right)
+                if isinstance(right_type, BigIntType):
+                    right = f"({right}).to_int32()"
+                return f"({left} {expr.op} {right})"
+
             # IntLiteralType coerces to the other operand's concrete type
             # BigInt variable + IntLiteral -> promote literal to BigInt
             left_target = BIGINT if isinstance(right_type, BigIntType) else None

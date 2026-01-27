@@ -340,6 +340,26 @@ public:
     BigInt& operator/=(const BigInt& rhs) { *this = *this / rhs; return *this; }
     BigInt& operator%=(const BigInt& rhs) { *this = *this % rhs; return *this; }
 
+    // Shift operators (Python semantics: arbitrary precision)
+    BigInt operator<<(int32_t shift) const {
+        if (shift < 0) {
+            tpy_panic("Negative shift count");
+        }
+        if (shift == 0) return *this;
+        return lshift_gmp(*this, shift);
+    }
+
+    BigInt operator>>(int32_t shift) const {
+        if (shift < 0) {
+            tpy_panic("Negative shift count");
+        }
+        if (shift == 0) return *this;
+        return rshift_gmp(*this, shift);
+    }
+
+    BigInt& operator<<=(int32_t shift) { *this = *this << shift; return *this; }
+    BigInt& operator>>=(int32_t shift) { *this = *this >> shift; return *this; }
+
     // Comparison operators
     bool operator==(const BigInt& rhs) const {
         if (is_small() && rhs.is_small()) {
@@ -469,6 +489,8 @@ private:
     static BigInt sub_gmp(const BigInt& a, const BigInt& b);
     static BigInt mul_gmp(const BigInt& a, const BigInt& b);
     static BigInt neg_gmp(const BigInt& a);
+    static BigInt lshift_gmp(const BigInt& a, int32_t shift);
+    static BigInt rshift_gmp(const BigInt& a, int32_t shift);
 
     BigInt floor_div(const BigInt& rhs) const;
     BigInt floor_mod(const BigInt& rhs) const;
@@ -514,6 +536,24 @@ inline BigInt BigInt::neg_gmp(const BigInt& a) {
     a.to_mpz(za);
     mpz_init(result);
     mpz_neg(result, za);
+    mpz_clear(za);
+    return from_mpz(result);
+}
+
+inline BigInt BigInt::lshift_gmp(const BigInt& a, int32_t shift) {
+    mpz_t za, result;
+    a.to_mpz(za);
+    mpz_init(result);
+    mpz_mul_2exp(result, za, static_cast<mp_bitcnt_t>(shift));
+    mpz_clear(za);
+    return from_mpz(result);
+}
+
+inline BigInt BigInt::rshift_gmp(const BigInt& a, int32_t shift) {
+    mpz_t za, result;
+    a.to_mpz(za);
+    mpz_init(result);
+    mpz_fdiv_q_2exp(result, za, static_cast<mp_bitcnt_t>(shift));  // Floor division by 2^shift
     mpz_clear(za);
     return from_mpz(result);
 }
@@ -658,6 +698,11 @@ void print_list_contents(std::ostream& os, Iter begin, Iter end) {
 }
 
 } // namespace detail
+
+// Stream output operator for BigInt
+inline std::ostream& operator<<(std::ostream& os, const BigInt& val) {
+    return os << val.to_string();
+}
 
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const ListPrinter<std::vector<T>>& p) {

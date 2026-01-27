@@ -21,3 +21,7 @@ print(1 << 4)      # 16
 
 # Right shift
 print(32 >> 2)     # 8
+
+# Large shift (Python semantics - arbitrary precision)
+print(1 << 100)    # 1267650600228229401496703205376
+print((1 << 100) >> 90)  # 1024

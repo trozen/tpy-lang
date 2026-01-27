@@ -676,6 +676,7 @@ class Parser:
             ast.Div: "/", ast.Mod: "%", ast.FloorDiv: "/",
             ast.BitAnd: "&", ast.BitOr: "|", ast.BitXor: "^",
             ast.LShift: "<<", ast.RShift: ">>",
+            ast.Pow: "**",
         }
         return ops.get(type(op), "?")
 
