@@ -377,8 +377,8 @@ Key features:
 ### Arithmetic
 - **Working**: `+`, `-`, `*`, `//`, `%`, unary `-`
 - **Planned**: `/` (float division)
-- **Working**: `**` (power) for `int` with non-negative exponent
-- **Planned**: `**` with negative exponent (requires float), `**` for Int32
+- **Working**: `**` (power) for `int` and `Int32` with non-negative exponent
+- **Planned**: `**` with negative exponent (requires float)
 
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`

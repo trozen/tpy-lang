@@ -475,14 +475,18 @@ class SemanticAnalyzer:
         left_type = self._analyze_expr(expr.left)
         right_type = self._analyze_expr(expr.right)
 
-        # Power operator - always returns BigInt (results can be huge)
+        # Power operator - returns the operand type (Int32 ** Int32 → Int32, int ** int → BigInt)
         if expr.op == "**":
-            if isinstance(left_type, Int32Type) or isinstance(right_type, Int32Type):
-                raise SemanticError("Power operator (**) not supported for Int32; use int instead", expr.loc)
-            if not isinstance(left_type, (BigIntType, IntLiteralType)):
+            if not isinstance(left_type, (BigIntType, IntLiteralType, Int32Type)):
                 raise SemanticError(f"Power operator requires integer operands, got {left_type}", expr.loc)
-            if not isinstance(right_type, (BigIntType, IntLiteralType)):
+            if not isinstance(right_type, (BigIntType, IntLiteralType, Int32Type)):
                 raise SemanticError(f"Power operator requires integer operands, got {right_type}", expr.loc)
+            # Int32 ** Int32 → Int32, Int32 ** IntLiteral → Int32
+            if isinstance(left_type, Int32Type) and isinstance(right_type, (Int32Type, IntLiteralType)):
+                return INT32
+            if isinstance(left_type, IntLiteralType) and isinstance(right_type, Int32Type):
+                return INT32
+            # Default: BigInt
             return BIGINT
 
         # Helper to check if type is any integer type

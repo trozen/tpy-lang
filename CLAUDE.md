@@ -141,7 +141,7 @@ The compiler is a proof-of-concept. Not yet implemented:
 - `break` and `continue`
 
 ### Operators
-- Arithmetic: `+`, `-`, `*`, `//`, `%`, `**` (int only, non-negative exp), unary `-`
+- Arithmetic: `+`, `-`, `*`, `//`, `%`, `**` (non-negative exp), unary `-`
 - Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
 - Membership: `in`, `not in` (for list, Array, Span, str)
 - Logical: `and`, `or`, `not`

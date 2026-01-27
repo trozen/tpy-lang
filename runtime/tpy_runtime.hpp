@@ -33,12 +33,13 @@ namespace tpy {
 // --- Checked power (reusable for BigInt fast path and Int32) ---
 
 // Computes base^exp with overflow detection. Returns true on success, false on overflow.
-inline bool int64_pow_checked(int64_t base, int64_t exp, int64_t& result) {
+template<typename T>
+bool checked_pow(T base, T exp, T& result) {
     if (exp < 0) return false;
     if (exp == 0) { result = 1; return true; }
 
     result = 1;
-    int64_t b = base;
+    T b = base;
 
     while (exp > 0) {
         if (exp & 1) {
@@ -141,6 +142,17 @@ inline int32_t int32_rshift(int32_t a, int32_t b) {
         tpy_panic("Int32 shift count too large");
     }
     return a >> b;  // Arithmetic right shift for signed integers
+}
+
+inline int32_t int32_pow(int32_t base, int32_t exp) {
+    if (exp < 0) {
+        tpy_panic("Negative exponent not supported (would require float)");
+    }
+    int32_t result;
+    if (!checked_pow(base, exp, result)) {
+        tpy_panic("Int32 overflow in power");
+    }
+    return result;
 }
 
 /**
@@ -700,7 +712,7 @@ inline BigInt BigInt::pow(const BigInt& exp) const {
     // Fast path: small base and small exponent - avoid GMP allocation
     if (is_small() && exp.is_small()) {
         int64_t result;
-        if (int64_pow_checked(small_value(), exp.small_value(), result) && fits_small(result)) {
+        if (checked_pow<int64_t>(small_value(), exp.small_value(), result) && fits_small(result)) {
             BigInt r;
             r.lo_ = result << 1;
             return r;

@@ -730,8 +730,14 @@ class CodeGenerator:
                     right = f"({right}).to_int32()"
                 return f"({left} {expr.op} {right})"
 
-            # Power operator - always uses BigInt
+            # Power operator
             if expr.op == "**":
+                # Int32 power uses checked int32_pow
+                if self._is_int32_arithmetic(left_type, right_type, expr.op):
+                    left = self._gen_expr(expr.left)
+                    right = self._gen_expr(expr.right)
+                    return f"tpy::int32_pow({left}, {right})"
+                # BigInt power
                 left = self._gen_expr(expr.left, BIGINT)
                 right = self._gen_expr(expr.right, BIGINT)
                 return f"({left}).pow({right})"
@@ -956,7 +962,7 @@ class CodeGenerator:
         Only applies when at least one operand is explicitly Int32Type.
         IntLiteralType alone defaults to BigInt (Python semantics).
         """
-        if op not in ("+", "-", "*", "//", "%"):
+        if op not in ("+", "-", "*", "//", "%", "**"):
             return False
         # Need at least one explicit Int32 operand
         has_int32 = isinstance(left_type, Int32Type) or isinstance(right_type, Int32Type)
