@@ -708,10 +708,17 @@ class CodeGenerator:
                     return f"(!{find_expr})"
                 return find_expr
 
-            # Shift operators need special handling for Python semantics
-            # IntLiteralType << anything should use BigInt (arbitrary precision)
+            # Shift operators need special handling
             if expr.op in ("<<", ">>"):
-                # Promote left operand to BigInt if it's a literal (Python semantics)
+                # Int32 shifts use checked operations
+                if isinstance(left_type, Int32Type):
+                    left = self._gen_expr(expr.left)
+                    right = self._gen_expr(expr.right)
+                    if isinstance(right_type, BigIntType):
+                        right = f"({right}).to_int32()"
+                    op_func = "int32_lshift" if expr.op == "<<" else "int32_rshift"
+                    return f"tpy::{op_func}({left}, {right})"
+                # IntLiteralType uses BigInt (Python arbitrary precision semantics)
                 if isinstance(left_type, IntLiteralType):
                     left = self._gen_expr(expr.left, BIGINT)
                 else:

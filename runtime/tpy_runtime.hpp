@@ -92,6 +92,31 @@ inline int32_t int32_neg(int32_t a) {
     return -a;
 }
 
+inline int32_t int32_lshift(int32_t a, int32_t b) {
+    if (b < 0) {
+        tpy_panic("Negative shift count");
+    }
+    if (b >= 32) {
+        tpy_panic("Int32 overflow in left shift");
+    }
+    // Check for overflow: shifting would lose significant bits
+    int32_t result = a << b;
+    if ((result >> b) != a) {
+        tpy_panic("Int32 overflow in left shift");
+    }
+    return result;
+}
+
+inline int32_t int32_rshift(int32_t a, int32_t b) {
+    if (b < 0) {
+        tpy_panic("Negative shift count");
+    }
+    if (b >= 32) {
+        tpy_panic("Int32 shift count too large");
+    }
+    return a >> b;  // Arithmetic right shift for signed integers
+}
+
 /**
  * StaticList<T, N> - Fixed-capacity container.
  *

@@ -27,6 +27,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - option to change divide semantics (negative): Python vs C++
 - do not stop at first error, generate source with special Invalid() type, that would be ignored in further lines, so that we get all errors from compilation
 - better handling of tpy_panic -- exceptions in first version (later generation policy)
+- c++ generation profiles: utf8 strings vs char strings; int literal default to int or Int32 (per module, function, build options?)
+- static_cast<char> -- should rather use checked cast (policy based)
 
 ## ShedSkin examples
 - score4
