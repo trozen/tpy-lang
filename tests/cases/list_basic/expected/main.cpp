@@ -3,6 +3,8 @@
 
 // 11: mem: list[Int32] = [0] * 10
 std::vector<int32_t> mem = std::vector<int32_t>(10, 0);
+// 23: chars = [72, 73]  # 'H', 'I'
+std::vector<tpy::BigInt> chars = {72, 73};
 
 // 3: def sum_list(nums: list[Int32]) -> Int32:
 int32_t sum_list(std::vector<int32_t>& nums) {
@@ -30,5 +32,15 @@ int main() {
   std::cout << sum_list(mem) << "\n";
   // 15: print(len(mem))
   std::cout << static_cast<int32_t>(mem.size()) << "\n";
+  // 18: data = [0] * 5
+  auto data = std::vector<tpy::BigInt>(5, 0);
+  // 19: data[0] = 100
+  data[0] = 100;
+  // 20: print(data[0])
+  std::cout << data[0].to_string() << "\n";
+  // 24: print(chr(chars[0]), end='')
+  std::cout << static_cast<char>((chars[0]).to_int32());
+  // 25: print(chr(chars[1]))
+  std::cout << static_cast<char>((chars[1]).to_int32()) << "\n";
   return 0;
 }

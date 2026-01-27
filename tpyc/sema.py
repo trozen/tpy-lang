@@ -91,6 +91,7 @@ class SemanticAnalyzer:
         self.var_types: dict[int, TpyType] = {}  # id(TpyVarDecl) -> resolved type
         self.loop_depth: int = 0  # Track nesting depth of loops
         self.diagnostics: list[Diagnostic] = []  # Collected warnings (errors raise immediately)
+        self.is_top_level: bool = False  # True when analyzing top-level statements
 
         # List literal inference tracking
         self.literal_counter: int = 0
@@ -200,20 +201,15 @@ class SemanticAnalyzer:
             self._validate_type(typ.element_type)
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
-        """Register top-level variable declarations in global scope."""
+        """Register top-level variable declarations in global scope.
+
+        Only registers explicitly typed globals here. Untyped globals are
+        fully analyzed in _analyze_top_level, which provides proper context
+        for list literal type inference.
+        """
         for stmt in stmts:
-            if isinstance(stmt, TpyVarDecl):
-                if stmt.type:
-                    self.global_scope.define(stmt.name, stmt.type)
-                elif stmt.init:
-                    # Infer type from initializer
-                    self.current_scope = self.global_scope
-                    typ = self._analyze_expr(stmt.init)
-                    # Resolve IntLiteralType to BigInt for variable declarations
-                    if isinstance(typ, IntLiteralType):
-                        typ = BIGINT
-                    self.global_scope.define(stmt.name, typ)
-                    self.current_scope = None
+            if isinstance(stmt, TpyVarDecl) and stmt.type:
+                self.global_scope.define(stmt.name, stmt.type)
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
@@ -259,11 +255,26 @@ class SemanticAnalyzer:
         self.current_scope = None
 
     def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:
-        """Analyze top-level statements (for generated main())."""
+        """Analyze top-level statements (for generated main()).
+
+        Treats top-level code like a function body so list literals and other
+        constructs go through the same analysis path.
+        """
+        self._reset_function_tracking()
+        # Use a sentinel to indicate we're in "module init" context (not None, but not a real function)
+        self.current_function = True  # type: ignore
         self.current_scope = Scope(parent=self.global_scope)
+        self.is_top_level = True
+
         for stmt in stmts:
             self._analyze_stmt(stmt)
+
+        # Resolve pending list types (same as function analysis)
+        self._resolve_pending_list_types()
+
+        self.current_function = None
         self.current_scope = None
+        self.is_top_level = False
 
     def _analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
@@ -806,6 +817,15 @@ class SemanticAnalyzer:
                 isinstance(first_type.element_type, IntLiteralType) and
                 isinstance(elem_type.element_type, IntLiteralType)):
                 continue
+            # PendingListTypes with compatible element types are compatible
+            if (isinstance(first_type, PendingListType) and isinstance(elem_type, PendingListType) and
+                first_type.size == elem_type.size):
+                # IntLiteralType elements are compatible regardless of value
+                if (isinstance(first_type.element_type, IntLiteralType) and
+                    isinstance(elem_type.element_type, IntLiteralType)):
+                    continue
+                if first_type.element_type == elem_type.element_type:
+                    continue
             if elem_type != first_type:
                 raise SemanticError(
                     f"Array literal element {i} has type {elem_type}, expected {first_type}"
@@ -827,7 +847,7 @@ class SemanticAnalyzer:
             expr=expr,
             element_type=first_type,
             size=size,
-            is_global=False
+            is_global=self.is_top_level
         )
         self.list_literals[literal_id] = info
         self.pending_resolutions.append(literal_id)
@@ -1035,8 +1055,15 @@ class SemanticAnalyzer:
             info = self.list_literals[literal_id]
 
             # Resolve element type
-            # Priority: coerced type from param > default
+            # Priority: coerced type from param > resolved inner PendingListType > default
             elem_type = info.element_type
+
+            # If element type is a PendingListType, look up its resolved type
+            if isinstance(elem_type, PendingListType):
+                inner_info = self.list_literals.get(elem_type.literal_id)
+                if inner_info and inner_info.resolved_type:
+                    elem_type = inner_info.resolved_type
+
             if isinstance(elem_type, IntLiteralType):
                 if info.coerced_element_type is not None:
                     # Use element type from typed parameter (list[T] or Span[T])
@@ -1051,6 +1078,9 @@ class SemanticAnalyzer:
             elif info.is_mutated:
                 resolved = ListType(elem_type)
             elif info.passed_to_list_param:
+                resolved = ListType(elem_type)
+            elif info.is_global:
+                # Globals can be imported and mutated by other modules
                 resolved = ListType(elem_type)
             else:
                 # Default: Array (stack-allocated, no mutation detected)

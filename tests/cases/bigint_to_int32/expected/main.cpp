@@ -55,7 +55,7 @@ int main() {
   // 42: n = 5
   tpy::BigInt n = tpy::BigInt(5);
   // 45: result1 = takes_int32(n)
-  auto result1 = takes_int32(n.to_int32());
+  auto result1 = takes_int32((n).to_int32());
   // 46: print(result1)
   std::cout << result1 << "\n";
   // 49: result2 = return_as_int32(10)

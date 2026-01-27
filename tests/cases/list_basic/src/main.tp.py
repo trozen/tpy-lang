@@ -13,3 +13,13 @@ mem[0] = 42
 mem[1] = 8
 print(sum_list(mem))
 print(len(mem))
+
+# Unannotated list repetition (should infer BigInt)
+data = [0] * 5
+data[0] = 100
+print(data[0])
+
+# chr() with BigInt element from list
+chars = [72, 73]  # 'H', 'I'
+print(chr(chars[0]), end='')
+print(chr(chars[1]))

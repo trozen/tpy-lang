@@ -46,14 +46,6 @@ class CodeGenerator:
         self.var_types: dict[str, TpyType] = {}  # Track variable types for code generation
         self.source_lines: list[str] = []  # Source lines for emit_source_comments
 
-    def _resolve_list_int_literal(self, typ: TpyType) -> TpyType:
-        """Recursively resolve IntLiteralType to BigInt in ListType (Python semantics)."""
-        if isinstance(typ, IntLiteralType):
-            return BIGINT
-        if isinstance(typ, ListType):
-            return ListType(self._resolve_list_int_literal(typ.element_type))
-        return typ
-
     def _get_resolved_type(self, expr: TpyExpr) -> TpyType:
         """Get the resolved type of an expression, handling PendingListType.
 
@@ -74,10 +66,6 @@ class CodeGenerator:
             if isinstance(elem_type, IntLiteralType):
                 elem_type = INT32
             return ListType(elem_type)
-        # Resolve IntLiteralType in global ListType to BigInt (Python semantics)
-        # This handles globals like `items = [1, 2, 3]` and nested lists
-        if isinstance(typ, ListType):
-            return self._resolve_list_int_literal(typ)
         return typ
 
     def generate(self, module: TpyModule, module_name: str = "generated") -> tuple[str, str]:
@@ -770,12 +758,9 @@ class CodeGenerator:
                 arg = expr.args[0]
                 arg_type = self.analyzer.get_expr_type(arg)
                 gen_arg = self._gen_expr(arg)
-                # IntLiteralType can be used directly
-                if isinstance(arg_type, IntLiteralType):
-                    return f"static_cast<char>({gen_arg})"
-                # BigInt needs .to_int32() conversion first
-                if isinstance(arg_type, BigIntType):
-                    return f"static_cast<char>({gen_arg}.to_int32())"
+                # BigInt (or runtime BigInt like list elements) needs .to_int32() conversion
+                if self._is_runtime_bigint(arg, arg_type):
+                    return f"static_cast<char>(({gen_arg}).to_int32())"
                 return f"static_cast<char>({gen_arg})"
             # Check if this is a function call that needs argument conversion
             func_info = self.analyzer.registry.get_function(expr.func)
@@ -786,8 +771,8 @@ class CodeGenerator:
                     # Pass param type for BigInt promotion
                     gen_arg = self._gen_expr(arg, ptype)
                     # Convert BigInt -> Int32 for Int32 parameters
-                    if isinstance(ptype, Int32Type) and isinstance(arg_type, BigIntType):
-                        gen_arg = f"{gen_arg}.to_int32()"
+                    if isinstance(ptype, Int32Type) and self._is_runtime_bigint(arg, arg_type):
+                        gen_arg = f"({gen_arg}).to_int32()"
                     # Convert StaticList -> Span
                     if isinstance(ptype, SpanType) and isinstance(arg_type, StaticListType):
                         gen_args.append(f"std::span({gen_arg}.data(), {gen_arg}.size())")
@@ -883,6 +868,9 @@ class CodeGenerator:
                 result_type = target_type
             else:
                 result_type = self.analyzer.get_expr_type(expr)
+            # Resolve IntLiteralType element to BigInt (Python semantics)
+            if isinstance(result_type, ListType) and isinstance(result_type.element_type, IntLiteralType):
+                result_type = ListType(BIGINT)
             element = self._gen_expr(expr.element)
             count = self._gen_expr(expr.count)
             count_type = self.analyzer.get_expr_type(expr.count)
@@ -942,11 +930,6 @@ class CodeGenerator:
         if isinstance(expr_type, BigIntType):
             return True
         if isinstance(expr_type, IntLiteralType):
-            # IntLiteralType in list context resolves to BigInt (Python semantics)
-            if isinstance(expr, TpySubscript):
-                obj_type = self.analyzer.get_expr_type(expr.obj)
-                if isinstance(obj_type, ListType) and isinstance(obj_type.element_type, IntLiteralType):
-                    return True
             return self._involves_variables(expr)
         return False
 

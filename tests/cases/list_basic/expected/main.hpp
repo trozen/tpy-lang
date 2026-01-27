@@ -4,6 +4,7 @@
 #include "tpy_runtime.hpp"
 
 extern std::vector<int32_t> mem;
+extern std::vector<tpy::BigInt> chars;
 
 int32_t sum_list(std::vector<int32_t>& nums);
 
