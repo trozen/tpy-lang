@@ -730,6 +730,12 @@ class CodeGenerator:
                     right = f"({right}).to_int32()"
                 return f"({left} {expr.op} {right})"
 
+            # Power operator - always uses BigInt
+            if expr.op == "**":
+                left = self._gen_expr(expr.left, BIGINT)
+                right = self._gen_expr(expr.right, BIGINT)
+                return f"({left}).pow({right})"
+
             # IntLiteralType coerces to the other operand's concrete type
             # BigInt variable + IntLiteral -> promote literal to BigInt
             left_target = BIGINT if isinstance(right_type, BigIntType) else None

@@ -1,0 +1,1 @@
+main.tp.py:4: error: Power operator (**) not supported for Int32; use int instead

@@ -30,6 +30,32 @@ namespace tpy {
     std::exit(1);
 }
 
+// --- Checked power (reusable for BigInt fast path and Int32) ---
+
+// Computes base^exp with overflow detection. Returns true on success, false on overflow.
+inline bool int64_pow_checked(int64_t base, int64_t exp, int64_t& result) {
+    if (exp < 0) return false;
+    if (exp == 0) { result = 1; return true; }
+
+    result = 1;
+    int64_t b = base;
+
+    while (exp > 0) {
+        if (exp & 1) {
+            if (__builtin_mul_overflow(result, b, &result)) {
+                return false;
+            }
+        }
+        exp >>= 1;
+        if (exp > 0) {
+            if (__builtin_mul_overflow(b, b, &b)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 // --- Int32 checked arithmetic ---
 
 inline int32_t int32_add(int32_t a, int32_t b) {
@@ -385,6 +411,9 @@ public:
     BigInt& operator<<=(int32_t shift) { *this = *this << shift; return *this; }
     BigInt& operator>>=(int32_t shift) { *this = *this >> shift; return *this; }
 
+    // Power operator (Python semantics: negative exponent not supported)
+    BigInt pow(const BigInt& exp) const;
+
     // Comparison operators
     bool operator==(const BigInt& rhs) const {
         if (is_small() && rhs.is_small()) {
@@ -658,6 +687,44 @@ inline BigInt BigInt::floor_mod(const BigInt& rhs) const {
     mpz_fdiv_r(result, za, zb);
     mpz_clear(za);
     mpz_clear(zb);
+    return from_mpz(result);
+}
+
+inline BigInt BigInt::pow(const BigInt& exp) const {
+    // Check for negative exponent (would require floats in Python)
+    bool exp_negative = exp.is_small() ? (exp.small_value() < 0) : (mpz_sgn(exp.gmp_ptr()) < 0);
+    if (exp_negative) {
+        tpy_panic("Negative exponent not supported (would require float)");
+    }
+
+    // Fast path: small base and small exponent - avoid GMP allocation
+    if (is_small() && exp.is_small()) {
+        int64_t result;
+        if (int64_pow_checked(small_value(), exp.small_value(), result) && fits_small(result)) {
+            BigInt r;
+            r.lo_ = result << 1;
+            return r;
+        }
+        // Fall through to GMP on overflow
+    }
+
+    // Get exponent as unsigned long for GMP
+    unsigned long exp_ul;
+    if (exp.is_small()) {
+        exp_ul = static_cast<unsigned long>(exp.small_value());
+    } else {
+        if (!mpz_fits_ulong_p(exp.gmp_ptr())) {
+            tpy_panic("Exponent too large");
+        }
+        exp_ul = mpz_get_ui(exp.gmp_ptr());
+    }
+
+    // Compute base^exp using GMP
+    mpz_t zbase, result;
+    to_mpz(zbase);
+    mpz_init(result);
+    mpz_pow_ui(result, zbase, exp_ul);
+    mpz_clear(zbase);
     return from_mpz(result);
 }
 

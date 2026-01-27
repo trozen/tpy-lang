@@ -471,11 +471,19 @@ class SemanticAnalyzer:
         # Check for unsupported operators
         if expr.op == "div":
             raise SemanticError("True division (/) not supported; use floor division (//) instead", expr.loc)
-        if expr.op == "**":
-            raise SemanticError("Power operator (**) not yet implemented", expr.loc)
 
         left_type = self._analyze_expr(expr.left)
         right_type = self._analyze_expr(expr.right)
+
+        # Power operator - always returns BigInt (results can be huge)
+        if expr.op == "**":
+            if isinstance(left_type, Int32Type) or isinstance(right_type, Int32Type):
+                raise SemanticError("Power operator (**) not supported for Int32; use int instead", expr.loc)
+            if not isinstance(left_type, (BigIntType, IntLiteralType)):
+                raise SemanticError(f"Power operator requires integer operands, got {left_type}", expr.loc)
+            if not isinstance(right_type, (BigIntType, IntLiteralType)):
+                raise SemanticError(f"Power operator requires integer operands, got {right_type}", expr.loc)
+            return BIGINT
 
         # Helper to check if type is any integer type
         def is_int_type(t: TpyType) -> bool:
