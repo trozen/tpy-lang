@@ -960,6 +960,13 @@ class CodeGenerator:
                 parts.append(f'"{escaped}"')
             elif self._is_runtime_bigint(arg, arg_type):
                 parts.append(f'{self._gen_expr(arg)}.to_string()')
+            elif isinstance(arg_type, (ListType, ArrayType, SpanType, StaticListType)):
+                if isinstance(arg, TpyArrayLiteral):
+                    # Array literals need explicit type for ListPrinter CTAD
+                    cpp_type = arg_type.to_cpp()
+                    parts.append(f'tpy::ListPrinter({cpp_type}{self._gen_expr(arg)})')
+                else:
+                    parts.append(f'tpy::ListPrinter({self._gen_expr(arg)})')
             else:
                 # Int32, Char, Bool, literals, etc. - direct output
                 parts.append(self._gen_expr(arg))
