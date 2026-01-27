@@ -9,6 +9,9 @@ from dataclasses import dataclass
 
 import pytest
 
+# When set, tests update expected files instead of comparing
+UPDATE_EXPECTED = os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")
+
 # Import the compiler
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import compile_file, get_module_name
@@ -214,3 +217,27 @@ def validate_annotations(src_file: Path, diagnostics: str) -> list[str]:
                 )
 
     return errors
+
+
+def check_or_update(actual: str, expected_file: Path, description: str) -> None:
+    """Compare actual with expected, or update expected if UPDATE_EXPECTED is set.
+
+    In update mode, creates parent directories and writes the file.
+    In test mode, asserts that actual matches expected (missing file = empty expected).
+    """
+    if UPDATE_EXPECTED:
+        expected_file.parent.mkdir(parents=True, exist_ok=True)
+        expected_file.write_text(actual)
+    else:
+        expected = expected_file.read_text() if expected_file.exists() else ""
+        assert actual == expected, (
+            f"{description} differs.\n"
+            f"--- Expected ---\n{expected}\n"
+            f"--- Got ---\n{actual}"
+        )
+
+
+def remove_if_exists(path: Path) -> None:
+    """Remove a file if it exists (used in update mode to clean up stale files)."""
+    if path.exists():
+        path.unlink()
