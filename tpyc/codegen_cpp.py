@@ -26,6 +26,7 @@ from .parse import (
     TpyArrayLiteral, TpyListRepeat, TpySubscript
 )
 from .sema import SemanticAnalyzer
+from tpyc import modules as builtin_modules
 
 
 @dataclass
@@ -801,15 +802,9 @@ class CodeGenerator:
                 if isinstance(arg_type, (ArrayType, SpanType, ListType, StrType)):
                     return f"static_cast<int32_t>({self._gen_expr(arg)}.size())"
                 return f"{self._gen_expr(arg)}.size()"
-            # chr() maps to static_cast<char>
-            if expr.func == "chr":
-                arg = expr.args[0]
-                arg_type = self.analyzer.get_expr_type(arg)
-                gen_arg = self._gen_expr(arg)
-                # BigInt (or runtime BigInt like list elements) needs .to_int32() conversion
-                if self._is_runtime_bigint(arg, arg_type):
-                    return f"static_cast<char>(({gen_arg}).to_int32())"
-                return f"static_cast<char>({gen_arg})"
+            # Check module registry for built-in functions
+            if builtin_fn := builtin_modules.lookup_function(expr.func):
+                return self._gen_builtin_call(expr, builtin_fn)
             # Check if this is a function call that needs argument conversion
             func_info = self.analyzer.registry.get_function(expr.func)
             if func_info:
@@ -979,6 +974,35 @@ class CodeGenerator:
             return True
         if isinstance(expr_type, IntLiteralType):
             return self._involves_variables(expr)
+        return False
+
+    def _gen_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> str:
+        """Generate C++ code for a built-in function call from the module registry."""
+        args = expr.args
+        arg_types = [self.analyzer.get_expr_type(arg) for arg in args]
+
+        # Find matching overload - need to account for runtime BigInt
+        for overload in fn_def.overloads:
+            if len(overload.params) != len(args):
+                continue
+            if all(self._builtin_codegen_type_matches(arg, arg_t, param.type)
+                   for arg, arg_t, param in zip(args, arg_types, overload.params)):
+                gen_args = [self._gen_expr(arg) for arg in args]
+                return overload.cpp.format(*gen_args)
+
+        raise RuntimeError(f"No codegen overload for {fn_def.name}")
+
+    def _builtin_codegen_type_matches(self, arg: TpyExpr, arg_type: TpyType, param_type: TpyType) -> bool:
+        """Check if an argument matches a parameter type for codegen purposes."""
+        # Direct type match
+        if isinstance(arg_type, type(param_type)) and arg_type == param_type:
+            return True
+        # IntLiteral can match Int32 (if compile-time) or BigInt (if runtime)
+        if isinstance(arg_type, IntLiteralType):
+            if isinstance(param_type, BigIntType):
+                return self._is_runtime_bigint(arg, arg_type)
+            if isinstance(param_type, Int32Type):
+                return not self._is_runtime_bigint(arg, arg_type)
         return False
 
     def _convert_to_int32_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:

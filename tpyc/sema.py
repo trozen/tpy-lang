@@ -25,6 +25,7 @@ from .parse import (
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript
 )
+from tpyc import modules as builtin_modules
 
 
 @dataclass
@@ -573,6 +574,10 @@ class SemanticAnalyzer:
                 self._analyze_expr(arg)
             return expr.call_type
 
+        # Check module registry for built-in functions
+        if builtin_fn := builtin_modules.lookup_function(expr.func):
+            return self._analyze_builtin_call(expr, builtin_fn)
+
         # Built-in print()
         if expr.func == "print":
             for arg in expr.args:
@@ -587,15 +592,6 @@ class SemanticAnalyzer:
             if not isinstance(arg_type, (StaticListType, ArrayType, SpanType, ListType, PendingListType, StrType)):
                 raise SemanticError(f"len() argument must be StaticList, Array, Span, list, or str, got {arg_type}")
             return INT32
-
-        # Built-in chr()
-        if expr.func == "chr":
-            if len(expr.args) != 1:
-                raise SemanticError("chr() takes exactly 1 argument")
-            arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, (Int32Type, BigIntType, IntLiteralType)):
-                raise SemanticError(f"chr() argument must be an integer type, got {arg_type}")
-            return CHAR
 
         # Check if it's a type constructor
         if expr.func == "int":
@@ -641,6 +637,30 @@ class SemanticAnalyzer:
             return func.return_type
 
         raise SemanticError(f"Unknown function or type: '{expr.func}'")
+
+    def _analyze_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> TpyType:
+        """Type-check a call to a built-in function from the module registry."""
+        arg_types = [self._analyze_expr(arg) for arg in expr.args]
+
+        for overload in fn_def.overloads:
+            if len(overload.params) != len(arg_types):
+                continue
+            if all(self._builtin_type_matches(arg_t, param.type)
+                   for arg_t, param in zip(arg_types, overload.params)):
+                return overload.returns
+
+        # No matching overload found - build error message
+        arg_type_strs = ", ".join(str(t) for t in arg_types)
+        raise SemanticError(f"No matching overload for {fn_def.name}({arg_type_strs})")
+
+    def _builtin_type_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
+        """Check if an argument type is compatible with a builtin parameter type."""
+        if arg_type == param_type:
+            return True
+        # IntLiteral can match Int32 or BigInt
+        if isinstance(arg_type, IntLiteralType):
+            return isinstance(param_type, (Int32Type, BigIntType))
+        return False
 
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
