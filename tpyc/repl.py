@@ -43,7 +43,9 @@ class REPLSession:
 
     def run(self) -> int:
         """Main REPL loop. Returns exit code."""
-        print("TurboPython REPL v0.1 (Ctrl+D to exit)")
+        print("TurboPython REPL v0.1")
+        print("Variables, functions, and classes are remembered between inputs.")
+        print("Empty line ends multi-line input. Ctrl+D to exit.")
         if self.verbose:
             print(f"[src] {self.temp_dir}/")
 
@@ -162,6 +164,31 @@ class REPLSession:
         """Wrap a bare expression in print()."""
         return f"print({source.strip()})"
 
+    def _should_accumulate(self, source: str) -> bool:
+        """Check if input should be accumulated for future compilations.
+
+        Only accumulates definitions (def, class) and assignments.
+        Side-effect statements (print, bare expressions, control flow) are not
+        accumulated since they've already executed.
+        """
+        try:
+            tree = ast.parse(source)
+            if not tree.body:
+                return False
+
+            # Only accumulate if ALL statements are definitions/assignments
+            for stmt in tree.body:
+                if not isinstance(stmt, (
+                    ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+                    ast.Assign, ast.AnnAssign, ast.AugAssign,
+                    ast.Import, ast.ImportFrom,
+                )):
+                    return False
+
+            return True
+        except SyntaxError:
+            return False
+
     def _process_input(self, source: str) -> None:
         """Process a single input and optionally accumulate if successful."""
         # Check if this is an expression that should auto-print
@@ -172,8 +199,9 @@ class REPLSession:
         success, output = self._try_compile_and_run(source)
 
         if success:
-            # Accumulate the original source (not the wrapped version)
-            self.accumulated_lines.append(original_source)
+            # Only accumulate definitions/assignments, not side-effect statements
+            if self._should_accumulate(original_source):
+                self.accumulated_lines.append(original_source)
             if output:
                 print(output, end="")
         else:
