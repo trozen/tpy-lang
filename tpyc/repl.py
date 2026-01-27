@@ -19,9 +19,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .parse import Parser, ParseError
+from .parse import Parser, ParseError, TpyExprStmt
 from .sema import SemanticAnalyzer, SemanticError
 from .codegen_cpp import CodeGenerator
+from .typesys import VoidType
 
 
 def get_runtime_dir() -> Path:
@@ -141,8 +142,8 @@ class REPLSession:
 
         return ""
 
-    def _is_expression(self, source: str) -> bool:
-        """Check if input is a bare expression that should auto-print."""
+    def _is_bare_expression(self, source: str) -> bool:
+        """Check if input is a single bare expression (not a print call)."""
         try:
             tree = ast.parse(source)
             if len(tree.body) != 1:
@@ -150,19 +151,14 @@ class REPLSession:
             stmt = tree.body[0]
             if not isinstance(stmt, ast.Expr):
                 return False
-            # Don't auto-print function calls that are likely side-effecting
+            # print() calls are already printing, don't wrap
             if isinstance(stmt.value, ast.Call):
                 if isinstance(stmt.value.func, ast.Name):
-                    # print() and similar shouldn't be wrapped
-                    if stmt.value.func.id in ("print",):
+                    if stmt.value.func.id == "print":
                         return False
             return True
         except SyntaxError:
             return False
-
-    def _wrap_expression(self, source: str) -> str:
-        """Wrap a bare expression in print()."""
-        return f"print({source.strip()})"
 
     def _should_accumulate(self, source: str) -> bool:
         """Check if input should be accumulated for future compilations.
@@ -191,24 +187,25 @@ class REPLSession:
 
     def _process_input(self, source: str) -> None:
         """Process a single input and optionally accumulate if successful."""
-        # Check if this is an expression that should auto-print
-        original_source = source
-        if self._is_expression(source):
-            source = self._wrap_expression(source)
+        # Check if this might be an expression that should auto-print
+        # (actual type checking happens in _try_compile_and_run)
+        maybe_auto_print = self._is_bare_expression(source)
 
-        success, output = self._try_compile_and_run(source)
+        success, output = self._try_compile_and_run(source, maybe_auto_print)
 
         if success:
             # Only accumulate definitions/assignments, not side-effect statements
-            if self._should_accumulate(original_source):
-                self.accumulated_lines.append(original_source)
+            if self._should_accumulate(source):
+                self.accumulated_lines.append(source)
             if output:
                 print(output, end="")
         else:
             # Show error, don't accumulate
             print(output, end="", file=sys.stderr)
 
-    def _try_compile_and_run(self, new_source: str) -> tuple[bool, str]:
+    def _try_compile_and_run(
+        self, new_source: str, maybe_auto_print: bool = False
+    ) -> tuple[bool, str]:
         """Attempt to compile accumulated + new source, run it.
 
         Returns (success, output) where output is either the program output
@@ -236,6 +233,26 @@ class REPLSession:
             analyzer.analyze(module)
         except SemanticError as e:
             return False, f"{e.format('repl')}\n"
+
+        # Check if we should auto-print the expression
+        # The second-to-last statement is the user's input (last is the noop)
+        if maybe_auto_print and len(module.top_level_stmts) >= 2:
+            user_stmt = module.top_level_stmts[-2]
+            if isinstance(user_stmt, TpyExprStmt):
+                expr_type = analyzer.get_expr_type(user_stmt.expr)
+                # Only wrap if the expression has a non-void type
+                if expr_type is not None and not isinstance(expr_type, VoidType):
+                    # Re-parse with print wrapper
+                    wrapped_source = f"print({new_source.strip()})"
+                    combined = "\n".join(self.accumulated_lines + [wrapped_source])
+                    combined += "\n0  # repl-noop"
+                    try:
+                        parser = Parser()
+                        module = parser.parse(combined)
+                        analyzer = SemanticAnalyzer()
+                        analyzer.analyze(module)
+                    except (ParseError, SyntaxError, SemanticError):
+                        pass  # Fall back to original if wrapping fails
 
         # Show warnings if any
         warning_output = ""
