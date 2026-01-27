@@ -5,3 +5,4 @@
 
 void test_bool();
 
+void __tpy_init_main();

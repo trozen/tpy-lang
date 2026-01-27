@@ -6,7 +6,7 @@ std::array<int32_t, 3> arr = {1, 2, 3};
 // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
 StaticList<int32_t, 4> items = StaticList<int32_t, 4>();
 
-int main() {
+void __tpy_init_main() {
   // 5: arr[0] = 100
   arr[0] = 100;
   // 6: arr[1] = 200
@@ -31,5 +31,9 @@ int main() {
   std::cout << items.get(0) << "\n";
   // 19: print(items[1])
   std::cout << items.get(1) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

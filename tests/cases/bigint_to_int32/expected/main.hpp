@@ -10,3 +10,4 @@ int32_t assign_test(const tpy::BigInt& x);
 int32_t loop_test(const tpy::BigInt& n);
 int32_t constructor_test(const tpy::BigInt& x);
 
+void __tpy_init_main();

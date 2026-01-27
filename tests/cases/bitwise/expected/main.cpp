@@ -8,7 +8,7 @@ int32_t b = 10;
 // 16: c: Int32 = 0
 int32_t c = 0;
 
-int main() {
+void __tpy_init_main() {
   // 7: print(a & b)       # 8 (0b1000)
   std::cout << (a & b) << "\n";
   // 10: print(a | b)       # 14 (0b1110)
@@ -21,5 +21,9 @@ int main() {
   std::cout << (1 << 4) << "\n";
   // 23: print(32 >> 2)     # 8
   std::cout << (32 >> 2) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

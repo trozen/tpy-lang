@@ -6,12 +6,16 @@ std::vector<tpy::BigInt> nums = {1, 2, 3};
 // 4: nested = [[1, 2], [3, 4]]
 std::vector<std::vector<tpy::BigInt>> nested = {{1, 2}, {3, 4}};
 
-int main() {
+void __tpy_init_main() {
   // 2: print(nums)
   std::cout << tpy::ListPrinter(nums) << "\n";
   // 3: print([10, 20, 30])
   std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>{10, 20, 30}) << "\n";
   // 5: print(nested)
   std::cout << tpy::ListPrinter(nested) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

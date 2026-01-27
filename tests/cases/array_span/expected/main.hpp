@@ -9,3 +9,4 @@ extern StaticList<int32_t, 4> items;
 
 int32_t sum_span(std::span<const int32_t> values);
 
+void __tpy_init_main();

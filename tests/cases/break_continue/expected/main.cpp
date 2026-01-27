@@ -79,7 +79,7 @@ void test_nested_continue() {
   std::cout << count << "\n";
 }
 
-int main() {
+void __tpy_init_main() {
   // 41: test_break()
   test_break();
   // 42: test_continue()
@@ -88,5 +88,9 @@ int main() {
   test_nested_break();
   // 44: test_nested_continue()
   test_nested_continue();
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

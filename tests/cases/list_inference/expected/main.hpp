@@ -13,3 +13,4 @@ void test_list_param();
 int32_t takes_span(std::span<const int32_t> x);
 int32_t test_span_param();
 
+void __tpy_init_main();

@@ -28,7 +28,7 @@ void print_list(StaticList<Item, 16>& items) {
   }
 }
 
-int main() {
+void __tpy_init_main() {
   // 29: items = StaticList[Item, 16]()
   auto items = StaticList<Item, 16>();
   // 30: process_list(items)
@@ -37,5 +37,9 @@ int main() {
   std::cout << items.size() << "\n";
   // 32: print_list(items)
   print_list(items);
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

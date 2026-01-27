@@ -59,7 +59,7 @@ int32_t complex_condition(int32_t a, int32_t b) {
   }
 }
 
-int main() {
+void __tpy_init_main() {
   // 33: print(classify(-5))
   std::cout << classify((-5)) << "\n";
   // 34: print(classify(0))
@@ -82,5 +82,9 @@ int main() {
   std::cout << complex_condition((-1), 1) << "\n";
   // 43: print(complex_condition(0, 0))
   std::cout << complex_condition(0, 0) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

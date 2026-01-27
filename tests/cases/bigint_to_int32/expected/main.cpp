@@ -50,7 +50,7 @@ int32_t constructor_test(const tpy::BigInt& x) {
   return x.to_int32();
 }
 
-int main() {
+void __tpy_init_main() {
   // 1: """Test BigInt -> Int32 conversions with range checks."""
   // 42: n = 5
   tpy::BigInt n = tpy::BigInt(5);
@@ -78,5 +78,9 @@ int main() {
   auto result6 = constructor_test(tpy::BigInt(25));
   // 66: print(result6)
   std::cout << result6 << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

@@ -6,7 +6,7 @@ int32_t a = 42;
 // 37: b: Int32 = 99
 int32_t b = 99;
 
-int main() {
+void __tpy_init_main() {
   // 22: c = Counter(100)
   auto c = Counter(100);
   // 23: print(c.get())
@@ -27,5 +27,9 @@ int main() {
   std::cout << a << " " << b << "\n";
   // 41: print("done")
   std::cout << "done" << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

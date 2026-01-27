@@ -6,7 +6,7 @@ int32_t x = 2147483647;
 // 11: y: Int32 = -2147483648
 int32_t y = (-2147483648);
 
-int main() {
+void __tpy_init_main() {
   // 1: """Test valid Int32 operations at boundary values."""
   // 6: print(x)
   std::cout << x << "\n";
@@ -20,5 +20,9 @@ int main() {
   std::cout << tpy::int32_add(y, 1) << "\n";
   // 14: print(y // 2)
   std::cout << tpy::int32_div(y, 2) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

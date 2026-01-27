@@ -22,12 +22,16 @@ int32_t count_char(std::string_view text, char target) {
   return count;
 }
 
-int main() {
+void __tpy_init_main() {
   // 13: print(count_char("xoxox", "x"))
   std::cout << count_char("xoxox", 'x') << "\n";
   // 14: print(len("hello"))
   std::cout << static_cast<int32_t>(std::string_view("hello").size()) << "\n";
   // 15: print(chr(65))
   std::cout << static_cast<char>(65) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

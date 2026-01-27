@@ -23,7 +23,7 @@ int32_t sum_range(int32_t n) {
   return total;
 }
 
-int main() {
+void __tpy_init_main() {
   // 14: for i in range(5):
   for (int32_t i = 0; i < 5; ++i) {
     // 15:     print(i)
@@ -33,5 +33,9 @@ int main() {
   print_range(10, 15);
   // 21: print(sum_range(10))
   std::cout << sum_range(10) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

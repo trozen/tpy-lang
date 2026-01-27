@@ -8,9 +8,13 @@ int32_t y = 0;
 // 6: z: Int32 = x % y  # Should panic
 int32_t z = tpy::int32_mod(x, y);
 
-int main() {
+void __tpy_init_main() {
   // 1: """Test Int32 modulo by zero panic at runtime."""
   // 7: print(z)
   std::cout << z << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

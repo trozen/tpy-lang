@@ -59,7 +59,7 @@ void test_negative_division() {
   std::cout << tpy::int32_mod(a, b) << "\n";
 }
 
-int main() {
+void __tpy_init_main() {
   // 1: """Test Int32 arithmetic operations with overflow checks."""
   // 61: test_binary_ops()
   test_binary_ops();
@@ -69,5 +69,9 @@ int main() {
   test_mixed_literals();
   // 64: test_negative_division()
   test_negative_division();
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

@@ -13,3 +13,4 @@ struct Item {
 void process_list(StaticList<Item, 16>& items);
 void print_list(StaticList<Item, 16>& items);
 
+void __tpy_init_main();

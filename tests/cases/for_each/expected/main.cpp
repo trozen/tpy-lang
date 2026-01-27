@@ -52,7 +52,7 @@ int32_t nested_sum() {
   return total;
 }
 
-int main() {
+void __tpy_init_main() {
   // 6: for x in items:
   for (tpy::BigInt x : items) {
     // 7:     total += x
@@ -78,5 +78,9 @@ int main() {
   }
   // 47: print(nested_sum())  # 1*10 + 1*20 + 2*10 + 2*20 = 90
   std::cout << nested_sum() << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

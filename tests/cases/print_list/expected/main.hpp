@@ -7,3 +7,4 @@ extern std::vector<tpy::BigInt> nums;
 extern std::vector<std::vector<tpy::BigInt>> nested;
 
 
+void __tpy_init_main();

@@ -6,9 +6,13 @@ int32_t x = (-2147483648);
 // 5: y: Int32 = -x           # -INT32_MIN overflows, should panic
 int32_t y = tpy::int32_neg(x);
 
-int main() {
+void __tpy_init_main() {
   // 1: """Test Int32 negation overflow panic at runtime."""
   // 6: print(y)
   std::cout << y << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

@@ -52,7 +52,7 @@ int32_t test_span_param() {
   return takes_span(data);
 }
 
-int main() {
+void __tpy_init_main() {
   // 37: print(global_list[0])  # 1
   std::cout << global_list[0] << "\n";
   // 40: print(global_inferred[1])  # 20
@@ -65,5 +65,9 @@ int main() {
   test_list_param();
   // 52: print(test_span_param())  # 10
   std::cout << test_span_param() << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

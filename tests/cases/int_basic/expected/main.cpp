@@ -61,7 +61,7 @@ void test_comparison() {
   }
 }
 
-int main() {
+void __tpy_init_main() {
   // 1: """Test basic int (BigInt) operations."""
   // 43: print(factorial(10))  # 3628800
   std::cout << factorial(tpy::BigInt(10)).to_string() << "\n";
@@ -75,5 +75,9 @@ int main() {
   tpy::BigInt neg = (-tpy::BigInt(42));
   // 51: print(neg)
   std::cout << neg.to_string() << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

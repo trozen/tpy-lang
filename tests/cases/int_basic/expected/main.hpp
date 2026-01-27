@@ -7,3 +7,4 @@ tpy::BigInt factorial(const tpy::BigInt& n);
 void test_arithmetic();
 void test_comparison();
 
+void __tpy_init_main();

@@ -5,3 +5,4 @@
 
 tpy::BigInt factorial(const tpy::BigInt& n);
 
+void __tpy_init_main();

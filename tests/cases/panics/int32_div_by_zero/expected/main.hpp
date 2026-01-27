@@ -8,3 +8,4 @@ extern int32_t y;
 extern int32_t z;
 
 
+void __tpy_init_main();

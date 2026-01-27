@@ -57,8 +57,12 @@ void test_aug_assign() {
   std::cout << x << "\n";
 }
 
-int main() {
+void __tpy_init_main() {
   // 51: test_aug_assign()
   test_aug_assign();
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

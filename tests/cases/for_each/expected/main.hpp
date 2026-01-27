@@ -11,3 +11,4 @@ int32_t sum_array();
 void print_span(std::span<const int32_t> data);
 int32_t nested_sum();
 
+void __tpy_init_main();

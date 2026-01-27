@@ -55,8 +55,12 @@ void test_bool() {
   std::cout << count << "\n";
 }
 
-int main() {
+void __tpy_init_main() {
   // 39: test_bool()
   test_bool();
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

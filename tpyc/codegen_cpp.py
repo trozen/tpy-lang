@@ -129,11 +129,14 @@ class CodeGenerator:
             self._gen_function_def(cpp, func)
             cpp.write("\n")
 
-        # Generate main() if there are top-level statements
-        # But skip if user already defined a main() function
+        # Generate module init function and main()
+        # Skip if user already defined a main() function
         has_user_main = any(f.name == "main" for f in module.functions)
-        if main_stmts and not has_user_main:
-            self._gen_main(cpp, main_stmts)
+        if not has_user_main:
+            # Always generate init function (even if empty, for consistency)
+            self._gen_module_init_decl(hpp)
+            self._gen_module_init(cpp, main_stmts)
+            self._gen_main(cpp)
 
         self._write_header_epilogue(hpp)
 
@@ -151,14 +154,24 @@ class CodeGenerator:
     def _write_header_epilogue(self, out: TextIO) -> None:
         pass
 
-    def _gen_main(self, out: TextIO, stmts: list) -> None:
-        """Generate C++ main() function from top-level statements."""
-        out.write("int main() {\n")
+    def _gen_module_init_decl(self, out: TextIO) -> None:
+        """Generate module init function declaration in header."""
+        out.write(f"void __tpy_init_{self.module_name}();\n")
+
+    def _gen_module_init(self, out: TextIO, stmts: list) -> None:
+        """Generate module init function containing top-level statements."""
+        out.write(f"void __tpy_init_{self.module_name}() {{\n")
         self.declared_vars = set()
         self.var_types = {}
         self.indent_level = 1
         for stmt in stmts:
             self._gen_stmt(out, stmt)
+        out.write("}\n\n")
+
+    def _gen_main(self, out: TextIO) -> None:
+        """Generate C++ main() that calls module init."""
+        out.write("int main() {\n")
+        out.write(f"  __tpy_init_{self.module_name}();\n")
         out.write("  return 0;\n")
         out.write("}\n")
 

@@ -23,7 +23,7 @@ int32_t sum_list(std::vector<int32_t>& nums) {
   return total;
 }
 
-int main() {
+void __tpy_init_main() {
   // 12: mem[0] = 42
   mem[0] = 42;
   // 13: mem[1] = 8
@@ -42,5 +42,9 @@ int main() {
   std::cout << static_cast<char>((chars[0]).to_int32());
   // 25: print(chr(chars[1]))
   std::cout << static_cast<char>((chars[1]).to_int32()) << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

@@ -8,3 +8,4 @@ void test_unary_neg();
 void test_mixed_literals();
 void test_negative_division();
 
+void __tpy_init_main();

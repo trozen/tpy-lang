@@ -5,3 +5,4 @@
 
 void test_aug_assign();
 
+void __tpy_init_main();

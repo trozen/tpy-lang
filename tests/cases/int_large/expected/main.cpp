@@ -12,7 +12,7 @@ tpy::BigInt factorial(const tpy::BigInt& n) {
   return (n * factorial((n - tpy::BigInt(1))));
 }
 
-int main() {
+void __tpy_init_main() {
   // 8: print(factorial(20))
   std::cout << factorial(tpy::BigInt(20)).to_string() << "\n";
   // 11: print(factorial(25))
@@ -21,5 +21,9 @@ int main() {
   std::cout << factorial(tpy::BigInt(50)).to_string() << "\n";
   // 17: print(factorial(100))
   std::cout << factorial(tpy::BigInt(100)).to_string() << "\n";
+}
+
+int main() {
+  __tpy_init_main();
   return 0;
 }

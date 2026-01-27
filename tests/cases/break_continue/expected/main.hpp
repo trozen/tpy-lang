@@ -8,3 +8,4 @@ void test_continue();
 void test_nested_break();
 void test_nested_continue();
 
+void __tpy_init_main();

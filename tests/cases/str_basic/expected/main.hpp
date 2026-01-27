@@ -5,3 +5,4 @@
 
 int32_t count_char(std::string_view text, char target);
 
+void __tpy_init_main();

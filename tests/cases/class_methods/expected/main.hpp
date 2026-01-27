@@ -34,3 +34,4 @@ struct Counter {
 };
 
 
+void __tpy_init_main();

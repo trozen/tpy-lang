@@ -8,3 +8,4 @@ int32_t check_range(int32_t x);
 int32_t check_bounds(int32_t x);
 int32_t complex_condition(int32_t a, int32_t b);
 
+void __tpy_init_main();
