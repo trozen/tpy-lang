@@ -469,6 +469,8 @@ class SemanticAnalyzer:
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""
         # Check for unsupported operators
+        if expr.op == "div":
+            raise SemanticError("True division (/) not supported; use floor division (//) instead", expr.loc)
         if expr.op == "**":
             raise SemanticError("Power operator (**) not yet implemented", expr.loc)
 

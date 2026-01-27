@@ -673,7 +673,7 @@ class Parser:
         """Convert binary operator to string."""
         ops = {
             ast.Add: "+", ast.Sub: "-", ast.Mult: "*",
-            ast.Div: "/", ast.Mod: "%", ast.FloorDiv: "/",
+            ast.Div: "div", ast.Mod: "%", ast.FloorDiv: "//",
             ast.BitAnd: "&", ast.BitOr: "|", ast.BitXor: "^",
             ast.LShift: "<<", ast.RShift: ">>",
             ast.Pow: "**",

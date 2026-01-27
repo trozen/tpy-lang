@@ -540,15 +540,16 @@ class CodeGenerator:
         value_type = self._get_resolved_type(stmt.value)
 
         # Int32 arithmetic needs checked operations
-        if isinstance(target_type, Int32Type) and stmt.op in ("+", "-", "*", "/", "%"):
+        if isinstance(target_type, Int32Type) and stmt.op in ("+", "-", "*", "//", "%"):
             # Convert BigInt to Int32 if needed
             if self._is_runtime_bigint(stmt.value, value_type):
                 value = f"({value}).to_int32()"
             op_map = {"+": "int32_add", "-": "int32_sub", "*": "int32_mul",
-                      "/": "int32_div", "%": "int32_mod"}
+                      "//": "int32_div", "%": "int32_mod"}
             out.write(f"{indent}{target} = tpy::{op_map[stmt.op]}({target}, {value});\n")
         else:
-            out.write(f"{indent}{target} {stmt.op}= {value};\n")
+            cpp_op = "/" if stmt.op == "//" else stmt.op
+            out.write(f"{indent}{target} {cpp_op}= {value};\n")
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
@@ -739,11 +740,12 @@ class CodeGenerator:
             # Check if result is Int32 (needs checked arithmetic)
             if self._is_int32_arithmetic(left_type, right_type, expr.op):
                 op_map = {"+": "int32_add", "-": "int32_sub", "*": "int32_mul",
-                          "/": "int32_div", "%": "int32_mod"}
+                          "//": "int32_div", "%": "int32_mod"}
                 if expr.op in op_map:
                     return f"tpy::{op_map[expr.op]}({left}, {right})"
 
-            return f"({left} {expr.op} {right})"
+            cpp_op = "/" if expr.op == "//" else expr.op
+            return f"({left} {cpp_op} {right})"
 
         elif isinstance(expr, TpyUnaryOp):
             # For negation, if target is BigInt, promote the operand
@@ -948,7 +950,7 @@ class CodeGenerator:
         Only applies when at least one operand is explicitly Int32Type.
         IntLiteralType alone defaults to BigInt (Python semantics).
         """
-        if op not in ("+", "-", "*", "/", "%"):
+        if op not in ("+", "-", "*", "//", "%"):
             return False
         # Need at least one explicit Int32 operand
         has_int32 = isinstance(left_type, Int32Type) or isinstance(right_type, Int32Type)
