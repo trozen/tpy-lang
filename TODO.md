@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- top-level expr -- should be converted to a init_module function, called when module is imported or directly started
 - extract built-in function defintions to separate files
 - instead of hardcoding Int32 ops, define it in code, use __add__ etc special methods
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)

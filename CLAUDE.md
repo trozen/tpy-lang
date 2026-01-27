@@ -92,6 +92,7 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 | `typesys.py` | Type definitions (Int32, Bool, Void, Str, Record, Ptr, ConstPtr, StaticList, Array, Span) and TypeRegistry |
 | `sema.py` | Multi-pass semantic analysis: type checking, type inference |
 | `codegen_cpp.py` | Generates `.hpp` (header) and `.cpp` (source) files |
+| `modules/` | Built-in function and type definitions (chr, len, __len__, etc.) with C++ templates |
 
 ### Runtime (`runtime/`)
 

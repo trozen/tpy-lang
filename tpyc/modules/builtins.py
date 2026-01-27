@@ -21,3 +21,19 @@ module.function("chr", overloads=[
         cpp="static_cast<char>(({0}).to_int32())",
     ),
 ])
+
+module.type("list", cpp_type="std::vector<{T}>", methods={
+    "__len__": [MethodDef(
+        params=[],
+        returns=INT32,
+        cpp="static_cast<int32_t>({self}.size())",
+    )],
+})
+
+module.type("str", cpp_type="std::string_view", methods={
+    "__len__": [MethodDef(
+        params=[],
+        returns=INT32,
+        cpp="static_cast<int32_t>({self}.size())",
+    )],
+})

@@ -584,14 +584,18 @@ class SemanticAnalyzer:
                 self._analyze_expr(arg)
             return VOID
 
-        # Built-in len()
+        # Built-in len() - dispatches to __len__ on the argument type
         if expr.func == "len":
             if len(expr.args) != 1:
                 raise SemanticError("len() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
-            if not isinstance(arg_type, (StaticListType, ArrayType, SpanType, ListType, PendingListType, StrType)):
-                raise SemanticError(f"len() argument must be StaticList, Array, Span, list, or str, got {arg_type}")
-            return INT32
+            qname = arg_type.qualified_name()
+            if qname is None:
+                raise SemanticError(f"len() argument must have __len__, got {arg_type}")
+            len_methods = builtin_modules.lookup_type_method(qname, "__len__")
+            if not len_methods:
+                raise SemanticError(f"len() argument must have __len__, got {arg_type}")
+            return len_methods[0].returns
 
         # Check if it's a type constructor
         if expr.func == "int":

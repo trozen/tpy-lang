@@ -790,18 +790,20 @@ class CodeGenerator:
             # print() maps to std::printf
             if expr.func == "print":
                 return self._gen_print(expr.args, expr.kwargs)
-            # len() maps to .size()
+            # len() dispatches to __len__ on the argument type
             if expr.func == "len":
                 arg = expr.args[0]
                 arg_type = self._get_resolved_type(arg)
-                # For string literals, wrap in string_view to get .size()
-                if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
-                    escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-                    return f'static_cast<int32_t>(std::string_view("{escaped}").size())'
-                # std::array, std::span, std::vector, and std::string_view return std::size_t, cast to int32_t
-                if isinstance(arg_type, (ArrayType, SpanType, ListType, StrType)):
-                    return f"static_cast<int32_t>({self._gen_expr(arg)}.size())"
-                return f"{self._gen_expr(arg)}.size()"
+                qname = arg_type.qualified_name()
+                len_methods = builtin_modules.lookup_type_method(qname, "__len__")
+                if len_methods:
+                    # For string literals, wrap in string_view first
+                    if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
+                        escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+                        gen_self = f'std::string_view("{escaped}")'
+                    else:
+                        gen_self = self._gen_expr(arg)
+                    return len_methods[0].cpp.format(self=gen_self)
             # Check module registry for built-in functions
             if builtin_fn := builtin_modules.lookup_function(expr.func):
                 return self._gen_builtin_call(expr, builtin_fn)

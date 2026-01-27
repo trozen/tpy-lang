@@ -26,6 +26,10 @@ class TpyType:
         """Return True if this is a pointer type."""
         return False
 
+    def qualified_name(self) -> Optional[str]:
+        """Return the fully qualified type name for module lookup, or None if not a module type."""
+        return None
+
 
 @dataclass(frozen=True)
 class Int32Type(TpyType):
@@ -58,6 +62,9 @@ class StrType(TpyType):
 
     def __str__(self) -> str:
         return "str"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.str"
 
 
 @dataclass(frozen=True)
@@ -167,6 +174,9 @@ class StaticListType(TpyType):
     def __str__(self) -> str:
         return f"StaticList[{self.element_type}, {self.capacity}]"
 
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.StaticList"
+
 
 @dataclass(frozen=True)
 class ArrayType(TpyType):
@@ -180,6 +190,9 @@ class ArrayType(TpyType):
     def __str__(self) -> str:
         return f"Array[{self.element_type}, {self.size}]"
 
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.Array"
+
 
 @dataclass(frozen=True)
 class SpanType(TpyType):
@@ -192,6 +205,9 @@ class SpanType(TpyType):
     def __str__(self) -> str:
         return f"Span[{self.element_type}]"
 
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.Span"
+
 
 @dataclass(frozen=True)
 class ListType(TpyType):
@@ -203,6 +219,9 @@ class ListType(TpyType):
 
     def __str__(self) -> str:
         return f"list[{self.element_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.list"
 
 
 @dataclass(frozen=True)
@@ -222,6 +241,9 @@ class PendingListType(TpyType):
 
     def __str__(self) -> str:
         return f"PendingList[{self.element_type}, {self.size}]#{self.literal_id}"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.list"
 
 
 @dataclass
