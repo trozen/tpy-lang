@@ -15,7 +15,7 @@ Status legend:
 
 **Pluggable backends**: The mapping from TurboPython to C++ should be configurable. Different projects have different needs:
 - `Span[T]` → `std::span<const T>` or a custom span type
-- `print()` → `std::printf` or `std::cout` or a logging framework
+- `print()` → `std::cout` (default) or a logging framework
 - `str` → `std::string` or a custom string class
 
 ---
@@ -86,7 +86,7 @@ The mapping from TurboPython types/functions to C++ should be configurable via b
 # tpy.backend.default - ships with tpyc
 Span[T]     → std::span<const T>
 str         → std::string
-print(...)  → std::printf(...)
+print(...)  → std::cout << ...
 list[T]     → std::vector<T>
 
 # tpy.backend.trading - custom for HFT
@@ -411,8 +411,7 @@ Key features:
 - **Open**: `for/else`, `while/else` → flag variable pattern
 
 ### Other
-- **Working**: `return`
-- **Planned**: `pass`
+- **Working**: `return`, `pass`
 - **Open**: `match`/`case` → switch or if/else chain
 
 ---
@@ -426,7 +425,7 @@ Key features:
 - **Open**: `**kwargs` → if keys known at compile time
 
 ### Decorators
-- **Working**: `@noalloc`
+- **Working**: `@noalloc` (parsed and recognized, enforcement planned)
 - **Open**: Custom decorators → compile-time transforms
 
 ### Type Polymorphism
@@ -465,9 +464,37 @@ Key features:
 - **Planned**: List slicing: `items[1:3]`
 - **Open**: `isinstance()` → compile-time type check / type narrowing
 - **Open**: `type()` → compile-time type info
-- **Open**: `str()`, `int()` → type conversion functions
+- **Open**: `str()`, `int()`, `list()` → type conversion functions (see below)
 - **Open**: `enumerate()` → compile-time transform
 - **Open**: `zip()` → compile-time transform for fixed iterables
+
+#### Type Conversion Functions (Open)
+
+`int()`, `str()`, `list()` need design for a statically-typed context.
+
+**`int()` / `str()`**: Straightforward conversions.
+- `int("42")` → parse string to int
+- `str(42)` → convert int to string
+
+**`list()`**: Lists are typed (`std::vector<T>`), so type must come from somewhere:
+
+```python
+# From explicit type parameter
+x = list[int]()              # empty list[int]
+
+# From iterable argument (type inferred)
+x = list([1, 2, 3])          # list[int] (copy)
+x = list("abc")              # list[Char]
+x = list(range(3))           # list[int]
+
+# From context annotation
+x: list[int] = list()        # type from annotation
+x: list[int] = []            # same - empty literal infers from annotation
+
+# Bare list() with no context → error with helpful message
+x = list()                   # error: cannot infer type, use list[T]() or provide argument
+x = []                       # error: same issue
+```
 
 ---
 
@@ -483,7 +510,7 @@ Key features:
 ## Variables & Scope
 
 - **Working**: Local variables (inferred and annotated)
-- **Working**: Global constants
+- **Working**: Global variables (typed)
 - **Planned**: Type inference from function returns
 - **Open**: `global` → explicit global access
 - **Open**: `:=` walrus → if useful pattern emerges
