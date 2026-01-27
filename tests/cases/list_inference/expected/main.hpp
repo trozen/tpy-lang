@@ -4,7 +4,7 @@
 #include "tpy_runtime.hpp"
 
 extern std::vector<int32_t> global_list;
-extern std::vector<int32_t> global_inferred;
+extern std::vector<tpy::BigInt> global_inferred;
 
 int32_t test_no_mutation();
 int32_t test_mutation();

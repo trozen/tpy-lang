@@ -3,7 +3,7 @@
 
 #include "tpy_runtime.hpp"
 
-extern std::vector<int32_t> items;
+extern std::vector<tpy::BigInt> items;
 extern int32_t total;
 extern std::array<int32_t, 3> arr;
 

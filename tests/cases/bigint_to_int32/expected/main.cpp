@@ -10,7 +10,7 @@ int32_t takes_int32(int32_t x) {
 // 11: def return_as_int32(x: int) -> Int32:
 int32_t return_as_int32(const tpy::BigInt& x) {
   // 12:     return x
-  return x.to_int32();
+  return (x).to_int32();
 }
 
 // 16: def var_decl_test(x: int) -> Int32:

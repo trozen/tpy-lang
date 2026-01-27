@@ -3,7 +3,7 @@
 
 #include "tpy_runtime.hpp"
 
-extern std::vector<int32_t> nums;
-extern std::vector<std::vector<int32_t>> nested;
+extern std::vector<tpy::BigInt> nums;
+extern std::vector<std::vector<tpy::BigInt>> nested;
 
 

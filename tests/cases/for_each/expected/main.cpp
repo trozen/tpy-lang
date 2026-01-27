@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 4: items = [1, 2, 3, 4, 5]
-std::vector<int32_t> items = {1, 2, 3, 4, 5};
+std::vector<tpy::BigInt> items = {1, 2, 3, 4, 5};
 // 5: total: Int32 = 0
 int32_t total = 0;
 // 11: arr: Array[Int32, 3] = [10, 20, 30]
@@ -11,13 +11,13 @@ std::array<int32_t, 3> arr = {10, 20, 30};
 // 16: def sum_array() -> Int32:
 int32_t sum_array() {
   // 17:     nums = [100, 200, 300]
-  std::array<int32_t, 3> nums = {100, 200, 300};
+  std::array<tpy::BigInt, 3> nums = {tpy::BigInt(100), tpy::BigInt(200), tpy::BigInt(300)};
   // 18:     result: Int32 = 0
   int32_t result = 0;
   // 19:     for n in nums:
-  for (int32_t n : nums) {
+  for (tpy::BigInt n : nums) {
     // 20:         result += n
-    result = tpy::int32_add(result, n);
+    result = tpy::int32_add(result, (n).to_int32());
   }
   // 21:     return result
   return result;
@@ -35,17 +35,17 @@ void print_span(std::span<const int32_t> data) {
 // 38: def nested_sum() -> Int32:
 int32_t nested_sum() {
   // 39:     outer = [1, 2]
-  std::array<int32_t, 2> outer = {1, 2};
+  std::array<tpy::BigInt, 2> outer = {tpy::BigInt(1), tpy::BigInt(2)};
   // 40:     inner = [10, 20]
-  std::array<int32_t, 2> inner = {10, 20};
+  std::array<tpy::BigInt, 2> inner = {tpy::BigInt(10), tpy::BigInt(20)};
   // 41:     total: Int32 = 0
   int32_t total = 0;
   // 42:     for a in outer:
-  for (int32_t a : outer) {
+  for (tpy::BigInt a : outer) {
     // 43:         for b in inner:
-    for (int32_t b : inner) {
+    for (tpy::BigInt b : inner) {
       // 44:             total += a * b
-      total = tpy::int32_add(total, (a * b));
+      total = tpy::int32_add(total, ((a * b)).to_int32());
     }
   }
   // 45:     return total
@@ -54,9 +54,9 @@ int32_t nested_sum() {
 
 int main() {
   // 6: for x in items:
-  for (int32_t x : items) {
+  for (tpy::BigInt x : items) {
     // 7:     total += x
-    total = tpy::int32_add(total, x);
+    total = tpy::int32_add(total, (x).to_int32());
   }
   // 8: print(total)  # 15
   std::cout << total << "\n";

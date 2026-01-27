@@ -238,6 +238,7 @@ class ListLiteralInfo:
     passed_to_span_param: bool = False
     has_explicit_annotation: bool = False
     explicit_type: Optional[TpyType] = None
+    coerced_element_type: Optional[TpyType] = None  # Element type from typed param (list[T] or Span[T])
     resolved_type: Optional[TpyType] = None
 
 

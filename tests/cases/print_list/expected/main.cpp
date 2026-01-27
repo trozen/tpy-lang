@@ -2,15 +2,15 @@
 #include "main.hpp"
 
 // 1: nums = [1, 2, 3]
-std::vector<int32_t> nums = {1, 2, 3};
+std::vector<tpy::BigInt> nums = {1, 2, 3};
 // 4: nested = [[1, 2], [3, 4]]
-std::vector<std::vector<int32_t>> nested = {{1, 2}, {3, 4}};
+std::vector<std::vector<tpy::BigInt>> nested = {{1, 2}, {3, 4}};
 
 int main() {
   // 2: print(nums)
   std::cout << tpy::ListPrinter(nums) << "\n";
   // 3: print([10, 20, 30])
-  std::cout << tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
+  std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>{10, 20, 30}) << "\n";
   // 5: print(nested)
   std::cout << tpy::ListPrinter(nested) << "\n";
   return 0;

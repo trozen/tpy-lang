@@ -801,6 +801,11 @@ class SemanticAnalyzer:
                 # First was literal, but later element is concrete - update first_type
                 first_type = elem_type
                 continue
+            # Nested lists with IntLiteralType elements are compatible
+            if (isinstance(first_type, ListType) and isinstance(elem_type, ListType) and
+                isinstance(first_type.element_type, IntLiteralType) and
+                isinstance(elem_type.element_type, IntLiteralType)):
+                continue
             if elem_type != first_type:
                 raise SemanticError(
                     f"Array literal element {i} has type {elem_type}, expected {first_type}"
@@ -809,12 +814,9 @@ class SemanticAnalyzer:
         size = len(expr.elements)
 
         # Global context (no current function) -> ListType (std::vector)
+        # Keep IntLiteralType to allow coercion to Int32 when annotation is present
         if self.current_function is None:
-            # Resolve IntLiteralType to Int32 for container elements
-            elem_type = first_type
-            if isinstance(elem_type, IntLiteralType):
-                elem_type = INT32
-            return ListType(elem_type)
+            return ListType(first_type)
 
         # Function-local context -> create PendingListType for deferred resolution
         literal_id = self.literal_counter
@@ -840,10 +842,7 @@ class SemanticAnalyzer:
         if not isinstance(count_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"List repetition count must be an integer type, got {count_type}")
 
-        # Resolve IntLiteral element type to Int32 for list elements
-        if isinstance(elem_type, IntLiteralType):
-            elem_type = INT32
-
+        # Keep IntLiteralType so it can coerce to annotated type (list[Int32] or list[int])
         return ListType(elem_type)
 
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
@@ -1011,8 +1010,10 @@ class SemanticAnalyzer:
             info = self.list_literals[literal_id]
             if isinstance(param_type, ListType):
                 info.passed_to_list_param = True
+                info.coerced_element_type = param_type.element_type
             elif isinstance(param_type, SpanType):
                 info.passed_to_span_param = True
+                info.coerced_element_type = param_type.element_type
 
     def _resolve_pending_list_types(self) -> None:
         """Resolve all pending list types after function analysis.
@@ -1033,10 +1034,16 @@ class SemanticAnalyzer:
 
             info = self.list_literals[literal_id]
 
-            # Resolve element type: IntLiteralType -> Int32 for containers
+            # Resolve element type
+            # Priority: coerced type from param > default
             elem_type = info.element_type
             if isinstance(elem_type, IntLiteralType):
-                elem_type = INT32
+                if info.coerced_element_type is not None:
+                    # Use element type from typed parameter (list[T] or Span[T])
+                    elem_type = info.coerced_element_type
+                else:
+                    # Default to BigInt (Python semantics)
+                    elem_type = BIGINT
 
             # Determine resolved type
             if info.has_explicit_annotation and info.explicit_type:

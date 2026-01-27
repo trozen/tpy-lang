@@ -4,20 +4,20 @@
 // 4: global_list: list[Int32] = [1, 2, 3]
 std::vector<int32_t> global_list = {1, 2, 3};
 // 7: global_inferred = [10, 20, 30]
-std::vector<int32_t> global_inferred = {10, 20, 30};
+std::vector<tpy::BigInt> global_inferred = {10, 20, 30};
 
 // 10: def test_no_mutation() -> Int32:
 int32_t test_no_mutation() {
   // 11:     local = [1, 2, 3]
-  std::array<int32_t, 3> local = {1, 2, 3};
+  std::array<tpy::BigInt, 3> local = {tpy::BigInt(1), tpy::BigInt(2), tpy::BigInt(3)};
   // 12:     return local[0]
-  return local[0];
+  return (local[0]).to_int32();
 }
 
 // 15: def test_mutation() -> Int32:
 int32_t test_mutation() {
   // 16:     items = [1, 2, 3]
-  std::vector<int32_t> items = {1, 2, 3};
+  std::vector<tpy::BigInt> items = {1, 2, 3};
   // 17:     items.append(4)
   items.push_back(4);
   // 18:     return len(items)
@@ -56,7 +56,7 @@ int main() {
   // 37: print(global_list[0])  # 1
   std::cout << global_list[0] << "\n";
   // 40: print(global_inferred[1])  # 20
-  std::cout << global_inferred[1] << "\n";
+  std::cout << global_inferred[1].to_string() << "\n";
   // 43: print(test_no_mutation())  # 1
   std::cout << test_no_mutation() << "\n";
   // 46: print(test_mutation())  # 4

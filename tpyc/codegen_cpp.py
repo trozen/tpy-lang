@@ -46,6 +46,14 @@ class CodeGenerator:
         self.var_types: dict[str, TpyType] = {}  # Track variable types for code generation
         self.source_lines: list[str] = []  # Source lines for emit_source_comments
 
+    def _resolve_list_int_literal(self, typ: TpyType) -> TpyType:
+        """Recursively resolve IntLiteralType to BigInt in ListType (Python semantics)."""
+        if isinstance(typ, IntLiteralType):
+            return BIGINT
+        if isinstance(typ, ListType):
+            return ListType(self._resolve_list_int_literal(typ.element_type))
+        return typ
+
     def _get_resolved_type(self, expr: TpyExpr) -> TpyType:
         """Get the resolved type of an expression, handling PendingListType.
 
@@ -61,8 +69,15 @@ class CodeGenerator:
                 info = self.analyzer.list_literals[literal_id]
                 if info.resolved_type:
                     return info.resolved_type
-            # Fallback: treat as ListType
-            return ListType(typ.element_type)
+            # Fallback: treat as ListType with resolved element type
+            elem_type = typ.element_type
+            if isinstance(elem_type, IntLiteralType):
+                elem_type = INT32
+            return ListType(elem_type)
+        # Resolve IntLiteralType in global ListType to BigInt (Python semantics)
+        # This handles globals like `items = [1, 2, 3]` and nested lists
+        if isinstance(typ, ListType):
+            return self._resolve_list_int_literal(typ)
         return typ
 
     def generate(self, module: TpyModule, module_name: str = "generated") -> tuple[str, str]:
@@ -399,11 +414,11 @@ class CodeGenerator:
             if stmt.value:
                 # Pass return type for BigInt promotion
                 ret_type = self.current_return_type if hasattr(self, 'current_return_type') else None
-                value_type = self.analyzer.get_expr_type(stmt.value)
+                value_type = self._get_resolved_type(stmt.value)
                 expr = self._gen_expr(stmt.value, ret_type)
                 # Convert BigInt -> Int32 if needed
-                if ret_type:
-                    expr = self._convert_to_int32_if_needed(expr, value_type, ret_type)
+                if ret_type and isinstance(ret_type, Int32Type) and self._is_runtime_bigint(stmt.value, value_type):
+                    expr = f"({expr}).to_int32()"
                 out.write(f"{indent}return {expr};\n")
             else:
                 out.write(f"{indent}return;\n")
@@ -521,9 +536,13 @@ class CodeGenerator:
         target = self._gen_expr(stmt.target)
         value = self._gen_expr(stmt.value)
         target_type = self.analyzer.get_expr_type(stmt.target)
+        value_type = self._get_resolved_type(stmt.value)
 
         # Int32 arithmetic needs checked operations
         if isinstance(target_type, Int32Type) and stmt.op in ("+", "-", "*", "/", "%"):
+            # Convert BigInt to Int32 if needed
+            if self._is_runtime_bigint(stmt.value, value_type):
+                value = f"({value}).to_int32()"
             op_map = {"+": "int32_add", "-": "int32_sub", "*": "int32_mul",
                       "/": "int32_div", "%": "int32_mod"}
             out.write(f"{indent}{target} = tpy::{op_map[stmt.op]}({target}, {value});\n")
@@ -923,6 +942,11 @@ class CodeGenerator:
         if isinstance(expr_type, BigIntType):
             return True
         if isinstance(expr_type, IntLiteralType):
+            # IntLiteralType in list context resolves to BigInt (Python semantics)
+            if isinstance(expr, TpySubscript):
+                obj_type = self.analyzer.get_expr_type(expr.obj)
+                if isinstance(obj_type, ListType) and isinstance(obj_type.element_type, IntLiteralType):
+                    return True
             return self._involves_variables(expr)
         return False
 
@@ -953,7 +977,7 @@ class CodeGenerator:
             if i > 0:
                 parts.append('" "')  # Space separator between args
 
-            arg_type = self.analyzer.get_expr_type(arg)
+            arg_type = self._get_resolved_type(arg)
 
             if isinstance(arg, TpyStrLiteral):
                 escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
