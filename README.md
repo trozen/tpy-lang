@@ -1,6 +1,6 @@
 # TurboPython
 
-A proof-of-concept compiler that translates restricted Python-syntax to C++ for ultra-low-latency applications.
+A proof-of-concept compiler that translates Python to C++.
 
 ## Quick Start
 
@@ -8,16 +8,29 @@ A proof-of-concept compiler that translates restricted Python-syntax to C++ for 
 # Install
 uv sync
 
-# Compile
-tpyc examples/example.tp.py -o out/
+# Compile and run a program
+tpyc examples/hello.tp.py --run
 
-# Build and run
-g++ -std=c++17 -I runtime -o out/program out/generated.cpp
-./out/program
+# Interactive REPL
+tpyc --repl
 ```
 
 ## Testing
 
 ```bash
+# Run all tests
 pytest
+
+# Run tests for a specific case
+pytest -k hello
+```
+
+## Manual Build
+
+If you need to compile the generated C++ manually:
+
+```bash
+tpyc examples/hello.tp.py -o out/
+g++ -std=c++20 -I runtime -o out/program out/hello.d/hello.cpp -lgmp
+./out/program
 ```

@@ -24,6 +24,9 @@ tpyc examples/hello.tp.py -o out/
 # Verbose mode
 tpyc examples/hello.tp.py --run -v
 
+# Interactive REPL
+tpyc --repl
+
 # Install for development (uses uv package manager)
 uv sync
 ```
@@ -34,15 +37,8 @@ uv sync
 # Run all tests
 pytest
 
-# Run specific test
-pytest tests/test_compiler.py::test_hello_codegen
-
 # Run tests for one case (pattern matching)
 pytest -k hello
-
-# Run all codegen or output tests
-pytest -k codegen
-pytest -k output
 
 # Update expected snapshots after intentional changes
 python tests/update_snapshots.py           # all cases
@@ -63,8 +59,7 @@ tests/
 │           └── output.txt
 ├── harness/tpy/              # CPython simulation module
 ├── conftest.py               # Pytest fixtures
-├── test_codegen.py           # C++ code generation tests
-├── test_output.py            # Runtime output tests
+├── test_cases.py             # Main test module (codegen + output)
 └── update_snapshots.py       # Snapshot update utility
 ```
 
@@ -95,21 +90,21 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
 | `typesys.py` | Type definitions (Int32, Bool, Void, Str, Record, Ptr, ConstPtr, StaticList, Array, Span) and TypeRegistry |
-| `sema.py` | Multi-pass semantic analysis: type checking, `@noalloc` validation |
+| `sema.py` | Multi-pass semantic analysis: type checking, type inference |
 | `codegen_cpp.py` | Generates `.hpp` (header) and `.cpp` (source) files |
 
 ### Runtime (`runtime/`)
 
 `tpy_runtime.hpp` provides C++ template utilities, primarily `StaticList<T, N>` - a fixed-capacity container with zero dynamic allocation. Generated code requires C++20 (for `std::span`).
 
-## Performance Profiles
+## Performance Profiles (Planned)
 
-TurboPython supports different performance profiles applied at function, class, or module level:
+TurboPython will support performance profiles applied at function, class, or module level:
 
-- **Default**: Standard Python constructs allowed (`list`, `dict`, `str`, etc.)
+- **Default**: Standard Python constructs allowed (`list`, `str`, etc.)
 - **`@noalloc`**: No heap allocation - for hot paths and real-time code
 
-See `docs/LANGUAGE_FEATURES.md` for full profile hierarchy and pluggable backend system.
+Note: `@noalloc` is parsed but not yet enforced. See `docs/LANGUAGE_FEATURES.md` for the design.
 
 ## Current Limitations
 
@@ -174,3 +169,10 @@ When implementing new features:
 - Check TODO.md for current priorities
 - Run `pytest` to verify no regressions after changes
 - Update test snapshots with `python tests/update_snapshots.py` when expected output changes intentionally
+
+**Before committing**: Verify that documentation is still accurate:
+- `CLAUDE.md` - commands, test structure, type mappings, supported features
+- `README.md` - quick start commands, build flags
+- `docs/LANGUAGE_FEATURES.md` - working/planned status of features
+
+If committed code adds new features or changes behavior, update the relevant docs in the same commit.

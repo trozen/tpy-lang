@@ -13,6 +13,7 @@
 - `None` type, optional values, null pointers
 - very basic std lib (sys.argv, time.time) with imports
 - list slicing (`items[1:3]`)
+- float type (in future also Float32/64)
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
