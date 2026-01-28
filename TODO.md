@@ -1,6 +1,10 @@
 # TODO
 
 ## Next
+- ownership model for object types:
+  - `Owned[T]` for return position: caller owns the result (by value, moved)
+  - `Owned[T]` for argument position (future): callee takes ownership
+  - `copy()` builtin for explicit copying
 - extract built-in function defintions to separate files
 - instead of hardcoding Int32 ops, define it in code, use __add__ etc special methods
 - Int32(10**20) overflow; BigInt->Int32 overflow checks

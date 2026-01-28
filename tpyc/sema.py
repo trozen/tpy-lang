@@ -294,6 +294,8 @@ class SemanticAnalyzer:
                 self._check_type_compatible(ret_type, expected, "return value",
                                             getattr(stmt.value, 'loc', None),
                                             source_expr=stmt.value, is_return=True)
+                # Check for dangling reference (returning local/temporary as reference)
+                self._check_dangling_reference(stmt.value, expected, stmt.loc)
         elif isinstance(stmt, TpyIf):
             self._analyze_expr(stmt.condition)
             for s in stmt.then_body:
@@ -915,6 +917,85 @@ class SemanticAnalyzer:
             return CHAR
         else:
             raise SemanticError(f"Cannot index type {obj_type}")
+
+    def _check_dangling_reference(self, expr: TpyExpr, return_type: TpyType, loc: SourceLocation | None) -> None:
+        """Check if returning expr as a reference would be a dangling reference.
+
+        Object types are returned by reference. Returning a local variable or
+        newly constructed object would create a dangling reference.
+        """
+        # Only check object types (value types are returned by value)
+        # Pointers are also value types (the pointer itself is copied)
+        if return_type.is_value_type() or isinstance(return_type, (VoidType, PtrType, ConstPtrType)):
+            return
+
+        # Check if the expression is safe to return as a reference
+        if self._is_dangling_return(expr):
+            raise self._error(
+                f"Cannot return local or temporary as reference. "
+                f"Object type '{return_type}' is returned by reference. "
+                f"Use Owned[{return_type}] to return by value (not yet implemented).",
+                expr
+            )
+
+    def _is_dangling_return(self, expr: TpyExpr) -> bool:
+        """Check if returning this expression would create a dangling reference."""
+        # Array literal - creates temporary
+        if isinstance(expr, TpyArrayLiteral):
+            return True
+
+        # List repeat - creates temporary
+        if isinstance(expr, TpyListRepeat):
+            return True
+
+        # Constructor call - creates temporary
+        if isinstance(expr, TpyCall):
+            # Generic container constructor (StaticList[T,N](), Array[T,N](), list[T]())
+            if expr.call_type is not None:
+                if isinstance(expr.call_type, (StaticListType, ArrayType, ListType)):
+                    return True
+
+            # Record constructor
+            if expr.func in self.registry.records:
+                return True
+
+            # Regular function call - assume it returns something safe
+            # (the callee is responsible for not returning dangling refs)
+            return False
+
+        # Local variable (not a parameter or global) - would dangle after function returns
+        if isinstance(expr, TpyName):
+            # Check if it's a parameter (safe)
+            if self.current_function:
+                for pname, ptype in self.current_function.params:
+                    if pname == expr.name:
+                        return False  # Parameter - safe to return reference
+
+            # Check if it's a global (safe - lives forever)
+            if expr.name in self.global_scope.bindings:
+                return False
+
+            # Local variable - dangling
+            return True
+
+        # Field access - safe only if the object itself is safe
+        if isinstance(expr, TpyFieldAccess):
+            return self._is_dangling_return(expr.obj)
+
+        # Subscript - safe only if the container itself is safe
+        if isinstance(expr, TpySubscript):
+            return self._is_dangling_return(expr.obj)
+
+        # Method call - assume safe (callee's responsibility)
+        if isinstance(expr, TpyMethodCall):
+            return False
+
+        # Unary/Binary ops - might create temporaries, be conservative
+        if isinstance(expr, (TpyUnaryOp, TpyBinOp)):
+            return True
+
+        # Default: assume safe
+        return False
 
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,
                                 loc: SourceLocation | None = None,

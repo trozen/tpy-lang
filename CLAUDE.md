@@ -66,8 +66,11 @@ tests/
 ### Adding a New Test Case
 
 1. Create `tests/cases/{name}/src/main.tp.py`
-2. Run `python tests/update_snapshots.py {name}` to generate expected outputs
-3. Run `pytest -k {name}` to verify
+2. Add `# tpyc:` annotations on lines that test specific compiler behavior:
+   - `# tpyc: ok` - line should compile without error
+   - `# tpyc: error(/regex/)` - line should produce an error matching the regex
+3. Run `python tests/update_snapshots.py {name}` to generate expected outputs
+4. Run `pytest -k {name}` to verify
 
 ## Code Style
 

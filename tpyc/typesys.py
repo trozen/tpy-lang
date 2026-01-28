@@ -41,6 +41,17 @@ class TpyType:
         """
         return False
 
+    def to_cpp_return(self) -> str:
+        """Return the C++ representation for function return types.
+
+        Value types return by value (T).
+        Object types return by reference (T&) to avoid hidden copies.
+        Use Owned[T] (future) when returning newly constructed objects.
+        """
+        if self.is_value_type():
+            return self.to_cpp()
+        return f"{self.to_cpp()}&"
+
 
 @dataclass(frozen=True)
 class Int32Type(TpyType):
@@ -68,6 +79,9 @@ class VoidType(TpyType):
 
     def __str__(self) -> str:
         return "None"
+
+    def to_cpp_return(self) -> str:
+        return "void"
 
 
 @dataclass(frozen=True)
@@ -181,6 +195,10 @@ class PtrType(TpyType):
     def __str__(self) -> str:
         return f"Ptr[{self.pointee}]"
 
+    def to_cpp_return(self) -> str:
+        # Pointers are small values, return by value
+        return self.to_cpp()
+
 
 @dataclass(frozen=True)
 class ConstPtrType(TpyType):
@@ -195,6 +213,10 @@ class ConstPtrType(TpyType):
 
     def __str__(self) -> str:
         return f"ConstPtr[{self.pointee}]"
+
+    def to_cpp_return(self) -> str:
+        # Pointers are small values, return by value
+        return self.to_cpp()
 
 
 @dataclass(frozen=True)
@@ -242,6 +264,10 @@ class SpanType(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return "tpy.Span"
+
+    def is_value_type(self) -> bool:
+        # Spans are lightweight views (ptr + size), passed/returned by value
+        return True
 
 
 @dataclass(frozen=True)

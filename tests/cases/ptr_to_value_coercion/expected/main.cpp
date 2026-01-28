@@ -22,7 +22,7 @@ void modify_point(Point& p) {
 }
 
 // 21: def deref_and_return(ptr: Ptr[Point]) -> Point:
-Point deref_and_return(Point* ptr) {
+Point& deref_and_return(Point* ptr) {
   // 23:     return ptr
   return tpy::deref_ptr(ptr);
 }

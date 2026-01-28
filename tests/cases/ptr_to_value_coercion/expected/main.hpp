@@ -14,7 +14,7 @@ struct Point {
 void print_point(Point& p);
 int32_t get_sum(Point& p);
 void modify_point(Point& p);
-Point deref_and_return(Point* ptr);
+Point& deref_and_return(Point* ptr);
 void test_ptr_to_value();
 void test_ptr_to_value_assign();
 void test_ptr_to_value_return();

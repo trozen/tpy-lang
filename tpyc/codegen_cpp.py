@@ -368,7 +368,7 @@ class CodeGenerator:
 
     def _gen_method(self, out: TextIO, method: TpyFunction) -> None:
         """Generate a method definition inside a struct."""
-        ret_type = method.return_type.to_cpp()
+        ret_type = method.return_type.to_cpp_return()
         params = self._gen_params(method.params)
         out.write(f"\n  {ret_type} {method.name}({params}) {{\n")
 
@@ -388,7 +388,7 @@ class CodeGenerator:
 
     def _gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function declaration."""
-        ret_type = func.return_type.to_cpp()
+        ret_type = func.return_type.to_cpp_return()
         # Special case: main() must return int
         if func.name == "main":
             ret_type = "int"
@@ -399,7 +399,7 @@ class CodeGenerator:
         """Generate a function definition."""
         self._emit_source_comment(out, func.loc)
 
-        ret_type = func.return_type.to_cpp()
+        ret_type = func.return_type.to_cpp_return()
         # Special case: main() must return int
         if func.name == "main":
             ret_type = "int"
