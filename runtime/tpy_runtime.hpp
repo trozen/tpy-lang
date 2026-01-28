@@ -243,6 +243,18 @@ public:
     }
 
     /**
+     * Set element at index (for value types).
+     * Panics if index is out of bounds.
+     */
+    void set_value(int32_t index, const T& value) {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds in set_value()");
+        }
+        data_[i] = value;
+    }
+
+    /**
      * Get a reference to element at index (for object types).
      * Use this for object types (records, nested containers) where
      * you need to access fields or mutate the element in-place.
@@ -917,6 +929,20 @@ T get_value(const std::vector<T>& vec, int32_t index) {
         tpy_panic("list index out of bounds in get_value()");
     }
     return vec[i];
+}
+
+/**
+ * set_value - Set element at index (for value types).
+ *
+ * Panics if index is out of bounds.
+ */
+template <typename T>
+void set_value(std::vector<T>& vec, int32_t index, const T& value) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= vec.size()) {
+        tpy_panic("list index out of bounds in set_value()");
+    }
+    vec[i] = value;
 }
 
 /**

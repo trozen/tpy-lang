@@ -608,6 +608,11 @@ class CodeGenerator:
 
     def _gen_aug_assign(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
         """Generate an augmented assignment."""
+        # Special handling for subscript targets - use set_value() pattern
+        if isinstance(stmt.target, TpySubscript):
+            self._gen_aug_assign_subscript(out, stmt, indent)
+            return
+
         target = self._gen_expr(stmt.target)
         value = self._gen_expr(stmt.value)
         target_type = self.analyzer.get_expr_type(stmt.target)
@@ -633,6 +638,68 @@ class CodeGenerator:
             # Fallback for operators not in module system
             cpp_op = "/" if stmt.op == "//" else stmt.op
             out.write(f"{indent}{target} {cpp_op}= {value};\n")
+
+    def _gen_aug_assign_subscript(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
+        """Generate augmented assignment for subscript targets.
+
+        Uses set_value(container, index, get_value(container, index) op value) pattern
+        for range-checked read and write. Only supported for value type elements.
+        """
+        subscript = stmt.target
+        obj = self._gen_expr(subscript.obj)
+        obj_type = self._get_resolved_type(subscript.obj)
+        index_type = self.analyzer.get_expr_type(subscript.index)
+        index_expr = self._gen_index_expr(obj, subscript.index, index_type)
+
+        # Get element type
+        elem_type = None
+        if isinstance(obj_type, (StaticListType, ArrayType, SpanType, ListType)):
+            elem_type = obj_type.element_type
+
+        # Only allow augmented assignment on value type elements
+        if elem_type and not elem_type.is_value_type():
+            raise RuntimeError(
+                f"Augmented assignment on container elements not supported for object types "
+                f"(element type: {elem_type})"
+            )
+
+        # Generate read expression using get_value()
+        if isinstance(obj_type, StaticListType):
+            read_expr = f"{obj}.get_value({index_expr})"
+        elif isinstance(obj_type, ListType):
+            read_expr = f"tpy::get_value({obj}, {index_expr})"
+        else:
+            # Array, Span - use [] directly
+            read_expr = f"{obj}[{index_expr}]"
+
+        value = self._gen_expr(stmt.value)
+        value_type = self._get_resolved_type(stmt.value)
+
+        # Special case: Int32 += BigInt should convert BigInt to Int32
+        if isinstance(elem_type, Int32Type) and isinstance(value_type, BigIntType):
+            value = f"({value}).to_int32()"
+            value_type = INT32
+
+        # Compute the result expression
+        if binop_result := builtin_modules.lookup_binop(elem_type, stmt.op, value_type):
+            wrapped_left = binop_result.left_wrapper.replace("{self}", read_expr).replace("{expr}", read_expr)
+            wrapped_right = binop_result.right_wrapper.replace("{self}", value).replace("{expr}", value)
+            if binop_result.is_reverse:
+                result_expr = binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
+            else:
+                result_expr = binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+        else:
+            cpp_op = "/" if stmt.op == "//" else stmt.op
+            result_expr = f"{read_expr} {cpp_op} {value}"
+
+        # Generate write using set_value()
+        if isinstance(obj_type, StaticListType):
+            out.write(f"{indent}{obj}.set_value({index_expr}, {result_expr});\n")
+        elif isinstance(obj_type, ListType):
+            out.write(f"{indent}tpy::set_value({obj}, {index_expr}, {result_expr});\n")
+        else:
+            # Array, Span - use [] directly
+            out.write(f"{indent}{obj}[{index_expr}] = {result_expr};\n")
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
@@ -744,7 +811,8 @@ class CodeGenerator:
         is_neg, abs_val = self._is_negative_literal(index)
         if is_neg:
             # Negative literal: items[-1] -> items[items.size() - 1]
-            return f"({obj}.size() - {abs_val})"
+            # Cast to int32_t since get_value/set_value take int32_t
+            return f"static_cast<int32_t>({obj}.size() - {abs_val})"
 
         index_expr = self._gen_expr(index)
         if self._is_runtime_bigint(index, index_type):
