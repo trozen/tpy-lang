@@ -60,15 +60,15 @@ tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
 
 void __tpy_init_main() {
   // 5: print(pure_literals[0])
-  std::cout << pure_literals[0] << "\n";
+  std::cout << tpy::get_value(pure_literals, 0) << "\n";
   // 9: print(mixed_int32[0])
-  std::cout << mixed_int32[0] << "\n";
+  std::cout << tpy::get_value(mixed_int32, 0) << "\n";
   // 13: print(mixed_int32_rev[1])
-  std::cout << mixed_int32_rev[1] << "\n";
+  std::cout << tpy::get_value(mixed_int32_rev, 1) << "\n";
   // 17: print(annotated_int32[0])
-  std::cout << annotated_int32[0] << "\n";
+  std::cout << tpy::get_value(annotated_int32, 0) << "\n";
   // 21: print(annotated_bigint[0])
-  std::cout << annotated_bigint[0] << "\n";
+  std::cout << tpy::get_value(annotated_bigint, 0) << "\n";
   // 28: print(local_mixed())
   std::cout << local_mixed() << "\n";
   // 39: print(sum_span(global_for_span))

@@ -1053,12 +1053,26 @@ class CodeGenerator:
 
         elif isinstance(expr, TpySubscript):
             obj = self._gen_expr(expr.obj)
-            obj_type = self.analyzer.get_expr_type(expr.obj)
+            # Use resolved type to handle PendingListType correctly
+            obj_type = self._get_resolved_type(expr.obj)
             index_type = self.analyzer.get_expr_type(expr.index)
             index_expr = self._gen_index_expr(obj, expr.index, index_type)
-            # StaticList uses .get() method, Array and Span use []
+
+            # Determine element type for value/object distinction
+            elem_type = None
+            if isinstance(obj_type, (StaticListType, ArrayType, SpanType, ListType)):
+                elem_type = obj_type.element_type
+
+            # Choose get_value vs get_ref based on element type
+            use_value = elem_type and elem_type.is_value_type()
+
             if isinstance(obj_type, StaticListType):
-                return f"{obj}.get({index_expr})"
+                method = "get_value" if use_value else "get_ref"
+                return f"{obj}.{method}({index_expr})"
+            elif isinstance(obj_type, ListType):
+                method = "tpy::get_value" if use_value else "tpy::get_ref"
+                return f"{method}({obj}, {index_expr})"
+            # Array, Span, str - use [] (returns reference, but read-only for Span)
             return f"{obj}[{index_expr}]"
 
         return "/* unknown expr */"

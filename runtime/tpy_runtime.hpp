@@ -211,6 +211,7 @@ public:
     /**
      * Get a reference to element at index.
      * Panics if index is out of bounds.
+     * @deprecated Use get_value() for value types, get_ref() for object types.
      */
     T& get(int32_t index) {
         auto i = static_cast<std::size_t>(index);
@@ -224,6 +225,41 @@ public:
         auto i = static_cast<std::size_t>(index);
         if (i >= size_) {
             tpy_panic("StaticList index out of bounds in get()");
+        }
+        return data_[i];
+    }
+
+    /**
+     * Get a copy of element at index (for value types).
+     * Use this for primitive types (Int32, BigInt, Bool, Char, str).
+     * Panics if index is out of bounds.
+     */
+    T get_value(int32_t index) const {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds in get_value()");
+        }
+        return data_[i];
+    }
+
+    /**
+     * Get a reference to element at index (for object types).
+     * Use this for object types (records, nested containers) where
+     * you need to access fields or mutate the element in-place.
+     * Panics if index is out of bounds.
+     */
+    T& get_ref(int32_t index) {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds in get_ref()");
+        }
+        return data_[i];
+    }
+
+    const T& get_ref(int32_t index) const {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds in get_ref()");
         }
         return data_[i];
     }
@@ -857,6 +893,55 @@ inline BigInt BigInt::pow(const BigInt& exp) const {
     mpz_pow_ui(result, zbase, exp_ul);
     mpz_clear(zbase);
     return from_mpz(result);
+}
+
+/**
+ * get_value - Get a copy of element at index (for value types).
+ *
+ * Use this for primitive types (Int32, BigInt, Bool, Char, str).
+ * Panics if index is out of bounds.
+ */
+template <typename T>
+T get_value(std::vector<T>& vec, int32_t index) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= vec.size()) {
+        tpy_panic("list index out of bounds in get_value()");
+    }
+    return vec[i];
+}
+
+template <typename T>
+T get_value(const std::vector<T>& vec, int32_t index) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= vec.size()) {
+        tpy_panic("list index out of bounds in get_value()");
+    }
+    return vec[i];
+}
+
+/**
+ * get_ref - Get a reference to element at index (for object types).
+ *
+ * Use this for object types (records, nested containers) where
+ * you need to access fields or mutate the element in-place.
+ * Panics if index is out of bounds.
+ */
+template <typename T>
+T& get_ref(std::vector<T>& vec, int32_t index) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= vec.size()) {
+        tpy_panic("list index out of bounds in get_ref()");
+    }
+    return vec[i];
+}
+
+template <typename T>
+const T& get_ref(const std::vector<T>& vec, int32_t index) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= vec.size()) {
+        tpy_panic("list index out of bounds in get_ref()");
+    }
+    return vec[i];
 }
 
 /**

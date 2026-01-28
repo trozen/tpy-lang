@@ -28,9 +28,9 @@ void __tpy_init_main() {
   // 17: items[1] = 88
   items.set(1, 88);
   // 18: print(items[0])
-  std::cout << items.get(0) << "\n";
+  std::cout << items.get_value(0) << "\n";
   // 19: print(items[1])
-  std::cout << items.get(1) << "\n";
+  std::cout << items.get_value(1) << "\n";
 }
 
 int main() {

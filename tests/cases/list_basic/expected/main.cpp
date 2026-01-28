@@ -15,7 +15,7 @@ int32_t sum_list(std::vector<int32_t>& nums) {
   // 6:     while i < len(nums):
   while ((i < static_cast<int32_t>(nums.size()))) {
     // 7:         total += nums[i]
-    total = tpy::int32_add(total, nums[i]);
+    total = tpy::int32_add(total, tpy::get_value(nums, i));
     // 8:         i += 1
     i = tpy::int32_add(i, 1);
   }
@@ -37,11 +37,11 @@ void __tpy_init_main() {
   // 19: data[0] = 100
   data[0] = 100;
   // 20: print(data[0])
-  std::cout << data[0] << "\n";
+  std::cout << tpy::get_value(data, 0) << "\n";
   // 24: print(chr(chars[0]), end='')
-  std::cout << static_cast<char>((chars[0]).to_int32());
+  std::cout << static_cast<char>((tpy::get_value(chars, 0)).to_int32());
   // 25: print(chr(chars[1]))
-  std::cout << static_cast<char>((chars[1]).to_int32()) << "\n";
+  std::cout << static_cast<char>((tpy::get_value(chars, 1)).to_int32()) << "\n";
 }
 
 int main() {

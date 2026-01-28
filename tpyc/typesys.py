@@ -30,6 +30,17 @@ class TpyType:
         """Return the fully qualified type name for module lookup, or None if not a module type."""
         return None
 
+    def is_value_type(self) -> bool:
+        """Return True if this is a value type (copy semantics).
+
+        Value types include primitive types like Int32, BigInt, Bool, Char, str.
+        These types should be copied when accessed from containers.
+
+        Object types (RecordType, ListType, etc.) return False and should
+        use reference semantics when accessed from containers.
+        """
+        return False
+
 
 @dataclass(frozen=True)
 class Int32Type(TpyType):
@@ -43,6 +54,9 @@ class Int32Type(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return "tpy.Int32"
+
+    def is_value_type(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
@@ -69,6 +83,9 @@ class StrType(TpyType):
     def qualified_name(self) -> Optional[str]:
         return "builtins.str"
 
+    def is_value_type(self) -> bool:
+        return True
+
 
 @dataclass(frozen=True)
 class CharType(TpyType):
@@ -80,6 +97,9 @@ class CharType(TpyType):
     def __str__(self) -> str:
         return "Char"
 
+    def is_value_type(self) -> bool:
+        return True
+
 
 @dataclass(frozen=True)
 class BoolType(TpyType):
@@ -90,6 +110,9 @@ class BoolType(TpyType):
 
     def __str__(self) -> str:
         return "Bool"
+
+    def is_value_type(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
@@ -104,6 +127,9 @@ class BigIntType(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return "builtins.int"
+
+    def is_value_type(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
@@ -124,6 +150,9 @@ class IntLiteralType(TpyType):
 
     def __str__(self) -> str:
         return f"IntLiteral({self.value})"
+
+    def is_value_type(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)

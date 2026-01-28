@@ -9,7 +9,7 @@ void print_list(std::vector<int32_t>& nums) {
   // 8:     while i < len(nums):
   while ((i < static_cast<int32_t>(nums.size()))) {
     // 9:         print(nums[i])
-    std::cout << nums[i] << "\n";
+    std::cout << tpy::get_value(nums, i) << "\n";
     // 10:         i += 1
     i = tpy::int32_add(i, 1);
   }
@@ -92,7 +92,7 @@ void test_clear() {
   // 71:     print(len(nums))
   std::cout << static_cast<int32_t>(nums.size()) << "\n";
   // 72:     print(nums[0])
-  std::cout << nums[0] << "\n";
+  std::cout << tpy::get_value(nums, 0) << "\n";
 }
 
 // 74: def test_extend() -> None:
