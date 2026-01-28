@@ -3,7 +3,12 @@
 ## Next
 - extract built-in function defintions to separate files
 - instead of hardcoding Int32 ops, define it in code, use __add__ etc special methods
+- Int32(10**20) overflow; BigInt->Int32 overflow checks
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
+- global variables lazy initialization in c++ (in init module method)
+- basic import support; implement basic time module, with time() function
+- coercion rules refactoring -- make it data driven
+- empty list: `l:list[int]=[]` (or `list()`)
 
 ## Python features
 - dict full support
@@ -29,6 +34,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - better handling of tpy_panic -- exceptions in first version (later generation policy)
 - c++ generation profiles: utf8 strings vs char strings; int literal default to int or Int32 (per module, function, build options?)
 - static_cast<char> -- should rather use checked cast (policy based)
+- `arr[(arr.size() - 1)]` -- should use true negative indexing
 
 ## ShedSkin examples
 - score4

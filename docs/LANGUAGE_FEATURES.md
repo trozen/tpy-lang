@@ -388,6 +388,23 @@ Key features:
 - **Planned**: `Ref[T]` → `T&` (explicit reference)
 - **Planned**: `ConstRef[T]` → `const T&`
 
+#### Pointer Coercions (Working)
+
+Implicit conversions between records and pointers with safety checks:
+
+| From | To | Constraints | Generated C++ |
+|------|-----|-------------|---------------|
+| `T` (record) | `Ptr[T]` | Mutable lvalue, not in return | `&expr` |
+| `T` (record) | `ConstPtr[T]` | Lvalue, not in return | `&expr` |
+| `Ptr[T]` | `T` | Null-checked at runtime | `tpy::deref_ptr(expr)` |
+| `Ptr[T]` | `ConstPtr[T]` | - | (implicit) |
+
+**Safety rules:**
+- Taking address requires an lvalue (variable, field, or subscript) - temporaries rejected
+- Return statements cannot convert local records to pointers (dangling pointer prevention)
+- Span/str elements cannot convert to `Ptr[T]` (read-only source)
+- `Ptr[T]` → `T` includes runtime null check that panics if null
+
 ### User-Defined
 - **Working**: Classes → C++ structs
 - **Planned**: Enums → `enum class`
@@ -403,8 +420,8 @@ Key features:
 
 ### Arithmetic
 - **Working**: `+`, `-`, `*`, `//`, `%`, unary `-`
-- **Planned**: `/` (float division)
 - **Working**: `**` (power) for `int` and `Int32` with non-negative exponent
+- **Planned**: `/` (true division) - currently raises error directing to `//`
 - **Planned**: `**` with negative exponent (requires float)
 
 ### Comparison
@@ -485,7 +502,7 @@ Key features:
 
 ## Built-in Functions
 
-- **Working**: `print()`, `len()`, `range()`
+- **Working**: `print()`, `len()`, `range()`, `chr()`
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
 - **Working**: Negative indexing: `items[-1]` (last element)
@@ -576,6 +593,15 @@ x = []                       # error: same issue
 - **Open**: `yield` → generator as state machine class
 - **Open**: Generator expressions → lazy iterators with known bounds
 - Could be zero-alloc if state machine is stack-allocated
+
+---
+
+## Interactive REPL
+
+- **Working**: `tpyc --repl` launches an interactive session
+- Supports function and class definitions that persist across inputs
+- Expressions are evaluated and printed automatically
+- Multi-line input with automatic continuation detection
 
 ---
 
