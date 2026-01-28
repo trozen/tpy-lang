@@ -1,0 +1,26 @@
+=== equality ===
+hello == hello: yes
+hello == world: no
+hello != world: yes
+hello != hello: no
+=== ordering ===
+apple < banana: yes
+banana < apple: no
+apple <= apple: yes
+apple <= banana: yes
+banana > apple: yes
+apple >= apple: yes
+=== empty ===
+empty == empty: yes
+empty < x: yes
+empty != x: yes
+=== function ===
+test == test: yes
+foo == bar: no
+=== literals ===
+name is Alice
+name is not Bob
+Alice < Bob: yes
+=== loop ===
+1
+-1

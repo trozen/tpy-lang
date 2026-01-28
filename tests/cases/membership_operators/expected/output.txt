@@ -1,0 +1,18 @@
+30 in list: yes
+99 in list: no
+99 not in list: yes
+30 not in list: no
+3 in array: yes
+5 in array: no
+5 not in array: yes
+300 in span: yes
+999 in span: no
+'o' in string: yes
+'z' in string: no
+'z' not in string: yes
+'e' not in string: no
+both 2 and 4 in list
+10 or 3 in list
+1 in and 99 not in list
+target found
+missing not found

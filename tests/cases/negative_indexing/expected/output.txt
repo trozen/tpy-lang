@@ -1,0 +1,25 @@
+=== list ===
+50
+40
+30
+10
+=== array ===
+400
+300
+100
+=== string ===
+o
+l
+h
+=== assignment ===
+50
+40
+40
+50
+=== expression ===
+35
+last > second_last
+=== array assignment ===
+10
+20
+30

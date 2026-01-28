@@ -1,0 +1,42 @@
+=== literals ===
+A
+B
+ x
+=== from index ===
+H
+e
+o
+=== comparison ===
+a == a: yes
+a == b: no
+a != b: yes
+a < b: yes
+b > a: yes
+a <= a: yes
+b >= a: yes
+=== in string ===
+o in text: yes
+z in text: no
+=== function param ===
+a is vowel
+b is not vowel
+e is vowel
+x is not vowel
+=== iteration ===
+a
+b
+c
+=== vowel counting ===
+2
+1
+5
+0
+=== chr function ===
+A
+a
+chr(65) == A: yes
+chr(97) == a: yes
+=== char to str ===
+x
+w
+a < b

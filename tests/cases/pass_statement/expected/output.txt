@@ -1,0 +1,10 @@
+empty_function called
+10
+-1
+25
+-1
+0
+1
+10
+11
+11

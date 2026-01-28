@@ -1,0 +1,6 @@
+=== field to ptr ===
+999
+=== field to const ptr ===
+100
+=== subscript to ptr ===
+999

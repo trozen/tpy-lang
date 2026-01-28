@@ -292,7 +292,8 @@ class SemanticAnalyzer:
                 ret_type = self._analyze_expr(stmt.value)
                 expected = self.current_function.return_type if self.current_function else VOID
                 self._check_type_compatible(ret_type, expected, "return value",
-                                            getattr(stmt.value, 'loc', None))
+                                            getattr(stmt.value, 'loc', None),
+                                            source_expr=stmt.value, is_return=True)
         elif isinstance(stmt, TpyIf):
             self._analyze_expr(stmt.condition)
             for s in stmt.then_body:
@@ -357,8 +358,14 @@ class SemanticAnalyzer:
                     info.explicit_type = stmt.type
 
             if stmt.type:
-                self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'",
-                                            getattr(stmt.init, 'loc', None))
+                # Special case: single-char string literal can be assigned to Char
+                if (isinstance(stmt.type, CharType) and isinstance(init_type, StrType) and
+                    isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
+                    pass  # Allow str literal -> Char
+                else:
+                    self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'",
+                                                getattr(stmt.init, 'loc', None),
+                                                source_expr=stmt.init)
                 var_type = stmt.type
             elif existing_type:
                 # Reassignment: check if we need to upgrade IntLiteralType
@@ -372,7 +379,8 @@ class SemanticAnalyzer:
                 else:
                     # Normal reassignment: use existing type, check compatibility
                     self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'",
-                                                getattr(stmt.init, 'loc', None))
+                                                getattr(stmt.init, 'loc', None),
+                                                source_expr=stmt.init)
                     var_type = existing_type
             else:
                 # New variable: resolve IntLiteralType to BigInt (Python int semantics)
@@ -404,6 +412,12 @@ class SemanticAnalyzer:
             if isinstance(obj_type, StrType):
                 raise SemanticError("Cannot assign to elements of str (read-only)")
 
+        # Prevent assignment through ConstPtr (read-only pointer)
+        if isinstance(stmt.target, TpyFieldAccess):
+            obj_type = self.get_expr_type(stmt.target.obj)
+            if isinstance(obj_type, ConstPtrType):
+                raise self._error("Cannot assign through ConstPtr (read-only pointer)", stmt)
+
         # When reassigning a variable with IntLiteralType to a concrete integer type,
         # update the variable's type to the more specific type
         if isinstance(stmt.target, TpyName) and isinstance(target_type, IntLiteralType):
@@ -416,7 +430,8 @@ class SemanticAnalyzer:
                     self.var_types[id(var_decl)] = value_type
                 return
 
-        self._check_type_compatible(value_type, target_type, "assignment")
+        self._check_type_compatible(value_type, target_type, "assignment",
+                                    source_expr=stmt.value)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -433,11 +448,9 @@ class SemanticAnalyzer:
         if isinstance(expr, TpyIntLiteral):
             typ = IntLiteralType(expr.value)
         elif isinstance(expr, TpyStrLiteral):
-            # Single-char string literals become Char type
-            if len(expr.value) == 1:
-                typ = CHAR
-            else:
-                typ = STR
+            # String literals are always str type (including single-char)
+            # Char type is only used when explicitly annotated or from string indexing
+            typ = STR
         elif isinstance(expr, TpyBoolLiteral):
             typ = BOOL
         elif isinstance(expr, TpyName):
@@ -600,8 +613,12 @@ class SemanticAnalyzer:
                 raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
             for (pname, ptype), arg in zip(func.params, expr.args):
                 arg_type = self._analyze_expr(arg)
-                self._check_type_compatible(arg_type, ptype, f"argument '{pname}'",
-                                            getattr(arg, 'loc', None))
+                # Special case: single-char string literal can be passed as Char
+                if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
+                        isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+                    self._check_type_compatible(arg_type, ptype, f"argument '{pname}'",
+                                                getattr(arg, 'loc', None),
+                                                source_expr=arg)
 
                 # Track parameter context for list inference
                 if isinstance(arg_type, PendingListType):
@@ -900,8 +917,15 @@ class SemanticAnalyzer:
             raise SemanticError(f"Cannot index type {obj_type}")
 
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,
-                                loc: SourceLocation | None = None) -> None:
-        """Check if actual type is compatible with expected type."""
+                                loc: SourceLocation | None = None,
+                                source_expr: TpyExpr | None = None,
+                                is_return: bool = False) -> None:
+        """Check if actual type is compatible with expected type.
+
+        Args:
+            source_expr: The expression being converted (for lvalue checks)
+            is_return: True if this is a return statement (disallows address-taking)
+        """
         if actual == expected:
             return
 
@@ -949,6 +973,53 @@ class SemanticAnalyzer:
 
         if isinstance(actual, ConstPtrType) and isinstance(expected, ConstPtrType):
             if actual.pointee == expected.pointee:
+                return
+
+        # Allow Ptr[T] -> ConstPtr[T] coercion (safe: mutable to read-only)
+        if isinstance(actual, PtrType) and isinstance(expected, ConstPtrType):
+            if actual.pointee == expected.pointee:
+                return
+
+        # Allow Record -> Ptr[Record] coercion (taking mutable address of object)
+        # Only allowed for mutable lvalues (not Span elements which are read-only)
+        # Never allowed in return statements (would create dangling pointer)
+        if isinstance(actual, RecordType) and isinstance(expected, PtrType):
+            if isinstance(expected.pointee, RecordType) and actual.name == expected.pointee.name:
+                if is_return:
+                    raise SemanticError(
+                        f"Cannot return local variable as pointer (would create dangling pointer) in {context}",
+                        loc
+                    )
+                if source_expr is not None and not self._is_mutable_lvalue(source_expr):
+                    raise SemanticError(
+                        f"Cannot take mutable pointer to read-only or temporary value in {context}; "
+                        f"use ConstPtr for read-only access, or assign to a variable first",
+                        loc
+                    )
+                return
+
+        # Allow Record -> ConstPtr[Record] coercion (taking const address)
+        # Allowed for any lvalue including read-only sources like Span elements
+        if isinstance(actual, RecordType) and isinstance(expected, ConstPtrType):
+            if isinstance(expected.pointee, RecordType) and actual.name == expected.pointee.name:
+                if is_return:
+                    raise SemanticError(
+                        f"Cannot return local variable as pointer (would create dangling pointer) in {context}",
+                        loc
+                    )
+                if source_expr is not None and not self._is_lvalue(source_expr):
+                    raise SemanticError(
+                        f"Cannot take address of temporary or rvalue in {context}; "
+                        f"assign to a variable first",
+                        loc
+                    )
+                return
+
+        # Allow Ptr[Record] -> Record coercion (dereferencing pointer with null check)
+        # Note: ConstPtr[Record] -> Record is NOT allowed since it would pass a const ref
+        # to a function that takes a non-const ref (potential mutation through const pointer)
+        if isinstance(actual, PtrType) and isinstance(expected, RecordType):
+            if isinstance(actual.pointee, RecordType) and actual.pointee.name == expected.name:
                 return
 
         # Allow ArrayType -> SpanType if element types match or are coercible
@@ -1013,6 +1084,39 @@ class SemanticAnalyzer:
                         return
 
         raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+
+    def _is_lvalue(self, expr: TpyExpr) -> bool:
+        """Check if an expression is an lvalue (can have its address taken)."""
+        # Named variables are lvalues
+        if isinstance(expr, TpyName):
+            return True
+        # Field access on an lvalue is also an lvalue (e.g., obj.field)
+        if isinstance(expr, TpyFieldAccess):
+            return self._is_lvalue(expr.obj)
+        # Subscript on an lvalue is also an lvalue (e.g., arr[i])
+        if isinstance(expr, TpySubscript):
+            return self._is_lvalue(expr.obj)
+        # Everything else (calls, literals, operators) are rvalues
+        return False
+
+    def _is_mutable_lvalue(self, expr: TpyExpr) -> bool:
+        """Check if an expression is a mutable lvalue (can get a mutable Ptr).
+
+        This is like _is_lvalue but also rejects read-only sources like Span elements.
+        """
+        # Named variables are mutable lvalues
+        if isinstance(expr, TpyName):
+            return True
+        # Field access on a mutable lvalue is also mutable
+        if isinstance(expr, TpyFieldAccess):
+            return self._is_mutable_lvalue(expr.obj)
+        # Subscript: check if the base is a read-only type (Span, str)
+        if isinstance(expr, TpySubscript):
+            obj_type = self.get_expr_type(expr.obj)
+            if isinstance(obj_type, (SpanType, StrType)):
+                return False  # Span and str elements are read-only
+            return self._is_mutable_lvalue(expr.obj)
+        return False
 
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""

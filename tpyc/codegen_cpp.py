@@ -115,7 +115,7 @@ class CodeGenerator:
         self._write_source_preamble(cpp)
 
         # Separate global declarations from other top-level statements early
-        # (needed for extern declarations in header before records)
+        # (needed for extern declarations in header)
         global_decls = []
         main_stmts = []
         for stmt in module.top_level_stmts:
@@ -133,15 +133,15 @@ class CodeGenerator:
             else:
                 main_stmts.append(stmt)
 
-        # Generate extern declarations in header (before records so methods can see them)
+        # Generate records first (before extern declarations that may use them)
+        for record in module.records:
+            self._gen_record_decl(hpp, record)
+            hpp.write("\n")
+
+        # Generate extern declarations in header (after records so types are known)
         if global_decls:
             for stmt in global_decls:
                 self._gen_global_extern(hpp, stmt)
-            hpp.write("\n")
-
-        # Generate records
-        for record in module.records:
-            self._gen_record_decl(hpp, record)
             hpp.write("\n")
 
         # Generate function declarations
@@ -223,6 +223,10 @@ class CodeGenerator:
             init_expr = self._gen_expr(stmt.init, var_type)
             # Convert BigInt -> Int32 if needed
             init_expr = self._convert_to_int32_if_needed(init_expr, init_type, var_type)
+            # Convert Record -> Ptr if needed
+            init_expr = self._convert_to_ptr_if_needed(init_expr, init_type, var_type)
+            # Convert Ptr -> Record if needed (with null check)
+            init_expr = self._convert_from_ptr_if_needed(init_expr, init_type, var_type)
             out.write(f"{cpp_type} {stmt.name} = {init_expr};\n")
         else:
             out.write(f"{cpp_type} {stmt.name};\n")
@@ -455,6 +459,9 @@ class CodeGenerator:
                 # Convert BigInt -> Int32 if needed
                 if ret_type and isinstance(ret_type, Int32Type) and self._is_runtime_bigint(stmt.value, value_type):
                     expr = f"({expr}).to_int32()"
+                # Convert Ptr -> Record if needed (with null check)
+                if ret_type:
+                    expr = self._convert_from_ptr_if_needed(expr, value_type, ret_type)
                 out.write(f"{indent}return {expr};\n")
             else:
                 out.write(f"{indent}return;\n")
@@ -482,6 +489,10 @@ class CodeGenerator:
                 init_expr = self._gen_expr(stmt.init, var_type)
                 # Convert BigInt -> Int32 if needed
                 init_expr = self._convert_to_int32_if_needed(init_expr, init_type, var_type)
+                # Convert Record -> Ptr if needed
+                init_expr = self._convert_to_ptr_if_needed(init_expr, init_type, var_type)
+                # Convert Ptr -> Record if needed (with null check)
+                init_expr = self._convert_from_ptr_if_needed(init_expr, init_type, var_type)
                 out.write(f"{indent}{stmt.name} = {init_expr};\n")
             return
 
@@ -539,6 +550,10 @@ class CodeGenerator:
             init_expr = self._gen_expr(stmt.init, target_type)
             # Convert BigInt -> Int32 if needed
             init_expr = self._convert_to_int32_if_needed(init_expr, init_type, target_type)
+            # Convert Record -> Ptr if needed
+            init_expr = self._convert_to_ptr_if_needed(init_expr, init_type, target_type)
+            # Convert Ptr -> Record if needed (with null check)
+            init_expr = self._convert_from_ptr_if_needed(init_expr, init_type, target_type)
             out.write(f"{indent}{cpp_type} {stmt.name} = {init_expr};\n")
         else:
             out.write(f"{indent}{cpp_type} {stmt.name};\n")
@@ -567,6 +582,10 @@ class CodeGenerator:
         value = self._gen_expr(stmt.value, target_type)
         # Convert BigInt -> Int32 if needed
         value = self._convert_to_int32_if_needed(value, value_type, target_type)
+        # Convert Record -> Ptr if needed
+        value = self._convert_to_ptr_if_needed(value, value_type, target_type)
+        # Convert Ptr -> Record if needed (with null check)
+        value = self._convert_from_ptr_if_needed(value, value_type, target_type)
         out.write(f"{indent}{target} = {value};\n")
 
     def _gen_aug_assign(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
@@ -731,11 +750,11 @@ class CodeGenerator:
             return "true" if expr.value else "false"
 
         elif isinstance(expr, TpyStrLiteral):
-            if len(expr.value) == 1:
-                # Single char - output as C++ char literal
+            # If target type is Char and single char, output as char literal
+            if isinstance(target_type, CharType) and len(expr.value) == 1:
                 escaped = expr.value.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n')
                 return f"'{escaped}'"
-            # Multi-char string
+            # Otherwise output as string literal
             escaped = expr.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
             return f'"{escaped}"'
 
@@ -763,8 +782,11 @@ class CodeGenerator:
 
             # Comparison operators - generate C++ directly
             if expr.op in ("==", "!=", "<", ">", "<=", ">=", "&&", "||"):
-                left = self._gen_expr(expr.left)
-                right = self._gen_expr(expr.right)
+                # When comparing Char with string literal, output literal as char
+                left_target = CHAR if isinstance(right_type, CharType) else None
+                right_target = CHAR if isinstance(left_type, CharType) else None
+                left = self._gen_expr(expr.left, left_target)
+                right = self._gen_expr(expr.right, right_target)
                 return f"({left} {expr.op} {right})"
 
             # Optimization: IntLiteral op IntLiteral with Int32 target → direct Int32 arithmetic
@@ -910,6 +932,13 @@ class CodeGenerator:
                     elif isinstance(ptype, SpanType) and isinstance(arg_type, ListType):
                         # std::vector<T> implicitly converts to std::span<const T>
                         gen_args.append(gen_arg)
+                    # Record -> Ptr/ConstPtr: take address
+                    elif isinstance(arg_type, RecordType) and isinstance(ptype, (PtrType, ConstPtrType)):
+                        gen_args.append(f"&{gen_arg}")
+                    # Ptr -> Record: dereference with null check
+                    # (ConstPtr -> Record not allowed due to const-correctness)
+                    elif isinstance(arg_type, PtrType) and isinstance(ptype, RecordType):
+                        gen_args.append(f"tpy::deref_ptr({gen_arg})")
                     else:
                         gen_args.append(gen_arg)
                 return f"{expr.func}({', '.join(gen_args)})"
@@ -1091,6 +1120,19 @@ class CodeGenerator:
         """Wrap expression with .to_int32() if converting BigInt to Int32."""
         if isinstance(expected_type, Int32Type) and isinstance(actual_type, BigIntType):
             return f"({gen_expr}).to_int32()"
+        return gen_expr
+
+    def _convert_to_ptr_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:
+        """Take address if converting Record to Ptr[Record] or ConstPtr[Record]."""
+        if isinstance(actual_type, RecordType):
+            if isinstance(expected_type, (PtrType, ConstPtrType)):
+                return f"&{gen_expr}"
+        return gen_expr
+
+    def _convert_from_ptr_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:
+        """Dereference with null check if converting Ptr[Record] to Record."""
+        if isinstance(actual_type, PtrType) and isinstance(expected_type, RecordType):
+            return f"tpy::deref_ptr({gen_expr})"
         return gen_expr
 
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:

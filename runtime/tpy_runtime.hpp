@@ -30,6 +30,26 @@ namespace tpy {
     std::exit(1);
 }
 
+/**
+ * Checked pointer dereference - panics if pointer is null.
+ * Used for implicit Ptr[T] -> T coercion.
+ */
+template <typename T>
+T& deref_ptr(T* ptr) {
+    if (ptr == nullptr) {
+        tpy_panic("null pointer dereference");
+    }
+    return *ptr;
+}
+
+template <typename T>
+const T& deref_ptr(const T* ptr) {
+    if (ptr == nullptr) {
+        tpy_panic("null pointer dereference");
+    }
+    return *ptr;
+}
+
 // --- Checked power (reusable for BigInt fast path and Int32) ---
 
 // Computes base^exp with overflow detection. Returns true on success, false on overflow.

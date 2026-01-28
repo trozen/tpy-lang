@@ -1,0 +1,14 @@
+not True: no
+not False: yes
+not (5 > 10): yes
+not (5 == 10): yes
+not (5 < 0): yes
+not True and False: no
+not False or True: yes
+not (True and False): yes
+not (True or False): no
+not not True: yes
+not not False: no
+not is_valid(-5): yes
+not is_valid(5): no
+3

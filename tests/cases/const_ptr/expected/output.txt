@@ -1,0 +1,8 @@
+=== ptr to const ===
+10
+20
+100
+120
+=== preserves value ===
+1
+999
