@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Union
 
 from .typesys import (
-    TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
+    TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, BoolType, BigIntType,
     INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
@@ -440,6 +440,9 @@ class Parser:
                 elif container == "ConstPtr":
                     inner = self._parse_type_annotation(node.slice)
                     return ConstPtrType(inner)
+                elif container == "Own":
+                    inner = self._parse_type_annotation(node.slice)
+                    return OwnType(inner)
                 elif container == "StaticList":
                     if isinstance(node.slice, ast.Tuple):
                         if len(node.slice.elts) != 2:
@@ -660,7 +663,7 @@ class Parser:
             # Subscript can be indexing (values[i]) or type annotation (Array[T, N])
             # If the value is a name that's a known generic type, it's a type annotation context
             # Otherwise, it's indexing
-            if isinstance(node.value, ast.Name) and node.value.id in ("Array", "Span", "StaticList", "Ptr", "ConstPtr"):
+            if isinstance(node.value, ast.Name) and node.value.id in ("Array", "Span", "StaticList", "Ptr", "ConstPtr", "Own"):
                 raise ParseError(f"Generic type '{node.value.id}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
             index = self._parse_expr(node.slice)

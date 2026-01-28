@@ -385,6 +385,7 @@ Key features:
 ### Pointers/References
 - **Working**: `Ptr[T]` → `T*`
 - **Working**: `ConstPtr[T]` → `const T*`
+- **Working**: `Own[T]` → `T` (ownership transfer for return values)
 - **Planned**: `Ref[T]` → `T&` (explicit reference)
 - **Planned**: `ConstRef[T]` → `const T&`
 
@@ -404,6 +405,48 @@ Implicit conversions between records and pointers with safety checks:
 - Return statements cannot convert local records to pointers (dangling pointer prevention)
 - Span/str elements cannot convert to `Ptr[T]` (read-only source)
 - `Ptr[T]` → `T` includes runtime null check that panics if null
+
+#### Owned Return Values (Working)
+
+Object types are normally returned by reference (`T&`) to avoid hidden copies. But this creates a problem when returning newly constructed objects:
+
+```python
+def create_point() -> Point:
+    p: Point = Point()
+    p.x = 10
+    p.y = 20
+    return p  # ERROR: dangling reference to local variable
+```
+
+The compiler detects this as a dangling reference error. Use `Own[T]` to indicate the function returns a newly constructed object by value (with move semantics):
+
+```python
+def create_point() -> Own[Point]:
+    p: Point = Point()
+    p.x = 10
+    p.y = 20
+    return p  # OK: returned by value (moved)
+
+def main():
+    pt: Point = create_point()  # Own[Point] coerces to Point
+    print(pt.x)  # 10
+```
+
+Generated C++:
+```cpp
+Point create_point() {  // Returns by value, no &
+    Point p{};
+    p.x = 10;
+    p.y = 20;
+    return p;  // RVO/NRVO eliminates copy
+}
+```
+
+Key points:
+- `Own[T]` → `T` in C++ (by value, no reference)
+- Relies on C++ move semantics and RVO/NRVO for efficiency
+- `T` coerces to `Own[T]` in return statements
+- `Own[T]` coerces to `T` when receiving the value
 
 ### User-Defined
 - **Working**: Classes → C++ structs

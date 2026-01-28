@@ -46,7 +46,7 @@ class TpyType:
 
         Value types return by value (T).
         Object types return by reference (T&) to avoid hidden copies.
-        Use Owned[T] (future) when returning newly constructed objects.
+        Use Own[T] when returning newly constructed objects by value.
         """
         if self.is_value_type():
             return self.to_cpp()
@@ -220,6 +220,26 @@ class ConstPtrType(TpyType):
 
 
 @dataclass(frozen=True)
+class OwnType(TpyType):
+    """Owned type - returns by value (ownership transfer).
+
+    Own[T] wraps a type to indicate the function returns a newly constructed
+    object by value (moved), bypassing the dangling reference check.
+    """
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        return self.wrapped.to_cpp()
+
+    def to_cpp_return(self) -> str:
+        # By value, no reference - this is the whole point of Own
+        return self.to_cpp()
+
+    def __str__(self) -> str:
+        return f"Own[{self.wrapped}]"
+
+
+@dataclass(frozen=True)
 class StaticListType(TpyType):
     """Fixed-capacity container: StaticList[T, N] -> StaticList<T, N>"""
     element_type: TpyType
@@ -378,7 +398,7 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         # Built-in types
-        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "StaticList", "Array", "Span", "str", "list", "int"}
+        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "Own", "StaticList", "Array", "Span", "str", "list", "int"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info

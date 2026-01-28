@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from .typesys import (
-    TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
+    TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
     StrType, CharType, BoolType, BigIntType, IntLiteralType,
     INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
@@ -615,6 +615,18 @@ class SemanticAnalyzer:
                 raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
             for (pname, ptype), arg in zip(func.params, expr.args):
                 arg_type = self._analyze_expr(arg)
+
+                # Check for Own[T] passed directly to object type parameter
+                # Own[T] is an rvalue (temporary) and can't bind to T& (non-const ref)
+                # But if parameter is also Own[T], that's fine (both are by-value)
+                if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType) and not ptype.is_value_type():
+                    raise self._error(
+                        f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
+                        f"(object types are passed by reference). "
+                        f"Assign to a variable first: x = func(); other_func(x)",
+                        arg
+                    )
+
                 # Special case: single-char string literal can be passed as Char
                 if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
                         isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
@@ -926,7 +938,8 @@ class SemanticAnalyzer:
         """
         # Only check object types (value types are returned by value)
         # Pointers are also value types (the pointer itself is copied)
-        if return_type.is_value_type() or isinstance(return_type, (VoidType, PtrType, ConstPtrType)):
+        # OwnType returns by value (ownership transfer), so no dangling risk
+        if return_type.is_value_type() or isinstance(return_type, (VoidType, PtrType, ConstPtrType, OwnType)):
             return
 
         # Check if the expression is safe to return as a reference
@@ -934,7 +947,7 @@ class SemanticAnalyzer:
             raise self._error(
                 f"Cannot return local or temporary as reference. "
                 f"Object type '{return_type}' is returned by reference. "
-                f"Use Owned[{return_type}] to return by value (not yet implemented).",
+                f"Use Own[{return_type}] to return by value.",
                 expr
             )
 
@@ -957,6 +970,11 @@ class SemanticAnalyzer:
 
             # Record constructor
             if expr.func in self.registry.records:
+                return True
+
+            # Function returning Own[T] creates a temporary (by-value return)
+            func = self.registry.get_function(expr.func)
+            if func and isinstance(func.return_type, OwnType):
                 return True
 
             # Regular function call - assume it returns something safe
@@ -1008,6 +1026,18 @@ class SemanticAnalyzer:
             is_return: True if this is a return statement (disallows address-taking)
         """
         if actual == expected:
+            return
+
+        # Allow T -> Own[T] coercion (ownership transfer for return values)
+        if isinstance(expected, OwnType):
+            # Check if actual type is compatible with the wrapped type
+            self._check_type_compatible(actual, expected.wrapped, context, loc, source_expr, is_return)
+            return
+
+        # Allow Own[T] -> T coercion (receiving an owned value)
+        if isinstance(actual, OwnType):
+            # Check if the wrapped type is compatible with expected
+            self._check_type_compatible(actual.wrapped, expected, context, loc, source_expr, is_return)
             return
 
         # IntLiteral can coerce to any integer type

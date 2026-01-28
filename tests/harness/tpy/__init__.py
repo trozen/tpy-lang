@@ -123,6 +123,20 @@ class ConstPtr(metaclass=_PtrMeta):
         return _ConstPtr(obj)
 
 
+class _OwnMeta(type):
+    """Metaclass to support Own[T] syntax."""
+
+    def __getitem__(cls, item):
+        return cls
+
+
+class Own(metaclass=_OwnMeta):
+    """Own[T] - owned/moved object. In CPython, just returns the object."""
+
+    def __new__(cls, obj):
+        return obj
+
+
 class StaticListMeta(type):
     """Metaclass to support StaticList[T, N] syntax."""
 

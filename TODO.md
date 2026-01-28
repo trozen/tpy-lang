@@ -1,10 +1,6 @@
 # TODO
 
 ## Next
-- ownership model for object types:
-  - `Owned[T]` for return position: caller owns the result (by value, moved)
-  - `Owned[T]` for argument position (future): callee takes ownership
-  - `copy()` builtin for explicit copying
 - extract built-in function defintions to separate files
 - instead of hardcoding Int32 ops, define it in code, use __add__ etc special methods
 - Int32(10**20) overflow; BigInt->Int32 overflow checks
@@ -39,6 +35,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - c++ generation profiles: utf8 strings vs char strings; int literal default to int or Int32 (per module, function, build options?)
 - static_cast<char> -- should rather use checked cast (policy based)
 - `arr[(arr.size() - 1)]` -- should use true negative indexing
+- `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
+- `copy()` builtin for explicit copying
 
 ## ShedSkin examples
 - score4

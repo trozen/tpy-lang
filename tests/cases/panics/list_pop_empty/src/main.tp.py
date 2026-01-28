@@ -5,3 +5,5 @@ def main() -> None:
     items.pop()  # Remove the only element
     x: Int32 = items.pop()  # Should panic: pop from empty list
     print(x)
+
+main()
