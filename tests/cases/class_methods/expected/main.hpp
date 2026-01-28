@@ -3,6 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
+extern int32_t a;
+extern int32_t b;
+
 struct Counter {
   int32_t value;
 
@@ -29,9 +32,6 @@ struct Counter {
     value = 0;
   }
 };
-
-extern int32_t a;
-extern int32_t b;
 
 
 void __tpy_init_main();

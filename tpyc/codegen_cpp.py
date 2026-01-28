@@ -133,14 +133,32 @@ class CodeGenerator:
             else:
                 main_stmts.append(stmt)
 
-        # Generate records first (before extern declarations that may use them)
+        # Split global declarations into primitive and record types
+        # Primitives must come before structs (so struct methods can reference them)
+        # Records must come after structs (so the struct type is defined)
+        primitive_globals = []
+        record_globals = []
+        for stmt in global_decls:
+            var_type = stmt.type if stmt.type else self._get_resolved_type(stmt.init)
+            if isinstance(var_type, RecordType):
+                record_globals.append(stmt)
+            else:
+                primitive_globals.append(stmt)
+
+        # Generate extern declarations for primitives (before records)
+        if primitive_globals:
+            for stmt in primitive_globals:
+                self._gen_global_extern(hpp, stmt)
+            hpp.write("\n")
+
+        # Generate records
         for record in module.records:
             self._gen_record_decl(hpp, record)
             hpp.write("\n")
 
-        # Generate extern declarations in header (after records so types are known)
-        if global_decls:
-            for stmt in global_decls:
+        # Generate extern declarations for record types (after records)
+        if record_globals:
+            for stmt in record_globals:
                 self._gen_global_extern(hpp, stmt)
             hpp.write("\n")
 

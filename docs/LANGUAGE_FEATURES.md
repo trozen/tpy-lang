@@ -487,6 +487,7 @@ Key features:
 
 - **Working**: `print()`, `len()`, `range()`
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
+  - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
 - **Working**: Negative indexing: `items[-1]` (last element)
 - **Planned**: `abs()`, `min()`, `max()`
 - **Planned**: List slicing: `items[1:3]`
