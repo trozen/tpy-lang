@@ -341,6 +341,14 @@ class SemanticAnalyzer:
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
+        # Own[T] is only valid for function parameters and return types, not variables
+        if stmt.type and isinstance(stmt.type, OwnType):
+            raise self._error(
+                f"Own[{stmt.type.wrapped}] cannot be used as a variable type. "
+                f"Use '{stmt.type.wrapped}' instead (Own[T] is for parameters and return types only)",
+                stmt
+            )
+
         # Check if this is a reassignment (variable already exists in scope)
         existing_type = self.current_scope.lookup(stmt.name)
 
@@ -620,10 +628,14 @@ class SemanticAnalyzer:
                 # Own[T] is an rvalue (temporary) and can't bind to T& (non-const ref)
                 # But if parameter is also Own[T], that's fine (both are by-value)
                 if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType) and not ptype.is_value_type():
+                    # Give different guidance based on whether arg is a variable or temporary
+                    if isinstance(arg, TpyName):
+                        hint = f"Declare the variable as '{arg_type.wrapped}' instead of 'Own[{arg_type.wrapped}]'"
+                    else:
+                        hint = "Assign to a variable first: x = func(); other_func(x)"
                     raise self._error(
                         f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
-                        f"(object types are passed by reference). "
-                        f"Assign to a variable first: x = func(); other_func(x)",
+                        f"(object types are passed by reference). {hint}",
                         arg
                     )
 

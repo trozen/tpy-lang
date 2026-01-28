@@ -448,6 +448,39 @@ Key points:
 - `T` coerces to `Own[T]` in return statements
 - `Own[T]` coerces to `T` when receiving the value
 
+#### Owned Parameters (Working)
+
+`Own[T]` can also be used for parameter types to receive values by-value:
+
+```python
+def take_point(p: Own[Point]) -> Int32:
+    # p is received by value (Point p in C++)
+    return 42  # Field access on Own[T] not yet implemented
+
+def main():
+    # Pass Own[Point] return directly to Own[Point] param
+    result: Int32 = take_point(create_point(10, 20))
+    print(result)
+```
+
+**Important restriction**: You cannot pass an `Own[T]` return value directly to a function expecting `T` (passed by reference):
+
+```python
+def process(p: Point) -> None:  # p is Point& (reference)
+    print(p.x)
+
+def main():
+    process(create_point(10, 20))  # ERROR: Own[Point] cannot bind to Point&
+
+    # Solution: store in a variable first
+    pt: Point = create_point(10, 20)
+    process(pt)  # OK: pt is an lvalue
+```
+
+This is because functions returning `Own[T]` create temporaries (rvalues) that cannot bind to non-const references.
+
+**Note**: `Own[T]` is only valid for function parameters and return types, not for variable declarations. Use `T` for variables.
+
 ### User-Defined
 - **Working**: Classes → C++ structs
 - **Planned**: Enums → `enum class`
@@ -481,6 +514,7 @@ Key points:
 
 ### Assignment
 - **Working**: `=`, `+=`, `-=`, `*=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
+  - Augmented assignment works on variables, fields, and subscripts (`items[i] += 1`)
 
 ---
 

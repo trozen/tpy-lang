@@ -13,7 +13,7 @@ from typing import TextIO
 import io
 
 from .typesys import (
-    TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType,
+    TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType,
     StrType, CharType, BigIntType, IntLiteralType,
     INT32, VOID, BIGINT, CHAR
@@ -140,6 +140,9 @@ class CodeGenerator:
         record_globals = []
         for stmt in global_decls:
             var_type = stmt.type if stmt.type else self._get_resolved_type(stmt.init)
+            # Unwrap OwnType to get the underlying type for ordering
+            if isinstance(var_type, OwnType):
+                var_type = var_type.wrapped
             if isinstance(var_type, RecordType):
                 record_globals.append(stmt)
             else:
