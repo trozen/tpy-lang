@@ -67,9 +67,13 @@ class CodeGenerator:
         if isinstance(expr, TpyBinOp):
             left_type = self._get_resolved_type(expr.left)
             right_type = self._get_resolved_type(expr.right)
+            # Use analyzer types for literal check - analyzer returns IntLiteralType for
+            # all-literal expressions (including nested binops like 2+3)
+            left_analyzer_type = self.analyzer.get_expr_type(expr.left)
+            right_analyzer_type = self.analyzer.get_expr_type(expr.right)
             # If target is Int32 and both operands are literals, result is Int32
             if (isinstance(target_type, Int32Type) and
-                isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType)):
+                isinstance(left_analyzer_type, IntLiteralType) and isinstance(right_analyzer_type, IntLiteralType)):
                 return INT32
             # Otherwise, result is BigInt if either operand is BigInt, or if both are IntLiteral
             is_bigint_op = (
@@ -558,8 +562,9 @@ class CodeGenerator:
         # Default: simple assignment
         target = self._gen_expr(stmt.target)
         target_type = self.analyzer.get_expr_type(stmt.target)
-        value_type = self.analyzer.get_expr_type(stmt.value)
-        value = self._gen_expr(stmt.value)
+        # Use _get_resolved_type with target_type to correctly determine if nested binops produce BigInt
+        value_type = self._get_resolved_type(stmt.value, target_type)
+        value = self._gen_expr(stmt.value, target_type)
         # Convert BigInt -> Int32 if needed
         value = self._convert_to_int32_if_needed(value, value_type, target_type)
         out.write(f"{indent}{target} = {value};\n")
@@ -570,6 +575,12 @@ class CodeGenerator:
         value = self._gen_expr(stmt.value)
         target_type = self.analyzer.get_expr_type(stmt.target)
         value_type = self._get_resolved_type(stmt.value)
+
+        # Special case: Int32 += BigInt should convert BigInt to Int32, then use Int32 ops
+        # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
+        if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
+            value = f"({value}).to_int32()"
+            value_type = INT32
 
         # Try module system for augmented assignment (a += b is a = a + b)
         if binop_result := builtin_modules.lookup_binop(target_type, stmt.op, value_type):
@@ -732,8 +743,8 @@ class CodeGenerator:
             return expr.name
 
         elif isinstance(expr, TpyBinOp):
-            left_type = self.analyzer.get_expr_type(expr.left)
-            right_type = self.analyzer.get_expr_type(expr.right)
+            left_type = self._get_resolved_type(expr.left)
+            right_type = self._get_resolved_type(expr.right)
 
             # Handle 'in' and 'not in' operators
             if expr.op in ("in", "not in"):
@@ -758,10 +769,15 @@ class CodeGenerator:
 
             # Optimization: IntLiteral op IntLiteral with Int32 target → direct Int32 arithmetic
             # This avoids unnecessary BigInt heap allocations
+            # Use analyzer types for this check - analyzer returns IntLiteralType for all-literal
+            # expressions (including nested binops like 2+3), while _get_resolved_type returns BigInt
+            left_analyzer_type = self.analyzer.get_expr_type(expr.left)
+            right_analyzer_type = self.analyzer.get_expr_type(expr.right)
             if (isinstance(target_type, Int32Type) and
-                isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType)):
-                left = self._gen_expr(expr.left)  # plain int literal
-                right = self._gen_expr(expr.right)  # plain int literal
+                isinstance(left_analyzer_type, IntLiteralType) and isinstance(right_analyzer_type, IntLiteralType)):
+                # Pass target_type to handle nested binops like 1 + (2 + 3)
+                left = self._gen_expr(expr.left, target_type)
+                right = self._gen_expr(expr.right, target_type)
                 int32_ops = {
                     "+": "tpy::int32_add",
                     "-": "tpy::int32_sub",
@@ -769,6 +785,8 @@ class CodeGenerator:
                     "//": "tpy::int32_div",
                     "%": "tpy::int32_mod",
                     "**": "tpy::int32_pow",
+                    "<<": "tpy::int32_lshift",
+                    ">>": "tpy::int32_rshift",
                 }
                 if func := int32_ops.get(expr.op):
                     return f"{func}({left}, {right})"

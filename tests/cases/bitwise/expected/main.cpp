@@ -25,6 +25,34 @@ void __tpy_init_main() {
   std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(100))) << "\n";
   // 27: print((1 << 100) >> 90)  # 1024
   std::cout << ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) >> (tpy::BigInt(90))) << "\n";
+  // 30: x = 12  # BigInt
+  tpy::BigInt x = tpy::BigInt(12);
+  // 31: y = 10  # BigInt
+  tpy::BigInt y = tpy::BigInt(10);
+  // 32: print(x & y)       # 8
+  std::cout << ((x) & (y)) << "\n";
+  // 33: print(x | y)       # 14
+  std::cout << ((x) | (y)) << "\n";
+  // 34: print(x ^ y)       # 6
+  std::cout << ((x) ^ (y)) << "\n";
+  // 37: z = 0
+  tpy::BigInt z = tpy::BigInt(0);
+  // 38: print(~z)          # -1
+  std::cout << ~(z) << "\n";
+  // 39: z = 5
+  z = tpy::BigInt(5);
+  // 40: print(~z)          # -6
+  std::cout << ~(z) << "\n";
+  // 43: big1 = (1 << 100) | (1 << 50)
+  tpy::BigInt big1 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | (((tpy::BigInt(1)) << (tpy::BigInt(50)))));
+  // 44: big2 = (1 << 100) | (1 << 25)
+  tpy::BigInt big2 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | (((tpy::BigInt(1)) << (tpy::BigInt(25)))));
+  // 45: print((big1 & big2) >> 100)         # 1 - only bit 100 in common
+  std::cout << ((((big1) & (big2))) >> (tpy::BigInt(100))) << "\n";
+  // 46: print((big1 | big2) >> 100)         # 1 - bit 100 is set
+  std::cout << ((((big1) | (big2))) >> (tpy::BigInt(100))) << "\n";
+  // 47: print((big1 ^ big2) >> 50)          # 1 - bit 50 differs (in big1 only)
+  std::cout << ((((big1) ^ (big2))) >> (tpy::BigInt(50))) << "\n";
 }
 
 int main() {

@@ -375,8 +375,12 @@ class SemanticAnalyzer:
                                                 getattr(stmt.init, 'loc', None))
                     var_type = existing_type
             else:
-                # New variable: keep IntLiteralType for now, will be resolved based on usage
-                var_type = init_type
+                # New variable: resolve IntLiteralType to BigInt (Python int semantics)
+                # This ensures Int32 + untyped_var promotes to BigInt correctly
+                if isinstance(init_type, IntLiteralType):
+                    var_type = BIGINT
+                else:
+                    var_type = init_type
         elif stmt.type:
             var_type = stmt.type
         else:

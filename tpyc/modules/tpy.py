@@ -14,31 +14,13 @@ module.type("Int32", cpp_type="int32_t", methods={
     # Conversion to BigInt (for promotion)
     "__int__": [MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt({self})")],
 
-    # Binary arithmetic operators (with BigInt overload that converts to Int32)
-    "__add__": [
-        MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({self}, {0})"),
-        MethodDef(params=[ParamDef("other", BIGINT)], returns=INT32, cpp="tpy::int32_add({self}, ({0}).to_int32())"),
-    ],
-    "__sub__": [
-        MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({self}, {0})"),
-        MethodDef(params=[ParamDef("other", BIGINT)], returns=INT32, cpp="tpy::int32_sub({self}, ({0}).to_int32())"),
-    ],
-    "__mul__": [
-        MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({self}, {0})"),
-        MethodDef(params=[ParamDef("other", BIGINT)], returns=INT32, cpp="tpy::int32_mul({self}, ({0}).to_int32())"),
-    ],
-    "__floordiv__": [
-        MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({self}, {0})"),
-        MethodDef(params=[ParamDef("other", BIGINT)], returns=INT32, cpp="tpy::int32_div({self}, ({0}).to_int32())"),
-    ],
-    "__mod__": [
-        MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({self}, {0})"),
-        MethodDef(params=[ParamDef("other", BIGINT)], returns=INT32, cpp="tpy::int32_mod({self}, ({0}).to_int32())"),
-    ],
-    "__pow__": [
-        MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({self}, {0})"),
-        MethodDef(params=[ParamDef("other", BIGINT)], returns=INT32, cpp="tpy::int32_pow({self}, ({0}).to_int32())"),
-    ],
+    # Binary arithmetic operators (Int32 only - mixed operations promote via __int__)
+    "__add__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({self}, {0})")],
+    "__sub__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({self}, {0})")],
+    "__mul__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({self}, {0})")],
+    "__floordiv__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({self}, {0})")],
+    "__mod__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({self}, {0})")],
+    "__pow__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({self}, {0})")],
 
     # Shift operators
     "__lshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_lshift({self}, {0})")],

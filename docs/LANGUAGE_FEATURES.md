@@ -153,6 +153,33 @@ Possible syntax options:
 - **Planned**: `Int64`, `Int8`, `Int16`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
 - **Planned**: `Float32`, `Float64`, `float`
 
+#### Mixed Arithmetic and Type Promotion (Working)
+
+Operations between `Int32` and `int` (BigInt) follow Python's promotion rules - the result is always the wider type:
+
+```python
+x: Int32 = 5
+y = 10          # int (BigInt)
+z = x + y       # Result is int (BigInt), not Int32
+```
+
+| Operation | Result Type | Rationale |
+|-----------|-------------|-----------|
+| `Int32 + Int32` | `Int32` | Both operands same type, checked arithmetic |
+| `Int32 + int` | `int` | Promotes to BigInt to avoid overflow |
+| `int + Int32` | `int` | Promotes to BigInt to avoid overflow |
+| `Int32 + literal` | `Int32` | Literal coerces to target type |
+
+For augmented assignment (`+=`, `-=`, `*=`, etc.), the target type is preserved - the right-hand side is converted to match:
+```python
+total: Int32 = 0
+big_value = 10  # int (BigInt)
+total += big_value  # big_value.to_int32(), then Int32 addition
+total *= big_value  # same: converts to Int32 first
+```
+
+This ensures `Int32` variables stay in the checked arithmetic domain. If the BigInt value is too large for Int32, the conversion panics at runtime.
+
 ### Strings
 - **Working**: `str` type with string literals, comparison, iteration
 - **Working**: `Char` type for single characters

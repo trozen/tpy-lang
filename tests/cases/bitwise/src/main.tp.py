@@ -25,3 +25,23 @@ print(32 >> 2)     # 8
 # Large shift (Python semantics - arbitrary precision)
 print(1 << 100)    # 1267650600228229401496703205376
 print((1 << 100) >> 90)  # 1024
+
+# BigInt bitwise operators
+x = 12  # BigInt
+y = 10  # BigInt
+print(x & y)       # 8
+print(x | y)       # 14
+print(x ^ y)       # 6
+
+# BigInt bitwise NOT (Python: ~x = -(x+1))
+z = 0
+print(~z)          # -1
+z = 5
+print(~z)          # -6
+
+# Large BigInt bitwise
+big1 = (1 << 100) | (1 << 50)
+big2 = (1 << 100) | (1 << 25)
+print((big1 & big2) >> 100)         # 1 - only bit 100 in common
+print((big1 | big2) >> 100)         # 1 - bit 100 is set
+print((big1 ^ big2) >> 50)          # 1 - bit 50 differs (in big1 only)

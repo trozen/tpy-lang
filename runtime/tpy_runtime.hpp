@@ -427,6 +427,55 @@ public:
     BigInt operator<<(const BigInt& shift) const { return *this << shift.to_int32(); }
     BigInt operator>>(const BigInt& shift) const { return *this >> shift.to_int32(); }
 
+    // Bitwise operators
+    BigInt operator&(const BigInt& rhs) const {
+        if (is_small() && rhs.is_small()) {
+            // (a << 1) & (b << 1) = (a & b) << 1, LSB stays 0
+            BigInt r;
+            r.lo_ = lo_ & rhs.lo_;
+            return r;
+        }
+        return and_gmp(*this, rhs);
+    }
+
+    BigInt operator|(const BigInt& rhs) const {
+        if (is_small() && rhs.is_small()) {
+            // (a << 1) | (b << 1) = (a | b) << 1, LSB stays 0
+            BigInt r;
+            r.lo_ = lo_ | rhs.lo_;
+            return r;
+        }
+        return or_gmp(*this, rhs);
+    }
+
+    BigInt operator^(const BigInt& rhs) const {
+        if (is_small() && rhs.is_small()) {
+            // (a << 1) ^ (b << 1) = (a ^ b) << 1, LSB stays 0
+            BigInt r;
+            r.lo_ = lo_ ^ rhs.lo_;
+            return r;
+        }
+        return xor_gmp(*this, rhs);
+    }
+
+    BigInt operator~() const {
+        // Python: ~x = -(x+1)
+        if (is_small()) {
+            int64_t v = small_value();
+            int64_t result = -(v + 1);
+            if (fits_small(result)) {
+                BigInt r;
+                r.lo_ = result << 1;
+                return r;
+            }
+        }
+        return invert_gmp(*this);
+    }
+
+    BigInt& operator&=(const BigInt& rhs) { *this = *this & rhs; return *this; }
+    BigInt& operator|=(const BigInt& rhs) { *this = *this | rhs; return *this; }
+    BigInt& operator^=(const BigInt& rhs) { *this = *this ^ rhs; return *this; }
+
     // Power operator (Python semantics: negative exponent not supported)
     BigInt pow(const BigInt& exp) const;
 
@@ -561,6 +610,10 @@ private:
     static BigInt neg_gmp(const BigInt& a);
     static BigInt lshift_gmp(const BigInt& a, int32_t shift);
     static BigInt rshift_gmp(const BigInt& a, int32_t shift);
+    static BigInt and_gmp(const BigInt& a, const BigInt& b);
+    static BigInt or_gmp(const BigInt& a, const BigInt& b);
+    static BigInt xor_gmp(const BigInt& a, const BigInt& b);
+    static BigInt invert_gmp(const BigInt& a);
 
     BigInt floor_div(const BigInt& rhs) const;
     BigInt floor_mod(const BigInt& rhs) const;
@@ -624,6 +677,48 @@ inline BigInt BigInt::rshift_gmp(const BigInt& a, int32_t shift) {
     a.to_mpz(za);
     mpz_init(result);
     mpz_fdiv_q_2exp(result, za, static_cast<mp_bitcnt_t>(shift));  // Floor division by 2^shift
+    mpz_clear(za);
+    return from_mpz(result);
+}
+
+inline BigInt BigInt::and_gmp(const BigInt& a, const BigInt& b) {
+    mpz_t za, zb, result;
+    a.to_mpz(za);
+    b.to_mpz(zb);
+    mpz_init(result);
+    mpz_and(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
+}
+
+inline BigInt BigInt::or_gmp(const BigInt& a, const BigInt& b) {
+    mpz_t za, zb, result;
+    a.to_mpz(za);
+    b.to_mpz(zb);
+    mpz_init(result);
+    mpz_ior(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
+}
+
+inline BigInt BigInt::xor_gmp(const BigInt& a, const BigInt& b) {
+    mpz_t za, zb, result;
+    a.to_mpz(za);
+    b.to_mpz(zb);
+    mpz_init(result);
+    mpz_xor(result, za, zb);
+    mpz_clear(za);
+    mpz_clear(zb);
+    return from_mpz(result);
+}
+
+inline BigInt BigInt::invert_gmp(const BigInt& a) {
+    mpz_t za, result;
+    a.to_mpz(za);
+    mpz_init(result);
+    mpz_com(result, za);  // Python: ~x = -(x+1) = one's complement
     mpz_clear(za);
     return from_mpz(result);
 }
