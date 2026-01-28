@@ -639,6 +639,14 @@ class SemanticAnalyzer:
                         arg
                     )
 
+                # Check for T passed to Own[T] parameter - would be implicit copy
+                if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
+                    raise self._error(
+                        f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
+                        f"(would be implicit copy)",
+                        arg
+                    )
+
                 # Special case: single-char string literal can be passed as Char
                 if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
                         isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
