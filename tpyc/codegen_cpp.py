@@ -593,13 +593,7 @@ class CodeGenerator:
 
         # Try module system for augmented assignment (a += b is a = a + b)
         if binop_result := builtin_modules.lookup_binop(target_type, stmt.op, value_type):
-            wrapped_left = binop_result.left_wrapper.replace("{self}", target).replace("{expr}", target)
-            wrapped_right = binop_result.right_wrapper.replace("{self}", value).replace("{expr}", value)
-            # For reverse operators, {self} is the right operand (receiver), {0} is left (argument)
-            if binop_result.is_reverse:
-                result = binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
-            else:
-                result = binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+            result = self._gen_binop_from_result(binop_result, target, value)
             out.write(f"{indent}{target} = {result};\n")
         else:
             # Fallback for operators not in module system
@@ -649,12 +643,7 @@ class CodeGenerator:
 
         # Compute the result expression
         if binop_result := builtin_modules.lookup_binop(elem_type, stmt.op, value_type):
-            wrapped_left = binop_result.left_wrapper.replace("{self}", read_expr).replace("{expr}", read_expr)
-            wrapped_right = binop_result.right_wrapper.replace("{self}", value).replace("{expr}", value)
-            if binop_result.is_reverse:
-                result_expr = binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
-            else:
-                result_expr = binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+            result_expr = self._gen_binop_from_result(binop_result, read_expr, value)
         else:
             cpp_op = "/" if stmt.op == "//" else stmt.op
             result_expr = f"{read_expr} {cpp_op} {value}"
@@ -797,6 +786,20 @@ class CodeGenerator:
             result = result.replace(f"{{{i}}}", self._gen_expr(arg))
         return result
 
+    def _gen_binop_from_result(self, binop_result: builtin_modules.BinopResult,
+                               left: str, right: str) -> str:
+        """Generate binary operation code from a BinopResult.
+
+        Applies wrappers to operands and substitutes into the method template.
+        Handles is_reverse flag for reverse operators (__radd__, etc.).
+        """
+        wrapped_left = binop_result.left_wrapper.replace("{self}", left).replace("{expr}", left)
+        wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
+        if binop_result.is_reverse:
+            return binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
+        else:
+            return binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+
     def _gen_expr(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression.
 
@@ -908,14 +911,8 @@ class CodeGenerator:
                     right = self._gen_expr(expr.right, param_type)
                     # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                     right = self._convert_to_int32_arg(right, right_type, param_type, expr.right)
-                # Binop codegen uses wrapper templates; conversions are handled here.
-                wrapped_left = binop_result.left_wrapper.replace("{self}", left).replace("{expr}", left)
-                wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
-                # For reverse operators, {self} is the right operand (receiver), {0} is left (argument)
-                if binop_result.is_reverse:
-                    result = binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
-                else:
-                    result = binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+                # Generate binop using helper (handles wrappers and is_reverse)
+                result = self._gen_binop_from_result(binop_result, left, right)
                 # Wrap in parens to avoid precedence issues with cout << and other operators
                 return f"({result})"
 
