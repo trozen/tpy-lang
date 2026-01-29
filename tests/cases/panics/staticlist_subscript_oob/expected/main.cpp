@@ -6,13 +6,13 @@ void test_subscript_oob() {
   // 7:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
   StaticList<int32_t, 5> items = StaticList<int32_t, 5>();
   // 8:     items.append(10)
-  items.append(10);
+  items.push_back(10);
   // 9:     items.append(20)
-  items.append(20);
+  items.push_back(20);
   // 10:     items.append(30)
-  items.append(30);
+  items.push_back(30);
   // 13:     x: Int32 = items[10]
-  int32_t x = items.get_value(10);
+  int32_t x = tpy::get_item(items, 10);
   // 14:     print(x)
   std::cout << x << "\n";
 }

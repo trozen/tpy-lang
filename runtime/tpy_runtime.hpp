@@ -194,217 +194,64 @@ template<> struct is_value_type<char> : std::true_type {};
 template<> struct is_value_type<std::string_view> : std::true_type {};
 
 /**
- * StaticList<T, N> - Fixed-capacity container.
+ * StaticList<T, N> - Fixed-capacity container with std::vector-like interface.
  *
  * No dynamic allocation. Elements are stored inline.
- * Provides append, push_empty, get, get_mut, set, and size operations.
+ *
+ * NOTE: Elements are not destroyed on pop_back()/clear() - they remain alive
+ * until the container is destroyed. This is fine for trivial types but diverges
+ * from std::vector for types with non-trivial destructors. Future fix: use
+ * aligned storage with placement new/destroy.
  */
 template <typename T, std::size_t N>
 class StaticList {
 public:
     StaticList() noexcept : size_(0) {}
 
-    /**
-     * Append a value to the list (copy).
-     * Panics if capacity is exceeded.
-     */
-    void append(const T& value) {
+    // --- std::vector-compatible interface ---
+
+    void push_back(const T& value) {
         if (size_ >= N) {
-            tpy_panic("StaticList capacity exceeded in append()");
+            tpy_panic("StaticList capacity exceeded");
         }
         data_[size_++] = value;
     }
 
-    /**
-     * Append a value to the list (move).
-     * Panics if capacity is exceeded.
-     */
-    void append(T&& value) {
+    void push_back(T&& value) {
         if (size_ >= N) {
-            tpy_panic("StaticList capacity exceeded in append()");
+            tpy_panic("StaticList capacity exceeded");
         }
         data_[size_++] = std::move(value);
     }
 
-    /**
-     * Push an empty element and return a pointer to it.
-     * Panics if capacity is exceeded.
-     */
+    T pop_back() {
+        if (size_ == 0) {
+            tpy_panic("StaticList pop from empty list");
+        }
+        return std::move(data_[--size_]);
+    }
+
+    void clear() noexcept {
+        size_ = 0;
+    }
+
+    T& operator[](std::size_t i) { return data_[i]; }
+    const T& operator[](std::size_t i) const { return data_[i]; }
+
+    int32_t size() const noexcept { return static_cast<int32_t>(size_); }
+    static constexpr std::size_t capacity() noexcept { return N; }
+    bool empty() const noexcept { return size_ == 0; }
+
+    T* data() noexcept { return data_; }
+    const T* data() const noexcept { return data_; }
+
+    // --- StaticList-specific (noalloc patterns) ---
+
     T* push_empty() {
         if (size_ >= N) {
-            tpy_panic("StaticList capacity exceeded in push_empty()");
+            tpy_panic("StaticList capacity exceeded");
         }
         return &data_[size_++];
-    }
-
-    /**
-     * Get a reference to element at index.
-     * Panics if index is out of bounds.
-     * @deprecated Use get_value() for value types, get_ref() for object types.
-     */
-    T& get(int32_t index) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in get()");
-        }
-        return data_[i];
-    }
-
-    const T& get(int32_t index) const {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in get()");
-        }
-        return data_[i];
-    }
-
-    /**
-     * Get a copy of element at index (for value types).
-     * Use this for primitive types (Int32, BigInt, Bool, Char, str).
-     * Panics if index is out of bounds.
-     */
-    T get_value(int32_t index) const {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in get_value()");
-        }
-        return data_[i];
-    }
-
-    /**
-     * Set element at index (for value types, copy).
-     * Panics if index is out of bounds.
-     */
-    void set_value(int32_t index, const T& value) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in set_value()");
-        }
-        data_[i] = value;
-    }
-
-    /**
-     * Set element at index (for value types, move).
-     * Panics if index is out of bounds.
-     */
-    void set_value(int32_t index, T&& value) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in set_value()");
-        }
-        data_[i] = std::move(value);
-    }
-
-    /**
-     * Get a reference to element at index (for object types).
-     * Use this for object types (records, nested containers) where
-     * you need to access fields or mutate the element in-place.
-     * Panics if index is out of bounds.
-     */
-    T& get_ref(int32_t index) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in get_ref()");
-        }
-        return data_[i];
-    }
-
-    const T& get_ref(int32_t index) const {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in get_ref()");
-        }
-        return data_[i];
-    }
-
-    /**
-     * Get a mutable pointer to element at index.
-     * Panics if index is out of bounds.
-     */
-    T* get_mut(int32_t index) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in get_mut()");
-        }
-        return &data_[i];
-    }
-
-    /**
-     * Set element at index to value (copy).
-     * Panics if index is out of bounds.
-     */
-    void set(int32_t index, const T& value) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in set()");
-        }
-        data_[i] = value;
-    }
-
-    /**
-     * Set element at index to value (move).
-     * Panics if index is out of bounds.
-     */
-    void set(int32_t index, T&& value) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds in set()");
-        }
-        data_[i] = std::move(value);
-    }
-
-    /**
-     * Get element at index - unified accessor.
-     * Returns by value for primitive types, by reference for object types.
-     * Uses is_value_type trait for compile-time dispatch.
-     */
-    decltype(auto) get_item(int32_t index) {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds");
-        }
-        if constexpr (is_value_type<T>::value) {
-            return T(data_[i]);
-        } else {
-            return (data_[i]);
-        }
-    }
-
-    decltype(auto) get_item(int32_t index) const {
-        auto i = static_cast<std::size_t>(index);
-        if (i >= size_) {
-            tpy_panic("StaticList index out of bounds");
-        }
-        if constexpr (is_value_type<T>::value) {
-            return T(data_[i]);
-        } else {
-            return (data_[i]);
-        }
-    }
-
-    /**
-     * Return current size.
-     */
-    int32_t size() const noexcept {
-        return static_cast<int32_t>(size_);
-    }
-
-    /**
-     * Return maximum capacity.
-     */
-    static constexpr std::size_t capacity() noexcept {
-        return N;
-    }
-
-    /**
-     * Return pointer to underlying data (for Span conversion).
-     */
-    T* data() noexcept {
-        return data_;
-    }
-
-    const T* data() const noexcept {
-        return data_;
     }
 
 private:
@@ -1012,41 +859,52 @@ inline BigInt BigInt::pow(const BigInt& exp) const {
 }
 
 /**
+ * normalize_index - Convert Python-style index to size_t.
+ *
+ * Supports negative indexing: -1 is last element, -2 is second-to-last, etc.
+ * Panics if index is out of bounds.
+ */
+template <typename Container>
+std::size_t normalize_index(const Container& c, int32_t index, const char* context) {
+    std::ptrdiff_t i = index;
+    if (i < 0) {
+        i += static_cast<std::ptrdiff_t>(c.size());
+    }
+    if (i < 0 || static_cast<std::size_t>(i) >= c.size()) {
+        tpy_panic(context);
+    }
+    return static_cast<std::size_t>(i);
+}
+
+/**
  * get_value - Get a copy of element at index (for value types).
  *
  * Use this for primitive types (Int32, BigInt, Bool, Char, str).
+ * Supports negative indexing (Python semantics).
  * Panics if index is out of bounds.
  */
 template <typename T>
 T get_value(std::vector<T>& vec, int32_t index) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= vec.size()) {
-        tpy_panic("list index out of bounds in get_value()");
-    }
+    auto i = normalize_index(vec, index, "list index out of bounds in get_value()");
     return vec[i];
 }
 
 template <typename T>
 T get_value(const std::vector<T>& vec, int32_t index) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= vec.size()) {
-        tpy_panic("list index out of bounds in get_value()");
-    }
+    auto i = normalize_index(vec, index, "list index out of bounds in get_value()");
     return vec[i];
 }
 
 /**
  * set_value - Set element at index (for value types).
  *
+ * Supports negative indexing (Python semantics).
  * Panics if index is out of bounds.
  * Uses perfect forwarding to support both copy and move.
  */
 template <typename T, typename V>
 void set_value(std::vector<T>& vec, int32_t index, V&& value) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= vec.size()) {
-        tpy_panic("list index out of bounds in set_value()");
-    }
+    auto i = normalize_index(vec, index, "list index out of bounds in set_value()");
     vec[i] = std::forward<V>(value);
 }
 
@@ -1055,23 +913,18 @@ void set_value(std::vector<T>& vec, int32_t index, V&& value) {
  *
  * Use this for object types (records, nested containers) where
  * you need to access fields or mutate the element in-place.
+ * Supports negative indexing (Python semantics).
  * Panics if index is out of bounds.
  */
 template <typename T>
 T& get_ref(std::vector<T>& vec, int32_t index) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= vec.size()) {
-        tpy_panic("list index out of bounds in get_ref()");
-    }
+    auto i = normalize_index(vec, index, "list index out of bounds in get_ref()");
     return vec[i];
 }
 
 template <typename T>
 const T& get_ref(const std::vector<T>& vec, int32_t index) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= vec.size()) {
-        tpy_panic("list index out of bounds in get_ref()");
-    }
+    auto i = normalize_index(vec, index, "list index out of bounds in get_ref()");
     return vec[i];
 }
 
@@ -1101,10 +954,7 @@ template<> struct is_value_type<BigInt> : std::true_type {};
  */
 template<typename T>
 decltype(auto) get_item(std::vector<T>& v, int32_t index) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= v.size()) {
-        tpy_panic("list index out of bounds");
-    }
+    auto i = normalize_index(v, index, "list index out of bounds");
     if constexpr (is_value_type<T>::value) {
         return T(v[i]);  // Return copy for value types
     } else {
@@ -1114,10 +964,7 @@ decltype(auto) get_item(std::vector<T>& v, int32_t index) {
 
 template<typename T>
 decltype(auto) get_item(const std::vector<T>& v, int32_t index) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= v.size()) {
-        tpy_panic("list index out of bounds");
-    }
+    auto i = normalize_index(v, index, "list index out of bounds");
     if constexpr (is_value_type<T>::value) {
         return T(v[i]);
     } else {
@@ -1128,31 +975,75 @@ decltype(auto) get_item(const std::vector<T>& v, int32_t index) {
 /**
  * set_item - Unified element assignment for std::vector.
  *
- * Sets element at index. Panics if index is out of bounds.
+ * Sets element at index. Supports negative indexing (Python semantics).
+ * Panics if index is out of bounds.
  * Uses perfect forwarding to support both copy and move.
  */
 template<typename T, typename V>
 void set_item(std::vector<T>& v, int32_t index, V&& value) {
-    auto i = static_cast<std::size_t>(index);
-    if (i >= v.size()) {
-        tpy_panic("list index out of bounds in assignment");
-    }
+    auto i = normalize_index(v, index, "list index out of bounds in assignment");
     v[i] = std::forward<V>(value);
+}
+
+/**
+ * get_item - Unified element access for StaticList.
+ */
+template<typename T, std::size_t N>
+decltype(auto) get_item(StaticList<T, N>& sl, int32_t index) {
+    auto i = normalize_index(sl, index, "StaticList index out of bounds");
+    if constexpr (is_value_type<T>::value) {
+        return T(sl[i]);
+    } else {
+        return (sl[i]);
+    }
+}
+
+template<typename T, std::size_t N>
+decltype(auto) get_item(const StaticList<T, N>& sl, int32_t index) {
+    auto i = normalize_index(sl, index, "StaticList index out of bounds");
+    if constexpr (is_value_type<T>::value) {
+        return T(sl[i]);
+    } else {
+        return (sl[i]);
+    }
+}
+
+/**
+ * set_item - Unified element assignment for StaticList.
+ */
+template<typename T, std::size_t N, typename V>
+void set_item(StaticList<T, N>& sl, int32_t index, V&& value) {
+    auto i = normalize_index(sl, index, "StaticList index out of bounds in assignment");
+    sl[i] = std::forward<V>(value);
+}
+
+/**
+ * get_mut - Get mutable pointer to element (StaticList-specific, for noalloc patterns).
+ */
+template<typename T, std::size_t N>
+T* get_mut(StaticList<T, N>& sl, int32_t index) {
+    auto i = normalize_index(sl, index, "StaticList index out of bounds");
+    return &sl[i];
 }
 
 /**
  * list_insert - Python list.insert() for std::vector.
  *
- * Inserts value at index. Clamps index to valid range (Python semantics).
+ * Inserts value at index. Supports negative indexing and clamps to valid range
+ * (Python semantics: -1 inserts before last element, out-of-range clamps).
  * Uses perfect forwarding to support both copy and move.
  */
 template<typename T, typename V>
 void list_insert(std::vector<T>& v, int32_t index, V&& value) {
-    auto i = static_cast<std::size_t>(index);
-    if (i > v.size()) {
-        i = v.size();  // Python clamps to end
+    std::ptrdiff_t i = index;
+    auto sz = static_cast<std::ptrdiff_t>(v.size());
+    if (i < 0) {
+        i += sz;
+        if (i < 0) i = 0;  // Clamp to start
+    } else if (i > sz) {
+        i = sz;  // Clamp to end
     }
-    v.insert(v.begin() + static_cast<std::ptrdiff_t>(i), std::forward<V>(value));
+    v.insert(v.begin() + i, std::forward<V>(value));
 }
 
 /**
@@ -1245,7 +1136,7 @@ std::ostream& operator<<(std::ostream& os, const ListPrinter<StaticList<T, N>>& 
     os << '[';
     for (int32_t i = 0; i < p.value.size(); ++i) {
         if (i > 0) os << ", ";
-        detail::print_element(os, p.value.get(i));
+        detail::print_element(os, p.value[static_cast<std::size_t>(i)]);
     }
     os << ']';
     return os;

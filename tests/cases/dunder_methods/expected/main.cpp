@@ -27,17 +27,17 @@ void __tpy_init_main() {
   // 28: sl = StaticList[Int32, 10]()
   auto sl = StaticList<int32_t, 10>();
   // 29: sl.append(Int32(100))
-  sl.append(100);
+  sl.push_back(100);
   // 30: sl.append(Int32(200))
-  sl.append(200);
+  sl.push_back(200);
   // 33: print(sl.__len__())  # 2
   std::cout << sl.size() << "\n";
   // 36: print(sl.__getitem__(Int32(0)))  # 100
-  std::cout << sl.get_item(0) << "\n";
+  std::cout << tpy::get_item(sl, 0) << "\n";
   // 39: sl.__setitem__(Int32(0), Int32(111))
-  sl.set(0, 111);
+  tpy::set_item(sl, 0, 111);
   // 40: print(sl.__getitem__(Int32(0)))  # 111
-  std::cout << sl.get_item(0) << "\n";
+  std::cout << tpy::get_item(sl, 0) << "\n";
   // 47: print(arr.__len__())  # 3
   std::cout << static_cast<int32_t>(arr.size()) << "\n";
   // 50: print(arr.__getitem__(Int32(0)))  # 1

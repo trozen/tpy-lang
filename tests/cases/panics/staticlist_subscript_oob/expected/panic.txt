@@ -1,1 +1,1 @@
-TurboPython panic: StaticList index out of bounds in get_value()
+TurboPython panic: StaticList index out of bounds

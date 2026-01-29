@@ -4,25 +4,25 @@
 // 10: def process_list(items: StaticList[Item, 16]) -> None:
 void process_list(StaticList<Item, 16>& items) {
   // 12:     items.append(Item(10))
-  items.append(Item(10));
+  items.push_back(Item(10));
   // 13:     items.append(Item(20))
-  items.append(Item(20));
+  items.push_back(Item(20));
   // 16:     p: Ptr[Item] = items.push_empty()
   Item* p = items.push_empty();
   // 17:     p.value = 30
   p->value = 30;
-  // 20:     first: Item = items.get(0)
-  Item first = items.get(0);
-  // 21:     items.set(1, Item(first.value + 5))
-  items.set(1, Item((tpy::int32_add(first.value, 5))));
+  // 20:     first: Item = items[0]
+  Item first = tpy::get_item(items, 0);
+  // 21:     items[1] = Item(first.value + 5)
+  tpy::set_item(items, 1, Item((tpy::int32_add(first.value, 5))));
 }
 
 // 24: def print_list(items: StaticList[Item, 16]) -> None:
 void print_list(StaticList<Item, 16>& items) {
   // 25:     for i in range(len(items)):
   for (int32_t i = 0; i < items.size(); ++i) {
-    // 26:         item: Item = items.get(i)
-    Item item = items.get(i);
+    // 26:         item: Item = items[i]
+    Item item = tpy::get_item(items, i);
     // 27:         print(item.value)
     std::cout << item.value << "\n";
   }

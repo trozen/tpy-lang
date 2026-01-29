@@ -887,17 +887,12 @@ class SemanticAnalyzer:
                 resolved = builtin_modules.resolve_method(methods[0], type_params)
                 return self._check_method_args(expr, resolved, obj_type)
 
-            # Hardcoded methods (extend, size)
             if expr.method == "extend":
                 if len(expr.args) != 1:
                     raise SemanticError("extend() takes exactly 1 argument")
                 arg_type = self._analyze_expr(expr.args[0])
                 # Should be iterable of elem_type - for now accept list/array/span
                 return VOID
-            elif expr.method == "size":
-                if expr.args:
-                    raise SemanticError("size() takes no arguments")
-                return INT32
             else:
                 raise SemanticError(f"Unknown list method: '{expr.method}'")
 

@@ -54,9 +54,9 @@ int32_t test_span_param() {
 
 void __tpy_init_main() {
   // 37: print(global_list[0])  # 1
-  std::cout << tpy::get_value(global_list, 0) << "\n";
+  std::cout << tpy::get_item(global_list, 0) << "\n";
   // 40: print(global_inferred[1])  # 20
-  std::cout << tpy::get_value(global_inferred, 1) << "\n";
+  std::cout << tpy::get_item(global_inferred, 1) << "\n";
   // 43: print(test_no_mutation())  # 1
   std::cout << test_no_mutation() << "\n";
   // 46: print(test_mutation())  # 4

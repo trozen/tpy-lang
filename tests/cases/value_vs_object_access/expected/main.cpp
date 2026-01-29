@@ -6,21 +6,21 @@ void test_value_types() {
   // 14:     nums: StaticList[Int32, 4] = StaticList[Int32, 4]()
   StaticList<int32_t, 4> nums = StaticList<int32_t, 4>();
   // 15:     nums.append(10)
-  nums.append(10);
+  nums.push_back(10);
   // 16:     nums.append(20)
-  nums.append(20);
+  nums.push_back(20);
   // 17:     val: Int32 = nums[0]
-  int32_t val = nums.get_value(0);
+  int32_t val = tpy::get_item(nums, 0);
   // 18:     print(val)  # 10
   std::cout << val << "\n";
   // 21:     val = 99
   val = 99;
   // 22:     print(nums[0])  # Still 10
-  std::cout << nums.get_value(0) << "\n";
+  std::cout << tpy::get_item(nums, 0) << "\n";
   // 25:     int_list: list[Int32] = [5, 6, 7]
   std::vector<int32_t> int_list = {5, 6, 7};
   // 26:     v: Int32 = int_list[1]  # get_value for Int32 element
-  int32_t v = tpy::get_value(int_list, 1);
+  int32_t v = tpy::get_item(int_list, 1);
   // 27:     print(v)  # 6
   std::cout << v << "\n";
 }
@@ -30,21 +30,21 @@ void test_object_types() {
   // 32:     points: StaticList[Point, 4] = StaticList[Point, 4]()
   StaticList<Point, 4> points = StaticList<Point, 4>();
   // 33:     points.append(Point(1, 2))
-  points.append(Point(1, 2));
+  points.push_back(Point(1, 2));
   // 34:     points.append(Point(3, 4))
-  points.append(Point(3, 4));
+  points.push_back(Point(3, 4));
   // 37:     print(points[0].x)  # 1
-  std::cout << points.get_ref(0).x << "\n";
+  std::cout << tpy::get_item(points, 0).x << "\n";
   // 40:     points[0].x = 100
-  points.get_ref(0).x = 100;
+  tpy::get_item(points, 0).x = 100;
   // 41:     print(points[0].x)  # 100
-  std::cout << points.get_ref(0).x << "\n";
+  std::cout << tpy::get_item(points, 0).x << "\n";
   // 44:     obj_list: list[Point] = [Point(10, 20)]
   std::vector<Point> obj_list = {Point(10, 20)};
   // 45:     obj_list[0].y = 200  # get_ref for Point element
-  tpy::get_ref(obj_list, 0).y = 200;
+  tpy::get_item(obj_list, 0).y = 200;
   // 46:     print(obj_list[0].y)  # 200
-  std::cout << tpy::get_ref(obj_list, 0).y << "\n";
+  std::cout << tpy::get_item(obj_list, 0).y << "\n";
 }
 
 void __tpy_init_main() {

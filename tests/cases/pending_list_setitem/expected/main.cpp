@@ -8,11 +8,11 @@ void test_setitem_mutation() {
   // 11:     items.__setitem__(Int32(0), Int32(99))
   tpy::set_item(items, 0, 99);
   // 12:     print(items[Int32(0)])  # 99
-  std::cout << tpy::get_value(items, 0) << "\n";
+  std::cout << tpy::get_item(items, 0) << "\n";
   // 13:     print(items[Int32(1)])  # 2
-  std::cout << tpy::get_value(items, 1) << "\n";
+  std::cout << tpy::get_item(items, 1) << "\n";
   // 14:     print(items[Int32(2)])  # 3
-  std::cout << tpy::get_value(items, 2) << "\n";
+  std::cout << tpy::get_item(items, 2) << "\n";
 }
 
 void __tpy_init_main() {

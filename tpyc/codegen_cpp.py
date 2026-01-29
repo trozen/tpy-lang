@@ -561,8 +561,8 @@ class CodeGenerator:
             index_type = self.analyzer.get_expr_type(stmt.target.index)
             index_expr = self._gen_index_expr(obj, stmt.target.index, index_type)
 
-            if isinstance(obj_type, StaticListType):
-                out.write(f"{indent}{obj}.set({index_expr}, {value});\n")
+            if isinstance(obj_type, (StaticListType, ListType)):
+                out.write(f"{indent}tpy::set_item({obj}, {index_expr}, {value});\n")
             else:
                 out.write(f"{indent}{obj}[{index_expr}] = {value};\n")
             return
@@ -624,11 +624,9 @@ class CodeGenerator:
                 f"(element type: {elem_type})"
             )
 
-        # Generate read expression using get_value()
-        if isinstance(obj_type, StaticListType):
-            read_expr = f"{obj}.get_value({index_expr})"
-        elif isinstance(obj_type, ListType):
-            read_expr = f"tpy::get_value({obj}, {index_expr})"
+        # Generate read expression using get_item()
+        if isinstance(obj_type, (StaticListType, ListType)):
+            read_expr = f"tpy::get_item({obj}, {index_expr})"
         else:
             # Array, Span - use [] directly
             read_expr = f"{obj}[{index_expr}]"
@@ -648,11 +646,9 @@ class CodeGenerator:
             cpp_op = "/" if stmt.op == "//" else stmt.op
             result_expr = f"{read_expr} {cpp_op} {value}"
 
-        # Generate write using set_value()
-        if isinstance(obj_type, StaticListType):
-            out.write(f"{indent}{obj}.set_value({index_expr}, {result_expr});\n")
-        elif isinstance(obj_type, ListType):
-            out.write(f"{indent}tpy::set_value({obj}, {index_expr}, {result_expr});\n")
+        # Generate write using set_item()
+        if isinstance(obj_type, (StaticListType, ListType)):
+            out.write(f"{indent}tpy::set_item({obj}, {index_expr}, {result_expr});\n")
         else:
             # Array, Span - use [] directly
             out.write(f"{indent}{obj}[{index_expr}] = {result_expr};\n")
@@ -1004,14 +1000,7 @@ class CodeGenerator:
                 if methods:
                     return self._gen_method_from_def(obj, expr.args, methods[0])
 
-            # Hardcoded methods not in module system yet (size, extend)
-            if isinstance(obj_type, (ArrayType, SpanType)):
-                if expr.method == "size":
-                    return f"static_cast<int32_t>({obj}.size())"
-            if isinstance(obj_type, ListType):
-                if expr.method == "size":
-                    return f"static_cast<int32_t>({obj}.size())"
-                elif expr.method == "extend":
+            if isinstance(obj_type, ListType) and expr.method == "extend":
                     # extend(other) -> insert at end
                     arg = expr.args[0]
                     if isinstance(arg, TpyArrayLiteral):
@@ -1072,20 +1061,9 @@ class CodeGenerator:
             index_type = self.analyzer.get_expr_type(expr.index)
             index_expr = self._gen_index_expr(obj, expr.index, index_type)
 
-            # Determine element type for value/object distinction
-            elem_type = None
-            if isinstance(obj_type, (StaticListType, ArrayType, SpanType, ListType)):
-                elem_type = obj_type.element_type
-
-            # Choose get_value vs get_ref based on element type
-            use_value = elem_type and elem_type.is_value_type()
-
-            if isinstance(obj_type, StaticListType):
-                method = "get_value" if use_value else "get_ref"
-                return f"{obj}.{method}({index_expr})"
-            elif isinstance(obj_type, ListType):
-                method = "tpy::get_value" if use_value else "tpy::get_ref"
-                return f"{method}({obj}, {index_expr})"
+            # Use get_item for StaticList/list (handles value/ref via is_value_type trait)
+            if isinstance(obj_type, (StaticListType, ListType)):
+                return f"tpy::get_item({obj}, {index_expr})"
             # Array, Span, str - use [] (returns reference, but read-only for Span)
             return f"{obj}[{index_expr}]"
 

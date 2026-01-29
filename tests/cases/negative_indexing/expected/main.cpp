@@ -7,13 +7,13 @@ void test_list_negative_indexing() {
   // 8:     nums: list[Int32] = [10, 20, 30, 40, 50]
   std::vector<int32_t> nums = {10, 20, 30, 40, 50};
   // 11:     print(nums[-1])
-  std::cout << tpy::get_value(nums, static_cast<int32_t>(nums.size() - 1)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 1)) << "\n";
   // 14:     print(nums[-2])
-  std::cout << tpy::get_value(nums, static_cast<int32_t>(nums.size() - 2)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 2)) << "\n";
   // 17:     print(nums[-3])
-  std::cout << tpy::get_value(nums, static_cast<int32_t>(nums.size() - 3)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 3)) << "\n";
   // 20:     print(nums[-5])
-  std::cout << tpy::get_value(nums, static_cast<int32_t>(nums.size() - 5)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 5)) << "\n";
 }
 
 // 22: def test_array_negative_indexing() -> None:
@@ -48,17 +48,17 @@ void test_negative_index_assignment() {
   // 45:     nums: list[Int32] = [1, 2, 3, 4, 5]
   std::vector<int32_t> nums = {1, 2, 3, 4, 5};
   // 48:     nums[-1] = 50
-  nums[static_cast<int32_t>(nums.size() - 1)] = 50;
+  tpy::set_item(nums, static_cast<int32_t>(nums.size() - 1), 50);
   // 49:     print(nums[-1])
-  std::cout << tpy::get_value(nums, static_cast<int32_t>(nums.size() - 1)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 1)) << "\n";
   // 52:     nums[-2] = 40
-  nums[static_cast<int32_t>(nums.size() - 2)] = 40;
+  tpy::set_item(nums, static_cast<int32_t>(nums.size() - 2), 40);
   // 53:     print(nums[-2])
-  std::cout << tpy::get_value(nums, static_cast<int32_t>(nums.size() - 2)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 2)) << "\n";
   // 56:     print(nums[3])
-  std::cout << tpy::get_value(nums, 3) << "\n";
+  std::cout << tpy::get_item(nums, 3) << "\n";
   // 57:     print(nums[4])
-  std::cout << tpy::get_value(nums, 4) << "\n";
+  std::cout << tpy::get_item(nums, 4) << "\n";
 }
 
 // 59: def test_negative_index_in_expression() -> None:
@@ -67,11 +67,11 @@ void test_negative_index_in_expression() {
   // 61:     nums: list[Int32] = [5, 10, 15, 20]
   std::vector<int32_t> nums = {5, 10, 15, 20};
   // 64:     total: Int32 = nums[-1] + nums[-2]
-  int32_t total = (tpy::int32_add(tpy::get_value(nums, static_cast<int32_t>(nums.size() - 1)), tpy::get_value(nums, static_cast<int32_t>(nums.size() - 2))));
+  int32_t total = (tpy::int32_add(tpy::get_item(nums, static_cast<int32_t>(nums.size() - 1)), tpy::get_item(nums, static_cast<int32_t>(nums.size() - 2))));
   // 65:     print(total)
   std::cout << total << "\n";
   // 68:     if nums[-1] > nums[-2]:
-  if ((tpy::get_value(nums, static_cast<int32_t>(nums.size() - 1)) > tpy::get_value(nums, static_cast<int32_t>(nums.size() - 2)))) {
+  if ((tpy::get_item(nums, static_cast<int32_t>(nums.size() - 1)) > tpy::get_item(nums, static_cast<int32_t>(nums.size() - 2)))) {
     // 69:         print("last > second_last")
     std::cout << "last > second_last" << "\n";
   } else {

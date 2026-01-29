@@ -6,7 +6,7 @@ void test_list_subscript_oob() {
   // 7:     nums: list[Int32] = [1, 2, 3]
   std::vector<int32_t> nums = {1, 2, 3};
   // 10:     x: Int32 = nums[10]
-  int32_t x = tpy::get_value(nums, 10);
+  int32_t x = tpy::get_item(nums, 10);
   // 11:     print(x)
   std::cout << x << "\n";
 }

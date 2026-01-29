@@ -39,6 +39,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - `copy()` builtin for explicit copying
 - support augmented arithmetic operators, like `__iadd__` for `+=` etc.
 - support all dunder methods: comparison (`__eq__`, `__lt__`, `__gt__`, etc.), `__str__`, `__bool__` etc
+- split tpy_runtime.hpp
 
 ## ShedSkin examples
 - score4

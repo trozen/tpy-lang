@@ -600,7 +600,9 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design sketch.
 - **Working**: `print()`, `len()`, `range()`, `chr()`
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
-- **Working**: Negative indexing: `items[-1]` (last element)
+- **Working**: StaticList methods: `append()`, `pop()`, `clear()`, `push_empty()`, `get_mut()`
+  - Use subscript notation `items[i]` for element access (same as list)
+- **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
 - **Planned**: `abs()`, `min()`, `max()`
 - **Planned**: List slicing: `items[1:3]`
 - **Open**: `isinstance()` → compile-time type check / type narrowing

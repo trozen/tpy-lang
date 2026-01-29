@@ -15,7 +15,7 @@ int32_t sum_list(std::vector<int32_t>& nums) {
   // 6:     while i < len(nums):
   while ((i < static_cast<int32_t>(nums.size()))) {
     // 7:         total += nums[i]
-    total = tpy::int32_add(total, tpy::get_value(nums, i));
+    total = tpy::int32_add(total, tpy::get_item(nums, i));
     // 8:         i += 1
     i = tpy::int32_add(i, 1);
   }
@@ -25,9 +25,9 @@ int32_t sum_list(std::vector<int32_t>& nums) {
 
 void __tpy_init_main() {
   // 12: mem[0] = 42
-  mem[0] = 42;
+  tpy::set_item(mem, 0, 42);
   // 13: mem[1] = 8
-  mem[1] = 8;
+  tpy::set_item(mem, 1, 8);
   // 14: print(sum_list(mem))
   std::cout << sum_list(mem) << "\n";
   // 15: print(len(mem))
@@ -35,13 +35,13 @@ void __tpy_init_main() {
   // 18: data = [0] * 5
   auto data = std::vector<tpy::BigInt>(5, 0);
   // 19: data[0] = 100
-  data[0] = 100;
+  tpy::set_item(data, 0, 100);
   // 20: print(data[0])
-  std::cout << tpy::get_value(data, 0) << "\n";
+  std::cout << tpy::get_item(data, 0) << "\n";
   // 24: print(chr(chars[0]), end='')
-  std::cout << static_cast<char>((tpy::get_value(chars, 0)).to_int32());
+  std::cout << static_cast<char>((tpy::get_item(chars, 0)).to_int32());
   // 25: print(chr(chars[1]))
-  std::cout << static_cast<char>((tpy::get_value(chars, 1)).to_int32()) << "\n";
+  std::cout << static_cast<char>((tpy::get_item(chars, 1)).to_int32()) << "\n";
 }
 
 int main() {

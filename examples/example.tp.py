@@ -18,4 +18,4 @@ def algo_function(l: StaticList[Data, 1024]) -> None:
 
 lst = StaticList[Data, 1024]()  # works (Data is defined)
 algo_function(lst)
-print(lst.get(0).value, len(lst))  # -> Int32(444) 2
+print(lst[0].value, len(lst))  # -> Int32(444) 2

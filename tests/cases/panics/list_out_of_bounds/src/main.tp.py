@@ -9,7 +9,7 @@ def test_out_of_bounds() -> None:
     items.append(30)
 
     # Access index 10 which is out of bounds (only 3 elements)
-    x: Int32 = items.get(10)
+    x: Int32 = items[10]
     print(x)
 
 test_out_of_bounds()

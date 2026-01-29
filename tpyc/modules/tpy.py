@@ -92,7 +92,7 @@ module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"], methods=
 })
 
 # StaticList[T, N]: Fixed-capacity container
-# Methods use "T" string which gets resolved to element_type at lookup time
+# Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
 module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"], methods={
     "__len__": [MethodDef(
         params=[],
@@ -102,36 +102,36 @@ module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"
     "append": [MethodDef(
         params=[ParamDef("value", "T")],
         returns=VOID,
-        cpp="{self}.append({0})",
+        cpp="{self}.push_back({0})",
+    )],
+    "pop": [MethodDef(
+        params=[],
+        returns="T",
+        cpp="{self}.pop_back()",
+    )],
+    "clear": [MethodDef(
+        params=[],
+        returns=VOID,
+        cpp="{self}.clear()",
     )],
     "push_empty": [MethodDef(
         params=[],
         returns="Ptr[T]",
         cpp="{self}.push_empty()",
     )],
-    "get": [MethodDef(
-        params=[ParamDef("index", INT32)],
-        returns="T",
-        cpp="{self}.get({0})",
-    )],
     "get_mut": [MethodDef(
         params=[ParamDef("index", INT32)],
         returns="Ptr[T]",
-        cpp="{self}.get_mut({0})",
-    )],
-    "set": [MethodDef(
-        params=[ParamDef("index", INT32), ParamDef("value", "T")],
-        returns=VOID,
-        cpp="{self}.set({0}, {1})",
+        cpp="tpy::get_mut({self}, {0})",
     )],
     "__getitem__": [MethodDef(
         params=[ParamDef("index", INT32)],
         returns="T",
-        cpp="{self}.get_item({0})",
+        cpp="tpy::get_item({self}, {0})",
     )],
     "__setitem__": [MethodDef(
         params=[ParamDef("index", INT32), ParamDef("value", "T")],
         returns=VOID,
-        cpp="{self}.set({0}, {1})",
+        cpp="tpy::set_item({self}, {0}, {1})",
     )],
 })

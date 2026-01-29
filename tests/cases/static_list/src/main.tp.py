@@ -16,14 +16,14 @@ def process_list(items: StaticList[Item, 16]) -> None:
     p: Ptr[Item] = items.push_empty()
     p.value = 30
 
-    # get and set
-    first: Item = items.get(0)
-    items.set(1, Item(first.value + 5))
+    # subscript access
+    first: Item = items[0]
+    items[1] = Item(first.value + 5)
 
 @noalloc
 def print_list(items: StaticList[Item, 16]) -> None:
     for i in range(len(items)):
-        item: Item = items.get(i)
+        item: Item = items[i]
         print(item.value)
 
 items = StaticList[Item, 16]()

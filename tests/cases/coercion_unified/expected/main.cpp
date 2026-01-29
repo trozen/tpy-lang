@@ -203,11 +203,11 @@ void test_staticlist_to_span() {
   // 183:     sl: StaticList[Int32, 5] = StaticList[Int32, 5]()
   StaticList<int32_t, 5> sl = StaticList<int32_t, 5>();
   // 184:     sl.append(1)
-  sl.append(1);
+  sl.push_back(1);
   // 185:     sl.append(2)
-  sl.append(2);
+  sl.push_back(2);
   // 186:     sl.append(3)
-  sl.append(3);
+  sl.push_back(3);
   // 189:     print(take_span(sl))  # 6
   std::cout << take_span(tpy::as_span(sl)) << "\n";
 }

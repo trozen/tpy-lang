@@ -20,17 +20,17 @@ void __tpy_init_main() {
   // 10: print(arr[2])
   std::cout << arr[2] << "\n";
   // 14: items.append(10)
-  items.append(10);
+  items.push_back(10);
   // 15: items.append(20)
-  items.append(20);
+  items.push_back(20);
   // 16: items[0] = 99
-  items.set(0, 99);
+  tpy::set_item(items, 0, 99);
   // 17: items[1] = 88
-  items.set(1, 88);
+  tpy::set_item(items, 1, 88);
   // 18: print(items[0])
-  std::cout << items.get_value(0) << "\n";
+  std::cout << tpy::get_item(items, 0) << "\n";
   // 19: print(items[1])
-  std::cout << items.get_value(1) << "\n";
+  std::cout << tpy::get_item(items, 1) << "\n";
 }
 
 int main() {

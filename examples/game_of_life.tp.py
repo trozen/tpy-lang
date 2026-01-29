@@ -24,10 +24,10 @@ class Grid:
             return 0
         if y >= HEIGHT:
             return 0
-        return self.cells.get(self.idx(x, y))
+        return self.cells[self.idx(x, y)]
 
     def set(self, x: Int32, y: Int32, val: Int32) -> None:
-        self.cells.set(self.idx(x, y), val)
+        self.cells[self.idx(x, y)] = val
 
 def count_neighbors(g: Grid, x: Int32, y: Int32) -> Int32:
     n = 0
