@@ -872,8 +872,8 @@ class CodeGenerator:
                 method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
                 if method_name:
                     methods = builtin_modules.lookup_type_method(INT32, method_name)
-                    if methods:
-                        result = methods[0].cpp.replace("{self}", left).replace("{0}", right)
+                    if method := builtin_modules._find_matching_overload(methods, INT32):
+                        result = method.cpp.replace("{self}", left).replace("{0}", right)
                         return result
                 # Fallback for operators not in module system (bitwise operators)
                 return f"({left} {expr.op} {right})"
@@ -1147,41 +1147,31 @@ class CodeGenerator:
             return self._involves_variables(expr)
         return False
 
-    def _gen_constructor(self, expr: TpyCall, type_def: builtin_modules.BuiltinTypeDef) -> str:
-        """Generate C++ code for a type constructor call."""
-        args = expr.args
+    def _gen_overloaded_call(self, args: list[TpyExpr], overloads: list[builtin_modules.MethodDef], name: str) -> str:
+        """Generate C++ for an overloaded call (constructor or builtin function).
+
+        Finds matching overload, generates args with proper type coercion, substitutes into template.
+        """
         arg_types = [self.analyzer.get_expr_type(arg) for arg in args]
 
-        # Find matching constructor overload
-        for ctor in type_def.constructors:
-            if len(ctor.params) != len(args):
-                continue
-            if all(builtin_modules._type_matches_param(arg_t, param.type)
-                   for arg_t, param in zip(arg_types, ctor.params)):
-                gen_args = [self._gen_expr(arg) for arg in args]
-                # Substitute arg placeholders: {0}, {1}, etc.
-                result = ctor.cpp
-                for i, gen_arg in enumerate(gen_args):
-                    result = result.replace(f"{{{i}}}", gen_arg)
-                return result
-
-        raise RuntimeError(f"No constructor overload for {expr.func}")
-
-    def _gen_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> str:
-        """Generate C++ code for a built-in function call from the module registry."""
-        args = expr.args
-        arg_types = [self.analyzer.get_expr_type(arg) for arg in args]
-
-        # Find matching overload - need to account for runtime BigInt
-        for overload in fn_def.overloads:
+        for overload in overloads:
             if len(overload.params) != len(args):
                 continue
             if all(self._builtin_codegen_type_matches(arg, arg_t, param.type)
                    for arg, arg_t, param in zip(args, arg_types, overload.params)):
-                gen_args = [self._gen_expr(arg) for arg in args]
+                # Generate args with proper type coercion (e.g., int literal → BigInt)
+                gen_args = [self._gen_expr(arg, param.type) for arg, param in zip(args, overload.params)]
                 return overload.cpp.format(*gen_args)
 
-        raise RuntimeError(f"No codegen overload for {fn_def.name}")
+        raise RuntimeError(f"No matching overload for {name}")
+
+    def _gen_constructor(self, expr: TpyCall, type_def: builtin_modules.BuiltinTypeDef) -> str:
+        """Generate C++ code for a type constructor call."""
+        return self._gen_overloaded_call(expr.args, type_def.constructors, expr.func)
+
+    def _gen_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> str:
+        """Generate C++ code for a built-in function call from the module registry."""
+        return self._gen_overloaded_call(expr.args, fn_def.overloads, fn_def.name)
 
     def _builtin_codegen_type_matches(self, arg: TpyExpr, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if an argument matches a parameter type for codegen purposes."""
