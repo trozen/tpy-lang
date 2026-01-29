@@ -353,7 +353,41 @@ class SemanticAnalyzer:
         existing_type = self.current_scope.lookup(stmt.name)
 
         if stmt.init:
-            init_type = self._analyze_expr(stmt.init)
+            # Handle empty list literal or list() constructor with explicit type annotation
+            is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
+            is_list_constructor = (isinstance(stmt.init, TpyCall) and
+                                   stmt.init.func == "list" and
+                                   not stmt.init.args)
+
+            if (is_empty_literal or is_list_constructor) and stmt.type:
+                if isinstance(stmt.type, ListType):
+                    # Use the annotated element type for the empty list
+                    elem_type = stmt.type.element_type
+                    if self.current_function is None:
+                        # Global context: return ListType directly
+                        init_type = ListType(elem_type)
+                    else:
+                        # Function-local context: create PendingListType
+                        literal_id = self.literal_counter
+                        self.literal_counter += 1
+                        info = ListLiteralInfo(
+                            literal_id=literal_id,
+                            expr=stmt.init,
+                            element_type=elem_type,
+                            size=0,
+                            is_global=self.is_top_level,
+                            has_explicit_annotation=True,
+                            explicit_type=stmt.type
+                        )
+                        self.list_literals[literal_id] = info
+                        self.pending_resolutions.append(literal_id)
+                        init_type = PendingListType(elem_type, 0, literal_id)
+                else:
+                    raise SemanticError(
+                        f"Empty list requires list[T] annotation, got {stmt.type}"
+                    )
+            else:
+                init_type = self._analyze_expr(stmt.init)
 
             # Track list literal to variable mapping for mutation detection
             if isinstance(init_type, PendingListType):
@@ -452,6 +486,63 @@ class SemanticAnalyzer:
             raise SemanticError(f"Augmented assignment target must be an integer type, got {target_type}")
         if not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"Augmented assignment value must be an integer type, got {value_type}")
+
+    def _analyze_expr_with_hint(self, expr: TpyExpr, type_hint: Optional[TpyType]) -> TpyType:
+        """Analyze an expression with an optional type hint for inference.
+
+        The type hint allows constructs like list() to infer their element type
+        from context (e.g., function parameter type).
+        """
+        # Handle list() constructor with type hint
+        if (isinstance(expr, TpyCall) and expr.func == "list" and not expr.args
+                and isinstance(type_hint, ListType)):
+            elem_type = type_hint.element_type
+            if self.current_function is None:
+                typ = ListType(elem_type)
+            else:
+                literal_id = self.literal_counter
+                self.literal_counter += 1
+                info = ListLiteralInfo(
+                    literal_id=literal_id,
+                    expr=expr,
+                    element_type=elem_type,
+                    size=0,
+                    is_global=self.is_top_level,
+                    has_explicit_annotation=True,
+                    explicit_type=type_hint
+                )
+                self.list_literals[literal_id] = info
+                self.pending_resolutions.append(literal_id)
+                typ = PendingListType(elem_type, 0, literal_id)
+            self.expr_types[id(expr)] = typ
+            return typ
+
+        # Handle empty list literal with type hint
+        if (isinstance(expr, TpyArrayLiteral) and not expr.elements
+                and isinstance(type_hint, ListType)):
+            elem_type = type_hint.element_type
+            if self.current_function is None:
+                typ = ListType(elem_type)
+            else:
+                literal_id = self.literal_counter
+                self.literal_counter += 1
+                info = ListLiteralInfo(
+                    literal_id=literal_id,
+                    expr=expr,
+                    element_type=elem_type,
+                    size=0,
+                    is_global=self.is_top_level,
+                    has_explicit_annotation=True,
+                    explicit_type=type_hint
+                )
+                self.list_literals[literal_id] = info
+                self.pending_resolutions.append(literal_id)
+                typ = PendingListType(elem_type, 0, literal_id)
+            self.expr_types[id(expr)] = typ
+            return typ
+
+        # Fall back to regular analysis
+        return self._analyze_expr(expr)
 
     def _analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
@@ -625,7 +716,8 @@ class SemanticAnalyzer:
             if len(expr.args) != len(func.params):
                 raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
             for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-                arg_type = self._analyze_expr(arg)
+                # Handle list() constructor - infer type from parameter
+                arg_type = self._analyze_expr_with_hint(arg, ptype)
 
                 # Check for Own[T] passed directly to object type parameter
                 # Own[T] is an rvalue (temporary) and can't bind to T& (non-const ref)
@@ -662,6 +754,10 @@ class SemanticAnalyzer:
                     self._mark_list_param_context(arg, ptype)
 
             return func.return_type
+
+        # list() without type annotation
+        if expr.func == "list":
+            raise SemanticError("list() requires type annotation: `x: list[T] = list()`")
 
         raise SemanticError(f"Unknown function or type: '{expr.func}'")
 

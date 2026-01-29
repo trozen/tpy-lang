@@ -7,8 +7,9 @@
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - global variables lazy initialization in c++ (in init module method)
 - basic import support; implement basic time module, with time() function
-- coercion rules refactoring -- make it data driven
-- empty list: `l:list[int]=[]` (or `list()`)
+- `l = list[int]()` constructor syntax
+- avoid using `auto` in generated c++ code, use explicit variable types
+- make this work: `def f(l:list[int]): pass`, `f([])` (or `list()`)
 
 ## Python features
 - dict full support

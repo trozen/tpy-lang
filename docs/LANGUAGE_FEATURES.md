@@ -587,36 +587,34 @@ This is because functions returning `Own[T]` create temporaries (rvalues) that c
 - **Planned**: List slicing: `items[1:3]`
 - **Open**: `isinstance()` → compile-time type check / type narrowing
 - **Open**: `type()` → compile-time type info
-- **Open**: `str()`, `int()`, `list()` → type conversion functions (see below)
+- **Partial**: `list()` → empty list constructor (requires type annotation, variable assignment only)
+- **Open**: `str()`, `int()` → type conversion functions (see below)
 - **Open**: `enumerate()` → compile-time transform
 - **Open**: `zip()` → compile-time transform for fixed iterables
 
-#### Type Conversion Functions (Open)
+#### Type Conversion Functions
 
-`int()`, `str()`, `list()` need design for a statically-typed context.
-
-**`int()` / `str()`**: Straightforward conversions.
-- `int("42")` → parse string to int
-- `str(42)` → convert int to string
-
-**`list()`**: Lists are typed (`std::vector<T>`), so type must come from somewhere:
+**`list()` (Partial)**: Empty list constructor requires type annotation:
 
 ```python
-# From explicit type parameter
-x = list[int]()              # empty list[int]
-
-# From iterable argument (type inferred)
-x = list([1, 2, 3])          # list[int] (copy)
-x = list("abc")              # list[Char]
-x = list(range(3))           # list[int]
-
-# From context annotation
+# From context annotation (Working)
 x: list[int] = list()        # type from annotation
 x: list[int] = []            # same - empty literal infers from annotation
 
 # Bare list() with no context → error with helpful message
-x = list()                   # error: cannot infer type, use list[T]() or provide argument
-x = []                       # error: same issue
+x = list()                   # error: list() requires type annotation
+x = []                       # error: Empty array literal requires explicit type annotation
+```
+
+**`int()` / `str()` (Open)**: Not yet implemented.
+- `int("42")` → parse string to int
+- `str(42)` → convert int to string
+
+**`list()` with arguments (Open)**: Copying from iterables not yet implemented:
+```python
+x = list[int]()              # empty list[int] - not yet supported
+x = list([1, 2, 3])          # list[int] (copy) - not yet supported
+x = list(range(3))           # list[int] - not yet supported
 ```
 
 ---
