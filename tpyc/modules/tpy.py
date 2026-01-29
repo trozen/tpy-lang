@@ -5,7 +5,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, BIGINT
+from tpyc.typesys import INT32, BIGINT, VOID
 
 module = BuiltinModule("tpy")
 
@@ -53,26 +53,85 @@ module.register_type(INT32, cpp_type="int32_t", constructors=[
     "__rxor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) ^ ({self})")],
 })
 
-module.type("Array", cpp_type="std::array<{T}, {N}>", methods={
+# Array[T, N]: Fixed-size array
+module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"], methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
         cpp="static_cast<int32_t>({self}.size())",
     )],
+    "get": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="T",
+        cpp="{self}[{0}]",
+    )],
+    "__getitem__": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="T",
+        cpp="{self}[{0}]",
+    )],
 })
 
-module.type("Span", cpp_type="std::span<const {T}>", methods={
+# Span[T]: Non-owning read-only view
+module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"], methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
         cpp="static_cast<int32_t>({self}.size())",
     )],
+    "get": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="T",
+        cpp="{self}[{0}]",
+    )],
+    "__getitem__": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="T",
+        cpp="{self}[{0}]",
+    )],
 })
 
-module.type("StaticList", cpp_type="StaticList<{T}, {N}>", methods={
+# StaticList[T, N]: Fixed-capacity container
+# Methods use "T" string which gets resolved to element_type at lookup time
+module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"], methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
         cpp="{self}.size()",
+    )],
+    "append": [MethodDef(
+        params=[ParamDef("value", "T")],
+        returns=VOID,
+        cpp="{self}.append({0})",
+    )],
+    "push_empty": [MethodDef(
+        params=[],
+        returns="Ptr[T]",
+        cpp="{self}.push_empty()",
+    )],
+    "get": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="T",
+        cpp="{self}.get({0})",
+    )],
+    "get_mut": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="Ptr[T]",
+        cpp="{self}.get_mut({0})",
+    )],
+    "set": [MethodDef(
+        params=[ParamDef("index", INT32), ParamDef("value", "T")],
+        returns=VOID,
+        cpp="{self}.set({0}, {1})",
+    )],
+    "__getitem__": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="T",
+        cpp="{self}.get_item({0})",
+    )],
+    "__setitem__": [MethodDef(
+        params=[ParamDef("index", INT32), ParamDef("value", "T")],
+        returns=VOID,
+        cpp="{self}.set({0}, {1})",
     )],
 })

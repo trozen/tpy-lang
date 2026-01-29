@@ -5,7 +5,7 @@ Defines functions like chr, print, len, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, BIGINT, CHAR, STR
+from tpyc.typesys import INT32, BIGINT, CHAR, STR, VOID
 
 module = BuiltinModule("builtins")
 
@@ -22,11 +22,38 @@ module.function("chr", overloads=[
     ),
 ])
 
-module.type("list", cpp_type="std::vector<{T}>", methods={
+# list[T]: Dynamic list backed by std::vector<T>
+# Methods use "T" string which gets resolved to element_type at lookup time
+module.type("list", cpp_type="std::vector<{T}>", type_params=["T"], methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
         cpp="static_cast<int32_t>({self}.size())",
+    )],
+    "append": [MethodDef(
+        params=[ParamDef("value", "T")],
+        returns=VOID,
+        cpp="{self}.push_back({0})",
+    )],
+    "pop": [MethodDef(
+        params=[],
+        returns="T",
+        cpp="tpy::pop_back({self})",
+    )],
+    "clear": [MethodDef(
+        params=[],
+        returns=VOID,
+        cpp="{self}.clear()",
+    )],
+    "__getitem__": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns="T",
+        cpp="tpy::get_item({self}, {0})",
+    )],
+    "__setitem__": [MethodDef(
+        params=[ParamDef("index", INT32), ParamDef("value", "T")],
+        returns=VOID,
+        cpp="tpy::set_item({self}, {0}, {1})",
     )],
 })
 

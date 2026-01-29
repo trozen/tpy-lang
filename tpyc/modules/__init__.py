@@ -7,25 +7,31 @@ by the semantic analyzer and code generator.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
+
+
+# Type alias for method param/return types: concrete TpyType or string type param
+# Strings like "T" refer to declared type_params, "Ptr[T]" creates PtrType(T)
+TypeOrParam = Union["TpyType", str]
 
 
 @dataclass
 class ParamDef:
     """Parameter definition for a function/method."""
     name: str
-    type: TpyType
+    type: TypeOrParam  # TpyType or string like "T" for type param
 
 
 @dataclass
 class MethodDef:
     """Definition of a function overload or type method."""
     params: list[ParamDef]
-    returns: TpyType
+    returns: TypeOrParam  # TpyType or string like "T", "Ptr[T]"
     cpp: str  # Template: "{0}" for args, "{self}" for receiver
 
 
@@ -43,6 +49,7 @@ class BuiltinTypeDef:
     cpp_type: str
     methods: dict[str, list[MethodDef]] = field(default_factory=dict)
     constructors: list[MethodDef] = field(default_factory=list)
+    type_params: list[str] = field(default_factory=list)  # ["T"], ["T", "N"], etc.
 
 
 class BuiltinModule:
@@ -72,7 +79,8 @@ class BuiltinModule:
 
     def type(self, name: str, cpp_type: str,
              methods: dict[str, list[MethodDef]] | None = None,
-             constructors: list[MethodDef] | None = None):
+             constructors: list[MethodDef] | None = None,
+             type_params: list[str] | None = None):
         """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
         qualified_name = f"{self.name}.{name}"
         self.types[qualified_name] = BuiltinTypeDef(
@@ -80,6 +88,7 @@ class BuiltinModule:
             cpp_type=cpp_type,
             methods=methods or {},
             constructors=constructors or [],
+            type_params=type_params or [],
         )
 
 
@@ -150,6 +159,73 @@ def lookup_type_by_func_name(func_name: str) -> BuiltinTypeDef | None:
             if typ.constructors:  # Only return if it has constructors
                 return typ
     return None
+
+
+def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
+    """Extract type parameters from a concrete type instance.
+
+    For list[Int32], returns {"T": Int32}.
+    For StaticList[Point, 10], returns {"T": Point}.
+
+    Note: Only type parameters that are themselves types are extracted.
+    Integer parameters like N in StaticList[T, N] are not included.
+    """
+    from tpyc.typesys import ListType, PendingListType, StaticListType, ArrayType, SpanType
+
+    if isinstance(tpy_type, (ListType, PendingListType)):
+        return {"T": tpy_type.element_type}
+    elif isinstance(tpy_type, StaticListType):
+        return {"T": tpy_type.element_type}  # N is int, not TpyType
+    elif isinstance(tpy_type, ArrayType):
+        return {"T": tpy_type.element_type}  # N is int, not TpyType
+    elif isinstance(tpy_type, SpanType):
+        return {"T": tpy_type.element_type}
+    return {}
+
+
+def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) -> "TpyType":
+    """Resolve a string type parameter to a concrete TpyType.
+
+    Handles:
+    - "T" -> type_params["T"]
+    - "Ptr[T]" -> PtrType(type_params["T"])
+    - TpyType -> returned as-is
+    """
+    if isinstance(t, str):
+        # Check for Ptr[X] pattern
+        ptr_match = re.match(r"Ptr\[(\w+)\]", t)
+        if ptr_match:
+            from tpyc.typesys import PtrType
+            inner_name = ptr_match.group(1)
+            if inner_name not in type_params:
+                raise ValueError(f"Unresolved type parameter in Ptr[{inner_name}]")
+            return PtrType(type_params[inner_name])
+
+        # Simple type param like "T"
+        if t not in type_params:
+            raise ValueError(f"Unresolved type parameter: {t}")
+        return type_params[t]
+    else:
+        return t  # Already a TpyType
+
+
+def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> MethodDef:
+    """Resolve string type parameters in a method signature to concrete types.
+
+    Given a method with string type param placeholders and a dict mapping
+    param names to concrete types, returns a new MethodDef with all types resolved.
+
+    Example:
+        method = MethodDef(params=[ParamDef("value", "T")], returns="T", cpp=...)
+        resolved = resolve_method(method, {"T": Int32})
+        # resolved.params[0].type == Int32, resolved.returns == Int32
+    """
+    resolved_params = [
+        ParamDef(name=p.name, type=_resolve_type_or_param(p.type, type_params))
+        for p in method.params
+    ]
+    resolved_returns = _resolve_type_or_param(method.returns, type_params)
+    return MethodDef(params=resolved_params, returns=resolved_returns, cpp=method.cpp)
 
 
 # Operator to method name mappings

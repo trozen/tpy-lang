@@ -798,73 +798,73 @@ class SemanticAnalyzer:
             return isinstance(param_type, (Int32Type, BigIntType))
         return False
 
+    def _check_method_args(self, expr: TpyMethodCall, method: builtin_modules.MethodDef,
+                           obj_type: TpyType) -> TpyType:
+        """Check method arguments against a resolved MethodDef and return the return type.
+
+        Note: The method should be resolved (TypeParams substituted) before calling this.
+        """
+        if len(expr.args) != len(method.params):
+            raise SemanticError(
+                f"{expr.method}() takes {len(method.params)} argument(s), got {len(expr.args)}"
+            )
+        for i, (arg, param) in enumerate(zip(expr.args, method.params)):
+            arg_type = self._analyze_expr(arg)
+            # param.type is TpyType after resolve_method (not TypeParam)
+            param_type: TpyType = param.type  # type: ignore
+            expr.args[i] = self._coerce_expr(arg, arg_type, param_type, f"{param.name} argument",
+                                             coercion_ctx="arg")
+        # method.returns is TpyType after resolve_method (not TypeParam)
+        return_type: TpyType = method.returns  # type: ignore
+        return return_type
+
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
         obj_type = self._analyze_expr(expr.obj)
 
-        # StaticList methods
+        # StaticList methods - use module lookup
         if isinstance(obj_type, StaticListType):
-            elem_type = obj_type.element_type
-            if expr.method == "append":
-                if len(expr.args) != 1:
-                    raise SemanticError("append() takes exactly 1 argument")
-                arg_type = self._analyze_expr(expr.args[0])
-                expr.args[0] = self._coerce_expr(expr.args[0], arg_type, elem_type, "append argument",
-                                                 coercion_ctx="arg")
-                return VOID
-            elif expr.method == "push_empty":
-                if expr.args:
-                    raise SemanticError("push_empty() takes no arguments")
-                return PtrType(elem_type)
-            elif expr.method == "get":
-                if len(expr.args) != 1:
-                    raise SemanticError("get() takes exactly 1 argument")
-                self._analyze_expr(expr.args[0])
-                return elem_type  # Returns T& in C++, value semantics for primitives
-            elif expr.method == "get_mut":
-                if len(expr.args) != 1:
-                    raise SemanticError("get_mut() takes exactly 1 argument")
-                self._analyze_expr(expr.args[0])
-                return PtrType(elem_type)
-            elif expr.method == "set":
-                if len(expr.args) != 2:
-                    raise SemanticError("set() takes exactly 2 arguments")
-                self._analyze_expr(expr.args[0])  # index
-                arg_type = self._analyze_expr(expr.args[1])  # value
-                expr.args[1] = self._coerce_expr(expr.args[1], arg_type, elem_type, "set value",
-                                                 coercion_ctx="arg")
-                return VOID
-            elif expr.method == "size":
+            # Try module lookup for defined methods
+            type_params = builtin_modules.extract_type_params(obj_type)
+            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
+            if methods:
+                resolved = builtin_modules.resolve_method(methods[0], type_params)
+                return self._check_method_args(expr, resolved, obj_type)
+
+            # Hardcoded method: size (alias for __len__)
+            if expr.method == "size":
                 if expr.args:
                     raise SemanticError("size() takes no arguments")
                 return INT32
             else:
                 raise SemanticError(f"Unknown StaticList method: '{expr.method}'")
 
-        # Array methods
+        # Array methods - use module lookup
         if isinstance(obj_type, ArrayType):
-            elem_type = obj_type.element_type
-            if expr.method == "get":
-                if len(expr.args) != 1:
-                    raise SemanticError("get() takes exactly 1 argument")
-                self._analyze_expr(expr.args[0])
-                return elem_type
-            elif expr.method == "size":
+            type_params = builtin_modules.extract_type_params(obj_type)
+            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
+            if methods:
+                resolved = builtin_modules.resolve_method(methods[0], type_params)
+                return self._check_method_args(expr, resolved, obj_type)
+
+            # Hardcoded method: size (alias for __len__)
+            if expr.method == "size":
                 if expr.args:
                     raise SemanticError("size() takes no arguments")
                 return INT32
             else:
                 raise SemanticError(f"Unknown Array method: '{expr.method}'")
 
-        # Span methods
+        # Span methods - use module lookup
         if isinstance(obj_type, SpanType):
-            elem_type = obj_type.element_type
-            if expr.method == "get":
-                if len(expr.args) != 1:
-                    raise SemanticError("get() takes exactly 1 argument")
-                self._analyze_expr(expr.args[0])
-                return elem_type
-            elif expr.method == "size":
+            type_params = builtin_modules.extract_type_params(obj_type)
+            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
+            if methods:
+                resolved = builtin_modules.resolve_method(methods[0], type_params)
+                return self._check_method_args(expr, resolved, obj_type)
+
+            # Hardcoded method: size (alias for __len__)
+            if expr.method == "size":
                 if expr.args:
                     raise SemanticError("size() takes no arguments")
                 return INT32
@@ -876,22 +876,19 @@ class SemanticAnalyzer:
             elem_type = obj_type.element_type
 
             # Mutation methods - mark literal as mutated if it's a pending type
-            mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend"}
+            mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "__setitem__"}
             if expr.method in mutation_methods:
                 self._mark_list_mutated(expr.obj)
 
-            if expr.method == "append":
-                if len(expr.args) != 1:
-                    raise SemanticError("append() takes exactly 1 argument")
-                arg_type = self._analyze_expr(expr.args[0])
-                expr.args[0] = self._coerce_expr(expr.args[0], arg_type, elem_type, "append argument",
-                                                 coercion_ctx="arg")
-                return VOID
-            elif expr.method == "pop":
-                if expr.args:
-                    raise SemanticError("pop() takes no arguments")
-                return elem_type
-            elif expr.method == "insert":
+            # Try module lookup first for any method
+            type_params = builtin_modules.extract_type_params(obj_type)
+            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
+            if methods:
+                resolved = builtin_modules.resolve_method(methods[0], type_params)
+                return self._check_method_args(expr, resolved, obj_type)
+
+            # Hardcoded methods (insert, remove, extend, size)
+            if expr.method == "insert":
                 if len(expr.args) != 2:
                     raise SemanticError("insert() takes exactly 2 arguments")
                 self._analyze_expr(expr.args[0])  # index
@@ -905,10 +902,6 @@ class SemanticAnalyzer:
                 arg_type = self._analyze_expr(expr.args[0])
                 expr.args[0] = self._coerce_expr(expr.args[0], arg_type, elem_type, "remove argument",
                                                  coercion_ctx="arg")
-                return VOID
-            elif expr.method == "clear":
-                if expr.args:
-                    raise SemanticError("clear() takes no arguments")
                 return VOID
             elif expr.method == "extend":
                 if len(expr.args) != 1:

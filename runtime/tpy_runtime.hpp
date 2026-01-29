@@ -17,6 +17,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 #include <gmp.h>
 
@@ -175,6 +176,23 @@ inline int32_t int32_pow(int32_t base, int32_t exp) {
     return result;
 }
 
+// --- Type trait for value vs reference semantics ---
+
+/**
+ * is_value_type - Type trait for determining copy vs reference semantics.
+ *
+ * Value types (primitives) are returned by copy when accessed from containers.
+ * Object types (records, nested containers) are returned by reference.
+ */
+template<typename T> struct is_value_type : std::false_type {};
+
+// Primitive value types (BigInt specialization defined after BigInt class)
+template<> struct is_value_type<int32_t> : std::true_type {};
+template<> struct is_value_type<int64_t> : std::true_type {};
+template<> struct is_value_type<bool> : std::true_type {};
+template<> struct is_value_type<char> : std::true_type {};
+template<> struct is_value_type<std::string_view> : std::true_type {};
+
 /**
  * StaticList<T, N> - Fixed-capacity container.
  *
@@ -298,6 +316,35 @@ public:
             tpy_panic("StaticList index out of bounds in set()");
         }
         data_[i] = value;
+    }
+
+    /**
+     * Get element at index - unified accessor.
+     * Returns by value for primitive types, by reference for object types.
+     * Uses is_value_type trait for compile-time dispatch.
+     */
+    decltype(auto) get_item(int32_t index) {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds");
+        }
+        if constexpr (is_value_type<T>::value) {
+            return T(data_[i]);
+        } else {
+            return (data_[i]);
+        }
+    }
+
+    decltype(auto) get_item(int32_t index) const {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds");
+        }
+        if constexpr (is_value_type<T>::value) {
+            return T(data_[i]);
+        } else {
+            return (data_[i]);
+        }
     }
 
     /**
@@ -1005,6 +1052,55 @@ T pop_back(std::vector<T>& v) {
     T result = std::move(v.back());
     v.pop_back();
     return result;
+}
+
+// BigInt specialization of is_value_type (primary template defined earlier)
+template<> struct is_value_type<BigInt> : std::true_type {};
+
+/**
+ * get_item - Unified element access for std::vector.
+ *
+ * Returns by value for primitive types, by reference for object types.
+ * Uses is_value_type trait for compile-time dispatch.
+ */
+template<typename T>
+decltype(auto) get_item(std::vector<T>& v, int32_t index) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= v.size()) {
+        tpy_panic("list index out of bounds");
+    }
+    if constexpr (is_value_type<T>::value) {
+        return T(v[i]);  // Return copy for value types
+    } else {
+        return (v[i]);   // Return reference for object types (parens for decltype(auto))
+    }
+}
+
+template<typename T>
+decltype(auto) get_item(const std::vector<T>& v, int32_t index) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= v.size()) {
+        tpy_panic("list index out of bounds");
+    }
+    if constexpr (is_value_type<T>::value) {
+        return T(v[i]);
+    } else {
+        return (v[i]);
+    }
+}
+
+/**
+ * set_item - Unified element assignment for std::vector.
+ *
+ * Sets element at index. Panics if index is out of bounds.
+ */
+template<typename T>
+void set_item(std::vector<T>& v, int32_t index, const T& value) {
+    auto i = static_cast<std::size_t>(index);
+    if (i >= v.size()) {
+        tpy_panic("list index out of bounds in assignment");
+    }
+    v[i] = value;
 }
 
 // --- Collection printing (Python-style: [a, b, c]) ---

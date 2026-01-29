@@ -786,6 +786,17 @@ class CodeGenerator:
             index_expr = f"{index_expr}.to_int32()"
         return index_expr
 
+    def _gen_method_from_def(self, obj: str, args: list[TpyExpr],
+                             method: builtin_modules.MethodDef) -> str:
+        """Generate method call code from a MethodDef.
+
+        Substitutes {self} with obj and {0}, {1}, etc. with generated args.
+        """
+        result = method.cpp.replace("{self}", obj)
+        for i, arg in enumerate(args):
+            result = result.replace(f"{{{i}}}", self._gen_expr(arg))
+        return result
+
     def _gen_expr(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression.
 
@@ -953,16 +964,15 @@ class CodeGenerator:
             if expr.func == "len":
                 arg = expr.args[0]
                 arg_type = self._get_resolved_type(arg)
-                qname = arg_type.qualified_name()
-                len_methods = builtin_modules.lookup_type_method(qname, "__len__")
-                if len_methods:
+                methods = builtin_modules.lookup_type_method(arg_type, "__len__")
+                if methods:
                     # For string literals, wrap in string_view first
                     if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
                         escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-                        gen_self = f'std::string_view("{escaped}")'
+                        obj = f'std::string_view("{escaped}")'
                     else:
-                        gen_self = self._gen_expr(arg)
-                    return len_methods[0].cpp.format(self=gen_self)
+                        obj = self._gen_expr(arg)
+                    return self._gen_method_from_def(obj, [], methods[0])
             # Check module registry for built-in functions
             if builtin_fn := builtin_modules.lookup_function(expr.func):
                 return self._gen_builtin_call(expr, builtin_fn)
@@ -990,22 +1000,19 @@ class CodeGenerator:
                 return f"{expr.method}({args})"
             obj = self._gen_expr(expr.obj)
             obj_type = self._get_resolved_type(expr.obj)
-            # Array and Span: .get(i) -> [i], .size() -> .size()
+
+            # Try module lookup for any method on builtin types
+            if isinstance(obj_type, (ArrayType, SpanType, StaticListType, ListType)):
+                methods = builtin_modules.lookup_type_method(obj_type, expr.method)
+                if methods:
+                    return self._gen_method_from_def(obj, expr.args, methods[0])
+
+            # Hardcoded methods not in module system yet (size, insert, remove, extend)
             if isinstance(obj_type, (ArrayType, SpanType)):
-                if expr.method == "get":
-                    return f"{obj}[{args}]"
-                elif expr.method == "size":
+                if expr.method == "size":
                     return f"static_cast<int32_t>({obj}.size())"
-            # ListType (std::vector): map Python methods to C++ equivalents
             if isinstance(obj_type, ListType):
-                if expr.method == "append":
-                    return f"{obj}.push_back({args})"
-                elif expr.method == "pop":
-                    # pop() returns and removes last element
-                    return f"tpy::pop_back({obj})"
-                elif expr.method == "clear":
-                    return f"{obj}.clear()"
-                elif expr.method == "size":
+                if expr.method == "size":
                     return f"static_cast<int32_t>({obj}.size())"
                 elif expr.method == "insert":
                     # insert(index, value) -> insert(begin() + index, value)
