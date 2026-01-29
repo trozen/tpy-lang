@@ -2,7 +2,6 @@
 
 ## Next
 - extract built-in function defintions to separate files
-- instead of hardcoding Int32 ops, define it in code, use __add__ etc special methods
 - Int32(10**20) overflow; BigInt->Int32 overflow checks
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - global variables lazy initialization in c++ (in init module method)

@@ -486,6 +486,24 @@ This is because functions returning `Own[T]` create temporaries (rvalues) that c
 - **Planned**: Enums → `enum class`
 - **Open**: Inheritance → could support simple cases
 
+### Protocols (Open)
+
+Protocols enable structural subtyping (compile-time duck typing). A type matches a protocol if it has the required methods, without explicit inheritance. This is Python's `typing.Protocol` (PEP 544), similar to Go interfaces or Rust traits.
+
+```python
+from typing import Protocol
+
+class Sized(Protocol):
+    def __len__(self) -> Int32: ...
+
+def process(items: Sized) -> Int32:
+    return len(items)
+```
+
+Any type with a `__len__` method returning `Int32` would satisfy `Sized`. This would compile to C++20 concepts.
+
+See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design sketch.
+
 ### Union/Optional
 - **Open**: `T | None` → `std::optional<T>` or pointer
 - **Open**: `T | U` → templates with `if constexpr`, or overloads
