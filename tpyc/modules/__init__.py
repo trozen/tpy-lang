@@ -42,6 +42,7 @@ class BuiltinTypeDef:
     qualified_name: str
     cpp_type: str
     methods: dict[str, list[MethodDef]] = field(default_factory=dict)
+    constructors: list[MethodDef] = field(default_factory=list)
 
 
 class BuiltinModule:
@@ -56,13 +57,16 @@ class BuiltinModule:
         """Register a built-in function."""
         self.functions[name] = BuiltinFunctionDef(name=name, overloads=overloads)
 
-    def type(self, name: str, cpp_type: str, methods: dict[str, list[MethodDef]] | None = None):
+    def type(self, name: str, cpp_type: str,
+             methods: dict[str, list[MethodDef]] | None = None,
+             constructors: list[MethodDef] | None = None):
         """Register a built-in type. Stored with qualified name (module.name)."""
         qualified_name = f"{self.name}.{name}"
         self.types[qualified_name] = BuiltinTypeDef(
             qualified_name=qualified_name,
             cpp_type=cpp_type,
             methods=methods or {},
+            constructors=constructors or [],
         )
 
 
@@ -116,6 +120,15 @@ def lookup_type_method(qualified_type_name: str, method_name: str) -> list[Metho
     """Lookup a method on a built-in type by qualified type name."""
     if typ := lookup_type(qualified_type_name):
         return typ.methods.get(method_name)
+    return None
+
+
+def lookup_type_by_name(type_name: str) -> BuiltinTypeDef | None:
+    """Lookup a type by simple name (e.g., 'Int32', 'list')."""
+    for module in _all_modules():
+        qualified = f"{module.name}.{type_name}"
+        if typ := module.types.get(qualified):
+            return typ
     return None
 
 

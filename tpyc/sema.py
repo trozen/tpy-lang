@@ -544,6 +544,34 @@ class SemanticAnalyzer:
         # Fall back to regular analysis
         return self._analyze_expr(expr)
 
+    def _check_constructor(self, expr: TpyCall, type_def: builtin_modules.BuiltinTypeDef) -> TpyType:
+        """Check a type constructor call against its overloads."""
+        type_name = expr.func
+        arg_types = [self._analyze_expr(arg) for arg in expr.args]
+
+        # Find a matching constructor overload
+        for ctor in type_def.constructors:
+            if len(ctor.params) != len(arg_types):
+                continue
+            # Check if all arguments match
+            match = True
+            for param, arg_type in zip(ctor.params, arg_types):
+                if not builtin_modules._type_matches_param(arg_type, param.type):
+                    match = False
+                    break
+            if match:
+                return ctor.returns
+
+        # No matching overload found
+        if not type_def.constructors:
+            raise self._error(f"{type_name}() is not callable", expr)
+        elif len(arg_types) == 0:
+            raise self._error(f"{type_name}() requires an argument", expr)
+        elif len(arg_types) == 1:
+            raise self._error(f"{type_name}() cannot convert {arg_types[0]}", expr)
+        else:
+            raise self._error(f"{type_name}() takes at most 1 argument, got {len(arg_types)}", expr)
+
     def _analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
@@ -693,14 +721,10 @@ class SemanticAnalyzer:
                     raise SemanticError(f"int() argument must be an integer type, got {arg_type}")
             return BIGINT
 
-        if expr.func == "Int32":
-            if len(expr.args) > 1:
-                raise SemanticError("Int32() takes at most 1 argument")
-            if expr.args:
-                arg_type = self._analyze_expr(expr.args[0])
-                if not isinstance(arg_type, (Int32Type, IntLiteralType, BigIntType)):
-                    raise SemanticError(f"Int32() argument must be an integer type, got {arg_type}")
-            return INT32
+        # Check if it's a builtin type constructor (e.g., Int32)
+        if type_def := builtin_modules.lookup_type_by_name(expr.func):
+            if type_def.constructors:
+                return self._check_constructor(expr, type_def)
 
         # Check if it's a record constructor
         record = self.registry.get_record(expr.func)

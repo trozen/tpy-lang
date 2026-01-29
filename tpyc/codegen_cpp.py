@@ -868,19 +868,14 @@ class CodeGenerator:
                 # Pass target_type to handle nested binops like 1 + (2 + 3)
                 left = self._gen_expr(expr.left, target_type)
                 right = self._gen_expr(expr.right, target_type)
-                int32_ops = {
-                    "+": "tpy::int32_add",
-                    "-": "tpy::int32_sub",
-                    "*": "tpy::int32_mul",
-                    "//": "tpy::int32_div",
-                    "%": "tpy::int32_mod",
-                    "**": "tpy::int32_pow",
-                    "<<": "tpy::int32_lshift",
-                    ">>": "tpy::int32_rshift",
-                }
-                if func := int32_ops.get(expr.op):
-                    return f"{func}({left}, {right})"
-                # Bitwise and shift ops don't need overflow checking
+                # Use module system to get Int32 binary operator
+                method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
+                if method_name:
+                    methods = builtin_modules.lookup_type_method("tpy.Int32", method_name)
+                    if methods:
+                        result = methods[0].cpp.replace("{self}", left).replace("{0}", right)
+                        return result
+                # Fallback for operators not in module system (bitwise operators)
                 return f"({left} {expr.op} {right})"
 
             # Try module system for arithmetic/bitwise operators
@@ -942,16 +937,10 @@ class CodeGenerator:
             raise RuntimeError(f"No codegen for unary operator {expr.op} with {operand_type}")
 
         elif isinstance(expr, TpyCall):
-            # Int32() converts argument to Int32 (with range check for BigInt)
-            if expr.func == "Int32":
-                if len(expr.args) == 0:
-                    return "0"
-                arg = expr.args[0]
-                arg_type = self.analyzer.get_expr_type(arg)
-                gen_arg = self._gen_expr(arg)
-                if isinstance(arg_type, BigIntType):
-                    return f"{gen_arg}.to_int32()"
-                return gen_arg
+            # Check if it's a builtin type constructor (e.g., Int32)
+            if type_def := builtin_modules.lookup_type_by_name(expr.func):
+                if type_def.constructors:
+                    return self._gen_constructor(expr, type_def)
             # int() constructor for BigInt
             if expr.func == "int":
                 if len(expr.args) == 0:
@@ -1158,6 +1147,26 @@ class CodeGenerator:
         if isinstance(expr_type, IntLiteralType):
             return self._involves_variables(expr)
         return False
+
+    def _gen_constructor(self, expr: TpyCall, type_def: builtin_modules.BuiltinTypeDef) -> str:
+        """Generate C++ code for a type constructor call."""
+        args = expr.args
+        arg_types = [self.analyzer.get_expr_type(arg) for arg in args]
+
+        # Find matching constructor overload
+        for ctor in type_def.constructors:
+            if len(ctor.params) != len(args):
+                continue
+            if all(builtin_modules._type_matches_param(arg_t, param.type)
+                   for arg_t, param in zip(arg_types, ctor.params)):
+                gen_args = [self._gen_expr(arg) for arg in args]
+                # Substitute arg placeholders: {0}, {1}, etc.
+                result = ctor.cpp
+                for i, gen_arg in enumerate(gen_args):
+                    result = result.replace(f"{{{i}}}", gen_arg)
+                return result
+
+        raise RuntimeError(f"No constructor overload for {expr.func}")
 
     def _gen_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> str:
         """Generate C++ code for a built-in function call from the module registry."""
