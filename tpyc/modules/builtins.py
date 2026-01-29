@@ -65,6 +65,11 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"], methods={
         returns=VOID,
         cpp="tpy::list_remove({self}, {0})",
     )],
+    "extend": [MethodDef(
+        params=[ParamDef("other", "Iterable")],  # Accepts list, Array, Span, StaticList
+        returns=VOID,
+        cpp="tpy::list_extend({self}, {0})",
+    )],
 })
 
 module.register_type(STR, cpp_type="std::string_view", methods={

@@ -101,70 +101,86 @@ void test_extend() {
   // 76:     nums: list[Int32] = [1, 2, 3]
   std::vector<int32_t> nums = {1, 2, 3};
   // 79:     nums.extend([4, 5, 6])
-  nums.insert(nums.end(), {4, 5, 6});
+  tpy::list_extend(nums, {4, 5, 6});
   // 80:     print_list(nums)
   print_list(nums);
   // 83:     more: list[Int32] = [7, 8]
   std::vector<int32_t> more = {7, 8};
   // 84:     nums.extend(more)
-  nums.insert(nums.end(), more.begin(), more.end());
+  tpy::list_extend(nums, more);
   // 85:     print_list(nums)
+  print_list(nums);
+  // 88:     arr: Array[Int32, 2] = [9, 10]
+  std::array<int32_t, 2> arr = {9, 10};
+  // 89:     nums.extend(arr)
+  tpy::list_extend(nums, arr);
+  // 90:     print_list(nums)
+  print_list(nums);
+  // 93:     sl: StaticList[Int32, 3] = StaticList[Int32, 3]()
+  StaticList<int32_t, 3> sl = StaticList<int32_t, 3>();
+  // 94:     sl.append(11)
+  sl.push_back(11);
+  // 95:     sl.append(12)
+  sl.push_back(12);
+  // 96:     nums.extend(sl)
+  tpy::list_extend(nums, sl);
+  // 97:     print_list(nums)
   print_list(nums);
 }
 
-// 87: def test_combined_operations() -> None:
+// 99: def test_combined_operations() -> None:
 void test_combined_operations() {
-  // 88:     """Test combining multiple list methods."""
-  // 89:     nums: list[Int32] = [5]
+  // 100:     """Test combining multiple list methods."""
+  // 101:     nums: list[Int32] = [5]
   std::vector<int32_t> nums = {5};
-  // 91:     nums.append(10)
+  // 103:     nums.append(10)
   nums.push_back(10);
-  // 92:     nums.insert(0, 1)
+  // 104:     nums.insert(0, 1)
   tpy::list_insert(nums, 0, 1);
-  // 93:     nums.extend([15, 20])
-  nums.insert(nums.end(), {15, 20});
-  // 94:     print_list(nums)
+  // 105:     nums.extend([15, 20])
+  tpy::list_extend(nums, {15, 20});
+  // 106:     print_list(nums)
   print_list(nums);
-  // 96:     nums.remove(10)
+  // 108:     nums.remove(10)
   tpy::list_remove(nums, 10);
-  // 97:     print_list(nums)
+  // 109:     print_list(nums)
   print_list(nums);
-  // 99:     popped: Int32 = nums.pop()
+  // 111:     popped: Int32 = nums.pop()
   int32_t popped = tpy::pop_back(nums);
-  // 100:     print(popped)
+  // 112:     print(popped)
   std::cout << popped << "\n";
-  // 101:     print_list(nums)
+  // 113:     print_list(nums)
   print_list(nums);
-  // 103:     nums.clear()
+  // 115:     nums.clear()
   nums.clear();
-  // 104:     print(len(nums))
+  // 116:     print(len(nums))
   std::cout << static_cast<int32_t>(nums.size()) << "\n";
 }
 
 void __tpy_init_main() {
-  // 107: print("=== pop ===")
+  // 119: print("=== pop ===")
   std::cout << "=== pop ===" << "\n";
-  // 108: test_pop()
+  // 120: test_pop()
   test_pop();
-  // 109: print("=== insert ===")
+  // 121: print("=== insert ===")
   std::cout << "=== insert ===" << "\n";
-  // 110: test_insert()
+  // 122: test_insert()
   test_insert();
-  // 111: print("=== remove ===")
+  // 123: print("=== remove ===")
   std::cout << "=== remove ===" << "\n";
-  // 112: test_remove()
+  // 124: test_remove()
   test_remove();
-  // 113: print("=== clear ===")
+  // 125: print("=== clear ===")
   std::cout << "=== clear ===" << "\n";
-  // 114: test_clear()
+  // 126: test_clear()
   test_clear();
-  // 115: print("=== extend ===")
+  // 127: print("=== extend ===")
   std::cout << "=== extend ===" << "\n";
-  // 116: test_extend()
+  // 128: test_extend()
   test_extend();
-  // 117: print("=== combined ===")
+  // 129: print("=== combined ===")
   std::cout << "=== combined ===" << "\n";
-  // 118: test_combined_operations()
+  // 130: test_combined_operations()
   test_combined_operations();
 }
 

@@ -810,6 +810,14 @@ class SemanticAnalyzer:
             )
         for i, (arg, param) in enumerate(zip(expr.args, method.params)):
             arg_type = self._analyze_expr(arg)
+            # "Iterable" accepts container types (list, Array, Span, StaticList)
+            if param.type == "Iterable":
+                if not isinstance(arg_type, (ListType, PendingListType, ArrayType, SpanType, StaticListType)):
+                    raise SemanticError(
+                        f"Expected iterable for {param.name} argument, got {arg_type}",
+                        loc=arg.loc
+                    )
+                continue
             # param.type is TpyType after resolve_method (not TypeParam)
             param_type: TpyType = param.type  # type: ignore
             expr.args[i] = self._coerce_expr(arg, arg_type, param_type, f"{param.name} argument",
@@ -869,14 +877,7 @@ class SemanticAnalyzer:
                 resolved = builtin_modules.resolve_method(methods[0], type_params)
                 return self._check_method_args(expr, resolved, obj_type)
 
-            if expr.method == "extend":
-                if len(expr.args) != 1:
-                    raise SemanticError("extend() takes exactly 1 argument")
-                arg_type = self._analyze_expr(expr.args[0])
-                # Should be iterable of elem_type - for now accept list/array/span
-                return VOID
-            else:
-                raise SemanticError(f"Unknown list method: '{expr.method}'")
+            raise SemanticError(f"Unknown list method: '{expr.method}'")
 
         # User-defined record methods
         if isinstance(obj_type, RecordType):

@@ -1004,17 +1004,6 @@ class CodeGenerator:
                 if methods:
                     return self._gen_method_from_def(obj, expr.args, methods[0])
 
-            if isinstance(obj_type, ListType) and expr.method == "extend":
-                    # extend(other) -> insert at end
-                    arg = expr.args[0]
-                    if isinstance(arg, TpyArrayLiteral):
-                        # Array literal: use initializer_list overload directly
-                        other = self._gen_expr(arg)
-                        return f"{obj}.insert({obj}.end(), {other})"
-                    else:
-                        # Variable: use iterator overload
-                        other = self._gen_expr(arg)
-                        return f"{obj}.insert({obj}.end(), {other}.begin(), {other}.end())"
             return f"{obj}.{expr.method}({args})"
 
         elif isinstance(expr, TpyFieldAccess):

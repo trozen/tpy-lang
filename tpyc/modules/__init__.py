@@ -183,15 +183,20 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     return {}
 
 
-def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) -> "TpyType":
+def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) -> "TpyType | str":
     """Resolve a string type parameter to a concrete TpyType.
 
     Handles:
     - "T" -> type_params["T"]
     - "Ptr[T]" -> PtrType(type_params["T"])
+    - "Iterable" -> "Iterable" (kept as string, accepts container types)
     - TpyType -> returned as-is
     """
     if isinstance(t, str):
+        # "Iterable" accepts any container type (list, Array, Span, StaticList)
+        if t == "Iterable":
+            return "Iterable"
+
         # Check for Ptr[X] pattern
         ptr_match = re.match(r"Ptr\[(\w+)\]", t)
         if ptr_match:

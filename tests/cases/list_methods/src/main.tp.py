@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import Int32, Array, StaticList
 
 # Test all list methods: pop(), insert(), remove(), clear(), extend()
 
@@ -82,6 +82,18 @@ def test_extend() -> None:
     # Extend with another list
     more: list[Int32] = [7, 8]
     nums.extend(more)
+    print_list(nums)
+
+    # Extend with Array variable
+    arr: Array[Int32, 2] = [9, 10]
+    nums.extend(arr)
+    print_list(nums)
+
+    # Extend with StaticList
+    sl: StaticList[Int32, 3] = StaticList[Int32, 3]()
+    sl.append(11)
+    sl.append(12)
+    nums.extend(sl)
     print_list(nums)
 
 def test_combined_operations() -> None:

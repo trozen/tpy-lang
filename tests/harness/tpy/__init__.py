@@ -204,6 +204,9 @@ class StaticList(metaclass=StaticListMeta):
     def __len__(self) -> int:
         return len(self._data)
 
+    def __iter__(self):
+        return iter(self._data)
+
 
 class ArrayMeta(type):
     """Metaclass to support Array[T, N] syntax."""

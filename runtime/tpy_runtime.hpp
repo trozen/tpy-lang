@@ -245,6 +245,15 @@ public:
     T* data() noexcept { return data_; }
     const T* data() const noexcept { return data_; }
 
+    // Iterator support
+    using iterator = T*;
+    using const_iterator = const T*;
+
+    iterator begin() noexcept { return data_; }
+    const_iterator begin() const noexcept { return data_; }
+    iterator end() noexcept { return data_ + size_; }
+    const_iterator end() const noexcept { return data_ + size_; }
+
     // --- StaticList-specific (noalloc patterns) ---
 
     T* push_empty() {
@@ -1058,6 +1067,22 @@ void list_remove(std::vector<T>& v, const T& value) {
         tpy_panic("list.remove(x): x not in list");
     }
     v.erase(it);
+}
+
+/**
+ * list_extend - Python list.extend() for std::vector.
+ *
+ * Extends vector with elements from another container.
+ * Overloads handle both iterator-based containers and initializer_list.
+ */
+template<typename T, typename Container>
+void list_extend(std::vector<T>& v, const Container& other) {
+    v.insert(v.end(), other.begin(), other.end());
+}
+
+template<typename T>
+void list_extend(std::vector<T>& v, std::initializer_list<T> other) {
+    v.insert(v.end(), other);
 }
 
 // --- Collection printing (Python-style: [a, b, c]) ---
