@@ -134,49 +134,27 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `StaticList[T, N]` | `StaticList<T, N>` |
 | `Ptr[T]` | `T*` |
 | `ConstPtr[T]` | `const T*` |
+| `Own[T]` | `T` (by value, for returns/params) |
 
 ## Supported Language Features
 
-### Control Flow
-- `if`/`elif`/`else` conditionals
-- `while` loops
-- `for i in range(n)` and `for i in range(start, end)`
-- `for x in collection` (for-each over list, Array, Span, str)
-- `break` and `continue`
-
-### Operators
-- Arithmetic: `+`, `-`, `*`, `//`, `%`, `**` (non-negative exp), unary `-`
-- Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
-- Membership: `in`, `not in` (for list, Array, Span, str)
-- Logical: `and`, `or`, `not`
-- Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
-- Augmented assignment: `+=`, `-=`, `*=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
-
-### Classes
-- Typed fields
-- `__init__` constructor
-- Instance methods with `self` parameter
-
-### Built-in Functions
-- `print()` - supports multiple arguments
-- `len()` - works with `list`, `Array`, `Span`, `StaticList`, `str`
-- `range()` - for loop iteration
-
-### List Methods
-- `append(x)`, `pop()`, `insert(i, x)`, `remove(x)`, `clear()`, `extend(other)`
-- Indexing: `items[i]`, `items[-1]` (negative indexing supported)
+See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language features, including what's working, planned, and open for design.
 
 ## Development Guidelines
 
 When implementing new features:
 - If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
-- Check TODO.md for current priorities
+- Check `TODO.md` for current priorities
 - Run `pytest` to verify no regressions after changes
 - Update test snapshots with `python tests/update_snapshots.py` when expected output changes intentionally
 
-**Before committing**: Verify that documentation is still accurate:
-- `CLAUDE.md` - commands, test structure, type mappings, supported features
-- `README.md` - quick start commands, build flags
-- `docs/LANGUAGE_FEATURES.md` - working/planned status of features
+### Key Documentation Files
 
-If committed code adds new features or changes behavior, update the relevant docs in the same commit.
+| File | Purpose | Policy |
+|------|---------|--------|
+| `TODO.md` | User's priority list and task tracking | **Do not modify** - this is the user's file |
+| `docs/LANGUAGE_FEATURES.md` | Comprehensive language feature documentation | **Keep up-to-date** with any development |
+| `CLAUDE.md` | Commands, architecture, quick reference | Update when adding major features |
+| `README.md` | Quick start, build flags | Update when CLI changes |
+
+**Before committing**: If code adds new features or changes behavior, update `docs/LANGUAGE_FEATURES.md` in the same commit to reflect the current state (Working/Planned/Open status).
