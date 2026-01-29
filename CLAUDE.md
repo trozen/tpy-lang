@@ -99,7 +99,7 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 
 ### Runtime (`runtime/`)
 
-`tpy_runtime.hpp` provides C++ template utilities, primarily `StaticList<T, N>` - a fixed-capacity container with zero dynamic allocation. Generated code requires C++20 (for `std::span`).
+`tpy_runtime.hpp` provides C++ template utilities, primarily `StaticList<T, N>` - a fixed-capacity container with zero dynamic allocation. Generated code requires C++23 (for `std::ranges` concepts used in multi-element list repetition).
 
 ## Performance Profiles (Planned)
 

@@ -31,6 +31,6 @@ If you need to compile the generated C++ manually:
 
 ```bash
 tpyc examples/hello.tp.py -o out/
-g++ -std=c++20 -I runtime -o out/program out/hello.d/hello.cpp -lgmp
+g++ -std=c++23 -I runtime -o out/program out/hello.d/hello.cpp -lgmp
 ./out/program
 ```

@@ -1064,31 +1064,58 @@ class CodeGenerator:
             return literal
 
         elif isinstance(expr, TpyListRepeat):
-            # [x] * N -> container(N, x) fill constructor
-            # Python semantics: negative count produces empty list
+            # [elements...] * N -> repeated sequence
+
+            # Empty list repetition: [] * N always produces empty container
+            if not expr.elements:
+                if isinstance(target_type, (StaticListType, ListType)):
+                    return f"{target_type.to_cpp()}()"
+                # Fallback (shouldn't happen with proper type annotation)
+                return "{}"
+
             count = self._gen_expr(expr.count)
             count_type = self.analyzer.get_expr_type(expr.count)
             # BigInt count needs conversion (IntLiteralType is already plain int)
             if isinstance(count_type, BigIntType):
                 count = f"{count}.to_int32()"
-            # Clamp negative counts to 0 (Python semantics)
-            count = f"std::max(0, {count})"
 
-            # StaticList: use fill constructor with proper element type coercion
+            # Determine result type and element type
             if isinstance(target_type, StaticListType):
-                element = self._gen_expr(expr.element, target_type.element_type)
-                return f"{target_type.to_cpp()}({count}, {element})"
-
-            # List (std::vector): use fill constructor
-            if isinstance(target_type, ListType):
                 result_type = target_type
+                elem_type = target_type.element_type
+            elif isinstance(target_type, ListType):
+                # Resolve IntLiteralType to BigInt
+                if isinstance(target_type.element_type, IntLiteralType):
+                    result_type = ListType(BIGINT)
+                    elem_type = BIGINT
+                else:
+                    result_type = target_type
+                    elem_type = target_type.element_type
             else:
                 result_type = self.analyzer.get_expr_type(expr)
-            # Resolve IntLiteralType element to BigInt (Python semantics)
-            if isinstance(result_type, ListType) and isinstance(result_type.element_type, IntLiteralType):
-                result_type = ListType(BIGINT)
-            element = self._gen_expr(expr.element)
-            return f"{result_type.to_cpp()}({count}, {element})"
+                # Resolve IntLiteralType element to BigInt (Python semantics)
+                if isinstance(result_type, ListType) and isinstance(result_type.element_type, IntLiteralType):
+                    result_type = ListType(BIGINT)
+                elem_type = result_type.element_type if isinstance(result_type, ListType) else None
+
+            # Single element: use fill constructor (more efficient)
+            # Pass elem_type for proper coercion (e.g., str->char for StaticList[Char])
+            # Clamp negative counts to 0 (Python semantics) - fill constructors don't handle negative
+            if len(expr.elements) == 1:
+                element = self._gen_expr(expr.elements[0], elem_type)
+                clamped_count = f"std::max(0, {count})"
+                return f"{result_type.to_cpp()}({clamped_count}, {element})"
+
+            # Multiple elements: use tpy::repeat_range (handles negative counts internally)
+            elements = ", ".join(self._gen_expr(e, elem_type) for e in expr.elements)
+            cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
+            range_expr = f"tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
+
+            if isinstance(target_type, StaticListType):
+                # StaticList has range constructor
+                return f"{result_type.to_cpp()}({range_expr})"
+            # std::vector: use tpy::to_vector helper
+            return f"tpy::to_vector<{cpp_elem_type}>({range_expr})"
 
         elif isinstance(expr, TpySubscript):
             obj = self._gen_expr(expr.obj)

@@ -353,13 +353,15 @@ class SemanticAnalyzer:
         existing_type = self.current_scope.lookup(stmt.name)
 
         if stmt.init:
-            # Handle empty list literal or list() constructor with explicit type annotation
+            # Handle empty list literal, list() constructor, or empty list repetition
+            # with explicit type annotation
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
             is_list_constructor = (isinstance(stmt.init, TpyCall) and
                                    stmt.init.func == "list" and
                                    not stmt.init.args)
+            is_empty_repeat = isinstance(stmt.init, TpyListRepeat) and not stmt.init.elements
 
-            if (is_empty_literal or is_list_constructor) and stmt.type:
+            if (is_empty_literal or is_list_constructor or is_empty_repeat) and stmt.type:
                 if isinstance(stmt.type, ListType):
                     # Use the annotated element type for the empty list
                     elem_type = stmt.type.element_type
@@ -991,15 +993,35 @@ class SemanticAnalyzer:
         return PendingListType(first_type, size, literal_id)
 
     def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
-        """Analyze a list repetition: [element] * count"""
-        elem_type = self._analyze_expr(expr.element)
+        """Analyze a list repetition: [elements...] * count"""
         count_type = self._analyze_expr(expr.count)
 
         if not isinstance(count_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"List repetition count must be an integer type, got {count_type}")
 
+        # Empty list repetition: [] * N always produces empty list
+        # Type will be determined from context (annotation or target type)
+        if not expr.elements:
+            return ListType(VOID)  # Marker type - coerces to any list type
+
+        # Analyze all elements
+        elem_types = [self._analyze_expr(e) for e in expr.elements]
+        first_type = elem_types[0]
+
+        # Check all elements are compatible (similar to array literal)
+        for i, elem_type in enumerate(elem_types[1:], 2):
+            if isinstance(first_type, IntLiteralType) and isinstance(elem_type, IntLiteralType):
+                continue
+            if isinstance(elem_type, IntLiteralType) and isinstance(first_type, (Int32Type, BigIntType)):
+                continue
+            if isinstance(first_type, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                first_type = elem_type
+                continue
+            if first_type != elem_type:
+                raise SemanticError(f"List repetition element {i} has type {elem_type}, expected {first_type}")
+
         # Keep IntLiteralType so it can coerce to annotated type (list[Int32] or list[int])
-        return ListType(elem_type)
+        return ListType(first_type)
 
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
         """Analyze subscript indexing: obj[index]"""

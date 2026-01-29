@@ -120,8 +120,8 @@ class TpyArrayLiteral(TpyExpr):
 
 @dataclass
 class TpyListRepeat(TpyExpr):
-    """List repetition: [element] * count -> std::vector filled with element"""
-    element: TpyExpr
+    """List repetition: [elements...] * count -> sequence repeated count times"""
+    elements: list[TpyExpr]
     count: TpyExpr
 
 
@@ -604,13 +604,12 @@ class Parser:
             return TpyName(node.id, loc=loc)
 
         elif isinstance(node, ast.BinOp):
-            # Handle list repetition: [x] * N -> TpyListRepeat
+            # Handle list repetition: [x, y, ...] * N -> TpyListRepeat
+            # Empty list [] * N is allowed (always produces empty list, requires type annotation)
             if isinstance(node.op, ast.Mult) and isinstance(node.left, ast.List):
-                if len(node.left.elts) != 1:
-                    raise ParseError("List repetition [x] * N requires exactly one element", node)
-                element = self._parse_expr(node.left.elts[0])
+                elements = [self._parse_expr(e) for e in node.left.elts]
                 count = self._parse_expr(node.right)
-                return TpyListRepeat(element, count, loc=loc)
+                return TpyListRepeat(elements, count, loc=loc)
             left = self._parse_expr(node.left)
             right = self._parse_expr(node.right)
             op = self._binop_to_str(node.op)

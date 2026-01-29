@@ -174,7 +174,7 @@ def main() -> int:
                 print(f"Building {binary_path}...")
 
             compile_cmd = [
-                "g++", "-std=c++20",
+                "g++", "-std=c++23",
                 "-I", str(runtime_dir),
                 "-o", str(binary_path),
                 str(cpp_path),

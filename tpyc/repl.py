@@ -306,7 +306,7 @@ class REPLSession:
         # Compile
         runtime_dir = get_runtime_dir()
         compile_cmd = [
-            "g++", "-std=c++20",
+            "g++", "-std=c++23",
             "-I", str(runtime_dir),
             "-I", str(self.temp_dir),  # For generated header
             "-o", str(binary_path),

@@ -378,7 +378,7 @@ std::printf("%d\n", sum_values(std::span(items.data(), items.size())));
 
 Key features:
 - Uses `std::span<const T>` (read-only) to allow conversion from temporaries
-- Requires C++20 (`-std=c++20`)
+- Requires C++23 (`-std=c++23`)
 - Standard Python `len()` and `[]` indexing work for both Array and Span
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
 
@@ -604,6 +604,10 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design sketch.
   - Use subscript notation `items[i]` for element access (same as list)
   - Initializer list constructor: `StaticList[Int32, 8]([1, 2, 3])`
   - Fill constructor via list repetition: `StaticList[Int32, 64]([0]*64)`
+  - Multi-element list repetition: `StaticList[Int32, 6]([1, 2]*3)` → `[1, 2, 1, 2, 1, 2]`
+- **Working**: List repetition: `[element] * N` and `[elements...] * N`
+  - Single-element: uses efficient fill constructor
+  - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
 - **Planned**: `abs()`, `min()`, `max()`
 - **Planned**: List slicing: `items[1:3]`
