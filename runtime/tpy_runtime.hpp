@@ -208,6 +208,24 @@ class StaticList {
 public:
     StaticList() noexcept : size_(0) {}
 
+    StaticList(std::initializer_list<T> init) : size_(0) {
+        if (init.size() > N) {
+            tpy_panic("StaticList initializer exceeds capacity");
+        }
+        for (const auto& val : init) {
+            data_[size_++] = val;
+        }
+    }
+
+    StaticList(std::size_t count, const T& value) : size_(0) {
+        if (count > N) {
+            tpy_panic("StaticList fill count exceeds capacity");
+        }
+        for (std::size_t i = 0; i < count; ++i) {
+            data_[size_++] = value;
+        }
+    }
+
     // --- std::vector-compatible interface ---
 
     void push_back(const T& value) {

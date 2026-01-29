@@ -3,6 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
+extern StaticList<int32_t, 8> nums;
+extern StaticList<int32_t, 8> filled;
+
 struct Item {
   int32_t value;
 

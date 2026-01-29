@@ -30,3 +30,16 @@ items = StaticList[Item, 16]()
 process_list(items)
 print(len(items))
 print_list(items)
+
+# Test initializer list constructor
+nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
+print(len(nums))
+print(nums[0])
+print(nums[2])
+
+# Test fill constructor via list repetition
+filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
+filled[0] = 42
+print(len(filled))
+print(filled[0])
+print(filled[7])

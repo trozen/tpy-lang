@@ -1013,6 +1013,11 @@ class CodeGenerator:
                 return f"{expr.func}({', '.join(gen_args)})"
             # Generic type instantiation (e.g., StaticList[T, N]())
             if expr.call_type is not None:
+                # Special case: StaticList[T,N]([x]*count) - list repeat already generates
+                # the fill constructor, so just return it directly (avoid redundant copy)
+                if (isinstance(expr.call_type, StaticListType) and
+                    len(expr.args) == 1 and isinstance(expr.args[0], TpyListRepeat)):
+                    return self._gen_expr(expr.args[0], expr.call_type)
                 # Pass call_type as target for proper nested array brace generation
                 args = ", ".join(self._gen_expr(a, expr.call_type) for a in expr.args)
                 return f"{expr.call_type.to_cpp()}({args})"
@@ -1059,8 +1064,22 @@ class CodeGenerator:
             return literal
 
         elif isinstance(expr, TpyListRepeat):
-            # [x] * N -> std::vector<T>(N, x)
-            # Use target type if provided (for assignment to typed variable)
+            # [x] * N -> container(N, x) fill constructor
+            # Python semantics: negative count produces empty list
+            count = self._gen_expr(expr.count)
+            count_type = self.analyzer.get_expr_type(expr.count)
+            # BigInt count needs conversion (IntLiteralType is already plain int)
+            if isinstance(count_type, BigIntType):
+                count = f"{count}.to_int32()"
+            # Clamp negative counts to 0 (Python semantics)
+            count = f"std::max(0, {count})"
+
+            # StaticList: use fill constructor with proper element type coercion
+            if isinstance(target_type, StaticListType):
+                element = self._gen_expr(expr.element, target_type.element_type)
+                return f"{target_type.to_cpp()}({count}, {element})"
+
+            # List (std::vector): use fill constructor
             if isinstance(target_type, ListType):
                 result_type = target_type
             else:
@@ -1069,11 +1088,6 @@ class CodeGenerator:
             if isinstance(result_type, ListType) and isinstance(result_type.element_type, IntLiteralType):
                 result_type = ListType(BIGINT)
             element = self._gen_expr(expr.element)
-            count = self._gen_expr(expr.count)
-            count_type = self.analyzer.get_expr_type(expr.count)
-            # BigInt count needs conversion (IntLiteralType is already plain int)
-            if isinstance(count_type, BigIntType):
-                count = f"{count}.to_int32()"
             return f"{result_type.to_cpp()}({count}, {element})"
 
         elif isinstance(expr, TpySubscript):

@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 11: mem: list[Int32] = [0] * 10
-std::vector<int32_t> mem = std::vector<int32_t>(10, 0);
+std::vector<int32_t> mem = std::vector<int32_t>(std::max(0, 10), 0);
 // 23: chars = [72, 73]  # 'H', 'I'
 std::vector<tpy::BigInt> chars = {72, 73};
 
@@ -33,7 +33,7 @@ void __tpy_init_main() {
   // 15: print(len(mem))
   std::cout << static_cast<int32_t>(mem.size()) << "\n";
   // 18: data = [0] * 5
-  std::vector<tpy::BigInt> data = std::vector<tpy::BigInt>(5, 0);
+  std::vector<tpy::BigInt> data = std::vector<tpy::BigInt>(std::max(0, 5), 0);
   // 19: data[0] = 100
   tpy::set_item(data, 0, 100);
   // 20: print(data[0])
