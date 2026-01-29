@@ -40,7 +40,11 @@ module.register_type(STR, cpp_type="std::string_view", methods={
 
 # int: arbitrary precision integer (BigInt)
 # Uses C++ operator overloads defined in tpy::BigInt
-module.register_type(BIGINT, cpp_type="tpy::BigInt", methods={
+module.register_type(BIGINT, cpp_type="tpy::BigInt", constructors=[
+    MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt(0)"),
+    MethodDef(params=[ParamDef("x", INT32)], returns=BIGINT, cpp="tpy::BigInt({0})"),
+    MethodDef(params=[ParamDef("x", BIGINT)], returns=BIGINT, cpp="tpy::BigInt({0})"),
+], methods={
     # Binary arithmetic operators
     "__add__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) + ({0})")],
     "__sub__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) - ({0})")],

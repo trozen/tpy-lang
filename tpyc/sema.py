@@ -711,17 +711,7 @@ class SemanticAnalyzer:
                 raise SemanticError(f"len() argument must have __len__, got {arg_type}")
             return len_methods[0].returns
 
-        # Check if it's a type constructor
-        if expr.func == "int":
-            if len(expr.args) > 1:
-                raise SemanticError("int() takes at most 1 argument")
-            if expr.args:
-                arg_type = self._analyze_expr(expr.args[0])
-                if not isinstance(arg_type, (Int32Type, BigIntType, IntLiteralType)):
-                    raise SemanticError(f"int() argument must be an integer type, got {arg_type}")
-            return BIGINT
-
-        # Check if it's a builtin type constructor (e.g., Int32)
+        # Check if it's a builtin type constructor (e.g., Int32, int)
         if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
             return self._check_constructor(expr, type_def)
 
