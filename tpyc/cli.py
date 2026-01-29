@@ -18,7 +18,7 @@ from pathlib import Path
 
 from .parse import Parser, ParseError
 from .sema import SemanticAnalyzer, SemanticError
-from .codegen_cpp import CodeGenerator, CodeGenOptions
+from .codegen_cpp import CodeGenerator, CodeGenOptions, CodeGenError
 
 
 def get_runtime_dir() -> Path:
@@ -205,6 +205,9 @@ def main() -> int:
         print(f"Parse error: {e}", file=sys.stderr)
         return 1
     except SemanticError as e:
+        print(e.format(input_path.name), file=sys.stderr)
+        return 1
+    except CodeGenError as e:
         print(e.format(input_path.name), file=sys.stderr)
         return 1
     except FileNotFoundError as e:

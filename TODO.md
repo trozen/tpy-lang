@@ -1,14 +1,10 @@
 # TODO
 
 ## Next
-- extract built-in function defintions to separate files
 - Int32(10**20) overflow; BigInt->Int32 overflow checks
-- update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - global variables lazy initialization in c++ (in init module method)
-- basic import support; implement basic time module, with time() function
-- `l = list[int]()` constructor syntax
-- avoid using `auto` in generated c++ code, use explicit variable types
 - make this work: `def f(l:list[int]): pass`, `f([])` (or `list()`)
+- basic import support; implement basic time module, with time() function
 
 ## Python features
 - dict full support
@@ -40,6 +36,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - support augmented arithmetic operators, like `__iadd__` for `+=` etc.
 - support all dunder methods: comparison (`__eq__`, `__lt__`, `__gt__`, etc.), `__str__`, `__bool__` etc
 - split tpy_runtime.hpp
+- extract built-in function defintions to separate files (len, print)
+- update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 
 ## ShedSkin examples
 - score4

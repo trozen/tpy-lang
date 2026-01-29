@@ -70,7 +70,7 @@ void __tpy_init_main() {
   // 30: print_span([7, 8, 9])
   print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
   // 33: text = "AB"
-  auto text = "AB";
+  std::string_view text = "AB";
   // 34: for c in text:
   for (char c : std::string_view(text)) {
     // 35:     print(c)

@@ -29,6 +29,33 @@ from .sema import SemanticAnalyzer
 from tpyc import modules as builtin_modules
 
 
+class CodeGenError(Exception):
+    """Error during C++ code generation."""
+    def __init__(self, message: str, loc: SourceLocation | None = None):
+        self.message = message
+        self.loc = loc
+        super().__init__(message)
+
+    def format(self, filename: str = "<unknown>") -> str:
+        """Format error with file:line prefix."""
+        if self.loc:
+            return f"{filename}:{self.loc.line}: error: {self.message}"
+        return f"{filename}: error: {self.message}"
+
+
+def _contains_record_type(typ: TpyType) -> bool:
+    """Recursively check if a type contains a RecordType."""
+    if isinstance(typ, RecordType):
+        return True
+    if isinstance(typ, OwnType):
+        return _contains_record_type(typ.wrapped)
+    if isinstance(typ, (PtrType, ConstPtrType)):
+        return _contains_record_type(typ.pointee)
+    if hasattr(typ, 'element_type') and typ.element_type is not None:
+        return _contains_record_type(typ.element_type)
+    return False
+
+
 @dataclass
 class CodeGenOptions:
     """Options for C++ code generation."""
@@ -122,13 +149,16 @@ class CodeGenerator:
         main_stmts = []
         for stmt in module.top_level_stmts:
             # Top-level variable declarations with explicit type are globals
-            # Also treat unannotated list literals as globals (for list inference)
+            # Also treat unannotated list/container literals and constructors as globals
             is_global = False
             if isinstance(stmt, TpyVarDecl):
                 if stmt.type:
                     is_global = True
                 elif isinstance(stmt.init, TpyArrayLiteral):
                     # Unannotated list literal at top level -> global
+                    is_global = True
+                elif isinstance(stmt.init, TpyCall) and stmt.init.call_type is not None:
+                    # Generic constructor like list[Int32]() -> global
                     is_global = True
             if is_global:
                 global_decls.append(stmt)
@@ -142,10 +172,8 @@ class CodeGenerator:
         record_globals = []
         for stmt in global_decls:
             var_type = stmt.type if stmt.type else self._get_resolved_type(stmt.init)
-            # Unwrap OwnType to get the underlying type for ordering
-            if isinstance(var_type, OwnType):
-                var_type = var_type.wrapped
-            if isinstance(var_type, RecordType):
+            # Check if type references a record (directly or nested in containers)
+            if _contains_record_type(var_type):
                 record_globals.append(stmt)
             else:
                 primitive_globals.append(stmt)
@@ -525,25 +553,26 @@ class CodeGenerator:
             if resolved_type:
                 cpp_type = resolved_type.to_cpp()
             else:
-                # Check inferred type - some types need explicit annotation
+                # Use inferred type from expression
                 inferred_type = self.analyzer.get_expr_type(stmt.init)
+                if inferred_type is None:
+                    raise CodeGenError(
+                        f"Could not infer type for variable '{stmt.name}'", loc=stmt.loc
+                    )
+                # Resolve IntLiteralType to BigInt (Python semantics)
                 if isinstance(inferred_type, IntLiteralType):
-                    cpp_type = BIGINT.to_cpp()
-                elif isinstance(inferred_type, BigIntType):
-                    # BigInt needs explicit type (auto would infer int from literal)
-                    cpp_type = inferred_type.to_cpp()
-                elif isinstance(stmt.init, TpyArrayLiteral):
-                    # Array literals need explicit type (auto with {...} creates initializer_list)
-                    # Resolve IntLiteralType elements to BigInt (Python semantics: [1,2,3] is list of int)
-                    if isinstance(inferred_type, ArrayType) and isinstance(inferred_type.element_type, IntLiteralType):
-                        resolved_type = ArrayType(BIGINT, inferred_type.size)
-                        cpp_type = resolved_type.to_cpp()
-                    else:
-                        cpp_type = inferred_type.to_cpp() if inferred_type else "auto"
-                else:
-                    cpp_type = "auto"
+                    inferred_type = BIGINT
+                # Resolve container[IntLiteralType] to container[BigInt]
+                elif isinstance(inferred_type, (ArrayType, ListType, PendingListType)):
+                    elem = getattr(inferred_type, 'element_type', None)
+                    if isinstance(elem, IntLiteralType):
+                        if isinstance(inferred_type, ArrayType):
+                            inferred_type = ArrayType(BIGINT, inferred_type.size)
+                        else:
+                            inferred_type = ListType(BIGINT)
+                cpp_type = inferred_type.to_cpp()
         else:
-            cpp_type = "auto"
+            raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
 
         if stmt.init:
             init_expr = self._gen_expr(stmt.init, target_type)

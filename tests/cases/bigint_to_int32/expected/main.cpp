@@ -75,27 +75,27 @@ void __tpy_init_main() {
   // 56: n = 5
   tpy::BigInt n = tpy::BigInt(5);
   // 59: result1 = takes_int32(n)
-  auto result1 = takes_int32((n).to_int32());
+  int32_t result1 = takes_int32((n).to_int32());
   // 60: print(result1)
   std::cout << result1 << "\n";
   // 63: result2 = return_as_int32(10)
-  auto result2 = return_as_int32(tpy::BigInt(10));
+  int32_t result2 = return_as_int32(tpy::BigInt(10));
   // 64: print(result2)
   std::cout << result2 << "\n";
   // 67: result3 = var_decl_test(15)
-  auto result3 = var_decl_test(tpy::BigInt(15));
+  int32_t result3 = var_decl_test(tpy::BigInt(15));
   // 68: print(result3)
   std::cout << result3 << "\n";
   // 71: result4 = assign_test(20)
-  auto result4 = assign_test(tpy::BigInt(20));
+  int32_t result4 = assign_test(tpy::BigInt(20));
   // 72: print(result4)
   std::cout << result4 << "\n";
   // 75: result5 = loop_test(3)
-  auto result5 = loop_test(tpy::BigInt(3));
+  int32_t result5 = loop_test(tpy::BigInt(3));
   // 76: print(result5)
   std::cout << result5 << "\n";
   // 79: result6 = constructor_test(25)
-  auto result6 = constructor_test(tpy::BigInt(25));
+  int32_t result6 = constructor_test(tpy::BigInt(25));
   // 80: print(result6)
   std::cout << result6 << "\n";
   // 83: print(a)  # 3

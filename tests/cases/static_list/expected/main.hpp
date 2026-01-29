@@ -10,6 +10,8 @@ struct Item {
   explicit Item(int32_t v) : value(v) {}
 };
 
+extern StaticList<Item, 16> items;
+
 void process_list(StaticList<Item, 16>& items);
 void print_list(StaticList<Item, 16>& items);
 

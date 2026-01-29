@@ -8,9 +8,9 @@ void test_bool() {
   // 6:     b: Bool = False
   bool b = false;
   // 9:     inferred_true = True
-  auto inferred_true = true;
+  bool inferred_true = true;
   // 10:     inferred_false = False
-  auto inferred_false = false;
+  bool inferred_false = false;
   // 13:     if a:
   if (a) {
     // 14:         print(1)
@@ -38,7 +38,7 @@ void test_bool() {
     std::cout << 0 << "\n";
   }
   // 30:     flag = True
-  auto flag = true;
+  bool flag = true;
   // 31:     count: Int32 = 0
   int32_t count = 0;
   // 32:     while flag:

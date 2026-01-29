@@ -8,7 +8,7 @@ int32_t b = 99;
 
 void __tpy_init_main() {
   // 22: c = Counter(100)
-  auto c = Counter(100);
+  Counter c = Counter(100);
   // 23: print(c.get())
   std::cout << c.get() << "\n";
   // 26: c.increment()

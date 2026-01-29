@@ -3,6 +3,8 @@
 
 // 10: items: list[Int32] = []
 std::vector<int32_t> items = {};
+// 28: sl = StaticList[Int32, 10]()
+StaticList<int32_t, 10> sl = StaticList<int32_t, 10>();
 // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
 std::array<int32_t, 3> arr = {1, 2, 3};
 
@@ -24,8 +26,6 @@ void __tpy_init_main() {
   tpy::set_item(items, 1, 99);
   // 24: print(items.__getitem__(Int32(1)))  # 99
   std::cout << tpy::get_item(items, 1) << "\n";
-  // 28: sl = StaticList[Int32, 10]()
-  auto sl = StaticList<int32_t, 10>();
   // 29: sl.append(Int32(100))
   sl.push_back(100);
   // 30: sl.append(Int32(200))
