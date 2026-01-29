@@ -10,4 +10,4 @@ class Point:
 
 def make_ptr() -> Ptr[Point]:
     pt: Point = Point(10, 20)
-    return pt  # tpyc: error(/Cannot return local variable as pointer/)
+    return pt  # tpyc: error(/Cannot return local or temporary/)

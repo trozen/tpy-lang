@@ -8,7 +8,7 @@ Validates that only allowed constructs are used.
 from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
@@ -43,6 +43,10 @@ class SourceLocation:
 class TpyExpr:
     """Base class for expressions."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
+
+
+if TYPE_CHECKING:
+    from .coercions import Coercion
 
 
 @dataclass
@@ -126,6 +130,18 @@ class TpySubscript(TpyExpr):
     """Subscript indexing: obj[index]"""
     obj: TpyExpr
     index: TpyExpr
+
+
+@dataclass
+class TpyCoerce(TpyExpr):
+    """Expression with an explicit coercion attached by semantic analysis."""
+    expr: TpyExpr
+    actual_type: TpyType
+    expected_type: TpyType
+    coercion: "Coercion"
+    context_kind: str
+    context_msg: str
+    runtime_bigint: bool = False
 
 
 @dataclass

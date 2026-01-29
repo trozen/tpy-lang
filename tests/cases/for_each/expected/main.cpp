@@ -68,7 +68,7 @@ void __tpy_init_main() {
   // 23: print(sum_array())  # 600
   std::cout << sum_array() << "\n";
   // 30: print_span([7, 8, 9])
-  print_span(std::array<int32_t, 3>{7, 8, 9});
+  print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
   // 33: text = "AB"
   auto text = "AB";
   // 34: for c in text:

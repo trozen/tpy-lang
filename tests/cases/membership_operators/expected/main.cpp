@@ -72,12 +72,12 @@ void test_span_membership() {
   // 45:     nums: Array[Int32, 5] = [100, 200, 300, 400, 500]
   std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
   // 47:     if check_span_contains(nums, 300):
-  if (check_span_contains(nums, 300)) {
+  if (check_span_contains(tpy::as_span(nums), 300)) {
     // 48:         print("300 in span: yes")
     std::cout << "300 in span: yes" << "\n";
   }
   // 49:     if check_span_contains(nums, 999):
-  if (check_span_contains(nums, 999)) {
+  if (check_span_contains(tpy::as_span(nums), 999)) {
     // 50:         print("999 in span: yes")
     std::cout << "999 in span: yes" << "\n";
   } else {

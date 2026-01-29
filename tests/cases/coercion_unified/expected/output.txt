@@ -1,0 +1,31 @@
+BigInt -> Int32 coercions:
+100
+200
+42
+300
+Record -> Ptr coercions:
+10
+30
+51
+Record -> ConstPtr coercions:
+5
+25
+300
+Ptr -> Record coercions:
+7
+9
+11
+27
+Ptr -> ConstPtr coercions:
+3
+5
+7
+StaticList -> Span coercions:
+6
+Array -> Span coercions:
+60
+List -> Span coercions:
+600
+Subscript -> Ptr coercions:
+2
+7

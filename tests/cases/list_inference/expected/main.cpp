@@ -49,7 +49,7 @@ int32_t test_span_param() {
   // 33:     data = [10, 20, 30]
   std::array<int32_t, 3> data = {10, 20, 30};
   // 34:     return takes_span(data)
-  return takes_span(data);
+  return takes_span(tpy::as_span(data));
 }
 
 void __tpy_init_main() {

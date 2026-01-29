@@ -1,0 +1,17 @@
+BigInt expressions -> Int32:
+30
+60
+35
+200
+100
+150
+Field access -> Ptr:
+105
+115
+Nested field -> Ptr:
+107
+115
+Literal expressions -> Int32:
+60
+50
+150

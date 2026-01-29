@@ -330,6 +330,28 @@ private:
     std::size_t size_;
 };
 
+// --- Span helpers ---
+
+template <typename T, std::size_t N>
+inline std::span<const T> as_span(const std::array<T, N>& arr) {
+    return std::span<const T>(arr);
+}
+
+template <typename T, std::size_t N>
+inline std::span<const T> as_span(const StaticList<T, N>& list) {
+    return std::span<const T>(list.data(), list.size());
+}
+
+template <typename T>
+inline std::span<const T> as_span(const std::vector<T>& vec) {
+    return std::span<const T>(vec.data(), vec.size());
+}
+
+template <typename T>
+inline std::span<const T> as_span(std::span<const T> span) {
+    return span;
+}
+
 /**
  * BigInt - Arbitrary precision integer with small-int optimization.
  *

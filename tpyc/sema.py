@@ -23,8 +23,9 @@ from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySubscript
+    TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
+from .coercions import resolve_coercion, Coercion
 from tpyc import modules as builtin_modules
 
 
@@ -291,9 +292,8 @@ class SemanticAnalyzer:
             if stmt.value:
                 ret_type = self._analyze_expr(stmt.value)
                 expected = self.current_function.return_type if self.current_function else VOID
-                self._check_type_compatible(ret_type, expected, "return value",
-                                            getattr(stmt.value, 'loc', None),
-                                            source_expr=stmt.value, is_return=True)
+                stmt.value = self._coerce_expr(stmt.value, ret_type, expected, "return value",
+                                               coercion_ctx="return", is_return=True)
                 # Check for dangling reference (returning local/temporary as reference)
                 self._check_dangling_reference(stmt.value, expected, stmt.loc)
         elif isinstance(stmt, TpyIf):
@@ -363,7 +363,7 @@ class SemanticAnalyzer:
                 info.variable_name = stmt.name
 
                 # If explicit annotation is provided, record it
-                if stmt.type:
+                if stmt.type and isinstance(stmt.init, TpyArrayLiteral):
                     info.has_explicit_annotation = True
                     info.explicit_type = stmt.type
 
@@ -373,9 +373,9 @@ class SemanticAnalyzer:
                     isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
                     pass  # Allow str literal -> Char
                 else:
-                    self._check_type_compatible(init_type, stmt.type, f"variable '{stmt.name}'",
-                                                getattr(stmt.init, 'loc', None),
-                                                source_expr=stmt.init)
+                    stmt.init = self._coerce_expr(stmt.init, init_type, stmt.type,
+                                                  f"variable '{stmt.name}'",
+                                                  coercion_ctx="init")
                 var_type = stmt.type
             elif existing_type:
                 # Reassignment: check if we need to upgrade IntLiteralType
@@ -388,9 +388,9 @@ class SemanticAnalyzer:
                         self.var_types[id(orig_decl)] = init_type
                 else:
                     # Normal reassignment: use existing type, check compatibility
-                    self._check_type_compatible(init_type, existing_type, f"reassignment to '{stmt.name}'",
-                                                getattr(stmt.init, 'loc', None),
-                                                source_expr=stmt.init)
+                    stmt.init = self._coerce_expr(stmt.init, init_type, existing_type,
+                                                  f"reassignment to '{stmt.name}'",
+                                                  coercion_ctx="assign")
                     var_type = existing_type
             else:
                 # New variable: resolve IntLiteralType to BigInt (Python int semantics)
@@ -440,8 +440,8 @@ class SemanticAnalyzer:
                     self.var_types[id(var_decl)] = value_type
                 return
 
-        self._check_type_compatible(value_type, target_type, "assignment",
-                                    source_expr=stmt.value)
+        stmt.value = self._coerce_expr(stmt.value, value_type, target_type, "assignment",
+                                       coercion_ctx="assign")
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -481,6 +481,9 @@ class SemanticAnalyzer:
             typ = self._analyze_list_repeat(expr)
         elif isinstance(expr, TpySubscript):
             typ = self._analyze_subscript(expr)
+        elif isinstance(expr, TpyCoerce):
+            # Coercions are attached post-analysis; treat as the expected type.
+            typ = expr.expected_type
         else:
             raise SemanticError(f"Unknown expression type: {type(expr).__name__}")
 
@@ -621,7 +624,7 @@ class SemanticAnalyzer:
         if func:
             if len(expr.args) != len(func.params):
                 raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
-            for (pname, ptype), arg in zip(func.params, expr.args):
+            for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
                 arg_type = self._analyze_expr(arg)
 
                 # Check for Own[T] passed directly to object type parameter
@@ -650,9 +653,9 @@ class SemanticAnalyzer:
                 # Special case: single-char string literal can be passed as Char
                 if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
                         isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
-                    self._check_type_compatible(arg_type, ptype, f"argument '{pname}'",
-                                                getattr(arg, 'loc', None),
-                                                source_expr=arg)
+                    coerced_arg = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                    coercion_ctx="arg")
+                    expr.args[i] = coerced_arg
 
                 # Track parameter context for list inference
                 if isinstance(arg_type, PendingListType):
@@ -697,7 +700,8 @@ class SemanticAnalyzer:
                 if len(expr.args) != 1:
                     raise SemanticError("append() takes exactly 1 argument")
                 arg_type = self._analyze_expr(expr.args[0])
-                self._check_type_compatible(arg_type, elem_type, "append argument")
+                expr.args[0] = self._coerce_expr(expr.args[0], arg_type, elem_type, "append argument",
+                                                 coercion_ctx="arg")
                 return VOID
             elif expr.method == "push_empty":
                 if expr.args:
@@ -718,7 +722,8 @@ class SemanticAnalyzer:
                     raise SemanticError("set() takes exactly 2 arguments")
                 self._analyze_expr(expr.args[0])  # index
                 arg_type = self._analyze_expr(expr.args[1])  # value
-                self._check_type_compatible(arg_type, elem_type, "set value")
+                expr.args[1] = self._coerce_expr(expr.args[1], arg_type, elem_type, "set value",
+                                                 coercion_ctx="arg")
                 return VOID
             elif expr.method == "size":
                 if expr.args:
@@ -770,7 +775,8 @@ class SemanticAnalyzer:
                 if len(expr.args) != 1:
                     raise SemanticError("append() takes exactly 1 argument")
                 arg_type = self._analyze_expr(expr.args[0])
-                self._check_type_compatible(arg_type, elem_type, "append argument")
+                expr.args[0] = self._coerce_expr(expr.args[0], arg_type, elem_type, "append argument",
+                                                 coercion_ctx="arg")
                 return VOID
             elif expr.method == "pop":
                 if expr.args:
@@ -781,13 +787,15 @@ class SemanticAnalyzer:
                     raise SemanticError("insert() takes exactly 2 arguments")
                 self._analyze_expr(expr.args[0])  # index
                 arg_type = self._analyze_expr(expr.args[1])  # value
-                self._check_type_compatible(arg_type, elem_type, "insert value")
+                expr.args[1] = self._coerce_expr(expr.args[1], arg_type, elem_type, "insert value",
+                                                 coercion_ctx="arg")
                 return VOID
             elif expr.method == "remove":
                 if len(expr.args) != 1:
                     raise SemanticError("remove() takes exactly 1 argument")
                 arg_type = self._analyze_expr(expr.args[0])
-                self._check_type_compatible(arg_type, elem_type, "remove argument")
+                expr.args[0] = self._coerce_expr(expr.args[0], arg_type, elem_type, "remove argument",
+                                                 coercion_ctx="arg")
                 return VOID
             elif expr.method == "clear":
                 if expr.args:
@@ -820,7 +828,8 @@ class SemanticAnalyzer:
                 # Type-check arguments
                 for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
                     arg_type = self._analyze_expr(arg)
-                    self._check_type_compatible(arg_type, ptype, f"argument '{pname}'")
+                    expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                     coercion_ctx="arg")
                 return method_info.return_type
 
         raise SemanticError(f"Cannot call method '{expr.method}' on type {obj_type}")
@@ -973,6 +982,8 @@ class SemanticAnalyzer:
 
     def _is_dangling_return(self, expr: TpyExpr) -> bool:
         """Check if returning this expression would create a dangling reference."""
+        if isinstance(expr, TpyCoerce):
+            return self._is_dangling_return(expr.expr)
         # Array literal - creates temporary
         if isinstance(expr, TpyArrayLiteral):
             return True
@@ -1035,189 +1046,180 @@ class SemanticAnalyzer:
         # Default: assume safe
         return False
 
+    def _pending_list_matches_array(self, actual: PendingListType, expected: ArrayType) -> bool:
+        """Check if a pending list literal can match an Array type (including nested arrays)."""
+        if actual.size != expected.size:
+            return False
+
+        actual_elem = actual.element_type
+        expected_elem = expected.element_type
+
+        if isinstance(actual_elem, PendingListType) and isinstance(expected_elem, ArrayType):
+            return self._pending_list_matches_array(actual_elem, expected_elem)
+
+        if actual_elem == expected_elem:
+            return True
+
+        if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (Int32Type, BigIntType)):
+            info = self.list_literals.get(actual.literal_id)
+            if info:
+                info.coerced_element_type = expected_elem
+            return True
+
+        return False
+
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,
                                 loc: SourceLocation | None = None,
                                 source_expr: TpyExpr | None = None,
-                                is_return: bool = False) -> None:
+                                is_return: bool = False,
+                                coercion_ctx: str | None = None) -> Optional[Coercion]:
         """Check if actual type is compatible with expected type.
+
+        Returns a Coercion if a conversion should be applied at codegen time.
 
         Args:
             source_expr: The expression being converted (for lvalue checks)
-            is_return: True if this is a return statement (disallows address-taking)
+            is_return: True if this is a return statement (affects lifetime checks)
         """
         if actual == expected:
-            return
+            return None
 
         # Allow T -> Own[T] coercion (ownership transfer for return values)
         if isinstance(expected, OwnType):
-            # Check if actual type is compatible with the wrapped type
-            self._check_type_compatible(actual, expected.wrapped, context, loc, source_expr, is_return)
-            return
+            return self._check_type_compatible(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
-            # Check if the wrapped type is compatible with expected
-            self._check_type_compatible(actual.wrapped, expected, context, loc, source_expr, is_return)
-            return
+            return self._check_type_compatible(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx)
 
-        # IntLiteral can coerce to any integer type
+        # IntLiteral can coerce to BigInt or stay unresolved
         if isinstance(actual, IntLiteralType):
             if isinstance(expected, (BigIntType, IntLiteralType)):
-                return
-            if isinstance(expected, Int32Type):
-                # Check if literal value fits in Int32 range
-                INT32_MIN = -(2**31)
-                INT32_MAX = 2**31 - 1
-                if actual.value < INT32_MIN or actual.value > INT32_MAX:
-                    raise SemanticError(
-                        f"Integer literal {actual.value} is outside Int32 range "
-                        f"[{INT32_MIN}, {INT32_MAX}] in {context}",
-                        loc
-                    )
-                return
-
-        # Allow Int32 literal coercion
-        if isinstance(actual, Int32Type) and isinstance(expected, Int32Type):
-            return
-
-        # Allow BigInt compatibility
-        if isinstance(actual, BigIntType) and isinstance(expected, BigIntType):
-            return
-
-        # Allow Int32 -> BigInt implicit conversion (safe upcast)
-        if isinstance(actual, Int32Type) and isinstance(expected, BigIntType):
-            return
-
-        # Allow BigInt -> Int32 implicit conversion (truncation - safe for literals)
-        if isinstance(actual, BigIntType) and isinstance(expected, Int32Type):
-            return
-
-        # Allow same record types
-        if isinstance(actual, RecordType) and isinstance(expected, RecordType):
-            if actual.name == expected.name:
-                return
-
-        # Allow compatible pointer types
-        if isinstance(actual, PtrType) and isinstance(expected, PtrType):
-            if actual.pointee == expected.pointee:
-                return
-
-        if isinstance(actual, ConstPtrType) and isinstance(expected, ConstPtrType):
-            if actual.pointee == expected.pointee:
-                return
-
-        # Allow Ptr[T] -> ConstPtr[T] coercion (safe: mutable to read-only)
-        if isinstance(actual, PtrType) and isinstance(expected, ConstPtrType):
-            if actual.pointee == expected.pointee:
-                return
-
-        # Allow Record -> Ptr[Record] coercion (taking mutable address of object)
-        # Only allowed for mutable lvalues (not Span elements which are read-only)
-        # Never allowed in return statements (would create dangling pointer)
-        if isinstance(actual, RecordType) and isinstance(expected, PtrType):
-            if isinstance(expected.pointee, RecordType) and actual.name == expected.pointee.name:
-                if is_return:
-                    raise SemanticError(
-                        f"Cannot return local variable as pointer (would create dangling pointer) in {context}",
-                        loc
-                    )
-                if source_expr is not None and not self._is_mutable_lvalue(source_expr):
-                    raise SemanticError(
-                        f"Cannot take mutable pointer to read-only or temporary value in {context}; "
-                        f"use ConstPtr for read-only access, or assign to a variable first",
-                        loc
-                    )
-                return
-
-        # Allow Record -> ConstPtr[Record] coercion (taking const address)
-        # Allowed for any lvalue including read-only sources like Span elements
-        if isinstance(actual, RecordType) and isinstance(expected, ConstPtrType):
-            if isinstance(expected.pointee, RecordType) and actual.name == expected.pointee.name:
-                if is_return:
-                    raise SemanticError(
-                        f"Cannot return local variable as pointer (would create dangling pointer) in {context}",
-                        loc
-                    )
-                if source_expr is not None and not self._is_lvalue(source_expr):
-                    raise SemanticError(
-                        f"Cannot take address of temporary or rvalue in {context}; "
-                        f"assign to a variable first",
-                        loc
-                    )
-                return
-
-        # Allow Ptr[Record] -> Record coercion (dereferencing pointer with null check)
-        # Note: ConstPtr[Record] -> Record is NOT allowed since it would pass a const ref
-        # to a function that takes a non-const ref (potential mutation through const pointer)
-        if isinstance(actual, PtrType) and isinstance(expected, RecordType):
-            if isinstance(actual.pointee, RecordType) and actual.pointee.name == expected.name:
-                return
-
-        # Allow ArrayType -> SpanType if element types match or are coercible
-        if isinstance(actual, ArrayType) and isinstance(expected, SpanType):
-            if actual.element_type == expected.element_type:
-                return
-            # IntLiteral element type coerces to expected element type
-            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                return
+                return None
 
         # Allow Array element type coercion if sizes match
         if isinstance(actual, ArrayType) and isinstance(expected, ArrayType):
             if actual.size == expected.size:
                 if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                    return
-
-        # Allow StaticListType -> SpanType if element types match
-        if isinstance(actual, StaticListType) and isinstance(expected, SpanType):
-            if actual.element_type == expected.element_type:
-                return
-
-        # Allow ListType -> SpanType if element types match or are coercible
-        if isinstance(actual, ListType) and isinstance(expected, SpanType):
-            if actual.element_type == expected.element_type:
-                return
-            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                return
+                    return None
 
         # Allow list element type coercion
         if isinstance(actual, ListType) and isinstance(expected, ListType):
             if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                return
+                return None
 
         # Allow ListType -> ArrayType for explicit annotations
         # (global array literals become ListType but can be assigned to Array variables)
         if isinstance(actual, ListType) and isinstance(expected, ArrayType):
             if actual.element_type == expected.element_type:
-                return
+                return None
             if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                return
+                return None
 
         # Allow PendingListType compatibility during first phase (before resolution)
         if isinstance(actual, PendingListType):
             # Compatible with list[T] if element types match
             if isinstance(expected, ListType):
                 if actual.element_type == expected.element_type:
-                    return
+                    return None
                 if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                    return
-            # Compatible with Span[T] if element types match
-            if isinstance(expected, SpanType):
-                if actual.element_type == expected.element_type:
-                    return
-                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                    return
+                    return None
             # Compatible with Array[T, N] if element types and sizes match
             if isinstance(expected, ArrayType):
-                if actual.size == expected.size:
-                    if actual.element_type == expected.element_type:
-                        return
-                    if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                        return
+                if self._pending_list_matches_array(actual, expected):
+                    return None
 
-        raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+        ctx = coercion_ctx or context
+        coercion = resolve_coercion(actual, expected, ctx)
+        if coercion is None:
+            raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+
+        if isinstance(actual, PendingListType) and isinstance(expected, SpanType):
+            info = self.list_literals.get(actual.literal_id)
+            if info:
+                info.coerced_element_type = expected.element_type
+                info.passed_to_span_param = True
+
+        if coercion.check_range and not coercion.check_range(actual, expected):
+            INT32_MIN = -(2**31)
+            INT32_MAX = 2**31 - 1
+            raise SemanticError(
+                f"Integer literal {actual.value} is outside Int32 range "
+                f"[{INT32_MIN}, {INT32_MAX}] in {context}",
+                loc
+            )
+
+        if coercion.requires_mutable:
+            if source_expr is None or not self._is_mutable_lvalue(source_expr):
+                raise SemanticError(
+                    f"Cannot take mutable pointer to read-only or temporary value in {context}; "
+                    f"use ConstPtr for read-only access, or assign to a variable first",
+                    loc
+                )
+        elif coercion.requires_lvalue:
+            if source_expr is None or not self._is_lvalue(source_expr):
+                raise SemanticError(
+                    f"Cannot take address of temporary or rvalue in {context}; "
+                    f"assign to a variable first",
+                    loc
+                )
+
+        if coercion.forbid_return_local and is_return:
+            if source_expr is not None and self._is_dangling_return(source_expr):
+                raise SemanticError(
+                    f"Cannot return local or temporary value; "
+                    f"the returned pointer/reference would dangle",
+                    loc
+                )
+
+        return coercion
+
+    def _coerce_expr(self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
+                     coercion_ctx: str, is_return: bool = False) -> TpyExpr:
+        """Wrap expr in a coercion node if a conversion is needed."""
+        coercion = self._check_type_compatible(actual, expected, context,
+                                               getattr(expr, "loc", None),
+                                               source_expr=expr,
+                                               is_return=is_return,
+                                               coercion_ctx=coercion_ctx)
+        if coercion is None:
+            return expr
+        runtime_bigint = False
+        if coercion.name == "int_literal_to_int32":
+            runtime_bigint = self._is_runtime_bigint_expr(expr)
+        coerced = TpyCoerce(
+            expr=expr,
+            actual_type=actual,
+            expected_type=expected,
+            coercion=coercion,
+            context_kind=coercion_ctx,
+            context_msg=context,
+            runtime_bigint=runtime_bigint,
+            loc=expr.loc
+        )
+        self.expr_types[id(coerced)] = expected
+        return coerced
+
+    def _is_runtime_bigint_expr(self, expr: TpyExpr) -> bool:
+        """Check if an IntLiteralType expression could be BigInt at runtime."""
+        if isinstance(expr, TpyCoerce):
+            return self._is_runtime_bigint_expr(expr.expr)
+        if isinstance(expr, TpyName):
+            return True
+        if isinstance(expr, TpyIntLiteral):
+            return False
+        if isinstance(expr, TpyBinOp):
+            return self._is_runtime_bigint_expr(expr.left) or self._is_runtime_bigint_expr(expr.right)
+        if isinstance(expr, TpyUnaryOp):
+            return self._is_runtime_bigint_expr(expr.operand)
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            return True
+        return True
 
     def _is_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an expression is an lvalue (can have its address taken)."""
+        if isinstance(expr, TpyCoerce):
+            return self._is_lvalue(expr.expr)
         # Named variables are lvalues
         if isinstance(expr, TpyName):
             return True
@@ -1235,6 +1237,8 @@ class SemanticAnalyzer:
 
         This is like _is_lvalue but also rejects read-only sources like Span elements.
         """
+        if isinstance(expr, TpyCoerce):
+            return self._is_mutable_lvalue(expr.expr)
         # Named variables are mutable lvalues
         if isinstance(expr, TpyName):
             return True
@@ -1265,6 +1269,9 @@ class SemanticAnalyzer:
     def _mark_list_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
         """Track parameter context for list literal inference."""
         literal_id = None
+
+        if isinstance(arg_expr, TpyCoerce):
+            arg_expr = arg_expr.expr
 
         # Direct variable reference
         if isinstance(arg_expr, TpyName):

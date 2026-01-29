@@ -42,7 +42,7 @@ int32_t test_local_span() {
   // 43:     local_data = [4, 5, 6]  # Inferred as Int32 when passed to Span[Int32]
   std::array<int32_t, 3> local_data = {4, 5, 6};
   // 44:     return sum_span(local_data)
-  return sum_span(local_data);
+  return sum_span(tpy::as_span(local_data));
 }
 
 // 49: def sum_span_bigint(nums: Span[int]) -> int:
@@ -72,11 +72,11 @@ void __tpy_init_main() {
   // 28: print(local_mixed())
   std::cout << local_mixed() << "\n";
   // 39: print(sum_span(global_for_span))
-  std::cout << sum_span(global_for_span) << "\n";
+  std::cout << sum_span(tpy::as_span(global_for_span)) << "\n";
   // 46: print(test_local_span())
   std::cout << test_local_span() << "\n";
   // 56: print(sum_span_bigint(bigint_list))
-  std::cout << sum_span_bigint(bigint_list) << "\n";
+  std::cout << sum_span_bigint(tpy::as_span(bigint_list)) << "\n";
 }
 
 int main() {

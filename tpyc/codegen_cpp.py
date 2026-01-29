@@ -23,7 +23,7 @@ from .parse import (
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySubscript
+    TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from .sema import SemanticAnalyzer
 from tpyc import modules as builtin_modules
@@ -62,6 +62,8 @@ class CodeGenerator:
         # Check for codegen-overridden types (e.g., loop variables)
         if isinstance(expr, TpyName) and expr.name in self.var_types:
             return self.var_types[expr.name]
+        if isinstance(expr, TpyCoerce):
+            return expr.expected_type
 
         # For binary operations, compute type using resolved operand types
         if isinstance(expr, TpyBinOp):
@@ -239,15 +241,7 @@ class CodeGenerator:
             raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
         cpp_type = var_type.to_cpp()
         if stmt.init:
-            # Pass var_type as target to determine if literal+literal is Int32 or BigInt
-            init_type = self._get_resolved_type(stmt.init, var_type)
             init_expr = self._gen_expr(stmt.init, var_type)
-            # Convert BigInt -> Int32 if needed
-            init_expr = self._convert_to_int32_if_needed(init_expr, init_type, var_type)
-            # Convert Record -> Ptr if needed
-            init_expr = self._convert_to_ptr_if_needed(init_expr, init_type, var_type)
-            # Convert Ptr -> Record if needed (with null check)
-            init_expr = self._convert_from_ptr_if_needed(init_expr, init_type, var_type)
             out.write(f"{cpp_type} {stmt.name} = {init_expr};\n")
         else:
             out.write(f"{cpp_type} {stmt.name};\n")
@@ -475,14 +469,7 @@ class CodeGenerator:
             if stmt.value:
                 # Pass return type for BigInt promotion
                 ret_type = self.current_return_type if hasattr(self, 'current_return_type') else None
-                value_type = self._get_resolved_type(stmt.value)
                 expr = self._gen_expr(stmt.value, ret_type)
-                # Convert BigInt -> Int32 if needed
-                if ret_type and isinstance(ret_type, Int32Type) and self._is_runtime_bigint(stmt.value, value_type):
-                    expr = f"({expr}).to_int32()"
-                # Convert Ptr -> Record if needed (with null check)
-                if ret_type:
-                    expr = self._convert_from_ptr_if_needed(expr, value_type, ret_type)
                 out.write(f"{indent}return {expr};\n")
             else:
                 out.write(f"{indent}return;\n")
@@ -506,14 +493,7 @@ class CodeGenerator:
             if stmt.init:
                 # For reassignment, use the existing variable's type as target
                 var_type = self.var_types.get(stmt.name)
-                init_type = self._get_resolved_type(stmt.init, var_type)
                 init_expr = self._gen_expr(stmt.init, var_type)
-                # Convert BigInt -> Int32 if needed
-                init_expr = self._convert_to_int32_if_needed(init_expr, init_type, var_type)
-                # Convert Record -> Ptr if needed
-                init_expr = self._convert_to_ptr_if_needed(init_expr, init_type, var_type)
-                # Convert Ptr -> Record if needed (with null check)
-                init_expr = self._convert_from_ptr_if_needed(init_expr, init_type, var_type)
                 out.write(f"{indent}{stmt.name} = {init_expr};\n")
             return
 
@@ -566,15 +546,7 @@ class CodeGenerator:
             cpp_type = "auto"
 
         if stmt.init:
-            # Pass target_type to get correct result type (e.g., Int32 for literal+literal)
-            init_type = self._get_resolved_type(stmt.init, target_type)
             init_expr = self._gen_expr(stmt.init, target_type)
-            # Convert BigInt -> Int32 if needed
-            init_expr = self._convert_to_int32_if_needed(init_expr, init_type, target_type)
-            # Convert Record -> Ptr if needed
-            init_expr = self._convert_to_ptr_if_needed(init_expr, init_type, target_type)
-            # Convert Ptr -> Record if needed (with null check)
-            init_expr = self._convert_from_ptr_if_needed(init_expr, init_type, target_type)
             out.write(f"{indent}{cpp_type} {stmt.name} = {init_expr};\n")
         else:
             out.write(f"{indent}{cpp_type} {stmt.name};\n")
@@ -598,15 +570,7 @@ class CodeGenerator:
         # Default: simple assignment
         target = self._gen_expr(stmt.target)
         target_type = self.analyzer.get_expr_type(stmt.target)
-        # Use _get_resolved_type with target_type to correctly determine if nested binops produce BigInt
-        value_type = self._get_resolved_type(stmt.value, target_type)
         value = self._gen_expr(stmt.value, target_type)
-        # Convert BigInt -> Int32 if needed
-        value = self._convert_to_int32_if_needed(value, value_type, target_type)
-        # Convert Record -> Ptr if needed
-        value = self._convert_to_ptr_if_needed(value, value_type, target_type)
-        # Convert Ptr -> Record if needed (with null check)
-        value = self._convert_from_ptr_if_needed(value, value_type, target_type)
         out.write(f"{indent}{target} = {value};\n")
 
     def _gen_aug_assign(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
@@ -838,6 +802,21 @@ class CodeGenerator:
         elif isinstance(expr, TpyBoolLiteral):
             return "true" if expr.value else "false"
 
+        elif isinstance(expr, TpyCoerce):
+            if expr.coercion.name == "int_literal_to_int32" or isinstance(expr.expected_type, SpanType):
+                inner_target = expr.expected_type
+            else:
+                inner_target = expr.actual_type
+            gen_inner = self._gen_expr(expr.expr, inner_target)
+            if isinstance(expr.expected_type, SpanType):
+                return self._gen_span_coercion(expr.expr, expr.expected_type, gen_inner)
+            # IntLiteralType may be runtime BigInt; sema records this on the coercion.
+            if expr.coercion.name == "int_literal_to_int32":
+                if expr.runtime_bigint:
+                    return f"({gen_inner}).to_int32()"
+                return gen_inner
+            return expr.coercion.codegen(gen_inner, expr.actual_type, expr.expected_type, expr.context_kind)
+
         elif isinstance(expr, TpyStrLiteral):
             # If target type is Char and single char, output as char literal
             if isinstance(target_type, CharType) and len(expr.value) == 1:
@@ -916,14 +895,14 @@ class CodeGenerator:
                     left = self._gen_expr(expr.left, param_type)
                     right = self._gen_expr(expr.right, receiver_type)
                     # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
-                    left = self._convert_to_int32_if_needed(left, left_type, param_type)
+                    left = self._convert_to_int32_arg(left, left_type, param_type, expr.left)
                 else:
                     # left is {self} (receiver), right is {0} (argument)
                     left = self._gen_expr(expr.left, receiver_type)
                     right = self._gen_expr(expr.right, param_type)
                     # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
-                    right = self._convert_to_int32_if_needed(right, right_type, param_type)
-                # Apply wrappers for type promotion
+                    right = self._convert_to_int32_arg(right, right_type, param_type, expr.right)
+                # Binop codegen uses wrapper templates; conversions are handled here.
                 wrapped_left = binop_result.left_wrapper.replace("{self}", left).replace("{expr}", left)
                 wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
                 # For reverse operators, {self} is the right operand (receiver), {0} is left (argument)
@@ -1003,38 +982,16 @@ class CodeGenerator:
             if func_info:
                 gen_args = []
                 for arg, (pname, ptype) in zip(expr.args, func_info.params):
-                    arg_type = self._get_resolved_type(arg)
                     # Pass param type for BigInt promotion
                     gen_arg = self._gen_expr(arg, ptype)
-                    # Convert BigInt -> Int32 for Int32 parameters
-                    if isinstance(ptype, Int32Type) and self._is_runtime_bigint(arg, arg_type):
-                        gen_arg = f"({gen_arg}).to_int32()"
-                    # Convert StaticList -> Span
-                    if isinstance(ptype, SpanType) and isinstance(arg_type, StaticListType):
-                        gen_args.append(f"std::span({gen_arg}.data(), {gen_arg}.size())")
-                    # Array literal passed to Span: wrap in std::array (implicit conversion to span<const T>)
-                    elif isinstance(ptype, SpanType) and isinstance(arg, TpyArrayLiteral):
-                        # Use the expected element type from the span parameter, not the inferred type
-                        expected_array_type = ArrayType(ptype.element_type, len(arg.elements))
-                        gen_args.append(f"{expected_array_type.to_cpp()}{gen_arg}")
-                    # ListType (vector) passed to Span: implicit conversion in C++
-                    elif isinstance(ptype, SpanType) and isinstance(arg_type, ListType):
-                        # std::vector<T> implicitly converts to std::span<const T>
-                        gen_args.append(gen_arg)
-                    # Record -> Ptr/ConstPtr: take address
-                    elif isinstance(arg_type, RecordType) and isinstance(ptype, (PtrType, ConstPtrType)):
-                        gen_args.append(f"&{gen_arg}")
-                    # Ptr -> Record: dereference with null check
-                    # (ConstPtr -> Record not allowed due to const-correctness)
-                    elif isinstance(arg_type, PtrType) and isinstance(ptype, RecordType):
-                        gen_args.append(f"tpy::deref_ptr({gen_arg})")
-                    else:
-                        gen_args.append(gen_arg)
+                    gen_args.append(gen_arg)
                 return f"{expr.func}({', '.join(gen_args)})"
-            args = ", ".join(self._gen_expr(a) for a in expr.args)
             # Generic type instantiation (e.g., StaticList[T, N]())
             if expr.call_type is not None:
+                # Pass call_type as target for proper nested array brace generation
+                args = ", ".join(self._gen_expr(a, expr.call_type) for a in expr.args)
                 return f"{expr.call_type.to_cpp()}({args})"
+            args = ", ".join(self._gen_expr(a) for a in expr.args)
             return f"{expr.func}({args})"
 
         elif isinstance(expr, TpyMethodCall):
@@ -1102,7 +1059,11 @@ class CodeGenerator:
             if isinstance(target_type, (ArrayType, SpanType)):
                 elem_target = target_type.element_type
             elements = ", ".join(self._gen_expr(e, elem_target) for e in expr.elements)
-            return f"{{{elements}}}"
+            literal = f"{{{elements}}}"
+            # std::array of std::array needs an extra brace level
+            if isinstance(target_type, (ArrayType, SpanType)) and isinstance(target_type.element_type, ArrayType):
+                return f"{{{literal}}}"
+            return literal
 
         elif isinstance(expr, TpyListRepeat):
             # [x] * N -> std::vector<T>(N, x)
@@ -1150,6 +1111,8 @@ class CodeGenerator:
 
     def _involves_variables(self, expr: TpyExpr) -> bool:
         """Check if an expression involves any variable references."""
+        if isinstance(expr, TpyCoerce):
+            return self._involves_variables(expr.expr)
         if isinstance(expr, TpyName):
             return True
         if isinstance(expr, TpyIntLiteral):
@@ -1219,23 +1182,21 @@ class CodeGenerator:
                 return not self._is_runtime_bigint(arg, arg_type)
         return False
 
-    def _convert_to_int32_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:
-        """Wrap expression with .to_int32() if converting BigInt to Int32."""
-        if isinstance(expected_type, Int32Type) and isinstance(actual_type, BigIntType):
-            return f"({gen_expr}).to_int32()"
-        return gen_expr
+    def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
+        """Generate std::span conversion for supported container types."""
+        if isinstance(expr, TpyArrayLiteral):
+            expected_array_type = ArrayType(span_type.element_type, len(expr.elements))
+            array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"
+            return f"tpy::as_span({array_expr})"
+        return f"tpy::as_span({gen_inner})"
 
-    def _convert_to_ptr_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:
-        """Take address if converting Record to Ptr[Record] or ConstPtr[Record]."""
-        if isinstance(actual_type, RecordType):
-            if isinstance(expected_type, (PtrType, ConstPtrType)):
-                return f"&{gen_expr}"
-        return gen_expr
-
-    def _convert_from_ptr_if_needed(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType) -> str:
-        """Dereference with null check if converting Ptr[Record] to Record."""
-        if isinstance(actual_type, PtrType) and isinstance(expected_type, RecordType):
-            return f"tpy::deref_ptr({gen_expr})"
+    def _convert_to_int32_arg(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType, expr: TpyExpr) -> str:
+        """Convert to Int32 when a runtime BigInt may be present."""
+        if isinstance(expected_type, Int32Type):
+            if isinstance(actual_type, BigIntType):
+                return f"({gen_expr}).to_int32()"
+            if isinstance(actual_type, IntLiteralType) and self._is_runtime_bigint(expr, actual_type):
+                return f"({gen_expr}).to_int32()"
         return gen_expr
 
     def _gen_print(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr] = None) -> str:
