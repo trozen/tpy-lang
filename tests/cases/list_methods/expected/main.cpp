@@ -44,15 +44,15 @@ void test_insert() {
   // 31:     nums: list[Int32] = [10, 30, 40]
   std::vector<int32_t> nums = {10, 30, 40};
   // 34:     nums.insert(0, 5)
-  nums.insert(nums.begin() + 0, 5);
+  tpy::list_insert(nums, 0, 5);
   // 35:     print_list(nums)
   print_list(nums);
   // 38:     nums.insert(2, 20)
-  nums.insert(nums.begin() + 2, 20);
+  tpy::list_insert(nums, 2, 20);
   // 39:     print_list(nums)
   print_list(nums);
   // 42:     nums.insert(5, 50)
-  nums.insert(nums.begin() + 5, 50);
+  tpy::list_insert(nums, 5, 50);
   // 43:     print_list(nums)
   print_list(nums);
 }
@@ -63,15 +63,15 @@ void test_remove() {
   // 47:     nums: list[Int32] = [10, 20, 30, 20, 40]
   std::vector<int32_t> nums = {10, 20, 30, 20, 40};
   // 50:     nums.remove(20)
-  nums.erase(std::find(nums.begin(), nums.end(), 20));
+  tpy::list_remove(nums, 20);
   // 51:     print_list(nums)
   print_list(nums);
   // 54:     nums.remove(10)
-  nums.erase(std::find(nums.begin(), nums.end(), 10));
+  tpy::list_remove(nums, 10);
   // 55:     print_list(nums)
   print_list(nums);
   // 58:     nums.remove(40)
-  nums.erase(std::find(nums.begin(), nums.end(), 40));
+  tpy::list_remove(nums, 40);
   // 59:     print_list(nums)
   print_list(nums);
 }
@@ -120,13 +120,13 @@ void test_combined_operations() {
   // 91:     nums.append(10)
   nums.push_back(10);
   // 92:     nums.insert(0, 1)
-  nums.insert(nums.begin() + 0, 1);
+  tpy::list_insert(nums, 0, 1);
   // 93:     nums.extend([15, 20])
   nums.insert(nums.end(), {15, 20});
   // 94:     print_list(nums)
   print_list(nums);
   // 96:     nums.remove(10)
-  nums.erase(std::find(nums.begin(), nums.end(), 10));
+  tpy::list_remove(nums, 10);
   // 97:     print_list(nums)
   print_list(nums);
   // 99:     popped: Int32 = nums.pop()

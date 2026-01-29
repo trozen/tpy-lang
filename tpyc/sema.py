@@ -887,23 +887,8 @@ class SemanticAnalyzer:
                 resolved = builtin_modules.resolve_method(methods[0], type_params)
                 return self._check_method_args(expr, resolved, obj_type)
 
-            # Hardcoded methods (insert, remove, extend, size)
-            if expr.method == "insert":
-                if len(expr.args) != 2:
-                    raise SemanticError("insert() takes exactly 2 arguments")
-                self._analyze_expr(expr.args[0])  # index
-                arg_type = self._analyze_expr(expr.args[1])  # value
-                expr.args[1] = self._coerce_expr(expr.args[1], arg_type, elem_type, "insert value",
-                                                 coercion_ctx="arg")
-                return VOID
-            elif expr.method == "remove":
-                if len(expr.args) != 1:
-                    raise SemanticError("remove() takes exactly 1 argument")
-                arg_type = self._analyze_expr(expr.args[0])
-                expr.args[0] = self._coerce_expr(expr.args[0], arg_type, elem_type, "remove argument",
-                                                 coercion_ctx="arg")
-                return VOID
-            elif expr.method == "extend":
+            # Hardcoded methods (extend, size)
+            if expr.method == "extend":
                 if len(expr.args) != 1:
                     raise SemanticError("extend() takes exactly 1 argument")
                 arg_type = self._analyze_expr(expr.args[0])

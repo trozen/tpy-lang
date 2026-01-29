@@ -205,7 +205,7 @@ public:
     StaticList() noexcept : size_(0) {}
 
     /**
-     * Append a value to the list.
+     * Append a value to the list (copy).
      * Panics if capacity is exceeded.
      */
     void append(const T& value) {
@@ -213,6 +213,17 @@ public:
             tpy_panic("StaticList capacity exceeded in append()");
         }
         data_[size_++] = value;
+    }
+
+    /**
+     * Append a value to the list (move).
+     * Panics if capacity is exceeded.
+     */
+    void append(T&& value) {
+        if (size_ >= N) {
+            tpy_panic("StaticList capacity exceeded in append()");
+        }
+        data_[size_++] = std::move(value);
     }
 
     /**
@@ -261,7 +272,7 @@ public:
     }
 
     /**
-     * Set element at index (for value types).
+     * Set element at index (for value types, copy).
      * Panics if index is out of bounds.
      */
     void set_value(int32_t index, const T& value) {
@@ -270,6 +281,18 @@ public:
             tpy_panic("StaticList index out of bounds in set_value()");
         }
         data_[i] = value;
+    }
+
+    /**
+     * Set element at index (for value types, move).
+     * Panics if index is out of bounds.
+     */
+    void set_value(int32_t index, T&& value) {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds in set_value()");
+        }
+        data_[i] = std::move(value);
     }
 
     /**
@@ -307,7 +330,7 @@ public:
     }
 
     /**
-     * Set element at index to value.
+     * Set element at index to value (copy).
      * Panics if index is out of bounds.
      */
     void set(int32_t index, const T& value) {
@@ -316,6 +339,18 @@ public:
             tpy_panic("StaticList index out of bounds in set()");
         }
         data_[i] = value;
+    }
+
+    /**
+     * Set element at index to value (move).
+     * Panics if index is out of bounds.
+     */
+    void set(int32_t index, T&& value) {
+        auto i = static_cast<std::size_t>(index);
+        if (i >= size_) {
+            tpy_panic("StaticList index out of bounds in set()");
+        }
+        data_[i] = std::move(value);
     }
 
     /**
@@ -1004,14 +1039,15 @@ T get_value(const std::vector<T>& vec, int32_t index) {
  * set_value - Set element at index (for value types).
  *
  * Panics if index is out of bounds.
+ * Uses perfect forwarding to support both copy and move.
  */
-template <typename T>
-void set_value(std::vector<T>& vec, int32_t index, const T& value) {
+template <typename T, typename V>
+void set_value(std::vector<T>& vec, int32_t index, V&& value) {
     auto i = static_cast<std::size_t>(index);
     if (i >= vec.size()) {
         tpy_panic("list index out of bounds in set_value()");
     }
-    vec[i] = value;
+    vec[i] = std::forward<V>(value);
 }
 
 /**
@@ -1093,14 +1129,44 @@ decltype(auto) get_item(const std::vector<T>& v, int32_t index) {
  * set_item - Unified element assignment for std::vector.
  *
  * Sets element at index. Panics if index is out of bounds.
+ * Uses perfect forwarding to support both copy and move.
  */
-template<typename T>
-void set_item(std::vector<T>& v, int32_t index, const T& value) {
+template<typename T, typename V>
+void set_item(std::vector<T>& v, int32_t index, V&& value) {
     auto i = static_cast<std::size_t>(index);
     if (i >= v.size()) {
         tpy_panic("list index out of bounds in assignment");
     }
-    v[i] = value;
+    v[i] = std::forward<V>(value);
+}
+
+/**
+ * list_insert - Python list.insert() for std::vector.
+ *
+ * Inserts value at index. Clamps index to valid range (Python semantics).
+ * Uses perfect forwarding to support both copy and move.
+ */
+template<typename T, typename V>
+void list_insert(std::vector<T>& v, int32_t index, V&& value) {
+    auto i = static_cast<std::size_t>(index);
+    if (i > v.size()) {
+        i = v.size();  // Python clamps to end
+    }
+    v.insert(v.begin() + static_cast<std::ptrdiff_t>(i), std::forward<V>(value));
+}
+
+/**
+ * list_remove - Python list.remove() for std::vector.
+ *
+ * Removes first occurrence of value. Panics if not found.
+ */
+template<typename T>
+void list_remove(std::vector<T>& v, const T& value) {
+    auto it = std::find(v.begin(), v.end(), value);
+    if (it == v.end()) {
+        tpy_panic("list.remove(x): x not in list");
+    }
+    v.erase(it);
 }
 
 // --- Collection printing (Python-style: [a, b, c]) ---

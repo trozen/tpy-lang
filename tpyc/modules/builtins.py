@@ -55,6 +55,16 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"], methods={
         returns=VOID,
         cpp="tpy::set_item({self}, {0}, {1})",
     )],
+    "insert": [MethodDef(
+        params=[ParamDef("index", INT32), ParamDef("value", "T")],
+        returns=VOID,
+        cpp="tpy::list_insert({self}, {0}, {1})",
+    )],
+    "remove": [MethodDef(
+        params=[ParamDef("value", "T")],
+        returns=VOID,
+        cpp="tpy::list_remove({self}, {0})",
+    )],
 })
 
 module.register_type(STR, cpp_type="std::string_view", methods={

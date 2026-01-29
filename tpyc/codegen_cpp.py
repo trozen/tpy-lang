@@ -1004,24 +1004,13 @@ class CodeGenerator:
                 if methods:
                     return self._gen_method_from_def(obj, expr.args, methods[0])
 
-            # Hardcoded methods not in module system yet (size, insert, remove, extend)
+            # Hardcoded methods not in module system yet (size, extend)
             if isinstance(obj_type, (ArrayType, SpanType)):
                 if expr.method == "size":
                     return f"static_cast<int32_t>({obj}.size())"
             if isinstance(obj_type, ListType):
                 if expr.method == "size":
                     return f"static_cast<int32_t>({obj}.size())"
-                elif expr.method == "insert":
-                    # insert(index, value) -> insert(begin() + index, value)
-                    idx = self._gen_expr(expr.args[0])
-                    idx_type = self.analyzer.get_expr_type(expr.args[0])
-                    if isinstance(idx_type, BigIntType):
-                        idx = f"{idx}.to_int32()"
-                    val = self._gen_expr(expr.args[1])
-                    return f"{obj}.insert({obj}.begin() + {idx}, {val})"
-                elif expr.method == "remove":
-                    # remove(value) -> erase first occurrence
-                    return f"{obj}.erase(std::find({obj}.begin(), {obj}.end(), {args}))"
                 elif expr.method == "extend":
                     # extend(other) -> insert at end
                     arg = expr.args[0]
