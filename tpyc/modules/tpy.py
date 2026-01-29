@@ -70,6 +70,11 @@ module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"], me
         returns="T",
         cpp="{self}[{0}]",
     )],
+    "__setitem__": [MethodDef(
+        params=[ParamDef("index", INT32), ParamDef("value", "T")],
+        returns=VOID,
+        cpp="{self}[{0}] = {1}",
+    )],
 })
 
 # Span[T]: Non-owning read-only view

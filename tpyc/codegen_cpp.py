@@ -561,8 +561,11 @@ class CodeGenerator:
             index_type = self.analyzer.get_expr_type(stmt.target.index)
             index_expr = self._gen_index_expr(obj, stmt.target.index, index_type)
 
-            if isinstance(obj_type, (StaticListType, ListType)):
-                out.write(f"{indent}tpy::set_item({obj}, {index_expr}, {value});\n")
+            # Use module lookup for __setitem__
+            methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
+            if methods:
+                code = methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr).replace("{1}", value)
+                out.write(f"{indent}{code};\n")
             else:
                 out.write(f"{indent}{obj}[{index_expr}] = {value};\n")
             return
@@ -624,11 +627,11 @@ class CodeGenerator:
                 f"(element type: {elem_type})"
             )
 
-        # Generate read expression using get_item()
-        if isinstance(obj_type, (StaticListType, ListType)):
-            read_expr = f"tpy::get_item({obj}, {index_expr})"
+        # Generate read expression using module lookup for __getitem__
+        get_methods = builtin_modules.lookup_type_method(obj_type, "__getitem__")
+        if get_methods:
+            read_expr = get_methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr)
         else:
-            # Array, Span - use [] directly
             read_expr = f"{obj}[{index_expr}]"
 
         value = self._gen_expr(stmt.value)
@@ -646,11 +649,12 @@ class CodeGenerator:
             cpp_op = "/" if stmt.op == "//" else stmt.op
             result_expr = f"{read_expr} {cpp_op} {value}"
 
-        # Generate write using set_item()
-        if isinstance(obj_type, (StaticListType, ListType)):
-            out.write(f"{indent}tpy::set_item({obj}, {index_expr}, {result_expr});\n")
+        # Generate write using module lookup for __setitem__
+        set_methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
+        if set_methods:
+            code = set_methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr).replace("{1}", result_expr)
+            out.write(f"{indent}{code};\n")
         else:
-            # Array, Span - use [] directly
             out.write(f"{indent}{obj}[{index_expr}] = {result_expr};\n")
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
@@ -1056,15 +1060,15 @@ class CodeGenerator:
 
         elif isinstance(expr, TpySubscript):
             obj = self._gen_expr(expr.obj)
-            # Use resolved type to handle PendingListType correctly
             obj_type = self._get_resolved_type(expr.obj)
             index_type = self.analyzer.get_expr_type(expr.index)
             index_expr = self._gen_index_expr(obj, expr.index, index_type)
 
-            # Use get_item for StaticList/list (handles value/ref via is_value_type trait)
-            if isinstance(obj_type, (StaticListType, ListType)):
-                return f"tpy::get_item({obj}, {index_expr})"
-            # Array, Span, str - use [] (returns reference, but read-only for Span)
+            # Use module lookup for __getitem__
+            methods = builtin_modules.lookup_type_method(obj_type, "__getitem__")
+            if methods:
+                return methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr)
+            # Fallback for types without __getitem__ (e.g., str)
             return f"{obj}[{index_expr}]"
 
         return "/* unknown expr */"

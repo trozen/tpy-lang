@@ -831,13 +831,7 @@ class SemanticAnalyzer:
                 resolved = builtin_modules.resolve_method(methods[0], type_params)
                 return self._check_method_args(expr, resolved, obj_type)
 
-            # Hardcoded method: size (alias for __len__)
-            if expr.method == "size":
-                if expr.args:
-                    raise SemanticError("size() takes no arguments")
-                return INT32
-            else:
-                raise SemanticError(f"Unknown StaticList method: '{expr.method}'")
+            raise SemanticError(f"Unknown StaticList method: '{expr.method}'")
 
         # Array methods - use module lookup
         if isinstance(obj_type, ArrayType):
@@ -847,13 +841,7 @@ class SemanticAnalyzer:
                 resolved = builtin_modules.resolve_method(methods[0], type_params)
                 return self._check_method_args(expr, resolved, obj_type)
 
-            # Hardcoded method: size (alias for __len__)
-            if expr.method == "size":
-                if expr.args:
-                    raise SemanticError("size() takes no arguments")
-                return INT32
-            else:
-                raise SemanticError(f"Unknown Array method: '{expr.method}'")
+            raise SemanticError(f"Unknown Array method: '{expr.method}'")
 
         # Span methods - use module lookup
         if isinstance(obj_type, SpanType):
@@ -863,13 +851,7 @@ class SemanticAnalyzer:
                 resolved = builtin_modules.resolve_method(methods[0], type_params)
                 return self._check_method_args(expr, resolved, obj_type)
 
-            # Hardcoded method: size (alias for __len__)
-            if expr.method == "size":
-                if expr.args:
-                    raise SemanticError("size() takes no arguments")
-                return INT32
-            else:
-                raise SemanticError(f"Unknown Span method: '{expr.method}'")
+            raise SemanticError(f"Unknown Span method: '{expr.method}'")
 
         # PendingListType and ListType methods
         if isinstance(obj_type, (PendingListType, ListType)):
