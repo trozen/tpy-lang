@@ -39,7 +39,7 @@ class BuiltinFunctionDef:
 @dataclass
 class BuiltinTypeDef:
     """Definition of a built-in type with its methods."""
-    qualified_name: str
+    type_obj: "TpyType | None"  # The type object (e.g., INT32), None for parameterized types
     cpp_type: str
     methods: dict[str, list[MethodDef]] = field(default_factory=dict)
     constructors: list[MethodDef] = field(default_factory=list)
@@ -57,13 +57,26 @@ class BuiltinModule:
         """Register a built-in function."""
         self.functions[name] = BuiltinFunctionDef(name=name, overloads=overloads)
 
+    def register_type(self, type_obj: "TpyType", cpp_type: str,
+                      methods: dict[str, list[MethodDef]] | None = None,
+                      constructors: list[MethodDef] | None = None):
+        """Register a built-in type using its type object. Preferred for non-parameterized types."""
+        qname = type_obj.qualified_name()
+        assert qname is not None, f"Type {type_obj} has no qualified_name"
+        self.types[qname] = BuiltinTypeDef(
+            type_obj=type_obj,
+            cpp_type=cpp_type,
+            methods=methods or {},
+            constructors=constructors or [],
+        )
+
     def type(self, name: str, cpp_type: str,
              methods: dict[str, list[MethodDef]] | None = None,
              constructors: list[MethodDef] | None = None):
-        """Register a built-in type. Stored with qualified name (module.name)."""
+        """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
         qualified_name = f"{self.name}.{name}"
         self.types[qualified_name] = BuiltinTypeDef(
-            qualified_name=qualified_name,
+            type_obj=None,  # Parameterized type, no single instance
             cpp_type=cpp_type,
             methods=methods or {},
             constructors=constructors or [],
@@ -108,27 +121,34 @@ def lookup_function(name: str) -> BuiltinFunctionDef | None:
     return None
 
 
-def lookup_type(qualified_name: str) -> BuiltinTypeDef | None:
-    """Lookup a type by qualified name (e.g., 'tpy.Array', 'builtins.list')."""
+def lookup_type(type_or_name: "TpyType | str") -> BuiltinTypeDef | None:
+    """Lookup a type by type object or qualified name string."""
+    if isinstance(type_or_name, str):
+        qname = type_or_name
+    else:
+        qname = type_or_name.qualified_name()
+        if qname is None:
+            return None
     for module in _all_modules():
-        if typ := module.types.get(qualified_name):
+        if typ := module.types.get(qname):
             return typ
     return None
 
 
-def lookup_type_method(qualified_type_name: str, method_name: str) -> list[MethodDef] | None:
-    """Lookup a method on a built-in type by qualified type name."""
-    if typ := lookup_type(qualified_type_name):
+def lookup_type_method(type_or_name: "TpyType | str", method_name: str) -> list[MethodDef] | None:
+    """Lookup a method on a built-in type."""
+    if typ := lookup_type(type_or_name):
         return typ.methods.get(method_name)
     return None
 
 
-def lookup_type_by_name(type_name: str) -> BuiltinTypeDef | None:
-    """Lookup a type by simple name (e.g., 'Int32', 'list')."""
+def lookup_type_by_func_name(func_name: str) -> BuiltinTypeDef | None:
+    """Lookup a type by constructor function name (e.g., 'Int32'). Only returns types with constructors."""
     for module in _all_modules():
-        qualified = f"{module.name}.{type_name}"
+        qualified = f"{module.name}.{func_name}"
         if typ := module.types.get(qualified):
-            return typ
+            if typ.constructors:  # Only return if it has constructors
+                return typ
     return None
 
 

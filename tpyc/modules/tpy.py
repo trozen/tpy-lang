@@ -10,7 +10,7 @@ from tpyc.typesys import INT32, BIGINT
 module = BuiltinModule("tpy")
 
 # Int32: 32-bit signed integer with checked arithmetic
-module.type("Int32", cpp_type="int32_t", constructors=[
+module.register_type(INT32, cpp_type="int32_t", constructors=[
     MethodDef(params=[], returns=INT32, cpp="0"),
     MethodDef(params=[ParamDef("x", INT32)], returns=INT32, cpp="{0}"),
     MethodDef(params=[ParamDef("x", BIGINT)], returns=INT32, cpp="{0}.to_int32()"),

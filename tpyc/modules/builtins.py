@@ -5,7 +5,7 @@ Defines functions like chr, print, len, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, BIGINT, CHAR
+from tpyc.typesys import INT32, BIGINT, CHAR, STR
 
 module = BuiltinModule("builtins")
 
@@ -30,7 +30,7 @@ module.type("list", cpp_type="std::vector<{T}>", methods={
     )],
 })
 
-module.type("str", cpp_type="std::string_view", methods={
+module.register_type(STR, cpp_type="std::string_view", methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -40,7 +40,7 @@ module.type("str", cpp_type="std::string_view", methods={
 
 # int: arbitrary precision integer (BigInt)
 # Uses C++ operator overloads defined in tpy::BigInt
-module.type("int", cpp_type="tpy::BigInt", methods={
+module.register_type(BIGINT, cpp_type="tpy::BigInt", methods={
     # Binary arithmetic operators
     "__add__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) + ({0})")],
     "__sub__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) - ({0})")],

@@ -871,7 +871,7 @@ class CodeGenerator:
                 # Use module system to get Int32 binary operator
                 method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
                 if method_name:
-                    methods = builtin_modules.lookup_type_method("tpy.Int32", method_name)
+                    methods = builtin_modules.lookup_type_method(INT32, method_name)
                     if methods:
                         result = methods[0].cpp.replace("{self}", left).replace("{0}", right)
                         return result
@@ -938,9 +938,8 @@ class CodeGenerator:
 
         elif isinstance(expr, TpyCall):
             # Check if it's a builtin type constructor (e.g., Int32)
-            if type_def := builtin_modules.lookup_type_by_name(expr.func):
-                if type_def.constructors:
-                    return self._gen_constructor(expr, type_def)
+            if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
+                return self._gen_constructor(expr, type_def)
             # int() constructor for BigInt
             if expr.func == "int":
                 if len(expr.args) == 0:

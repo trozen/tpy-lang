@@ -722,9 +722,8 @@ class SemanticAnalyzer:
             return BIGINT
 
         # Check if it's a builtin type constructor (e.g., Int32)
-        if type_def := builtin_modules.lookup_type_by_name(expr.func):
-            if type_def.constructors:
-                return self._check_constructor(expr, type_def)
+        if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
+            return self._check_constructor(expr, type_def)
 
         # Check if it's a record constructor
         record = self.registry.get_record(expr.func)
