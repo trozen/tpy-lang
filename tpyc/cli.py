@@ -6,7 +6,9 @@ Usage:
     tpyc input.tp.py -o out/      # Compile to C++ in out/
     tpyc input.tp.py --build      # Compile to C++ and build binary
     tpyc input.tp.py --run        # Compile, build, and run
+    tpyc - --run                  # Read from stdin, build, and run
     tpyc --repl                   # Start interactive REPL
+    tpyc --repl file.tp.py        # Load file then start REPL
     tpyc --repl --verbose         # REPL with C++ output shown
 """
 
@@ -14,6 +16,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from .parse import Parser, ParseError
@@ -101,38 +104,59 @@ def main() -> int:
     # Handle REPL mode
     if args.repl:
         from .repl import REPLSession
-        return REPLSession(verbose=args.verbose).run()
+        preload_files = []
+        if args.input:
+            # Support multiple files separated by the input arg
+            preload_files = [Path(args.input).resolve()]
+        return REPLSession(verbose=args.verbose, preload_files=preload_files).run()
 
     # Require input file for non-REPL modes
     if not args.input:
         parser.error("the following arguments are required: input")
 
-    input_path = Path(args.input).resolve()
+    # Handle stdin input (specified as "-")
+    reading_from_stdin = args.input == "-"
+    temp_dir = None
 
-    if not input_path.exists():
-        print(f"Error: Input file not found: {input_path}", file=sys.stderr)
-        return 1
-
-    # Determine output directory
-    if args.output:
-        output_dir = Path(args.output)
+    if reading_from_stdin:
+        source = sys.stdin.read()
+        module_name = "main"
+        # Use a temp directory for stdin input
+        temp_dir = tempfile.mkdtemp(prefix="tpyc_")
+        if args.output:
+            output_dir = Path(args.output)
+        else:
+            output_dir = Path(temp_dir)
+        input_path = None
     else:
-        # Default: __tpyc__/ next to source file
-        output_dir = input_path.parent / "__tpyc__"
+        input_path = Path(args.input).resolve()
 
-    # Get module name for output paths
-    module_name = get_module_name(input_path)
+        if not input_path.exists():
+            print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+            return 1
+
+        # Determine output directory
+        if args.output:
+            output_dir = Path(args.output)
+        else:
+            # Default: __tpyc__/ next to source file
+            output_dir = input_path.parent / "__tpyc__"
+
+        # Get module name for output paths
+        module_name = get_module_name(input_path)
 
     # Create per-module subdirectory with .d suffix for C++ sources
     module_dir = output_dir / f"{module_name}.d"
     module_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Read source
-        source = input_path.read_text()
+        # Read source (already read if from stdin)
+        if not reading_from_stdin:
+            source = input_path.read_text()
 
         if args.verbose:
-            print(f"Compiling {input_path}...")
+            source_name = "<stdin>" if reading_from_stdin else str(input_path)
+            print(f"Compiling {source_name}...")
 
         # Parse
         p = Parser()
@@ -205,10 +229,12 @@ def main() -> int:
         print(f"Parse error: {e}", file=sys.stderr)
         return 1
     except SemanticError as e:
-        print(e.format(input_path.name), file=sys.stderr)
+        error_filename = "<stdin>" if reading_from_stdin else input_path.name
+        print(e.format(error_filename), file=sys.stderr)
         return 1
     except CodeGenError as e:
-        print(e.format(input_path.name), file=sys.stderr)
+        error_filename = "<stdin>" if reading_from_stdin else input_path.name
+        print(e.format(error_filename), file=sys.stderr)
         return 1
     except FileNotFoundError as e:
         print(f"Error: {e}", file=sys.stderr)

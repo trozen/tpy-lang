@@ -34,13 +34,62 @@ def get_runtime_dir() -> Path:
 class REPLSession:
     """Interactive TurboPython REPL session."""
 
-    def __init__(self, verbose: bool = False):
+    def __init__(self, verbose: bool = False, preload_files: list[Path] | None = None):
         self.accumulated_lines: list[str] = []
         self.verbose = verbose
+        self.preload_files = preload_files or []
         self.temp_dir = Path(tempfile.mkdtemp(prefix="tpyc_repl_"))
         self.counter = 0  # For unique file names
         self.prev_cpp_lines: list[str] = []  # For verbose diff
         atexit.register(self.cleanup)
+
+    def _preload_file(self, filepath: Path) -> bool:
+        """Load and execute a file, accumulating its definitions.
+
+        Returns True on success, False on error.
+        """
+        try:
+            source = filepath.read_text()
+        except FileNotFoundError:
+            print(f"Error: File not found: {filepath}", file=sys.stderr)
+            return False
+        except IOError as e:
+            print(f"Error reading {filepath}: {e}", file=sys.stderr)
+            return False
+
+        # Try to compile and run the file
+        success, output = self._try_compile_and_run(source, maybe_auto_print=False)
+
+        if success:
+            # Accumulate all definitions from the file
+            if self._should_accumulate(source):
+                self.accumulated_lines.append(source)
+            else:
+                # For files with mixed content, extract just the definitions
+                try:
+                    tree = ast.parse(source)
+                    definitions = []
+                    for stmt in tree.body:
+                        if isinstance(stmt, (
+                            ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+                            ast.Assign, ast.AnnAssign, ast.AugAssign,
+                            ast.Import, ast.ImportFrom,
+                        )):
+                            # Get the source lines for this statement
+                            start = stmt.lineno - 1
+                            end = stmt.end_lineno if stmt.end_lineno else stmt.lineno
+                            lines = source.split('\n')[start:end]
+                            definitions.append('\n'.join(lines))
+                    if definitions:
+                        self.accumulated_lines.extend(definitions)
+                except SyntaxError:
+                    pass
+            if output:
+                print(output, end="")
+            return True
+        else:
+            print(output, end="", file=sys.stderr)
+            return False
 
     def run(self) -> int:
         """Main REPL loop. Returns exit code."""
@@ -49,6 +98,12 @@ class REPLSession:
         print("Empty line ends multi-line input. Ctrl+D to exit.")
         if self.verbose:
             print(f"[src] {self.temp_dir}/")
+
+        # Preload files if specified
+        for filepath in self.preload_files:
+            print(f"Loading {filepath}...")
+            if not self._preload_file(filepath):
+                return 1
 
         # Setup readline history
         history_path = Path.home() / ".tpyc_history"
