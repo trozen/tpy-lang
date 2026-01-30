@@ -1,10 +1,11 @@
 """Tests that list literals can be coerced to Array types.
 
-List *literals* have compile-time known size, so they can be assigned
-to Array[T, N] variables. List *variables* cannot (see errors/list_var_to_array).
+List *literals* have compile-time known size, so they can be:
+- Assigned to Array[T, N] variables
+- Passed directly to Array[T, N] parameters
+- Used in initializers and conditions
 
-Note: Passing list literals directly to Array parameters and list repeat
-expressions require additional codegen support not yet implemented.
+List *variables* cannot be coerced to Array (see errors/list_var_to_array).
 """
 from tpy import Int32, Array
 
@@ -18,9 +19,24 @@ def main():
     arr1: Array[Int32, 3] = [1, 2, 3]
     print(sum_array(arr1))  # 6
 
-    # Another example with different values
-    arr2: Array[Int32, 3] = [10, 20, 30]
-    print(sum_array(arr2))  # 60
+    # List literal passed directly to Array parameter
+    print(sum_array([10, 20, 30]))  # 60
+
+    # List literal in variable initializer
+    result: Int32 = sum_array([100, 200, 300])
+    print(result)  # 600
+
+    # List literal in condition
+    if sum_array([1, 1, 1]) > 0:
+        print(1)  # 1
+    else:
+        print(0)
+
+    # List literal in while condition (edge case)
+    count: Int32 = 0
+    while sum_array([1, 0, 0]) > count:
+        count = count + 1
+    print(count)  # 1
 
 
 main()

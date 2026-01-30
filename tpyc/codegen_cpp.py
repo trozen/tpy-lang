@@ -73,6 +73,9 @@ class CodeGenerator:
         self.declared_vars: set[str] = set()  # Track declared variables in current scope
         self.var_types: dict[str, TpyType] = {}  # Track variable types for code generation
         self.source_lines: list[str] = []  # Source lines for emit_source_comments
+        # Pending temporaries for array literals passed to mutable Array params
+        self._pending_temps: list[tuple[str, str, str]] = []  # [(name, type_cpp, init_expr), ...]
+        self._temp_counter = 0
 
     def _get_resolved_type(self, expr: TpyExpr, target_type: TpyType | None = None) -> TpyType:
         """Get the resolved type of an expression, handling PendingListType.
@@ -475,33 +478,30 @@ class CodeGenerator:
             source_line = self.source_lines[line_idx].rstrip()
             out.write(f"{indent}// {loc.line}: {source_line}\n")
 
+    def _create_temp_for_array_literal(self, array_type: ArrayType, init_expr: str) -> str:
+        """Create a temp variable for an array literal passed to a mutable param.
+
+        Returns the temp variable name to use in the call.
+        """
+        self._temp_counter += 1
+        temp_name = f"__arr_tmp_{self._temp_counter}"
+        self._pending_temps.append((temp_name, array_type.to_cpp(), init_expr))
+        return temp_name
+
+    def _flush_pending_temps(self, out: TextIO, indent: str) -> None:
+        """Emit any pending temp variable declarations."""
+        for temp_name, type_cpp, init_expr in self._pending_temps:
+            out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
+        self._pending_temps.clear()
+
     def _gen_stmt(self, out: TextIO, stmt: TpyStmt) -> None:
         """Generate a statement."""
         indent = "  " * self.indent_level
 
         self._emit_source_comment(out, stmt.loc, indent)
 
-        if isinstance(stmt, TpyVarDecl):
-            self._gen_var_decl(out, stmt, indent)
-        elif isinstance(stmt, TpyAssign):
-            self._gen_assign(out, stmt, indent)
-        elif isinstance(stmt, TpyAugAssign):
-            self._gen_aug_assign(out, stmt, indent)
-        elif isinstance(stmt, TpyExprStmt):
-            # Skip docstrings (string literal expression statements)
-            if isinstance(stmt.expr, TpyStrLiteral):
-                return
-            expr = self._gen_expr(stmt.expr)
-            out.write(f"{indent}{expr};\n")
-        elif isinstance(stmt, TpyReturn):
-            if stmt.value:
-                # Pass return type for BigInt promotion
-                ret_type = self.current_return_type if hasattr(self, 'current_return_type') else None
-                expr = self._gen_expr(stmt.value, ret_type)
-                out.write(f"{indent}return {expr};\n")
-            else:
-                out.write(f"{indent}return;\n")
-        elif isinstance(stmt, TpyIf):
+        # Compound statements - delegate to handlers (they flush before their header)
+        if isinstance(stmt, TpyIf):
             self._gen_if(out, stmt, indent)
         elif isinstance(stmt, TpyWhile):
             self._gen_while(out, stmt, indent)
@@ -509,21 +509,50 @@ class CodeGenerator:
             self._gen_for(out, stmt, indent)
         elif isinstance(stmt, TpyForEach):
             self._gen_for_each(out, stmt, indent)
-        elif isinstance(stmt, TpyBreak):
-            out.write(f"{indent}break;\n")
-        elif isinstance(stmt, TpyContinue):
-            out.write(f"{indent}continue;\n")
+        else:
+            # Simple statements - single flush point for all
+            code = self._gen_simple_stmt(stmt, indent)
+            if code is not None:
+                self._flush_pending_temps(out, indent)
+                out.write(code)
 
-    def _gen_var_decl(self, out: TextIO, stmt: TpyVarDecl, indent: str) -> None:
-        """Generate a variable declaration or assignment."""
+    def _gen_simple_stmt(self, stmt: TpyStmt, indent: str) -> str | None:
+        """Generate code for simple statements. Returns code to write or None.
+
+        Expression generation happens here (which may create temps).
+        The caller handles flushing temps before writing the returned code.
+        """
+        if isinstance(stmt, TpyVarDecl):
+            return self._gen_var_decl_code(stmt, indent)
+        elif isinstance(stmt, TpyAssign):
+            return self._gen_assign_code(stmt, indent)
+        elif isinstance(stmt, TpyAugAssign):
+            return self._gen_aug_assign_code(stmt, indent)
+        elif isinstance(stmt, TpyExprStmt):
+            if isinstance(stmt.expr, TpyStrLiteral):
+                return None  # Skip docstrings
+            return f"{indent}{self._gen_expr(stmt.expr)};\n"
+        elif isinstance(stmt, TpyReturn):
+            if stmt.value:
+                ret_type = self.current_return_type if hasattr(self, 'current_return_type') else None
+                return f"{indent}return {self._gen_expr(stmt.value, ret_type)};\n"
+            return f"{indent}return;\n"
+        elif isinstance(stmt, TpyBreak):
+            return f"{indent}break;\n"
+        elif isinstance(stmt, TpyContinue):
+            return f"{indent}continue;\n"
+        return None
+
+    def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
+        """Generate code for a variable declaration. Returns code to write or None."""
         # Check if variable is already declared (reassignment)
         if stmt.name in self.declared_vars:
             if stmt.init:
                 # For reassignment, use the existing variable's type as target
                 var_type = self.var_types.get(stmt.name)
                 init_expr = self._gen_expr(stmt.init, var_type)
-                out.write(f"{indent}{stmt.name} = {init_expr};\n")
-            return
+                return f"{indent}{stmt.name} = {init_expr};\n"
+            return None
 
         # Determine target type for first declaration
         target_type = stmt.type
@@ -576,12 +605,12 @@ class CodeGenerator:
 
         if stmt.init:
             init_expr = self._gen_expr(stmt.init, target_type)
-            out.write(f"{indent}{cpp_type} {stmt.name} = {init_expr};\n")
+            return f"{indent}{cpp_type} {stmt.name} = {init_expr};\n"
         else:
-            out.write(f"{indent}{cpp_type} {stmt.name};\n")
+            return f"{indent}{cpp_type} {stmt.name};\n"
 
-    def _gen_assign(self, out: TextIO, stmt: TpyAssign, indent: str) -> None:
-        """Generate an assignment."""
+    def _gen_assign_code(self, stmt: TpyAssign, indent: str) -> str:
+        """Generate code for an assignment. Returns code to write."""
         # Special handling for subscript assignment
         if isinstance(stmt.target, TpySubscript):
             obj = self._gen_expr(stmt.target.obj)
@@ -594,23 +623,21 @@ class CodeGenerator:
             methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
             if methods:
                 code = methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr).replace("{1}", value)
-                out.write(f"{indent}{code};\n")
+                return f"{indent}{code};\n"
             else:
-                out.write(f"{indent}{obj}[{index_expr}] = {value};\n")
-            return
+                return f"{indent}{obj}[{index_expr}] = {value};\n"
 
         # Default: simple assignment
         target = self._gen_expr(stmt.target)
         target_type = self.analyzer.get_expr_type(stmt.target)
         value = self._gen_expr(stmt.value, target_type)
-        out.write(f"{indent}{target} = {value};\n")
+        return f"{indent}{target} = {value};\n"
 
-    def _gen_aug_assign(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
-        """Generate an augmented assignment."""
+    def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:
+        """Generate code for an augmented assignment. Returns code to write."""
         # Special handling for subscript targets - use set_value() pattern
         if isinstance(stmt.target, TpySubscript):
-            self._gen_aug_assign_subscript(out, stmt, indent)
-            return
+            return self._gen_aug_assign_subscript_code(stmt, indent)
 
         target = self._gen_expr(stmt.target)
         value = self._gen_expr(stmt.value)
@@ -624,25 +651,26 @@ class CodeGenerator:
             value_type = INT32
 
         # Try module system for augmented assignment (a += b is a = a + b)
-        if binop_result := builtin_modules.lookup_binop(target_type, stmt.op, value_type):
+        if target_type and (binop_result := builtin_modules.lookup_binop(target_type, stmt.op, value_type)):
             result = self._gen_binop_from_result(binop_result, target, value)
-            out.write(f"{indent}{target} = {result};\n")
+            return f"{indent}{target} = {result};\n"
         else:
             # Fallback for operators not in module system
             cpp_op = "/" if stmt.op == "//" else stmt.op
-            out.write(f"{indent}{target} {cpp_op}= {value};\n")
+            return f"{indent}{target} {cpp_op}= {value};\n"
 
-    def _gen_aug_assign_subscript(self, out: TextIO, stmt: TpyAugAssign, indent: str) -> None:
-        """Generate augmented assignment for subscript targets.
+    def _gen_aug_assign_subscript_code(self, stmt: TpyAugAssign, indent: str) -> str:
+        """Generate code for augmented assignment to subscript targets.
 
         Uses set_value(container, index, get_value(container, index) op value) pattern
         for range-checked read and write. Only supported for value type elements.
         """
+        assert isinstance(stmt.target, TpySubscript)
         subscript = stmt.target
         obj = self._gen_expr(subscript.obj)
         obj_type = self._get_resolved_type(subscript.obj)
         index_type = self.analyzer.get_expr_type(subscript.index)
-        index_expr = self._gen_index_expr(obj, subscript.index, index_type)
+        index_expr = self._gen_index_expr(obj, subscript.index, index_type or INT32)
 
         # Get element type
         elem_type = None
@@ -672,7 +700,7 @@ class CodeGenerator:
             value_type = INT32
 
         # Compute the result expression
-        if binop_result := builtin_modules.lookup_binop(elem_type, stmt.op, value_type):
+        if elem_type and (binop_result := builtin_modules.lookup_binop(elem_type, stmt.op, value_type)):
             result_expr = self._gen_binop_from_result(binop_result, read_expr, value)
         else:
             cpp_op = "/" if stmt.op == "//" else stmt.op
@@ -682,13 +710,14 @@ class CodeGenerator:
         set_methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
         if set_methods:
             code = set_methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr).replace("{1}", result_expr)
-            out.write(f"{indent}{code};\n")
+            return f"{indent}{code};\n"
         else:
-            out.write(f"{indent}{obj}[{index_expr}] = {result_expr};\n")
+            return f"{indent}{obj}[{index_expr}] = {result_expr};\n"
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
         cond = self._gen_expr(stmt.condition)
+        self._flush_pending_temps(out, indent)
         out.write(f"{indent}if ({cond}) {{\n")
 
         self.indent_level += 1
@@ -708,6 +737,7 @@ class CodeGenerator:
     def _gen_while(self, out: TextIO, stmt: TpyWhile, indent: str) -> None:
         """Generate a while loop."""
         cond = self._gen_expr(stmt.condition)
+        self._flush_pending_temps(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
 
         self.indent_level += 1
@@ -728,6 +758,7 @@ class CodeGenerator:
             start = f"{start}.to_int32()"
         if isinstance(end_type, BigIntType):
             end = f"{end}.to_int32()"
+        self._flush_pending_temps(out, indent)
         out.write(f"{indent}for (int32_t {stmt.var} = {start}; {stmt.var} < {end}; ++{stmt.var}) {{\n")
 
         self.indent_level += 1
@@ -759,6 +790,9 @@ class CodeGenerator:
         # For strings, wrap in std::string_view for range-based for
         if isinstance(iterable_type, StrType):
             iterable = f"std::string_view({iterable})"
+
+        # Flush any pending temps before for loop header
+        self._flush_pending_temps(out, indent)
 
         # Generate C++ range-based for loop
         if elem_type:
@@ -1001,9 +1035,16 @@ class CodeGenerator:
             if func_info:
                 gen_args = []
                 for arg, (pname, ptype) in zip(expr.args, func_info.params):
-                    # Pass param type for BigInt promotion
-                    gen_arg = self._gen_expr(arg, ptype)
-                    gen_args.append(gen_arg)
+                    # Array literals passed to Array params need a temp variable
+                    # because C++ can't bind rvalue {1,2,3} to non-const reference
+                    if isinstance(ptype, ArrayType) and isinstance(arg, TpyArrayLiteral):
+                        init_expr = self._gen_expr(arg, ptype)
+                        temp_name = self._create_temp_for_array_literal(ptype, init_expr)
+                        gen_args.append(temp_name)
+                    else:
+                        # Pass param type for BigInt promotion
+                        gen_arg = self._gen_expr(arg, ptype)
+                        gen_args.append(gen_arg)
                 return f"{expr.func}({', '.join(gen_args)})"
             # Generic type instantiation (e.g., StaticList[T, N]())
             if expr.call_type is not None:
