@@ -218,23 +218,20 @@ class REPLSession:
     def _should_accumulate(self, source: str) -> bool:
         """Check if input should be accumulated for future compilations.
 
-        Only accumulates definitions (def, class) and assignments.
-        Side-effect statements (print, bare expressions, control flow) are not
-        accumulated since they've already executed.
+        Accumulates everything except print() calls, which are output
+        side-effects that shouldn't be replayed.
         """
         try:
             tree = ast.parse(source)
             if not tree.body:
                 return False
 
-            # Only accumulate if ALL statements are definitions/assignments
+            # Don't accumulate if ANY statement is a print() call
             for stmt in tree.body:
-                if not isinstance(stmt, (
-                    ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
-                    ast.Assign, ast.AnnAssign, ast.AugAssign,
-                    ast.Import, ast.ImportFrom,
-                )):
-                    return False
+                if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
+                    func = stmt.value.func
+                    if isinstance(func, ast.Name) and func.id == "print":
+                        return False
 
             return True
         except SyntaxError:
