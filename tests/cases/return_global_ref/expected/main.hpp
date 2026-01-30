@@ -5,7 +5,7 @@
 
 struct Point;
 
-extern Point ORIGIN;
+extern tpy::Global<Point> ORIGIN;
 
 struct Point {
   int32_t x;
@@ -15,5 +15,6 @@ struct Point {
 };
 
 Point& get_origin();
-int main();
+void __user_main();
 
+void __tpy_init_main();

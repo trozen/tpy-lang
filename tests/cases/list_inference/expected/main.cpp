@@ -2,9 +2,9 @@
 #include "main.hpp"
 
 // 4: global_list: list[Int32] = [1, 2, 3]
-std::vector<int32_t> global_list = {1, 2, 3};
+tpy::Global<std::vector<int32_t>> global_list;
 // 7: global_inferred = [10, 20, 30]
-std::vector<tpy::BigInt> global_inferred = {10, 20, 30};
+tpy::Global<std::vector<tpy::BigInt>> global_inferred;
 
 // 10: def test_no_mutation() -> Int32:
 int32_t test_no_mutation() {
@@ -53,10 +53,14 @@ int32_t test_span_param() {
 }
 
 void __tpy_init_main() {
+  // 4: global_list: list[Int32] = [1, 2, 3]
+  global_list = {1, 2, 3};
+  // 7: global_inferred = [10, 20, 30]
+  global_inferred = {10, 20, 30};
   // 37: print(global_list[0])  # 1
-  std::cout << tpy::get_item(global_list, 0) << "\n";
+  std::cout << tpy::get_item((*global_list), 0) << "\n";
   // 40: print(global_inferred[1])  # 20
-  std::cout << tpy::get_item(global_inferred, 1) << "\n";
+  std::cout << tpy::get_item((*global_inferred), 1) << "\n";
   // 43: print(test_no_mutation())  # 1
   std::cout << test_no_mutation() << "\n";
   // 46: print(test_mutation())  # 4

@@ -3,7 +3,7 @@
 
 #include "tpy_runtime.hpp"
 
-extern tpy::BigInt neg;
+extern tpy::Global<tpy::BigInt> neg;
 
 tpy::BigInt factorial(const tpy::BigInt& n);
 void test_arithmetic();

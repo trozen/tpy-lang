@@ -14,7 +14,7 @@ int32_t use_owned_point(Point p) {
 }
 
 // 29: def main():
-int main() {
+void __user_main() {
   // 31:     print(make_point(10, 20).x)
   std::cout << make_point(10, 20).x << "\n";
   // 32:     print(make_point(30, 40).y)
@@ -27,6 +27,15 @@ int main() {
   std::cout << pt.x << "\n";
   // 40:     print(pt.y)
   std::cout << pt.y << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 1: """Tests field access on Own[T] types.
+  // 43: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

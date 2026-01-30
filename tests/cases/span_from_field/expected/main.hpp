@@ -12,5 +12,6 @@ struct Box {
   explicit Box(std::array<int32_t, 3> items) : items(items) {}
 };
 
-int main();
+void __user_main();
 
+void __tpy_init_main();

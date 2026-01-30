@@ -4,5 +4,6 @@
 #include "tpy_runtime.hpp"
 
 std::span<const int32_t> get_span(std::array<int32_t, 4>& arr);
-int main();
+void __user_main();
 
+void __tpy_init_main();

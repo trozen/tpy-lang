@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 3: def main() -> None:
-int main() {
+void __user_main() {
   // 4:     items: list[Int32] = [1]
   std::vector<int32_t> items = {1};
   // 5:     items.pop()  # Remove the only element
@@ -11,6 +11,14 @@ int main() {
   int32_t x = tpy::pop_back(items);
   // 7:     print(x)
   std::cout << x << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 9: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

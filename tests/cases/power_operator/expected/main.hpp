@@ -3,8 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
-extern tpy::BigInt x;
-extern tpy::BigInt y;
+extern tpy::Global<tpy::BigInt> x;
+extern tpy::Global<tpy::BigInt> y;
 
 
 void __tpy_init_main();

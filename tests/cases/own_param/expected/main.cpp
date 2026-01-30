@@ -20,11 +20,19 @@ int32_t take_point(Point p) {
 }
 
 // 21: def main():
-int main() {
+void __user_main() {
   // 23:     result: Int32 = take_point(make_point(10, 20))
   int32_t result = take_point(make_point(10, 20));
   // 24:     print(result)
   std::cout << result << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 27: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

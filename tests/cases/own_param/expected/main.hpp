@@ -14,5 +14,6 @@ struct Point {
 
 Point make_point(int32_t x, int32_t y);
 int32_t take_point(Point p);
-int main();
+void __user_main();
 
+void __tpy_init_main();

@@ -14,13 +14,21 @@ Point create_point(int32_t x, int32_t y) {
 }
 
 // 16: def main():
-int main() {
+void __user_main() {
   // 17:     pt: Point = create_point(10, 20)
   Point pt = create_point(10, 20);
   // 18:     print(pt.x)
   std::cout << pt.x << "\n";
   // 19:     print(pt.y)
   std::cout << pt.y << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 22: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

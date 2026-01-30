@@ -3,8 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
-extern std::vector<tpy::BigInt> nums;
-extern std::vector<std::vector<tpy::BigInt>> nested;
+extern tpy::Global<std::vector<tpy::BigInt>> nums;
+extern tpy::Global<std::vector<std::vector<tpy::BigInt>>> nested;
 
 
 void __tpy_init_main();

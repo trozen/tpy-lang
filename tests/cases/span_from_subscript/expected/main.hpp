@@ -3,5 +3,6 @@
 
 #include "tpy_runtime.hpp"
 
-int main();
+void __user_main();
 
+void __tpy_init_main();

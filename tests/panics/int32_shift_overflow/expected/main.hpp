@@ -3,7 +3,7 @@
 
 #include "tpy_runtime.hpp"
 
-extern int32_t x;
+extern tpy::Global<int32_t> x;
 
 
 void __tpy_init_main();

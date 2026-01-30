@@ -16,7 +16,7 @@ int32_t take_owned_int32(int32_t x) {
 }
 
 // 14: def main() -> None:
-int main() {
+void __user_main() {
   // 16:     result1: Int32 = return_owned_int32()
   int32_t result1 = return_owned_int32();
   // 17:     print(result1)  # 42
@@ -27,6 +27,15 @@ int main() {
   int32_t result2 = take_owned_int32((big).to_int32());
   // 22:     print(result2)  # 100
   std::cout << result2 << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 1: """Tests that coercions work correctly through Own[T] wrapper.
+  // 24: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

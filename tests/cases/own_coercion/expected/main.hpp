@@ -5,5 +5,6 @@
 
 int32_t return_owned_int32();
 int32_t take_owned_int32(int32_t x);
-int main();
+void __user_main();
 
+void __tpy_init_main();

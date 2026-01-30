@@ -2,11 +2,11 @@
 #include "main.hpp"
 
 // 29: items = StaticList[Item, 16]()
-StaticList<Item, 16> items = StaticList<Item, 16>();
+tpy::Global<StaticList<Item, 16>> items;
 // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
-StaticList<int32_t, 8> nums = StaticList<int32_t, 8>({100, 200, 300});
+tpy::Global<StaticList<int32_t, 8>> nums;
 // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
-StaticList<int32_t, 8> filled = StaticList<int32_t, 8>(std::max(0, 8), 0);
+tpy::Global<StaticList<int32_t, 8>> filled;
 
 // 10: def process_list(items: StaticList[Item, 16]) -> None:
 void process_list(StaticList<Item, 16>& items) {
@@ -36,26 +36,32 @@ void print_list(StaticList<Item, 16>& items) {
 }
 
 void __tpy_init_main() {
+  // 29: items = StaticList[Item, 16]()
+  items = StaticList<Item, 16>();
   // 30: process_list(items)
   process_list(items);
   // 31: print(len(items))
-  std::cout << items.size() << "\n";
+  std::cout << (*items).size() << "\n";
   // 32: print_list(items)
   print_list(items);
+  // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
+  nums = StaticList<int32_t, 8>({100, 200, 300});
   // 36: print(len(nums))
-  std::cout << nums.size() << "\n";
+  std::cout << (*nums).size() << "\n";
   // 37: print(nums[0])
-  std::cout << tpy::get_item(nums, 0) << "\n";
+  std::cout << tpy::get_item((*nums), 0) << "\n";
   // 38: print(nums[2])
-  std::cout << tpy::get_item(nums, 2) << "\n";
+  std::cout << tpy::get_item((*nums), 2) << "\n";
+  // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
+  filled = StaticList<int32_t, 8>(std::max(0, 8), 0);
   // 42: filled[0] = 42
-  tpy::set_item(filled, 0, 42);
+  tpy::set_item((*filled), 0, 42);
   // 43: print(len(filled))
-  std::cout << filled.size() << "\n";
+  std::cout << (*filled).size() << "\n";
   // 44: print(filled[0])
-  std::cout << tpy::get_item(filled, 0) << "\n";
+  std::cout << tpy::get_item((*filled), 0) << "\n";
   // 45: print(filled[7])
-  std::cout << tpy::get_item(filled, 7) << "\n";
+  std::cout << tpy::get_item((*filled), 7) << "\n";
 }
 
 int main() {

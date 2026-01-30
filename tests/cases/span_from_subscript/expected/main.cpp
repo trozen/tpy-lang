@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 3: def main() -> None:
-int main() {
+void __user_main() {
   // 4:     matrix: Array[Array[Int32, 2], 2] = [[1, 2], [3, 4]]
   std::array<std::array<int32_t, 2>, 2> matrix = {{{1, 2}, {3, 4}}};
   // 5:     s: Span[Int32] = matrix[1]
@@ -11,6 +11,14 @@ int main() {
   std::cout << s[0] << "\n";
   // 7:     print(s[1])
   std::cout << s[1] << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 9: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

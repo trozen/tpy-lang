@@ -2,9 +2,9 @@
 #include "main.hpp"
 
 // 23: x = 5
-tpy::BigInt x = tpy::BigInt(5);
+tpy::Global<tpy::BigInt> x;
 // 24: y = 3
-tpy::BigInt y = tpy::BigInt(3);
+tpy::Global<tpy::BigInt> y;
 
 void __tpy_init_main() {
   // 4: print(2 ** 0)   # 1
@@ -29,8 +29,12 @@ void __tpy_init_main() {
   std::cout << ((tpy::BigInt(0)).pow(tpy::BigInt(5))) << "\n";
   // 20: print(0 ** 0)  # 1 (by convention)
   std::cout << ((tpy::BigInt(0)).pow(tpy::BigInt(0))) << "\n";
+  // 23: x = 5
+  x = tpy::BigInt(5);
+  // 24: y = 3
+  y = tpy::BigInt(3);
   // 25: print(x ** y)  # 125
-  std::cout << ((x).pow(y)) << "\n";
+  std::cout << (((*x)).pow((*y))) << "\n";
 }
 
 int main() {

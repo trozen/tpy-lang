@@ -3,9 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
-extern std::vector<int32_t> items;
-extern StaticList<int32_t, 10> sl;
-extern std::array<int32_t, 3> arr;
+extern tpy::Global<std::vector<int32_t>> items;
+extern tpy::Global<StaticList<int32_t, 10>> sl;
+extern tpy::Global<std::array<int32_t, 3>> arr;
 
 
 void __tpy_init_main();

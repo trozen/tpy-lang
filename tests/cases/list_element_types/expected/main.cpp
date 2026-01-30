@@ -2,19 +2,19 @@
 #include "main.hpp"
 
 // 4: pure_literals = [1, 2, 3]
-std::vector<tpy::BigInt> pure_literals = {1, 2, 3};
+tpy::Global<std::vector<tpy::BigInt>> pure_literals;
 // 8: mixed_int32 = [Int32(1), 2, 3]
-std::vector<int32_t> mixed_int32 = {1, 2, 3};
+tpy::Global<std::vector<int32_t>> mixed_int32;
 // 12: mixed_int32_rev = [1, Int32(2), 3]
-std::vector<int32_t> mixed_int32_rev = {1, 2, 3};
+tpy::Global<std::vector<int32_t>> mixed_int32_rev;
 // 16: annotated_int32: list[Int32] = [10, 20, 30]
-std::vector<int32_t> annotated_int32 = {10, 20, 30};
+tpy::Global<std::vector<int32_t>> annotated_int32;
 // 20: annotated_bigint: list[int] = [100, 200, 300]
-std::vector<tpy::BigInt> annotated_bigint = {100, 200, 300};
+tpy::Global<std::vector<tpy::BigInt>> annotated_bigint;
 // 38: global_for_span: list[Int32] = [1, 2, 3]
-std::vector<int32_t> global_for_span = {1, 2, 3};
+tpy::Global<std::vector<int32_t>> global_for_span;
 // 55: bigint_list = [1000, 2000, 3000]
-std::vector<tpy::BigInt> bigint_list = {1000, 2000, 3000};
+tpy::Global<std::vector<tpy::BigInt>> bigint_list;
 
 // 24: def local_mixed() -> Int32:
 int32_t local_mixed() {
@@ -59,24 +59,38 @@ tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
 }
 
 void __tpy_init_main() {
+  // 4: pure_literals = [1, 2, 3]
+  pure_literals = {1, 2, 3};
   // 5: print(pure_literals[0])
-  std::cout << tpy::get_item(pure_literals, 0) << "\n";
+  std::cout << tpy::get_item((*pure_literals), 0) << "\n";
+  // 8: mixed_int32 = [Int32(1), 2, 3]
+  mixed_int32 = {1, 2, 3};
   // 9: print(mixed_int32[0])
-  std::cout << tpy::get_item(mixed_int32, 0) << "\n";
+  std::cout << tpy::get_item((*mixed_int32), 0) << "\n";
+  // 12: mixed_int32_rev = [1, Int32(2), 3]
+  mixed_int32_rev = {1, 2, 3};
   // 13: print(mixed_int32_rev[1])
-  std::cout << tpy::get_item(mixed_int32_rev, 1) << "\n";
+  std::cout << tpy::get_item((*mixed_int32_rev), 1) << "\n";
+  // 16: annotated_int32: list[Int32] = [10, 20, 30]
+  annotated_int32 = {10, 20, 30};
   // 17: print(annotated_int32[0])
-  std::cout << tpy::get_item(annotated_int32, 0) << "\n";
+  std::cout << tpy::get_item((*annotated_int32), 0) << "\n";
+  // 20: annotated_bigint: list[int] = [100, 200, 300]
+  annotated_bigint = {100, 200, 300};
   // 21: print(annotated_bigint[0])
-  std::cout << tpy::get_item(annotated_bigint, 0) << "\n";
+  std::cout << tpy::get_item((*annotated_bigint), 0) << "\n";
   // 28: print(local_mixed())
   std::cout << local_mixed() << "\n";
+  // 38: global_for_span: list[Int32] = [1, 2, 3]
+  global_for_span = {1, 2, 3};
   // 39: print(sum_span(global_for_span))
-  std::cout << sum_span(tpy::as_span(global_for_span)) << "\n";
+  std::cout << sum_span(tpy::as_span((*global_for_span))) << "\n";
   // 46: print(test_local_span())
   std::cout << test_local_span() << "\n";
+  // 55: bigint_list = [1000, 2000, 3000]
+  bigint_list = {1000, 2000, 3000};
   // 56: print(sum_span_bigint(bigint_list))
-  std::cout << sum_span_bigint(tpy::as_span(bigint_list)) << "\n";
+  std::cout << sum_span_bigint(tpy::as_span((*bigint_list))) << "\n";
 }
 
 int main() {

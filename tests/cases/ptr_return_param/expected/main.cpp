@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 11: global_pt: Point = Point(1, 2)
-Point global_pt = Point(1, 2);
+tpy::Global<Point> global_pt;
 
 // 13: def addr_param(p: Point) -> Ptr[Point]:
 Point* addr_param(Point& p) {
@@ -13,11 +13,11 @@ Point* addr_param(Point& p) {
 // 17: def addr_global() -> Ptr[Point]:
 Point* addr_global() {
   // 19:     return global_pt
-  return &global_pt;
+  return &(*global_pt);
 }
 
 // 21: def main() -> None:
-int main() {
+void __user_main() {
   // 22:     local: Point = Point(10, 20)
   Point local = Point(10, 20);
   // 23:     p1: Ptr[Point] = addr_param(local)
@@ -28,6 +28,16 @@ int main() {
   Point* p2 = addr_global();
   // 26:     print(p2.y)
   std::cout << p2->y << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 11: global_pt: Point = Point(1, 2)
+  global_pt = Point(1, 2);
+  // 28: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

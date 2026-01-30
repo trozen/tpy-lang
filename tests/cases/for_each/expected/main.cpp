@@ -2,13 +2,13 @@
 #include "main.hpp"
 
 // 4: items = [1, 2, 3, 4, 5]
-std::vector<tpy::BigInt> items = {1, 2, 3, 4, 5};
+tpy::Global<std::vector<tpy::BigInt>> items;
 // 5: total: Int32 = 0
-int32_t total = 0;
+tpy::Global<int32_t> total;
 // 11: arr: Array[Int32, 3] = [10, 20, 30]
-std::array<int32_t, 3> arr = {10, 20, 30};
+tpy::Global<std::array<int32_t, 3>> arr;
 // 33: text = "AB"
-std::string_view text = "AB";
+tpy::Global<std::string_view> text;
 
 // 16: def sum_array() -> Int32:
 int32_t sum_array() {
@@ -55,15 +55,21 @@ int32_t nested_sum() {
 }
 
 void __tpy_init_main() {
+  // 4: items = [1, 2, 3, 4, 5]
+  items = {1, 2, 3, 4, 5};
+  // 5: total: Int32 = 0
+  total = 0;
   // 6: for x in items:
-  for (tpy::BigInt x : items) {
+  for (tpy::BigInt x : (*items)) {
     // 7:     total += x
     total = tpy::int32_add(total, (x).to_int32());
   }
   // 8: print(total)  # 15
   std::cout << total << "\n";
+  // 11: arr: Array[Int32, 3] = [10, 20, 30]
+  arr = {10, 20, 30};
   // 12: for val in arr:
-  for (int32_t val : arr) {
+  for (int32_t val : (*arr)) {
     // 13:     print(val)
     std::cout << val << "\n";
   }
@@ -71,8 +77,10 @@ void __tpy_init_main() {
   std::cout << sum_array() << "\n";
   // 30: print_span([7, 8, 9])
   print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
+  // 33: text = "AB"
+  text = "AB";
   // 34: for c in text:
-  for (char c : std::string_view(text)) {
+  for (char c : std::string_view((*text))) {
     // 35:     print(c)
     std::cout << c << "\n";
   }

@@ -8,7 +8,7 @@ std::span<const int32_t> get_span(std::array<int32_t, 4>& arr) {
 }
 
 // 7: def main():
-int main() {
+void __user_main() {
   // 8:     nums: Array[Int32, 4] = [1, 2, 3, 4]
   std::array<int32_t, 4> nums = {1, 2, 3, 4};
   // 9:     s: Span[Int32] = get_span(nums)
@@ -17,6 +17,14 @@ int main() {
   std::cout << s[0] << "\n";
   // 11:     print(s[3])
   std::cout << s[3] << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 13: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

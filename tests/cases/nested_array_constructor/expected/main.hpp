@@ -4,5 +4,6 @@
 #include "tpy_runtime.hpp"
 
 int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s);
-int main();
+void __user_main();
 
+void __tpy_init_main();

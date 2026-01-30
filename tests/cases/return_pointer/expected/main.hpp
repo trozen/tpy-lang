@@ -14,5 +14,6 @@ struct Point {
 
 Point* identity_ptr(Point* p);
 Point* get_ptr_copy(Point* p);
-int main();
+void __user_main();
 
+void __tpy_init_main();

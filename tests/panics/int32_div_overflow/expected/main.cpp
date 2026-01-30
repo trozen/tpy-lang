@@ -2,14 +2,20 @@
 #include "main.hpp"
 
 // 4: x: Int32 = -2147483648  # INT32_MIN
-int32_t x = (-2147483648);
+tpy::Global<int32_t> x;
 // 5: y: Int32 = -1
-int32_t y = (-1);
+tpy::Global<int32_t> y;
 // 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
-int32_t z = (tpy::int32_div(x, y));
+tpy::Global<int32_t> z;
 
 void __tpy_init_main() {
   // 1: """Test Int32 division overflow panic at runtime."""
+  // 4: x: Int32 = -2147483648  # INT32_MIN
+  x = (-2147483648);
+  // 5: y: Int32 = -1
+  y = (-1);
+  // 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
+  z = (tpy::int32_div((*x), (*y)));
   // 7: print(z)
   std::cout << z << "\n";
 }

@@ -3,9 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
-extern std::vector<int32_t> mem;
-extern std::vector<tpy::BigInt> data;
-extern std::vector<tpy::BigInt> chars;
+extern tpy::Global<std::vector<int32_t>> mem;
+extern tpy::Global<std::vector<tpy::BigInt>> data;
+extern tpy::Global<std::vector<tpy::BigInt>> chars;
 
 int32_t sum_list(std::vector<int32_t>& nums);
 

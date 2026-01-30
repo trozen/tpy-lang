@@ -2,14 +2,14 @@
 #include "main.hpp"
 
 // 33: global_list: list[int] = []
-std::vector<tpy::BigInt> global_list = {};
+tpy::Global<std::vector<tpy::BigInt>> global_list;
 // 36: global_list2: list[Int32] = list()
-std::vector<int32_t> global_list2 = std::vector<int32_t>();
+tpy::Global<std::vector<int32_t>> global_list2;
 
 // 4: def test_empty_list() -> int:
 tpy::BigInt test_empty_list() {
   // 5:     items: list[int] = []
-  std::vector<tpy::BigInt> items = {};
+  std::vector<tpy::BigInt> items = std::vector<tpy::BigInt>{};
   // 6:     items.append(1)
   items.push_back(1);
   // 7:     items.append(2)
@@ -23,7 +23,7 @@ tpy::BigInt test_empty_list() {
 // 12: def test_empty_list_int32() -> Int32:
 int32_t test_empty_list_int32() {
   // 13:     nums: list[Int32] = []
-  std::vector<int32_t> nums = {};
+  std::vector<int32_t> nums = std::vector<int32_t>{};
   // 14:     nums.append(Int32(10))
   nums.push_back(10);
   // 15:     nums.append(Int32(20))
@@ -55,6 +55,10 @@ int32_t test_list_constructor_int32() {
 }
 
 void __tpy_init_main() {
+  // 33: global_list: list[int] = []
+  global_list = std::vector<tpy::BigInt>{};
+  // 36: global_list2: list[Int32] = list()
+  global_list2 = std::vector<int32_t>();
   // 38: print(test_empty_list())
   std::cout << test_empty_list() << "\n";
   // 39: print(test_empty_list_int32())
@@ -64,13 +68,13 @@ void __tpy_init_main() {
   // 41: print(test_list_constructor_int32())
   std::cout << test_list_constructor_int32() << "\n";
   // 43: global_list.append(100)
-  global_list.push_back(100);
+  (*global_list).push_back(100);
   // 44: print(len(global_list))
-  std::cout << static_cast<int32_t>(global_list.size()) << "\n";
+  std::cout << static_cast<int32_t>((*global_list).size()) << "\n";
   // 46: global_list2.append(Int32(50))
-  global_list2.push_back(50);
+  (*global_list2).push_back(50);
   // 47: print(len(global_list2))
-  std::cout << static_cast<int32_t>(global_list2.size()) << "\n";
+  std::cout << static_cast<int32_t>((*global_list2).size()) << "\n";
 }
 
 int main() {

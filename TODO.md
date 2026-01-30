@@ -1,10 +1,13 @@
 # TODO
 
 ## Next
-- Int32(10**20) overflow; BigInt->Int32 overflow checks
-- global variables lazy initialization in c++ (in init module method)
 - make this work: `def f(l:list[int]): pass`, `f([])` (or `list()`)
+- drop `__user_main` rename, should use namespace instead
+- too many references to StaticListType, ArrayType, ListType etc in codegen_cpp.py, should be data driven
+- Int32(10**20) overflow; BigInt->Int32 overflow checks
+- float
 - basic import support; implement basic time module, with time() function
+- True/False booleans
 
 ## Python features
 - dict full support

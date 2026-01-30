@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 50: neg = -42
-tpy::BigInt neg = (-tpy::BigInt(42));
+tpy::Global<tpy::BigInt> neg;
 
 // 4: def factorial(n: int) -> int:
 tpy::BigInt factorial(const tpy::BigInt& n) {
@@ -74,6 +74,8 @@ void __tpy_init_main() {
   test_arithmetic();
   // 47: test_comparison()
   test_comparison();
+  // 50: neg = -42
+  neg = (-tpy::BigInt(42));
   // 51: print(neg)
   std::cout << neg << "\n";
 }

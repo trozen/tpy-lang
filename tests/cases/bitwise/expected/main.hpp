@@ -3,14 +3,14 @@
 
 #include "tpy_runtime.hpp"
 
-extern int32_t a;
-extern int32_t b;
-extern int32_t c;
-extern tpy::BigInt x;
-extern tpy::BigInt y;
-extern tpy::BigInt z;
-extern tpy::BigInt big1;
-extern tpy::BigInt big2;
+extern tpy::Global<int32_t> a;
+extern tpy::Global<int32_t> b;
+extern tpy::Global<int32_t> c;
+extern tpy::Global<tpy::BigInt> x;
+extern tpy::Global<tpy::BigInt> y;
+extern tpy::Global<tpy::BigInt> z;
+extern tpy::Global<tpy::BigInt> big1;
+extern tpy::Global<tpy::BigInt> big2;
 
 
 void __tpy_init_main();

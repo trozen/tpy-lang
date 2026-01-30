@@ -59,6 +59,7 @@ class CodeGenerator:
         self.module_name = "generated"
         self.declared_vars: set[str] = set()  # Track declared variables in current scope
         self.var_types: dict[str, TpyType] = {}  # Track variable types for code generation
+        self.local_scope_names: set[str] = set()  # Local vars/params that shadow globals
         self.source_lines: list[str] = []  # Source lines for emit_source_comments
         # Pending temporaries for array literals passed to mutable Array params
         self._pending_temps: list[tuple[str, str, str]] = []  # [(name, type_cpp, init_expr), ...]
@@ -158,20 +159,21 @@ class CodeGenerator:
 
         # Separate global declarations from other top-level statements early
         # (needed for extern declarations in header)
-        # Track seen names to handle re-declarations (z = 0; z = 5; → one global, one assignment)
+        # Track seen names and types to handle re-declarations (z = 0; z = 5; → one global, one assignment)
         global_decls = []
-        main_stmts = []
-        seen_globals = set()
+        seen_globals: dict[str, TpyType | None] = {}
         for stmt in module.top_level_stmts:
             if isinstance(stmt, TpyVarDecl):
                 if stmt.name not in seen_globals:
                     global_decls.append(stmt)
-                    seen_globals.add(stmt.name)
-                else:
-                    # Re-declaration becomes assignment in init function
-                    main_stmts.append(stmt)
-            else:
-                main_stmts.append(stmt)
+                    # Store the type for this global
+                    var_type = stmt.type
+                    if var_type is None and stmt.init:
+                        var_type = self._get_resolved_type(stmt.init)
+                    seen_globals[stmt.name] = var_type
+
+        # Store global names for use in expression generation (method/field access)
+        self.global_names = set(seen_globals.keys())
 
         # Forward declare records (so global externs can reference them)
         for record in module.records:
@@ -207,13 +209,13 @@ class CodeGenerator:
             cpp.write("\n")
 
         # Generate module init function and main()
-        # Skip if user already defined a main() function
-        has_user_main = any(f.name == "main" for f in module.functions)
-        if not has_user_main:
-            # Always generate init function (even if empty, for consistency)
-            self._gen_module_init_decl(hpp)
-            self._gen_module_init(cpp, main_stmts, seen_globals)
-            self._gen_main(cpp)
+        # Always generate __tpy_init for global initialization (Python semantics)
+        # Pass ALL top-level statements to init function (including globals)
+        self._gen_module_init_decl(hpp)
+        self._gen_module_init(cpp, module.top_level_stmts, seen_globals)
+        # Always generate C++ main() that calls __tpy_init
+        # (user's def main() becomes a regular function called from __tpy_init)
+        self._gen_main(cpp)
 
         self._write_header_epilogue(hpp)
 
@@ -235,12 +237,18 @@ class CodeGenerator:
         """Generate module init function declaration in header."""
         out.write(f"void __tpy_init_{self.module_name}();\n")
 
-    def _gen_module_init(self, out: TextIO, stmts: list, global_names: set[str] | None = None) -> None:
+    def _gen_module_init(self, out: TextIO, stmts: list, global_types: dict[str, TpyType | None] | None = None) -> None:
         """Generate module init function containing top-level statements."""
         out.write(f"void __tpy_init_{self.module_name}() {{\n")
-        # Pre-seed with global names so re-declarations become assignments
-        self.declared_vars = set(global_names) if global_names else set()
-        self.var_types = {}
+        # Pre-seed with global names and types so re-declarations become assignments
+        if global_types:
+            self.declared_vars = set(global_types.keys())
+            self.var_types = {name: typ for name, typ in global_types.items() if typ is not None}
+        else:
+            self.declared_vars = set()
+            self.var_types = {}
+        # In module init, there are no local shadowing variables
+        self.local_scope_names = set()
         self.indent_level = 1
         for stmt in stmts:
             self._gen_stmt(out, stmt)
@@ -254,7 +262,11 @@ class CodeGenerator:
         out.write("}\n")
 
     def _gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
-        """Generate a global variable definition in source file."""
+        """Generate a global variable definition in source file.
+
+        Globals are wrapped in tpy::Global<T> and declared without initializers.
+        Initialization happens in __tpy_init_X() to ensure proper execution order.
+        """
         self._emit_source_comment(out, stmt.loc)
         # Use explicit type if provided, otherwise infer from initializer
         if stmt.type:
@@ -264,11 +276,7 @@ class CodeGenerator:
         else:
             raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
         cpp_type = var_type.to_cpp()
-        if stmt.init:
-            init_expr = self._gen_expr(stmt.init, var_type)
-            out.write(f"{cpp_type} {stmt.name} = {init_expr};\n")
-        else:
-            out.write(f"{cpp_type} {stmt.name};\n")
+        out.write(f"tpy::Global<{cpp_type}> {stmt.name};\n")
 
     def _gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate an extern declaration for a global variable in header file."""
@@ -280,7 +288,7 @@ class CodeGenerator:
         else:
             raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
         cpp_type = var_type.to_cpp()
-        out.write(f"extern {cpp_type} {stmt.name};\n")
+        out.write(f"extern tpy::Global<{cpp_type}> {stmt.name};\n")
 
     def _gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
@@ -319,11 +327,14 @@ class CodeGenerator:
                     out.write(" {\n")
                     self.declared_vars = {pname for pname, _ in record.init_method.params}
                     self.var_types = {pname: ptype for pname, ptype in record.init_method.params}
+                    # Track params as local to prevent false global deref if they shadow globals
+                    self.local_scope_names = {pname for pname, _ in record.init_method.params}
                     self.indent_level = 2
                     self.in_method = True
                     for stmt in non_init_stmts:
                         self._gen_stmt(out, stmt)
                     self.in_method = False
+                    self.local_scope_names = set()
                     self.indent_level = 0
                     out.write("  }\n")
                 else:
@@ -338,11 +349,13 @@ class CodeGenerator:
                     out.write(" {\n")
                     self.declared_vars = set()
                     self.var_types = {}
+                    self.local_scope_names = set()
                     self.indent_level = 2
                     self.in_method = True
                     for stmt in non_init_stmts:
                         self._gen_stmt(out, stmt)
                     self.in_method = False
+                    self.local_scope_names = set()
                     self.indent_level = 0
                     out.write("  }\n")
                 else:
@@ -396,6 +409,8 @@ class CodeGenerator:
         # Reset declared vars and add parameters
         self.declared_vars = {pname for pname, _ in method.params}
         self.var_types = {pname: ptype for pname, ptype in method.params}
+        # Track params as local to prevent false global deref if they shadow globals
+        self.local_scope_names = {pname for pname, _ in method.params}
         self.indent_level = 2
         self.in_method = True
         self.current_return_type = method.return_type
@@ -403,6 +418,7 @@ class CodeGenerator:
         for stmt in method.body:
             self._gen_stmt(out, stmt)
         self.in_method = False
+        self.local_scope_names = set()
         self.indent_level = 0
 
         out.write("  }\n")
@@ -410,35 +426,37 @@ class CodeGenerator:
     def _gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function declaration."""
         ret_type = func.return_type.to_cpp_return()
-        # Special case: main() must return int
+        cpp_name = func.name
+        # Special case: user's main() is renamed to __user_main()
+        # Our generated main() calls __tpy_init which calls __user_main()
         if func.name == "main":
-            ret_type = "int"
+            cpp_name = "__user_main"
         params = self._gen_params(func.params)
-        out.write(f"{ret_type} {func.name}({params});\n")
+        out.write(f"{ret_type} {cpp_name}({params});\n")
 
     def _gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
         self._emit_source_comment(out, func.loc)
 
         ret_type = func.return_type.to_cpp_return()
-        # Special case: main() must return int
+        cpp_name = func.name
+        # Special case: user's main() is renamed to __user_main()
         if func.name == "main":
-            ret_type = "int"
+            cpp_name = "__user_main"
         params = self._gen_params(func.params)
-        out.write(f"{ret_type} {func.name}({params}) {{\n")
+        out.write(f"{ret_type} {cpp_name}({params}) {{\n")
 
         # Reset declared vars and add parameters
         self.declared_vars = {pname for pname, _ in func.params}
         self.var_types = {pname: ptype for pname, ptype in func.params}
+        # Track local scope names (params + local vars) that shadow globals
+        self.local_scope_names = {pname for pname, _ in func.params}
         self.indent_level = 1
         self.current_return_type = func.return_type
         self.current_func_params = {pname: ptype for pname, ptype in func.params}
         for stmt in func.body:
             self._gen_stmt(out, stmt)
 
-        # Add return 0 for main() if not already returning
-        if func.name == "main" and isinstance(func.return_type, VoidType):
-            out.write("  return 0;\n")
         self.indent_level = 0
 
         out.write("}\n")
@@ -563,8 +581,9 @@ class CodeGenerator:
                 elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
                     target_type = ArrayType(BIGINT, target_type.size)
 
-        # First declaration - track the type
+        # First declaration - track the type and mark as local (shadows globals)
         self.declared_vars.add(stmt.name)
+        self.local_scope_names.add(stmt.name)
         self.var_types[stmt.name] = target_type
 
         if stmt.type:
@@ -610,15 +629,17 @@ class CodeGenerator:
             value = self._gen_expr(stmt.value)
             obj_type = self.analyzer.get_expr_type(stmt.target.obj)
             index_type = self.analyzer.get_expr_type(stmt.target.index)
-            index_expr = self._gen_index_expr(obj, stmt.target.index, index_type)
+            # Dereference globals for subscript access
+            subscript_obj = f"(*{obj})" if self._is_global_name(stmt.target.obj) else obj
+            index_expr = self._gen_index_expr(subscript_obj, stmt.target.index, index_type)
 
             # Use module lookup for __setitem__
             methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
             if methods:
-                code = methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr).replace("{1}", value)
+                code = methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", value)
                 return f"{indent}{code};\n"
             else:
-                return f"{indent}{obj}[{index_expr}] = {value};\n"
+                return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
 
         # Default: simple assignment
         target = self._gen_expr(stmt.target)
@@ -640,6 +661,9 @@ class CodeGenerator:
         # Special case: Int32 += BigInt should convert BigInt to Int32, then use Int32 ops
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
         if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
+            # Dereference globals before .to_int32() conversion
+            if self._is_global_name(stmt.value):
+                value = f"(*{value})"
             value = f"({value}).to_int32()"
             value_type = INT32
 
@@ -663,7 +687,9 @@ class CodeGenerator:
         obj = self._gen_expr(subscript.obj)
         obj_type = self._get_resolved_type(subscript.obj)
         index_type = self.analyzer.get_expr_type(subscript.index)
-        index_expr = self._gen_index_expr(obj, subscript.index, index_type or INT32)
+        # Dereference globals for subscript access
+        subscript_obj = f"(*{obj})" if self._is_global_name(subscript.obj) else obj
+        index_expr = self._gen_index_expr(subscript_obj, subscript.index, index_type or INT32)
 
         # Get element type
         elem_type = None
@@ -680,15 +706,18 @@ class CodeGenerator:
         # Generate read expression using module lookup for __getitem__
         get_methods = builtin_modules.lookup_type_method(obj_type, "__getitem__")
         if get_methods:
-            read_expr = get_methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr)
+            read_expr = get_methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr)
         else:
-            read_expr = f"{obj}[{index_expr}]"
+            read_expr = f"{subscript_obj}[{index_expr}]"
 
         value = self._gen_expr(stmt.value, elem_type)
         value_type = self._get_resolved_type(stmt.value, elem_type)
 
         # Special case: Int32 += BigInt should convert BigInt to Int32
         if isinstance(elem_type, Int32Type) and isinstance(value_type, BigIntType):
+            # Dereference globals before .to_int32() conversion
+            if self._is_global_name(stmt.value):
+                value = f"(*{value})"
             value = f"({value}).to_int32()"
             value_type = INT32
 
@@ -702,10 +731,10 @@ class CodeGenerator:
         # Generate write using module lookup for __setitem__
         set_methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
         if set_methods:
-            code = set_methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr).replace("{1}", result_expr)
+            code = set_methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", result_expr)
             return f"{indent}{code};\n"
         else:
-            return f"{indent}{obj}[{index_expr}] = {result_expr};\n"
+            return f"{indent}{subscript_obj}[{index_expr}] = {result_expr};\n"
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
@@ -744,6 +773,11 @@ class CodeGenerator:
         """Generate a for loop (range-based)."""
         start = self._gen_expr(stmt.start)
         end = self._gen_expr(stmt.end)
+        # Dereference globals before .to_int32() conversion
+        if self._is_global_name(stmt.start):
+            start = f"(*{start})"
+        if self._is_global_name(stmt.end):
+            end = f"(*{end})"
         # Convert BigInt bounds to Int32 (range loops use Int32 counter)
         start_type = self.analyzer.get_expr_type(stmt.start)
         end_type = self.analyzer.get_expr_type(stmt.end)
@@ -754,10 +788,13 @@ class CodeGenerator:
         self._flush_pending_temps(out, indent)
         out.write(f"{indent}for (int32_t {stmt.var} = {start}; {stmt.var} < {end}; ++{stmt.var}) {{\n")
 
+        # Track loop variable as local to prevent false global deref if it shadows a global
+        self.local_scope_names.add(stmt.var)
         self.indent_level += 1
         for s in stmt.body:
             self._gen_stmt(out, s)
         self.indent_level -= 1
+        self.local_scope_names.discard(stmt.var)
 
         out.write(f"{indent}}}\n")
 
@@ -765,6 +802,10 @@ class CodeGenerator:
         """Generate a for-each loop over a collection."""
         iterable = self._gen_expr(stmt.iterable)
         iterable_type = self._get_resolved_type(stmt.iterable)
+
+        # Dereference globals for iteration
+        if self._is_global_name(stmt.iterable):
+            iterable = f"(*{iterable})"
 
         # Determine element type for the loop variable
         if isinstance(iterable_type, (ListType, ArrayType, SpanType, StaticListType)):
@@ -797,16 +838,31 @@ class CodeGenerator:
             # Fallback: use auto
             out.write(f"{indent}for (auto {stmt.var} : {iterable}) {{\n")
 
+        # Track loop variable as local to prevent false global deref if it shadows a global
+        self.local_scope_names.add(stmt.var)
         self.indent_level += 1
         for s in stmt.body:
             self._gen_stmt(out, s)
         self.indent_level -= 1
+        self.local_scope_names.discard(stmt.var)
 
         out.write(f"{indent}}}\n")
 
         # Remove loop variable type after loop ends
         if stmt.var in self.var_types:
             del self.var_types[stmt.var]
+
+    def _is_global_name(self, expr: TpyExpr) -> bool:
+        """Check if expression is a reference to a global variable.
+
+        Returns False if the name is shadowed by a local variable or parameter.
+        """
+        if not isinstance(expr, TpyName):
+            return False
+        # Check if name is a global and not shadowed by a local declaration
+        # local_scope_names contains function params and locally-declared variables
+        # (not pre-seeded globals from __tpy_init_*)
+        return expr.name in self.global_names and expr.name not in self.local_scope_names
 
     def _is_negative_literal(self, expr: TpyExpr) -> tuple[bool, int]:
         """Check if expression is a negative integer literal.
@@ -827,6 +883,9 @@ class CodeGenerator:
             return f"static_cast<int32_t>({obj}.size() - {abs_val})"
 
         index_expr = self._gen_expr(index)
+        # Dereference globals before .to_int32() conversion
+        if self._is_global_name(index):
+            index_expr = f"(*{index_expr})"
         if self._is_runtime_bigint(index, index_type):
             index_expr = f"{index_expr}.to_int32()"
         return index_expr
@@ -885,6 +944,10 @@ class CodeGenerator:
                 if expr.runtime_bigint:
                     return f"({gen_inner}).to_int32()"
                 return gen_inner
+            # Coercions that call methods on the inner expression need dereferencing for globals
+            if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr", "bigint_to_int32"):
+                if self._is_global_name(expr.expr):
+                    gen_inner = f"(*{gen_inner})"
             return expr.coercion.codegen(gen_inner, expr.actual_type, expr.expected_type, expr.context_kind)
 
         elif isinstance(expr, TpyStrLiteral):
@@ -914,6 +977,9 @@ class CodeGenerator:
             if expr.op in ("in", "not in"):
                 left = self._gen_expr(expr.left)
                 right = self._gen_expr(expr.right)
+                # Dereference globals for .begin()/.end() calls
+                if self._is_global_name(expr.right):
+                    right = f"(*{right})"
                 right_resolved = self._get_resolved_type(expr.right)
                 if isinstance(right_resolved, StrType):
                     # String contains: use std::string_view::find
@@ -968,12 +1034,22 @@ class CodeGenerator:
                     # right is {self} (receiver), left is {0} (argument)
                     left = self._gen_expr(expr.left, param_type)
                     right = self._gen_expr(expr.right, receiver_type)
+                    # Dereference globals BEFORE conversion (tpy::Global<T> needs explicit deref)
+                    if self._is_global_name(expr.left):
+                        left = f"(*{left})"
+                    if self._is_global_name(expr.right):
+                        right = f"(*{right})"
                     # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                     left = self._convert_to_int32_arg(left, left_type, param_type, expr.left)
                 else:
                     # left is {self} (receiver), right is {0} (argument)
                     left = self._gen_expr(expr.left, receiver_type)
                     right = self._gen_expr(expr.right, param_type)
+                    # Dereference globals BEFORE conversion (tpy::Global<T> needs explicit deref)
+                    if self._is_global_name(expr.left):
+                        left = f"(*{left})"
+                    if self._is_global_name(expr.right):
+                        right = f"(*{right})"
                     # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                     right = self._convert_to_int32_arg(right, right_type, param_type, expr.right)
                 # Generate binop using helper (handles wrappers and is_reverse)
@@ -998,6 +1074,10 @@ class CodeGenerator:
             # Logical not
             if expr.op == "!":
                 return f"(!{operand})"
+
+            # Dereference globals for unary operations
+            if self._is_global_name(expr.operand):
+                operand = f"(*{operand})"
 
             # Try module system for unary operators
             if unaryop_result := builtin_modules.lookup_unaryop(operand_type, expr.op):
@@ -1028,6 +1108,9 @@ class CodeGenerator:
                         obj = f'std::string_view("{escaped}")'
                     else:
                         obj = self._gen_expr(arg)
+                        # Globals need dereferencing for method template access
+                        if self._is_global_name(arg):
+                            obj = f"(*{obj})"
                     return self._gen_method_from_def(obj, [], methods[0])
             # Check module registry for built-in functions
             if builtin_fn := builtin_modules.lookup_function(expr.func):
@@ -1047,7 +1130,9 @@ class CodeGenerator:
                         # Pass param type for BigInt promotion
                         gen_arg = self._gen_expr(arg, ptype)
                         gen_args.append(gen_arg)
-                return f"{expr.func}({', '.join(gen_args)})"
+                # User's main() is renamed to __user_main() to avoid conflict with our generated main()
+                cpp_func_name = "__user_main" if expr.func == "main" else expr.func
+                return f"{cpp_func_name}({', '.join(gen_args)})"
             # Generic type instantiation (e.g., StaticList[T, N]())
             if expr.call_type is not None:
                 # Special case: StaticList[T,N]([x]*count) - list repeat already generates
@@ -1068,7 +1153,13 @@ class CodeGenerator:
                                     # Check if this constructor matches (Iterable matches containers)
                                     if all(self._ctor_param_matches(at, p.type) for at, p in zip(arg_types, ctor.params)):
                                         type_params = builtin_modules.extract_type_params(expr.call_type)
-                                        gen_args = [self._gen_expr(a, expr.call_type) for a in expr.args]
+                                        # Dereference globals for constructor templates that use method calls
+                                        gen_args = []
+                                        for a in expr.args:
+                                            gen = self._gen_expr(a, expr.call_type)
+                                            if self._is_global_name(a):
+                                                gen = f"(*{gen})"
+                                            gen_args.append(gen)
                                         return self._apply_cpp_template(ctor.cpp, gen_args, type_params, expr.call_type)
                 # Pass call_type as target for proper nested array brace generation
                 args = ", ".join(self._gen_expr(a, expr.call_type) for a in expr.args)
@@ -1088,18 +1179,28 @@ class CodeGenerator:
             if isinstance(obj_type, (ArrayType, SpanType, StaticListType, ListType)):
                 methods = builtin_modules.lookup_type_method(obj_type, expr.method)
                 if methods:
-                    return self._gen_method_from_def(obj, expr.args, methods[0])
+                    # Globals need dereferencing for method template access
+                    method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
+                    return self._gen_method_from_def(method_obj, expr.args, methods[0])
 
-            return f"{obj}.{expr.method}({args})"
+            # Use -> for globals (wrapped in tpy::Global<T>)
+            accessor = "->" if self._is_global_name(expr.obj) else "."
+            return f"{obj}{accessor}{expr.method}({args})"
 
         elif isinstance(expr, TpyFieldAccess):
             # Handle self.field -> just field (inside method, implicit this)
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return expr.field
             obj = self._gen_expr(expr.obj)
-            # Check if obj is a pointer type - use -> instead of .
+            # Check if obj is a pointer type or global - use -> instead of .
             obj_type = self.analyzer.get_expr_type(expr.obj)
+            is_global = self._is_global_name(expr.obj)
             if obj_type and obj_type.is_pointer():
+                # Global pointer needs deref first: Global<Ptr<T>> -> (*global)->field
+                if is_global:
+                    return f"(*{obj})->{expr.field}"
+                return f"{obj}->{expr.field}"
+            if is_global:
                 return f"{obj}->{expr.field}"
             return f"{obj}.{expr.field}"
 
@@ -1113,6 +1214,9 @@ class CodeGenerator:
             # std::array of std::array needs an extra brace level
             if isinstance(target_type, (ArrayType, SpanType)) and isinstance(target_type.element_type, ArrayType):
                 return f"{{{literal}}}"
+            # Empty list needs explicit type to avoid ambiguity with Global<T> assignment
+            if not expr.elements and isinstance(target_type, (ListType, ArrayType, StaticListType)):
+                return f"{target_type.to_cpp()}{literal}"
             return literal
 
         elif isinstance(expr, TpyListRepeat):
@@ -1121,6 +1225,9 @@ class CodeGenerator:
 
             count = self._gen_expr(expr.count)
             count_type = self.analyzer.get_expr_type(expr.count)
+            # Dereference globals before .to_int32() conversion
+            if self._is_global_name(expr.count):
+                count = f"(*{count})"
             # BigInt count needs conversion (IntLiteralType is already plain int)
             if isinstance(count_type, BigIntType):
                 count = f"{count}.to_int32()"
@@ -1167,14 +1274,16 @@ class CodeGenerator:
             obj = self._gen_expr(expr.obj)
             obj_type = self._get_resolved_type(expr.obj)
             index_type = self.analyzer.get_expr_type(expr.index)
-            index_expr = self._gen_index_expr(obj, expr.index, index_type)
+            # Dereference globals for subscript access
+            subscript_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
+            index_expr = self._gen_index_expr(subscript_obj, expr.index, index_type)
 
             # Use module lookup for __getitem__
             methods = builtin_modules.lookup_type_method(obj_type, "__getitem__")
             if methods:
-                return methods[0].cpp.replace("{self}", obj).replace("{0}", index_expr)
+                return methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr)
             # Fallback for types without __getitem__ (e.g., str)
-            return f"{obj}[{index_expr}]"
+            return f"{subscript_obj}[{index_expr}]"
 
         return "/* unknown expr */"
 
@@ -1290,6 +1399,9 @@ class CodeGenerator:
             expected_array_type = ArrayType(span_type.element_type, len(expr.elements))
             array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"
             return f"tpy::as_span({array_expr})"
+        # Dereference globals for span coercion
+        if self._is_global_name(expr):
+            gen_inner = f"(*{gen_inner})"
         return f"tpy::as_span({gen_inner})"
 
     def _convert_to_int32_arg(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType, expr: TpyExpr) -> str:
@@ -1336,7 +1448,11 @@ class CodeGenerator:
                     cpp_type = arg_type.to_cpp()
                     parts.append(f'tpy::ListPrinter({cpp_type}{self._gen_expr(arg)})')
                 else:
-                    parts.append(f'tpy::ListPrinter({self._gen_expr(arg)})')
+                    expr = self._gen_expr(arg)
+                    # Dereference globals for ListPrinter
+                    if self._is_global_name(arg):
+                        expr = f"(*{expr})"
+                    parts.append(f'tpy::ListPrinter({expr})')
             else:
                 # Int32, Char, Bool, literals, etc. - direct output
                 parts.append(self._gen_expr(arg))

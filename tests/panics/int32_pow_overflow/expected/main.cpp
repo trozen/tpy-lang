@@ -2,12 +2,16 @@
 #include "main.hpp"
 
 // 4: x: Int32 = 2
-int32_t x = 2;
+tpy::Global<int32_t> x;
 // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
-int32_t y = (tpy::int32_pow(x, 31));
+tpy::Global<int32_t> y;
 
 void __tpy_init_main() {
   // 1: """Test Int32 power overflow panic at runtime."""
+  // 4: x: Int32 = 2
+  x = 2;
+  // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
+  y = (tpy::int32_pow((*x), 31));
   // 6: print(y)
   std::cout << y << "\n";
 }

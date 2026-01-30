@@ -2,27 +2,33 @@
 #include "main.hpp"
 
 // 22: c = Counter(100)
-Counter c = Counter(100);
+tpy::Global<Counter> c;
 // 36: a: Int32 = 42
-int32_t a = 42;
+tpy::Global<int32_t> a;
 // 37: b: Int32 = 99
-int32_t b = 99;
+tpy::Global<int32_t> b;
 
 void __tpy_init_main() {
+  // 22: c = Counter(100)
+  c = Counter(100);
   // 23: print(c.get())
-  std::cout << c.get() << "\n";
+  std::cout << c->get() << "\n";
   // 26: c.increment()
-  c.increment();
+  c->increment();
   // 27: print(c.get())
-  std::cout << c.get() << "\n";
+  std::cout << c->get() << "\n";
   // 29: c.add(5)
-  c.add(5);
+  c->add(5);
   // 30: print(c.get())
-  std::cout << c.get() << "\n";
+  std::cout << c->get() << "\n";
   // 32: c.reset()
-  c.reset();
+  c->reset();
   // 33: print(c.get())
-  std::cout << c.get() << "\n";
+  std::cout << c->get() << "\n";
+  // 36: a: Int32 = 42
+  a = 42;
+  // 37: b: Int32 = 99
+  b = 99;
   // 38: print(a, b)
   std::cout << a << " " << b << "\n";
   // 41: print("done")

@@ -2,29 +2,35 @@
 #include "main.hpp"
 
 // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
-StaticList<int32_t, 8> sl = StaticList<int32_t, 8>(tpy::repeat_range<int32_t>(3, {1, 2}));
+tpy::Global<StaticList<int32_t, 8>> sl;
 // 10: nums: list[Int32] = [10, 20] * 2
-std::vector<int32_t> nums = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>(2, {10, 20}));
+tpy::Global<std::vector<int32_t>> nums;
 // 16: empty: list[Int32] = [] * 100
-std::vector<int32_t> empty = {};
+tpy::Global<std::vector<int32_t>> empty;
 
 void __tpy_init_main() {
+  // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
+  sl = StaticList<int32_t, 8>(tpy::repeat_range<int32_t>(3, {1, 2}));
   // 5: print(len(sl))
-  std::cout << sl.size() << "\n";
+  std::cout << (*sl).size() << "\n";
   // 6: for i in range(len(sl)):
-  for (int32_t i = 0; i < sl.size(); ++i) {
+  for (int32_t i = 0; i < (*sl).size(); ++i) {
     // 7:     print(sl[i])
-    std::cout << tpy::get_item(sl, i) << "\n";
+    std::cout << tpy::get_item((*sl), i) << "\n";
   }
+  // 10: nums: list[Int32] = [10, 20] * 2
+  nums = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>(2, {10, 20}));
   // 11: print(len(nums))
-  std::cout << static_cast<int32_t>(nums.size()) << "\n";
+  std::cout << static_cast<int32_t>((*nums).size()) << "\n";
   // 12: for i in range(len(nums)):
-  for (int32_t i = 0; i < static_cast<int32_t>(nums.size()); ++i) {
+  for (int32_t i = 0; i < static_cast<int32_t>((*nums).size()); ++i) {
     // 13:     print(nums[i])
-    std::cout << tpy::get_item(nums, i) << "\n";
+    std::cout << tpy::get_item((*nums), i) << "\n";
   }
+  // 16: empty: list[Int32] = [] * 100
+  empty = std::vector<int32_t>{};
   // 17: print(len(empty))
-  std::cout << static_cast<int32_t>(empty.size()) << "\n";
+  std::cout << static_cast<int32_t>((*empty).size()) << "\n";
 }
 
 int main() {

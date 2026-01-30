@@ -5,7 +5,7 @@
 
 struct Point;
 
-extern Point global_pt;
+extern tpy::Global<Point> global_pt;
 
 struct Point {
   int32_t x;
@@ -17,5 +17,6 @@ struct Point {
 
 Point* addr_param(Point& p);
 Point* addr_global();
-int main();
+void __user_main();
 
+void __tpy_init_main();

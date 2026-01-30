@@ -8,7 +8,7 @@ int32_t sum_array(std::array<int32_t, 3>& arr) {
 }
 
 // 17: def main():
-int main() {
+void __user_main() {
   // 19:     arr1: Array[Int32, 3] = [1, 2, 3]
   std::array<int32_t, 3> arr1 = {1, 2, 3};
   // 20:     print(sum_array(arr1))  # 6
@@ -40,6 +40,15 @@ int main() {
   }
   // 39:     print(count)  # 1
   std::cout << count << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 1: """Tests that list literals can be coerced to Array types.
+  // 42: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

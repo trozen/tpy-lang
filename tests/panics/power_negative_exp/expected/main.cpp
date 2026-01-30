@@ -2,13 +2,19 @@
 #include "main.hpp"
 
 // 2: x = 2
-tpy::BigInt x = tpy::BigInt(2);
+tpy::Global<tpy::BigInt> x;
 // 3: y = -1
-tpy::BigInt y = (-tpy::BigInt(1));
+tpy::Global<tpy::BigInt> y;
 // 4: z = x ** y  # Should panic
-tpy::BigInt z = ((x).pow(y));
+tpy::Global<tpy::BigInt> z;
 
 void __tpy_init_main() {
+  // 2: x = 2
+  x = tpy::BigInt(2);
+  // 3: y = -1
+  y = (-tpy::BigInt(1));
+  // 4: z = x ** y  # Should panic
+  z = (((*x)).pow((*y)));
 }
 
 int main() {

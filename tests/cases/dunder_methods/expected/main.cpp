@@ -2,48 +2,54 @@
 #include "main.hpp"
 
 // 10: items: list[Int32] = []
-std::vector<int32_t> items = {};
+tpy::Global<std::vector<int32_t>> items;
 // 28: sl = StaticList[Int32, 10]()
-StaticList<int32_t, 10> sl = StaticList<int32_t, 10>();
+tpy::Global<StaticList<int32_t, 10>> sl;
 // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
-std::array<int32_t, 3> arr = {1, 2, 3};
+tpy::Global<std::array<int32_t, 3>> arr;
 
 void __tpy_init_main() {
   // 1: """Test explicit dunder method calls on container types.
+  // 10: items: list[Int32] = []
+  items = std::vector<int32_t>{};
   // 11: items.append(Int32(10))
-  items.push_back(10);
+  (*items).push_back(10);
   // 12: items.append(Int32(20))
-  items.push_back(20);
+  (*items).push_back(20);
   // 13: items.append(Int32(30))
-  items.push_back(30);
+  (*items).push_back(30);
   // 16: print(items.__len__())  # 3
-  std::cout << static_cast<int32_t>(items.size()) << "\n";
+  std::cout << static_cast<int32_t>((*items).size()) << "\n";
   // 19: print(items.__getitem__(Int32(0)))  # 10
-  std::cout << tpy::get_item(items, 0) << "\n";
+  std::cout << tpy::get_item((*items), 0) << "\n";
   // 20: print(items.__getitem__(Int32(1)))  # 20
-  std::cout << tpy::get_item(items, 1) << "\n";
+  std::cout << tpy::get_item((*items), 1) << "\n";
   // 23: items.__setitem__(Int32(1), Int32(99))
-  tpy::set_item(items, 1, 99);
+  tpy::set_item((*items), 1, 99);
   // 24: print(items.__getitem__(Int32(1)))  # 99
-  std::cout << tpy::get_item(items, 1) << "\n";
+  std::cout << tpy::get_item((*items), 1) << "\n";
+  // 28: sl = StaticList[Int32, 10]()
+  sl = StaticList<int32_t, 10>();
   // 29: sl.append(Int32(100))
-  sl.push_back(100);
+  (*sl).push_back(100);
   // 30: sl.append(Int32(200))
-  sl.push_back(200);
+  (*sl).push_back(200);
   // 33: print(sl.__len__())  # 2
-  std::cout << sl.size() << "\n";
+  std::cout << (*sl).size() << "\n";
   // 36: print(sl.__getitem__(Int32(0)))  # 100
-  std::cout << tpy::get_item(sl, 0) << "\n";
+  std::cout << tpy::get_item((*sl), 0) << "\n";
   // 39: sl.__setitem__(Int32(0), Int32(111))
-  tpy::set_item(sl, 0, 111);
+  tpy::set_item((*sl), 0, 111);
   // 40: print(sl.__getitem__(Int32(0)))  # 111
-  std::cout << tpy::get_item(sl, 0) << "\n";
+  std::cout << tpy::get_item((*sl), 0) << "\n";
+  // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+  arr = {1, 2, 3};
   // 47: print(arr.__len__())  # 3
-  std::cout << static_cast<int32_t>(arr.size()) << "\n";
+  std::cout << static_cast<int32_t>((*arr).size()) << "\n";
   // 50: print(arr.__getitem__(Int32(0)))  # 1
-  std::cout << arr[0] << "\n";
+  std::cout << (*arr)[0] << "\n";
   // 51: print(arr.__getitem__(Int32(2)))  # 3
-  std::cout << arr[2] << "\n";
+  std::cout << (*arr)[2] << "\n";
 }
 
 int main() {

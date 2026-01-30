@@ -2,29 +2,29 @@
 #include "main.hpp"
 
 // 42: a: Int32 = 1 + 2           # addition
-int32_t a = tpy::int32_add(1, 2);
+tpy::Global<int32_t> a;
 // 43: b: Int32 = 10 - 3          # subtraction
-int32_t b = tpy::int32_sub(10, 3);
+tpy::Global<int32_t> b;
 // 44: c: Int32 = 4 * 5           # multiplication
-int32_t c = tpy::int32_mul(4, 5);
+tpy::Global<int32_t> c;
 // 45: d: Int32 = 17 // 3         # division
-int32_t d = tpy::int32_div(17, 3);
+tpy::Global<int32_t> d;
 // 46: e: Int32 = 2 ** 10         # power
-int32_t e = tpy::int32_pow(2, 10);
+tpy::Global<int32_t> e;
 // 56: n = 5
-tpy::BigInt n = tpy::BigInt(5);
+tpy::Global<tpy::BigInt> n;
 // 59: result1 = takes_int32(n)
-int32_t result1 = takes_int32((n).to_int32());
+tpy::Global<int32_t> result1;
 // 63: result2 = return_as_int32(10)
-int32_t result2 = return_as_int32(tpy::BigInt(10));
+tpy::Global<int32_t> result2;
 // 67: result3 = var_decl_test(15)
-int32_t result3 = var_decl_test(tpy::BigInt(15));
+tpy::Global<int32_t> result3;
 // 71: result4 = assign_test(20)
-int32_t result4 = assign_test(tpy::BigInt(20));
+tpy::Global<int32_t> result4;
 // 75: result5 = loop_test(3)
-int32_t result5 = loop_test(tpy::BigInt(3));
+tpy::Global<int32_t> result5;
 // 79: result6 = constructor_test(25)
-int32_t result6 = constructor_test(tpy::BigInt(25));
+tpy::Global<int32_t> result6;
 
 // 6: def takes_int32(x: Int32) -> Int32:
 int32_t takes_int32(int32_t x) {
@@ -86,16 +86,40 @@ int32_t literal_ops_local() {
 
 void __tpy_init_main() {
   // 1: """Test BigInt -> Int32 conversions with range checks."""
+  // 42: a: Int32 = 1 + 2           # addition
+  a = tpy::int32_add(1, 2);
+  // 43: b: Int32 = 10 - 3          # subtraction
+  b = tpy::int32_sub(10, 3);
+  // 44: c: Int32 = 4 * 5           # multiplication
+  c = tpy::int32_mul(4, 5);
+  // 45: d: Int32 = 17 // 3         # division
+  d = tpy::int32_div(17, 3);
+  // 46: e: Int32 = 2 ** 10         # power
+  e = tpy::int32_pow(2, 10);
+  // 56: n = 5
+  n = tpy::BigInt(5);
+  // 59: result1 = takes_int32(n)
+  result1 = takes_int32(((*n)).to_int32());
   // 60: print(result1)
   std::cout << result1 << "\n";
+  // 63: result2 = return_as_int32(10)
+  result2 = return_as_int32(tpy::BigInt(10));
   // 64: print(result2)
   std::cout << result2 << "\n";
+  // 67: result3 = var_decl_test(15)
+  result3 = var_decl_test(tpy::BigInt(15));
   // 68: print(result3)
   std::cout << result3 << "\n";
+  // 71: result4 = assign_test(20)
+  result4 = assign_test(tpy::BigInt(20));
   // 72: print(result4)
   std::cout << result4 << "\n";
+  // 75: result5 = loop_test(3)
+  result5 = loop_test(tpy::BigInt(3));
   // 76: print(result5)
   std::cout << result5 << "\n";
+  // 79: result6 = constructor_test(25)
+  result6 = constructor_test(tpy::BigInt(25));
   // 80: print(result6)
   std::cout << result6 << "\n";
   // 83: print(a)  # 3

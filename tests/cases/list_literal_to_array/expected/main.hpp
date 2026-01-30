@@ -4,5 +4,6 @@
 #include "tpy_runtime.hpp"
 
 int32_t sum_array(std::array<int32_t, 3>& arr);
-int main();
+void __user_main();
 
+void __tpy_init_main();

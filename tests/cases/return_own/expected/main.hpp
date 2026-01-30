@@ -13,5 +13,6 @@ struct Point {
 };
 
 Point create_point(int32_t x, int32_t y);
-int main();
+void __user_main();
 
+void __tpy_init_main();

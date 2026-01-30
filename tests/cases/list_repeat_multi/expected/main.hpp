@@ -3,9 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
-extern StaticList<int32_t, 8> sl;
-extern std::vector<int32_t> nums;
-extern std::vector<int32_t> empty;
+extern tpy::Global<StaticList<int32_t, 8>> sl;
+extern tpy::Global<std::vector<int32_t>> nums;
+extern tpy::Global<std::vector<int32_t>> empty;
 
 
 void __tpy_init_main();

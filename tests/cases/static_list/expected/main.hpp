@@ -5,9 +5,9 @@
 
 struct Item;
 
-extern StaticList<Item, 16> items;
-extern StaticList<int32_t, 8> nums;
-extern StaticList<int32_t, 8> filled;
+extern tpy::Global<StaticList<Item, 16>> items;
+extern tpy::Global<StaticList<int32_t, 8>> nums;
+extern tpy::Global<StaticList<int32_t, 8>> filled;
 
 struct Item {
   int32_t value;

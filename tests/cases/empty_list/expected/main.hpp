@@ -3,8 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
-extern std::vector<tpy::BigInt> global_list;
-extern std::vector<int32_t> global_list2;
+extern tpy::Global<std::vector<tpy::BigInt>> global_list;
+extern tpy::Global<std::vector<int32_t>> global_list2;
 
 tpy::BigInt test_empty_list();
 int32_t test_empty_list_int32();

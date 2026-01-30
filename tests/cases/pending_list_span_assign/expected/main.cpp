@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 3: def main() -> None:
-int main() {
+void __user_main() {
   // 4:     data = [1, 2, 3]
   std::array<int32_t, 3> data = {1, 2, 3};
   // 5:     s: Span[Int32] = data
@@ -11,6 +11,14 @@ int main() {
   std::cout << s[0] << "\n";
   // 7:     print(s[2])
   std::cout << s[2] << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 9: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

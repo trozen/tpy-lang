@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 // 8: ORIGIN: Point = Point()
-Point ORIGIN = Point();
+tpy::Global<Point> ORIGIN;
 
 // 10: def get_origin() -> Point:
 Point& get_origin() {
@@ -11,17 +11,27 @@ Point& get_origin() {
 }
 
 // 13: def main():
-int main() {
+void __user_main() {
   // 14:     ORIGIN.x = 100
-  ORIGIN.x = 100;
+  ORIGIN->x = 100;
   // 15:     ORIGIN.y = 200
-  ORIGIN.y = 200;
+  ORIGIN->y = 200;
   // 17:     ref: Point = get_origin()
   Point ref = get_origin();
   // 18:     print(ref.x)
   std::cout << ref.x << "\n";
   // 19:     print(ref.y)
   std::cout << ref.y << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 8: ORIGIN: Point = Point()
+  ORIGIN = Point();
+  // 21: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

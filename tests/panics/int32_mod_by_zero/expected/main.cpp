@@ -2,14 +2,20 @@
 #include "main.hpp"
 
 // 4: x: Int32 = 42
-int32_t x = 42;
+tpy::Global<int32_t> x;
 // 5: y: Int32 = 0
-int32_t y = 0;
+tpy::Global<int32_t> y;
 // 6: z: Int32 = x % y  # Should panic
-int32_t z = (tpy::int32_mod(x, y));
+tpy::Global<int32_t> z;
 
 void __tpy_init_main() {
   // 1: """Test Int32 modulo by zero panic at runtime."""
+  // 4: x: Int32 = 42
+  x = 42;
+  // 5: y: Int32 = 0
+  y = 0;
+  // 6: z: Int32 = x % y  # Should panic
+  z = (tpy::int32_mod((*x), (*y)));
   // 7: print(z)
   std::cout << z << "\n";
 }

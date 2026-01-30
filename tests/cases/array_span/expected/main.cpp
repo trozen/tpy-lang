@@ -2,11 +2,11 @@
 #include "main.hpp"
 
 // 15: nums: Array[Int32, 3] = [10, 20, 30]
-std::array<int32_t, 3> nums = {10, 20, 30};
+tpy::Global<std::array<int32_t, 3>> nums;
 // 19: arr: Array[Int32, 3] = [100, 200, 300]
-std::array<int32_t, 3> arr = {100, 200, 300};
+tpy::Global<std::array<int32_t, 3>> arr;
 // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-StaticList<int32_t, 4> items = StaticList<int32_t, 4>();
+tpy::Global<StaticList<int32_t, 4>> items;
 
 // 3: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {
@@ -28,20 +28,26 @@ int32_t sum_span(std::span<const int32_t> values) {
 void __tpy_init_main() {
   // 12: print(sum_span([1, 2, 3, 4, 5]))
   std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
+  // 15: nums: Array[Int32, 3] = [10, 20, 30]
+  nums = {10, 20, 30};
   // 16: print(sum_span(nums))
-  std::cout << sum_span(tpy::as_span(nums)) << "\n";
+  std::cout << sum_span(tpy::as_span((*nums))) << "\n";
+  // 19: arr: Array[Int32, 3] = [100, 200, 300]
+  arr = {100, 200, 300};
   // 20: print(sum_span(arr))
-  std::cout << sum_span(tpy::as_span(arr)) << "\n";
+  std::cout << sum_span(tpy::as_span((*arr))) << "\n";
+  // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
+  items = StaticList<int32_t, 4>();
   // 24: items.append(1000)
-  items.push_back(1000);
+  (*items).push_back(1000);
   // 25: items.append(2000)
-  items.push_back(2000);
+  (*items).push_back(2000);
   // 26: items.append(3000)
-  items.push_back(3000);
+  (*items).push_back(3000);
   // 27: items.append(4000)
-  items.push_back(4000);
+  (*items).push_back(4000);
   // 28: print(sum_span(items))
-  std::cout << sum_span(tpy::as_span(items)) << "\n";
+  std::cout << sum_span(tpy::as_span((*items))) << "\n";
 }
 
 int main() {

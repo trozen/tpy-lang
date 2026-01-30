@@ -2,12 +2,16 @@
 #include "main.hpp"
 
 // 4: x: Int32 = 2147483647  # INT32_MAX
-int32_t x = 2147483647;
+tpy::Global<int32_t> x;
 // 5: y: Int32 = x * 2       # Should panic
-int32_t y = (tpy::int32_mul(x, 2));
+tpy::Global<int32_t> y;
 
 void __tpy_init_main() {
   // 1: """Test Int32 multiplication overflow panic at runtime."""
+  // 4: x: Int32 = 2147483647  # INT32_MAX
+  x = 2147483647;
+  // 5: y: Int32 = x * 2       # Should panic
+  y = (tpy::int32_mul((*x), 2));
   // 6: print(y)
   std::cout << y << "\n";
 }

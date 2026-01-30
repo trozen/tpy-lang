@@ -8,11 +8,20 @@ int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s) {
 }
 
 // 11: def main() -> None:
-int main() {
+void __user_main() {
   // 13:     result: Int32 = take_span_nested(Array[Array[Int32, 2], 2]([[1, 2], [3, 4]]))
   int32_t result = take_span_nested(tpy::as_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
   // 14:     print(result)  # 1 + 4 = 5
   std::cout << result << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 1: """Tests nested array constructor with proper brace generation.
+  // 16: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}

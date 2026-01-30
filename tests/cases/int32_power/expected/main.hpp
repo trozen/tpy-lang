@@ -3,10 +3,10 @@
 
 #include "tpy_runtime.hpp"
 
-extern int32_t x;
-extern int32_t y;
-extern int32_t z;
-extern int32_t n;
+extern tpy::Global<int32_t> x;
+extern tpy::Global<int32_t> y;
+extern tpy::Global<int32_t> z;
+extern tpy::Global<int32_t> n;
 
 
 void __tpy_init_main();

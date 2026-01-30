@@ -2,17 +2,21 @@
 #include "main.hpp"
 
 // 1: nums = [1, 2, 3]
-std::vector<tpy::BigInt> nums = {1, 2, 3};
+tpy::Global<std::vector<tpy::BigInt>> nums;
 // 4: nested = [[1, 2], [3, 4]]
-std::vector<std::vector<tpy::BigInt>> nested = {{1, 2}, {3, 4}};
+tpy::Global<std::vector<std::vector<tpy::BigInt>>> nested;
 
 void __tpy_init_main() {
+  // 1: nums = [1, 2, 3]
+  nums = {1, 2, 3};
   // 2: print(nums)
-  std::cout << tpy::ListPrinter(nums) << "\n";
+  std::cout << tpy::ListPrinter((*nums)) << "\n";
   // 3: print([10, 20, 30])
   std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>{10, 20, 30}) << "\n";
+  // 4: nested = [[1, 2], [3, 4]]
+  nested = {{1, 2}, {3, 4}};
   // 5: print(nested)
-  std::cout << tpy::ListPrinter(nested) << "\n";
+  std::cout << tpy::ListPrinter((*nested)) << "\n";
 }
 
 int main() {

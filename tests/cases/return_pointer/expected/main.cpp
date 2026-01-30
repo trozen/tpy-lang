@@ -16,7 +16,7 @@ Point* get_ptr_copy(Point* p) {
 }
 
 // 14: def main():
-int main() {
+void __user_main() {
   // 15:     pt: Point = Point()
   Point pt = Point();
   // 16:     pt.x = 10
@@ -33,6 +33,14 @@ int main() {
   std::cout << ptr1->x << "\n";
   // 24:     print(ptr2.y)
   std::cout << ptr2->y << "\n";
-  return 0;
 }
 
+void __tpy_init_main() {
+  // 26: main()
+  __user_main();
+}
+
+int main() {
+  __tpy_init_main();
+  return 0;
+}
