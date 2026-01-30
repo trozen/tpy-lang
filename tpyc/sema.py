@@ -1293,13 +1293,15 @@ class SemanticAnalyzer:
             if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                 return None
 
-        # Allow ListType -> ArrayType for explicit annotations
-        # (global array literals become ListType but can be assigned to Array variables)
+        # Allow ListType -> ArrayType only for literal expressions
+        # (global array literals and list repeats become ListType but can be assigned to Array variables)
+        # List *variables* cannot be coerced to Array - codegen can't handle std::vector -> std::array
         if isinstance(actual, ListType) and isinstance(expected, ArrayType):
-            if actual.element_type == expected.element_type:
-                return None
-            if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-                return None
+            if isinstance(source_expr, (TpyArrayLiteral, TpyListRepeat)):
+                if actual.element_type == expected.element_type:
+                    return None
+                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                    return None
 
         # Allow PendingListType compatibility during first phase (before resolution)
         if isinstance(actual, PendingListType):

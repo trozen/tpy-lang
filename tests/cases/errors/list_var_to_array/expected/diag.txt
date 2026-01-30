@@ -1,0 +1,1 @@
+main.tp.py:14: error: Type mismatch in argument 'arr': expected Array[Int32, 3], got list[Int32]
