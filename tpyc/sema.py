@@ -353,39 +353,60 @@ class SemanticAnalyzer:
         existing_type = self.current_scope.lookup(stmt.name)
 
         if stmt.init:
-            # Handle empty list literal or list() constructor with explicit type annotation
+            # Handle empty list literal or generic type constructor with explicit type annotation
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
-            is_list_constructor = (isinstance(stmt.init, TpyCall) and
-                                   stmt.init.func == "list" and
-                                   not stmt.init.args)
+            is_generic_constructor = (isinstance(stmt.init, TpyCall) and
+                                      not stmt.init.args and
+                                      stmt.init.call_type is None and
+                                      builtin_modules.lookup_generic_type(stmt.init.func) is not None)
 
-            if (is_empty_literal or is_list_constructor) and stmt.type:
-                if isinstance(stmt.type, ListType):
-                    # Use the annotated element type for the empty list
-                    elem_type = stmt.type.element_type
-                    if self.current_function is None:
-                        # Global context: return ListType directly
-                        init_type = ListType(elem_type)
-                    else:
-                        # Function-local context: create PendingListType
-                        literal_id = self.literal_counter
-                        self.literal_counter += 1
-                        info = ListLiteralInfo(
-                            literal_id=literal_id,
-                            expr=stmt.init,
-                            element_type=elem_type,
-                            size=0,
-                            is_global=self.is_top_level,
-                            has_explicit_annotation=True,
-                            explicit_type=stmt.type
-                        )
-                        self.list_literals[literal_id] = info
-                        self.pending_resolutions.append(literal_id)
-                        init_type = PendingListType(elem_type, 0, literal_id)
+            if (is_empty_literal or is_generic_constructor) and stmt.type:
+                # Check if annotation matches the constructor's generic type
+                annotation_matches = False
+                if is_generic_constructor:
+                    lookup = builtin_modules.lookup_generic_type(stmt.init.func)
+                    annotation_matches = (lookup is not None and
+                                          stmt.type.qualified_name() == lookup.qualified_name)
                 else:
+                    # Empty literal [] can match list[T] annotation
+                    annotation_matches = isinstance(stmt.type, ListType)
+
+                if annotation_matches:
+                    if isinstance(stmt.type, ListType):
+                        # list[T]: Use PendingListType for potential Array optimization
+                        elem_type = stmt.type.element_type
+                        if self.current_function is None:
+                            # Global context: return ListType directly
+                            init_type = ListType(elem_type)
+                        else:
+                            # Function-local context: create PendingListType
+                            literal_id = self.literal_counter
+                            self.literal_counter += 1
+                            info = ListLiteralInfo(
+                                literal_id=literal_id,
+                                expr=stmt.init,
+                                element_type=elem_type,
+                                size=0,
+                                is_global=self.is_top_level,
+                                has_explicit_annotation=True,
+                                explicit_type=stmt.type
+                            )
+                            self.list_literals[literal_id] = info
+                            self.pending_resolutions.append(literal_id)
+                            init_type = PendingListType(elem_type, 0, literal_id)
+                    else:
+                        # Other generic types (StaticList, Array, etc.): use annotation directly
+                        init_type = stmt.type
+                        # Set call_type so codegen knows the concrete template type
+                        if is_generic_constructor:
+                            stmt.init.call_type = stmt.type  # type: ignore
+                    # Cache expr_type since we bypassed _analyze_expr
+                    self.expr_types[id(stmt.init)] = init_type
+                else:
+                    func_name = stmt.init.func if is_generic_constructor else "[]"
                     raise SemanticError(
-                        f"Empty list requires list[T] annotation, got {stmt.type}"
+                        f"{func_name} requires matching type annotation, got {stmt.type}"
                     )
             else:
                 init_type = self._analyze_expr(stmt.init)
@@ -491,56 +512,62 @@ class SemanticAnalyzer:
     def _analyze_expr_with_hint(self, expr: TpyExpr, type_hint: Optional[TpyType]) -> TpyType:
         """Analyze an expression with an optional type hint for inference.
 
-        The type hint allows constructs like list() to infer their element type
-        from context (e.g., function parameter type).
+        The type hint allows constructs like list() or StaticList() to infer their
+        type parameters from context (e.g., function parameter type).
         """
-        # Handle list() constructor with type hint
-        if (isinstance(expr, TpyCall) and expr.func == "list" and not expr.args
-                and isinstance(type_hint, ListType)):
-            elem_type = type_hint.element_type
-            if self.current_function is None:
-                typ = ListType(elem_type)
-            else:
-                literal_id = self.literal_counter
-                self.literal_counter += 1
-                info = ListLiteralInfo(
-                    literal_id=literal_id,
-                    expr=expr,
-                    element_type=elem_type,
-                    size=0,
-                    is_global=self.is_top_level,
-                    has_explicit_annotation=True,
-                    explicit_type=type_hint
-                )
-                self.list_literals[literal_id] = info
-                self.pending_resolutions.append(literal_id)
-                typ = PendingListType(elem_type, 0, literal_id)
-            self.expr_types[id(expr)] = typ
-            return typ
+        if type_hint is None:
+            return self._analyze_expr(expr)
 
-        # Handle empty list literal with type hint
-        if (isinstance(expr, TpyArrayLiteral) and not expr.elements
-                and isinstance(type_hint, ListType)):
-            elem_type = type_hint.element_type
-            if self.current_function is None:
-                typ = ListType(elem_type)
+        # Check for generic type constructor (list(), StaticList(), etc.)
+        is_generic_constructor = (isinstance(expr, TpyCall) and
+                                  not expr.args and
+                                  expr.call_type is None and
+                                  builtin_modules.lookup_generic_type(expr.func) is not None)
+
+        # Check for empty list literal []
+        is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements
+
+        if is_generic_constructor or is_empty_literal:
+            # Check if type_hint matches the constructor's generic type
+            hint_matches = False
+            if is_generic_constructor:
+                lookup = builtin_modules.lookup_generic_type(expr.func)  # type: ignore
+                hint_matches = (lookup is not None and
+                                type_hint.qualified_name() == lookup.qualified_name)
             else:
-                literal_id = self.literal_counter
-                self.literal_counter += 1
-                info = ListLiteralInfo(
-                    literal_id=literal_id,
-                    expr=expr,
-                    element_type=elem_type,
-                    size=0,
-                    is_global=self.is_top_level,
-                    has_explicit_annotation=True,
-                    explicit_type=type_hint
-                )
-                self.list_literals[literal_id] = info
-                self.pending_resolutions.append(literal_id)
-                typ = PendingListType(elem_type, 0, literal_id)
-            self.expr_types[id(expr)] = typ
-            return typ
+                # Empty literal [] can match list[T] hint
+                hint_matches = isinstance(type_hint, ListType)
+
+            if hint_matches:
+                if isinstance(type_hint, ListType):
+                    # list[T]: Use PendingListType for potential Array optimization
+                    elem_type = type_hint.element_type
+                    if self.current_function is None:
+                        typ = ListType(elem_type)
+                    else:
+                        literal_id = self.literal_counter
+                        self.literal_counter += 1
+                        info = ListLiteralInfo(
+                            literal_id=literal_id,
+                            expr=expr,
+                            element_type=elem_type,
+                            size=0,
+                            is_global=self.is_top_level,
+                            has_explicit_annotation=True,
+                            explicit_type=type_hint
+                        )
+                        self.list_literals[literal_id] = info
+                        self.pending_resolutions.append(literal_id)
+                        typ = PendingListType(elem_type, 0, literal_id)
+                    self.expr_types[id(expr)] = typ
+                    return typ
+                else:
+                    # Other generic types (StaticList, Array, etc.): use hint directly
+                    # Set call_type so codegen knows the concrete template type
+                    if is_generic_constructor:
+                        expr.call_type = type_hint  # type: ignore
+                    self.expr_types[id(expr)] = type_hint
+                    return type_hint
 
         # Fall back to regular analysis
         return self._analyze_expr(expr)
@@ -769,9 +796,17 @@ class SemanticAnalyzer:
 
             return func.return_type
 
-        # list() without type annotation
-        if expr.func == "list":
-            raise SemanticError("list() requires type annotation: `x: list[T] = list()`")
+        # Generic type constructor without context for type inference
+        if lookup := builtin_modules.lookup_generic_type(expr.func):
+            params = ", ".join(lookup.type_def.type_params)
+            if expr.args:
+                raise SemanticError(
+                    f"{expr.func}() constructor with arguments is not supported"
+                )
+            raise SemanticError(
+                f"Cannot infer type for {expr.func}(); "
+                f"use explicit type parameters: {expr.func}[{params}]()"
+            )
 
         raise SemanticError(f"Unknown function or type: '{expr.func}'")
 

@@ -194,7 +194,14 @@ def lookup_type_by_func_name(func_name: str) -> BuiltinTypeDef | None:
     return None
 
 
-def lookup_generic_type(name: str) -> BuiltinTypeDef | None:
+@dataclass
+class GenericTypeLookup:
+    """Result of looking up a generic type by name."""
+    type_def: BuiltinTypeDef
+    qualified_name: str
+
+
+def lookup_generic_type(name: str) -> GenericTypeLookup | None:
     """Lookup a parameterized type by its simple name (e.g., 'list', 'StaticList').
 
     Only returns types that have type parameters and a type factory defined.
@@ -204,7 +211,7 @@ def lookup_generic_type(name: str) -> BuiltinTypeDef | None:
         qualified = f"{module.name}.{name}"
         if typ := module.types.get(qualified):
             if typ.type_params and typ.type_factory:
-                return typ
+                return GenericTypeLookup(typ, qualified)
     return None
 
 

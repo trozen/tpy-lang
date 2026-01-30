@@ -462,8 +462,8 @@ class Parser:
                     return OwnType(inner)
 
                 # Module-defined generic types (list, Array, Span, StaticList, etc.)
-                if type_def := lookup_generic_type(container):
-                    return self._parse_generic_type(node, container, type_def)
+                if lookup := lookup_generic_type(container):
+                    return self._parse_generic_type(node, container, lookup.type_def)
 
                 raise ParseError(f"Unknown generic type: {container}", node)
 
