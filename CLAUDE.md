@@ -37,40 +37,57 @@ uv sync
 # Run all tests
 pytest
 
+# Run fast compilation tests only (diagnostics, codegen)
+pytest tests/test_comp.py
+
+# Run slow execution tests only (C++ build, run, CPython comparison)
+pytest tests/test_exec.py
+
 # Run tests for one case (pattern matching)
 pytest -k hello
 
 # Update expected snapshots after intentional changes
-python tests/update_snapshots.py           # all cases
-python tests/update_snapshots.py hello     # specific case
+python tests/update_snapshots.py              # all cases
+python tests/update_snapshots.py hello        # specific case
+python tests/update_snapshots.py --comp       # compilation tests only
+python tests/update_snapshots.py --exec       # execution tests only
+python tests/update_snapshots.py --comp hello # specific case, comp only
 ```
 
 ### Test Structure
 
 ```
 tests/
-├── cases/                    # Test cases (auto-discovered)
+├── cases/                    # Normal tests (compile + run)
+├── errors/                   # Compilation error tests (compile only)
+├── panics/                   # Runtime panic tests (compile + run, expect failure)
 │   └── {name}/
-│       ├── src/              # TurboPython source files
+│       ├── src/
 │       │   └── main.tp.py
-│       └── expected/         # Expected outputs (snapshots)
-│           ├── main.hpp      # Named after source module
-│           ├── main.cpp
-│           └── output.txt
+│       └── expected/
+│           ├── diag.txt      # Compiler diagnostics
+│           ├── main.hpp      # Generated header (if compiles)
+│           ├── main.cpp      # Generated source (if compiles)
+│           └── output.txt    # Runtime output (or panic.txt)
 ├── harness/tpy/              # CPython simulation module
-├── conftest.py               # Pytest fixtures
-├── test_cases.py             # Main test module (codegen + output)
+├── conftest.py               # Pytest fixtures and shared utilities
+├── test_comp.py              # Fast compilation tests (diagnostics, codegen)
+├── test_exec.py              # Slow execution tests (C++ build, run)
 └── update_snapshots.py       # Snapshot update utility
 ```
 
 ### Adding a New Test Case
 
-1. Create `tests/cases/{name}/src/main.tp.py`
-2. Add `# tpyc:` annotations on lines that test specific compiler behavior:
+1. Create test in the appropriate directory:
+   - `tests/cases/{name}/` - normal tests that compile and run
+   - `tests/errors/{name}/` - tests for compilation errors
+   - `tests/panics/{name}/` - tests for runtime panics
+2. Add source file: `src/main.tp.py`
+3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
    - `# tpyc: ok` - line should compile without error
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
-3. Run `python tests/update_snapshots.py {name}` to generate expected outputs
-4. Run `pytest -k {name}` to verify
+4. Run `python tests/update_snapshots.py {name}` to generate expected outputs
+5. Run `pytest -k {name}` to verify
 
 ## Code Style
 

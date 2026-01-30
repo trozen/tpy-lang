@@ -24,7 +24,9 @@ TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
 
 # Paths
 TESTS_DIR = Path(__file__).parent
-CASES_DIR = TESTS_DIR / "cases"
+CASES_DIR = TESTS_DIR / "cases"    # Normal tests (compile + run)
+ERRORS_DIR = TESTS_DIR / "errors"  # Compilation error tests
+PANICS_DIR = TESTS_DIR / "panics"  # Runtime panic tests
 HARNESS_DIR = TESTS_DIR / "harness"
 PROJECT_ROOT = TESTS_DIR.parent
 RUNTIME_DIR = PROJECT_ROOT / "runtime"
@@ -244,24 +246,28 @@ def remove_if_exists(path: Path) -> None:
 
 
 def discover_cases():
-    """Discover all test cases.
+    """Discover all test cases from cases/, errors/, and panics/ directories.
 
     Returns list of (name, case_dir, main_src) tuples.
     """
     cases = []
-    if not CASES_DIR.exists():
-        return cases
 
-    for src_dir in CASES_DIR.rglob("src"):
-        if not src_dir.is_dir():
-            continue
-        case_dir = src_dir.parent
-        src_files = list(src_dir.glob("*.tp.py"))
-        if not src_files:
+    for base_dir in [CASES_DIR, ERRORS_DIR, PANICS_DIR]:
+        if not base_dir.exists():
             continue
 
-        rel_path = case_dir.relative_to(CASES_DIR)
-        name = str(rel_path).replace("/", "_").replace("\\", "_")
-        cases.append((name, case_dir, src_files[0]))
+        prefix = base_dir.name  # "cases", "errors", or "panics"
+
+        for src_dir in base_dir.rglob("src"):
+            if not src_dir.is_dir():
+                continue
+            case_dir = src_dir.parent
+            src_files = list(src_dir.glob("*.tp.py"))
+            if not src_files:
+                continue
+
+            rel_path = case_dir.relative_to(base_dir)
+            name = f"{prefix}_{rel_path}".replace("/", "_").replace("\\", "_")
+            cases.append((name, case_dir, src_files[0]))
 
     return cases
