@@ -15,8 +15,8 @@ Point make_point(int32_t x, int32_t y) {
 
 // 16: def take_point(p: Own[Point]) -> Int32:
 int32_t take_point(Point p) {
-  // 18:     return 99
-  return 99;
+  // 18:     return p.x + p.y
+  return (tpy::int32_add(p.x, p.y));
 }
 
 // 21: def main():

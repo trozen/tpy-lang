@@ -14,8 +14,8 @@ def make_point(x: Int32, y: Int32) -> Own[Point]:
 
 
 def take_point(p: Own[Point]) -> Int32:
-    # For now, just return a constant since field access on Own[T] isn't implemented yet
-    return 99
+    # Field access on Own[T] should work - unwraps to the underlying type
+    return p.x + p.y
 
 
 def main():

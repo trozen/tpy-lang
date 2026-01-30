@@ -970,9 +970,12 @@ class SemanticAnalyzer:
         obj_type = self._analyze_expr(expr.obj)
 
         # Handle pointer types - dereference to get the pointee
+        # Handle Own[T] - unwrap to get the owned type
         actual_type = obj_type
         if isinstance(obj_type, (PtrType, ConstPtrType)):
             actual_type = obj_type.pointee
+        elif isinstance(obj_type, OwnType):
+            actual_type = obj_type.wrapped
 
         if isinstance(actual_type, RecordType):
             record = self.registry.get_record(actual_type.name)
