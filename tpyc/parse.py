@@ -605,9 +605,11 @@ class Parser:
 
         elif isinstance(node, ast.BinOp):
             # Handle list repetition: [x, y, ...] * N -> TpyListRepeat
-            # Empty list [] * N is allowed (always produces empty list, requires type annotation)
             if isinstance(node.op, ast.Mult) and isinstance(node.left, ast.List):
                 elements = [self._parse_expr(e) for e in node.left.elts]
+                # Empty list: [] * N -> [] (collapse to empty array literal)
+                if not elements:
+                    return TpyArrayLiteral([], loc=loc)
                 count = self._parse_expr(node.right)
                 return TpyListRepeat(elements, count, loc=loc)
             left = self._parse_expr(node.left)

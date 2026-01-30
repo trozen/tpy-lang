@@ -1065,13 +1065,7 @@ class CodeGenerator:
 
         elif isinstance(expr, TpyListRepeat):
             # [elements...] * N -> repeated sequence
-
-            # Empty list repetition: [] * N always produces empty container
-            if not expr.elements:
-                if isinstance(target_type, (StaticListType, ListType)):
-                    return f"{target_type.to_cpp()}()"
-                # Fallback (shouldn't happen with proper type annotation)
-                return "{}"
+            # Note: Empty list repetition [] * N is collapsed to [] in the parser
 
             count = self._gen_expr(expr.count)
             count_type = self.analyzer.get_expr_type(expr.count)

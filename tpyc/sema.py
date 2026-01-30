@@ -353,15 +353,14 @@ class SemanticAnalyzer:
         existing_type = self.current_scope.lookup(stmt.name)
 
         if stmt.init:
-            # Handle empty list literal, list() constructor, or empty list repetition
-            # with explicit type annotation
+            # Handle empty list literal or list() constructor with explicit type annotation
+            # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
             is_list_constructor = (isinstance(stmt.init, TpyCall) and
                                    stmt.init.func == "list" and
                                    not stmt.init.args)
-            is_empty_repeat = isinstance(stmt.init, TpyListRepeat) and not stmt.init.elements
 
-            if (is_empty_literal or is_list_constructor or is_empty_repeat) and stmt.type:
+            if (is_empty_literal or is_list_constructor) and stmt.type:
                 if isinstance(stmt.type, ListType):
                     # Use the annotated element type for the empty list
                     elem_type = stmt.type.element_type
@@ -929,7 +928,7 @@ class SemanticAnalyzer:
         In global/module context, returns ListType directly.
         """
         if not expr.elements:
-            raise SemanticError("Empty array literal requires explicit type annotation")
+            raise self._error("Empty array literal requires explicit type annotation", expr)
 
         # Analyze all elements first
         elem_types = [self._analyze_expr(e) for e in expr.elements]
@@ -999,10 +998,7 @@ class SemanticAnalyzer:
         if not isinstance(count_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"List repetition count must be an integer type, got {count_type}")
 
-        # Empty list repetition: [] * N always produces empty list
-        # Type will be determined from context (annotation or target type)
-        if not expr.elements:
-            return ListType(VOID)  # Marker type - coerces to any list type
+        # Note: Empty list repetition [] * N is collapsed to [] in the parser
 
         # Analyze all elements
         elem_types = [self._analyze_expr(e) for e in expr.elements]

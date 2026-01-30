@@ -6,7 +6,7 @@ StaticList<int32_t, 8> sl = StaticList<int32_t, 8>(tpy::repeat_range<int32_t>(3,
 // 10: nums: list[Int32] = [10, 20] * 2
 std::vector<int32_t> nums = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>(2, {10, 20}));
 // 16: empty: list[Int32] = [] * 100
-std::vector<int32_t> empty = std::vector<int32_t>();
+std::vector<int32_t> empty = {};
 
 void __tpy_init_main() {
   // 5: print(len(sl))

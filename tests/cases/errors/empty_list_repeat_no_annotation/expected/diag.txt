@@ -1,0 +1,1 @@
+main.tp.py:2: error: Empty array literal requires explicit type annotation
