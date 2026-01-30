@@ -241,3 +241,27 @@ def remove_if_exists(path: Path) -> None:
     """Remove a file if it exists (used in update mode to clean up stale files)."""
     if path.exists():
         path.unlink()
+
+
+def discover_cases():
+    """Discover all test cases.
+
+    Returns list of (name, case_dir, main_src) tuples.
+    """
+    cases = []
+    if not CASES_DIR.exists():
+        return cases
+
+    for src_dir in CASES_DIR.rglob("src"):
+        if not src_dir.is_dir():
+            continue
+        case_dir = src_dir.parent
+        src_files = list(src_dir.glob("*.tp.py"))
+        if not src_files:
+            continue
+
+        rel_path = case_dir.relative_to(CASES_DIR)
+        name = str(rel_path).replace("/", "_").replace("\\", "_")
+        cases.append((name, case_dir, src_files[0]))
+
+    return cases

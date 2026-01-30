@@ -3,27 +3,40 @@
 
 Usage:
     python tests/update_snapshots.py              # Update all cases
-    python tests/update_snapshots.py hello        # Update specific case (pytest -k hello)
-    python tests/update_snapshots.py -k hello     # Same, explicit -k flag
+    python tests/update_snapshots.py --comp       # Update compilation tests only
+    python tests/update_snapshots.py --exec       # Update execution tests only
+    python tests/update_snapshots.py hello        # Update specific case (both types)
+    python tests/update_snapshots.py --comp hello # Update compilation tests for specific case
 
-Any arguments are passed directly to pytest.
+Any other arguments are passed directly to pytest.
 """
+import argparse
 import os
 import subprocess
 import sys
 
-# Build pytest arguments
-pytest_args = ["pytest", "tests/test_cases.py", "-v"]
+parser = argparse.ArgumentParser(description="Update test snapshots")
+parser.add_argument("--comp", action="store_true", help="Update compilation tests only")
+parser.add_argument("--exec", action="store_true", help="Update execution tests only")
+parser.add_argument("pattern", nargs="?", help="Case name pattern (passed to pytest -k)")
+parser.add_argument("pytest_args", nargs="*", help="Additional pytest arguments")
 
-# Pass through all command-line arguments
-if sys.argv[1:]:
-    args = sys.argv[1:]
-    # If first arg doesn't start with -, treat it as a -k pattern
-    if args and not args[0].startswith("-"):
-        pytest_args.extend(["-k", args[0]])
-        pytest_args.extend(args[1:])
-    else:
-        pytest_args.extend(args)
+args = parser.parse_args()
+
+# Determine which test files to run
+test_files = []
+if args.comp:
+    test_files.append("tests/test_comp.py")
+if args.exec:
+    test_files.append("tests/test_exec.py")
+if not test_files:
+    test_files = ["tests/test_comp.py", "tests/test_exec.py"]
+
+# Build pytest arguments
+pytest_args = ["pytest"] + test_files + ["-v"]
+if args.pattern:
+    pytest_args.extend(["-k", args.pattern])
+pytest_args.extend(args.pytest_args)
 
 result = subprocess.run(
     pytest_args,
