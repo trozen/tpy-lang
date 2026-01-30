@@ -84,15 +84,30 @@ class CodeGenerator:
 
         # For binary operations, compute type using resolved operand types
         if isinstance(expr, TpyBinOp):
-            left_type = self._get_resolved_type(expr.left)
-            right_type = self._get_resolved_type(expr.right)
+            # First pass without context to detect Int32 operands
+            left_raw = self._get_resolved_type(expr.left)
+            right_raw = self._get_resolved_type(expr.right)
+            # Determine Int32 context: explicit target or operand is Int32
+            int32_ctx = target_type if isinstance(target_type, Int32Type) else None
+            if isinstance(left_raw, Int32Type) or isinstance(right_raw, Int32Type):
+                int32_ctx = INT32
+            # Second pass with context for proper literal resolution
+            left_type = self._get_resolved_type(expr.left, int32_ctx)
+            right_type = self._get_resolved_type(expr.right, int32_ctx)
             # Use analyzer types for literal check - analyzer returns IntLiteralType for
             # all-literal expressions (including nested binops like 2+3)
+            # NOTE: Variables (TpyName) may have IntLiteralType but aren't actual literals
             left_analyzer_type = self.analyzer.get_expr_type(expr.left)
             right_analyzer_type = self.analyzer.get_expr_type(expr.right)
+            left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
+            right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
             # If target is Int32 and both operands are literals, result is Int32
-            if (isinstance(target_type, Int32Type) and
-                isinstance(left_analyzer_type, IntLiteralType) and isinstance(right_analyzer_type, IntLiteralType)):
+            if isinstance(int32_ctx, Int32Type) and left_is_literal and right_is_literal:
+                return INT32
+            # If either operand is Int32 (and other is compatible), result is Int32
+            if isinstance(left_type, Int32Type) and isinstance(right_type, (Int32Type, IntLiteralType)):
+                return INT32
+            if isinstance(right_type, Int32Type) and isinstance(left_type, (Int32Type, IntLiteralType)):
                 return INT32
             # Otherwise, result is BigInt if either operand is BigInt, or if both are IntLiteral
             is_bigint_op = (
@@ -116,6 +131,14 @@ class CodeGenerator:
             if isinstance(elem_type, IntLiteralType):
                 elem_type = INT32
             return ListType(elem_type)
+        # Resolve IntLiteralType based on context (Int32 if target, else BigInt)
+        if isinstance(typ, IntLiteralType):
+            if isinstance(target_type, Int32Type):
+                return INT32
+            return BIGINT
+        # Resolve IntLiteralType in container element types
+        if isinstance(typ, ListType) and isinstance(typ.element_type, IntLiteralType):
+            return ListType(BIGINT)
         return typ
 
     def generate(self, module: TpyModule, module_name: str = "generated") -> tuple[str, str]:
@@ -135,23 +158,18 @@ class CodeGenerator:
 
         # Separate global declarations from other top-level statements early
         # (needed for extern declarations in header)
+        # Track seen names to handle re-declarations (z = 0; z = 5; → one global, one assignment)
         global_decls = []
         main_stmts = []
+        seen_globals = set()
         for stmt in module.top_level_stmts:
-            # Top-level variable declarations with explicit type are globals
-            # Also treat unannotated list/container literals and constructors as globals
-            is_global = False
             if isinstance(stmt, TpyVarDecl):
-                if stmt.type:
-                    is_global = True
-                elif isinstance(stmt.init, TpyArrayLiteral):
-                    # Unannotated list literal at top level -> global
-                    is_global = True
-                elif isinstance(stmt.init, TpyCall) and stmt.init.call_type is not None:
-                    # Generic constructor like list[Int32]() -> global
-                    is_global = True
-            if is_global:
-                global_decls.append(stmt)
+                if stmt.name not in seen_globals:
+                    global_decls.append(stmt)
+                    seen_globals.add(stmt.name)
+                else:
+                    # Re-declaration becomes assignment in init function
+                    main_stmts.append(stmt)
             else:
                 main_stmts.append(stmt)
 
@@ -194,7 +212,7 @@ class CodeGenerator:
         if not has_user_main:
             # Always generate init function (even if empty, for consistency)
             self._gen_module_init_decl(hpp)
-            self._gen_module_init(cpp, main_stmts)
+            self._gen_module_init(cpp, main_stmts, seen_globals)
             self._gen_main(cpp)
 
         self._write_header_epilogue(hpp)
@@ -217,10 +235,11 @@ class CodeGenerator:
         """Generate module init function declaration in header."""
         out.write(f"void __tpy_init_{self.module_name}();\n")
 
-    def _gen_module_init(self, out: TextIO, stmts: list) -> None:
+    def _gen_module_init(self, out: TextIO, stmts: list, global_names: set[str] | None = None) -> None:
         """Generate module init function containing top-level statements."""
         out.write(f"void __tpy_init_{self.module_name}() {{\n")
-        self.declared_vars = set()
+        # Pre-seed with global names so re-declarations become assignments
+        self.declared_vars = set(global_names) if global_names else set()
         self.var_types = {}
         self.indent_level = 1
         for stmt in stmts:
@@ -614,9 +633,9 @@ class CodeGenerator:
             return self._gen_aug_assign_subscript_code(stmt, indent)
 
         target = self._gen_expr(stmt.target)
-        value = self._gen_expr(stmt.value)
         target_type = self.analyzer.get_expr_type(stmt.target)
-        value_type = self._get_resolved_type(stmt.value)
+        value = self._gen_expr(stmt.value, target_type)
+        value_type = self._get_resolved_type(stmt.value, target_type)
 
         # Special case: Int32 += BigInt should convert BigInt to Int32, then use Int32 ops
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
@@ -665,8 +684,8 @@ class CodeGenerator:
         else:
             read_expr = f"{obj}[{index_expr}]"
 
-        value = self._gen_expr(stmt.value)
-        value_type = self._get_resolved_type(stmt.value)
+        value = self._gen_expr(stmt.value, elem_type)
+        value_type = self._get_resolved_type(stmt.value, elem_type)
 
         # Special case: Int32 += BigInt should convert BigInt to Int32
         if isinstance(elem_type, Int32Type) and isinstance(value_type, BigIntType):
@@ -881,8 +900,15 @@ class CodeGenerator:
             return expr.name
 
         elif isinstance(expr, TpyBinOp):
-            left_type = self._get_resolved_type(expr.left)
-            right_type = self._get_resolved_type(expr.right)
+            # First pass: get raw types to detect Int32 operands
+            left_raw = self._get_resolved_type(expr.left)
+            right_raw = self._get_resolved_type(expr.right)
+            # If one operand is Int32, resolve literals as Int32 (not BigInt)
+            int32_context = target_type if isinstance(target_type, Int32Type) else None
+            if isinstance(left_raw, Int32Type) or isinstance(right_raw, Int32Type):
+                int32_context = INT32
+            left_type = self._get_resolved_type(expr.left, int32_context)
+            right_type = self._get_resolved_type(expr.right, int32_context)
 
             # Handle 'in' and 'not in' operators
             if expr.op in ("in", "not in"):
@@ -912,10 +938,12 @@ class CodeGenerator:
             # This avoids unnecessary BigInt heap allocations
             # Use analyzer types for this check - analyzer returns IntLiteralType for all-literal
             # expressions (including nested binops like 2+3), while _get_resolved_type returns BigInt
+            # NOTE: Must also check operands aren't variables (loop vars have IntLiteralType but aren't literals)
             left_analyzer_type = self.analyzer.get_expr_type(expr.left)
             right_analyzer_type = self.analyzer.get_expr_type(expr.right)
-            if (isinstance(target_type, Int32Type) and
-                isinstance(left_analyzer_type, IntLiteralType) and isinstance(right_analyzer_type, IntLiteralType)):
+            left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
+            right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
+            if (isinstance(target_type, Int32Type) and left_is_literal and right_is_literal):
                 # Pass target_type to handle nested binops like 1 + (2 + 3)
                 left = self._gen_expr(expr.left, target_type)
                 right = self._gen_expr(expr.right, target_type)

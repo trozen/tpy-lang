@@ -11,6 +11,20 @@ int32_t c = tpy::int32_mul(4, 5);
 int32_t d = tpy::int32_div(17, 3);
 // 46: e: Int32 = 2 ** 10         # power
 int32_t e = tpy::int32_pow(2, 10);
+// 56: n = 5
+tpy::BigInt n = tpy::BigInt(5);
+// 59: result1 = takes_int32(n)
+int32_t result1 = takes_int32((n).to_int32());
+// 63: result2 = return_as_int32(10)
+int32_t result2 = return_as_int32(tpy::BigInt(10));
+// 67: result3 = var_decl_test(15)
+int32_t result3 = var_decl_test(tpy::BigInt(15));
+// 71: result4 = assign_test(20)
+int32_t result4 = assign_test(tpy::BigInt(20));
+// 75: result5 = loop_test(3)
+int32_t result5 = loop_test(tpy::BigInt(3));
+// 79: result6 = constructor_test(25)
+int32_t result6 = constructor_test(tpy::BigInt(25));
 
 // 6: def takes_int32(x: Int32) -> Int32:
 int32_t takes_int32(int32_t x) {
@@ -72,30 +86,16 @@ int32_t literal_ops_local() {
 
 void __tpy_init_main() {
   // 1: """Test BigInt -> Int32 conversions with range checks."""
-  // 56: n = 5
-  tpy::BigInt n = tpy::BigInt(5);
-  // 59: result1 = takes_int32(n)
-  int32_t result1 = takes_int32((n).to_int32());
   // 60: print(result1)
   std::cout << result1 << "\n";
-  // 63: result2 = return_as_int32(10)
-  int32_t result2 = return_as_int32(tpy::BigInt(10));
   // 64: print(result2)
   std::cout << result2 << "\n";
-  // 67: result3 = var_decl_test(15)
-  int32_t result3 = var_decl_test(tpy::BigInt(15));
   // 68: print(result3)
   std::cout << result3 << "\n";
-  // 71: result4 = assign_test(20)
-  int32_t result4 = assign_test(tpy::BigInt(20));
   // 72: print(result4)
   std::cout << result4 << "\n";
-  // 75: result5 = loop_test(3)
-  int32_t result5 = loop_test(tpy::BigInt(3));
   // 76: print(result5)
   std::cout << result5 << "\n";
-  // 79: result6 = constructor_test(25)
-  int32_t result6 = constructor_test(tpy::BigInt(25));
   // 80: print(result6)
   std::cout << result6 << "\n";
   // 83: print(a)  # 3

@@ -7,6 +7,8 @@ std::vector<tpy::BigInt> items = {1, 2, 3, 4, 5};
 int32_t total = 0;
 // 11: arr: Array[Int32, 3] = [10, 20, 30]
 std::array<int32_t, 3> arr = {10, 20, 30};
+// 33: text = "AB"
+std::string_view text = "AB";
 
 // 16: def sum_array() -> Int32:
 int32_t sum_array() {
@@ -69,8 +71,6 @@ void __tpy_init_main() {
   std::cout << sum_array() << "\n";
   // 30: print_span([7, 8, 9])
   print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
-  // 33: text = "AB"
-  std::string_view text = "AB";
   // 34: for c in text:
   for (char c : std::string_view(text)) {
     // 35:     print(c)

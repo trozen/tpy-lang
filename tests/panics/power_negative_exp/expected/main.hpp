@@ -3,5 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
+extern tpy::BigInt x;
+extern tpy::BigInt y;
+extern tpy::BigInt z;
+
 
 void __tpy_init_main();
