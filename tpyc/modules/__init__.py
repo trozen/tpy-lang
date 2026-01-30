@@ -9,10 +9,17 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Union
+from enum import Enum
+from typing import TYPE_CHECKING, Callable, Union
 
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
+
+
+class TypeParamKind(Enum):
+    """Kind of type parameter in a generic type."""
+    TYPE = "type"  # A type parameter like T
+    INT = "int"    # An integer literal like N
 
 
 # Type alias for method param/return types: concrete TpyType or string type param
@@ -50,6 +57,8 @@ class BuiltinTypeDef:
     methods: dict[str, list[MethodDef]] = field(default_factory=dict)
     constructors: list[MethodDef] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)  # ["T"], ["T", "N"], etc.
+    param_kinds: list[TypeParamKind] = field(default_factory=list)  # Kind of each type param
+    type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
 
 
 class BuiltinModule:
@@ -80,15 +89,39 @@ class BuiltinModule:
     def type(self, name: str, cpp_type: str,
              methods: dict[str, list[MethodDef]] | None = None,
              constructors: list[MethodDef] | None = None,
-             type_params: list[str] | None = None):
+             type_params: list[str] | None = None,
+             param_kinds: list[TypeParamKind] | None = None,
+             type_factory: "Callable[..., TpyType] | None" = None):
         """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
+        type_params = type_params or []
+        param_kinds = param_kinds or []
+
+        # Validate parameterized type configuration
+        if type_params:
+            if not param_kinds:
+                raise ValueError(f"Type '{name}' has type_params but no param_kinds")
+            if not type_factory:
+                raise ValueError(f"Type '{name}' has type_params but no type_factory")
+            if len(param_kinds) != len(type_params):
+                raise ValueError(
+                    f"Type '{name}': param_kinds length ({len(param_kinds)}) "
+                    f"!= type_params length ({len(type_params)})"
+                )
+        else:
+            if param_kinds:
+                raise ValueError(f"Type '{name}' has param_kinds but no type_params")
+            if type_factory:
+                raise ValueError(f"Type '{name}' has type_factory but no type_params")
+
         qualified_name = f"{self.name}.{name}"
         self.types[qualified_name] = BuiltinTypeDef(
             type_obj=None,  # Parameterized type, no single instance
             cpp_type=cpp_type,
             methods=methods or {},
             constructors=constructors or [],
-            type_params=type_params or [],
+            type_params=type_params,
+            param_kinds=param_kinds,
+            type_factory=type_factory,
         )
 
 
@@ -157,6 +190,20 @@ def lookup_type_by_func_name(func_name: str) -> BuiltinTypeDef | None:
         qualified = f"{module.name}.{func_name}"
         if typ := module.types.get(qualified):
             if typ.constructors:  # Only return if it has constructors
+                return typ
+    return None
+
+
+def lookup_generic_type(name: str) -> BuiltinTypeDef | None:
+    """Lookup a parameterized type by its simple name (e.g., 'list', 'StaticList').
+
+    Only returns types that have type parameters and a type factory defined.
+    Returns first match across modules - names must be unique to avoid ambiguity.
+    """
+    for module in _all_modules():
+        qualified = f"{module.name}.{name}"
+        if typ := module.types.get(qualified):
+            if typ.type_params and typ.type_factory:
                 return typ
     return None
 

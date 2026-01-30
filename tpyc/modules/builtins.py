@@ -4,8 +4,8 @@ TurboPython built-in functions (Python builtins).
 Defines functions like chr, print, len, etc.
 """
 
-from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, BIGINT, CHAR, STR, VOID
+from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
+from tpyc.typesys import INT32, BIGINT, CHAR, STR, VOID, ListType
 
 module = BuiltinModule("builtins")
 
@@ -24,7 +24,9 @@ module.function("chr", overloads=[
 
 # list[T]: Dynamic list backed by std::vector<T>
 # Methods use "T" string which gets resolved to element_type at lookup time
-module.type("list", cpp_type="std::vector<{T}>", type_params=["T"], methods={
+module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
+            param_kinds=[TypeParamKind.TYPE],
+            type_factory=lambda t: ListType(t), methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,

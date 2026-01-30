@@ -4,8 +4,8 @@ TurboPython-specific types (tpy module).
 Defines types like Array, Span, StaticList, Int32, etc.
 """
 
-from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, BIGINT, VOID
+from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
+from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, StaticListType
 
 module = BuiltinModule("tpy")
 
@@ -54,7 +54,9 @@ module.register_type(INT32, cpp_type="int32_t", constructors=[
 })
 
 # Array[T, N]: Fixed-size array
-module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"], methods={
+module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
+            param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
+            type_factory=lambda t, n: ArrayType(t, n), methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -78,7 +80,9 @@ module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"], me
 })
 
 # Span[T]: Non-owning read-only view
-module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"], methods={
+module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
+            param_kinds=[TypeParamKind.TYPE],
+            type_factory=lambda t: SpanType(t), methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -98,7 +102,9 @@ module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"], methods=
 
 # StaticList[T, N]: Fixed-capacity container
 # Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
-module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"], methods={
+module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
+            param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
+            type_factory=lambda t, n: StaticListType(t, n), methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,

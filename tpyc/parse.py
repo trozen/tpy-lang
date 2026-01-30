@@ -11,10 +11,10 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
-    TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
-    StaticListType, ArrayType, SpanType, ListType, BoolType, BigIntType,
-    INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    TpyType, RecordType, PtrType, ConstPtrType, OwnType,
+    INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, TypeRegistry
 )
+from .modules import lookup_generic_type, TypeParamKind, BuiltinTypeDef
 
 
 class ParseError(Exception):
@@ -450,6 +450,7 @@ class Parser:
         elif isinstance(node, ast.Subscript):
             if isinstance(node.value, ast.Name):
                 container = node.value.id
+                # Pointer types are fundamental, not module-defined
                 if container == "Ptr":
                     inner = self._parse_type_annotation(node.slice)
                     return PtrType(inner)
@@ -459,45 +460,52 @@ class Parser:
                 elif container == "Own":
                     inner = self._parse_type_annotation(node.slice)
                     return OwnType(inner)
-                elif container == "StaticList":
-                    if isinstance(node.slice, ast.Tuple):
-                        if len(node.slice.elts) != 2:
-                            raise ParseError("StaticList requires exactly 2 type parameters", node)
-                        elem_type = self._parse_type_annotation(node.slice.elts[0])
-                        cap_node = node.slice.elts[1]
-                        if isinstance(cap_node, ast.Constant) and isinstance(cap_node.value, int):
-                            capacity = cap_node.value
-                        else:
-                            raise ParseError("StaticList capacity must be an integer literal", node)
-                        return StaticListType(elem_type, capacity)
-                    else:
-                        raise ParseError("StaticList requires [T, N] syntax", node)
-                elif container == "Array":
-                    if isinstance(node.slice, ast.Tuple):
-                        if len(node.slice.elts) != 2:
-                            raise ParseError("Array requires exactly 2 type parameters", node)
-                        elem_type = self._parse_type_annotation(node.slice.elts[0])
-                        size_node = node.slice.elts[1]
-                        if isinstance(size_node, ast.Constant) and isinstance(size_node.value, int):
-                            size = size_node.value
-                        else:
-                            raise ParseError("Array size must be an integer literal", node)
-                        return ArrayType(elem_type, size)
-                    else:
-                        raise ParseError("Array requires [T, N] syntax", node)
-                elif container == "Span":
-                    elem_type = self._parse_type_annotation(node.slice)
-                    return SpanType(elem_type)
-                elif container == "list":
-                    elem_type = self._parse_type_annotation(node.slice)
-                    return ListType(elem_type)
-                else:
-                    raise ParseError(f"Unknown generic type: {container}", node)
+
+                # Module-defined generic types (list, Array, Span, StaticList, etc.)
+                if type_def := lookup_generic_type(container):
+                    return self._parse_generic_type(node, container, type_def)
+
+                raise ParseError(f"Unknown generic type: {container}", node)
 
         elif isinstance(node, ast.Constant) and node.value is None:
             return VOID
 
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+
+    def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef) -> TpyType:
+        """Parse a module-defined generic type using its metadata."""
+        param_kinds = type_def.param_kinds
+        expected_count = len(param_kinds)
+
+        # Extract slice elements
+        if expected_count == 1:
+            slices = [node.slice]
+        elif isinstance(node.slice, ast.Tuple):
+            slices = node.slice.elts
+        else:
+            raise ParseError(f"{name} requires {expected_count} type parameters", node)
+
+        if len(slices) != expected_count:
+            raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
+
+        # Parse each parameter according to its kind
+        parsed_args: list[TpyType | int] = []
+        for i, (slice_node, kind) in enumerate(zip(slices, param_kinds)):
+            if kind == TypeParamKind.TYPE:
+                parsed_args.append(self._parse_type_annotation(slice_node))
+            elif kind == TypeParamKind.INT:
+                if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, int):
+                    parsed_args.append(slice_node.value)
+                else:
+                    raise ParseError(f"{name} parameter {i + 1} must be an integer literal", node)
+
+        assert type_def.type_factory is not None
+        try:
+            return type_def.type_factory(*parsed_args)
+        except ParseError:
+            raise
+        except Exception as e:
+            raise ParseError(f"Failed to construct type {name}: {e}", node) from e
 
     def _parse_stmt(self, node: ast.stmt) -> TpyStmt:
         """Parse a statement."""
