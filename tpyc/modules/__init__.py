@@ -185,11 +185,16 @@ def lookup_type_method(type_or_name: "TpyType | str", method_name: str) -> list[
 
 
 def lookup_type_by_func_name(func_name: str) -> BuiltinTypeDef | None:
-    """Lookup a type by constructor function name (e.g., 'Int32'). Only returns types with constructors."""
+    """Lookup a type by constructor function name (e.g., 'Int32').
+
+    Only returns non-generic types with constructors. Generic types (like list)
+    go through lookup_generic_type for proper type parameter inference.
+    """
     for module in _all_modules():
         qualified = f"{module.name}.{func_name}"
         if typ := module.types.get(qualified):
-            if typ.constructors:  # Only return if it has constructors
+            # Only return non-generic types with constructors
+            if typ.constructors and not typ.type_params:
                 return typ
     return None
 

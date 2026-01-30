@@ -1,5 +1,5 @@
 """Tests list[T]() constructor syntax."""
-from tpy import Int32
+from tpy import Int32, Array
 
 def test_local_list() -> None:
     # Local list without annotation
@@ -46,3 +46,18 @@ test_local_list()
 # Direct print of empty list constructor (regression test for ListPrinter CTAD)
 print(list[Int32]())
 print(list[int]())
+
+# list(iterable) constructor - type inferred from argument
+print(list([1, 2, 3]))
+print(list([Int32(10), Int32(20)]))
+src = [100, 200, 300]
+copy = list(src)
+print(copy)
+copy.append(400)
+print(len(src))  # Original unchanged
+print(len(copy))
+
+# Array → list conversion
+arr: Array[Int32, 3] = [5, 6, 7]
+from_arr = list(arr)
+print(from_arr)

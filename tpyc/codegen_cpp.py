@@ -1012,6 +1012,21 @@ class CodeGenerator:
                 if (isinstance(expr.call_type, StaticListType) and
                     len(expr.args) == 1 and isinstance(expr.args[0], TpyListRepeat)):
                     return self._gen_expr(expr.args[0], expr.call_type)
+                # Check for constructor with cpp template (e.g., list(iterable))
+                # Skip for literals - they use simpler initialization
+                if expr.args and not isinstance(expr.args[0], TpyArrayLiteral):
+                    if lookup := builtin_modules.lookup_generic_type(expr.func):
+                        type_def = lookup.type_def
+                        if type_def.constructors:
+                            # Find matching constructor and use its cpp template
+                            arg_types = [self._get_resolved_type(a) for a in expr.args]
+                            for ctor in type_def.constructors:
+                                if len(ctor.params) == len(arg_types):
+                                    # Check if this constructor matches (Iterable matches containers)
+                                    if all(self._ctor_param_matches(at, p.type) for at, p in zip(arg_types, ctor.params)):
+                                        type_params = builtin_modules.extract_type_params(expr.call_type)
+                                        gen_args = [self._gen_expr(a, expr.call_type) for a in expr.args]
+                                        return self._apply_cpp_template(ctor.cpp, gen_args, type_params, expr.call_type)
                 # Pass call_type as target for proper nested array brace generation
                 args = ", ".join(self._gen_expr(a, expr.call_type) for a in expr.args)
                 return f"{expr.call_type.to_cpp()}({args})"
@@ -1185,6 +1200,29 @@ class CodeGenerator:
     def _gen_constructor(self, expr: TpyCall, type_def: builtin_modules.BuiltinTypeDef) -> str:
         """Generate C++ code for a type constructor call."""
         return self._gen_overloaded_call(expr.args, type_def.constructors, expr.func)
+
+    def _ctor_param_matches(self, arg_type: TpyType, param_type: builtin_modules.TypeOrParam) -> bool:
+        """Check if argument type matches constructor parameter (for generic type constructors)."""
+        if param_type == "Iterable":
+            return isinstance(arg_type, (ListType, PendingListType, ArrayType, StaticListType, SpanType))
+        if isinstance(param_type, TpyType):
+            return arg_type == param_type or (
+                isinstance(arg_type, IntLiteralType) and isinstance(param_type, (Int32Type, BigIntType))
+            )
+        return False
+
+    def _apply_cpp_template(
+        self, template: str, args: list[str], type_params: dict[str, TpyType], result_type: TpyType
+    ) -> str:
+        """Apply a cpp template with argument and type parameter substitution."""
+        result = template
+        # Substitute positional arguments {0}, {1}, etc.
+        for i, arg in enumerate(args):
+            result = result.replace(f"{{{i}}}", arg)
+        # Substitute type parameters {T}, etc.
+        for name, typ in type_params.items():
+            result = result.replace(f"{{{name}}}", typ.to_cpp())
+        return result
 
     def _gen_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> str:
         """Generate C++ code for a built-in function call from the module registry."""

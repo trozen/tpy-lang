@@ -804,14 +804,38 @@ class SemanticAnalyzer:
 
         # Generic type constructor without context for type inference
         if lookup := builtin_modules.lookup_generic_type(expr.func):
-            params = ", ".join(lookup.type_def.type_params)
+            type_def = lookup.type_def
+            params = ", ".join(type_def.type_params)
+
+            # Check for constructors that can infer type from arguments
+            if expr.args and type_def.constructors:
+                arg_types = [self._analyze_expr(arg) for arg in expr.args]
+                for ctor in type_def.constructors:
+                    if len(ctor.params) != len(arg_types):
+                        continue
+                    # Try to match and infer type parameters
+                    inferred_params = self._match_generic_constructor(ctor.params, arg_types)
+                    if inferred_params is not None:
+                        # Use type_factory to create the result type
+                        elem_type = inferred_params.get("T")
+                        if elem_type and type_def.type_factory:
+                            # Resolve IntLiteralType to BigInt (Python semantics)
+                            if isinstance(elem_type, IntLiteralType):
+                                elem_type = BIGINT
+                            result_type = type_def.type_factory(elem_type)
+                            expr.call_type = result_type
+                            return result_type
+
             if expr.args:
-                raise SemanticError(
-                    f"{expr.func}() constructor with arguments is not supported"
+                raise self._error(
+                    f"Cannot infer element type for {expr.func}() from these arguments; "
+                    f"use {expr.func}[{params}]() or provide a type annotation",
+                    expr
                 )
-            raise SemanticError(
-                f"Cannot infer type for {expr.func}(); "
-                f"use explicit type parameters: {expr.func}[{params}]()"
+            raise self._error(
+                f"Cannot infer element type for {expr.func}(); "
+                f"use {expr.func}[{params}](), provide a type annotation, or pass an iterable",
+                expr
             )
 
         raise SemanticError(f"Unknown function or type: '{expr.func}'")
@@ -1169,6 +1193,40 @@ class SemanticAnalyzer:
 
         # Default: assume safe
         return False
+
+    def _match_generic_constructor(
+        self, params: list[builtin_modules.ParamDef], arg_types: list[TpyType]
+    ) -> dict[str, TpyType] | None:
+        """Try to match constructor params against arg types and infer type parameters.
+
+        Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        Currently supports "Iterable" params which match any container type and infer T.
+        """
+        inferred: dict[str, TpyType] = {}
+        for param, arg_type in zip(params, arg_types):
+            if param.type == "Iterable":
+                # Extract element type from iterable argument
+                elem_type = self._get_element_type(arg_type)
+                if elem_type is None:
+                    return None  # Not an iterable
+                # Check consistency with previously inferred T
+                if "T" in inferred and inferred["T"] != elem_type:
+                    return None
+                inferred["T"] = elem_type
+            elif isinstance(param.type, TpyType):
+                # Concrete type - must match exactly
+                if not builtin_modules._type_matches_param(arg_type, param.type):
+                    return None
+            else:
+                # Unknown param type pattern
+                return None
+        return inferred
+
+    def _get_element_type(self, typ: TpyType) -> TpyType | None:
+        """Extract element type from an iterable type, or None if not iterable."""
+        if isinstance(typ, (ListType, PendingListType, ArrayType, StaticListType, SpanType)):
+            return typ.element_type
+        return None
 
     def _pending_list_matches_array(self, actual: PendingListType, expected: ArrayType) -> bool:
         """Check if a pending list literal can match an Array type (including nested arrays)."""

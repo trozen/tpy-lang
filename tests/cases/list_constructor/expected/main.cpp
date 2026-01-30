@@ -11,6 +11,14 @@ std::vector<Point> points = std::vector<Point>();
 std::vector<std::vector<Point>> nested = std::vector<std::vector<Point>>();
 // 37: inner = list[Point]()
 std::vector<Point> inner = std::vector<Point>();
+// 53: src = [100, 200, 300]
+std::vector<tpy::BigInt> src = {100, 200, 300};
+// 54: copy = list(src)
+std::vector<tpy::BigInt> copy = std::vector<tpy::BigInt>(src.begin(), src.end());
+// 61: arr: Array[Int32, 3] = [5, 6, 7]
+std::array<int32_t, 3> arr = {5, 6, 7};
+// 62: from_arr = list(arr)
+std::vector<int32_t> from_arr = std::vector<int32_t>(arr.begin(), arr.end());
 
 // 4: def test_local_list() -> None:
 void test_local_list() {
@@ -56,6 +64,20 @@ void __tpy_init_main() {
   std::cout << tpy::ListPrinter(std::vector<int32_t>()) << "\n";
   // 48: print(list[int]())
   std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>()) << "\n";
+  // 51: print(list([1, 2, 3]))
+  std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>({1, 2, 3})) << "\n";
+  // 52: print(list([Int32(10), Int32(20)]))
+  std::cout << tpy::ListPrinter(std::vector<int32_t>({10, 20})) << "\n";
+  // 55: print(copy)
+  std::cout << tpy::ListPrinter(copy) << "\n";
+  // 56: copy.append(400)
+  copy.push_back(400);
+  // 57: print(len(src))  # Original unchanged
+  std::cout << static_cast<int32_t>(src.size()) << "\n";
+  // 58: print(len(copy))
+  std::cout << static_cast<int32_t>(copy.size()) << "\n";
+  // 63: print(from_arr)
+  std::cout << tpy::ListPrinter(from_arr) << "\n";
 }
 
 int main() {

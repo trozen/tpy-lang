@@ -72,7 +72,14 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
         returns=VOID,
         cpp="tpy::list_extend({self}, {0})",
     )],
-})
+}, constructors=[
+    # list(iterable) - create list from any iterable, inferring element type
+    MethodDef(
+        params=[ParamDef("x", "Iterable")],
+        returns="T",  # Placeholder - sema infers actual list[T] from argument
+        cpp="std::vector<{T}>({0}.begin(), {0}.end())",
+    ),
+])
 
 module.register_type(STR, cpp_type="std::string_view", methods={
     "__len__": [MethodDef(

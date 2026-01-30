@@ -1,0 +1,1 @@
+main.tp.py:2: error: Cannot infer element type for StaticList(); use StaticList[T, N](), provide a type annotation, or pass an iterable

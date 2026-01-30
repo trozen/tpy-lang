@@ -5,6 +5,10 @@
 
 extern std::vector<int32_t> nums;
 extern std::vector<int32_t> other;
+extern std::vector<tpy::BigInt> src;
+extern std::vector<tpy::BigInt> copy;
+extern std::array<int32_t, 3> arr;
+extern std::vector<int32_t> from_arr;
 
 struct Point {
   int32_t x;
