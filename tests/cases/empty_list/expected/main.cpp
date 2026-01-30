@@ -4,7 +4,7 @@
 // 33: global_list: list[int] = []
 std::vector<tpy::BigInt> global_list = {};
 // 36: global_list2: list[Int32] = list()
-std::vector<int32_t> global_list2 = {};
+std::vector<int32_t> global_list2 = std::vector<int32_t>();
 
 // 4: def test_empty_list() -> int:
 tpy::BigInt test_empty_list() {
@@ -35,7 +35,7 @@ int32_t test_empty_list_int32() {
 // 19: def test_list_constructor() -> int:
 tpy::BigInt test_list_constructor() {
   // 20:     items: list[int] = list()
-  std::vector<tpy::BigInt> items = {};
+  std::vector<tpy::BigInt> items = std::vector<tpy::BigInt>();
   // 21:     items.append(5)
   items.push_back(5);
   // 22:     items.append(6)
@@ -47,7 +47,7 @@ tpy::BigInt test_list_constructor() {
 // 26: def test_list_constructor_int32() -> Int32:
 int32_t test_list_constructor_int32() {
   // 27:     nums: list[Int32] = list()
-  std::vector<int32_t> nums = {};
+  std::vector<int32_t> nums = std::vector<int32_t>();
   // 28:     nums.append(Int32(100))
   nums.push_back(100);
   // 29:     return nums[0]

@@ -42,3 +42,7 @@ print(nested[0][0].x)
 
 # Test local list creation
 test_local_list()
+
+# Direct print of empty list constructor (regression test for ListPrinter CTAD)
+print(list[Int32]())
+print(list[int]())

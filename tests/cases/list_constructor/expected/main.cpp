@@ -2,20 +2,20 @@
 #include "main.hpp"
 
 // 19: nums = list[Int32]()
-std::vector<int32_t> nums = {};
+std::vector<int32_t> nums = std::vector<int32_t>();
 // 25: other: list[Int32] = list[Int32]()
-std::vector<int32_t> other = {};
+std::vector<int32_t> other = std::vector<int32_t>();
 // 30: points = list[Point]()
-std::vector<Point> points = {};
+std::vector<Point> points = std::vector<Point>();
 // 36: nested = list[list[Point]]()
-std::vector<std::vector<Point>> nested = {};
+std::vector<std::vector<Point>> nested = std::vector<std::vector<Point>>();
 // 37: inner = list[Point]()
-std::vector<Point> inner = {};
+std::vector<Point> inner = std::vector<Point>();
 
 // 4: def test_local_list() -> None:
 void test_local_list() {
   // 6:     local_nums = list[Int32]()
-  std::vector<int32_t> local_nums = {};
+  std::vector<int32_t> local_nums = std::vector<int32_t>();
   // 7:     local_nums.append(100)
   local_nums.push_back(100);
   // 8:     local_nums.append(200)
@@ -52,6 +52,10 @@ void __tpy_init_main() {
   std::cout << tpy::get_item(tpy::get_item(nested, 0), 0).x << "\n";
   // 44: test_local_list()
   test_local_list();
+  // 47: print(list[Int32]())
+  std::cout << tpy::ListPrinter(std::vector<int32_t>()) << "\n";
+  // 48: print(list[int]())
+  std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>()) << "\n";
 }
 
 int main() {

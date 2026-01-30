@@ -977,12 +977,6 @@ class CodeGenerator:
             # Check if it's a builtin type constructor (e.g., Int32, int)
             if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
                 return self._gen_constructor(expr, type_def)
-            # list() constructor - empty list (type comes from annotation)
-            # Only if semantic analysis resolved it as a list type (not a user function named "list")
-            if expr.func == "list" and len(expr.args) == 0:
-                expr_type = self.analyzer.get_expr_type(expr)
-                if isinstance(expr_type, (ListType, PendingListType)):
-                    return "{}"
             # print() maps to std::printf
             if expr.func == "print":
                 return self._gen_print(expr.args, expr.kwargs)

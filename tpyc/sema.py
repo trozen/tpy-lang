@@ -376,6 +376,9 @@ class SemanticAnalyzer:
                     if isinstance(stmt.type, ListType):
                         # list[T]: Use PendingListType for potential Array optimization
                         elem_type = stmt.type.element_type
+                        # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
+                        if is_generic_constructor:
+                            stmt.init.call_type = stmt.type  # type: ignore
                         if self.current_function is None:
                             # Global context: return ListType directly
                             init_type = ListType(elem_type)
@@ -542,6 +545,9 @@ class SemanticAnalyzer:
                 if isinstance(type_hint, ListType):
                     # list[T]: Use PendingListType for potential Array optimization
                     elem_type = type_hint.element_type
+                    # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
+                    if is_generic_constructor:
+                        expr.call_type = type_hint  # type: ignore
                     if self.current_function is None:
                         typ = ListType(elem_type)
                     else:
