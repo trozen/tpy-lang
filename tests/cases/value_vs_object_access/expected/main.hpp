@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+struct Point;
+
 struct Point {
   int32_t x;
   int32_t y;

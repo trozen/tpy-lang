@@ -3,6 +3,11 @@
 
 #include "tpy_runtime.hpp"
 
+struct Counter;
+struct Point;
+struct Container;
+struct Outer;
+
 struct Counter {
   tpy::BigInt value;
 

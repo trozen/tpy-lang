@@ -3,6 +3,10 @@
 
 #include "tpy_runtime.hpp"
 
+struct Point;
+
+extern Point global_pt;
+
 struct Point {
   int32_t x;
   int32_t y;
@@ -10,8 +14,6 @@ struct Point {
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
-
-extern Point global_pt;
 
 Point* addr_param(Point& p);
 Point* addr_global();

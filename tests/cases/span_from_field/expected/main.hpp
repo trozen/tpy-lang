@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+struct Box;
+
 struct Box {
   std::array<int32_t, 3> items;
 

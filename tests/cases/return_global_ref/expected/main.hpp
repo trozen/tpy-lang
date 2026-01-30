@@ -3,14 +3,16 @@
 
 #include "tpy_runtime.hpp"
 
+struct Point;
+
+extern Point ORIGIN;
+
 struct Point {
   int32_t x;
   int32_t y;
 
   Point() = default;
 };
-
-extern Point ORIGIN;
 
 Point& get_origin();
 int main();

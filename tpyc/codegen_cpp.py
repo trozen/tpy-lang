@@ -43,19 +43,6 @@ class CodeGenError(Exception):
         return f"{filename}: error: {self.message}"
 
 
-def _contains_record_type(typ: TpyType) -> bool:
-    """Recursively check if a type contains a RecordType."""
-    if isinstance(typ, RecordType):
-        return True
-    if isinstance(typ, OwnType):
-        return _contains_record_type(typ.wrapped)
-    if isinstance(typ, (PtrType, ConstPtrType)):
-        return _contains_record_type(typ.pointee)
-    if hasattr(typ, 'element_type') and typ.element_type is not None:
-        return _contains_record_type(typ.element_type)
-    return False
-
-
 @dataclass
 class CodeGenOptions:
     """Options for C++ code generation."""
@@ -168,34 +155,21 @@ class CodeGenerator:
             else:
                 main_stmts.append(stmt)
 
-        # Split global declarations into primitive and record types
-        # Primitives must come before structs (so struct methods can reference them)
-        # Records must come after structs (so the struct type is defined)
-        primitive_globals = []
-        record_globals = []
-        for stmt in global_decls:
-            var_type = stmt.type if stmt.type else self._get_resolved_type(stmt.init)
-            # Check if type references a record (directly or nested in containers)
-            if _contains_record_type(var_type):
-                record_globals.append(stmt)
-            else:
-                primitive_globals.append(stmt)
-
-        # Generate extern declarations for primitives (before records)
-        if primitive_globals:
-            for stmt in primitive_globals:
-                self._gen_global_extern(hpp, stmt)
+        # Forward declare records (so global externs can reference them)
+        for record in module.records:
+            hpp.write(f"struct {record.name};\n")
+        if module.records:
             hpp.write("\n")
 
-        # Generate records
+        # Generate global extern declarations
+        for stmt in global_decls:
+            self._gen_global_extern(hpp, stmt)
+        if global_decls:
+            hpp.write("\n")
+
+        # Generate full record definitions
         for record in module.records:
             self._gen_record_decl(hpp, record)
-            hpp.write("\n")
-
-        # Generate extern declarations for record types (after records)
-        if record_globals:
-            for stmt in record_globals:
-                self._gen_global_extern(hpp, stmt)
             hpp.write("\n")
 
         # Generate function declarations

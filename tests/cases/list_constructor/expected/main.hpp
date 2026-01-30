@@ -3,8 +3,13 @@
 
 #include "tpy_runtime.hpp"
 
+struct Point;
+
 extern std::vector<int32_t> nums;
 extern std::vector<int32_t> other;
+extern std::vector<Point> points;
+extern std::vector<std::vector<Point>> nested;
+extern std::vector<Point> inner;
 extern std::vector<tpy::BigInt> src;
 extern std::vector<tpy::BigInt> copy;
 extern std::array<int32_t, 3> arr;
@@ -17,10 +22,6 @@ struct Point {
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
-
-extern std::vector<Point> points;
-extern std::vector<std::vector<Point>> nested;
-extern std::vector<Point> inner;
 
 void test_local_list();
 

@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+struct Counter;
+
 extern int32_t a;
 extern int32_t b;
 

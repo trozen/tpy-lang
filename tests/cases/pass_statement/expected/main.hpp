@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+struct Counter;
+
 struct Counter {
   int32_t value;
 

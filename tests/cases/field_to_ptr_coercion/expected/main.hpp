@@ -3,6 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
+struct Inner;
+struct Outer;
+
 struct Inner {
   int32_t x;
 
