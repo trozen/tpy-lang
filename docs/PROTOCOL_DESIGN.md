@@ -180,10 +180,123 @@ class ProtocolType(TpyType):
 | `SupportsInt` | `__int__` | `int()` coercion |
 | `SupportsIndex` | `__index__` | indexing |
 
-## 9. Implementation phases
+## 9. Compiler Traits (Data-Driven Type Behavior)
+
+A key goal is enabling types like `StaticList` to be fully defined in source code, without hardcoded compiler references. Protocols provide the mechanism: types declare their capabilities, and the compiler queries these declarations instead of checking `isinstance(type, StaticListType)`.
+
+### Built-in Trait Protocols
+
+```python
+from typing import Protocol
+
+class HasLength(Protocol):
+    """Types that support len()."""
+    def __len__(self) -> Int32: ...
+
+class Iterable(Protocol[T]):
+    """Types that can be iterated over."""
+    def __iter__(self) -> Iterator[T]: ...
+
+class CoercibleToSpan(Protocol[T]):
+    """Types that can implicitly convert to Span[T]."""
+    def __span__(self) -> Span[T]: ...
+
+class ConstructibleFromRange(Protocol[T]):
+    """Types that can be constructed from a range/iterator."""
+    @classmethod
+    def from_range(cls, items: Iterable[T]) -> Self: ...
+
+class SubscriptableRead(Protocol[T]):
+    """Types that support read-only indexing: x[i]."""
+    def __getitem__(self, index: Int32) -> T: ...
+
+class SubscriptableMut(SubscriptableRead[T], Protocol[T]):
+    """Types that support mutable indexing: x[i] = value."""
+    def __setitem__(self, index: Int32, value: T) -> None: ...
+```
+
+### How the Compiler Uses Traits
+
+Instead of hardcoded type checks like:
+
+```python
+# OLD: hardcoded in compiler
+if isinstance(arg_type, (StaticListType, ArrayType, ListType)):
+    # generate len() call
+```
+
+The compiler queries the type's protocol conformance:
+
+```python
+# NEW: data-driven
+if arg_type.conforms_to(HasLength):
+    # generate len() call
+```
+
+### Type Declarations with Traits
+
+Types declare their capabilities in their definitions:
+
+```python
+# tpy module source (or builtin module definition)
+class StaticList(Generic[T, N]):
+    """Fixed-capacity list with no heap allocation."""
+
+    def __len__(self) -> Int32: ...         # → conforms to HasLength
+    def __iter__(self) -> Iterator[T]: ...  # → conforms to Iterable[T]
+    def __span__(self) -> Span[T]: ...      # → conforms to CoercibleToSpan[T]
+    def __getitem__(self, i: Int32) -> T: ...
+    def __setitem__(self, i: Int32, v: T) -> None: ...
+
+    @classmethod
+    def from_range(cls, items: Iterable[T]) -> StaticList[T, N]: ...
+```
+
+### Coercion via Protocols
+
+Implicit coercions are driven by protocol conformance:
+
+```python
+def takes_span(s: Span[Int32]) -> None: ...
+
+arr: Array[Int32, 3] = [1, 2, 3]
+takes_span(arr)  # OK: Array conforms to CoercibleToSpan[Int32]
+
+lst: list[Int32] = [1, 2, 3]
+takes_span(lst)  # OK: list conforms to CoercibleToSpan[Int32]
+```
+
+Generated C++:
+```cpp
+void takes_span(std::span<const int32_t> s);
+
+takes_span(arr.__span__());  // or implicit conversion operator
+takes_span(lst.__span__());
+```
+
+### Benefits
+
+1. **Extensibility**: New container types work automatically if they implement the right protocols
+2. **Maintainability**: No need to update compiler code for each new type
+3. **Transparency**: Type capabilities are visible in source code
+4. **User types**: Users can define types that integrate with builtins (`len()`, `for`, etc.)
+
+### Trait Resolution at Compile Time
+
+Protocol conformance is checked statically. The compiler:
+
+1. Parses protocol definitions (from `typing` or user code)
+2. For each type, collects its method signatures
+3. When checking `conforms_to(Protocol)`, verifies all required methods exist with compatible signatures
+4. Generates C++ code based on the protocol's codegen rules
+
+No runtime vtables or dynamic dispatch—everything resolves to direct method calls.
+
+## 10. Implementation phases
 
 1. **Phase 1**: Simple protocols (Sized) - no generics, no Self
 2. **Phase 2**: Protocol matching in sema for function params
 3. **Phase 3**: Generic protocols (`Iterable[T]`)
 4. **Phase 4**: `Self` type in protocols
-5. **Phase 5**: User-defined protocols
+5. **Phase 5**: Compiler trait protocols (`CoercibleToSpan`, etc.)
+6. **Phase 6**: User-defined protocols

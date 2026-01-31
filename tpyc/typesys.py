@@ -74,6 +74,18 @@ class TpyType:
         """Return True if this type can be iterated over (for-each loops)."""
         return False
 
+    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
+        """Return C++ expression to construct this type from a range, or None if not supported."""
+        return None
+
+    def needs_explicit_element_target(self) -> bool:
+        """Return True if array literals need explicit element type targeting.
+
+        Array and Span need explicit conversions in their initializer lists.
+        List and StaticList handle implicit conversions.
+        """
+        return False
+
 
 @dataclass(frozen=True)
 class Int32Type(TpyType):
@@ -298,6 +310,9 @@ class StaticListType(TpyType):
     def is_iterable(self) -> bool:
         return True
 
+    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
+        return f"{self.to_cpp()}({range_expr})"
+
 
 @dataclass(frozen=True)
 class ArrayType(TpyType):
@@ -318,6 +333,9 @@ class ArrayType(TpyType):
         return self.element_type
 
     def is_iterable(self) -> bool:
+        return True
+
+    def needs_explicit_element_target(self) -> bool:
         return True
 
 
@@ -345,6 +363,9 @@ class SpanType(TpyType):
     def is_iterable(self) -> bool:
         return True
 
+    def needs_explicit_element_target(self) -> bool:
+        return True
+
 
 @dataclass(frozen=True)
 class ListType(TpyType):
@@ -365,6 +386,9 @@ class ListType(TpyType):
 
     def is_iterable(self) -> bool:
         return True
+
+    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
+        return f"tpy::to_vector<{elem_cpp}>({range_expr})"
 
 
 @dataclass(frozen=True)

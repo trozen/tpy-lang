@@ -321,6 +321,11 @@ def caller():
     data = [1, 2, 3]       # → std::vector<BigInt> (passed to list param)
     use_list(data)
 
+def caller_direct():
+    use_list([1, 2, 3])    # → temp std::vector passed to function
+    use_list(list())       # → temp empty std::vector
+    use_list([])           # → temp empty std::vector
+
 def reader(items: Span[int]) -> int:
     return items[0]
 
@@ -328,6 +333,8 @@ def caller2():
     data = [1, 2, 3]       # → std::array<BigInt, 3> (Span is read-only)
     return reader(data)
 ```
+
+Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to functions expecting mutable reference parameters works - the compiler generates temporary variables automatically.
 
 `Span[T]` is a non-owning read-only view that accepts any contiguous memory:
 ```python
@@ -455,7 +462,7 @@ Key points:
 ```python
 def take_point(p: Own[Point]) -> Int32:
     # p is received by value (Point p in C++)
-    return 42  # Field access on Own[T] not yet implemented
+    return p.x + p.y  # Field access on Own[T] works
 
 def main():
     # Pass Own[Point] return directly to Own[Point] param
@@ -502,7 +509,29 @@ def process(items: Sized) -> Int32:
 
 Any type with a `__len__` method returning `Int32` would satisfy `Sized`. This would compile to C++20 concepts.
 
-See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design sketch.
+#### Compiler Traits
+
+Protocols also serve as **compiler traits**—they let the compiler discover type capabilities without hardcoded type checks. This enables types like `StaticList` to be fully defined in source code:
+
+```python
+class HasLength(Protocol):
+    def __len__(self) -> Int32: ...
+
+class CoercibleToSpan(Protocol[T]):
+    def __span__(self) -> Span[T]: ...
+
+class Iterable(Protocol[T]):
+    def __iter__(self) -> Iterator[T]: ...
+```
+
+With this design:
+- `len(x)` works on any type conforming to `HasLength`
+- `for` loops work on any type conforming to `Iterable[T]`
+- Implicit coercion to `Span[T]` works on any type conforming to `CoercibleToSpan[T]`
+
+This allows user-defined types to integrate seamlessly with builtins.
+
+See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 
 ### Union/Optional
 - **Open**: `T | None` → `std::optional<T>` or pointer
@@ -613,35 +642,42 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design sketch.
 - **Planned**: List slicing: `items[1:3]`
 - **Open**: `isinstance()` → compile-time type check / type narrowing
 - **Open**: `type()` → compile-time type info
-- **Partial**: `list()` → empty list constructor (requires type annotation, variable assignment only)
+- **Working**: `list()` → empty list constructor (requires type annotation) and `list(iterable)` with type inference
 - **Open**: `str()`, `int()` → type conversion functions (see below)
 - **Open**: `enumerate()` → compile-time transform
 - **Open**: `zip()` → compile-time transform for fixed iterables
 
 #### Type Conversion Functions
 
-**`list()` (Partial)**: Empty list constructor requires type annotation:
+**`list()` (Working)**:
 
 ```python
-# From context annotation (Working)
+# Empty list with type annotation
 x: list[int] = list()        # type from annotation
 x: list[int] = []            # same - empty literal infers from annotation
 
 # Bare list() with no context → error with helpful message
 x = list()                   # error: list() requires type annotation
 x = []                       # error: Empty array literal requires explicit type annotation
+
+# List from iterable - type inferred from element type
+x = list([1, 2, 3])          # → list[int], infers element type from literal
+y = list(some_array)         # → list[T], infers from array's element type
+z = list(other_list)         # → list[T], copies the list
+```
+
+Generated C++:
+```cpp
+// list([1, 2, 3]) - from literal
+std::vector<tpy::BigInt> x({1, 2, 3});
+
+// list(array) - from other container
+std::vector<T> y(arr.begin(), arr.end());
 ```
 
 **`int()` / `str()` (Open)**: Not yet implemented.
 - `int("42")` → parse string to int
 - `str(42)` → convert int to string
-
-**`list()` with arguments (Open)**: Copying from iterables not yet implemented:
-```python
-x = list[int]()              # empty list[int] - not yet supported
-x = list([1, 2, 3])          # list[int] (copy) - not yet supported
-x = list(range(3))           # list[int] - not yet supported
-```
 
 ---
 

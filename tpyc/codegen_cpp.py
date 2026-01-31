@@ -1194,10 +1194,10 @@ class CodeGenerator:
             return f"{obj}.{expr.field}"
 
         elif isinstance(expr, TpyArrayLiteral):
-            # For Array and Span, use element type for generating elements
-            # (ListType doesn't need this - vectors handle implicit conversions)
+            # Some types need explicit element targeting (Array, Span)
+            # Others handle implicit conversions (List, StaticList)
             elem_target = None
-            if isinstance(target_type, (ArrayType, SpanType)):
+            if target_type and target_type.needs_explicit_element_target():
                 elem_target = target_type.get_element_type()
             elements = ", ".join(self._gen_expr(e, elem_target) for e in expr.elements)
             literal = f"{{{elements}}}"
@@ -1251,10 +1251,11 @@ class CodeGenerator:
             cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
             range_expr = f"tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
 
-            if isinstance(target_type, StaticListType):
-                # StaticList has range constructor
-                return f"{result_type.to_cpp()}({range_expr})"
-            # std::vector: use tpy::to_vector helper
+            # Use type's range construction method
+            from_range = result_type.to_cpp_from_range(range_expr, cpp_elem_type)
+            if from_range:
+                return from_range
+            # Fallback for types without range constructor
             return f"tpy::to_vector<{cpp_elem_type}>({range_expr})"
 
         elif isinstance(expr, TpySubscript):

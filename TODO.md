@@ -21,6 +21,7 @@
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
+- trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
 - make `range` a generator function
 - extract c++ compiler interface
 - language restriction documentation
