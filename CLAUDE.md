@@ -169,7 +169,6 @@ When implementing new features:
 
 | File | Purpose | Policy |
 |------|---------|--------|
-| `TODO.md` | User's priority list and task tracking | **Do not modify** - this is the user's file |
 | `docs/LANGUAGE_FEATURES.md` | Comprehensive language feature documentation | **Keep up-to-date** with any development |
 | `CLAUDE.md` | Commands, architecture, quick reference | Update when adding major features |
 | `README.md` | Quick start, build flags | Update when CLI changes |

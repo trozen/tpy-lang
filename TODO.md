@@ -44,6 +44,14 @@ Random items that may or may not be implemented in the future, but putting them 
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 
+## Other
+- StaticList negative indexing: `static_list[-1]` doesn't work (get_item() bypasses normalize_index())                     
+- StaticList bounds checking: uses raw operator[] with no panic on out-of-bounds                                           
+- Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str 
+- Negative indexing: works for list/Array/Span/str, but not StaticList                                                     
+- Bounds checking: list/Array/Span/str panic on out-of-bounds, StaticList is unchecked (UB)                                
+- Docstrings: silently skipped in codegen (harmless, but no introspection support)  
+
 ## ShedSkin examples
 - score4
 - mandelbrot
