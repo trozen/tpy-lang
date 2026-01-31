@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from .typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     RecordType, PtrType, ConstPtrType,
     ArrayType, StaticListType, SpanType, ListType, PendingListType,
 )
@@ -87,6 +87,26 @@ COERCIONS: list[Coercion] = [
         from_type=BigIntType,
         to_type=Int32Type,
         codegen=lambda e, _a, _b, _c: f"({e}).to_int32()",
+    ),
+
+    # Float coercions
+    Coercion(
+        name="int_literal_to_float",
+        from_type=IntLiteralType,
+        to_type=FloatType,
+        codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
+    ),
+    Coercion(
+        name="int32_to_float",
+        from_type=Int32Type,
+        to_type=FloatType,
+        codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
+    ),
+    Coercion(
+        name="bigint_to_float",
+        from_type=BigIntType,
+        to_type=FloatType,
+        codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
 
     # Pointer coercions

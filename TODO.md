@@ -1,9 +1,7 @@
 # TODO
 
 ## Next
-- float type (in future also Float32/64)
-- add `time.sleep()` and `sys.argv`, update `time.time()` to return float
-- Int32(10**20) overflow; BigInt->Int32 overflow checks
+- add `time.sleep()` and `sys.argv`, `math.log`, update `time.time()` to return float
 - True/False booleans
 - `type()` function
 - `str()`, `str(123)`, `int("123")`

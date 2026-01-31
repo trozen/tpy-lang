@@ -11,7 +11,9 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
+#include <cmath>
 #include <iostream>
+#include <iomanip>
 #include <iterator>
 #include <algorithm>
 #include <array>
@@ -45,6 +47,51 @@ T& deref_ptr(T* ptr) {
         tpy_panic("null pointer dereference");
     }
     return *ptr;
+}
+
+/**
+ * Helper struct for Python-style bool printing.
+ *
+ * Matches Python's repr for bools: prints "True" or "False".
+ */
+struct print_bool {
+    bool value;
+    explicit print_bool(bool v) : value(v) {}
+};
+
+inline std::ostream& operator<<(std::ostream& os, const print_bool& pb) {
+    os << (pb.value ? "True" : "False");
+    return os;
+}
+
+/**
+ * Helper struct for float printing that shows ".0" for whole numbers.
+ *
+ * Ensures integral float values display with a decimal point (e.g., "5.0" not "5").
+ * Note: Does not match Python's scientific notation for very large/small values.
+ */
+struct print_float {
+    double value;
+    explicit print_float(double v) : value(v) {}
+};
+
+inline std::ostream& operator<<(std::ostream& os, const print_float& pf) {
+    // If it's a whole number, always show .0
+    if (std::floor(pf.value) == pf.value && !std::isinf(pf.value) && !std::isnan(pf.value)) {
+        // Save the original state
+        std::ios_base::fmtflags original_flags = os.flags();
+        std::streamsize original_precision = os.precision();
+
+        // Use fixed format with precision 1 to show .0
+        os << std::fixed << std::setprecision(1) << pf.value;
+
+        // Restore the original state
+        os.flags(original_flags);
+        os.precision(original_precision);
+    } else {
+        os << pf.value;
+    }
+    return os;
 }
 
 template <typename T>
@@ -643,6 +690,19 @@ public:
         tpy_panic("BigInt value too large for int32_t conversion");
     }
 
+    // Conversion to double (for float operations)
+    double to_double() const {
+        if (is_small()) {
+            return static_cast<double>(small_value());
+        }
+        return mpz_get_d(gmp_ptr());
+    }
+
+    // Explicit conversion operator for static_cast<double>
+    explicit operator double() const {
+        return to_double();
+    }
+
     // String conversion for printing
     std::string to_string() const {
         if (is_small()) {
@@ -661,6 +721,8 @@ public:
         }
         return mpz_sgn(gmp_ptr()) != 0;
     }
+
+    friend BigInt float_to_bigint(double v);
 
 private:
     int64_t lo_;  // bit 0: tag. small: value << 1. big: 1
@@ -1064,6 +1126,25 @@ T pop_back(std::vector<T>& v) {
 
 // BigInt specialization of is_value_type (primary template defined earlier)
 template<> struct is_value_type<BigInt> : std::true_type {};
+
+/**
+ * Convert float to BigInt with NaN/inf checking.
+ * Panics on NaN or infinity (Python raises ValueError/OverflowError).
+ * Uses GMP's mpz_set_d to correctly handle large finite values like 1e100.
+ */
+inline BigInt float_to_bigint(double v) {
+    if (std::isnan(v)) {
+        tpy_panic("cannot convert float NaN to integer");
+    }
+    if (std::isinf(v)) {
+        tpy_panic("cannot convert float infinity to integer");
+    }
+    // mpz_set_d truncates toward zero, matching Python's int() behavior
+    mpz_t result;
+    mpz_init(result);
+    mpz_set_d(result, v);
+    return BigInt::from_mpz(result);
+}
 
 /**
  * get_item - Unified element access for std::vector.

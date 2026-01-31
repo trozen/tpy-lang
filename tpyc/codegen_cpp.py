@@ -15,15 +15,15 @@ import io
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType,
-    StrType, CharType, BigIntType, IntLiteralType,
-    INT32, VOID, BIGINT, CHAR, STR
+    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
+    INT32, VOID, BIGINT, FLOAT, CHAR, STR
 )
 from .namespace import Namespace, BindingKind
 from .parse import (
     SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
-    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from .sema import SemanticAnalyzer
@@ -91,6 +91,20 @@ class CodeGenerator:
             # First pass without context to detect Int32 operands
             left_raw = self._get_resolved_type(expr.left)
             right_raw = self._get_resolved_type(expr.right)
+
+            # If either operand is float, result is float (float takes precedence)
+            if isinstance(left_raw, FloatType) or isinstance(right_raw, FloatType):
+                # True division always returns float
+                if expr.op == "div":
+                    return FLOAT
+                # Most arithmetic ops with float return float
+                if expr.op in ("+", "-", "*", "//", "%", "**"):
+                    return FLOAT
+
+            # True division always returns float
+            if expr.op == "div":
+                return FLOAT
+
             # Determine Int32 context: explicit target or operand is Int32
             int32_ctx = target_type if isinstance(target_type, Int32Type) else None
             if isinstance(left_raw, Int32Type) or isinstance(right_raw, Int32Type):
@@ -1029,6 +1043,10 @@ class CodeGenerator:
                 return f"tpy::BigInt({expr.value})"
             return str(expr.value)
 
+        elif isinstance(expr, TpyFloatLiteral):
+            # C++ accepts Python-style float literals directly
+            return repr(expr.value)
+
         elif isinstance(expr, TpyBoolLiteral):
             return "true" if expr.value else "false"
 
@@ -1562,6 +1580,12 @@ class CodeGenerator:
             elif self._is_runtime_bigint(arg, arg_type):
                 # BigInt has operator<< for std::ostream, no .to_string() needed
                 parts.append(self._gen_expr_deref(arg))
+            elif isinstance(arg_type, FloatType):
+                # Float uses Python-style formatting via tpy::print_float
+                parts.append(f'tpy::print_float({self._gen_expr_deref(arg)})')
+            elif isinstance(arg_type, BoolType):
+                # Bool uses Python-style formatting via tpy::print_bool
+                parts.append(f'tpy::print_bool({self._gen_expr_deref(arg)})')
             elif arg_type.get_element_type() is not None:
                 # Container types use ListPrinter for formatting
                 if isinstance(arg, TpyArrayLiteral):

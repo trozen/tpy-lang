@@ -15,15 +15,15 @@ from typing import Optional
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
-    StrType, CharType, BoolType, BigIntType, IntLiteralType,
-    INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
+    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
 from .namespace import Namespace, BindingKind, NameBinding
 from .parse import (
     SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
-    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from .coercions import resolve_coercion, Coercion
@@ -582,11 +582,11 @@ class SemanticAnalyzer:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         target_type = self._analyze_expr(stmt.target)
         value_type = self._analyze_expr(stmt.value)
-        # Both must be integer types for arithmetic augmented assignment
-        if not isinstance(target_type, (Int32Type, BigIntType, IntLiteralType)):
-            raise SemanticError(f"Augmented assignment target must be an integer type, got {target_type}")
-        if not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType)):
-            raise SemanticError(f"Augmented assignment value must be an integer type, got {value_type}")
+        # Both must be numeric types for arithmetic augmented assignment
+        if not isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
+            raise SemanticError(f"Augmented assignment target must be a numeric type, got {target_type}")
+        if not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
+            raise SemanticError(f"Augmented assignment value must be a numeric type, got {value_type}")
 
     def _analyze_expr_with_hint(self, expr: TpyExpr, type_hint: Optional[TpyType]) -> TpyType:
         """Analyze an expression with an optional type hint for inference.
@@ -686,6 +686,8 @@ class SemanticAnalyzer:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
             typ = IntLiteralType(expr.value)
+        elif isinstance(expr, TpyFloatLiteral):
+            typ = FLOAT
         elif isinstance(expr, TpyStrLiteral):
             # String literals are always str type (including single-char)
             # Char type is only used when explicitly annotated or from string indexing
@@ -744,16 +746,16 @@ class SemanticAnalyzer:
 
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""
-        # Check for unsupported operators
-        if expr.op == "div":
-            raise SemanticError("True division (/) not supported; use floor division (//) instead", expr.loc)
-
         left_type = self._analyze_expr(expr.left)
         right_type = self._analyze_expr(expr.right)
 
         # Helper to check if type is any integer type
         def is_int_type(t: TpyType) -> bool:
             return isinstance(t, (Int32Type, BigIntType, IntLiteralType))
+
+        # Helper to check if type is any numeric type
+        def is_numeric_type(t: TpyType) -> bool:
+            return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType))
 
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
@@ -791,6 +793,11 @@ class SemanticAnalyzer:
         # Logical not always returns Bool
         if expr.op == "!":
             return BOOL
+
+        # FloatType supports unary negation
+        if isinstance(operand_type, FloatType):
+            if expr.op == "-":
+                return FLOAT
 
         # IntLiteralType special cases - preserve literal nature when possible
         if isinstance(operand_type, IntLiteralType):

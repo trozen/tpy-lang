@@ -328,14 +328,14 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
 # Operator to method name mappings
 BINOP_TO_METHOD = {
     "+": "__add__", "-": "__sub__", "*": "__mul__",
-    "//": "__floordiv__", "%": "__mod__", "**": "__pow__",
+    "div": "__truediv__", "//": "__floordiv__", "%": "__mod__", "**": "__pow__",
     "<<": "__lshift__", ">>": "__rshift__",
     "&": "__and__", "|": "__or__", "^": "__xor__",
 }
 
 BINOP_TO_RMETHOD = {
     "+": "__radd__", "-": "__rsub__", "*": "__rmul__",
-    "//": "__rfloordiv__", "%": "__rmod__", "**": "__rpow__",
+    "div": "__rtruediv__", "//": "__rfloordiv__", "%": "__rmod__", "**": "__rpow__",
     "<<": "__rlshift__", ">>": "__rrshift__",
     "&": "__rand__", "|": "__ror__", "^": "__rxor__",
 }
@@ -373,9 +373,11 @@ def _get_effective_qname(tpy_type: "TpyType") -> str | None:
 
 def _get_type_for_qname(qname: str) -> "TpyType | None":
     """Get the TpyType instance for a qualified name."""
-    from tpyc.typesys import BIGINT, INT32
+    from tpyc.typesys import BIGINT, INT32, FLOAT
     if qname == "builtins.int":
         return BIGINT
+    if qname == "builtins.float":
+        return FLOAT
     if qname == "tpy.Int32":
         return INT32
     return None

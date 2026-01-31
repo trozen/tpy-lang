@@ -12,7 +12,7 @@ from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
     TpyType, RecordType, PtrType, ConstPtrType, OwnType,
-    INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, TypeRegistry
+    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, TypeRegistry
 )
 from .modules import lookup_generic_type, TypeParamKind, BuiltinTypeDef
 
@@ -59,6 +59,12 @@ if TYPE_CHECKING:
 class TpyIntLiteral(TpyExpr):
     """Integer literal."""
     value: int
+
+
+@dataclass
+class TpyFloatLiteral(TpyExpr):
+    """Floating point literal."""
+    value: float
 
 
 @dataclass
@@ -472,6 +478,8 @@ class Parser:
                 return INT32
             elif name == "int":
                 return BIGINT
+            elif name == "float":
+                return FLOAT
             elif name == "Bool":
                 return BOOL
             elif name == "None":
@@ -640,6 +648,8 @@ class Parser:
                 return TpyBoolLiteral(node.value, loc=loc)
             elif isinstance(node.value, int):
                 return TpyIntLiteral(node.value, loc=loc)
+            elif isinstance(node.value, float):
+                return TpyFloatLiteral(node.value, loc=loc)
             elif isinstance(node.value, str):
                 return TpyStrLiteral(node.value, loc=loc)
             else:
@@ -781,6 +791,8 @@ class Parser:
         if isinstance(node, ast.Constant):
             if isinstance(node.value, int):
                 return BIGINT
+            elif isinstance(node.value, float):
+                return FLOAT
             elif isinstance(node.value, str):
                 return STR
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
@@ -789,6 +801,8 @@ class Parser:
                 return INT32
             if type_name == "int":
                 return BIGINT
+            if type_name == "float":
+                return FLOAT
             # Check if it's a known record type
             record_info = self.registry.get_record(type_name)
             if record_info:

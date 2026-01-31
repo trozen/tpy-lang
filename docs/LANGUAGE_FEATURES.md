@@ -149,9 +149,10 @@ Possible syntax options:
 
 ### Numeric
 - **Working**: `int` (Python's int → `tpy::BigInt` arbitrary precision using GMP)
+- **Working**: `float` (Python's float → `double`, 64-bit IEEE 754)
 - **Working**: `Int32`, `Bool`, `Char`
 - **Planned**: `Int64`, `Int8`, `Int16`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
-- **Planned**: `Float32`, `Float64`, `float`
+- **Planned**: `Float32`
 
 #### Mixed Arithmetic and Type Promotion (Working)
 
@@ -542,10 +543,9 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 ## Operators
 
 ### Arithmetic
-- **Working**: `+`, `-`, `*`, `//`, `%`, unary `-`
-- **Working**: `**` (power) for `int` and `Int32` with non-negative exponent
-- **Planned**: `/` (true division) - currently raises error directing to `//`
-- **Planned**: `**` with negative exponent (requires float)
+- **Working**: `+`, `-`, `*`, `//`, `%`, `/`, unary `-`
+- **Working**: `**` (power) for `int`, `Int32`, and `float`
+- **Planned**: `**` with negative integer exponent (e.g., `2 ** -3`) - use `2.0 ** -3` instead
 
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
@@ -560,7 +560,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 - **Working**: `&`, `|`, `^`, `~`, `<<`, `>>`
 
 ### Assignment
-- **Working**: `=`, `+=`, `-=`, `*=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
+- **Working**: `=`, `+=`, `-=`, `*=`, `/=`, `//=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
   - Augmented assignment works on variables, fields, and subscripts (`items[i] += 1`)
 
 ---

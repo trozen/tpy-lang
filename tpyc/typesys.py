@@ -167,6 +167,23 @@ class BoolType(TpyType):
 
 
 @dataclass(frozen=True)
+class FloatType(TpyType):
+    """64-bit floating point type (IEEE 754 double precision)."""
+
+    def to_cpp(self) -> str:
+        return "double"
+
+    def __str__(self) -> str:
+        return "float"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.float"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class BigIntType(TpyType):
     """Arbitrary precision integer: int -> tpy::BigInt"""
 
@@ -443,6 +460,7 @@ VOID = VoidType()
 STR = StrType()
 CHAR = CharType()
 BOOL = BoolType()
+FLOAT = FloatType()
 BIGINT = BigIntType()
 
 
@@ -490,7 +508,7 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         # Built-in types
-        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "Own", "StaticList", "Array", "Span", "str", "list", "int"}
+        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "Own", "StaticList", "Array", "Span", "str", "list", "int", "float"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info
