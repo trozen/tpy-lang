@@ -1117,8 +1117,9 @@ class CodeGenerator:
                 # When comparing Char with string literal, output literal as char
                 left_target = CHAR if isinstance(right_type, CharType) else None
                 right_target = CHAR if isinstance(left_type, CharType) else None
-                left = self._gen_expr(expr.left, left_target)
-                right = self._gen_expr(expr.right, right_target)
+                # Use _gen_expr_deref for globals (Global<T> needs dereferencing for comparison)
+                left = self._gen_expr_deref(expr.left, left_target)
+                right = self._gen_expr_deref(expr.right, right_target)
                 return f"({left} {expr.op} {right})"
 
             # Optimization: IntLiteral op IntLiteral with Int32 target → direct Int32 arithmetic

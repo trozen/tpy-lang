@@ -6,19 +6,31 @@ HEIGHT = 50
 MAX_ITER = 1000
 
 # Mandelbrot set bounds
-X_MIN, X_MAX = -2.5, 1.0
-Y_MIN, Y_MAX = -1.25, 1.25
+# TODO:
+# X_MIN, X_MAX = -2.5, 1.0
+# Y_MIN, Y_MAX = -1.25, 1.25
+X_MIN = -2.5
+X_MAX = 1.0
+Y_MIN = -1.25
+Y_MAX = 1.25
 
 # ASCII gradient from dark to light
 CHARS = " .,:;+*?%S#@"
 
 
 def mandelbrot(cx: float, cy: float) -> int:
-    x, y = 0.0, 0.0
+    # TODO:
+    # x, y = 0.0, 0.0
+    x = 0.0
+    y = 0.0
     for i in range(MAX_ITER):
         if x * x + y * y > 4.0:
             return i
-        x, y = x * x - y * y + cx, 2.0 * x * y + cy
+        # TODO:
+        # x, y = x * x - y * y + cx, 2.0 * x * y + cy
+        x2 = x * x - y * y + cx
+        y = 2.0 * x * y + cy
+        x = x2
     return MAX_ITER
 
 

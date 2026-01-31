@@ -7,7 +7,7 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
-    RecordType, PtrType, ConstPtrType,
+    RecordType, PtrType, ConstPtrType, CharType, StrType,
     ArrayType, StaticListType, SpanType, ListType, PendingListType,
 )
 
@@ -107,6 +107,14 @@ COERCIONS: list[Coercion] = [
         from_type=BigIntType,
         to_type=FloatType,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
+    ),
+
+    # Char to str coercion
+    Coercion(
+        name="char_to_str",
+        from_type=CharType,
+        to_type=StrType,
+        codegen=lambda e, _a, _b, _c: f"tpy::char_to_str({e})",
     ),
 
     # Pointer coercions

@@ -161,17 +161,17 @@ class SemanticAnalyzer:
         self.global_scope.define("__name__", STR)
         self.global_ns.bind_variable("__name__", STR)
 
-        # Fourth pass: analyze record methods
+        # Fourth pass: analyze top-level statements (globals must be in scope for functions)
+        if module.top_level_stmts:
+            self._analyze_top_level(module.top_level_stmts)
+
+        # Fifth pass: analyze record methods
         for record in module.records:
             self._analyze_record_methods(record)
 
-        # Fifth pass: analyze function bodies
+        # Sixth pass: analyze function bodies
         for func in module.functions:
             self._analyze_function(func)
-
-        # Sixth pass: analyze top-level statements
-        if module.top_level_stmts:
-            self._analyze_top_level(module.top_level_stmts)
 
     def _register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
