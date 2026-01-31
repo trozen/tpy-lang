@@ -1541,6 +1541,9 @@ class CodeGenerator:
                 return self._is_runtime_bigint(arg, arg_type)
             if isinstance(param_type, Int32Type):
                 return not self._is_runtime_bigint(arg, arg_type)
+        # TpyCoerce nodes match their expected type
+        if isinstance(arg, TpyCoerce):
+            return arg.expected_type == param_type
         return False
 
     def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:

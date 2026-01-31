@@ -980,6 +980,12 @@ class SemanticAnalyzer:
                 continue
             if all(self._builtin_type_matches(arg_t, param.type)
                    for arg_t, param in zip(arg_types, overload.params)):
+                # Apply coercions to arguments where needed
+                for i, (arg, arg_t, param) in enumerate(zip(expr.args, arg_types, overload.params)):
+                    if arg_t != param.type:
+                        expr.args[i] = self._coerce_expr(arg, arg_t, param.type,
+                                                         f"argument '{param.name}'",
+                                                         coercion_ctx="arg")
                 return overload.returns
 
         # No matching overload found - build error message
@@ -990,9 +996,9 @@ class SemanticAnalyzer:
         """Check if an argument type is compatible with a builtin parameter type."""
         if arg_type == param_type:
             return True
-        # IntLiteral can match Int32 or BigInt
-        if isinstance(arg_type, IntLiteralType):
-            return isinstance(param_type, (Int32Type, BigIntType))
+        # Check if there's a coercion from arg_type to param_type
+        if resolve_coercion(arg_type, param_type, "arg") is not None:
+            return True
         return False
 
     def _analyze_user_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
