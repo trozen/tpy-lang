@@ -6,9 +6,6 @@ Only runs for test cases that compile successfully.
 Set UPDATE_EXPECTED=1 to update expected files instead of comparing.
 """
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from conftest import (
@@ -33,7 +30,7 @@ def make_exec_test(case_dir, main_src):
         result = compile_with_diagnostics(main_src, tmp_path)
 
         if not result.success:
-            pytest.fail(f"Compilation failed unexpectedly:\n{result.diagnostics}")
+            pytest.skip("Compilation failed")
 
         # Build and run C++
         run_result = build_and_run(tmp_path, module_name)
@@ -74,15 +71,9 @@ def make_exec_test(case_dir, main_src):
 
 
 def _generate_tests():
-    """Discover and generate execution tests for cases that compile successfully."""
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        for name, case_dir, main_src in discover_cases():
-            case_tmp = tmp_path / name
-            case_tmp.mkdir()
-            result = compile_with_diagnostics(main_src, case_tmp)
-            if result.success:
-                globals()[f"test_{name}"] = make_exec_test(case_dir, main_src)
+    """Discover and generate execution tests for all cases."""
+    for name, case_dir, main_src in discover_cases():
+        globals()[f"test_{name}"] = make_exec_test(case_dir, main_src)
 
 
 _generate_tests()

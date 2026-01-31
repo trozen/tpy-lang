@@ -18,4 +18,5 @@ include = ["tpyc*", "runtime*"]
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "pytest-xdist>=3.5",
 ]

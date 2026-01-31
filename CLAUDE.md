@@ -43,6 +43,9 @@ pytest tests/test_comp.py
 # Run slow execution tests only (C++ build, run, CPython comparison)
 pytest tests/test_exec.py
 
+# Run execution tests in parallel (much faster)
+pytest tests/test_exec.py -n auto
+
 # Run tests for one case (pattern matching)
 pytest -k hello
 
