@@ -162,8 +162,11 @@ def get_time() -> BuiltinModule:
 
 
 def _all_modules() -> list[BuiltinModule]:
-    """Get all loaded modules."""
-    return [get_builtins(), get_tpy(), get_time()]
+    """Get all loaded modules for default lookups (builtins + tpy only).
+
+    Note: time module is excluded - it requires explicit import.
+    """
+    return [get_builtins(), get_tpy()]
 
 
 def get_module(name: str) -> BuiltinModule | None:

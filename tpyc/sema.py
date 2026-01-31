@@ -750,10 +750,15 @@ class SemanticAnalyzer:
             return self._analyze_builtin_call(expr, builtin_fn)
 
         # Check if it's an imported function (from X import Y)
+        # Only if not shadowed by a variable, user-defined function, or record
         if expr.func in self.imported_names:
-            module_name, func_name = self.imported_names[expr.func]
-            if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
-                return self._analyze_builtin_call(expr, imported_fn)
+            is_shadowed = (self.current_scope.lookup(expr.func) is not None or
+                           self.registry.get_function(expr.func) is not None or
+                           self.registry.get_record(expr.func) is not None)
+            if not is_shadowed:
+                module_name, func_name = self.imported_names[expr.func]
+                if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
+                    return self._analyze_builtin_call(expr, imported_fn)
 
         # Built-in print()
         if expr.func == "print":
@@ -924,15 +929,20 @@ class SemanticAnalyzer:
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
         # Check for module.function() pattern (import X -> X.func())
+        # Only if the name isn't shadowed by a variable, user-defined function, or record
         if isinstance(expr.obj, TpyName) and expr.obj.name in self.imports:
             module_name = expr.obj.name
-            # Module was imported with 'import X' (not 'from X import ...')
-            if self.imports[module_name] is None:
-                if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
-                    # Create a temporary TpyCall to analyze the function call
-                    temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                    return self._analyze_builtin_call(temp_call, module_fn)
-                raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+            # Check if shadowed by variable, user-defined function, or record
+            if (self.current_scope.lookup(module_name) is None and
+                self.registry.get_function(module_name) is None and
+                self.registry.get_record(module_name) is None):
+                # Module was imported with 'import X' (not 'from X import ...')
+                if self.imports[module_name] is None:
+                    if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
+                        # Create a temporary TpyCall to analyze the function call
+                        temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                        return self._analyze_builtin_call(temp_call, module_fn)
+                    raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
 
         obj_type = self._analyze_expr(expr.obj)
 

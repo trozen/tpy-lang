@@ -1,18 +1,21 @@
 # TODO
 
 ## Next
-- Int32(10**20) overflow; BigInt->Int32 overflow checks
 - float type (in future also Float32/64)
+- add `time.sleep()` and `sys.argv`, update `time.time()` to return float
+- Int32(10**20) overflow; BigInt->Int32 overflow checks
 - True/False booleans
 - `type()` function
-- `str()`, `str(123)`
+- `str()`, `str(123)`, `int("123")`
+- build/run in release mode
+- import user defined modules
+- require imports at the top of file, don't allow inline imports
 
 ## Python features
 - dict full support
 - str full support
 - tuple, multiple returns
 - `None` type, optional values, null pointers
-- very basic std lib (sys.argv, time.time) with imports
 - list slicing (`items[1:3]`)
 
 ## Random items

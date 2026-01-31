@@ -21,10 +21,16 @@ class ParseError(Exception):
     """Error during parsing."""
     def __init__(self, message: str, node: Optional[ast.AST] = None):
         self.node = node
-        loc = ""
-        if node and hasattr(node, 'lineno'):
-            loc = f" at line {node.lineno}"
+        self.message = message
+        self.lineno = node.lineno if node and hasattr(node, 'lineno') else None
+        loc = f" at line {self.lineno}" if self.lineno else ""
         super().__init__(f"{message}{loc}")
+
+    def format(self, filename: str = "<unknown>") -> str:
+        """Format error with file:line prefix."""
+        if self.lineno:
+            return f"{filename}:{self.lineno}: error: {self.message}"
+        return f"{filename}: error: {self.message}"
 
 
 # Source location for error reporting and source mapping
@@ -331,6 +337,8 @@ class Parser:
         """Check and track 'import X' statement."""
         for alias in node.names:
             module_name = alias.name
+            if alias.asname is not None:
+                raise ParseError(f"Import aliases not supported: 'import {module_name} as {alias.asname}'", node)
             if module_name not in self.ALLOWED_IMPORTS:
                 raise ParseError(f"Import of '{module_name}' not allowed.", node)
             # Skip tpy - it's handled differently (type imports)
@@ -353,6 +361,8 @@ class Parser:
         current = imports[module_name]
         if current is not None:  # Not overridden by 'import X'
             for alias in node.names:
+                if alias.asname is not None:
+                    raise ParseError(f"Import aliases not supported: 'from {module_name} import {alias.name} as {alias.asname}'", node)
                 current.add(alias.name)
 
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord:

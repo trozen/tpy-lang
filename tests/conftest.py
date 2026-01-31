@@ -16,7 +16,7 @@ UPDATE_EXPECTED = os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import compile_file, get_module_name
 from tpyc.codegen_cpp import CodeGenOptions
-from tpyc.parse import Parser
+from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic
 
 # Default options for tests: emit source comments for easier debugging
@@ -107,6 +107,9 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path)
 
     except SemanticError as e:
+        diag = e.format(src_file.name)
+        return CompileResult(success=False, diagnostics=diag + "\n")
+    except ParseError as e:
         diag = e.format(src_file.name)
         return CompileResult(success=False, diagnostics=diag + "\n")
 

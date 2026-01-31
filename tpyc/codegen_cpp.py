@@ -979,8 +979,8 @@ class CodeGenerator:
             return f'"{escaped}"'
 
         elif isinstance(expr, TpyName):
-            # Built-in constants
-            if expr.name == "__name__":
+            # Built-in __name__ constant - only if not shadowed by local or global variable
+            if expr.name == "__name__" and expr.name not in self.declared_vars and expr.name not in self.global_names:
                 return '"__main__"'
             return expr.name
 
@@ -1135,10 +1135,16 @@ class CodeGenerator:
             if builtin_fn := builtin_modules.lookup_function(expr.func):
                 return self._gen_builtin_call(expr, builtin_fn)
             # Check for imported function (from X import Y -> Y())
+            # Only if not shadowed by a variable, user-defined function, or record
             if expr.func in self.analyzer.imported_names:
-                module_name, func_name = self.analyzer.imported_names[expr.func]
-                if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
-                    return self._gen_builtin_call(expr, imported_fn)
+                is_shadowed = (expr.func in self.declared_vars or
+                               expr.func in self.global_names or
+                               self.analyzer.registry.get_function(expr.func) is not None or
+                               self.analyzer.registry.get_record(expr.func) is not None)
+                if not is_shadowed:
+                    module_name, func_name = self.analyzer.imported_names[expr.func]
+                    if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
+                        return self._gen_builtin_call(expr, imported_fn)
             # Check if this is a function call that needs argument conversion
             func_info = self.analyzer.registry.get_function(expr.func)
             if func_info:
@@ -1195,13 +1201,20 @@ class CodeGenerator:
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return f"{expr.method}({args})"
             # Handle module.function() (import X -> X.func())
+            # Only if the name isn't shadowed by a variable, user-defined function, or record
             if isinstance(expr.obj, TpyName) and expr.obj.name in self.analyzer.imports:
                 module_name = expr.obj.name
-                if self.analyzer.imports[module_name] is None:
-                    if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
-                        # Create a temp call for code generation
-                        temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                        return self._gen_builtin_call(temp_call, module_fn)
+                # Check if shadowed by variable, user-defined function, or record
+                is_shadowed = (module_name in self.declared_vars or
+                               module_name in self.global_names or
+                               self.analyzer.registry.get_function(module_name) is not None or
+                               self.analyzer.registry.get_record(module_name) is not None)
+                if not is_shadowed:
+                    if self.analyzer.imports[module_name] is None:
+                        if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
+                            # Create a temp call for code generation
+                            temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                            return self._gen_builtin_call(temp_call, module_fn)
             obj = self._gen_expr(expr.obj)
             obj_type = self._get_resolved_type(expr.obj)
 
