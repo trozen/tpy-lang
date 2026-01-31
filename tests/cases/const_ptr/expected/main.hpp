@@ -13,6 +13,15 @@ struct Point {
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+  os << "Point("
+     << "x=" << obj.x
+     << ", "
+     << "y=" << obj.y
+     << ")";
+  return os;
+}
+
 int32_t read_point(const Point* p);
 void modify_via_ptr(Point* p, int32_t new_x);
 void test_ptr_to_const_ptr();

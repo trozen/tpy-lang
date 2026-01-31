@@ -13,12 +13,26 @@ struct Inner {
   explicit Inner(int32_t x) : x(x) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
+  os << "Inner("
+     << "x=" << obj.x
+     << ")";
+  return os;
+}
+
 struct Outer {
   Inner inner;
 
   Outer() = default;
   explicit Outer(int32_t x) : inner(Inner(x)) {}
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
+  os << "Outer("
+     << "inner=" << obj.inner
+     << ")";
+  return os;
+}
 
 void modify_inner(Inner* p);
 int32_t read_inner(const Inner* p);

@@ -1,14 +1,13 @@
 # TODO
 
 ## Next
-- print any object
 - drop `__user_main` rename, should use namespace instead
-- too many references to StaticListType, ArrayType, ListType etc in codegen_cpp.py, should be data driven
 - Int32(10**20) overflow; BigInt->Int32 overflow checks
 - float type (in future also Float32/64)
 - basic import support; implement basic time module, with time() function
 - True/False booleans
 - `type()` function
+- `str()`, `str(123)`
 
 ## Python features
 - dict full support
@@ -21,6 +20,7 @@
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
 - trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
+- too many references to StaticListType, ArrayType, ListType etc in codegen_cpp.py, should be data driven
 - make `range` a generator function
 - extract c++ compiler interface
 - language restriction documentation
@@ -42,6 +42,9 @@ Random items that may or may not be implemented in the future, but putting them 
 - split tpy_runtime.hpp
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
+- ability to define `__str__` method
+- `@staticmethod`
+- better class operator<< tests (but missing str formatting/concatenation)
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

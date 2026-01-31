@@ -36,5 +36,12 @@ struct Counter {
   }
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
+  os << "Counter("
+     << "value=" << obj.value
+     << ")";
+  return os;
+}
+
 
 void __tpy_init_main();

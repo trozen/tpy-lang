@@ -12,6 +12,15 @@ struct Point {
   Point() = default;
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+  os << "Point("
+     << "x=" << obj.x
+     << ", "
+     << "y=" << obj.y
+     << ")";
+  return os;
+}
+
 Point* identity_ptr(Point* p);
 Point* get_ptr_copy(Point* p);
 void __user_main();

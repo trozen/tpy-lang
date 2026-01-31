@@ -16,6 +16,13 @@ struct Item {
   explicit Item(int32_t v) : value(v) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
+  os << "Item("
+     << "value=" << obj.value
+     << ")";
+  return os;
+}
+
 void process_list(StaticList<Item, 16>& items);
 void print_list(StaticList<Item, 16>& items);
 

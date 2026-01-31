@@ -36,6 +36,15 @@ struct Point {
   explicit Point(int32_t a, int32_t b) : a(a), b(b) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+  os << "Point("
+     << "a=" << obj.a
+     << ", "
+     << "b=" << obj.b
+     << ")";
+  return os;
+}
+
 struct Counter {
   int32_t val;
 
@@ -47,6 +56,13 @@ struct Counter {
     return (tpy::int32_add(val, a));
   }
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
+  os << "Counter("
+     << "val=" << obj.val
+     << ")";
+  return os;
+}
 
 
 void __tpy_init_main();

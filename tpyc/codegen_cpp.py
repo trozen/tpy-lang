@@ -371,6 +371,30 @@ class CodeGenerator:
             self._gen_method(out, method)
 
         out.write("};\n")
+        self._gen_record_ostream(out, record)
+
+    def _gen_record_ostream(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate operator<< overload for printing a record."""
+        name = record.name
+        out.write(f"\ninline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
+        out.write(f'  os << "{name}("')
+
+        for i, fld in enumerate(record.fields):
+            if i > 0:
+                out.write('\n     << ", "')
+            out.write(f'\n     << "{fld.name}="')
+            # Handle strings - quote them
+            if isinstance(fld.type, StrType):
+                out.write(f' << "\\"" << obj.{fld.name} << "\\""')
+            elif fld.type.get_element_type() is not None:
+                # Container - use ListPrinter
+                out.write(f' << tpy::ListPrinter(obj.{fld.name})')
+            else:
+                out.write(f' << obj.{fld.name}')
+
+        out.write('\n     << ")";\n')
+        out.write("  return os;\n")
+        out.write("}\n")
 
     def _extract_field_inits(self, init_method: TpyFunction) -> list[tuple[str, str]]:
         """Extract field initializations from __init__ body."""

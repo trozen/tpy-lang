@@ -28,6 +28,13 @@ struct Counter {
   }
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
+  os << "Counter("
+     << "value=" << obj.value
+     << ")";
+  return os;
+}
+
 void empty_function();
 int32_t function_with_pass_branch(int32_t x);
 int32_t pass_in_loop();

@@ -15,6 +15,15 @@ struct Point {
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+  os << "Point("
+     << "x=" << obj.x
+     << ", "
+     << "y=" << obj.y
+     << ")";
+  return os;
+}
+
 Point* addr_param(Point& p);
 Point* addr_global();
 void __user_main();

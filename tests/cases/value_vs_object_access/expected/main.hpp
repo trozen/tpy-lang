@@ -13,6 +13,15 @@ struct Point {
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+  os << "Point("
+     << "x=" << obj.x
+     << ", "
+     << "y=" << obj.y
+     << ")";
+  return os;
+}
+
 void test_value_types();
 void test_object_types();
 

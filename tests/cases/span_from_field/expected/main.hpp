@@ -12,6 +12,13 @@ struct Box {
   explicit Box(std::array<int32_t, 3> items) : items(items) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
+  os << "Box("
+     << "items=" << tpy::ListPrinter(obj.items)
+     << ")";
+  return os;
+}
+
 void __user_main();
 
 void __tpy_init_main();

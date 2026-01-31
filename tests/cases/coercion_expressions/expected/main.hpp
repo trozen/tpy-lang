@@ -25,6 +25,13 @@ struct Counter {
   }
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
+  os << "Counter("
+     << "value=" << obj.value
+     << ")";
+  return os;
+}
+
 struct Point {
   int32_t x;
   int32_t y;
@@ -33,6 +40,15 @@ struct Point {
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+  os << "Point("
+     << "x=" << obj.x
+     << ", "
+     << "y=" << obj.y
+     << ")";
+  return os;
+}
+
 struct Container {
   Point pt;
 
@@ -40,12 +56,26 @@ struct Container {
   explicit Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
+  os << "Container("
+     << "pt=" << obj.pt
+     << ")";
+  return os;
+}
+
 struct Outer {
   Container inner;
 
   Outer() = default;
   explicit Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
+  os << "Outer("
+     << "inner=" << obj.inner
+     << ")";
+  return os;
+}
 
 int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b);
 int32_t take_int32(int32_t n);

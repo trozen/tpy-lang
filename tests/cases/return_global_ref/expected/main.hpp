@@ -14,6 +14,15 @@ struct Point {
   Point() = default;
 };
 
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+  os << "Point("
+     << "x=" << obj.x
+     << ", "
+     << "y=" << obj.y
+     << ")";
+  return os;
+}
+
 Point& get_origin();
 void __user_main();
 
