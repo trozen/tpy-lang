@@ -7,6 +7,8 @@ tpy::Global<StaticList<int32_t, 8>> sl;
 tpy::Global<std::vector<int32_t>> nums;
 // 16: empty: list[Int32] = [] * 100
 tpy::Global<std::vector<int32_t>> empty;
+// 20: neg: list[Int32] = [1, 2, 3] * -5
+tpy::Global<std::vector<int32_t>> neg;
 
 void __tpy_init_main() {
   // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
@@ -31,6 +33,10 @@ void __tpy_init_main() {
   empty = std::vector<int32_t>{};
   // 17: print(len(empty))
   std::cout << static_cast<int32_t>((*empty).size()) << "\n";
+  // 20: neg: list[Int32] = [1, 2, 3] * -5
+  neg = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>((-5), {1, 2, 3}));
+  // 21: print(len(neg))
+  std::cout << static_cast<int32_t>((*neg).size()) << "\n";
 }
 
 int main() {

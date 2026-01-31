@@ -5,7 +5,7 @@
 - drop `__user_main` rename, should use namespace instead
 - too many references to StaticListType, ArrayType, ListType etc in codegen_cpp.py, should be data driven
 - Int32(10**20) overflow; BigInt->Int32 overflow checks
-- float
+- float type (in future also Float32/64)
 - basic import support; implement basic time module, with time() function
 - True/False booleans
 - `type()` function
@@ -17,7 +17,6 @@
 - `None` type, optional values, null pointers
 - very basic std lib (sys.argv, time.time) with imports
 - list slicing (`items[1:3]`)
-- float type (in future also Float32/64)
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
@@ -45,12 +44,19 @@ Random items that may or may not be implemented in the future, but putting them 
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 
 ## Other
-- StaticList negative indexing: `static_list[-1]` doesn't work (get_item() bypasses normalize_index())                     
-- StaticList bounds checking: uses raw operator[] with no panic on out-of-bounds                                           
-- Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str 
-- Negative indexing: works for list/Array/Span/str, but not StaticList                                                     
-- Bounds checking: list/Array/Span/str panic on out-of-bounds, StaticList is unchecked (UB)                                
-- Docstrings: silently skipped in codegen (harmless, but no introspection support)  
+- Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
+- Docstrings: silently skipped in codegen (harmless, but no introspection support)
+
+## Code Review Items (2026-01-27)
+- Class field defaults: strings emit `= hello` not `= "hello"`, bools emit `= True` not `= true`
+- Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
+- `in` on strings: `1 in "abc"` accepted (should require str/Char on LHS)
+- Unknown record types not rejected: `bar: UnknownType` passes sema, fails at C++ compile
+- Unary `not` not type-checked: `not items` (container) passes sema, fails C++ compile
+- `list.extend` lacks type validation: element type mismatch not checked
+- `and`/`or` return Bool not operand: `1 and 2` returns `1` (bool), Python returns `2`
+- `pass` emits `0;` statement instead of empty block or comment
+- Semantic warnings collected but never printed by CLI
 
 ## ShedSkin examples
 - score4

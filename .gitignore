@@ -11,3 +11,5 @@ wheels/
 
 # Virtual environments
 .venv
+
+/tmp

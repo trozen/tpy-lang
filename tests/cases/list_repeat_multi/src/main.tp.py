@@ -15,3 +15,7 @@ for i in range(len(nums)):
 # Empty list repetition (always produces empty list)
 empty: list[Int32] = [] * 100
 print(len(empty))
+
+# Negative repeat count (Python semantics: produces empty list)
+neg: list[Int32] = [1, 2, 3] * -5
+print(len(neg))

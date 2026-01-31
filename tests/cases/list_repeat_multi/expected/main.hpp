@@ -6,6 +6,7 @@
 extern tpy::Global<StaticList<int32_t, 8>> sl;
 extern tpy::Global<std::vector<int32_t>> nums;
 extern tpy::Global<std::vector<int32_t>> empty;
+extern tpy::Global<std::vector<int32_t>> neg;
 
 
 void __tpy_init_main();
