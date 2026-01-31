@@ -14,16 +14,16 @@ void __user_main() {
   // 20:     print(sum_array(arr1))  # 6
   std::cout << sum_array(arr1) << "\n";
   // 23:     print(sum_array([10, 20, 30]))  # 60
-  std::array<int32_t, 3> __arr_tmp_1 = {10, 20, 30};
-  std::cout << sum_array(__arr_tmp_1) << "\n";
+  std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
+  std::cout << sum_array(__tmp_1) << "\n";
   // 26:     result: Int32 = sum_array([100, 200, 300])
-  std::array<int32_t, 3> __arr_tmp_2 = {100, 200, 300};
-  int32_t result = sum_array(__arr_tmp_2);
+  std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
+  int32_t result = sum_array(__tmp_2);
   // 27:     print(result)  # 600
   std::cout << result << "\n";
   // 30:     if sum_array([1, 1, 1]) > 0:
-  std::array<int32_t, 3> __arr_tmp_3 = {1, 1, 1};
-  if ((sum_array(__arr_tmp_3) > 0)) {
+  std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
+  if ((sum_array(__tmp_3) > 0)) {
     // 31:         print(1)  # 1
     std::cout << 1 << "\n";
   } else {
@@ -33,8 +33,8 @@ void __user_main() {
   // 36:     count: Int32 = 0
   int32_t count = 0;
   // 37:     while sum_array([1, 0, 0]) > count:
-  std::array<int32_t, 3> __arr_tmp_4 = {1, 0, 0};
-  while ((sum_array(__arr_tmp_4) > count)) {
+  std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
+  while ((sum_array(__tmp_4) > count)) {
     // 38:         count = count + 1
     count = (tpy::int32_add(count, 1));
   }

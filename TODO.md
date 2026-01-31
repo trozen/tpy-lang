@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- make this work: `def f(l:list[int]): pass`, `f([])` (or `list()`)
 - print any object
 - drop `__user_main` rename, should use namespace instead
 - too many references to StaticListType, ArrayType, ListType etc in codegen_cpp.py, should be data driven

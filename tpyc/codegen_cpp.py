@@ -468,8 +468,8 @@ class CodeGenerator:
             # SpanType and StrType are lightweight views, pass by value
             if isinstance(ptype, (SpanType, StrType)):
                 parts.append(f"{ptype.to_cpp()} {pname}")
-            # Pass StaticList, Array, List, and Record types by reference
-            elif isinstance(ptype, (StaticListType, ArrayType, ListType, RecordType)):
+            # Mutable container/record types are passed by reference
+            elif self._is_ref_param_type(ptype):
                 parts.append(f"{ptype.to_cpp()}& {pname}")
             # BigInt is passed by const reference for efficiency
             elif isinstance(ptype, BigIntType):
@@ -477,6 +477,24 @@ class CodeGenerator:
             else:
                 parts.append(f"{ptype.to_cpp()} {pname}")
         return ", ".join(parts)
+
+    def _is_ref_param_type(self, ptype: TpyType) -> bool:
+        """Check if a parameter type is passed by mutable reference."""
+        return isinstance(ptype, (StaticListType, ArrayType, ListType, RecordType))
+
+    def _is_temporary_expr(self, expr: TpyExpr) -> bool:
+        """Check if an expression produces a temporary (rvalue).
+
+        Temporaries can't bind to non-const lvalue references, so they need
+        to be stored in a temp variable when passed to mutable ref params.
+        """
+        # Literals: [], [1,2,3], [0]*10
+        if isinstance(expr, (TpyArrayLiteral, TpyListRepeat)):
+            return True
+        # Constructor calls: list(), StaticList[T,N](), etc.
+        if isinstance(expr, TpyCall) and expr.call_type is not None:
+            return True
+        return False
 
     def _emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
         """Emit the original Python source line as a comment if enabled."""
@@ -489,14 +507,14 @@ class CodeGenerator:
             source_line = self.source_lines[line_idx].rstrip()
             out.write(f"{indent}// {loc.line}: {source_line}\n")
 
-    def _create_temp_for_array_literal(self, array_type: ArrayType, init_expr: str) -> str:
-        """Create a temp variable for an array literal passed to a mutable param.
+    def _create_temp_for_literal(self, param_type: TpyType, init_expr: str) -> str:
+        """Create a temp variable for a literal passed to a mutable reference param.
 
         Returns the temp variable name to use in the call.
         """
         self._temp_counter += 1
-        temp_name = f"__arr_tmp_{self._temp_counter}"
-        self._pending_temps.append((temp_name, array_type.to_cpp(), init_expr))
+        temp_name = f"__tmp_{self._temp_counter}"
+        self._pending_temps.append((temp_name, param_type.to_cpp(), init_expr))
         return temp_name
 
     def _flush_pending_temps(self, out: TextIO, indent: str) -> None:
@@ -1116,11 +1134,11 @@ class CodeGenerator:
             if func_info:
                 gen_args = []
                 for arg, (pname, ptype) in zip(expr.args, func_info.params):
-                    # Array literals passed to Array params need a temp variable
-                    # because C++ can't bind rvalue {1,2,3} to non-const reference
-                    if isinstance(ptype, ArrayType) and isinstance(arg, TpyArrayLiteral):
+                    # Literals passed to mutable reference params need a temp variable
+                    # because C++ can't bind rvalue to non-const lvalue reference
+                    if self._is_ref_param_type(ptype) and self._is_temporary_expr(arg):
                         init_expr = self._gen_expr(arg, ptype)
-                        temp_name = self._create_temp_for_array_literal(ptype, init_expr)
+                        temp_name = self._create_temp_for_literal(ptype, init_expr)
                         gen_args.append(temp_name)
                     else:
                         # Pass param type for BigInt promotion
