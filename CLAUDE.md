@@ -9,11 +9,14 @@ TurboPython (tpyc) is a proof-of-concept compiler that translates Python to C++.
 ## Commands
 
 ```bash
-# Compile and run (simplest workflow)
-tpyc examples/hello.tp.py --run
+# Compile and run (debug build, default)
+tpyc -r examples/hello.tp.py
+
+# Compile and run (release build, optimized)
+tpyc -rR examples/hello.tp.py
 
 # Compile to C++ and build binary
-tpyc examples/hello.tp.py --build
+tpyc -b examples/hello.tp.py
 
 # Compile to C++ only (output in __tpyc__/ next to source)
 tpyc examples/hello.tp.py
@@ -21,11 +24,11 @@ tpyc examples/hello.tp.py
 # Compile to specific output directory
 tpyc examples/hello.tp.py -o out/
 
-# Verbose mode
-tpyc examples/hello.tp.py --run -v
+# Verbose mode (-v for info, -vv for compilation commands)
+tpyc -r examples/hello.tp.py -vv
 
 # Interactive REPL
-tpyc --repl
+tpyc -i
 
 # Install for development (uses uv package manager)
 uv sync
@@ -37,23 +40,23 @@ Always use `-n auto` for parallel test execution (much faster).
 
 ```bash
 # Run all tests (parallel)
-pytest -n auto
+uv run pytest -n auto
 
 # Run fast compilation tests only (diagnostics, codegen)
-pytest tests/test_comp.py -n auto
+uv run pytest tests/test_comp.py -n auto
 
 # Run slow execution tests only (C++ build, run, CPython comparison)
-pytest tests/test_exec.py -n auto
+uv run pytest tests/test_exec.py -n auto
 
 # Run tests for one case (pattern matching)
-pytest -k hello -n auto
+uv run pytest -k hello -n auto
 
 # Update expected snapshots after intentional changes
-python tests/update_snapshots.py              # all cases
-python tests/update_snapshots.py hello        # specific case
-python tests/update_snapshots.py --comp       # compilation tests only
-python tests/update_snapshots.py --exec       # execution tests only
-python tests/update_snapshots.py --comp hello # specific case, comp only
+uv run python tests/update_snapshots.py              # all cases
+uv run python tests/update_snapshots.py hello        # specific case
+uv run python tests/update_snapshots.py --comp       # compilation tests only
+uv run python tests/update_snapshots.py --exec       # execution tests only
+uv run python tests/update_snapshots.py --comp hello # specific case, comp only
 ```
 
 ### Test Structure
@@ -88,8 +91,8 @@ tests/
 3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
    - `# tpyc: ok` - line should compile without error
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
-4. Run `python tests/update_snapshots.py {name}` to generate expected outputs
-5. Run `pytest -k {name}` to verify
+4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs
+5. Run `uv run pytest -k {name}` to verify
 
 ## Code Style
 
@@ -164,8 +167,8 @@ See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language 
 When implementing new features:
 - If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
 - Check `TODO.md` for current priorities
-- Run `pytest -n auto` to verify no regressions after changes
-- Update test snapshots with `python tests/update_snapshots.py` when expected output changes intentionally
+- Run `uv run pytest -n auto` to verify no regressions after changes
+- Update test snapshots with `uv run python tests/update_snapshots.py` when expected output changes intentionally
 
 ### Key Documentation Files
 

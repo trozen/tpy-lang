@@ -9,20 +9,38 @@ A proof-of-concept compiler that translates Python to C++.
 uv sync
 
 # Compile and run a program
-tpyc examples/hello.tp.py --run
+tpyc -r examples/hello.tp.py
+
+# Release build (optimized)
+tpyc -rR examples/hello.tp.py
 
 # Interactive REPL
-tpyc --repl
+tpyc -i
+```
+
+## CLI Reference
+
+```
+tpyc [options] <file.py>
+
+Options:
+  -r, --run         Build and run the program
+  -b, --build       Compile C++ to binary
+  -R, --release     Build with optimizations (default: debug)
+  -i, --repl        Start interactive REPL
+  -o <dir>          Output directory (default: __tpyc__/ next to source)
+  -v                Verbose output
+  -vv               Show compilation commands
 ```
 
 ## Testing
 
 ```bash
 # Run all tests
-pytest
+uv run pytest -n auto
 
 # Run tests for a specific case
-pytest -k hello
+uv run pytest -k hello -n auto
 ```
 
 ## Manual Build

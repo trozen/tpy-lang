@@ -93,11 +93,12 @@ def main() -> int:
     )
     parser.add_argument("input", nargs="?", help="Input TurboPython source file (.tp.py)")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
-    parser.add_argument("--build", action="store_true", help="Compile C++ to binary after generating")
-    parser.add_argument("--run", action="store_true", help="Build and run the program")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v for info, -vv for commands)")
+    parser.add_argument("-b", "--build", action="store_true", help="Compile C++ to binary after generating")
+    parser.add_argument("-r", "--run", action="store_true", help="Build and run the program")
+    parser.add_argument("-R", "--release", action="store_true", help="Build with optimizations (default: debug)")
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
-    parser.add_argument("--repl", action="store_true", help="Start interactive REPL")
+    parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
 
     args = parser.parse_args()
 
@@ -197,13 +198,22 @@ def main() -> int:
             if args.verbose:
                 print(f"Building {binary_path}...")
 
+            if args.release:
+                opt_flags = ["-O3", "-DNDEBUG"]
+            else:
+                opt_flags = ["-g", "-O0"]
+
             compile_cmd = [
                 "g++", "-std=c++23",
+                *opt_flags,
                 "-I", str(runtime_dir),
                 "-o", str(binary_path),
                 str(cpp_path),
                 "-lgmp"
             ]
+
+            if args.verbose >= 2:
+                print(f"  $ {' '.join(compile_cmd)}")
 
             result = subprocess.run(compile_cmd, capture_output=True, text=True)
             if result.returncode != 0:
