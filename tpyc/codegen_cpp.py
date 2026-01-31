@@ -463,24 +463,7 @@ class CodeGenerator:
 
     def _gen_params(self, params: list[tuple[str, TpyType]]) -> str:
         """Generate function parameter list."""
-        parts = []
-        for pname, ptype in params:
-            # SpanType and StrType are lightweight views, pass by value
-            if isinstance(ptype, (SpanType, StrType)):
-                parts.append(f"{ptype.to_cpp()} {pname}")
-            # Mutable container/record types are passed by reference
-            elif self._is_ref_param_type(ptype):
-                parts.append(f"{ptype.to_cpp()}& {pname}")
-            # BigInt is passed by const reference for efficiency
-            elif isinstance(ptype, BigIntType):
-                parts.append(f"const {ptype.to_cpp()}& {pname}")
-            else:
-                parts.append(f"{ptype.to_cpp()} {pname}")
-        return ", ".join(parts)
-
-    def _is_ref_param_type(self, ptype: TpyType) -> bool:
-        """Check if a parameter type is passed by mutable reference."""
-        return isinstance(ptype, (StaticListType, ArrayType, ListType, RecordType))
+        return ", ".join(ptype.to_cpp_param(pname) for pname, ptype in params)
 
     def _is_temporary_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression produces a temporary (rvalue).
@@ -710,9 +693,7 @@ class CodeGenerator:
         index_expr = self._gen_index_expr(subscript_obj, subscript.index, index_type or INT32)
 
         # Get element type
-        elem_type = None
-        if isinstance(obj_type, (StaticListType, ArrayType, SpanType, ListType)):
-            elem_type = obj_type.element_type
+        elem_type = obj_type.get_element_type()
 
         # Only allow augmented assignment on value type elements
         if elem_type and not elem_type.is_value_type():
@@ -817,14 +798,9 @@ class CodeGenerator:
         iterable_type = self._get_resolved_type(stmt.iterable)
 
         # Determine element type for the loop variable
-        if isinstance(iterable_type, (ListType, ArrayType, SpanType, StaticListType)):
-            elem_type = iterable_type.element_type
-        elif isinstance(iterable_type, PendingListType):
-            elem_type = iterable_type.element_type
-        elif isinstance(iterable_type, StrType):
+        elem_type = iterable_type.get_element_type()
+        if elem_type is None and isinstance(iterable_type, StrType):
             elem_type = CHAR
-        else:
-            elem_type = None
 
         # Resolve IntLiteralType to BigInt (Python default for int lists)
         if isinstance(elem_type, IntLiteralType):
@@ -1134,9 +1110,9 @@ class CodeGenerator:
             if func_info:
                 gen_args = []
                 for arg, (pname, ptype) in zip(expr.args, func_info.params):
-                    # Literals passed to mutable reference params need a temp variable
+                    # Temporaries passed to mutable reference params need a temp variable
                     # because C++ can't bind rvalue to non-const lvalue reference
-                    if self._is_ref_param_type(ptype) and self._is_temporary_expr(arg):
+                    if ptype.is_ref_param() and self._is_temporary_expr(arg):
                         init_expr = self._gen_expr(arg, ptype)
                         temp_name = self._create_temp_for_literal(ptype, init_expr)
                         gen_args.append(temp_name)
@@ -1189,13 +1165,12 @@ class CodeGenerator:
             obj = self._gen_expr(expr.obj)
             obj_type = self._get_resolved_type(expr.obj)
 
-            # Try module lookup for any method on builtin types
-            if isinstance(obj_type, (ArrayType, SpanType, StaticListType, ListType)):
-                methods = builtin_modules.lookup_type_method(obj_type, expr.method)
-                if methods:
-                    # Globals need dereferencing for method template access
-                    method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
-                    return self._gen_method_from_def(method_obj, expr.args, methods[0])
+            # Try module lookup for methods on builtin types
+            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
+            if methods:
+                # Globals need dereferencing for method template access
+                method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
+                return self._gen_method_from_def(method_obj, expr.args, methods[0])
 
             # Use -> for globals (wrapped in tpy::Global<T>)
             accessor = "->" if self._is_global_name(expr.obj) else "."
@@ -1219,17 +1194,18 @@ class CodeGenerator:
             return f"{obj}.{expr.field}"
 
         elif isinstance(expr, TpyArrayLiteral):
-            # If target_type is an array or span, use its element type for generating elements
+            # For Array and Span, use element type for generating elements
+            # (ListType doesn't need this - vectors handle implicit conversions)
             elem_target = None
             if isinstance(target_type, (ArrayType, SpanType)):
-                elem_target = target_type.element_type
+                elem_target = target_type.get_element_type()
             elements = ", ".join(self._gen_expr(e, elem_target) for e in expr.elements)
             literal = f"{{{elements}}}"
             # std::array of std::array needs an extra brace level
-            if isinstance(target_type, (ArrayType, SpanType)) and isinstance(target_type.element_type, ArrayType):
+            if isinstance(elem_target, ArrayType):
                 return f"{{{literal}}}"
             # Empty list needs explicit type to avoid ambiguity with Global<T> assignment
-            if not expr.elements and isinstance(target_type, (ListType, ArrayType, StaticListType)):
+            if not expr.elements and target_type and target_type.get_element_type() is not None:
                 return f"{target_type.to_cpp()}{literal}"
             return literal
 
@@ -1367,7 +1343,7 @@ class CodeGenerator:
     def _ctor_param_matches(self, arg_type: TpyType, param_type: builtin_modules.TypeOrParam) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
         if param_type == "Iterable":
-            return isinstance(arg_type, (ListType, PendingListType, ArrayType, StaticListType, SpanType))
+            return arg_type.is_iterable()
         if isinstance(param_type, TpyType):
             return arg_type == param_type or (
                 isinstance(arg_type, IntLiteralType) and isinstance(param_type, (Int32Type, BigIntType))
@@ -1453,7 +1429,8 @@ class CodeGenerator:
             elif self._is_runtime_bigint(arg, arg_type):
                 # BigInt has operator<< for std::ostream, no .to_string() needed
                 parts.append(self._gen_expr_deref(arg))
-            elif isinstance(arg_type, (ListType, ArrayType, SpanType, StaticListType)):
+            elif arg_type.get_element_type() is not None:
+                # Container types use ListPrinter for formatting
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD
                     cpp_type = arg_type.to_cpp()

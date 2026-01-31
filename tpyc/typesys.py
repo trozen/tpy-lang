@@ -52,6 +52,28 @@ class TpyType:
             return self.to_cpp()
         return f"{self.to_cpp()}&"
 
+    def to_cpp_param(self, name: str) -> str:
+        """Return the C++ parameter declaration for this type.
+
+        Value types (primitives, views) are passed by value: T name
+        Object types (containers, records) are passed by mutable reference: T& name
+        """
+        if self.is_value_type():
+            return f"{self.to_cpp()} {name}"
+        return f"{self.to_cpp()}& {name}"
+
+    def is_ref_param(self) -> bool:
+        """Return True if this type is passed by mutable reference as a parameter."""
+        return not self.is_value_type()
+
+    def get_element_type(self) -> Optional['TpyType']:
+        """Return the element type for container types, or None for non-containers."""
+        return None
+
+    def is_iterable(self) -> bool:
+        """Return True if this type can be iterated over (for-each loops)."""
+        return False
+
 
 @dataclass(frozen=True)
 class Int32Type(TpyType):
@@ -100,6 +122,9 @@ class StrType(TpyType):
     def is_value_type(self) -> bool:
         return True
 
+    def is_iterable(self) -> bool:
+        return True
+
 
 @dataclass(frozen=True)
 class CharType(TpyType):
@@ -144,6 +169,10 @@ class BigIntType(TpyType):
 
     def is_value_type(self) -> bool:
         return True
+
+    def to_cpp_param(self, name: str) -> str:
+        # BigInt is expensive to copy, pass by const reference
+        return f"const {self.to_cpp()}& {name}"
 
 
 @dataclass(frozen=True)
@@ -195,8 +224,11 @@ class PtrType(TpyType):
     def __str__(self) -> str:
         return f"Ptr[{self.pointee}]"
 
+    def is_value_type(self) -> bool:
+        # Pointers are small values, passed/returned by value
+        return True
+
     def to_cpp_return(self) -> str:
-        # Pointers are small values, return by value
         return self.to_cpp()
 
 
@@ -214,25 +246,31 @@ class ConstPtrType(TpyType):
     def __str__(self) -> str:
         return f"ConstPtr[{self.pointee}]"
 
+    def is_value_type(self) -> bool:
+        # Pointers are small values, passed/returned by value
+        return True
+
     def to_cpp_return(self) -> str:
-        # Pointers are small values, return by value
         return self.to_cpp()
 
 
 @dataclass(frozen=True)
 class OwnType(TpyType):
-    """Owned type - returns by value (ownership transfer).
+    """Owned type - passed/returned by value (ownership transfer).
 
-    Own[T] wraps a type to indicate the function returns a newly constructed
-    object by value (moved), bypassing the dangling reference check.
+    Own[T] wraps a type to indicate ownership transfer - the value is
+    moved/copied, not referenced. Used for function parameters and returns.
     """
     wrapped: TpyType
 
     def to_cpp(self) -> str:
         return self.wrapped.to_cpp()
 
+    def is_value_type(self) -> bool:
+        # Own[T] is always passed by value (ownership transfer)
+        return True
+
     def to_cpp_return(self) -> str:
-        # By value, no reference - this is the whole point of Own
         return self.to_cpp()
 
     def __str__(self) -> str:
@@ -254,6 +292,12 @@ class StaticListType(TpyType):
     def qualified_name(self) -> Optional[str]:
         return "tpy.StaticList"
 
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def is_iterable(self) -> bool:
+        return True
+
 
 @dataclass(frozen=True)
 class ArrayType(TpyType):
@@ -269,6 +313,12 @@ class ArrayType(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return "tpy.Array"
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def is_iterable(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
@@ -289,6 +339,12 @@ class SpanType(TpyType):
         # Spans are lightweight views (ptr + size), passed/returned by value
         return True
 
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def is_iterable(self) -> bool:
+        return True
+
 
 @dataclass(frozen=True)
 class ListType(TpyType):
@@ -303,6 +359,12 @@ class ListType(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return "builtins.list"
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def is_iterable(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)
@@ -319,6 +381,12 @@ class PendingListType(TpyType):
 
     def to_cpp(self) -> str:
         raise RuntimeError(f"PendingListType should be resolved before codegen (literal_id={self.literal_id})")
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def is_iterable(self) -> bool:
+        return True
 
     def __str__(self) -> str:
         return f"PendingList[{self.element_type}, {self.size}]#{self.literal_id}"
