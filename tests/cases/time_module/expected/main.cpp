@@ -8,7 +8,7 @@ tpy::Global<std::string_view> __name__;
 // 3: def main():
 void main() {
   // 4:     t = time.time()
-  tpy::BigInt t = tpy::time_time();
+  double t = tpy::time_time();
   // 7:     if t > 1704067200:
   if ((t > 1704067200)) {
     // 8:         print("ok")
@@ -27,7 +27,8 @@ void __tpy_init() {
 
 } // namespace tpy_user::main
 
-int main() {
+int main(int argc, char* argv[]) {
+  tpy::init_sys_argv(argc, argv);
   tpy_user::main::__tpy_init();
   return 0;
 }

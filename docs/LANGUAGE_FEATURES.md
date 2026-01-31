@@ -711,10 +711,70 @@ y = float()       # → 0.0
 ## Modules & Imports
 
 - **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `StaticList`)
-- **Working**: `import time` and `from time import time` (limited stdlib support)
+- **Working**: `import time` and `from time import time`
+- **Working**: `import sys` - system module with `sys.argv`
+- **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Planned**: Multi-file projects (user-defined modules)
 - **Open**: Importing additional Python stdlib subsets that can be statically compiled
+
+### Standard Library Modules
+
+#### `time` module (Working)
+
+```python
+import time
+# or
+from time import time, sleep
+
+# time.time() - returns seconds since epoch as float
+t = time.time()  # → double
+
+# time.sleep(seconds) - suspend execution
+time.sleep(0.5)  # sleep for 500ms
+```
+
+#### `sys` module (Working)
+
+```python
+import sys
+
+# sys.argv - command line arguments as list[str]
+for arg in sys.argv:
+    print(arg)
+
+# First element is program name
+program = sys.argv[0]
+```
+
+#### `math` module (Working)
+
+```python
+import math
+
+# Logarithms
+math.log(x)        # natural log (ln)
+math.log(x, base)  # log with specified base
+math.log10(x)      # base-10 log
+math.log2(x)       # base-2 log
+
+# Power and roots
+math.sqrt(x)       # square root
+math.pow(x, y)     # x raised to power y
+math.exp(x)        # e raised to power x
+
+# Rounding
+math.floor(x)      # largest integer <= x
+math.ceil(x)       # smallest integer >= x
+
+# Trigonometry
+math.sin(x)        # sine
+math.cos(x)        # cosine
+math.tan(x)        # tangent
+
+# Absolute value
+math.fabs(x)       # absolute value (float)
+```
 
 ---
 

@@ -290,7 +290,7 @@ class Parser:
         "lambda", "yield", "global", "nonlocal",
     }
 
-    ALLOWED_IMPORTS = {"tpy", "time"}
+    ALLOWED_IMPORTS = {"tpy", "time", "sys", "math"}
 
     def __init__(self):
         self.registry = TypeRegistry()

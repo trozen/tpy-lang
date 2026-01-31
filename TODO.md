@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- add `time.sleep()` and `sys.argv`, `math.log`, update `time.time()` to return float
 - True/False booleans
 - `type()` function
 - `str()`, `str(123)`, `int("123")`

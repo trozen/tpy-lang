@@ -129,6 +129,8 @@ class BuiltinModule:
 _builtins: BuiltinModule | None = None
 _tpy: BuiltinModule | None = None
 _time: BuiltinModule | None = None
+_sys: BuiltinModule | None = None
+_math: BuiltinModule | None = None
 
 
 def get_builtins() -> BuiltinModule:
@@ -161,6 +163,26 @@ def get_time() -> BuiltinModule:
     return _time
 
 
+def get_sys() -> BuiltinModule:
+    """Get the sys module, loading it on first access."""
+    global _sys
+    if _sys is None:
+        from tpyc.modules import sys as sys_module
+        _sys = sys_module.module
+    assert _sys is not None
+    return _sys
+
+
+def get_math() -> BuiltinModule:
+    """Get the math module, loading it on first access."""
+    global _math
+    if _math is None:
+        from tpyc.modules import math as math_module
+        _math = math_module.module
+    assert _math is not None
+    return _math
+
+
 def _all_modules() -> list[BuiltinModule]:
     """Get all loaded modules for default lookups (builtins + tpy only).
 
@@ -177,6 +199,10 @@ def get_module(name: str) -> BuiltinModule | None:
         return get_tpy()
     elif name == "time":
         return get_time()
+    elif name == "sys":
+        return get_sys()
+    elif name == "math":
+        return get_math()
     return None
 
 
@@ -185,6 +211,33 @@ def lookup_module_function(module_name: str, func_name: str) -> BuiltinFunctionD
     module = get_module(module_name)
     if module:
         return module.functions.get(func_name)
+    return None
+
+
+@dataclass
+class ModuleVarDef:
+    """Definition of a module-level variable."""
+    name: str
+    type: "TpyType"
+    cpp: str  # C++ expression to access the variable
+
+
+def lookup_module_var(module_name: str, var_name: str) -> ModuleVarDef | None:
+    """Lookup a module variable by name.
+
+    Module variables are defined in MODULE_VARS dict in each module file.
+    Returns the variable definition with its type and C++ accessor.
+    """
+    # Module variables are defined in module files, not in BuiltinModule
+    # We handle them specially here
+    if module_name == "sys":
+        from tpyc.modules import sys as sys_module
+        if var_name in sys_module.MODULE_VARS:
+            return ModuleVarDef(
+                name=var_name,
+                type=sys_module.MODULE_VARS[var_name],
+                cpp=f"tpy::sys_{var_name}",  # tpy::sys_argv
+            )
     return None
 
 

@@ -1172,6 +1172,17 @@ class SemanticAnalyzer:
 
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
+        # Check for module variable access (e.g., sys.argv)
+        if isinstance(expr.obj, TpyName):
+            if self.current_ns:
+                binding = self.current_ns.lookup(expr.obj.name)
+                if binding and binding.kind == BindingKind.MODULE:
+                    module_name = expr.obj.name
+                    if module_var := builtin_modules.lookup_module_var(module_name, expr.field):
+                        return module_var.type
+                    # If not a variable, let it fall through to error at the end
+                    # (method calls are handled in _analyze_method_call)
+
         obj_type = self._analyze_expr(expr.obj)
 
         # Handle pointer types - dereference to get the pointee

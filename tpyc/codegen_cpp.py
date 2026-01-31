@@ -296,9 +296,11 @@ class CodeGenerator:
         """Generate C++ main() that calls module init.
 
         The namespace is closed before main() so main is in global namespace.
+        Accepts argc/argv and initializes tpy::sys_argv for sys.argv support.
         """
         out.write(f"}} // namespace tpy_user::{self.module_name}\n\n")
-        out.write("int main() {\n")
+        out.write("int main(int argc, char* argv[]) {\n")
+        out.write("  tpy::init_sys_argv(argc, argv);\n")
         out.write(f"  tpy_user::{self.module_name}::__tpy_init();\n")
         out.write("  return 0;\n")
         out.write("}\n")
@@ -1330,6 +1332,16 @@ class CodeGenerator:
             # Handle self.field -> just field (inside method, implicit this)
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return expr.field
+
+            # Check for module variable access (e.g., sys.argv)
+            if isinstance(expr.obj, TpyName):
+                if self.current_ns:
+                    binding = self.current_ns.lookup(expr.obj.name)
+                    if binding and binding.kind == BindingKind.MODULE:
+                        module_name = expr.obj.name
+                        if module_var := builtin_modules.lookup_module_var(module_name, expr.field):
+                            return module_var.cpp
+
             obj = self._gen_expr(expr.obj)
             # Check if obj is a pointer type or global - use -> instead of .
             obj_type = self.analyzer.get_expr_type(expr.obj)

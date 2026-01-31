@@ -25,6 +25,7 @@
 #include <ranges>
 #include <optional>
 #include <chrono>
+#include <thread>
 #include <gmp.h>
 
 namespace tpy {
@@ -65,32 +66,98 @@ inline std::ostream& operator<<(std::ostream& os, const print_bool& pb) {
 }
 
 /**
- * Helper struct for float printing that shows ".0" for whole numbers.
+ * Helper struct for float printing that matches Python's repr() behavior.
  *
- * Ensures integral float values display with a decimal point (e.g., "5.0" not "5").
- * Note: Does not match Python's scientific notation for very large/small values.
+ * - Whole numbers display with ".0" (e.g., "5.0" not "5")
+ * - Large numbers use decimal notation for reasonable range
+ * - Very small numbers (< 0.0001) use scientific notation like Python
+ * - Uses shortest representation that round-trips correctly
  */
 struct print_float {
     double value;
     explicit print_float(double v) : value(v) {}
 };
 
-inline std::ostream& operator<<(std::ostream& os, const print_float& pf) {
-    // If it's a whole number, always show .0
-    if (std::floor(pf.value) == pf.value && !std::isinf(pf.value) && !std::isnan(pf.value)) {
-        // Save the original state
-        std::ios_base::fmtflags original_flags = os.flags();
-        std::streamsize original_precision = os.precision();
+inline std::string format_float(double value) {
+    // Handle special cases
+    if (std::isnan(value)) return "nan";
+    if (std::isinf(value)) return value > 0 ? "inf" : "-inf";
 
-        // Use fixed format with precision 1 to show .0
-        os << std::fixed << std::setprecision(1) << pf.value;
+    double abs_val = std::fabs(value);
 
-        // Restore the original state
-        os.flags(original_flags);
-        os.precision(original_precision);
+    // Python uses scientific notation for very small or very large numbers
+    // Threshold: |value| < 0.0001 or |value| >= 1e16
+    bool use_scientific = (abs_val != 0.0 && abs_val < 0.0001) || abs_val >= 1e16;
+
+    if (use_scientific) {
+        // Use scientific notation - find shortest representation
+        for (int prec = 1; prec <= 17; ++prec) {
+            std::ostringstream oss;
+            oss << std::scientific << std::setprecision(prec - 1) << value;
+            std::string s = oss.str();
+
+            // Normalize: remove leading zeros in exponent, use 'e' not 'e+'
+            // C++ outputs "1.000000e+05", Python outputs "1e+05" or "1e-05"
+            double parsed = std::stod(s);
+            if (parsed == value) {
+                // Simplify the representation to match Python
+                // Find 'e' and process
+                auto e_pos = s.find('e');
+                if (e_pos != std::string::npos) {
+                    std::string mantissa = s.substr(0, e_pos);
+                    std::string exponent = s.substr(e_pos);
+
+                    // Trim trailing zeros from mantissa (keep at least one digit after .)
+                    auto dot = mantissa.find('.');
+                    if (dot != std::string::npos) {
+                        auto last_nonzero = mantissa.find_last_not_of('0');
+                        if (last_nonzero != std::string::npos && last_nonzero > dot) {
+                            mantissa = mantissa.substr(0, last_nonzero + 1);
+                        } else {
+                            mantissa = mantissa.substr(0, dot);  // Remove decimal entirely if just zeros
+                        }
+                    }
+
+                    // Simplify exponent: e+05 -> e+05, e-05 -> e-05
+                    // Remove leading zeros: e+05 -> e+5 (but Python keeps them... check)
+                    s = mantissa + exponent;
+                }
+                return s;
+            }
+        }
     } else {
-        os << pf.value;
+        // Use fixed notation - find shortest representation
+        for (int prec = 1; prec <= 17; ++prec) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(prec) << value;
+            std::string s = oss.str();
+
+            // Check if this representation round-trips
+            double parsed = std::stod(s);
+            if (parsed == value) {
+                // Trim trailing zeros, but keep at least one digit after decimal
+                auto dot = s.find('.');
+                if (dot != std::string::npos) {
+                    auto last_nonzero = s.find_last_not_of('0');
+                    if (last_nonzero != std::string::npos && last_nonzero > dot) {
+                        s = s.substr(0, last_nonzero + 1);
+                    } else {
+                        s = s.substr(0, dot + 2);
+                    }
+                }
+                return s;
+            }
+        }
     }
+
+    // Fallback: use default precision
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}
+
+inline std::ostream& operator<<(std::ostream& os, const print_float& pf) {
+    os << format_float(pf.value);
     return os;
 }
 
@@ -1399,15 +1466,48 @@ private:
 };
 
 /**
- * time_time - Return seconds since epoch as BigInt.
+ * time_time - Return seconds since epoch as double.
  *
- * Equivalent to Python's time.time() but returns int instead of float.
+ * Equivalent to Python's time.time().
  */
-inline BigInt time_time() {
+inline double time_time() {
     auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
-    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
-    return BigInt(static_cast<int64_t>(seconds));
+    return std::chrono::duration<double>(duration).count();
+}
+
+/**
+ * time_sleep - Suspend execution for the given number of seconds.
+ *
+ * Equivalent to Python's time.sleep().
+ */
+inline void time_sleep(double seconds) {
+    if (seconds < 0) {
+        tpy_panic("sleep length must be non-negative");
+    }
+    auto duration = std::chrono::duration<double>(seconds);
+    std::this_thread::sleep_for(duration);
+}
+
+/**
+ * sys_argv - Command line arguments as vector of string_view.
+ *
+ * Equivalent to Python's sys.argv. Initialized by init_sys_argv() in main().
+ * Note: string_views point to argv strings which are valid for program lifetime.
+ */
+inline std::vector<std::string_view> sys_argv;
+
+/**
+ * init_sys_argv - Initialize sys_argv from main()'s argc/argv.
+ *
+ * Called at program startup before __tpy_init().
+ */
+inline void init_sys_argv(int argc, char* argv[]) {
+    sys_argv.clear();
+    sys_argv.reserve(static_cast<std::size_t>(argc));
+    for (int i = 0; i < argc; ++i) {
+        sys_argv.emplace_back(argv[i]);
+    }
 }
 
 } // namespace tpy
