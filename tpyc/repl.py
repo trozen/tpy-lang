@@ -22,7 +22,7 @@ from pathlib import Path
 from .parse import Parser, ParseError, TpyExprStmt
 from .sema import SemanticAnalyzer, SemanticError
 from .codegen_cpp import CodeGenerator
-from .typesys import VoidType
+from .typesys import VoidType, StrType, CharType
 
 
 def get_runtime_dir() -> Path:
@@ -288,12 +288,16 @@ class REPLSession:
 
         # Check if we should auto-print the expression
         # The second-to-last statement is the user's input (last is the noop)
+        is_str_or_char = False
         if maybe_auto_print and len(module.top_level_stmts) >= 2:
             user_stmt = module.top_level_stmts[-2]
             if isinstance(user_stmt, TpyExprStmt):
                 expr_type = analyzer.get_expr_type(user_stmt.expr)
                 # Only wrap if the expression has a non-void type
                 if expr_type is not None and not isinstance(expr_type, VoidType):
+                    # Track if we're printing a string/char for post-processing
+                    is_str_or_char = isinstance(expr_type, (StrType, CharType))
+
                     # Re-parse with print wrapper
                     wrapped_source = f"print({new_source.strip()})"
                     combined = "\n".join(self.accumulated_lines + [wrapped_source])
@@ -304,7 +308,7 @@ class REPLSession:
                         analyzer = SemanticAnalyzer()
                         analyzer.analyze(module)
                     except (ParseError, SyntaxError, SemanticError):
-                        pass  # Fall back to original if wrapping fails
+                        is_str_or_char = False  # Fall back to original if wrapping fails
 
         # Show warnings if any
         warning_output = ""
@@ -379,7 +383,13 @@ class REPLSession:
                 output = f"Runtime error (exit code {result.returncode})\n"
             return False, output
 
-        return True, verbose_output + warning_output + result.stdout
+        # For strings/chars, wrap output in quotes like Python's REPL
+        program_output = result.stdout
+        if is_str_or_char and program_output:
+            # Output format: "value\n" -> "'value'\n"
+            program_output = "'" + program_output.rstrip("\n") + "'\n"
+
+        return True, verbose_output + warning_output + program_output
 
     def cleanup(self) -> None:
         """Remove temp directory on exit."""
