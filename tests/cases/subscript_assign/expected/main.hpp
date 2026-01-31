@@ -3,8 +3,11 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<std::array<int32_t, 3>> arr;
 extern tpy::Global<StaticList<int32_t, 4>> items;
 
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<int32_t> a;
 extern tpy::Global<int32_t> b;
 extern tpy::Global<int32_t> c;
@@ -13,4 +15,5 @@ extern tpy::Global<tpy::BigInt> big1;
 extern tpy::Global<tpy::BigInt> big2;
 
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

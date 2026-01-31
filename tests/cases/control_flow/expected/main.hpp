@@ -3,9 +3,12 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 int32_t classify(int32_t x);
 int32_t check_range(int32_t x);
 int32_t check_bounds(int32_t x);
 int32_t complex_condition(int32_t a, int32_t b);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

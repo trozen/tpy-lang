@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Item;
 
 extern tpy::Global<StaticList<Item, 16>> items;
@@ -26,4 +28,5 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 void process_list(StaticList<Item, 16>& items);
 void print_list(StaticList<Item, 16>& items);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

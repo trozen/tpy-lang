@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 struct Point {
@@ -30,4 +32,5 @@ void test_ptr_to_value();
 void test_ptr_to_value_assign();
 void test_ptr_to_value_return();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

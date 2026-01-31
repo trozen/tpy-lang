@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_list_negative_indexing();
 void test_array_negative_indexing();
 void test_string_negative_indexing();
@@ -10,4 +12,5 @@ void test_negative_index_assignment();
 void test_negative_index_in_expression();
 void test_array_negative_assignment();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

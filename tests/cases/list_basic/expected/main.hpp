@@ -3,10 +3,13 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<std::vector<int32_t>> mem;
 extern tpy::Global<std::vector<tpy::BigInt>> data;
 extern tpy::Global<std::vector<tpy::BigInt>> chars;
 
 int32_t sum_list(std::vector<int32_t>& nums);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

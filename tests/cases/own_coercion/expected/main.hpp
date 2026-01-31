@@ -3,8 +3,11 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 int32_t return_owned_int32();
 int32_t take_owned_int32(int32_t x);
-void __user_main();
+void main();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

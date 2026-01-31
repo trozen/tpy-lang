@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 struct Point {
@@ -26,4 +28,5 @@ void modify_point(Point* p);
 int32_t read_point(const Point* p);
 void test_coercion();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

@@ -3,9 +3,12 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<tpy::BigInt> x;
 extern tpy::Global<tpy::BigInt> y;
 extern tpy::Global<tpy::BigInt> z;
 
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

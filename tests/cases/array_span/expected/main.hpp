@@ -3,10 +3,13 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<std::array<int32_t, 3>> nums;
 extern tpy::Global<std::array<int32_t, 3>> arr;
 extern tpy::Global<StaticList<int32_t, 4>> items;
 
 int32_t sum_span(std::span<const int32_t> values);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

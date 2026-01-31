@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 struct Point {
@@ -27,4 +29,5 @@ void modify_via_ptr(Point* p, int32_t new_x);
 void test_ptr_to_const_ptr();
 void test_const_ptr_preserves_value();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

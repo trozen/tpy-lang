@@ -3,6 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 int32_t count_char(std::string_view text, char target);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

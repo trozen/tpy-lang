@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void print_list(std::vector<int32_t>& nums);
 void test_pop();
 void test_insert();
@@ -11,4 +13,5 @@ void test_clear();
 void test_extend();
 void test_combined_operations();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

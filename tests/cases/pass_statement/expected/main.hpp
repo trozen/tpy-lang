@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Counter;
 
 struct Counter {
@@ -41,4 +43,5 @@ int32_t pass_in_loop();
 int32_t pass_in_elif(int32_t x);
 void test_class_with_pass();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

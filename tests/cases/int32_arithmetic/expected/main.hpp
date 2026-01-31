@@ -3,9 +3,12 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_binary_ops();
 void test_unary_neg();
 void test_mixed_literals();
 void test_negative_division();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

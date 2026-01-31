@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<std::vector<tpy::BigInt>> global_list;
 extern tpy::Global<std::vector<int32_t>> global_list2;
 
@@ -11,4 +13,5 @@ int32_t test_empty_list_int32();
 tpy::BigInt test_list_constructor();
 int32_t test_list_constructor_int32();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

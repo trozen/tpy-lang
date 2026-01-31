@@ -22,6 +22,7 @@
 #include <vector>
 #include <ranges>
 #include <optional>
+#include <chrono>
 #include <gmp.h>
 
 namespace tpy {
@@ -1315,6 +1316,18 @@ private:
         }
     }
 };
+
+/**
+ * time_time - Return seconds since epoch as BigInt.
+ *
+ * Equivalent to Python's time.time() but returns int instead of float.
+ */
+inline BigInt time_time() {
+    auto now = std::chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+    auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+    return BigInt(static_cast<int64_t>(seconds));
+}
 
 } // namespace tpy
 

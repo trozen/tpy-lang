@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<std::vector<tpy::BigInt>> items;
 extern tpy::Global<int32_t> total;
 extern tpy::Global<std::array<int32_t, 3>> arr;
@@ -12,4 +14,5 @@ int32_t sum_array();
 void print_span(std::span<const int32_t> data);
 int32_t nested_sum();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

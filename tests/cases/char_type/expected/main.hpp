@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_char_literals();
 void test_char_from_string_index();
 void test_char_comparison();
@@ -16,4 +18,5 @@ void test_chr_function();
 void accepts_str(std::string_view s);
 void test_char_to_str_coercion();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

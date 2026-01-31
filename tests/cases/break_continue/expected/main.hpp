@@ -3,9 +3,12 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_break();
 void test_continue();
 void test_nested_break();
 void test_nested_continue();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

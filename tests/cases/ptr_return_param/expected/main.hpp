@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 extern tpy::Global<Point> global_pt;
@@ -26,6 +28,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 Point* addr_param(Point& p);
 Point* addr_global();
-void __user_main();
+void main();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_list_membership();
 void test_array_membership();
 bool check_span_contains(std::span<const int32_t> data, int32_t value);
@@ -11,4 +13,5 @@ void test_string_membership();
 void test_membership_in_conditions();
 void test_membership_with_variables();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

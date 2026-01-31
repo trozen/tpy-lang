@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 extern tpy::Global<std::vector<int32_t>> nums;
@@ -34,4 +36,5 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 void test_local_list();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

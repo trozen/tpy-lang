@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 struct Point {
@@ -25,4 +27,5 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 void test_value_types();
 void test_object_types();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

@@ -102,6 +102,18 @@ class SemanticAnalyzer:
         self.pending_resolutions: list[int] = []  # literal_ids to resolve after function analysis
         self.var_decl_by_name: dict[str, TpyVarDecl] = {}  # var_name -> TpyVarDecl node (current scope)
 
+        # Import tracking
+        # imports: module_name -> set of imported names (for "from X import Y")
+        #          module_name -> None (for "import X")
+        self.imports: dict[str, set[str] | None] = {}
+        # imported_names: name -> (module_name, function_name) for direct function access
+        self.imported_names: dict[str, tuple[str, str]] = {}
+
+        # Built-in names (like __name__)
+        self.builtin_names: dict[str, TpyType] = {
+            "__name__": STR,
+        }
+
     def _error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
         """Create a SemanticError with location from a node."""
         loc = getattr(node, 'loc', None) if node else None
@@ -114,6 +126,14 @@ class SemanticAnalyzer:
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
+        # Process imports
+        self.imports = module.imports
+        for module_name, names in self.imports.items():
+            if names is not None:
+                # "from X import Y" - register each imported name
+                for name in names:
+                    self.imported_names[name] = (module_name, name)
+
         # First pass: register all records
         for record in module.records:
             self._register_record(record)
@@ -647,6 +667,9 @@ class SemanticAnalyzer:
         """Analyze a name reference."""
         typ = self.current_scope.lookup(expr.name)
         if typ is None:
+            # Check built-in names (like __name__)
+            if expr.name in self.builtin_names:
+                return self.builtin_names[expr.name]
             raise SemanticError(f"Undefined variable: '{expr.name}'")
         return typ
 
@@ -725,6 +748,12 @@ class SemanticAnalyzer:
         # Check module registry for built-in functions
         if builtin_fn := builtin_modules.lookup_function(expr.func):
             return self._analyze_builtin_call(expr, builtin_fn)
+
+        # Check if it's an imported function (from X import Y)
+        if expr.func in self.imported_names:
+            module_name, func_name = self.imported_names[expr.func]
+            if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
+                return self._analyze_builtin_call(expr, imported_fn)
 
         # Built-in print()
         if expr.func == "print":
@@ -894,6 +923,17 @@ class SemanticAnalyzer:
 
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
+        # Check for module.function() pattern (import X -> X.func())
+        if isinstance(expr.obj, TpyName) and expr.obj.name in self.imports:
+            module_name = expr.obj.name
+            # Module was imported with 'import X' (not 'from X import ...')
+            if self.imports[module_name] is None:
+                if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
+                    # Create a temporary TpyCall to analyze the function call
+                    temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                    return self._analyze_builtin_call(temp_call, module_fn)
+                raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+
         obj_type = self._analyze_expr(expr.obj)
 
         # StaticList methods - use module lookup

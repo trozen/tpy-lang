@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Box;
 
 struct Box {
@@ -19,6 +21,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
   return os;
 }
 
-void __user_main();
+void main();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

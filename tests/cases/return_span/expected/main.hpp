@@ -3,7 +3,10 @@
 
 #include "tpy_runtime.hpp"
 
-std::span<const int32_t> get_span(std::array<int32_t, 4>& arr);
-void __user_main();
+namespace tpy_user::main {
 
-void __tpy_init_main();
+std::span<const int32_t> get_span(std::array<int32_t, 4>& arr);
+void main();
+
+void __tpy_init();
+} // namespace tpy_user::main

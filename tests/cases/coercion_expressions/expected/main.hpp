@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Counter;
 struct Point;
 struct Container;
@@ -86,4 +88,5 @@ void test_field_access_to_ptr();
 void test_nested_field_to_ptr();
 void test_literal_expr_to_int32();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

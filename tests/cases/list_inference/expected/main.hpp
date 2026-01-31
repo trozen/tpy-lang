@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<std::vector<int32_t>> global_list;
 extern tpy::Global<std::vector<tpy::BigInt>> global_inferred;
 
@@ -13,4 +15,5 @@ void test_list_param();
 int32_t takes_span(std::span<const int32_t> x);
 int32_t test_span_param();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

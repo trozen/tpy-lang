@@ -3,6 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 tpy::BigInt factorial(const tpy::BigInt& n);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

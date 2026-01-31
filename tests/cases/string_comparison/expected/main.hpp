@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_equality();
 void test_ordering();
 void test_empty_strings();
@@ -12,4 +14,5 @@ void test_comparison_with_literals();
 int32_t find_string(std::vector<std::string_view>& items, std::string_view target);
 void test_comparison_in_loop();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

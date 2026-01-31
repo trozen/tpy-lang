@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 struct Counter;
 
@@ -65,4 +67,5 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

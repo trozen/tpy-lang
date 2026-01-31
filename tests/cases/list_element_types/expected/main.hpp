@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<std::vector<tpy::BigInt>> pure_literals;
 extern tpy::Global<std::vector<int32_t>> mixed_int32;
 extern tpy::Global<std::vector<int32_t>> mixed_int32_rev;
@@ -16,4 +18,5 @@ int32_t sum_span(std::span<const int32_t> nums);
 int32_t test_local_span();
 tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

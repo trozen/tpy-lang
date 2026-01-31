@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_int32_plus_bigint();
 void test_bigint_plus_int32();
 void test_mixed_arithmetic();
@@ -10,4 +12,5 @@ void test_large_bigint();
 void test_augmented_assign_mixed();
 void test_nested_literal_binop();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

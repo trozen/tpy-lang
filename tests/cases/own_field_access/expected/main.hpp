@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 struct Point {
@@ -24,6 +26,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 Point make_point(int32_t x, int32_t y);
 int32_t use_owned_point(Point p);
-void __user_main();
+void main();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

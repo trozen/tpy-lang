@@ -3,6 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
-void __user_main();
+namespace tpy_user::main {
 
-void __tpy_init_main();
+void main();
+
+void __tpy_init();
+} // namespace tpy_user::main

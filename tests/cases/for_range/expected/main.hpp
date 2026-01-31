@@ -3,7 +3,10 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void print_range(int32_t start, int32_t end);
 int32_t sum_range(int32_t n);
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

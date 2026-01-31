@@ -1,10 +1,8 @@
 # TODO
 
 ## Next
-- drop `__user_main` rename, should use namespace instead
 - Int32(10**20) overflow; BigInt->Int32 overflow checks
 - float type (in future also Float32/64)
-- basic import support; implement basic time module, with time() function
 - True/False booleans
 - `type()` function
 - `str()`, `str(123)`
@@ -45,6 +43,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - ability to define `__str__` method
 - `@staticmethod`
 - better class operator<< tests (but missing str formatting/concatenation)
+- `import time as _time` syntax
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

@@ -128,6 +128,7 @@ class BuiltinModule:
 # Module instances (lazy-loaded)
 _builtins: BuiltinModule | None = None
 _tpy: BuiltinModule | None = None
+_time: BuiltinModule | None = None
 
 
 def get_builtins() -> BuiltinModule:
@@ -150,9 +151,38 @@ def get_tpy() -> BuiltinModule:
     return _tpy
 
 
+def get_time() -> BuiltinModule:
+    """Get the time module, loading it on first access."""
+    global _time
+    if _time is None:
+        from tpyc.modules import time as time_module
+        _time = time_module.module
+    assert _time is not None
+    return _time
+
+
 def _all_modules() -> list[BuiltinModule]:
     """Get all loaded modules."""
-    return [get_builtins(), get_tpy()]
+    return [get_builtins(), get_tpy(), get_time()]
+
+
+def get_module(name: str) -> BuiltinModule | None:
+    """Get a module by name."""
+    if name == "builtins":
+        return get_builtins()
+    elif name == "tpy":
+        return get_tpy()
+    elif name == "time":
+        return get_time()
+    return None
+
+
+def lookup_module_function(module_name: str, func_name: str) -> BuiltinFunctionDef | None:
+    """Lookup a function in a specific module by name."""
+    module = get_module(module_name)
+    if module:
+        return module.functions.get(func_name)
+    return None
 
 
 def lookup_function(name: str) -> BuiltinFunctionDef | None:

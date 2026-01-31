@@ -3,6 +3,9 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_out_of_bounds();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

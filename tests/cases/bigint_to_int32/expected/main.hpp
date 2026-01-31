@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 extern tpy::Global<int32_t> a;
 extern tpy::Global<int32_t> b;
 extern tpy::Global<int32_t> c;
@@ -24,4 +26,5 @@ int32_t loop_test(const tpy::BigInt& n);
 int32_t constructor_test(const tpy::BigInt& x);
 int32_t literal_ops_local();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

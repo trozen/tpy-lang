@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 void test_not_with_bool_literals();
 void test_not_with_comparisons();
 void test_not_in_conditions();
@@ -11,4 +13,5 @@ bool is_valid(int32_t x);
 void test_not_with_function_call();
 void test_not_in_while();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 struct Point {
@@ -23,6 +25,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 Point* identity_ptr(Point* p);
 Point* get_ptr_copy(Point* p);
-void __user_main();
+void main();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

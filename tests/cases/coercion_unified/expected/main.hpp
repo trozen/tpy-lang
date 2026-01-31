@@ -3,6 +3,8 @@
 
 #include "tpy_runtime.hpp"
 
+namespace tpy_user::main {
+
 struct Point;
 
 struct Point {
@@ -40,4 +42,5 @@ void test_array_to_span();
 void test_list_to_span();
 void test_subscript_to_ptr();
 
-void __tpy_init_main();
+void __tpy_init();
+} // namespace tpy_user::main

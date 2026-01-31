@@ -3,7 +3,10 @@
 
 #include "tpy_runtime.hpp"
 
-int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s);
-void __user_main();
+namespace tpy_user::main {
 
-void __tpy_init_main();
+int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s);
+void main();
+
+void __tpy_init();
+} // namespace tpy_user::main

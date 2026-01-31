@@ -264,6 +264,9 @@ class TpyModule:
     functions: list[TpyFunction]
     top_level_stmts: list[TpyStmt] = field(default_factory=list)
     source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
+    # Import tracking: module_name -> set of imported names (for "from X import Y")
+    #                  module_name -> None (for "import X")
+    imports: dict[str, set[str] | None] = field(default_factory=dict)
 
 
 class Parser:
@@ -275,7 +278,7 @@ class Parser:
         "lambda", "yield", "global", "nonlocal",
     }
 
-    ALLOWED_IMPORTS = {"tpy"}
+    ALLOWED_IMPORTS = {"tpy", "time"}
 
     def __init__(self):
         self.registry = TypeRegistry()
@@ -299,10 +302,13 @@ class Parser:
         records = []
         functions = []
         top_level_stmts = []
+        imports: dict[str, set[str] | None] = {}
 
         for node in tree.body:
             if isinstance(node, ast.ImportFrom):
-                self._check_import(node)
+                self._check_import_from(node, imports)
+            elif isinstance(node, ast.Import):
+                self._check_import(node, imports)
             elif isinstance(node, ast.ClassDef):
                 record = self._parse_class(node)
                 records.append(record)
@@ -319,12 +325,35 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, top_level_stmts=top_level_stmts, source_lines=self.source_lines)
+        return TpyModule(records=records, functions=functions, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports)
 
-    def _check_import(self, node: ast.ImportFrom) -> None:
-        """Check that import is from allowed module."""
+    def _check_import(self, node: ast.Import, imports: dict[str, set[str] | None]) -> None:
+        """Check and track 'import X' statement."""
+        for alias in node.names:
+            module_name = alias.name
+            if module_name not in self.ALLOWED_IMPORTS:
+                raise ParseError(f"Import of '{module_name}' not allowed.", node)
+            # Skip tpy - it's handled differently (type imports)
+            if module_name == "tpy":
+                continue
+            # 'import X' -> module_name: None (whole module imported)
+            imports[module_name] = None
+
+    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[str] | None]) -> None:
+        """Check and track 'from X import Y' statement."""
         if node.module not in self.ALLOWED_IMPORTS:
-            raise ParseError(f"Import from '{node.module}' not allowed. Only 'from tpy import ...' is permitted.", node)
+            raise ParseError(f"Import from '{node.module}' not allowed.", node)
+        # Skip tpy - it's handled differently (type imports)
+        if node.module == "tpy":
+            return
+        # 'from X import Y, Z' -> module_name: {Y, Z}
+        module_name = node.module
+        if module_name not in imports:
+            imports[module_name] = set()
+        current = imports[module_name]
+        if current is not None:  # Not overridden by 'import X'
+            for alias in node.names:
+                current.add(alias.name)
 
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord:
         """Parse a class definition as a record."""
