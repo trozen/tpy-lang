@@ -13,7 +13,7 @@ void __tpy_init_main() {
   // 5: y: Int32 = x - 1        # Should panic
   y = (tpy::int32_sub((*x), 1));
   // 6: print(y)
-  std::cout << y << "\n";
+  std::cout << (*y) << "\n";
 }
 
 int main() {

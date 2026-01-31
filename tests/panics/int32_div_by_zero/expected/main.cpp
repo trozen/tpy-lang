@@ -17,7 +17,7 @@ void __tpy_init_main() {
   // 6: z: Int32 = x // y  # Should panic
   z = (tpy::int32_div((*x), (*y)));
   // 7: print(z)
-  std::cout << z << "\n";
+  std::cout << (*z) << "\n";
 }
 
 int main() {

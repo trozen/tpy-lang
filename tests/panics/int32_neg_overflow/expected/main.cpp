@@ -13,7 +13,7 @@ void __tpy_init_main() {
   // 5: y: Int32 = -x           # -INT32_MIN overflows, should panic
   y = tpy::int32_neg((*x));
   // 6: print(y)
-  std::cout << y << "\n";
+  std::cout << (*y) << "\n";
 }
 
 int main() {

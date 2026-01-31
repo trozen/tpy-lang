@@ -77,7 +77,7 @@ void __tpy_init_main() {
   // 50: neg = -42
   neg = (-tpy::BigInt(42));
   // 51: print(neg)
-  std::cout << neg << "\n";
+  std::cout << (*neg) << "\n";
 }
 
 int main() {

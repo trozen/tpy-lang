@@ -771,13 +771,8 @@ class CodeGenerator:
 
     def _gen_for(self, out: TextIO, stmt: TpyFor, indent: str) -> None:
         """Generate a for loop (range-based)."""
-        start = self._gen_expr(stmt.start)
-        end = self._gen_expr(stmt.end)
-        # Dereference globals before .to_int32() conversion
-        if self._is_global_name(stmt.start):
-            start = f"(*{start})"
-        if self._is_global_name(stmt.end):
-            end = f"(*{end})"
+        start = self._gen_expr_deref(stmt.start)
+        end = self._gen_expr_deref(stmt.end)
         # Convert BigInt bounds to Int32 (range loops use Int32 counter)
         start_type = self.analyzer.get_expr_type(stmt.start)
         end_type = self.analyzer.get_expr_type(stmt.end)
@@ -800,12 +795,8 @@ class CodeGenerator:
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection."""
-        iterable = self._gen_expr(stmt.iterable)
+        iterable = self._gen_expr_deref(stmt.iterable)
         iterable_type = self._get_resolved_type(stmt.iterable)
-
-        # Dereference globals for iteration
-        if self._is_global_name(stmt.iterable):
-            iterable = f"(*{iterable})"
 
         # Determine element type for the loop variable
         if isinstance(iterable_type, (ListType, ArrayType, SpanType, StaticListType)):
@@ -882,10 +873,7 @@ class CodeGenerator:
             # Cast to int32_t since get_value/set_value take int32_t
             return f"static_cast<int32_t>({obj}.size() - {abs_val})"
 
-        index_expr = self._gen_expr(index)
-        # Dereference globals before .to_int32() conversion
-        if self._is_global_name(index):
-            index_expr = f"(*{index_expr})"
+        index_expr = self._gen_expr_deref(index)
         if self._is_runtime_bigint(index, index_type):
             index_expr = f"{index_expr}.to_int32()"
         return index_expr
@@ -914,6 +902,17 @@ class CodeGenerator:
             return binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
         else:
             return binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+
+    def _gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
+        """Generate an expression, dereferencing globals.
+
+        Use this when the underlying value is needed (e.g., method calls,
+        operators, function arguments). For assignment targets, use _gen_expr.
+        """
+        result = self._gen_expr(expr, target_type)
+        if self._is_global_name(expr):
+            result = f"(*{result})"
+        return result
 
     def _gen_expr(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression.
@@ -1107,10 +1106,7 @@ class CodeGenerator:
                         escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
                         obj = f'std::string_view("{escaped}")'
                     else:
-                        obj = self._gen_expr(arg)
-                        # Globals need dereferencing for method template access
-                        if self._is_global_name(arg):
-                            obj = f"(*{obj})"
+                        obj = self._gen_expr_deref(arg)
                     return self._gen_method_from_def(obj, [], methods[0])
             # Check module registry for built-in functions
             if builtin_fn := builtin_modules.lookup_function(expr.func):
@@ -1223,11 +1219,8 @@ class CodeGenerator:
             # [elements...] * N -> repeated sequence
             # Note: Empty list repetition [] * N is collapsed to [] in the parser
 
-            count = self._gen_expr(expr.count)
+            count = self._gen_expr_deref(expr.count)
             count_type = self.analyzer.get_expr_type(expr.count)
-            # Dereference globals before .to_int32() conversion
-            if self._is_global_name(expr.count):
-                count = f"(*{count})"
             # BigInt count needs conversion (IntLiteralType is already plain int)
             if isinstance(count_type, BigIntType):
                 count = f"{count}.to_int32()"
@@ -1399,7 +1392,7 @@ class CodeGenerator:
             expected_array_type = ArrayType(span_type.element_type, len(expr.elements))
             array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"
             return f"tpy::as_span({array_expr})"
-        # Dereference globals for span coercion
+        # gen_inner already generated, need to check if source was global
         if self._is_global_name(expr):
             gen_inner = f"(*{gen_inner})"
         return f"tpy::as_span({gen_inner})"
@@ -1441,21 +1434,17 @@ class CodeGenerator:
                 parts.append(f'"{escaped}"')
             elif self._is_runtime_bigint(arg, arg_type):
                 # BigInt has operator<< for std::ostream, no .to_string() needed
-                parts.append(self._gen_expr(arg))
+                parts.append(self._gen_expr_deref(arg))
             elif isinstance(arg_type, (ListType, ArrayType, SpanType, StaticListType)):
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD
                     cpp_type = arg_type.to_cpp()
                     parts.append(f'tpy::ListPrinter({cpp_type}{self._gen_expr(arg)})')
                 else:
-                    expr = self._gen_expr(arg)
-                    # Dereference globals for ListPrinter
-                    if self._is_global_name(arg):
-                        expr = f"(*{expr})"
-                    parts.append(f'tpy::ListPrinter({expr})')
+                    parts.append(f'tpy::ListPrinter({self._gen_expr_deref(arg)})')
             else:
                 # Int32, Char, Bool, literals, etc. - direct output
-                parts.append(self._gen_expr(arg))
+                parts.append(self._gen_expr_deref(arg))
 
         # Add end string
         if end_str:

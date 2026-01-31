@@ -65,7 +65,7 @@ void __tpy_init_main() {
     total = tpy::int32_add(total, (x).to_int32());
   }
   // 8: print(total)  # 15
-  std::cout << total << "\n";
+  std::cout << (*total) << "\n";
   // 11: arr: Array[Int32, 3] = [10, 20, 30]
   arr = {10, 20, 30};
   // 12: for val in arr:

@@ -30,7 +30,7 @@ void __tpy_init_main() {
   // 37: b: Int32 = 99
   b = 99;
   // 38: print(a, b)
-  std::cout << a << " " << b << "\n";
+  std::cout << (*a) << " " << (*b) << "\n";
   // 41: print("done")
   std::cout << "done" << "\n";
 }

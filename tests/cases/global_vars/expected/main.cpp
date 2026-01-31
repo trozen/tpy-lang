@@ -69,11 +69,11 @@ void __tpy_init_main() {
   // 20: z = 0
   z = tpy::BigInt(0);
   // 21: print(z)
-  std::cout << z << "\n";
+  std::cout << (*z) << "\n";
   // 22: z = 5
   z = tpy::BigInt(5);
   // 23: print(z)
-  std::cout << z << "\n";
+  std::cout << (*z) << "\n";
   // 26: global_list: list[Int32] = [1, 2, 3]
   global_list = {1, 2, 3};
   // 27: if 2 in global_list:
@@ -95,7 +95,7 @@ void __tpy_init_main() {
   // 37: i = 100
   i = tpy::BigInt(100);
   // 38: print(i)
-  std::cout << i << "\n";
+  std::cout << (*i) << "\n";
   // 39: for i in range(0, 2):
   for (int32_t i = 0; i < 2; ++i) {
     // 40:     print(i)
@@ -104,7 +104,7 @@ void __tpy_init_main() {
   // 43: x = 999
   x = tpy::BigInt(999);
   // 44: print(x)
-  std::cout << x << "\n";
+  std::cout << (*x) << "\n";
   // 45: nums: list[Int32] = [7, 8]
   nums = {7, 8};
   // 46: for x in nums:
@@ -127,7 +127,7 @@ void __tpy_init_main() {
   // 66: counter += increment
   counter = tpy::int32_add(counter, ((*increment)).to_int32());
   // 67: print(counter)
-  std::cout << counter << "\n";
+  std::cout << (*counter) << "\n";
   // 70: a = 10
   a = tpy::BigInt(10);
   // 71: b = 3

@@ -13,7 +13,7 @@ void __tpy_init_main() {
   // 5: y: Int32 = x * 2       # Should panic
   y = (tpy::int32_mul((*x), 2));
   // 6: print(y)
-  std::cout << y << "\n";
+  std::cout << (*y) << "\n";
 }
 
 int main() {
