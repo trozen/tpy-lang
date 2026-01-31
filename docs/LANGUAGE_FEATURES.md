@@ -115,7 +115,7 @@ TurboPython distinguishes between **value types** and **object types**:
 
 ### Value Types
 Small, immutable, passed by copy:
-- `int`, `Int32`, `Int64`, `Float32`, `Float64`, `Bool`
+- `int`, `float`, `Int32`, `Int64`, `Float32`, `Float64`, `Bool`
 - Small immutable structs (configurable threshold)
 - `FixStr[N]` (fixed-size string)
 
@@ -171,7 +171,17 @@ z = x + y       # Result is int (BigInt), not Int32
 | `int + Int32` | `int` | Promotes to BigInt to avoid overflow |
 | `Int32 + literal` | `Int32` | Literal coerces to target type |
 
-For augmented assignment (`+=`, `-=`, `*=`, etc.), the target type is preserved - the right-hand side is converted to match:
+**Float promotion**: Any operation involving `float` promotes to `float`:
+
+| Operation | Result Type | Rationale |
+|-----------|-------------|-----------|
+| `float + float` | `float` | Both operands same type |
+| `float + int` | `float` | Float is wider than int |
+| `int + float` | `float` | Float is wider than int |
+| `float + Int32` | `float` | Float is wider than Int32 |
+| `int / int` | `float` | True division always returns float |
+
+For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), the target type is preserved - the right-hand side is converted to match:
 ```python
 total: Int32 = 0
 big_value = 10  # int (BigInt)
@@ -643,7 +653,9 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 - **Open**: `isinstance()` → compile-time type check / type narrowing
 - **Open**: `type()` → compile-time type info
 - **Working**: `list()` → empty list constructor (requires type annotation) and `list(iterable)` with type inference
-- **Open**: `str()`, `int()` → type conversion functions (see below)
+- **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
+- **Working**: `float(int)`, `float(Int32)` → converts to float
+- **Open**: `str()`, `int(str)` → string conversion functions (see below)
 - **Open**: `enumerate()` → compile-time transform
 - **Open**: `zip()` → compile-time transform for fixed iterables
 
@@ -675,18 +687,34 @@ std::vector<tpy::BigInt> x({1, 2, 3});
 std::vector<T> y(arr.begin(), arr.end());
 ```
 
-**`int()` / `str()` (Open)**: Not yet implemented.
-- `int("42")` → parse string to int
+**`int()` (Partial)**:
+```python
+x = int(3.14)     # → 3 (truncates toward zero)
+y = int(-2.7)     # → -2 (truncates toward zero)
+z = int(1e100)    # → large BigInt (works correctly)
+# int(float("nan"))  # panics: cannot convert float NaN to integer
+# int(float("inf"))  # panics: cannot convert float infinity to integer
+```
+- `int(str)` → not yet implemented
+
+**`float()` (Working)**:
+```python
+x = float(42)     # → 42.0
+y = float()       # → 0.0
+```
+
+**`str()` (Open)**: Not yet implemented.
 - `str(42)` → convert int to string
 
 ---
 
 ## Modules & Imports
 
-- **Working**: `from tpy import ...`
-- **Planned**: Multi-file projects
-- **Planned**: `import module`
-- **Open**: Importing Python stdlib subsets that can be statically compiled
+- **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `StaticList`)
+- **Working**: `import time` and `from time import time` (limited stdlib support)
+- **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
+- **Planned**: Multi-file projects (user-defined modules)
+- **Open**: Importing additional Python stdlib subsets that can be statically compiled
 
 ---
 
