@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 10: items: list[Int32] = []
 tpy::Global<std::vector<int32_t>> items;
 // 28: sl = StaticList[Int32, 10]()
@@ -11,6 +12,7 @@ tpy::Global<StaticList<int32_t, 10>> sl;
 tpy::Global<std::array<int32_t, 3>> arr;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test explicit dunder method calls on container types.
   // 10: items: list[Int32] = []
   items = std::vector<int32_t>{};

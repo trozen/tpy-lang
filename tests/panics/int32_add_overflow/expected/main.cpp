@@ -3,12 +3,14 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: x: Int32 = 2147483647  # INT32_MAX
 tpy::Global<int32_t> x;
 // 5: y: Int32 = x + 1       # Should panic
 tpy::Global<int32_t> y;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test Int32 addition overflow panic at runtime."""
   // 4: x: Int32 = 2147483647  # INT32_MAX
   x = 2147483647;

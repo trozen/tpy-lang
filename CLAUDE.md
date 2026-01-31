@@ -33,21 +33,20 @@ uv sync
 
 ## Testing
 
+Always use `-n auto` for parallel test execution (much faster).
+
 ```bash
-# Run all tests
-pytest
+# Run all tests (parallel)
+pytest -n auto
 
 # Run fast compilation tests only (diagnostics, codegen)
-pytest tests/test_comp.py
+pytest tests/test_comp.py -n auto
 
 # Run slow execution tests only (C++ build, run, CPython comparison)
-pytest tests/test_exec.py
-
-# Run execution tests in parallel (much faster)
 pytest tests/test_exec.py -n auto
 
 # Run tests for one case (pattern matching)
-pytest -k hello
+pytest -k hello -n auto
 
 # Update expected snapshots after intentional changes
 python tests/update_snapshots.py              # all cases
@@ -165,7 +164,7 @@ See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language 
 When implementing new features:
 - If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
 - Check `TODO.md` for current priorities
-- Run `pytest` to verify no regressions after changes
+- Run `pytest -n auto` to verify no regressions after changes
 - Update test snapshots with `python tests/update_snapshots.py` when expected output changes intentionally
 
 ### Key Documentation Files

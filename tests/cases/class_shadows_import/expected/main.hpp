@@ -7,6 +7,8 @@ namespace tpy_user::main {
 
 struct time;
 
+extern tpy::Global<std::string_view> __name__;
+
 struct time {
   tpy::BigInt value;
 

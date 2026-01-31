@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 2: x = 2
 tpy::Global<tpy::BigInt> x;
 // 3: y = -1
@@ -11,6 +12,7 @@ tpy::Global<tpy::BigInt> y;
 tpy::Global<tpy::BigInt> z;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 2: x = 2
   x = tpy::BigInt(2);
   // 3: y = -1

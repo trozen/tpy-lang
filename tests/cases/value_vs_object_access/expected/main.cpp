@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 12: def test_value_types():
 void test_value_types() {
   // 14:     nums: StaticList[Int32, 4] = StaticList[Int32, 4]()
@@ -50,6 +52,7 @@ void test_object_types() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 49: test_value_types()
   test_value_types();
   // 50: test_object_types()

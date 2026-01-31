@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void print_range(int32_t start, int32_t end);
 int32_t sum_range(int32_t n);
 

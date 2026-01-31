@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 15: nums: Array[Int32, 3] = [10, 20, 30]
 tpy::Global<std::array<int32_t, 3>> nums;
 // 19: arr: Array[Int32, 3] = [100, 200, 300]
@@ -28,6 +29,7 @@ int32_t sum_span(std::span<const int32_t> values) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 12: print(sum_span([1, 2, 3, 4, 5]))
   std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
   // 15: nums: Array[Int32, 3] = [10, 20, 30]

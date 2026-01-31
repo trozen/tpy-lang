@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def test_int32_plus_bigint():
 void test_int32_plus_bigint() {
   // 6:     """Int32 + BigInt should promote to BigInt."""
@@ -108,6 +110,7 @@ void test_nested_literal_binop() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test mixed Int32 and BigInt operations."""
   // 75: test_int32_plus_bigint()
   test_int32_plus_bigint();

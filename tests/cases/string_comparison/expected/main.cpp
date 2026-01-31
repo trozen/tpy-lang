@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def test_equality() -> None:
 void test_equality() {
   // 6:     """Test == and != for strings."""
@@ -198,6 +200,7 @@ void test_comparison_in_loop() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 126: print("=== equality ===")
   std::cout << "=== equality ===" << "\n";
   // 127: test_equality()

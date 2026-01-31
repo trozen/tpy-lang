@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 33: global_list: list[int] = []
 tpy::Global<std::vector<tpy::BigInt>> global_list;
 // 36: global_list2: list[Int32] = list()
@@ -57,6 +58,7 @@ int32_t test_list_constructor_int32() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 33: global_list: list[int] = []
   global_list = std::vector<tpy::BigInt>{};
   // 36: global_list2: list[Int32] = list()

@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void print_list(std::vector<int32_t>& nums);
 void test_pop();
 void test_insert();

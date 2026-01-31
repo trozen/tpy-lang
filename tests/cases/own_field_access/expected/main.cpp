@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 20: def make_point(x: Int32, y: Int32) -> Own[Point]:
 Point make_point(int32_t x, int32_t y) {
   // 21:     return Point(x, y)
@@ -32,6 +34,7 @@ void main() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Tests field access on Own[T] types.
   // 43: main()
   main();

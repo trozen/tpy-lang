@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def test_bool():
 void test_bool() {
   // 5:     a: Bool = True
@@ -58,6 +60,7 @@ void test_bool() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 39: test_bool()
   test_bool();
 }

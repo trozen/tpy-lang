@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def print_range(start: Int32, end: Int32) -> None:
 void print_range(int32_t start, int32_t end) {
   // 4:     for i in range(start, end):
@@ -26,6 +28,7 @@ int32_t sum_range(int32_t n) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 14: for i in range(5):
   for (int32_t i = 0; i < 5; ++i) {
     // 15:     print(i)

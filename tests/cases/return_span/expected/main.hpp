@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 std::span<const int32_t> get_span(std::array<int32_t, 4>& arr);
 void main();
 

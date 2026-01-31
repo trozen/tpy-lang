@@ -7,6 +7,7 @@ namespace tpy_user::main {
 
 struct Timer;
 
+extern tpy::Global<std::string_view> __name__;
 extern tpy::Global<Timer> time;
 
 struct Timer {

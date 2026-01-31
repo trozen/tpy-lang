@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 7: def identity_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* identity_ptr(Point* p) {
   // 8:     return p  # tpyc: ok (pointer value is copied)
@@ -38,6 +40,7 @@ void main() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 26: main()
   main();
 }

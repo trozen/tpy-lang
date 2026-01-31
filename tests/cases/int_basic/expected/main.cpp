@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 50: neg = -42
 tpy::Global<tpy::BigInt> neg;
 
@@ -67,6 +68,7 @@ void test_comparison() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test basic int (BigInt) operations."""
   // 43: print(factorial(10))  # 3628800
   std::cout << factorial(tpy::BigInt(10)) << "\n";

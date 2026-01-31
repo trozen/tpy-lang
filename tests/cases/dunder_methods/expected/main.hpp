@@ -5,6 +5,7 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
 extern tpy::Global<std::vector<int32_t>> items;
 extern tpy::Global<StaticList<int32_t, 10>> sl;
 extern tpy::Global<std::array<int32_t, 3>> arr;

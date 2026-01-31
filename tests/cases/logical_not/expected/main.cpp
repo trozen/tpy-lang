@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def test_not_with_bool_literals() -> None:
 void test_not_with_bool_literals() {
   // 6:     """Test 'not' with Bool literals."""
@@ -154,6 +156,7 @@ void test_not_in_while() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 99: test_not_with_bool_literals()
   test_not_with_bool_literals();
   // 100: test_not_with_comparisons()

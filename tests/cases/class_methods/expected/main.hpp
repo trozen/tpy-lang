@@ -7,6 +7,7 @@ namespace tpy_user::main {
 
 struct Counter;
 
+extern tpy::Global<std::string_view> __name__;
 extern tpy::Global<Counter> c;
 extern tpy::Global<int32_t> a;
 extern tpy::Global<int32_t> b;

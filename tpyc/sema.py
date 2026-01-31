@@ -18,6 +18,7 @@ from .typesys import (
     StrType, CharType, BoolType, BigIntType, IntLiteralType,
     INT32, VOID, STR, CHAR, BOOL, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
 )
+from .namespace import Namespace, BindingKind, NameBinding
 from .parse import (
     SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
@@ -109,10 +110,16 @@ class SemanticAnalyzer:
         # imported_names: name -> (module_name, function_name) for direct function access
         self.imported_names: dict[str, tuple[str, str]] = {}
 
-        # Built-in names (like __name__)
-        self.builtin_names: dict[str, TpyType] = {
-            "__name__": STR,
-        }
+        # Built-in names (reserved for future builtins if needed)
+        self.builtin_names: dict[str, TpyType] = {}
+
+        # Unified namespace system
+        # builtins_ns: root namespace containing built-in names
+        # global_ns: module-level namespace (records, functions, imports, global vars)
+        # current_ns: current scope during analysis (local_ns -> global_ns -> builtins_ns)
+        self.builtins_ns: Namespace = Namespace()
+        self.global_ns: Namespace = Namespace(parent=self.builtins_ns)
+        self.current_ns: Optional[Namespace] = None
 
     def _error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
         """Create a SemanticError with location from a node."""
@@ -133,6 +140,10 @@ class SemanticAnalyzer:
                 # "from X import Y" - register each imported name
                 for name in names:
                     self.imported_names[name] = (module_name, name)
+                    self.global_ns.bind_imported_name(name, module_name, name)
+            else:
+                # "import X" - register module name
+                self.global_ns.bind_module(module_name)
 
         # First pass: register all records
         for record in module.records:
@@ -145,6 +156,10 @@ class SemanticAnalyzer:
         # Third pass: register top-level variable declarations (globals)
         if module.top_level_stmts:
             self._register_globals(module.top_level_stmts)
+
+        # Register module-level __name__ (user assignments will overwrite at runtime)
+        self.global_scope.define("__name__", STR)
+        self.global_ns.bind_variable("__name__", STR)
 
         # Fourth pass: analyze record methods
         for record in module.records:
@@ -190,6 +205,7 @@ class SemanticAnalyzer:
             methods=methods
         )
         self.registry.register_record(info)
+        self.global_ns.bind_record(info)
 
     def _register_function(self, func: TpyFunction) -> None:
         """Register a function."""
@@ -204,6 +220,7 @@ class SemanticAnalyzer:
             is_noalloc=func.is_noalloc
         )
         self.registry.register_function(info)
+        self.global_ns.bind_function(info)
 
     def _validate_type(self, typ: TpyType) -> None:
         """Validate that a type is well-formed."""
@@ -232,6 +249,7 @@ class SemanticAnalyzer:
         for stmt in stmts:
             if isinstance(stmt, TpyVarDecl) and stmt.type:
                 self.global_scope.define(stmt.name, stmt.type)
+                self.global_ns.bind_variable(stmt.name, stmt.type)
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
@@ -246,6 +264,13 @@ class SemanticAnalyzer:
             for pname, ptype in method.params:
                 self.current_scope.define(pname, ptype)
 
+            # Set up local namespace
+            local_ns = Namespace(parent=self.global_ns)
+            local_ns.bind_variable("self", RecordType(record.name))
+            for pname, ptype in method.params:
+                local_ns.bind_variable(pname, ptype)
+            self.current_ns = local_ns
+
             # Analyze body
             for stmt in method.body:
                 self._analyze_stmt(stmt)
@@ -255,6 +280,7 @@ class SemanticAnalyzer:
 
             self.current_scope = None
             self.current_function = None
+            self.current_ns = None
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
@@ -266,6 +292,12 @@ class SemanticAnalyzer:
         for pname, ptype in func.params:
             self.current_scope.define(pname, ptype)
 
+        # Set up local namespace
+        local_ns = Namespace(parent=self.global_ns)
+        for pname, ptype in func.params:
+            local_ns.bind_variable(pname, ptype)
+        self.current_ns = local_ns
+
         # Analyze body
         for stmt in func.body:
             self._analyze_stmt(stmt)
@@ -275,6 +307,7 @@ class SemanticAnalyzer:
 
         self.current_function = None
         self.current_scope = None
+        self.current_ns = None
 
     def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:
         """Analyze top-level statements (for generated main()).
@@ -288,6 +321,10 @@ class SemanticAnalyzer:
         self.current_scope = Scope(parent=self.global_scope)
         self.is_top_level = True
 
+        # Set up namespace - use global_ns for top-level (globals are visible)
+        # New local variables will be added to global_ns as they're declared
+        self.current_ns = self.global_ns
+
         for stmt in stmts:
             self._analyze_stmt(stmt)
 
@@ -296,6 +333,7 @@ class SemanticAnalyzer:
 
         self.current_function = None
         self.current_scope = None
+        self.current_ns = None
         self.is_top_level = False
 
     def _analyze_stmt(self, stmt: TpyStmt) -> None:
@@ -335,11 +373,18 @@ class SemanticAnalyzer:
             inner_scope.define(stmt.var, INT32)
             old_scope = self.current_scope
             self.current_scope = inner_scope
+            # Set up inner namespace for loop variable
+            old_ns = self.current_ns
+            if self.current_ns:
+                inner_ns = Namespace(parent=self.current_ns)
+                inner_ns.bind_variable(stmt.var, INT32)
+                self.current_ns = inner_ns
             self.loop_depth += 1
             for s in stmt.body:
                 self._analyze_stmt(s)
             self.loop_depth -= 1
             self.current_scope = old_scope
+            self.current_ns = old_ns
         elif isinstance(stmt, TpyForEach):
             iterable_type = self._analyze_expr(stmt.iterable)
             elem_type = self._get_iterable_element_type(iterable_type)
@@ -347,11 +392,18 @@ class SemanticAnalyzer:
             inner_scope.define(stmt.var, elem_type)
             old_scope = self.current_scope
             self.current_scope = inner_scope
+            # Set up inner namespace for loop variable
+            old_ns = self.current_ns
+            if self.current_ns:
+                inner_ns = Namespace(parent=self.current_ns)
+                inner_ns.bind_variable(stmt.var, elem_type)
+                self.current_ns = inner_ns
             self.loop_depth += 1
             for s in stmt.body:
                 self._analyze_stmt(s)
             self.loop_depth -= 1
             self.current_scope = old_scope
+            self.current_ns = old_ns
         elif isinstance(stmt, TpyBreak):
             if self.loop_depth == 0:
                 raise SemanticError("'break' outside loop")
@@ -484,6 +536,8 @@ class SemanticAnalyzer:
             raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
 
         self.current_scope.define(stmt.name, var_type)
+        if self.current_ns:
+            self.current_ns.bind_variable(stmt.name, var_type)
         # Track var_decl for later type updates
         if isinstance(var_type, IntLiteralType):
             self.var_decl_by_name[stmt.name] = stmt
@@ -512,6 +566,8 @@ class SemanticAnalyzer:
         if isinstance(stmt.target, TpyName) and isinstance(target_type, IntLiteralType):
             if isinstance(value_type, (Int32Type, BigIntType)):
                 self.current_scope.define(stmt.target.name, value_type)
+                if self.current_ns:
+                    self.current_ns.update_variable_type(stmt.target.name, value_type)
                 self.expr_types[id(stmt.target)] = value_type
                 # Update var_types so codegen knows the resolved type
                 var_decl = self.var_decl_by_name.get(stmt.target.name)
@@ -665,6 +721,19 @@ class SemanticAnalyzer:
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
+        # Use namespace for unified lookup (includes builtins)
+        if self.current_ns:
+            binding = self.current_ns.lookup(expr.name)
+            if binding:
+                if binding.kind == BindingKind.VARIABLE:
+                    return binding.type
+                if binding.kind == BindingKind.BUILTIN:
+                    return binding.type
+                # For other bindings (FUNCTION, RECORD, MODULE, IMPORTED_NAME),
+                # the name exists but isn't usable as a variable
+                raise SemanticError(f"'{expr.name}' is not a variable")
+
+        # Fallback to old scope lookup for compatibility
         typ = self.current_scope.lookup(expr.name)
         if typ is None:
             # Check built-in names (like __name__)
@@ -745,10 +814,31 @@ class SemanticAnalyzer:
                 self._analyze_expr(arg)
             return expr.call_type
 
-        # Check module registry for built-in functions
+        # Check module registry for built-in functions (global builtins like chr)
         if builtin_fn := builtin_modules.lookup_function(expr.func):
             return self._analyze_builtin_call(expr, builtin_fn)
 
+        # Use namespace for unified lookup - handles shadowing automatically
+        if self.current_ns:
+            binding = self.current_ns.lookup(expr.func)
+            if binding:
+                if binding.kind == BindingKind.VARIABLE:
+                    raise SemanticError(f"'{expr.func}' is not callable")
+                elif binding.kind == BindingKind.FUNCTION:
+                    return self._analyze_user_function_call(expr, binding.func_info)
+                elif binding.kind == BindingKind.RECORD:
+                    return self._analyze_record_constructor(expr, binding.record_info)
+                elif binding.kind == BindingKind.IMPORTED_NAME:
+                    module_name, func_name = binding.import_source
+                    if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
+                        return self._analyze_builtin_call(expr, imported_fn)
+                    raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'")
+                elif binding.kind == BindingKind.MODULE:
+                    raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()")
+                elif binding.kind == BindingKind.BUILTIN:
+                    raise SemanticError(f"'{expr.func}' is not callable")
+
+        # Fallback to old lookup for compatibility (when current_ns not set)
         # Check if it's an imported function (from X import Y)
         # Only if not shadowed by a variable, user-defined function, or record
         if expr.func in self.imported_names:
@@ -783,7 +873,7 @@ class SemanticAnalyzer:
         if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
             return self._check_constructor(expr, type_def)
 
-        # Check if it's a record constructor
+        # Fallback: Check if it's a record constructor
         record = self.registry.get_record(expr.func)
         if record:
             # Analyze arguments
@@ -791,7 +881,7 @@ class SemanticAnalyzer:
                 self._analyze_expr(arg)
             return RecordType(expr.func)
 
-        # Check if it's a function call
+        # Fallback: Check if it's a function call
         func = self.registry.get_function(expr.func)
         if func:
             if len(expr.args) != len(func.params):
@@ -898,6 +988,53 @@ class SemanticAnalyzer:
             return isinstance(param_type, (Int32Type, BigIntType))
         return False
 
+    def _analyze_user_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
+        """Analyze a call to a user-defined function."""
+        if len(expr.args) != len(func.params):
+            raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
+        for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
+            # Handle list() constructor - infer type from parameter
+            arg_type = self._analyze_expr_with_hint(arg, ptype)
+
+            # Check for Own[T] passed directly to object type parameter
+            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType) and not ptype.is_value_type():
+                if isinstance(arg, TpyName):
+                    hint = f"Declare the variable as '{arg_type.wrapped}' instead of 'Own[{arg_type.wrapped}]'"
+                else:
+                    hint = "Assign to a variable first: x = func(); other_func(x)"
+                raise self._error(
+                    f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
+                    f"(object types are passed by reference). {hint}",
+                    arg
+                )
+
+            # Check for T passed to Own[T] parameter - would be implicit copy
+            if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
+                raise self._error(
+                    f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
+                    f"(would be implicit copy)",
+                    arg
+                )
+
+            # Special case: single-char string literal can be passed as Char
+            if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
+                    isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+                coerced_arg = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                coercion_ctx="arg")
+                expr.args[i] = coerced_arg
+
+            # Track parameter context for list inference
+            if isinstance(arg_type, PendingListType):
+                self._mark_list_param_context(arg, ptype)
+
+        return func.return_type
+
+    def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
+        """Analyze a call to a record constructor."""
+        for arg in expr.args:
+            self._analyze_expr(arg)
+        return RecordType(record.name)
+
     def _check_method_args(self, expr: TpyMethodCall, method: builtin_modules.MethodDef,
                            obj_type: TpyType) -> TpyType:
         """Check method arguments against a resolved MethodDef and return the return type.
@@ -929,20 +1066,31 @@ class SemanticAnalyzer:
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
         # Check for module.function() pattern (import X -> X.func())
-        # Only if the name isn't shadowed by a variable, user-defined function, or record
-        if isinstance(expr.obj, TpyName) and expr.obj.name in self.imports:
-            module_name = expr.obj.name
-            # Check if shadowed by variable, user-defined function, or record
-            if (self.current_scope.lookup(module_name) is None and
-                self.registry.get_function(module_name) is None and
-                self.registry.get_record(module_name) is None):
-                # Module was imported with 'import X' (not 'from X import ...')
-                if self.imports[module_name] is None:
+        # Use namespace to check if module binding exists and isn't shadowed
+        if isinstance(expr.obj, TpyName):
+            if self.current_ns:
+                binding = self.current_ns.lookup(expr.obj.name)
+                if binding and binding.kind == BindingKind.MODULE:
+                    # It's a module call: module.function()
+                    module_name = expr.obj.name
                     if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
-                        # Create a temporary TpyCall to analyze the function call
                         temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
                         return self._analyze_builtin_call(temp_call, module_fn)
                     raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+            # Fallback for when namespace isn't set
+            elif expr.obj.name in self.imports:
+                module_name = expr.obj.name
+                # Check if shadowed by variable, user-defined function, or record
+                if (self.current_scope.lookup(module_name) is None and
+                    self.registry.get_function(module_name) is None and
+                    self.registry.get_record(module_name) is None):
+                    # Module was imported with 'import X' (not 'from X import ...')
+                    if self.imports[module_name] is None:
+                        if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
+                            # Create a temporary TpyCall to analyze the function call
+                            temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                            return self._analyze_builtin_call(temp_call, module_fn)
+                        raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
 
         obj_type = self._analyze_expr(expr.obj)
 

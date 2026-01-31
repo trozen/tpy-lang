@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def test_list_aug_assign() -> None:
 void test_list_aug_assign() {
   // 4:     nums: list[Int32] = [1, 2, 3]
@@ -54,6 +56,7 @@ void test_negative_index_aug_assign() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 28: test_list_aug_assign()
   test_list_aug_assign();
   // 29: test_staticlist_aug_assign()

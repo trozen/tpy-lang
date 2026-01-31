@@ -7,6 +7,8 @@ namespace tpy_user::main {
 
 struct Box;
 
+extern tpy::Global<std::string_view> __name__;
+
 struct Box {
   std::array<int32_t, 3> items;
 

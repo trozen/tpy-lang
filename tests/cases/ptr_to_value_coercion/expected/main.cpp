@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 11: def print_point(p: Point) -> None:
 void print_point(Point& p) {
   // 12:     print(p.x)
@@ -74,6 +76,7 @@ void test_ptr_to_value_return() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 57: print("=== call ===")
   std::cout << "=== call ===" << "\n";
   // 58: test_ptr_to_value()

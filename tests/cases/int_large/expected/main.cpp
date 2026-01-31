@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 1: def factorial(n: int) -> int:
 tpy::BigInt factorial(const tpy::BigInt& n) {
   // 2:     if n <= 1:
@@ -15,6 +17,7 @@ tpy::BigInt factorial(const tpy::BigInt& n) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 8: print(factorial(20))
   std::cout << factorial(tpy::BigInt(20)) << "\n";
   // 11: print(factorial(25))

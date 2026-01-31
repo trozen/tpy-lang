@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def time() -> int:
 tpy::BigInt time() {
   // 4:     return 42
@@ -10,6 +12,7 @@ tpy::BigInt time() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 6: print(time())
   std::cout << time() << "\n";
 }

@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def test_out_of_bounds() -> None:
 void test_out_of_bounds() {
   // 6:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
@@ -20,6 +22,7 @@ void test_out_of_bounds() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 15: test_out_of_bounds()
   test_out_of_bounds();
 }

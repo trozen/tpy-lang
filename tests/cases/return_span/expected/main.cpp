@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 4: def get_span(arr: Array[Int32, 4]) -> Span[Int32]:
 std::span<const int32_t> get_span(std::array<int32_t, 4>& arr) {
   // 5:     return arr  # tpyc: ok
@@ -22,6 +24,7 @@ void main() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 13: main()
   main();
 }

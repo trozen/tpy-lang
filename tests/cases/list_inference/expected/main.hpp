@@ -5,6 +5,7 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
 extern tpy::Global<std::vector<int32_t>> global_list;
 extern tpy::Global<std::vector<tpy::BigInt>> global_inferred;
 

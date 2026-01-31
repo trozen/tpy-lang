@@ -3,12 +3,14 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 5: x: Int32 = 2147483647
 tpy::Global<int32_t> x;
 // 11: y: Int32 = -2147483648
 tpy::Global<int32_t> y;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test valid Int32 operations at boundary values."""
   // 5: x: Int32 = 2147483647
   x = 2147483647;

@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void test_char_literals();
 void test_char_from_string_index();
 void test_char_comparison();

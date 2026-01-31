@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 13: def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {
   // 14:     p.x = 999
@@ -46,6 +48,7 @@ void test_subscript_to_ptr() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 38: print("=== field to ptr ===")
   std::cout << "=== field to ptr ===" << "\n";
   // 39: test_field_to_ptr()

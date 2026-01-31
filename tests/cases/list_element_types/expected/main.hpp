@@ -5,6 +5,7 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
 extern tpy::Global<std::vector<tpy::BigInt>> pure_literals;
 extern tpy::Global<std::vector<int32_t>> mixed_int32;
 extern tpy::Global<std::vector<int32_t>> mixed_int32_rev;

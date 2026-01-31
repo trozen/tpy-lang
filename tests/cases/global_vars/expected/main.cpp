@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: start = 0
 tpy::Global<tpy::BigInt> start;
 // 5: end = 3
@@ -47,6 +48,7 @@ tpy::Global<std::vector<int32_t>> arr;
 tpy::Global<tpy::BigInt> delta;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 4: start = 0
   start = tpy::BigInt(0);
   // 5: end = 3

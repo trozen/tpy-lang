@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: global_list: list[Int32] = [1, 2, 3]
 tpy::Global<std::vector<int32_t>> global_list;
 // 7: global_inferred = [10, 20, 30]
@@ -55,6 +56,7 @@ int32_t test_span_param() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 4: global_list: list[Int32] = [1, 2, 3]
   global_list = {1, 2, 3};
   // 7: global_inferred = [10, 20, 30]

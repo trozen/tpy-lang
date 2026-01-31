@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 29: items = StaticList[Item, 16]()
 tpy::Global<StaticList<Item, 16>> items;
 // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
@@ -38,6 +39,7 @@ void print_list(StaticList<Item, 16>& items) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 29: items = StaticList[Item, 16]()
   items = StaticList<Item, 16>();
   // 30: process_list(items)

@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 6: def test_list_negative_indexing() -> None:
 void test_list_negative_indexing() {
   // 7:     """Test negative indexing on list."""
@@ -102,6 +104,7 @@ void test_array_negative_assignment() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 86: print("=== list ===")
   std::cout << "=== list ===" << "\n";
   // 87: test_list_negative_indexing()

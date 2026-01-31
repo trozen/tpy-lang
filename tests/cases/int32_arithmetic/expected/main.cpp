@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def test_binary_ops():
 void test_binary_ops() {
   // 6:     """Test binary arithmetic operations."""
@@ -62,6 +64,7 @@ void test_negative_division() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test Int32 arithmetic operations with overflow checks."""
   // 61: test_binary_ops()
   test_binary_ops();

@@ -16,8 +16,9 @@ from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType,
     StrType, CharType, BigIntType, IntLiteralType,
-    INT32, VOID, BIGINT, CHAR
+    INT32, VOID, BIGINT, CHAR, STR
 )
+from .namespace import Namespace, BindingKind
 from .parse import (
     SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
@@ -64,6 +65,8 @@ class CodeGenerator:
         # Pending temporaries for array literals passed to mutable Array params
         self._pending_temps: list[tuple[str, str, str]] = []  # [(name, type_cpp, init_expr), ...]
         self._temp_counter = 0
+        # Current local namespace for variable tracking (parallels analyzer's namespace)
+        self.current_ns: Namespace | None = None
 
     def _get_resolved_type(self, expr: TpyExpr, target_type: TpyType | None = None) -> TpyType:
         """Get the resolved type of an expression, handling PendingListType.
@@ -174,6 +177,10 @@ class CodeGenerator:
 
         # Store global names for use in expression generation (method/field access)
         self.global_names = set(seen_globals.keys())
+        # Track if we need synthetic __name__ (add to global_names for proper deref)
+        self._has_synthetic_name = "__name__" not in seen_globals
+        if self._has_synthetic_name:
+            self.global_names.add("__name__")
 
         # Forward declare records (so global externs can reference them)
         for record in module.records:
@@ -182,10 +189,12 @@ class CodeGenerator:
             hpp.write("\n")
 
         # Generate global extern declarations
+        # __name__ is always present (synthetic if not user-defined)
+        if "__name__" not in seen_globals:
+            hpp.write("extern tpy::Global<std::string_view> __name__;\n")
         for stmt in global_decls:
             self._gen_global_extern(hpp, stmt)
-        if global_decls:
-            hpp.write("\n")
+        hpp.write("\n")
 
         # Generate full record definitions
         for record in module.records:
@@ -198,10 +207,12 @@ class CodeGenerator:
         hpp.write("\n")
 
         # Generate global definitions in source (before functions)
-        if global_decls:
-            for stmt in global_decls:
-                self._gen_global_decl(cpp, stmt)
-            cpp.write("\n")
+        # __name__ is always present (synthetic if not user-defined)
+        if "__name__" not in seen_globals:
+            cpp.write('tpy::Global<std::string_view> __name__;\n')
+        for stmt in global_decls:
+            self._gen_global_decl(cpp, stmt)
+        cpp.write("\n")
 
         # Generate function definitions
         for func in module.functions:
@@ -244,6 +255,9 @@ class CodeGenerator:
                          has_user_main: bool = False) -> None:
         """Generate module init function containing top-level statements."""
         out.write("void __tpy_init() {\n")
+        # Initialize synthetic __name__ if not user-defined
+        if self._has_synthetic_name:
+            out.write('  __name__ = "__main__";\n')
         # Pre-seed with global names and types so re-declarations become assignments
         if global_types:
             self.declared_vars = set(global_types.keys())
@@ -253,9 +267,12 @@ class CodeGenerator:
             self.var_types = {}
         # In module init, there are no local shadowing variables
         self.local_scope_names = set()
+        # Use global namespace for module init (globals are directly accessible)
+        self.current_ns = self.analyzer.global_ns
         self.indent_level = 1
         for stmt in stmts:
             self._gen_stmt(out, stmt)
+        self.current_ns = None
         # Call user's main() if defined
         if has_user_main:
             out.write("  main();\n")
@@ -340,12 +357,19 @@ class CodeGenerator:
                     self.var_types = {pname: ptype for pname, ptype in record.init_method.params}
                     # Track params as local to prevent false global deref if they shadow globals
                     self.local_scope_names = {pname for pname, _ in record.init_method.params}
+                    # Set up local namespace for constructor (bind self and params)
+                    local_ns = Namespace(parent=self.analyzer.global_ns)
+                    local_ns.bind_variable("self", RecordType(record.name))
+                    for pname, ptype in record.init_method.params:
+                        local_ns.bind_variable(pname, ptype)
+                    self.current_ns = local_ns
                     self.indent_level = 2
                     self.in_method = True
                     for stmt in non_init_stmts:
                         self._gen_stmt(out, stmt)
                     self.in_method = False
                     self.local_scope_names = set()
+                    self.current_ns = None
                     self.indent_level = 0
                     out.write("  }\n")
                 else:
@@ -361,12 +385,17 @@ class CodeGenerator:
                     self.declared_vars = set()
                     self.var_types = {}
                     self.local_scope_names = set()
+                    # Set up local namespace for constructor (bind self)
+                    local_ns = Namespace(parent=self.analyzer.global_ns)
+                    local_ns.bind_variable("self", RecordType(record.name))
+                    self.current_ns = local_ns
                     self.indent_level = 2
                     self.in_method = True
                     for stmt in non_init_stmts:
                         self._gen_stmt(out, stmt)
                     self.in_method = False
                     self.local_scope_names = set()
+                    self.current_ns = None
                     self.indent_level = 0
                     out.write("  }\n")
                 else:
@@ -379,7 +408,7 @@ class CodeGenerator:
         for method in record.methods:
             if method.name == "__init__":
                 continue
-            self._gen_method(out, method)
+            self._gen_method(out, method, record.name)
 
         out.write("};\n")
         self._gen_record_ostream(out, record)
@@ -435,7 +464,7 @@ class CodeGenerator:
                 non_init.append(stmt)
         return non_init
 
-    def _gen_method(self, out: TextIO, method: TpyFunction) -> None:
+    def _gen_method(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
         """Generate a method definition inside a struct."""
         ret_type = method.return_type.to_cpp_return()
         params = self._gen_params(method.params)
@@ -446,6 +475,14 @@ class CodeGenerator:
         self.var_types = {pname: ptype for pname, ptype in method.params}
         # Track params as local to prevent false global deref if they shadow globals
         self.local_scope_names = {pname for pname, _ in method.params}
+
+        # Set up local namespace for this method (bind self and params)
+        local_ns = Namespace(parent=self.analyzer.global_ns)
+        local_ns.bind_variable("self", RecordType(record_name))
+        for pname, ptype in method.params:
+            local_ns.bind_variable(pname, ptype)
+        self.current_ns = local_ns
+
         self.indent_level = 2
         self.in_method = True
         self.current_return_type = method.return_type
@@ -455,6 +492,7 @@ class CodeGenerator:
         self.in_method = False
         self.local_scope_names = set()
         self.indent_level = 0
+        self.current_ns = None
 
         out.write("  }\n")
 
@@ -477,6 +515,13 @@ class CodeGenerator:
         self.var_types = {pname: ptype for pname, ptype in func.params}
         # Track local scope names (params + local vars) that shadow globals
         self.local_scope_names = {pname for pname, _ in func.params}
+
+        # Set up local namespace for this function
+        local_ns = Namespace(parent=self.analyzer.global_ns)
+        for pname, ptype in func.params:
+            local_ns.bind_variable(pname, ptype)
+        self.current_ns = local_ns
+
         self.indent_level = 1
         self.current_return_type = func.return_type
         self.current_func_params = {pname: ptype for pname, ptype in func.params}
@@ -484,6 +529,7 @@ class CodeGenerator:
             self._gen_stmt(out, stmt)
 
         self.indent_level = 0
+        self.current_ns = None
 
         out.write("}\n")
 
@@ -612,6 +658,9 @@ class CodeGenerator:
         self.declared_vars.add(stmt.name)
         self.local_scope_names.add(stmt.name)
         self.var_types[stmt.name] = target_type
+        # Bind to namespace for global tracking
+        if self.current_ns and target_type:
+            self.current_ns.bind_variable(stmt.name, target_type)
 
         if stmt.type:
             cpp_type = stmt.type.to_cpp()
@@ -810,11 +859,18 @@ class CodeGenerator:
 
         # Track loop variable as local to prevent false global deref if it shadows a global
         self.local_scope_names.add(stmt.var)
+        # Set up inner namespace for loop variable
+        old_ns = self.current_ns
+        if self.current_ns:
+            inner_ns = Namespace(parent=self.current_ns)
+            inner_ns.bind_variable(stmt.var, INT32)
+            self.current_ns = inner_ns
         self.indent_level += 1
         for s in stmt.body:
             self._gen_stmt(out, s)
         self.indent_level -= 1
         self.local_scope_names.discard(stmt.var)
+        self.current_ns = old_ns
 
         out.write(f"{indent}}}\n")
 
@@ -851,11 +907,18 @@ class CodeGenerator:
 
         # Track loop variable as local to prevent false global deref if it shadows a global
         self.local_scope_names.add(stmt.var)
+        # Set up inner namespace for loop variable
+        old_ns = self.current_ns
+        if self.current_ns and elem_type:
+            inner_ns = Namespace(parent=self.current_ns)
+            inner_ns.bind_variable(stmt.var, elem_type)
+            self.current_ns = inner_ns
         self.indent_level += 1
         for s in stmt.body:
             self._gen_stmt(out, s)
         self.indent_level -= 1
         self.local_scope_names.discard(stmt.var)
+        self.current_ns = old_ns
 
         out.write(f"{indent}}}\n")
 
@@ -870,7 +933,26 @@ class CodeGenerator:
         """
         if not isinstance(expr, TpyName):
             return False
-        # Check if name is a global and not shadowed by a local declaration
+
+        # Use namespace if available
+        if self.current_ns:
+            # Check if it's a global variable
+            global_binding = self.analyzer.global_ns.lookup_local(expr.name)
+            if global_binding is None or global_binding.kind != BindingKind.VARIABLE:
+                return False  # Not a global variable
+
+            # Check if locally shadowed (only if we have a local namespace, not global_ns itself)
+            if self.current_ns is not self.analyzer.global_ns:
+                # Traverse local namespace chain (up to but not including global_ns)
+                ns = self.current_ns
+                while ns is not None and ns is not self.analyzer.global_ns:
+                    if ns.lookup_local(expr.name):
+                        return False  # Locally shadowed
+                    ns = ns.parent
+
+            return True
+
+        # Fallback: use old tracking
         # local_scope_names contains function params and locally-declared variables
         # (not pre-seeded globals from __tpy_init_*)
         return expr.name in self.global_names and expr.name not in self.local_scope_names
@@ -979,9 +1061,6 @@ class CodeGenerator:
             return f'"{escaped}"'
 
         elif isinstance(expr, TpyName):
-            # Built-in __name__ constant - only if not shadowed by local or global variable
-            if expr.name == "__name__" and expr.name not in self.declared_vars and expr.name not in self.global_names:
-                return '"__main__"'
             return expr.name
 
         elif isinstance(expr, TpyBinOp):

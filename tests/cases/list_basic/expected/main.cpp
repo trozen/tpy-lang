@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 11: mem: list[Int32] = [0] * 10
 tpy::Global<std::vector<int32_t>> mem;
 // 18: data = [0] * 5
@@ -28,6 +29,7 @@ int32_t sum_list(std::vector<int32_t>& nums) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 11: mem: list[Int32] = [0] * 10
   mem = std::vector<int32_t>(std::max(0, 10), 0);
   // 12: mem[0] = 42

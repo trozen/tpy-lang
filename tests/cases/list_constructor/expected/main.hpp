@@ -7,6 +7,7 @@ namespace tpy_user::main {
 
 struct Point;
 
+extern tpy::Global<std::string_view> __name__;
 extern tpy::Global<std::vector<int32_t>> nums;
 extern tpy::Global<std::vector<int32_t>> other;
 extern tpy::Global<std::vector<Point>> points;

@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 5: x: Int32 = 2
 tpy::Global<int32_t> x;
 // 9: y: Int32 = 3
@@ -13,6 +14,7 @@ tpy::Global<int32_t> z;
 tpy::Global<int32_t> n;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test Int32 power operator."""
   // 5: x: Int32 = 2
   x = 2;

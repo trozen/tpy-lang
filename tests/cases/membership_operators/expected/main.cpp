@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def test_list_membership() -> None:
 void test_list_membership() {
   // 6:     """Test membership for list[Int32]."""
@@ -165,6 +167,7 @@ void test_membership_with_variables() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 102: test_list_membership()
   test_list_membership();
   // 103: test_array_membership()

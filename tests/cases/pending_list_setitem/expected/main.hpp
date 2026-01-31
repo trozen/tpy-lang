@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void test_setitem_mutation();
 
 void __tpy_init();

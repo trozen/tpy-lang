@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def test_aug_assign():
 void test_aug_assign() {
   // 4:     x: Int32 = 10
@@ -60,6 +62,7 @@ void test_aug_assign() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 51: test_aug_assign()
   test_aug_assign();
 }

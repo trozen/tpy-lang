@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 49: def return_expr_as_int32(a: int, b: int) -> Int32:
 int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b) {
   // 50:     return a + b  # Expression result (BigInt) -> Int32
@@ -110,6 +112,7 @@ void test_literal_expr_to_int32() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Tests type coercions with expressions (not just simple variables).
   // 141: test_bigint_expr_to_int32()
   test_bigint_expr_to_int32();

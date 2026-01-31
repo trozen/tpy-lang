@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void test_equality();
 void test_ordering();
 void test_empty_strings();

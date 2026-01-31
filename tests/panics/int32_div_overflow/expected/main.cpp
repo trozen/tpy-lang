@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: x: Int32 = -2147483648  # INT32_MIN
 tpy::Global<int32_t> x;
 // 5: y: Int32 = -1
@@ -11,6 +12,7 @@ tpy::Global<int32_t> y;
 tpy::Global<int32_t> z;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test Int32 division overflow panic at runtime."""
   // 4: x: Int32 = -2147483648  # INT32_MIN
   x = (-2147483648);

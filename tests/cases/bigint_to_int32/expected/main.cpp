@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 42: a: Int32 = 1 + 2           # addition
 tpy::Global<int32_t> a;
 // 43: b: Int32 = 10 - 3          # subtraction
@@ -87,6 +88,7 @@ int32_t literal_ops_local() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test BigInt -> Int32 conversions with range checks."""
   // 42: a: Int32 = 1 + 2           # addition
   a = tpy::int32_add(1, 2);

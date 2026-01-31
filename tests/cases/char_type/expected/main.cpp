@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def test_char_literals() -> None:
 void test_char_literals() {
   // 6:     """Test single-character string literals as Char."""
@@ -276,6 +278,7 @@ void test_char_to_str_coercion() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 143: print("=== literals ===")
   std::cout << "=== literals ===" << "\n";
   // 144: test_char_literals()

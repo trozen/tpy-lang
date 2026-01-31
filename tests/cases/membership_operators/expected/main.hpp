@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void test_list_membership();
 void test_array_membership();
 bool check_span_contains(std::span<const int32_t> data, int32_t value);

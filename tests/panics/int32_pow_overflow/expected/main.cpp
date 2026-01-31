@@ -3,12 +3,14 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: x: Int32 = 2
 tpy::Global<int32_t> x;
 // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
 tpy::Global<int32_t> y;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test Int32 power overflow panic at runtime."""
   // 4: x: Int32 = 2
   x = 2;

@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 13: def read_point(p: ConstPtr[Point]) -> Int32:
 int32_t read_point(const Point* p) {
   // 14:     """Read from a const pointer - should work."""
@@ -58,6 +60,7 @@ void test_const_ptr_preserves_value() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 56: print("=== ptr to const ===")
   std::cout << "=== ptr to const ===" << "\n";
   // 57: test_ptr_to_const_ptr()

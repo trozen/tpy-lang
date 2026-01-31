@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 19: nums = list[Int32]()
 tpy::Global<std::vector<int32_t>> nums;
 // 25: other: list[Int32] = list[Int32]()
@@ -35,6 +36,7 @@ void test_local_list() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Tests list[T]() constructor syntax."""
   // 19: nums = list[Int32]()
   nums = std::vector<int32_t>();

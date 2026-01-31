@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 7: def main():
 void main() {
   // 8:     time: Timer = Timer()
@@ -14,6 +16,7 @@ void main() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 12: main()
   main();
 }

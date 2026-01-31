@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: x: Int32 = 42
 tpy::Global<int32_t> x;
 // 5: y: Int32 = 0
@@ -11,6 +12,7 @@ tpy::Global<int32_t> y;
 tpy::Global<int32_t> z;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test Int32 modulo by zero panic at runtime."""
   // 4: x: Int32 = 42
   x = 42;

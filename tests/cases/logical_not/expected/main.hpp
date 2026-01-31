@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void test_not_with_bool_literals();
 void test_not_with_comparisons();
 void test_not_in_conditions();

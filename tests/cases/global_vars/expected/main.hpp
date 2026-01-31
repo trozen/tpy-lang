@@ -8,6 +8,7 @@ namespace tpy_user::main {
 struct Point;
 struct Counter;
 
+extern tpy::Global<std::string_view> __name__;
 extern tpy::Global<tpy::BigInt> start;
 extern tpy::Global<tpy::BigInt> end;
 extern tpy::Global<std::vector<int32_t>> items;

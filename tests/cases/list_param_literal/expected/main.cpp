@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def takes_list(x: list[int]) -> None:
 void takes_list(std::vector<tpy::BigInt>& x) {
   // 4:     x.append(42)
@@ -34,6 +36,7 @@ void takes_static(StaticList<int32_t, 10>& x) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 19: takes_list([])
   std::vector<tpy::BigInt> __tmp_1 = std::vector<tpy::BigInt>{};
   takes_list(__tmp_1);

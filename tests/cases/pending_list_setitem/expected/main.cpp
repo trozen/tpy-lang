@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 8: def test_setitem_mutation():
 void test_setitem_mutation() {
   // 10:     items = [Int32(1), Int32(2), Int32(3)]
@@ -18,6 +20,7 @@ void test_setitem_mutation() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Test that __setitem__ marks a pending list as mutated.
   // 16: test_setitem_mutation()
   test_setitem_mutation();

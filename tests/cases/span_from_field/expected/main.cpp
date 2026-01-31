@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 9: def main() -> None:
 void main() {
   // 10:     arr: Array[Int32, 3] = [1, 2, 3]
@@ -18,6 +20,7 @@ void main() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 16: main()
   main();
 }

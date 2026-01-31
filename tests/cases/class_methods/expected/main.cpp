@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 22: c = Counter(100)
 tpy::Global<Counter> c;
 // 36: a: Int32 = 42
@@ -11,6 +12,7 @@ tpy::Global<int32_t> a;
 tpy::Global<int32_t> b;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 22: c = Counter(100)
   c = Counter(100);
   // 23: print(c.get())

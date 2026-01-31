@@ -8,7 +8,7 @@
 - `type()` function
 - `str()`, `str(123)`, `int("123")`
 - build/run in release mode
-- import user defined modules
+- import user defined modules (properly set `__name__` in module)
 - require imports at the top of file, don't allow inline imports
 
 ## Python features

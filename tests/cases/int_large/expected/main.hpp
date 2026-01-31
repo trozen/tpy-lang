@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 tpy::BigInt factorial(const tpy::BigInt& n);
 
 void __tpy_init();

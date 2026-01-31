@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: items = [1, 2, 3, 4, 5]
 tpy::Global<std::vector<tpy::BigInt>> items;
 // 5: total: Int32 = 0
@@ -57,6 +58,7 @@ int32_t nested_sum() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 4: items = [1, 2, 3, 4, 5]
   items = {1, 2, 3, 4, 5};
   // 5: total: Int32 = 0

@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def classify(x: Int32) -> Int32:
 int32_t classify(int32_t x) {
   // 5:     if x < 0:
@@ -62,6 +64,7 @@ int32_t complex_condition(int32_t a, int32_t b) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 33: print(classify(-5))
   std::cout << classify((-5)) << "\n";
   // 34: print(classify(0))

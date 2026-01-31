@@ -3,12 +3,14 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 1: nums = [1, 2, 3]
 tpy::Global<std::vector<tpy::BigInt>> nums;
 // 4: nested = [[1, 2], [3, 4]]
 tpy::Global<std::vector<std::vector<tpy::BigInt>>> nested;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: nums = [1, 2, 3]
   nums = {1, 2, 3};
   // 2: print(nums)

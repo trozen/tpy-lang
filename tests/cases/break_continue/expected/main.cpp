@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def test_break():
 void test_break() {
   // 5:     i: Int32 = 0
@@ -82,6 +84,7 @@ void test_nested_continue() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 41: test_break()
   test_break();
   // 42: test_continue()

@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 6: def test_list_subscript_oob() -> None:
 void test_list_subscript_oob() {
   // 7:     nums: list[Int32] = [1, 2, 3]
@@ -14,6 +16,7 @@ void test_list_subscript_oob() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 13: test_list_subscript_oob()
   test_list_subscript_oob();
 }

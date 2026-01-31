@@ -3,12 +3,14 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: arr: Array[Int32, 3] = [1, 2, 3]
 tpy::Global<std::array<int32_t, 3>> arr;
 // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
 tpy::Global<StaticList<int32_t, 4>> items;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 4: arr: Array[Int32, 3] = [1, 2, 3]
   arr = {1, 2, 3};
   // 5: arr[0] = 100

@@ -3,12 +3,14 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 23: x = 5
 tpy::Global<tpy::BigInt> x;
 // 24: y = 3
 tpy::Global<tpy::BigInt> y;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 4: print(2 ** 0)   # 1
   std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(0))) << "\n";
   // 5: print(2 ** 1)   # 2

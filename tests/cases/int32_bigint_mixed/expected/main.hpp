@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void test_int32_plus_bigint();
 void test_bigint_plus_int32();
 void test_mixed_arithmetic();

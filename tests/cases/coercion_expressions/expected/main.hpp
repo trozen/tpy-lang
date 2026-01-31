@@ -10,6 +10,8 @@ struct Point;
 struct Container;
 struct Outer;
 
+extern tpy::Global<std::string_view> __name__;
+
 struct Counter {
   tpy::BigInt value;
 

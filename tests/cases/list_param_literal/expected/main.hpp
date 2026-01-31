@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 void takes_list(std::vector<tpy::BigInt>& x);
 void takes_list_int32(std::vector<int32_t>& x);
 void takes_array(std::array<int32_t, 3>& x);

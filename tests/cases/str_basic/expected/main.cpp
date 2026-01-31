@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 3: def count_char(text: str, target: Char) -> Int32:
 int32_t count_char(std::string_view text, char target) {
   // 4:     """Count occurrences of target character in text."""
@@ -25,6 +27,7 @@ int32_t count_char(std::string_view text, char target) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 13: print(count_char("xoxox", "x"))
   std::cout << count_char("xoxox", 'x') << "\n";
   // 14: print(len("hello"))

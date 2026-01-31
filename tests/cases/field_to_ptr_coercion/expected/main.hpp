@@ -8,6 +8,8 @@ namespace tpy_user::main {
 struct Inner;
 struct Outer;
 
+extern tpy::Global<std::string_view> __name__;
+
 struct Inner {
   int32_t x;
 

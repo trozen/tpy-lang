@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
 tpy::Global<StaticList<int32_t, 8>> sl;
 // 10: nums: list[Int32] = [10, 20] * 2
@@ -13,6 +14,7 @@ tpy::Global<std::vector<int32_t>> empty;
 tpy::Global<std::vector<int32_t>> neg;
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
   sl = StaticList<int32_t, 8>(tpy::repeat_range<int32_t>(3, {1, 2}));
   // 5: print(len(sl))

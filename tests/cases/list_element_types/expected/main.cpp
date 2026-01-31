@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 4: pure_literals = [1, 2, 3]
 tpy::Global<std::vector<tpy::BigInt>> pure_literals;
 // 8: mixed_int32 = [Int32(1), 2, 3]
@@ -61,6 +62,7 @@ tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 4: pure_literals = [1, 2, 3]
   pure_literals = {1, 2, 3};
   // 5: print(pure_literals[0])

@@ -3,6 +3,7 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
 // 8: ORIGIN: Point = Point()
 tpy::Global<Point> ORIGIN;
 
@@ -27,6 +28,7 @@ void main() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 8: ORIGIN: Point = Point()
   ORIGIN = Point();
   // 21: main()

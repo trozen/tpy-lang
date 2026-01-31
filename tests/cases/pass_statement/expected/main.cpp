@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def empty_function() -> None:
 void empty_function() {
   // 6:     pass
@@ -85,6 +87,7 @@ void test_class_with_pass() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 60: empty_function()
   empty_function();
   // 61: print("empty_function called")

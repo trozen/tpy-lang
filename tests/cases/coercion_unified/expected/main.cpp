@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 24: def take_int32(n: Int32) -> Int32:
 int32_t take_int32(int32_t n) {
   // 25:     return n
@@ -249,6 +251,7 @@ void test_subscript_to_ptr() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 1: """Tests all type coercions through the unified _apply_coercion path.
   // 231: test_bigint_to_int32()
   test_bigint_to_int32();

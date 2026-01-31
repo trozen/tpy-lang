@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+extern tpy::Global<std::string_view> __name__;
+
 int32_t return_owned_int32();
 int32_t take_owned_int32(int32_t x);
 void main();

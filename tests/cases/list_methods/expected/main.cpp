@@ -3,6 +3,8 @@
 
 namespace tpy_user::main {
 
+tpy::Global<std::string_view> __name__;
+
 // 5: def print_list(nums: list[Int32]) -> None:
 void print_list(std::vector<int32_t>& nums) {
   // 6:     """Helper to print list contents."""
@@ -160,6 +162,7 @@ void test_combined_operations() {
 }
 
 void __tpy_init() {
+  __name__ = "__main__";
   // 119: print("=== pop ===")
   std::cout << "=== pop ===" << "\n";
   // 120: test_pop()
