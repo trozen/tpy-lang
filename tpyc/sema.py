@@ -835,8 +835,8 @@ class SemanticAnalyzer:
 
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
-            # Right side must be iterable
-            if right_type.is_iterable():
+            # Right side must be iterable (intrinsically or via NativeIterable protocol)
+            if self._is_type_iterable(right_type):
                 return BOOL
             raise SemanticError(f"Cannot use '{expr.op}' with non-iterable type {right_type}")
 
@@ -2206,11 +2206,25 @@ class SemanticAnalyzer:
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
 
+    def _is_type_iterable(self, typ: TpyType) -> bool:
+        """Check if a type is iterable (intrinsically or via NativeIterable protocol).
+
+        This combines intrinsic iterability (is_iterable() trait) with protocol-based
+        iterability (NativeIterable[T] protocol type).
+        """
+        # Intrinsic iterability (list, Array, Span, StaticList, str)
+        if typ.is_iterable():
+            return True
+        # NativeIterable[T] protocol type
+        if isinstance(typ, ProtocolType) and typ.name == "NativeIterable":
+            return True
+        return False
+
     def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
         """Get the element type of an iterable for for-each loops.
 
-        Uses is_iterable() and get_element_type() traits where possible,
-        with special handling for protocols and strings.
+        Uses _is_type_iterable() for checking and get_element_type() for extraction,
+        with special handling for NativeIterable protocol.
         """
         # Handle NativeIterable[T] protocol type
         if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":

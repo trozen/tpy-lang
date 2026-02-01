@@ -55,39 +55,50 @@ int32_t nested_iteration(T_outer& outer, T_inner& inner) {
   return total;
 }
 
-// 26: def main() -> None:
+// 26: def contains_value(items: NativeIterable[Int32], target: Int32) -> Bool:
+template<tpy::NativeIterable<int32_t> T_items>
+bool contains_value(T_items& items, int32_t target) {
+  // 28:     return target in items
+  return (std::find(items.begin(), items.end(), target) != items.end());
+}
+
+// 30: def main() -> None:
 void main() {
-  // 27:     nums: list[Int32] = [1, 2, 3]
+  // 31:     nums: list[Int32] = [1, 2, 3]
   std::vector<int32_t> nums = {1, 2, 3};
-  // 28:     print(sum_iter(nums))  # 6
+  // 32:     print(sum_iter(nums))  # 6
   std::cout << sum_iter(nums) << "\n";
-  // 30:     arr: Array[Int32, 3] = [10, 20, 30]
+  // 34:     arr: Array[Int32, 3] = [10, 20, 30]
   std::array<int32_t, 3> arr = {10, 20, 30};
-  // 31:     print(sum_iter(arr))   # 60
+  // 35:     print(sum_iter(arr))   # 60
   std::cout << sum_iter(arr) << "\n";
-  // 33:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
+  // 37:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
   StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
-  // 34:     sl.append(100)
+  // 38:     sl.append(100)
   sl.push_back(100);
-  // 35:     sl.append(200)
+  // 39:     sl.append(200)
   sl.push_back(200);
-  // 36:     print(sum_iter(sl))    # 300
+  // 40:     print(sum_iter(sl))    # 300
   std::cout << sum_iter(sl) << "\n";
-  // 38:     print_all(nums)  # 1, 2, 3
+  // 42:     print_all(nums)  # 1, 2, 3
   print_all(nums);
-  // 41:     print(process_and_sum(arr))  # prints 10, 20, 30 then 60
+  // 45:     print(process_and_sum(arr))  # prints 10, 20, 30 then 60
   std::cout << process_and_sum(arr) << "\n";
-  // 44:     a: list[Int32] = [1, 2]
+  // 48:     a: list[Int32] = [1, 2]
   std::vector<int32_t> a = {1, 2};
-  // 45:     b: list[Int32] = [10, 20]
+  // 49:     b: list[Int32] = [10, 20]
   std::vector<int32_t> b = {10, 20};
-  // 46:     print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 30 + 60 = 90
+  // 50:     print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 30 + 60 = 90
   std::cout << nested_iteration(a, b) << "\n";
+  // 53:     print(contains_value(nums, 2))   # True
+  std::cout << tpy::print_bool(contains_value(nums, 2)) << "\n";
+  // 54:     print(contains_value(nums, 99))  # False
+  std::cout << tpy::print_bool(contains_value(nums, 99)) << "\n";
 }
 
 void __tpy_init() {
   __name__ = "__main__";
-  // 48: main()
+  // 56: main()
   main();
 }
 

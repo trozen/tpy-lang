@@ -15,6 +15,8 @@ template<tpy::NativeIterable<int32_t> T_items>
 int32_t process_and_sum(T_items& items);
 template<tpy::NativeIterable<int32_t> T_outer, tpy::NativeIterable<int32_t> T_inner>
 int32_t nested_iteration(T_outer& outer, T_inner& inner);
+template<tpy::NativeIterable<int32_t> T_items>
+bool contains_value(T_items& items, int32_t target);
 void main();
 
 void __tpy_init();

@@ -3,7 +3,7 @@
 ## Next
 - trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
 - support generics in code
-- True/False booleans
+- `bool()`
 - extract c++ compiler interface
 - `type()` function
 - `str()`, `str(123)`, `int("123")`
