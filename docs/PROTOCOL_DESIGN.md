@@ -341,7 +341,14 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - C++20 concept generation for both built-in and user-defined protocols
    - Template function generation for protocol-typed parameters
 2. **Phase 2**: Protocol matching in sema for function params ✅ **COMPLETE** (included in Phase 1)
-3. **Phase 3**: Generic protocols (`Iterable[T]`)
-4. **Phase 4**: `Self` type in protocols
-5. **Phase 5**: Compiler trait protocols (`CoercibleToSpan`, etc.)
-6. ~~**Phase 6**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)
+3. **Phase 3**: Generic protocols (`Sequence[T]`) ✅ **COMPLETE**
+   - Generic protocol definitions with type_params in ProtocolDef
+   - ProtocolType with type_args for instantiated generic protocols
+   - Type parameter substitution in protocol conformance checking
+   - Parameterized C++20 concept generation (e.g., `tpy::Sequence<int32_t>`)
+   - Indexing support for protocol-typed variables
+   - Validation: bare generic protocols (e.g., `Sequence` without type args) are compile errors
+4. **Phase 4**: `Iterable[T]` and `Iterator[T]` protocols (deferred - needs careful iterator design)
+5. **Phase 5**: `Self` type in protocols
+6. **Phase 6**: Compiler trait protocols (`CoercibleToSpan`, etc.)
+7. ~~**Phase 7**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)

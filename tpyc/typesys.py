@@ -245,14 +245,21 @@ class ProtocolType(TpyType):
 
     A protocol defines required methods. Any type implementing those methods
     satisfies the protocol. Compiles to C++20 concepts.
+
+    For generic protocols like Sequence[T]:
+    - type_args stores the concrete type arguments (e.g., (Int32,) for Sequence[Int32])
     """
     name: str
+    type_args: tuple[TpyType, ...] = ()
 
     def to_cpp(self) -> str:
         # Template parameter placeholder - actual type substituted at instantiation
         return "T"
 
     def __str__(self) -> str:
+        if self.type_args:
+            args = ", ".join(str(t) for t in self.type_args)
+            return f"{self.name}[{args}]"
         return self.name
 
     def qualified_name(self) -> Optional[str]:
@@ -535,9 +542,18 @@ class MethodSignature:
 
 @dataclass
 class ProtocolInfo:
-    """Information about a protocol definition."""
+    """Information about a protocol definition.
+
+    For generic protocols like Sequence[T]:
+    - type_params stores the type parameter names (e.g., ["T"])
+    """
     name: str
     methods: list[MethodSignature]
+    type_params: list[str] = None
+
+    def __post_init__(self):
+        if self.type_params is None:
+            self.type_params = []
 
 
 class TypeRegistry:

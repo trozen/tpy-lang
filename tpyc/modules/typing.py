@@ -4,7 +4,7 @@ TurboPython typing module.
 Provides Protocol types matching Python's typing module.
 """
 
-from tpyc.modules import BuiltinModule, MethodDef
+from tpyc.modules import BuiltinModule, MethodDef, ParamDef
 from tpyc.typesys import INT32
 
 module = BuiltinModule("typing")
@@ -14,6 +14,17 @@ module = BuiltinModule("typing")
 module.protocol("Sized",
     methods={"__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})")},
     cpp_concept="tpy::Sized",
+)
+
+# Sequence[T] protocol: types that support len() and indexing
+# Generic protocol with type parameter T
+module.protocol("Sequence",
+    type_params=["T"],
+    methods={
+        "__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})"),
+        "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns="T", cpp="{self}[{0}]"),
+    },
+    cpp_concept="tpy::Sequence",
 )
 
 # Protocol is recognized by the parser as the base class for user-defined protocols

@@ -551,10 +551,13 @@ class CodeGenerator:
         return [(pname, ptype) for pname, ptype in params if isinstance(ptype, ProtocolType)]
 
     def _gen_template_header(self, protocol_params: list[tuple[str, ProtocolType]]) -> str:
-        """Generate template header with concept constraints for protocol params."""
+        """Generate template header with concept constraints for protocol params.
+
+        For non-generic protocols: template<tpy::Sized T_items>
+        For generic protocols: template<tpy::Sequence<int32_t> T_items>
+        """
         if not protocol_params:
             return ""
-        # template<tpy::Sized T_items, tpy::Iterable T_other>
         template_parts = []
         for pname, ptype in protocol_params:
             # Look up protocol to get C++ concept name
@@ -564,7 +567,13 @@ class CodeGenerator:
             else:
                 # User-defined protocol - use the protocol name directly
                 concept_name = ptype.name
-            template_parts.append(f"{concept_name} T_{pname}")
+
+            # For generic protocols, add type arguments
+            if ptype.type_args:
+                type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
+                template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
+            else:
+                template_parts.append(f"{concept_name} T_{pname}")
         return f"template<{', '.join(template_parts)}>\n"
 
     def _gen_params_with_protocols(self, params: list[tuple[str, TpyType]]) -> str:

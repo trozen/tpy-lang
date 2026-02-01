@@ -1374,8 +1374,40 @@ class SemanticAnalyzer:
             return obj_type.element_type
         elif isinstance(obj_type, StrType):
             return CHAR
+        elif isinstance(obj_type, ProtocolType):
+            # For protocols with __getitem__, get the return type
+            return self._get_protocol_getitem_type(obj_type)
         else:
             raise SemanticError(f"Cannot index type {obj_type}")
+
+    def _get_protocol_getitem_type(self, protocol: ProtocolType) -> TpyType:
+        """Get the return type of __getitem__ for a protocol type.
+
+        For generic protocols like Sequence[T], this resolves T to the concrete type.
+        """
+        protocol_def = builtin_modules.lookup_protocol(protocol.name)
+        if protocol_def is not None:
+            getitem_method = protocol_def.methods.get("__getitem__")
+            if getitem_method is None:
+                raise SemanticError(f"Protocol {protocol.name} does not support indexing")
+
+            # Build type substitution map for generic protocols
+            if protocol_def.type_params and protocol.type_args:
+                type_subst = dict(zip(protocol_def.type_params, protocol.type_args))
+                resolved = builtin_modules.resolve_method(getitem_method, type_subst)
+                return resolved.returns
+            return getitem_method.returns
+
+        # User-defined protocol - check in registry
+        protocol_info = self.registry.get_protocol(protocol.name)
+        if protocol_info is None:
+            raise SemanticError(f"Unknown protocol: {protocol.name}")
+
+        for method_sig in protocol_info.methods:
+            if method_sig.name == "__getitem__":
+                return method_sig.return_type
+
+        raise SemanticError(f"Protocol {protocol.name} does not support indexing")
 
     def _check_dangling_reference(self, expr: TpyExpr, return_type: TpyType, loc: SourceLocation | None) -> None:
         """Check if returning expr as a reference would be a dangling reference.
@@ -1589,16 +1621,26 @@ class SemanticAnalyzer:
             overloads = builtin_modules.lookup_type_method(actual, method_name)
             if overloads is None:
                 return False
+
+            # Extract type parameters from the actual type (e.g., {"T": Int32} for list[Int32])
+            type_params = builtin_modules.extract_type_params(actual)
+
             # Check if any overload matches the expected signature
             for method_def in overloads:
+                # Resolve method signature with type parameters from actual type
+                if type_params:
+                    resolved = builtin_modules.resolve_method(method_def, type_params)
+                else:
+                    resolved = method_def
+
                 # Check return type
-                if method_def.returns != expected_return:
+                if resolved.returns != expected_return:
                     continue
                 # Check parameter count and types
-                if len(method_def.params) != len(expected_params):
+                if len(resolved.params) != len(expected_params):
                     continue
                 params_match = True
-                for param_def, expected_ptype in zip(method_def.params, expected_params):
+                for param_def, expected_ptype in zip(resolved.params, expected_params):
                     if param_def.type != expected_ptype:
                         params_match = False
                         break
@@ -1610,15 +1652,35 @@ class SemanticAnalyzer:
         """Check if actual type structurally conforms to a protocol.
 
         A type conforms if it has all methods required by the protocol with compatible signatures.
+
+        For generic protocols like Sequence[Int32]:
+        - Build type substitution map: {"T": Int32}
+        - Resolve each method signature with substitutions
+        - Check if actual type has the resolved methods
         """
         # Look up the protocol definition (builtin first, then user-defined)
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
         if protocol_def is not None:
+            # Build type substitution map for generic protocols
+            type_subst: dict[str, TpyType] = {}
+            if protocol_def.type_params and protocol.type_args:
+                if len(protocol_def.type_params) != len(protocol.type_args):
+                    return False  # Mismatch in type parameter count
+                type_subst = dict(zip(protocol_def.type_params, protocol.type_args))
+
             # Built-in protocol
             for method_name, method_def in protocol_def.methods.items():
-                expected_params = [p.type for p in method_def.params]
+                # Resolve method signature with type substitutions
+                if type_subst:
+                    resolved = builtin_modules.resolve_method(method_def, type_subst)
+                    expected_params = [p.type for p in resolved.params]
+                    expected_return = resolved.returns
+                else:
+                    expected_params = [p.type for p in method_def.params]
+                    expected_return = method_def.returns
+
                 if not self._type_has_method_with_signature(
-                    actual, method_name, expected_params, method_def.returns
+                    actual, method_name, expected_params, expected_return
                 ):
                     return False
             return True
@@ -1627,10 +1689,22 @@ class SemanticAnalyzer:
         protocol_info = self.registry.get_protocol(protocol.name)
         if protocol_info is None:
             return False
+
+        # Build type substitution map for generic user protocols
+        type_subst: dict[str, TpyType] = {}
+        if protocol_info.type_params and protocol.type_args:
+            if len(protocol_info.type_params) != len(protocol.type_args):
+                return False
+            type_subst = dict(zip(protocol_info.type_params, protocol.type_args))
+
         for method_sig in protocol_info.methods:
             expected_params = [ptype for _, ptype in method_sig.params]
+            expected_return = method_sig.return_type
+
+            # Resolve type parameters (user protocols don't use MethodDef, but direct TpyTypes)
+            # For now, user protocols are not generic - this path won't be hit
             if not self._type_has_method_with_signature(
-                actual, method_sig.name, expected_params, method_sig.return_type
+                actual, method_sig.name, expected_params, expected_return
             ):
                 return False
         return True

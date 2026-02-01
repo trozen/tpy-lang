@@ -564,9 +564,66 @@ int32_t count(const T_items& items) {
 }
 ```
 
-#### Planned: Generic Protocols
+#### Working: Generic Protocol `Sequence[T]`
 
-Generic protocols like `Iterable[T]` are not yet supported:
+The `Sequence[T]` generic protocol is available for types that support `len()` and indexing:
+
+```python
+from typing import Sequence
+from tpy import Int32, Array
+
+def first(items: Sequence[Int32]) -> Int32:
+    return items[0]
+
+def sum_all(items: Sequence[Int32]) -> Int32:
+    total: Int32 = 0
+    i: Int32 = 0
+    while i < len(items):
+        total += items[i]
+        i += 1
+    return total
+
+def main() -> None:
+    nums: list[Int32] = [1, 2, 3]
+    print(sum_all(nums))  # 6
+
+    arr: Array[Int32, 3] = [10, 20, 30]
+    print(sum_all(arr))   # 60
+```
+
+Generated C++:
+```cpp
+template<tpy::Sequence<int32_t> T_items>
+int32_t sum_all(const T_items& items) {
+    int32_t total = 0;
+    int32_t i = 0;
+    while (i < tpy::__len__(items)) {
+        total = tpy::int32_add(total, items[i]);
+        i = tpy::int32_add(i, 1);
+    }
+    return total;
+}
+```
+
+**Important**: Generic protocols require explicit type arguments. Bare `Sequence` without type args is a compile error:
+```python
+def bad(items: Sequence) -> Int32:  # ERROR: Generic protocol 'Sequence' requires type arguments
+    return len(items)
+```
+
+**Conforming types**: `list[T]`, `Array[T, N]`, `Span[T]`, and `StaticList[T, N]` all conform to `Sequence[T]` when element types match.
+
+**Mixing protocols**: Generic and non-generic protocols can be used together:
+```python
+from typing import Sized, Sequence
+
+def process(items: Sequence[Int32], container: Sized) -> Int32:
+    return items[0] + len(container)
+```
+
+#### Planned: `Iterable[T]` and `Iterator[T]`
+
+Iterating protocols like `Iterable[T]` are not yet supported:
 
 ```python
 # NOT YET WORKING
@@ -585,6 +642,7 @@ class CoercibleToSpan(Protocol[T]):
 
 With this design:
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
+- `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on any type conforming to `Iterable[T]` (planned)
 - Implicit coercion to `Span[T]` works on any type conforming to `CoercibleToSpan[T]` (planned)
 

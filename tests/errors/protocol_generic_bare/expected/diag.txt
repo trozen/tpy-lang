@@ -1,0 +1,1 @@
+main.tp.py:4: error: Generic protocol 'Sequence' requires type arguments: Sequence[T]

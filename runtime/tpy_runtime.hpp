@@ -1456,6 +1456,18 @@ concept Sized = requires(const T& t) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
+/**
+ * Sequence concept - types that support tpy::__len__() and indexing
+ *
+ * Generic protocol parameterized by element type ElemT.
+ * A type is Sequence<ElemT> if it has len() and operator[](int32_t) -> ElemT.
+ */
+template<typename T, typename ElemT>
+concept Sequence = requires(const T& t, int32_t i) {
+    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
+    { t[i] } -> std::convertible_to<ElemT>;
+};
+
 // --- Collection printing (Python-style: [a, b, c]) ---
 
 template <typename T>

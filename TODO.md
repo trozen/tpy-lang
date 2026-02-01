@@ -2,6 +2,7 @@
 
 ## Next
 - trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
+- support generics in code
 - True/False booleans
 - extract c++ compiler interface
 - `type()` function
@@ -12,6 +13,8 @@
 - type containing an allocated object (e.g. `Box[T]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - `Int32` should be imported from tpy, so it matches CPython (maybe use `from typ import *`?)
+- `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function
+- inherit from protocol class to validate methods, e.g. `class MyIntList(Sequence[int])` or `class MyList[T](Sequence[T])`
 
 ## Python features
 - dict full support

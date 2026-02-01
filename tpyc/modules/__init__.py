@@ -63,10 +63,16 @@ class BuiltinTypeDef:
 
 @dataclass
 class ProtocolDef:
-    """Definition of a protocol (structural type) with required methods."""
+    """Definition of a protocol (structural type) with required methods.
+
+    For generic protocols like Sequence[T]:
+    - type_params stores the type parameter names (e.g., ["T"])
+    - methods can use string type refs like "T" for return types/params
+    """
     name: str
     methods: dict[str, MethodDef]  # method_name -> signature
     cpp_concept: str  # C++ concept name (e.g., "tpy::Sized")
+    type_params: list[str] = field(default_factory=list)
 
 
 class BuiltinModule:
@@ -82,9 +88,15 @@ class BuiltinModule:
         """Register a built-in function."""
         self.functions[name] = BuiltinFunctionDef(name=name, overloads=overloads)
 
-    def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str):
+    def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str,
+                 type_params: list[str] | None = None):
         """Register a protocol definition."""
-        self.protocols[name] = ProtocolDef(name=name, methods=methods, cpp_concept=cpp_concept)
+        self.protocols[name] = ProtocolDef(
+            name=name,
+            methods=methods,
+            cpp_concept=cpp_concept,
+            type_params=type_params or []
+        )
 
     def register_type(self, type_obj: "TpyType", cpp_type: str,
                       methods: dict[str, list[MethodDef]] | None = None,

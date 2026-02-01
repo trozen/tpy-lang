@@ -560,8 +560,15 @@ class Parser:
             elif self.registry.get_protocol(name) is not None:
                 # User-defined protocol type
                 return ProtocolType(name)
-            elif lookup_builtin_protocol(name) is not None:
+            elif (protocol_def := lookup_builtin_protocol(name)) is not None:
                 # Built-in protocol type (e.g., Sized)
+                # Check if generic protocol requires type arguments
+                if protocol_def.type_params:
+                    raise ParseError(
+                        f"Generic protocol '{name}' requires type arguments: "
+                        f"{name}[{', '.join(protocol_def.type_params)}]",
+                        node
+                    )
                 return ProtocolType(name)
             elif self.registry.is_known_type(name) or name[0].isupper():
                 # Assume it's a record type (will be validated later)
@@ -583,6 +590,12 @@ class Parser:
                     inner = self._parse_type_annotation(node.slice)
                     return OwnType(inner)
 
+                # Generic protocols (e.g., Sequence[Int32])
+                if protocol_def := lookup_builtin_protocol(container):
+                    if protocol_def.type_params:
+                        type_args = self._parse_protocol_type_args(node, container, protocol_def.type_params)
+                        return ProtocolType(container, type_args)
+
                 # Module-defined generic types (list, Array, Span, StaticList, etc.)
                 if lookup := lookup_generic_type(container):
                     return self._parse_generic_type(node, container, lookup.type_def)
@@ -593,6 +606,26 @@ class Parser:
             return VOID
 
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+
+    def _parse_protocol_type_args(self, node: ast.Subscript, name: str,
+                                    type_params: list[str]) -> tuple[TpyType, ...]:
+        """Parse type arguments for a generic protocol like Sequence[Int32]."""
+        expected_count = len(type_params)
+
+        # Extract slice elements
+        if expected_count == 1:
+            slices = [node.slice]
+        elif isinstance(node.slice, ast.Tuple):
+            slices = node.slice.elts
+        else:
+            raise ParseError(f"{name} requires {expected_count} type parameters", node)
+
+        if len(slices) != expected_count:
+            raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
+
+        # Parse each type argument
+        type_args = tuple(self._parse_type_annotation(s) for s in slices)
+        return type_args
 
     def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef) -> TpyType:
         """Parse a module-defined generic type using its metadata."""
