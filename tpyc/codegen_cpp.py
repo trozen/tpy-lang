@@ -1787,7 +1787,8 @@ class CodeGenerator:
     def _ctor_param_matches(self, arg_type: TpyType, param_type: builtin_modules.TypeOrParam) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
         if param_type == "Iterable":
-            return arg_type.is_iterable()
+            # "Iterable" placeholder matches sequence containers (excludes str)
+            return arg_type.is_sequence()
         if isinstance(param_type, TpyType):
             return arg_type == param_type or (
                 isinstance(arg_type, IntLiteralType) and isinstance(param_type, (Int32Type, BigIntType))

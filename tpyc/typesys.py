@@ -92,15 +92,11 @@ class TpyType:
         """Return the element type for container types, or None for non-containers."""
         return None
 
-    def is_iterable(self) -> bool:
-        """Return True if this type can be iterated over (for-each loops)."""
-        return False
-
     def is_sequence(self) -> bool:
         """Return True if this type is a sequence container (list, Array, Span, StaticList).
 
-        Unlike is_iterable(), this excludes str. Used for "Iterable" params in
-        methods like extend() where element type compatibility matters.
+        Excludes str. Used for "Iterable" params in methods like extend()
+        where element type compatibility matters.
         """
         return False
 
@@ -170,9 +166,6 @@ class StrType(TpyType):
         return "builtins.str"
 
     def is_value_type(self) -> bool:
-        return True
-
-    def is_iterable(self) -> bool:
         return True
 
     def get_element_type(self) -> Optional['TpyType']:
@@ -430,9 +423,6 @@ class StaticListType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def is_iterable(self) -> bool:
-        return True
-
     def is_sequence(self) -> bool:
         return True
 
@@ -460,9 +450,6 @@ class ArrayType(TpyType):
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
-
-    def is_iterable(self) -> bool:
-        return True
 
     def is_sequence(self) -> bool:
         return True
@@ -495,9 +482,6 @@ class SpanType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def is_iterable(self) -> bool:
-        return True
-
     def is_sequence(self) -> bool:
         return True
 
@@ -524,9 +508,6 @@ class ListType(TpyType):
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
-
-    def is_iterable(self) -> bool:
-        return True
 
     def is_sequence(self) -> bool:
         return True
@@ -555,9 +536,6 @@ class PendingListType(TpyType):
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
-
-    def is_iterable(self) -> bool:
-        return True
 
     def is_sequence(self) -> bool:
         return True

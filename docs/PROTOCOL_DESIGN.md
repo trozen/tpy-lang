@@ -350,7 +350,8 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Validation: bare generic protocols (e.g., `Sequence` without type args) are compile errors
 4. **Phase 4**: `NativeIterable[T]` protocol ✅ **COMPLETE**
    - `NativeIterable[T]` in `tpy` module for C++ range-based for loops
-   - Conformance via `is_iterable()` trait + element type matching (no method checking)
+   - Structural conformance via `__native_iter__() -> T` synthetic method
+   - Types with `__native_iter__` automatically conform to `NativeIterable[T]`
    - For-each loops work with protocol-typed parameters
    - C++20 concept `tpy::NativeIterable<ElemT>` using `std::ranges::begin/end`
    - **Note**: Python-compatible `Iterable[T]` and `Iterator[T]` deferred to Phase 8

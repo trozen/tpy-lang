@@ -77,6 +77,8 @@ module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
         returns=VOID,
         cpp="{self}[{0}] = {1}",
     )],
+    # NativeIterable conformance - synthetic method for structural matching
+    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 })
 
 # Span[T]: Non-owning read-only view
@@ -98,6 +100,8 @@ module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
         returns="T",
         cpp="{self}[{0}]",
     )],
+    # NativeIterable conformance - synthetic method for structural matching
+    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 })
 
 # StaticList[T, N]: Fixed-capacity container
@@ -145,14 +149,20 @@ module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"
         returns=VOID,
         cpp="tpy::set_item({self}, {0}, {1})",
     )],
+    # NativeIterable conformance - synthetic method for structural matching
+    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 })
 
 # NativeIterable[T] protocol: types that support C++ range-based for loops
-# No methods - conformance checked via is_iterable() + element type
+# Conformance is structural - type must have __native_iter__() -> T method.
 # This is the "native" C++ iteration pattern using begin()/end().
 # Future: Iterable[T] will use Python's __iter__() -> Iterator[T] protocol.
 module.protocol("NativeIterable",
     type_params=["T"],
-    methods={},  # Conformance via is_iterable() trait, not method checking
+    methods={
+        # Synthetic method for structural conformance checking.
+        # Maps to C++ begin()/end() iteration - return type is element type T.
+        "__native_iter__": MethodDef(params=[], returns="T", cpp=""),
+    },
     cpp_concept="tpy::NativeIterable",
 )

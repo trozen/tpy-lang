@@ -83,6 +83,8 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
         returns=VOID,
         cpp="tpy::list_extend({self}, {0})",
     )],
+    # NativeIterable conformance - synthetic method for structural matching
+    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 }, constructors=[
     # list(iterable) - create list from any iterable, inferring element type
     MethodDef(
@@ -103,6 +105,9 @@ module.register_type(STR, cpp_type="std::string_view", methods={
         returns=CHAR,
         cpp="tpy::get_char({self}, {0})",
     )],
+    # NativeIterable conformance - synthetic method for structural matching
+    # str iterates over Char
+    "__native_iter__": [MethodDef(params=[], returns=CHAR, cpp="")],
 })
 
 # int: arbitrary precision integer (BigInt)

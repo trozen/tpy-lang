@@ -1843,22 +1843,9 @@ class SemanticAnalyzer:
         # Look up the protocol definition (builtin first, then user-defined)
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
         if protocol_def is not None:
-            # Special handling for NativeIterable[T] - no methods, use is_iterable() trait
-            if protocol.name == "NativeIterable":
-                # If actual is also NativeIterable[T], check type args match
-                if isinstance(actual, ProtocolType) and actual.name == "NativeIterable":
-                    return actual.type_args == protocol.type_args
-                # Otherwise check concrete type via is_iterable() trait
-                if not actual.is_iterable():
-                    return False
-                if protocol.type_args:
-                    expected_elem = protocol.type_args[0]
-                    actual_elem = actual.get_element_type()
-                    if actual_elem is None:
-                        return False
-                    # Check element type compatibility
-                    return actual_elem == expected_elem or self._builtin_type_matches(actual_elem, expected_elem)
-                return True
+            # Protocol-to-protocol: check type args match
+            if isinstance(actual, ProtocolType) and actual.name == protocol.name:
+                return actual.type_args == protocol.type_args
 
             # Build type substitution map for generic protocols
             # Always include Self -> actual type
@@ -2207,24 +2194,22 @@ class SemanticAnalyzer:
         self.pending_resolutions.clear()
 
     def _is_type_iterable(self, typ: TpyType) -> bool:
-        """Check if a type is iterable (intrinsically or via NativeIterable protocol).
+        """Check if a type is iterable (has __native_iter__ method or is NativeIterable protocol).
 
-        This combines intrinsic iterability (is_iterable() trait) with protocol-based
-        iterability (NativeIterable[T] protocol type).
+        Uses structural protocol conformance - a type is iterable if it has the
+        __native_iter__ synthetic method that NativeIterable[T] requires.
         """
-        # Intrinsic iterability (list, Array, Span, StaticList, str)
-        if typ.is_iterable():
-            return True
         # NativeIterable[T] protocol type
         if isinstance(typ, ProtocolType) and typ.name == "NativeIterable":
             return True
-        return False
+        # Check if type has __native_iter__ method (structural NativeIterable conformance)
+        methods = builtin_modules.lookup_type_method(typ, "__native_iter__")
+        return len(methods) > 0
 
     def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
         """Get the element type of an iterable for for-each loops.
 
-        Uses _is_type_iterable() for checking and get_element_type() for extraction,
-        with special handling for NativeIterable protocol.
+        Uses __native_iter__ method return type for structural conformance.
         """
         # Handle NativeIterable[T] protocol type
         if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":
@@ -2232,10 +2217,12 @@ class SemanticAnalyzer:
                 return iterable_type.type_args[0]
             raise SemanticError("NativeIterable requires a type argument: NativeIterable[T]")
 
-        # Use trait methods for concrete types
-        if iterable_type.is_iterable():
-            elem_type = iterable_type.get_element_type()
-            if elem_type is not None:
-                return elem_type
+        # Get element type from __native_iter__ method return type
+        methods = builtin_modules.lookup_type_method(iterable_type, "__native_iter__")
+        if methods:
+            type_params = builtin_modules.extract_type_params(iterable_type)
+            resolved = builtin_modules.resolve_method(methods[0], type_params)
+            if isinstance(resolved.returns, TpyType):
+                return resolved.returns
 
         raise SemanticError(f"Cannot iterate over type {iterable_type}")
