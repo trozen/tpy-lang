@@ -31,7 +31,7 @@ void __tpy_init() {
   // 13: print(count_char("xoxox", "x"))
   std::cout << count_char("xoxox", 'x') << "\n";
   // 14: print(len("hello"))
-  std::cout << tpy::__len__(std::string_view("hello")) << "\n";
+  std::cout << tpy::__len__("hello") << "\n";
   // 15: print(chr(65))
   std::cout << static_cast<char>(65) << "\n";
 }

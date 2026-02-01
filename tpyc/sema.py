@@ -918,35 +918,6 @@ class SemanticAnalyzer:
                 self._analyze_expr(arg)
             return VOID
 
-        # Built-in len() - dispatches to __len__ on the argument type
-        if expr.func == "len":
-            if len(expr.args) != 1:
-                raise SemanticError("len() takes exactly 1 argument")
-            arg_type = self._analyze_expr(expr.args[0])
-
-            # Protocol types: verify the protocol has __len__ and return Int32
-            if isinstance(arg_type, ProtocolType):
-                protocol_def = builtin_modules.lookup_protocol(arg_type.name)
-                if protocol_def:
-                    if "__len__" in protocol_def.methods:
-                        return protocol_def.methods["__len__"].returns
-                # User-defined protocol - check registry
-                protocol_info = self.registry.get_protocol(arg_type.name)
-                if protocol_info:
-                    for method in protocol_info.methods:
-                        if method.name == "__len__":
-                            return method.return_type
-                raise SemanticError(f"Protocol {arg_type.name} does not have __len__ method")
-
-            # Concrete types: lookup __len__ method
-            qname = arg_type.qualified_name()
-            if qname is None:
-                raise SemanticError(f"len() argument must have __len__, got {arg_type}")
-            len_methods = builtin_modules.lookup_type_method(qname, "__len__")
-            if not len_methods:
-                raise SemanticError(f"len() argument must have __len__, got {arg_type}")
-            return len_methods[0].returns
-
         # Check if it's a builtin type constructor (e.g., Int32, int)
         if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
             return self._check_constructor(expr, type_def)
@@ -1067,6 +1038,9 @@ class SemanticAnalyzer:
         """Check if an argument type is compatible with a builtin parameter type."""
         if arg_type == param_type:
             return True
+        # Protocol parameter: check if arg_type conforms to the protocol
+        if isinstance(param_type, ProtocolType):
+            return self._type_conforms_to_protocol(arg_type, param_type)
         # Check if there's a coercion from arg_type to param_type
         if resolve_coercion(arg_type, param_type, "arg") is not None:
             return True
@@ -1555,14 +1529,44 @@ class SemanticAnalyzer:
     ) -> bool:
         """Check if a type has a method with the expected signature.
 
-        Works for both user records (via RecordInfo) and builtin types (via module system).
+        Works for user records (via RecordInfo), protocol types, and builtin types (via module system).
 
         Note: For builtin types with generic methods (e.g., list.append(value: T)), the type
         parameter comparison uses direct equality, which doesn't resolve type variables.
         This is fine for Phase 1 protocols (only Sized with __len__() -> Int32), but would
         need type parameter resolution for generic protocols like Iterable[T].
         """
-        if isinstance(actual, RecordType):
+        if isinstance(actual, ProtocolType):
+            # Protocol type - check methods in protocol definition
+            # First check builtin protocols
+            protocol_def = builtin_modules.lookup_protocol(actual.name)
+            if protocol_def is not None:
+                method_def = protocol_def.methods.get(method_name)
+                if method_def is None:
+                    return False
+                if method_def.returns != expected_return:
+                    return False
+                if len(method_def.params) != len(expected_params):
+                    return False
+                for param_def, expected_ptype in zip(method_def.params, expected_params):
+                    if param_def.type != expected_ptype:
+                        return False
+                return True
+            # Check user-defined protocols
+            protocol_info = self.registry.get_protocol(actual.name)
+            if protocol_info is not None:
+                for method_sig in protocol_info.methods:
+                    if method_sig.name == method_name:
+                        if method_sig.return_type != expected_return:
+                            return False
+                        if len(method_sig.params) != len(expected_params):
+                            return False
+                        for (_, actual_ptype), expected_ptype in zip(method_sig.params, expected_params):
+                            if actual_ptype != expected_ptype:
+                                return False
+                        return True
+            return False
+        elif isinstance(actual, RecordType):
             # User record - check methods in RecordInfo
             record = self.registry.get_record(actual.name)
             if record is None:

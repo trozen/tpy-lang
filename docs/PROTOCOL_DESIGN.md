@@ -172,16 +172,21 @@ This approach:
 ```python
 # tpyc/modules/builtins.py
 
-SIZED = module.get_protocol("Sized")  # or reference by name
+from tpyc.typesys import ProtocolType
+
+# Sized protocol type for len() parameter
+SIZED = ProtocolType("Sized")
 
 module.function("len", overloads=[
     MethodDef(
         params=[ParamDef("x", SIZED)],
         returns=INT32,
-        cpp="{0}.__len__()",  # or dispatch marker
+        cpp="tpy::__len__({0})",  # Uses the free function dispatch
     ),
 ])
 ```
+
+The semantic analyzer checks if the argument type conforms to `Sized` by verifying it has a `__len__` method with the correct signature. The codegen simply uses the `tpy::__len__()` free function which has overloads for all standard container types.
 
 ## 7. Data structures summary
 

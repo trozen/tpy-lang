@@ -5,9 +5,20 @@ Defines functions like chr, print, len, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, ListType
+from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, ListType, ProtocolType
 
 module = BuiltinModule("builtins")
+
+# Sized protocol type for len() parameter
+SIZED = ProtocolType("Sized")
+
+module.function("len", overloads=[
+    MethodDef(
+        params=[ParamDef("x", SIZED)],
+        returns=INT32,
+        cpp="tpy::__len__({0})",
+    ),
+])
 
 module.function("chr", overloads=[
     MethodDef(

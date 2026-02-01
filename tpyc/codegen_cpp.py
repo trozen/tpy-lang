@@ -1302,17 +1302,6 @@ class CodeGenerator:
             # print() maps to std::printf
             if expr.func == "print":
                 return self._gen_print(expr.args, expr.kwargs)
-            # len() uses tpy::__len__ free function (protocol-compatible)
-            if expr.func == "len":
-                arg = expr.args[0]
-                arg_type = self._get_resolved_type(arg)
-                # For string literals, wrap in string_view first
-                if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
-                    escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-                    obj = f'std::string_view("{escaped}")'
-                else:
-                    obj = self._gen_expr_deref(arg)
-                return f"tpy::__len__({obj})"
             # Check module registry for built-in functions
             if builtin_fn := builtin_modules.lookup_function(expr.func):
                 return self._gen_builtin_call(expr, builtin_fn)
@@ -1577,7 +1566,8 @@ class CodeGenerator:
             if all(self._builtin_codegen_type_matches(arg, arg_t, param.type)
                    for arg, arg_t, param in zip(args, arg_types, overload.params)):
                 # Generate args with proper type coercion (e.g., int literal → BigInt)
-                gen_args = [self._gen_expr(arg, param.type) for arg, param in zip(args, overload.params)]
+                # Use _gen_expr_deref to handle globals (tpy::Global<T> needs dereferencing)
+                gen_args = [self._gen_expr_deref(arg, param.type) for arg, param in zip(args, overload.params)]
                 return overload.cpp.format(*gen_args)
 
         raise RuntimeError(f"No matching overload for {name}")
@@ -1617,6 +1607,9 @@ class CodeGenerator:
         """Check if an argument matches a parameter type for codegen purposes."""
         # Direct type match
         if isinstance(arg_type, type(param_type)) and arg_type == param_type:
+            return True
+        # Protocol parameter: sema already verified conformance, accept any arg
+        if isinstance(param_type, ProtocolType):
             return True
         # IntLiteral can match Int32 (if compile-time) or BigInt (if runtime)
         if isinstance(arg_type, IntLiteralType):

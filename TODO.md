@@ -11,6 +11,7 @@
 - require imports at the top of file, don't allow inline imports
 - type containing an allocated object (e.g. `Box[T]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
+- `Int32` should be imported from tpy, so it matches CPython (maybe use `from typ import *`?)
 
 ## Python features
 - dict full support
@@ -46,6 +47,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - `@staticmethod`
 - better class operator<< tests (but missing str formatting/concatenation)
 - `import time as _time` syntax
+- dynamic dispatch
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

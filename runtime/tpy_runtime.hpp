@@ -1426,6 +1426,11 @@ inline int32_t __len__(std::string_view x) {
     return static_cast<int32_t>(x.size());
 }
 
+// Overload: const char* (string literals)
+inline int32_t __len__(const char* x) {
+    return static_cast<int32_t>(std::string_view(x).size());
+}
+
 // Overload: StaticList
 template<typename T, std::size_t N>
 int32_t __len__(const StaticList<T, N>& x) {
