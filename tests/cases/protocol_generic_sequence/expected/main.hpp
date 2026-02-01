@@ -11,6 +11,7 @@ template<tpy::Sequence<int32_t> T_items>
 int32_t first(const T_items& items);
 template<tpy::Sequence<int32_t> T_items>
 int32_t sum_all(const T_items& items);
+int32_t use_span(std::span<const int32_t> s);
 void main();
 
 void __tpy_init();

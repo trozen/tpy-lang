@@ -30,25 +30,47 @@ int32_t sum_all(const T_items& items) {
   return total;
 }
 
-// 15: def main() -> None:
+// 15: def use_span(s: Span[Int32]) -> Int32:
+int32_t use_span(std::span<const int32_t> s) {
+  // 17:     return sum_all(s)
+  return sum_all(s);
+}
+
+// 19: def main() -> None:
 void main() {
-  // 16:     nums: list[Int32] = [1, 2, 3, 4, 5]
+  // 21:     nums: list[Int32] = [1, 2, 3, 4, 5]
   std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-  // 17:     print(first(nums))     # 1
+  // 22:     print(first(nums))     # 1
   std::cout << first(nums) << "\n";
-  // 18:     print(sum_all(nums))   # 15
+  // 23:     print(sum_all(nums))   # 15
   std::cout << sum_all(nums) << "\n";
-  // 20:     arr: Array[Int32, 3] = [10, 20, 30]
+  // 26:     arr: Array[Int32, 3] = [10, 20, 30]
   std::array<int32_t, 3> arr = {10, 20, 30};
-  // 21:     print(first(arr))      # 10
+  // 27:     print(first(arr))      # 10
   std::cout << first(arr) << "\n";
-  // 22:     print(sum_all(arr))    # 60
+  // 28:     print(sum_all(arr))    # 60
   std::cout << sum_all(arr) << "\n";
+  // 31:     print(use_span(arr))   # 60 (Span from Array)
+  std::cout << use_span(tpy::as_span(arr)) << "\n";
+  // 32:     print(use_span(nums))  # 15 (Span from list)
+  std::cout << use_span(tpy::as_span(nums)) << "\n";
+  // 35:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
+  StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
+  // 36:     sl.append(100)
+  sl.push_back(100);
+  // 37:     sl.append(200)
+  sl.push_back(200);
+  // 38:     sl.append(300)
+  sl.push_back(300);
+  // 39:     print(first(sl))       # 100
+  std::cout << first(sl) << "\n";
+  // 40:     print(sum_all(sl))     # 600
+  std::cout << sum_all(sl) << "\n";
 }
 
 void __tpy_init() {
   __name__ = "__main__";
-  // 24: main()
+  // 42: main()
   main();
 }
 
