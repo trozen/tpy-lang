@@ -38,7 +38,7 @@ module.function("chr", overloads=[
 module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
             param_kinds=[TypeParamKind.TYPE],
             type_factory=lambda t: ListType(t),
-            extends=["NativeIterable[T]"],
+            extends=["NativeIterable[T]", "Contiguous[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],

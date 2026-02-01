@@ -8,7 +8,7 @@ from typing import Callable, Optional
 from .typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     RecordType, PtrType, ConstPtrType, CharType, StrType,
-    ArrayType, StaticListType, SpanType, ListType, PendingListType,
+    SpanType, PendingListType,
 )
 
 
@@ -19,36 +19,34 @@ def _match_any(_: TpyType, __: TpyType) -> bool:
     return True
 
 
-def _elem_match(actual: TpyType, expected: TpyType) -> bool:
-    if not isinstance(actual, (ArrayType, StaticListType, ListType)):
-        return False
+def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
+    """Check if actual type (extending Contiguous[T]) can coerce to Span[T]."""
     if not isinstance(expected, SpanType):
         return False
-    if actual.element_type == expected.element_type:
-        return True
+    actual_elem = actual.get_element_type()
+    if actual_elem is None:
+        return False
+    expected_elem = expected.element_type
+
+    # PendingListType is an internal compiler type that resolves to list (which extends Contiguous).
+    # Handle it directly since it's not in the module system.
+    if isinstance(actual, PendingListType):
+        if actual_elem == expected_elem:
+            return True
+        # IntLiteral elements coerce to Int32/BigInt
+        if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (Int32Type, BigIntType)):
+            return True
+        return False
+
+    # Check if actual extends Contiguous[T] with matching element type
+    from tpyc.modules import type_extends_protocol
+    # Direct element type match
+    if actual_elem == expected_elem:
+        return type_extends_protocol(actual, "Contiguous", [actual_elem])
     # Allow IntLiteral element to coerce to Int32/BigInt elements
-    if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-        return True
-    return False
-
-
-def _pending_elem_match(actual: TpyType, expected: TpyType) -> bool:
-    if not isinstance(actual, PendingListType) or not isinstance(expected, SpanType):
-        return False
-    if actual.element_type == expected.element_type:
-        return True
-    if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-        return True
-    return False
-
-
-def _array_elem_match(actual: TpyType, expected: TpyType) -> bool:
-    if not isinstance(actual, ArrayType) or not isinstance(expected, SpanType):
-        return False
-    if actual.element_type == expected.element_type:
-        return True
-    if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
-        return True
+    # Check Contiguous[expected_elem] since containers extend Contiguous with concrete types
+    if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (Int32Type, BigIntType)):
+        return type_extends_protocol(actual, "Contiguous", [expected_elem])
     return False
 
 
@@ -155,67 +153,21 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"tpy::deref_ptr({e})",
     ),
 
-    # Span coercions (arg context allows temporaries)
+    # Span coercions: any Contiguous[T] type can coerce to Span[T]
+    # Arg context allows temporaries
     Coercion(
-        name="array_to_span_arg",
-        from_type=ArrayType,
+        name="contiguous_to_span_arg",
+        from_type=TpyType,  # Matches any type; _contiguous_to_span_match filters by protocol
         to_type=SpanType,
-        type_match=_array_elem_match,
+        type_match=_contiguous_to_span_match,
         contexts={"arg"},
     ),
+    # Non-arg contexts require lvalue (can't take span of temporary)
     Coercion(
-        name="staticlist_to_span_arg",
-        from_type=StaticListType,
+        name="contiguous_to_span",
+        from_type=TpyType,  # Matches any type; _contiguous_to_span_match filters by protocol
         to_type=SpanType,
-        type_match=_elem_match,
-        contexts={"arg"},
-    ),
-    Coercion(
-        name="list_to_span_arg",
-        from_type=ListType,
-        to_type=SpanType,
-        type_match=_elem_match,
-        contexts={"arg"},
-    ),
-    Coercion(
-        name="pending_list_to_span_arg",
-        from_type=PendingListType,
-        to_type=SpanType,
-        type_match=_pending_elem_match,
-        contexts={"arg"},
-    ),
-    Coercion(
-        name="pending_list_to_span",
-        from_type=PendingListType,
-        to_type=SpanType,
-        type_match=_pending_elem_match,
-        contexts={"init", "assign", "return"},
-        requires_lvalue=True,
-        forbid_return_local=True,
-    ),
-    Coercion(
-        name="array_to_span",
-        from_type=ArrayType,
-        to_type=SpanType,
-        type_match=_array_elem_match,
-        contexts={"init", "assign", "return"},
-        requires_lvalue=True,
-        forbid_return_local=True,
-    ),
-    Coercion(
-        name="staticlist_to_span",
-        from_type=StaticListType,
-        to_type=SpanType,
-        type_match=_elem_match,
-        contexts={"init", "assign", "return"},
-        requires_lvalue=True,
-        forbid_return_local=True,
-    ),
-    Coercion(
-        name="list_to_span",
-        from_type=ListType,
-        to_type=SpanType,
-        type_match=_elem_match,
+        type_match=_contiguous_to_span_match,
         contexts={"init", "assign", "return"},
         requires_lvalue=True,
         forbid_return_local=True,

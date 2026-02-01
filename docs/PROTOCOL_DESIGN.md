@@ -237,9 +237,9 @@ class Iterable(Protocol[T]):
     """Types that can be iterated over."""
     def __iter__(self) -> Iterator[T]: ...
 
-class CoercibleToSpan(Protocol[T]):
-    """Types that can implicitly convert to Span[T]."""
-    def __span__(self) -> Span[T]: ...
+class Contiguous(Protocol[T]):
+    """Types with contiguous memory layout, coercible to Span[T]."""
+    # Marker protocol - no methods, uses extends declaration
 
 class ConstructibleFromRange(Protocol[T]):
     """Types that can be constructed from a range/iterator."""
@@ -289,9 +289,9 @@ class StaticList(Generic[T, N]):
 **2. Explicit extends** - for marker protocols with no methods:
 ```python
 # In module system, types declare protocol conformance
-module.type("StaticList", ..., extends=["NativeIterable[T]"])
-module.type("list", ..., extends=["NativeIterable[T]"])
-module.register_type(STR, ..., extends=["NativeIterable[Char]"])
+module.type("StaticList", ..., extends=["NativeIterable[T]", "Contiguous[T]"])
+module.type("list", ..., extends=["NativeIterable[T]", "Contiguous[T]"])
+module.register_type(STR, ..., extends=["NativeIterable[Char]"])  # str is not Contiguous
 ```
 
 This design allows:
@@ -307,18 +307,22 @@ Implicit coercions are driven by protocol conformance:
 def takes_span(s: Span[Int32]) -> None: ...
 
 arr: Array[Int32, 3] = [1, 2, 3]
-takes_span(arr)  # OK: Array conforms to CoercibleToSpan[Int32]
+takes_span(arr)  # OK: Array extends Contiguous[Int32]
 
 lst: list[Int32] = [1, 2, 3]
-takes_span(lst)  # OK: list conforms to CoercibleToSpan[Int32]
+takes_span(lst)  # OK: list extends Contiguous[Int32]
+
+s: str = "hello"
+takes_span(s)  # ERROR: str does not extend Contiguous
 ```
 
 Generated C++:
 ```cpp
 void takes_span(std::span<const int32_t> s);
 
-takes_span(arr.__span__());  // or implicit conversion operator
-takes_span(lst.__span__());
+// std::span accepts contiguous ranges implicitly
+takes_span(arr);
+takes_span(lst);
 ```
 
 ### Benefits
@@ -367,7 +371,9 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Recursive substitution for nested types like `Own[Self]`, `Ptr[Self]`
    - Validation: `Self` only allowed in protocol contexts
    - Regular (non-dunder) method calls on protocol-typed values
-6. **Phase 6**: Compiler trait protocols (`CoercibleToSpan`, etc.)
+6. **Phase 6**: Compiler trait protocols ✅ **IN PROGRESS**
+   - `Contiguous[T]` - types with contiguous memory layout, coercible to `Span[T]`
+   - Remaining: `ConstructibleFromRange`, `SubscriptableRead`, etc.
 7. ~~**Phase 7**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)
 8. **Phase 8**: Python-compatible `Iterable[T]` and `Iterator[T]` (future)
    - `Iterator[T]` with `__next__() -> T` + `raise StopIteration`

@@ -1494,6 +1494,17 @@ concept NativeIterable = requires(const T& t) {
     { *std::ranges::begin(t) } -> std::convertible_to<ElemT>;
 };
 
+/**
+ * Contiguous concept - types with elements laid out contiguously in memory
+ *
+ * A type is Contiguous<ElemT> if it's a contiguous_range with elements
+ * convertible to ElemT. Types conforming to Contiguous can be implicitly
+ * converted to std::span.
+ */
+template<typename T, typename ElemT>
+concept Contiguous = std::ranges::contiguous_range<T> &&
+    std::convertible_to<std::ranges::range_reference_t<T>, ElemT>;
+
 // --- Collection printing (Python-style: [a, b, c]) ---
 
 template <typename T>

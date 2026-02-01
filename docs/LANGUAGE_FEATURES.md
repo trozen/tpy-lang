@@ -789,21 +789,49 @@ class Iterable(Protocol[T]):
     def __iter__(self) -> Iterator[T]: ...
 ```
 
-#### Planned: Compiler Traits
+#### Working: `Contiguous[T]` (Span coercion)
 
-Protocols will serve as **compiler traits**—letting the compiler discover type capabilities without hardcoded type checks:
+`Contiguous[T]` is a **marker protocol** for types with elements laid out contiguously in memory. Types extending `Contiguous[T]` can be implicitly coerced to `Span[T]`.
 
 ```python
-class CoercibleToSpan(Protocol[T]):
-    def __span__(self) -> Span[T]: ...
+from tpy import Int32, Span, Array, StaticList, Contiguous
+
+def sum_span(values: Span[Int32]) -> Int32:
+    total: Int32 = 0
+    for v in values:
+        total += v
+    return total
+
+# All these work - Array, StaticList, list extend Contiguous[T]
+arr: Array[Int32, 3] = [1, 2, 3]
+sum_span(arr)  # OK
+
+sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
+sum_span(sl)  # OK
+
+lst: list[Int32] = [4, 5, 6]
+sum_span(lst)  # OK
+
+# str does NOT extend Contiguous - this is an error
+# s: str = "hello"
+# takes_span(s)  # ERROR: str does not extend Contiguous
 ```
 
-With this design:
+**Key points:**
+- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `Contiguous[T]`
+- **str excluded**: `str` iterates over `Char` but is not contiguous (it's `std::string_view`)
+- **Zero overhead**: Uses C++ `std::span` implicit construction from contiguous ranges
+- **C++ concept**: Maps to `std::ranges::contiguous_range`
+
+#### Compiler Traits Summary
+
+Protocols serve as **compiler traits**—letting the compiler discover type capabilities without hardcoded type checks:
+
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
+- Implicit coercion to `Span[T]` works on types extending `Contiguous[T]` ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters (planned - Python-compatible)
-- Implicit coercion to `Span[T]` works on any type conforming to `CoercibleToSpan[T]` (planned)
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 

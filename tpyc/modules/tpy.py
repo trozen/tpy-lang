@@ -57,7 +57,7 @@ module.register_type(INT32, cpp_type="int32_t", constructors=[
 module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
             param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
             type_factory=lambda t, n: ArrayType(t, n),
-            extends=["NativeIterable[T]"],
+            extends=["NativeIterable[T]", "Contiguous[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],
@@ -85,7 +85,7 @@ module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
 module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
             param_kinds=[TypeParamKind.TYPE],
             type_factory=lambda t: SpanType(t),
-            extends=["NativeIterable[T]"],
+            extends=["NativeIterable[T]", "Contiguous[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],
@@ -109,7 +109,7 @@ module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
 module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
             param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
             type_factory=lambda t, n: StaticListType(t, n),
-            extends=["NativeIterable[T]"],
+            extends=["NativeIterable[T]", "Contiguous[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],
@@ -161,4 +161,14 @@ module.protocol("NativeIterable",
     type_params=["T"],
     methods={},  # Marker protocol - conformance via extends declaration
     cpp_concept="tpy::NativeIterable",
+)
+
+# Contiguous[T] protocol: types with elements laid out contiguously in memory
+# This is a marker protocol - types declare conformance via extends=["Contiguous[T]"].
+# Types conforming to Contiguous[T] can be implicitly converted to Span[T].
+# Maps to C++ std::ranges::contiguous_range concept.
+module.protocol("Contiguous",
+    type_params=["T"],
+    methods={},  # Marker protocol - conformance via extends declaration
+    cpp_concept="tpy::Contiguous",
 )
