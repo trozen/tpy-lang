@@ -57,7 +57,7 @@ void __tpy_init() {
   // 38: print(nums[2])
   std::cout << tpy::get_item((*nums), 2) << "\n";
   // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
-  filled = StaticList<int32_t, 8>(std::max(0, 8), 0);
+  filled = StaticList<int32_t, 8>(tpy::repeat_range<int32_t>(8, {0}));
   // 42: filled[0] = 42
   tpy::set_item((*filled), 0, 42);
   // 43: print(len(filled))

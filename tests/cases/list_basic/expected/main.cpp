@@ -31,7 +31,7 @@ int32_t sum_list(std::vector<int32_t>& nums) {
 void __tpy_init() {
   __name__ = "__main__";
   // 11: mem: list[Int32] = [0] * 10
-  mem = std::vector<int32_t>(std::max(0, 10), 0);
+  mem = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>(10, {0}));
   // 12: mem[0] = 42
   tpy::set_item((*mem), 0, 42);
   // 13: mem[1] = 8
@@ -41,7 +41,7 @@ void __tpy_init() {
   // 15: print(len(mem))
   std::cout << tpy::__len__((*mem)) << "\n";
   // 18: data = [0] * 5
-  data = std::vector<tpy::BigInt>(std::max(0, 5), tpy::BigInt(0));
+  data = tpy::to_vector<tpy::BigInt>(tpy::repeat_range<tpy::BigInt>(5, {tpy::BigInt(0)}));
   // 19: data[0] = 100
   tpy::set_item((*data), 0, 100);
   // 20: print(data[0])

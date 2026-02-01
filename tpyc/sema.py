@@ -14,7 +14,7 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
-    StaticListType, ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
+    ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
     ProtocolInfo, MethodSignature
@@ -1178,54 +1178,18 @@ class SemanticAnalyzer:
 
         obj_type = self._analyze_expr(expr.obj)
 
-        # StaticList methods - use module lookup
-        if isinstance(obj_type, StaticListType):
-            # Try module lookup for defined methods
-            type_params = builtin_modules.extract_type_params(obj_type)
-            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
-            if methods:
-                resolved = builtin_modules.resolve_method(methods[0], type_params)
-                return self._check_method_args(expr, resolved, obj_type)
-
-            raise SemanticError(f"Unknown StaticList method: '{expr.method}'")
-
-        # Array methods - use module lookup
-        if isinstance(obj_type, ArrayType):
-            type_params = builtin_modules.extract_type_params(obj_type)
-            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
-            if methods:
-                resolved = builtin_modules.resolve_method(methods[0], type_params)
-                return self._check_method_args(expr, resolved, obj_type)
-
-            raise SemanticError(f"Unknown Array method: '{expr.method}'")
-
-        # Span methods - use module lookup
-        if isinstance(obj_type, SpanType):
-            type_params = builtin_modules.extract_type_params(obj_type)
-            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
-            if methods:
-                resolved = builtin_modules.resolve_method(methods[0], type_params)
-                return self._check_method_args(expr, resolved, obj_type)
-
-            raise SemanticError(f"Unknown Span method: '{expr.method}'")
-
-        # PendingListType and ListType methods
+        # List mutation methods - mark literal as mutated before module lookup
         if isinstance(obj_type, (PendingListType, ListType)):
-            elem_type = obj_type.element_type
-
-            # Mutation methods - mark literal as mutated if it's a pending type
             mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "__setitem__"}
             if expr.method in mutation_methods:
                 self._mark_list_mutated(expr.obj)
 
-            # Try module lookup first for any method
-            type_params = builtin_modules.extract_type_params(obj_type)
-            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
-            if methods:
-                resolved = builtin_modules.resolve_method(methods[0], type_params)
-                return self._check_method_args(expr, resolved, obj_type)
-
-            raise SemanticError(f"Unknown list method: '{expr.method}'")
+        # Built-in type methods - use module lookup (works for any type with qualified_name)
+        type_params = builtin_modules.extract_type_params(obj_type)
+        methods = builtin_modules.lookup_type_method(obj_type, expr.method)
+        if methods:
+            resolved = builtin_modules.resolve_method(methods[0], type_params)
+            return self._check_method_args(expr, resolved, obj_type)
 
         # User-defined record methods
         if isinstance(obj_type, RecordType):
@@ -1499,10 +1463,9 @@ class SemanticAnalyzer:
 
         # Constructor call - creates temporary
         if isinstance(expr, TpyCall):
-            # Generic container constructor (StaticList[T,N](), Array[T,N](), list[T]())
+            # Generic type constructor creates a temporary
             if expr.call_type is not None:
-                if isinstance(expr.call_type, (StaticListType, ArrayType, ListType)):
-                    return True
+                return True
 
             # Record constructor
             if expr.func in self.registry.records:
