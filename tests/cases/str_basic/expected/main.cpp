@@ -13,7 +13,7 @@ int32_t count_char(std::string_view text, char target) {
   // 6:     i: Int32 = 0
   int32_t i = 0;
   // 7:     while i < len(text):
-  while ((i < static_cast<int32_t>(text.size()))) {
+  while ((i < tpy::__len__(text))) {
     // 8:         if text[i] == target:
     if ((text[i] == target)) {
       // 9:             count += 1
@@ -31,7 +31,7 @@ void __tpy_init() {
   // 13: print(count_char("xoxox", "x"))
   std::cout << count_char("xoxox", 'x') << "\n";
   // 14: print(len("hello"))
-  std::cout << static_cast<int32_t>(std::string_view("hello").size()) << "\n";
+  std::cout << tpy::__len__(std::string_view("hello")) << "\n";
   // 15: print(chr(65))
   std::cout << static_cast<char>(65) << "\n";
 }

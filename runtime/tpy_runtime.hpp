@@ -1382,6 +1382,74 @@ void list_extend(std::vector<T>& v, std::initializer_list<T> other) {
     v.insert(v.end(), other);
 }
 
+// =============================================
+// Protocol free functions - unified interface for dunder methods
+// =============================================
+
+/**
+ * tpy::__len__ - Protocol-based length accessor
+ *
+ * Enables len() to work uniformly across all container types:
+ * - User types: calls x.__len__() method
+ * - std types: overloads call .size()
+ *
+ * This allows functions with protocol-typed parameters to work with
+ * both user-defined and standard library types.
+ */
+
+// Overload: std::vector (most specific, checked first)
+template<typename T>
+int32_t __len__(const std::vector<T>& x) {
+    return static_cast<int32_t>(x.size());
+}
+
+// Overload: std::array
+template<typename T, std::size_t N>
+int32_t __len__(const std::array<T, N>& x) {
+    return static_cast<int32_t>(x.size());
+}
+
+// Overload: std::span (const and non-const)
+template<typename T>
+int32_t __len__(std::span<const T> x) {
+    return static_cast<int32_t>(x.size());
+}
+
+template<typename T>
+int32_t __len__(std::span<T> x) {
+    return static_cast<int32_t>(x.size());
+}
+
+// Overload: std::string_view
+inline int32_t __len__(std::string_view x) {
+    return static_cast<int32_t>(x.size());
+}
+
+// Overload: StaticList
+template<typename T, std::size_t N>
+int32_t __len__(const StaticList<T, N>& x) {
+    return x.size();  // StaticList::size() already returns int32_t
+}
+
+// Default template: user types that define __len__() method
+// This is checked last due to the requires clause
+template<typename T>
+    requires requires(const T& t) { { t.__len__() } -> std::convertible_to<int32_t>; }
+int32_t __len__(const T& x) {
+    return x.__len__();
+}
+
+/**
+ * Sized concept - types that support tpy::__len__()
+ *
+ * Matches Python's typing.Protocol approach to structural subtyping.
+ * A type is Sized if tpy::__len__(x) is valid and returns int32_t.
+ */
+template<typename T>
+concept Sized = requires(const T& t) {
+    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
+};
+
 // --- Collection printing (Python-style: [a, b, c]) ---
 
 template <typename T>

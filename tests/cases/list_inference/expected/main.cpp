@@ -24,7 +24,7 @@ int32_t test_mutation() {
   // 17:     items.append(4)
   items.push_back(4);
   // 18:     return len(items)
-  return static_cast<int32_t>(items.size());
+  return tpy::__len__(items);
 }
 
 // 21: def takes_list(x: list[Int32]) -> None:

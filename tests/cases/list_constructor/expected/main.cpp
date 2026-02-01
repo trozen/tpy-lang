@@ -32,7 +32,7 @@ void test_local_list() {
   // 8:     local_nums.append(200)
   local_nums.push_back(200);
   // 9:     print(len(local_nums))
-  std::cout << static_cast<int32_t>(local_nums.size()) << "\n";
+  std::cout << tpy::__len__(local_nums) << "\n";
 }
 
 void __tpy_init() {
@@ -45,19 +45,19 @@ void __tpy_init() {
   // 21: nums.append(2)
   (*nums).push_back(2);
   // 22: print(len(nums))
-  std::cout << static_cast<int32_t>((*nums).size()) << "\n";
+  std::cout << tpy::__len__((*nums)) << "\n";
   // 25: other: list[Int32] = list[Int32]()
   other = std::vector<int32_t>();
   // 26: other.append(3)
   (*other).push_back(3);
   // 27: print(len(other))
-  std::cout << static_cast<int32_t>((*other).size()) << "\n";
+  std::cout << tpy::__len__((*other)) << "\n";
   // 30: points = list[Point]()
   points = std::vector<Point>();
   // 31: points.append(Point(10, 20))
   (*points).push_back(Point(10, 20));
   // 32: print(len(points))
-  std::cout << static_cast<int32_t>((*points).size()) << "\n";
+  std::cout << tpy::__len__((*points)) << "\n";
   // 33: print(points[0].x)
   std::cout << tpy::get_item((*points), 0).x << "\n";
   // 36: nested = list[list[Point]]()
@@ -69,7 +69,7 @@ void __tpy_init() {
   // 39: nested.append(inner)
   (*nested).push_back(inner);
   // 40: print(len(nested))
-  std::cout << static_cast<int32_t>((*nested).size()) << "\n";
+  std::cout << tpy::__len__((*nested)) << "\n";
   // 41: print(nested[0][0].x)
   std::cout << tpy::get_item(tpy::get_item((*nested), 0), 0).x << "\n";
   // 44: test_local_list()
@@ -91,9 +91,9 @@ void __tpy_init() {
   // 56: copy.append(400)
   (*copy).push_back(400);
   // 57: print(len(src))  # Original unchanged
-  std::cout << static_cast<int32_t>((*src).size()) << "\n";
+  std::cout << tpy::__len__((*src)) << "\n";
   // 58: print(len(copy))
-  std::cout << static_cast<int32_t>((*copy).size()) << "\n";
+  std::cout << tpy::__len__((*copy)) << "\n";
   // 61: arr: Array[Int32, 3] = [5, 6, 7]
   arr = {5, 6, 7};
   // 62: from_arr = list(arr)

@@ -15,13 +15,14 @@ from typing import Optional
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
-    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
-    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry
+    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType,
+    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
+    ProtocolInfo, MethodSignature
 )
 from .namespace import Namespace, BindingKind, NameBinding
 from .parse import (
     SourceLocation,
-    TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
+    TpyModule, TpyRecord, TpyFunction, TpyProtocol, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
@@ -149,6 +150,10 @@ class SemanticAnalyzer:
         for record in module.records:
             self._register_record(record)
 
+        # Register protocols
+        for protocol in module.protocols:
+            self._register_protocol(protocol)
+
         # Second pass: register all functions
         for func in module.functions:
             self._register_function(func)
@@ -206,6 +211,14 @@ class SemanticAnalyzer:
         )
         self.registry.register_record(info)
         self.global_ns.bind_record(info)
+
+    def _register_protocol(self, protocol: TpyProtocol) -> None:
+        """Register a protocol type."""
+        info = ProtocolInfo(
+            name=protocol.name,
+            methods=protocol.methods
+        )
+        self.registry.register_protocol(info)
 
     def _register_function(self, func: TpyFunction) -> None:
         """Register a function."""
@@ -868,6 +881,22 @@ class SemanticAnalyzer:
             if len(expr.args) != 1:
                 raise SemanticError("len() takes exactly 1 argument")
             arg_type = self._analyze_expr(expr.args[0])
+
+            # Protocol types: verify the protocol has __len__ and return Int32
+            if isinstance(arg_type, ProtocolType):
+                protocol_def = builtin_modules.lookup_protocol(arg_type.name)
+                if protocol_def:
+                    if "__len__" in protocol_def.methods:
+                        return protocol_def.methods["__len__"].returns
+                # User-defined protocol - check registry
+                protocol_info = self.registry.get_protocol(arg_type.name)
+                if protocol_info:
+                    for method in protocol_info.methods:
+                        if method.name == "__len__":
+                            return method.return_type
+                raise SemanticError(f"Protocol {arg_type.name} does not have __len__ method")
+
+            # Concrete types: lookup __len__ method
             qname = arg_type.qualified_name()
             if qname is None:
                 raise SemanticError(f"len() argument must have __len__, got {arg_type}")
@@ -1475,6 +1504,37 @@ class SemanticAnalyzer:
 
         return False
 
+    def _type_conforms_to_protocol(self, actual: TpyType, protocol: ProtocolType) -> bool:
+        """Check if actual type structurally conforms to a protocol.
+
+        A type conforms if it has all methods required by the protocol.
+        """
+        # Look up the protocol definition
+        protocol_def = builtin_modules.lookup_protocol(protocol.name)
+        if protocol_def is None:
+            # User-defined protocol - check in registry
+            protocol_info = self.registry.get_protocol(protocol.name)
+            if protocol_info is None:
+                return False
+            # Check that actual type has all required methods
+            for method_sig in protocol_info.methods:
+                # For user records, check methods in RecordInfo
+                if isinstance(actual, RecordType):
+                    record = self.registry.get_record(actual.name)
+                    if record is None or record.get_method(method_sig.name) is None:
+                        return False
+                else:
+                    # For builtin types, check via module system
+                    if not builtin_modules.lookup_type_method(actual, method_sig.name):
+                        return False
+            return True
+
+        # Built-in protocol - check via module system
+        for method_name in protocol_def.methods:
+            if not builtin_modules.lookup_type_method(actual, method_name):
+                return False
+        return True
+
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,
                                 loc: SourceLocation | None = None,
                                 source_expr: TpyExpr | None = None,
@@ -1490,6 +1550,15 @@ class SemanticAnalyzer:
         """
         if actual == expected:
             return None
+
+        # Protocol matching (structural subtyping)
+        if isinstance(expected, ProtocolType):
+            if self._type_conforms_to_protocol(actual, expected):
+                return None  # No coercion needed, structural match
+            raise SemanticError(
+                f"Type {actual} does not conform to protocol {expected} in {context}",
+                loc
+            )
 
         # Allow T -> Own[T] coercion (ownership transfer for return values)
         if isinstance(expected, OwnType):

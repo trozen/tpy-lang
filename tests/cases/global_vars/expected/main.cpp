@@ -69,7 +69,7 @@ void __tpy_init() {
   // 16: repeated: list[Int32] = [0] * count
   repeated = std::vector<int32_t>(std::max(0, (*count).to_int32()), 0);
   // 17: print(len(repeated))
-  std::cout << static_cast<int32_t>((*repeated).size()) << "\n";
+  std::cout << tpy::__len__((*repeated)) << "\n";
   // 20: z = 0
   z = tpy::BigInt(0);
   // 21: print(z)

@@ -504,43 +504,89 @@ This is because functions returning `Own[T]` create temporaries (rvalues) that c
 - **Planned**: Enums → `enum class`
 - **Open**: Inheritance → could support simple cases
 
-### Protocols (Open)
+### Protocols (Partial)
 
 Protocols enable structural subtyping (compile-time duck typing). A type matches a protocol if it has the required methods, without explicit inheritance. This is Python's `typing.Protocol` (PEP 544), similar to Go interfaces or Rust traits.
 
+#### Working: Built-in `Sized` Protocol
+
+The built-in `Sized` protocol is available from the `typing` module:
+
+```python
+from typing import Sized
+from tpy import Int32
+
+def count(items: Sized) -> Int32:
+    return len(items)
+
+def main() -> None:
+    nums: list[Int32] = [1, 2, 3]
+    print(count(nums))  # Works! Prints 3
+```
+
+Generated C++:
+```cpp
+template<tpy::Sized T_items>
+int32_t count(const T_items& items) {
+    return tpy::__len__(items);
+}
+```
+
+The `tpy::Sized` concept uses the `tpy::__len__()` free function, which has overloads for `std::vector`, `std::array`, `std::span`, `std::string_view`, and `StaticList`, plus a default template for user types with `__len__()` method.
+
+#### Working: User-Defined Protocols
+
+You can define your own protocols, but **prefer using existing CPython protocols** (like `Sized` from `typing`) when possible. This ensures compatibility with both CPython and TurboPython, and avoids duplicating standard definitions.
+
+Example of a custom protocol:
+
 ```python
 from typing import Protocol
+from tpy import Int32
 
-class Sized(Protocol):
+class Measurable(Protocol):
     def __len__(self) -> Int32: ...
 
-def process(items: Sized) -> Int32:
+def count(items: Measurable) -> Int32:
     return len(items)
 ```
 
-Any type with a `__len__` method returning `Int32` would satisfy `Sized`. This would compile to C++20 concepts.
+Generated C++:
+```cpp
+template<typename T>
+concept Measurable = requires(const T& t) {
+    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
+};
 
-#### Compiler Traits
+template<Measurable T_items>
+int32_t count(const T_items& items) {
+    return tpy::__len__(items);
+}
+```
 
-Protocols also serve as **compiler traits**—they let the compiler discover type capabilities without hardcoded type checks. This enables types like `StaticList` to be fully defined in source code:
+#### Planned: Generic Protocols
+
+Generic protocols like `Iterable[T]` are not yet supported:
 
 ```python
-class HasLength(Protocol):
-    def __len__(self) -> Int32: ...
-
-class CoercibleToSpan(Protocol[T]):
-    def __span__(self) -> Span[T]: ...
-
+# NOT YET WORKING
 class Iterable(Protocol[T]):
     def __iter__(self) -> Iterator[T]: ...
 ```
 
-With this design:
-- `len(x)` works on any type conforming to `HasLength`
-- `for` loops work on any type conforming to `Iterable[T]`
-- Implicit coercion to `Span[T]` works on any type conforming to `CoercibleToSpan[T]`
+#### Planned: Compiler Traits
 
-This allows user-defined types to integrate seamlessly with builtins.
+Protocols will serve as **compiler traits**—letting the compiler discover type capabilities without hardcoded type checks:
+
+```python
+class CoercibleToSpan(Protocol[T]):
+    def __span__(self) -> Span[T]: ...
+```
+
+With this design:
+- `len(x)` works on any type conforming to `Sized` ✓ (working)
+- `for` loops work on any type conforming to `Iterable[T]` (planned)
+- Implicit coercion to `Span[T]` works on any type conforming to `CoercibleToSpan[T]` (planned)
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 

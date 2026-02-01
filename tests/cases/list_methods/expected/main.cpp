@@ -11,7 +11,7 @@ void print_list(std::vector<int32_t>& nums) {
   // 7:     i: Int32 = 0
   int32_t i = 0;
   // 8:     while i < len(nums):
-  while ((i < static_cast<int32_t>(nums.size()))) {
+  while ((i < tpy::__len__(nums))) {
     // 9:         print(nums[i])
     std::cout << tpy::get_item(nums, i) << "\n";
     // 10:         i += 1
@@ -31,13 +31,13 @@ void test_pop() {
   // 19:     print(last)
   std::cout << last << "\n";
   // 20:     print(len(nums))
-  std::cout << static_cast<int32_t>(nums.size()) << "\n";
+  std::cout << tpy::__len__(nums) << "\n";
   // 23:     second_last: Int32 = nums.pop()
   int32_t second_last = tpy::pop_back(nums);
   // 24:     print(second_last)
   std::cout << second_last << "\n";
   // 25:     print(len(nums))
-  std::cout << static_cast<int32_t>(nums.size()) << "\n";
+  std::cout << tpy::__len__(nums) << "\n";
   // 27:     print_list(nums)
   print_list(nums);
 }
@@ -86,15 +86,15 @@ void test_clear() {
   // 63:     nums: list[Int32] = [1, 2, 3, 4, 5]
   std::vector<int32_t> nums = {1, 2, 3, 4, 5};
   // 64:     print(len(nums))
-  std::cout << static_cast<int32_t>(nums.size()) << "\n";
+  std::cout << tpy::__len__(nums) << "\n";
   // 66:     nums.clear()
   nums.clear();
   // 67:     print(len(nums))
-  std::cout << static_cast<int32_t>(nums.size()) << "\n";
+  std::cout << tpy::__len__(nums) << "\n";
   // 70:     nums.append(100)
   nums.push_back(100);
   // 71:     print(len(nums))
-  std::cout << static_cast<int32_t>(nums.size()) << "\n";
+  std::cout << tpy::__len__(nums) << "\n";
   // 72:     print(nums[0])
   std::cout << tpy::get_item(nums, 0) << "\n";
 }
@@ -158,7 +158,7 @@ void test_combined_operations() {
   // 115:     nums.clear()
   nums.clear();
   // 116:     print(len(nums))
-  std::cout << static_cast<int32_t>(nums.size()) << "\n";
+  std::cout << tpy::__len__(nums) << "\n";
 }
 
 void __tpy_init() {

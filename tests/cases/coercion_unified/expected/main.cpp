@@ -36,7 +36,7 @@ int32_t take_span(std::span<const int32_t> s) {
   // 38:     i: Int32 = 0
   int32_t i = 0;
   // 39:     while i < len(s):
-  while ((i < static_cast<int32_t>(s.size()))) {
+  while ((i < tpy::__len__(s))) {
     // 40:         result = result + s[i]
     result = (tpy::int32_add(result, s[i]));
     // 41:         i = i + 1

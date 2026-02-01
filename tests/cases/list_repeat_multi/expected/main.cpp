@@ -18,29 +18,29 @@ void __tpy_init() {
   // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
   sl = StaticList<int32_t, 8>(tpy::repeat_range<int32_t>(3, {1, 2}));
   // 5: print(len(sl))
-  std::cout << (*sl).size() << "\n";
+  std::cout << tpy::__len__((*sl)) << "\n";
   // 6: for i in range(len(sl)):
-  for (int32_t i = 0; i < (*sl).size(); ++i) {
+  for (int32_t i = 0; i < tpy::__len__((*sl)); ++i) {
     // 7:     print(sl[i])
     std::cout << tpy::get_item((*sl), i) << "\n";
   }
   // 10: nums: list[Int32] = [10, 20] * 2
   nums = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>(2, {10, 20}));
   // 11: print(len(nums))
-  std::cout << static_cast<int32_t>((*nums).size()) << "\n";
+  std::cout << tpy::__len__((*nums)) << "\n";
   // 12: for i in range(len(nums)):
-  for (int32_t i = 0; i < static_cast<int32_t>((*nums).size()); ++i) {
+  for (int32_t i = 0; i < tpy::__len__((*nums)); ++i) {
     // 13:     print(nums[i])
     std::cout << tpy::get_item((*nums), i) << "\n";
   }
   // 16: empty: list[Int32] = [] * 100
   empty = std::vector<int32_t>{};
   // 17: print(len(empty))
-  std::cout << static_cast<int32_t>((*empty).size()) << "\n";
+  std::cout << tpy::__len__((*empty)) << "\n";
   // 20: neg: list[Int32] = [1, 2, 3] * -5
   neg = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>((-5), {1, 2, 3}));
   // 21: print(len(neg))
-  std::cout << static_cast<int32_t>((*neg).size()) << "\n";
+  std::cout << tpy::__len__((*neg)) << "\n";
 }
 
 } // namespace tpy_user::main

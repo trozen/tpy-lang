@@ -8,7 +8,7 @@ tpy::Global<std::string_view> __name__;
 // 3: def main():
 void main() {
   // 5:     if len(sys.argv) >= 1:
-  if ((static_cast<int32_t>(tpy::sys_argv.size()) >= 1)) {
+  if ((tpy::__len__(tpy::sys_argv) >= 1)) {
     // 6:         print("ok")
     std::cout << "ok" << "\n";
   } else {

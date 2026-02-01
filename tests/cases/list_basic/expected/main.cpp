@@ -18,7 +18,7 @@ int32_t sum_list(std::vector<int32_t>& nums) {
   // 5:     i: Int32 = 0
   int32_t i = 0;
   // 6:     while i < len(nums):
-  while ((i < static_cast<int32_t>(nums.size()))) {
+  while ((i < tpy::__len__(nums))) {
     // 7:         total += nums[i]
     total = tpy::int32_add(total, tpy::get_item(nums, i));
     // 8:         i += 1
@@ -39,7 +39,7 @@ void __tpy_init() {
   // 14: print(sum_list(mem))
   std::cout << sum_list(mem) << "\n";
   // 15: print(len(mem))
-  std::cout << static_cast<int32_t>((*mem).size()) << "\n";
+  std::cout << tpy::__len__((*mem)) << "\n";
   // 18: data = [0] * 5
   data = std::vector<tpy::BigInt>(std::max(0, 5), tpy::BigInt(0));
   // 19: data[0] = 100

@@ -11,10 +11,11 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
-    TpyType, RecordType, PtrType, ConstPtrType, OwnType,
-    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, TypeRegistry
+    TpyType, RecordType, PtrType, ConstPtrType, OwnType, ProtocolType,
+    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, TypeRegistry,
+    MethodSignature, ProtocolInfo
 )
-from .modules import lookup_generic_type, TypeParamKind, BuiltinTypeDef
+from .modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, TypeParamKind, BuiltinTypeDef
 
 
 class ParseError(Exception):
@@ -270,10 +271,19 @@ class TpyRecord:
 
 
 @dataclass
+class TpyProtocol:
+    """Protocol definition for structural subtyping."""
+    name: str
+    methods: list[MethodSignature]
+    loc: SourceLocation | None = None
+
+
+@dataclass
 class TpyModule:
     """Top-level module."""
     records: list[TpyRecord]
     functions: list[TpyFunction]
+    protocols: list[TpyProtocol] = field(default_factory=list)
     top_level_stmts: list[TpyStmt] = field(default_factory=list)
     source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
     # Import tracking: module_name -> set of imported names (for "from X import Y")
@@ -290,7 +300,7 @@ class Parser:
         "lambda", "yield", "global", "nonlocal",
     }
 
-    ALLOWED_IMPORTS = {"tpy", "time", "sys", "math"}
+    ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}
 
     def __init__(self):
         self.registry = TypeRegistry()
@@ -313,6 +323,7 @@ class Parser:
         """Parse a module."""
         records = []
         functions = []
+        protocols = []
         top_level_stmts = []
         imports: dict[str, set[str] | None] = {}
 
@@ -322,14 +333,22 @@ class Parser:
             elif isinstance(node, ast.Import):
                 self._check_import(node, imports)
             elif isinstance(node, ast.ClassDef):
-                record = self._parse_class(node)
-                records.append(record)
-                # Register the record type
-                self.registry.register_record(RecordInfo(
-                    name=record.name,
-                    fields=record.fields,
-                    has_init=record.init_method is not None
-                ))
+                result = self._parse_class(node)
+                if isinstance(result, TpyProtocol):
+                    protocols.append(result)
+                    # Register the protocol type
+                    self.registry.register_protocol(ProtocolInfo(
+                        name=result.name,
+                        methods=result.methods
+                    ))
+                else:
+                    records.append(result)
+                    # Register the record type
+                    self.registry.register_record(RecordInfo(
+                        name=result.name,
+                        fields=result.fields,
+                        has_init=result.init_method is not None
+                    ))
             elif isinstance(node, ast.FunctionDef):
                 func = self._parse_function(node)
                 functions.append(func)
@@ -337,7 +356,7 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports)
+        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports)
 
     def _check_import(self, node: ast.Import, imports: dict[str, set[str] | None]) -> None:
         """Check and track 'import X' statement."""
@@ -371,10 +390,15 @@ class Parser:
                     raise ParseError(f"Import aliases not supported: 'from {module_name} import {alias.name} as {alias.asname}'", node)
                 current.add(alias.name)
 
-    def _parse_class(self, node: ast.ClassDef) -> TpyRecord:
-        """Parse a class definition as a record."""
+    def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
+        """Parse a class definition as a record or protocol."""
+        # Check if this is a Protocol definition
         if node.bases:
+            for base in node.bases:
+                if isinstance(base, ast.Name) and base.id == "Protocol":
+                    return self._parse_protocol(node)
             raise ParseError(f"Inheritance not allowed in class '{node.name}'", node)
+
         if node.decorator_list:
             raise ParseError(f"Decorators not allowed on class '{node.name}'", node)
 
@@ -410,6 +434,51 @@ class Parser:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 
         return TpyRecord(name=node.name, fields=fields, methods=methods)
+
+    def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
+        """Parse a protocol definition."""
+        if node.decorator_list:
+            raise ParseError(f"Decorators not allowed on protocol '{node.name}'", node)
+
+        methods = []
+
+        for item in node.body:
+            if isinstance(item, ast.FunctionDef):
+                # Parse method signature (body should be ... or pass)
+                params = []
+                for i, arg in enumerate(item.args.args):
+                    if i == 0:
+                        if arg.arg != "self":
+                            raise ParseError(f"First parameter of protocol method '{item.name}' must be 'self'", item)
+                        continue
+                    if arg.annotation is None:
+                        raise ParseError(f"Protocol method parameter '{arg.arg}' must have type annotation", item)
+                    param_type = self._parse_type_annotation(arg.annotation)
+                    params.append((arg.arg, param_type))
+
+                return_type = VOID
+                if item.returns:
+                    return_type = self._parse_type_annotation(item.returns)
+
+                methods.append(MethodSignature(
+                    name=item.name,
+                    params=params,
+                    return_type=return_type
+                ))
+            elif isinstance(item, ast.Pass):
+                pass
+            elif isinstance(item, ast.Expr):
+                # Allow docstrings (string literals) and ... (Ellipsis)
+                if isinstance(item.value, ast.Constant):
+                    pass  # Docstring
+                elif isinstance(item.value, ast.Ellipsis):
+                    pass  # Ellipsis at class level
+                else:
+                    raise ParseError(f"Unexpected expression in protocol '{node.name}'", item)
+            else:
+                raise ParseError(f"Unsupported construct in protocol '{node.name}': {type(item).__name__}", item)
+
+        return TpyProtocol(name=node.name, methods=methods, loc=self._loc(node))
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str) -> TpyFunction:
         """Parse a method definition."""
@@ -488,6 +557,12 @@ class Parser:
                 return STR
             elif name == "Char":
                 return CHAR
+            elif self.registry.get_protocol(name) is not None:
+                # User-defined protocol type
+                return ProtocolType(name)
+            elif lookup_builtin_protocol(name) is not None:
+                # Built-in protocol type (e.g., Sized)
+                return ProtocolType(name)
             elif self.registry.is_known_type(name) or name[0].isupper():
                 # Assume it's a record type (will be validated later)
                 return RecordType(name)

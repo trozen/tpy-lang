@@ -10,7 +10,7 @@ void takes_list(std::vector<tpy::BigInt>& x) {
   // 4:     x.append(42)
   x.push_back(42);
   // 5:     print(len(x))
-  std::cout << static_cast<int32_t>(x.size()) << "\n";
+  std::cout << tpy::__len__(x) << "\n";
 }
 
 // 7: def takes_list_int32(x: list[Int32]) -> None:
@@ -18,7 +18,7 @@ void takes_list_int32(std::vector<int32_t>& x) {
   // 8:     x.append(Int32(99))
   x.push_back(99);
   // 9:     print(len(x))
-  std::cout << static_cast<int32_t>(x.size()) << "\n";
+  std::cout << tpy::__len__(x) << "\n";
 }
 
 // 11: def takes_array(x: Array[Int32, 3]) -> None:
@@ -32,7 +32,7 @@ void takes_static(StaticList<int32_t, 10>& x) {
   // 15:     x.append(Int32(1))
   x.push_back(1);
   // 16:     print(len(x))
-  std::cout << x.size() << "\n";
+  std::cout << tpy::__len__(x) << "\n";
 }
 
 void __tpy_init() {

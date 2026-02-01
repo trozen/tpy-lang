@@ -240,6 +240,30 @@ class RecordType(TpyType):
 
 
 @dataclass(frozen=True)
+class ProtocolType(TpyType):
+    """Protocol type for structural subtyping.
+
+    A protocol defines required methods. Any type implementing those methods
+    satisfies the protocol. Compiles to C++20 concepts.
+    """
+    name: str
+
+    def to_cpp(self) -> str:
+        # Template parameter placeholder - actual type substituted at instantiation
+        return "T"
+
+    def __str__(self) -> str:
+        return self.name
+
+    def qualified_name(self) -> Optional[str]:
+        return f"typing.{self.name}"
+
+    def is_value_type(self) -> bool:
+        # Protocol-typed params are passed by const ref
+        return False
+
+
+@dataclass(frozen=True)
 class PtrType(TpyType):
     """Mutable pointer type: Ptr[T] -> T*"""
     pointee: TpyType
@@ -501,12 +525,28 @@ class FunctionInfo:
     is_method: bool = False
 
 
+@dataclass
+class MethodSignature:
+    """Method signature required by a protocol."""
+    name: str
+    params: list[tuple[str, TpyType]]  # (param_name, param_type)
+    return_type: TpyType
+
+
+@dataclass
+class ProtocolInfo:
+    """Information about a protocol definition."""
+    name: str
+    methods: list[MethodSignature]
+
+
 class TypeRegistry:
     """Registry of all known types and symbols."""
 
     def __init__(self):
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
+        self.protocols: dict[str, ProtocolInfo] = {}
         # Built-in types
         self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "Own", "StaticList", "Array", "Span", "str", "list", "int", "float"}
 
@@ -516,11 +556,17 @@ class TypeRegistry:
     def register_function(self, info: FunctionInfo) -> None:
         self.functions[info.name] = info
 
+    def register_protocol(self, info: ProtocolInfo) -> None:
+        self.protocols[info.name] = info
+
     def get_record(self, name: str) -> Optional[RecordInfo]:
         return self.records.get(name)
 
     def get_function(self, name: str) -> Optional[FunctionInfo]:
         return self.functions.get(name)
 
+    def get_protocol(self, name: str) -> Optional[ProtocolInfo]:
+        return self.protocols.get(name)
+
     def is_known_type(self, name: str) -> bool:
-        return name in self.builtins or name in self.records
+        return name in self.builtins or name in self.records or name in self.protocols

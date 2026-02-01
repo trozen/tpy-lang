@@ -171,7 +171,7 @@ int32_t find_string(std::vector<std::string_view>& items, std::string_view targe
   // 108:     i: Int32 = 0
   int32_t i = 0;
   // 109:     while i < len(items):
-  while ((i < static_cast<int32_t>(items.size()))) {
+  while ((i < tpy::__len__(items))) {
     // 110:         if items[i] == target:
     if ((tpy::get_item(items, i) == target)) {
       // 111:             return i

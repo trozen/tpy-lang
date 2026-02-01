@@ -14,14 +14,14 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
-    StaticListType, ArrayType, SpanType, ListType, PendingListType,
+    StaticListType, ArrayType, SpanType, ListType, PendingListType, ProtocolType,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
     INT32, VOID, BIGINT, FLOAT, CHAR, STR
 )
 from .namespace import Namespace, BindingKind
 from .parse import (
     SourceLocation,
-    TpyModule, TpyRecord, TpyFunction, TpyStmt, TpyExpr,
+    TpyModule, TpyRecord, TpyFunction, TpyProtocol, TpyStmt, TpyExpr,
     TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
@@ -213,6 +213,11 @@ class CodeGenerator:
         # Generate full record definitions
         for record in module.records:
             self._gen_record_decl(hpp, record)
+            hpp.write("\n")
+
+        # Generate C++20 concepts for user-defined protocols
+        for protocol in module.protocols:
+            self._gen_concept_decl(hpp, protocol)
             hpp.write("\n")
 
         # Generate function declarations
@@ -512,19 +517,93 @@ class CodeGenerator:
 
         out.write("  }\n")
 
+    def _gen_concept_decl(self, out: TextIO, protocol: TpyProtocol) -> None:
+        """Generate a C++20 concept for a user-defined protocol."""
+        out.write(f"template<typename T>\n")
+        out.write(f"concept {protocol.name} = requires(const T& t) {{\n")
+
+        for method_sig in protocol.methods:
+            # Generate requirement for each method
+            ret_cpp = method_sig.return_type.to_cpp()
+
+            # For dunder methods that have tpy:: free function equivalents, use those
+            # This allows std types (vector, string, etc.) to satisfy the protocol
+            if method_sig.name == "__len__":
+                out.write(f"    {{ tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
+            else:
+                # { t.method_name(args...) } -> std::convertible_to<return_type>;
+                params_str = ""
+                if method_sig.params:
+                    # For now, use std::declval for parameter types
+                    param_exprs = [f"std::declval<{ptype.to_cpp()}>()" for _, ptype in method_sig.params]
+                    params_str = ", ".join(param_exprs)
+                out.write(f"    {{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
+
+        out.write("};\n")
+
+    def _get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, ProtocolType]]:
+        """Get list of protocol-typed parameters."""
+        return [(pname, ptype) for pname, ptype in params if isinstance(ptype, ProtocolType)]
+
+    def _gen_template_header(self, protocol_params: list[tuple[str, ProtocolType]]) -> str:
+        """Generate template header with concept constraints for protocol params."""
+        if not protocol_params:
+            return ""
+        # template<tpy::Sized T_items, tpy::Iterable T_other>
+        template_parts = []
+        for pname, ptype in protocol_params:
+            # Look up protocol to get C++ concept name
+            protocol_def = builtin_modules.lookup_protocol(ptype.name)
+            if protocol_def:
+                concept_name = protocol_def.cpp_concept
+            else:
+                # User-defined protocol - use the protocol name directly
+                concept_name = ptype.name
+            template_parts.append(f"{concept_name} T_{pname}")
+        return f"template<{', '.join(template_parts)}>\n"
+
+    def _gen_params_with_protocols(self, params: list[tuple[str, TpyType]]) -> str:
+        """Generate function parameter list, using template types for protocol params."""
+        result = []
+        for pname, ptype in params:
+            if isinstance(ptype, ProtocolType):
+                # Protocol param: const T_name& name
+                result.append(f"const T_{pname}& {pname}")
+            else:
+                result.append(ptype.to_cpp_param(pname))
+        return ", ".join(result)
+
     def _gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function declaration."""
-        ret_type = func.return_type.to_cpp_return()
-        params = self._gen_params(func.params)
-        out.write(f"{ret_type} {func.name}({params});\n")
+        protocol_params = self._get_protocol_params(func.params)
+
+        if protocol_params:
+            # Template function with concept constraints
+            out.write(self._gen_template_header(protocol_params))
+            ret_type = func.return_type.to_cpp_return()
+            params = self._gen_params_with_protocols(func.params)
+            out.write(f"{ret_type} {func.name}({params});\n")
+        else:
+            ret_type = func.return_type.to_cpp_return()
+            params = self._gen_params(func.params)
+            out.write(f"{ret_type} {func.name}({params});\n")
 
     def _gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
         self._emit_source_comment(out, func.loc)
 
-        ret_type = func.return_type.to_cpp_return()
-        params = self._gen_params(func.params)
-        out.write(f"{ret_type} {func.name}({params}) {{\n")
+        protocol_params = self._get_protocol_params(func.params)
+
+        if protocol_params:
+            # Template function with concept constraints
+            out.write(self._gen_template_header(protocol_params))
+            ret_type = func.return_type.to_cpp_return()
+            params = self._gen_params_with_protocols(func.params)
+            out.write(f"{ret_type} {func.name}({params}) {{\n")
+        else:
+            ret_type = func.return_type.to_cpp_return()
+            params = self._gen_params(func.params)
+            out.write(f"{ret_type} {func.name}({params}) {{\n")
 
         # Reset declared vars and add parameters
         self.declared_vars = {pname for pname, _ in func.params}
@@ -1218,19 +1297,17 @@ class CodeGenerator:
             # print() maps to std::printf
             if expr.func == "print":
                 return self._gen_print(expr.args, expr.kwargs)
-            # len() dispatches to __len__ on the argument type
+            # len() uses tpy::__len__ free function (protocol-compatible)
             if expr.func == "len":
                 arg = expr.args[0]
                 arg_type = self._get_resolved_type(arg)
-                methods = builtin_modules.lookup_type_method(arg_type, "__len__")
-                if methods:
-                    # For string literals, wrap in string_view first
-                    if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
-                        escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-                        obj = f'std::string_view("{escaped}")'
-                    else:
-                        obj = self._gen_expr_deref(arg)
-                    return self._gen_method_from_def(obj, [], methods[0])
+                # For string literals, wrap in string_view first
+                if isinstance(arg_type, StrType) and isinstance(arg, TpyStrLiteral):
+                    escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+                    obj = f'std::string_view("{escaped}")'
+                else:
+                    obj = self._gen_expr_deref(arg)
+                return f"tpy::__len__({obj})"
             # Check module registry for built-in functions
             if builtin_fn := builtin_modules.lookup_function(expr.func):
                 return self._gen_builtin_call(expr, builtin_fn)

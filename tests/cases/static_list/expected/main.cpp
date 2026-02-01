@@ -30,7 +30,7 @@ void process_list(StaticList<Item, 16>& items) {
 // 24: def print_list(items: StaticList[Item, 16]) -> None:
 void print_list(StaticList<Item, 16>& items) {
   // 25:     for i in range(len(items)):
-  for (int32_t i = 0; i < items.size(); ++i) {
+  for (int32_t i = 0; i < tpy::__len__(items); ++i) {
     // 26:         item: Item = items[i]
     Item item = tpy::get_item(items, i);
     // 27:         print(item.value)
@@ -45,13 +45,13 @@ void __tpy_init() {
   // 30: process_list(items)
   process_list(items);
   // 31: print(len(items))
-  std::cout << (*items).size() << "\n";
+  std::cout << tpy::__len__((*items)) << "\n";
   // 32: print_list(items)
   print_list(items);
   // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
   nums = StaticList<int32_t, 8>({100, 200, 300});
   // 36: print(len(nums))
-  std::cout << (*nums).size() << "\n";
+  std::cout << tpy::__len__((*nums)) << "\n";
   // 37: print(nums[0])
   std::cout << tpy::get_item((*nums), 0) << "\n";
   // 38: print(nums[2])
@@ -61,7 +61,7 @@ void __tpy_init() {
   // 42: filled[0] = 42
   tpy::set_item((*filled), 0, 42);
   // 43: print(len(filled))
-  std::cout << (*filled).size() << "\n";
+  std::cout << tpy::__len__((*filled)) << "\n";
   // 44: print(filled[0])
   std::cout << tpy::get_item((*filled), 0) << "\n";
   // 45: print(filled[7])

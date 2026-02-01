@@ -7,6 +7,7 @@ allowing .tp.py files to run in CPython for testing purposes.
 
 from __future__ import annotations
 from typing import Generic, TypeVar, get_args, get_origin
+from collections.abc import Sized
 
 T = TypeVar('T')
 

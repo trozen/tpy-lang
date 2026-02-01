@@ -61,6 +61,14 @@ class BuiltinTypeDef:
     type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
 
 
+@dataclass
+class ProtocolDef:
+    """Definition of a protocol (structural type) with required methods."""
+    name: str
+    methods: dict[str, MethodDef]  # method_name -> signature
+    cpp_concept: str  # C++ concept name (e.g., "tpy::Sized")
+
+
 class BuiltinModule:
     """A module containing built-in functions and types."""
 
@@ -68,10 +76,15 @@ class BuiltinModule:
         self.name = name
         self.functions: dict[str, BuiltinFunctionDef] = {}
         self.types: dict[str, BuiltinTypeDef] = {}  # keyed by qualified name
+        self.protocols: dict[str, ProtocolDef] = {}  # protocol_name -> ProtocolDef
 
     def function(self, name: str, overloads: list[MethodDef]):
         """Register a built-in function."""
         self.functions[name] = BuiltinFunctionDef(name=name, overloads=overloads)
+
+    def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str):
+        """Register a protocol definition."""
+        self.protocols[name] = ProtocolDef(name=name, methods=methods, cpp_concept=cpp_concept)
 
     def register_type(self, type_obj: "TpyType", cpp_type: str,
                       methods: dict[str, list[MethodDef]] | None = None,
@@ -131,6 +144,7 @@ _tpy: BuiltinModule | None = None
 _time: BuiltinModule | None = None
 _sys: BuiltinModule | None = None
 _math: BuiltinModule | None = None
+_typing: BuiltinModule | None = None
 
 
 def get_builtins() -> BuiltinModule:
@@ -183,6 +197,16 @@ def get_math() -> BuiltinModule:
     return _math
 
 
+def get_typing() -> BuiltinModule:
+    """Get the typing module, loading it on first access."""
+    global _typing
+    if _typing is None:
+        from tpyc.modules import typing as typing_module
+        _typing = typing_module.module
+    assert _typing is not None
+    return _typing
+
+
 def _all_modules() -> list[BuiltinModule]:
     """Get all loaded modules for default lookups (builtins + tpy only).
 
@@ -203,6 +227,8 @@ def get_module(name: str) -> BuiltinModule | None:
         return get_sys()
     elif name == "math":
         return get_math()
+    elif name == "typing":
+        return get_typing()
     return None
 
 
@@ -246,6 +272,19 @@ def lookup_function(name: str) -> BuiltinFunctionDef | None:
     for module in _all_modules():
         if fn := module.functions.get(name):
             return fn
+    return None
+
+
+def lookup_protocol(name: str) -> ProtocolDef | None:
+    """Lookup a protocol by name across all modules."""
+    # Check default modules first
+    for module in _all_modules():
+        if proto := module.protocols.get(name):
+            return proto
+    # Also check typing module for protocols like Sized
+    typing_mod = get_typing()
+    if proto := typing_mod.protocols.get(name):
+        return proto
     return None
 
 

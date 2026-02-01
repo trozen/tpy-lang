@@ -132,6 +132,41 @@ int32_t process(const T& items) {
 }
 ```
 
+### Chosen Implementation: Free Function Dispatch (C++20 Concepts)
+
+The implementation uses **Option A (C++20 Concepts)** with a **free function dispatch** pattern to bridge Python's dunder methods with C++ standard library types:
+
+```cpp
+// In tpy_runtime.hpp - free functions for __len__
+
+// Overloads for std types (which don't have __len__ method)
+template<typename T>
+int32_t __len__(const std::vector<T>& x) { return static_cast<int32_t>(x.size()); }
+
+template<typename T, std::size_t N>
+int32_t __len__(const std::array<T, N>& x) { return static_cast<int32_t>(x.size()); }
+
+template<typename T>
+int32_t __len__(std::span<const T> x) { return static_cast<int32_t>(x.size()); }
+
+// Default template for user types with __len__() method
+template<typename T>
+    requires requires(const T& t) { { t.__len__() } -> std::convertible_to<int32_t>; }
+int32_t __len__(const T& x) { return x.__len__(); }
+
+// Sized concept uses the free function
+template<typename T>
+concept Sized = requires(const T& t) {
+    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
+};
+```
+
+This approach:
+- Keeps `std::vector` as-is (no wrapper types, no performance penalty)
+- Enables both built-in types and user types to satisfy the same protocols
+- Uses `tpy::__len__(x)` uniformly in generated code for `len(x)` calls
+- Allows user-defined concepts to also use the free function dispatch
+
 ## 6. `len()` using protocols
 
 ```python
@@ -294,9 +329,14 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
 
 ## 10. Implementation phases
 
-1. **Phase 1**: Simple protocols (Sized) - no generics, no Self
-2. **Phase 2**: Protocol matching in sema for function params
+1. **Phase 1**: Simple protocols (Sized) - no generics, no Self ✅ **COMPLETE**
+   - Built-in `Sized` protocol with `tpy::__len__` free function dispatch
+   - User-defined protocols with `class Name(Protocol):` syntax
+   - Protocol conformance checking in semantic analysis
+   - C++20 concept generation for both built-in and user-defined protocols
+   - Template function generation for protocol-typed parameters
+2. **Phase 2**: Protocol matching in sema for function params ✅ **COMPLETE** (included in Phase 1)
 3. **Phase 3**: Generic protocols (`Iterable[T]`)
 4. **Phase 4**: `Self` type in protocols
 5. **Phase 5**: Compiler trait protocols (`CoercibleToSpan`, etc.)
-6. **Phase 6**: User-defined protocols
+6. ~~**Phase 6**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)

@@ -20,7 +20,7 @@ tpy::BigInt test_empty_list() {
   // 8:     items.append(3)
   items.push_back(3);
   // 9:     return len(items)
-  return tpy::BigInt(static_cast<int32_t>(items.size()));
+  return tpy::BigInt(tpy::__len__(items));
 }
 
 // 12: def test_empty_list_int32() -> Int32:
@@ -44,7 +44,7 @@ tpy::BigInt test_list_constructor() {
   // 22:     items.append(6)
   items.push_back(6);
   // 23:     return len(items)
-  return tpy::BigInt(static_cast<int32_t>(items.size()));
+  return tpy::BigInt(tpy::__len__(items));
 }
 
 // 26: def test_list_constructor_int32() -> Int32:
@@ -74,11 +74,11 @@ void __tpy_init() {
   // 43: global_list.append(100)
   (*global_list).push_back(100);
   // 44: print(len(global_list))
-  std::cout << static_cast<int32_t>((*global_list).size()) << "\n";
+  std::cout << tpy::__len__((*global_list)) << "\n";
   // 46: global_list2.append(Int32(50))
   (*global_list2).push_back(50);
   // 47: print(len(global_list2))
-  std::cout << static_cast<int32_t>((*global_list2).size()) << "\n";
+  std::cout << tpy::__len__((*global_list2)) << "\n";
 }
 
 } // namespace tpy_user::main
