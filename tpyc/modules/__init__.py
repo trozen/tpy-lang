@@ -378,11 +378,11 @@ def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) ->
     - "T" -> type_params["T"]
     - "Self" -> type_params["Self"] (for protocol Self type)
     - "Ptr[T]" -> PtrType(type_params["T"])
-    - "Iterable" -> "Iterable" (kept as string, accepts container types)
+    - "NativeIterable[T]" -> ProtocolType("NativeIterable", [type_params["T"]])
     - TpyType -> returned as-is
     - SelfType -> type_params["Self"] if available, else SELF
     """
-    from tpyc.typesys import SelfType, SELF
+    from tpyc.typesys import SelfType, SELF, ProtocolType
 
     # Handle SelfType instances (from user-defined protocols)
     if isinstance(t, SelfType):
@@ -391,10 +391,6 @@ def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) ->
         return SELF
 
     if isinstance(t, str):
-        # "Iterable" accepts any container type (list, Array, Span, StaticList)
-        if t == "Iterable":
-            return "Iterable"
-
         # "Self" type parameter for builtin protocols
         if t == "Self":
             if "Self" in type_params:
@@ -409,6 +405,17 @@ def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) ->
             if inner_name not in type_params:
                 raise ValueError(f"Unresolved type parameter in Ptr[{inner_name}]")
             return PtrType(type_params[inner_name])
+
+        # Check for Protocol[X] patterns (e.g., NativeIterable[T], Sequence[T])
+        protocol_match = re.match(r"(\w+)\[(\w+)\]", t)
+        if protocol_match:
+            protocol_name = protocol_match.group(1)
+            inner_name = protocol_match.group(2)
+            # Check if this is a known protocol
+            if lookup_protocol(protocol_name):
+                if inner_name not in type_params:
+                    raise ValueError(f"Unresolved type parameter in {protocol_name}[{inner_name}]")
+                return ProtocolType(protocol_name, [type_params[inner_name]])
 
         # Simple type param like "T"
         if t not in type_params:

@@ -1786,9 +1786,17 @@ class CodeGenerator:
 
     def _ctor_param_matches(self, arg_type: TpyType, param_type: builtin_modules.TypeOrParam) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
-        if param_type == "Iterable":
-            # "Iterable" placeholder matches sequence containers (excludes str)
-            return arg_type.is_sequence()
+        import re
+        if isinstance(param_type, str):
+            # Check for Protocol[T] pattern (e.g., "NativeIterable[T]")
+            protocol_match = re.match(r"(\w+)\[(\w+)\]", param_type)
+            if protocol_match:
+                protocol_name = protocol_match.group(1)
+                # For NativeIterable, check if type has __native_iter__ method
+                if protocol_name == "NativeIterable":
+                    methods = builtin_modules.lookup_type_method(arg_type, "__native_iter__")
+                    return len(methods) > 0
+            return False
         if isinstance(param_type, TpyType):
             return arg_type == param_type or (
                 isinstance(arg_type, IntLiteralType) and isinstance(param_type, (Int32Type, BigIntType))

@@ -1139,16 +1139,7 @@ class SemanticAnalyzer:
             )
         for i, (arg, param) in enumerate(zip(expr.args, method.params)):
             arg_type = self._analyze_expr(arg)
-            # "Iterable" accepts sequence containers (list, Array, Span, StaticList)
-            # but not strings - use is_sequence() to exclude str
-            if param.type == "Iterable":
-                if not arg_type.is_sequence():
-                    raise SemanticError(
-                        f"Expected sequence for {param.name} argument, got {arg_type}",
-                        loc=arg.loc
-                    )
-                continue
-            # param.type is TpyType after resolve_method (not TypeParam)
+            # param.type is TpyType after resolve_method (including ProtocolType)
             param_type: TpyType = param.type  # type: ignore
             expr.args[i] = self._coerce_expr(arg, arg_type, param_type, f"{param.name} argument",
                                              coercion_ctx="arg")
@@ -1571,21 +1562,36 @@ class SemanticAnalyzer:
         """Try to match constructor params against arg types and infer type parameters.
 
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
-        Currently supports "Iterable" params which match sequence containers and infer T.
+        Supports protocol params like "NativeIterable[T]" which infer T from element type.
         """
+        import re
         inferred: dict[str, TpyType] = {}
         for param, arg_type in zip(params, arg_types):
-            if param.type == "Iterable":
-                # Extract element type from sequence argument (excludes str)
-                if not arg_type.is_sequence():
-                    return None  # Not a sequence container
-                elem_type = self._get_element_type(arg_type)
-                if elem_type is None:
-                    return None  # No element type
-                # Check consistency with previously inferred T
-                if "T" in inferred and inferred["T"] != elem_type:
+            if isinstance(param.type, str):
+                # Check for Protocol[TypeParam] pattern (e.g., "NativeIterable[T]")
+                protocol_match = re.match(r"(\w+)\[(\w+)\]", param.type)
+                if protocol_match:
+                    protocol_name = protocol_match.group(1)
+                    type_param = protocol_match.group(2)
+                    # Get element type from argument (via __native_iter__ or __getitem__)
+                    elem_type = self._get_iterable_element_type_or_none(arg_type)
+                    if elem_type is None:
+                        return None  # Arg doesn't conform to iterable protocol
+                    # Check if arg conforms to the protocol with inferred element type
+                    expected_protocol = ProtocolType(protocol_name, [elem_type])
+                    if not self._type_conforms_to_protocol(arg_type, expected_protocol):
+                        return None
+                    # Check consistency with previously inferred type param
+                    if type_param in inferred and inferred[type_param] != elem_type:
+                        return None
+                    inferred[type_param] = elem_type
+                elif param.type in inferred:
+                    # Simple type param like "T" - check consistency
+                    if not builtin_modules._type_matches_param(arg_type, inferred[param.type]):
+                        return None
+                else:
+                    # Unknown string pattern
                     return None
-                inferred["T"] = elem_type
             elif isinstance(param.type, TpyType):
                 # Concrete type - must match exactly
                 if not builtin_modules._type_matches_param(arg_type, param.type):
@@ -1729,6 +1735,19 @@ class SemanticAnalyzer:
 
         return None
 
+    def _types_compatible_for_protocol(self, actual_return: TpyType, expected_return: TpyType) -> bool:
+        """Check if actual return type is compatible with expected return type for protocol conformance.
+
+        Allows coercions like IntLiteralType -> Int32, which enables
+        PendingList[IntLiteral] to match NativeIterable[Int32].
+        """
+        if actual_return == expected_return:
+            return True
+        # Allow IntLiteralType to match any integer type it can coerce to
+        if resolve_coercion(actual_return, expected_return, "return") is not None:
+            return True
+        return False
+
     def _type_has_method_with_signature(
         self,
         actual: TpyType,
@@ -1810,15 +1829,15 @@ class SemanticAnalyzer:
                 else:
                     resolved = method_def
 
-                # Check return type
-                if resolved.returns != expected_return:
+                # Check return type (allow coercions like IntLiteral -> Int32)
+                if not self._types_compatible_for_protocol(resolved.returns, expected_return):
                     continue
                 # Check parameter count and types
                 if len(resolved.params) != len(expected_params):
                     continue
                 params_match = True
                 for param_def, expected_ptype in zip(resolved.params, expected_params):
-                    if param_def.type != expected_ptype:
+                    if not self._types_compatible_for_protocol(param_def.type, expected_ptype):
                         params_match = False
                         break
                 if params_match:
@@ -2206,8 +2225,8 @@ class SemanticAnalyzer:
         methods = builtin_modules.lookup_type_method(typ, "__native_iter__")
         return len(methods) > 0
 
-    def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
-        """Get the element type of an iterable for for-each loops.
+    def _get_iterable_element_type_or_none(self, iterable_type: TpyType) -> TpyType | None:
+        """Get the element type of an iterable, or None if not iterable.
 
         Uses __native_iter__ method return type for structural conformance.
         """
@@ -2215,7 +2234,7 @@ class SemanticAnalyzer:
         if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
-            raise SemanticError("NativeIterable requires a type argument: NativeIterable[T]")
+            return None
 
         # Get element type from __native_iter__ method return type
         methods = builtin_modules.lookup_type_method(iterable_type, "__native_iter__")
@@ -2225,4 +2244,15 @@ class SemanticAnalyzer:
             if isinstance(resolved.returns, TpyType):
                 return resolved.returns
 
+        return None
+
+    def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
+        """Get the element type of an iterable for for-each loops.
+
+        Uses __native_iter__ method return type for structural conformance.
+        Raises SemanticError if type is not iterable.
+        """
+        elem_type = self._get_iterable_element_type_or_none(iterable_type)
+        if elem_type is not None:
+            return elem_type
         raise SemanticError(f"Cannot iterate over type {iterable_type}")

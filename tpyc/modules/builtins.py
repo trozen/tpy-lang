@@ -79,7 +79,7 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
         cpp="tpy::list_remove({self}, {0})",
     )],
     "extend": [MethodDef(
-        params=[ParamDef("other", "Iterable")],  # Accepts list, Array, Span, StaticList
+        params=[ParamDef("other", "NativeIterable[T]")],
         returns=VOID,
         cpp="tpy::list_extend({self}, {0})",
     )],
@@ -88,7 +88,7 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
 }, constructors=[
     # list(iterable) - create list from any iterable, inferring element type
     MethodDef(
-        params=[ParamDef("x", "Iterable")],
+        params=[ParamDef("x", "NativeIterable[T]")],
         returns="T",  # Placeholder - sema infers actual list[T] from argument
         cpp="std::vector<{T}>({0}.begin(), {0}.end())",
     ),
