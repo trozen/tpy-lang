@@ -1377,6 +1377,9 @@ class SemanticAnalyzer:
         elif isinstance(obj_type, ProtocolType):
             # For protocols with __getitem__, get the return type
             return self._get_protocol_getitem_type(obj_type)
+        elif isinstance(obj_type, RecordType):
+            # User records with __getitem__ method
+            return self._get_record_getitem_type(obj_type)
         else:
             raise SemanticError(f"Cannot index type {obj_type}")
 
@@ -1408,6 +1411,18 @@ class SemanticAnalyzer:
                 return method_sig.return_type
 
         raise SemanticError(f"Protocol {protocol.name} does not support indexing")
+
+    def _get_record_getitem_type(self, record_type: RecordType) -> TpyType:
+        """Get the return type of __getitem__ for a user record type."""
+        record = self.registry.get_record(record_type.name)
+        if record is None:
+            raise SemanticError(f"Unknown record type: {record_type.name}")
+
+        getitem = record.get_method("__getitem__")
+        if getitem is None:
+            raise SemanticError(f"Cannot index type {record_type}: no __getitem__ method")
+
+        return getitem.return_type
 
     def _check_dangling_reference(self, expr: TpyExpr, return_type: TpyType, loc: SourceLocation | None) -> None:
         """Check if returning expr as a reference would be a dangling reference.
@@ -1464,6 +1479,11 @@ class SemanticAnalyzer:
 
         # Local variable (not a parameter or global) - would dangle after function returns
         if isinstance(expr, TpyName):
+            # 'self' in a method is safe - refers to the receiver object
+            # (its lifetime is managed by the caller)
+            if expr.name == "self":
+                return False
+
             # Check if it's a parameter (safe)
             if self.current_function:
                 for pname, ptype in self.current_function.params:

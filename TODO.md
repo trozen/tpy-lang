@@ -8,13 +8,15 @@
 - `type()` function
 - `str()`, `str(123)`, `int("123")`
 - build/run in release mode
-- import user defined modules (properly set `__name__` in module)
+- import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
 - require imports at the top of file, don't allow inline imports
 - type containing an allocated object (e.g. `Box[T]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - `Int32` should be imported from tpy, so it matches CPython (maybe use `from typ import *`?)
 - `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function
 - inherit from protocol class to validate methods, e.g. `class MyIntList(Sequence[int])` or `class MyList[T](Sequence[T])`
+- how to handle const methods like `__len__` or `__getitem__`; how to handle constness in TPy?
+- template function implementation should be in some specific header file
 
 ## Python features
 - dict full support
@@ -22,6 +24,7 @@
 - tuple, multiple returns
 - `None` type, optional values, null pointers
 - list slicing (`items[1:3]`)
+- make sure docstrings work in every context
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:

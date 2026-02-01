@@ -52,6 +52,17 @@ class TpyType:
             return self.to_cpp()
         return f"{self.to_cpp()}&"
 
+    def to_cpp_return_const(self) -> str:
+        """Return the C++ representation for const method return types.
+
+        Value types return by value (T).
+        Object types return by const reference (const T&) since the method
+        cannot return a mutable reference to a member of a const object.
+        """
+        if self.is_value_type():
+            return self.to_cpp()
+        return f"const {self.to_cpp()}&"
+
     def to_cpp_param(self, name: str) -> str:
         """Return the C++ parameter declaration for this type.
 
@@ -61,6 +72,17 @@ class TpyType:
         if self.is_value_type():
             return f"{self.to_cpp()} {name}"
         return f"{self.to_cpp()}& {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        """Return the C++ const parameter declaration for this type.
+
+        Value types are passed by value: T name
+        Object types are passed by const reference: const T& name
+        Use for constructor params and other contexts where mutation is not needed.
+        """
+        if self.is_value_type():
+            return f"{self.to_cpp()} {name}"
+        return f"const {self.to_cpp()}& {name}"
 
     def is_ref_param(self) -> bool:
         """Return True if this type is passed by mutable reference as a parameter."""
@@ -201,6 +223,10 @@ class BigIntType(TpyType):
 
     def to_cpp_param(self, name: str) -> str:
         # BigInt is expensive to copy, pass by const reference
+        return f"const {self.to_cpp()}& {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        # Same as to_cpp_param - BigInt always uses const reference
         return f"const {self.to_cpp()}& {name}"
 
 

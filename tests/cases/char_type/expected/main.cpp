@@ -32,11 +32,11 @@ void test_char_from_string_index() {
   // 19:     text: str = "Hello"
   std::string_view text = "Hello";
   // 21:     c0: Char = text[0]
-  char c0 = text[0];
+  char c0 = tpy::get_char(text, 0);
   // 22:     c1: Char = text[1]
-  char c1 = text[1];
+  char c1 = tpy::get_char(text, 1);
   // 23:     c4: Char = text[4]
-  char c4 = text[4];
+  char c4 = tpy::get_char(text, 4);
   // 25:     print(c0)
   std::cout << c0 << "\n";
   // 26:     print(c1)
@@ -160,7 +160,7 @@ int32_t count_vowels(std::string_view text) {
   // 93:     while i < len(text):
   while ((i < tpy::__len__(text))) {
     // 94:         if is_vowel(text[i]):
-    if (is_vowel(text[i])) {
+    if (is_vowel(tpy::get_char(text, i))) {
       // 95:             count += 1
       count = tpy::int32_add(count, 1);
     }

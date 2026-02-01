@@ -364,8 +364,9 @@ class CodeGenerator:
                 out.write(f"  {record.name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
+                # Use const ref for object types to allow temporaries like MyRecord([1, 2, 3])
                 params = ", ".join(
-                    f"{ptype.to_cpp()} {pname}"
+                    ptype.to_cpp_const_param(pname)
                     for pname, ptype in record.init_method.params
                 )
                 out.write(f"  explicit {record.name}({params})")
@@ -431,6 +432,9 @@ class CodeGenerator:
                 continue
             self._gen_method(out, method, record.name)
 
+        # Generate operator[] if __getitem__ exists (enables Sequence protocol conformance)
+        self._gen_subscript_operators(out, record)
+
         out.write("};\n")
         self._gen_record_ostream(out, record)
 
@@ -486,14 +490,16 @@ class CodeGenerator:
         return non_init
 
     # Methods that should be const (don't mutate self)
-    CONST_METHODS = {"__len__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
+    CONST_METHODS = {"__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
                      "__lt__", "__le__", "__gt__", "__ge__"}
 
     def _gen_method(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
         """Generate a method definition inside a struct."""
-        ret_type = method.return_type.to_cpp_return()
+        is_const = method.name in self.CONST_METHODS
+        # Const methods must return const refs for object types
+        ret_type = method.return_type.to_cpp_return_const() if is_const else method.return_type.to_cpp_return()
         params = self._gen_params(method.params)
-        const_suffix = " const" if method.name in self.CONST_METHODS else ""
+        const_suffix = " const" if is_const else ""
         out.write(f"\n  {ret_type} {method.name}({params}){const_suffix} {{\n")
 
         # Reset declared vars and add parameters
@@ -520,6 +526,36 @@ class CodeGenerator:
         self.indent_level = 0
         self.current_ns = None
 
+        out.write("  }\n")
+
+    def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate operator[] if __getitem__/__setitem__ exist.
+
+        This enables user records to conform to C++ concepts like tpy::Sequence
+        which use t[i] syntax rather than t.__getitem__(i).
+        """
+        getitem = None
+        setitem = None
+        for method in record.methods:
+            if method.name == "__getitem__":
+                getitem = method
+            elif method.name == "__setitem__":
+                setitem = method
+
+        if getitem is None:
+            return
+
+        # Get the index parameter type and return type
+        if not getitem.params:
+            return  # __getitem__ needs at least an index param
+        index_param_name, index_type = getitem.params[0]
+        index_cpp = index_type.to_cpp()
+        # Use to_cpp_return_const() since operator[] is const (returns const ref for objects)
+        ret_cpp = getitem.return_type.to_cpp_return_const()
+
+        # Generate const operator[] that delegates to __getitem__
+        out.write(f"\n  {ret_cpp} operator[]({index_cpp} {index_param_name}) const {{\n")
+        out.write(f"    return __getitem__({index_param_name});\n")
         out.write("  }\n")
 
     def _gen_concept_decl(self, out: TextIO, protocol: TpyProtocol) -> None:
@@ -1080,9 +1116,9 @@ class CodeGenerator:
         """Generate index expression, handling negative indices with Python semantics."""
         is_neg, abs_val = self._is_negative_literal(index)
         if is_neg:
-            # Negative literal: items[-1] -> items[items.size() - 1]
-            # Cast to int32_t since get_value/set_value take int32_t
-            return f"static_cast<int32_t>({obj}.size() - {abs_val})"
+            # Negative literal: items[-1] -> items[tpy::__len__(items) - 1]
+            # Use tpy::__len__() for universal support (std types and user records)
+            return f"static_cast<int32_t>(tpy::__len__({obj}) - {abs_val})"
 
         index_expr = self._gen_expr_deref(index)
         if self._is_runtime_bigint(index, index_type):

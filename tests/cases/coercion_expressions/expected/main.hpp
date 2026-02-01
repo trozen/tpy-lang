@@ -16,7 +16,7 @@ struct Counter {
   tpy::BigInt value;
 
   Counter() = default;
-  explicit Counter(tpy::BigInt v) : value(v) {}
+  explicit Counter(const tpy::BigInt& v) : value(v) {}
 
   tpy::BigInt get() {
     // 18:         return self.value

@@ -13,7 +13,7 @@ struct time {
   tpy::BigInt value;
 
   time() = default;
-  explicit time(tpy::BigInt v) : value(v) {}
+  explicit time(const tpy::BigInt& v) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const time& obj) {

@@ -1334,6 +1334,17 @@ T* get_mut(StaticList<T, N>& sl, int32_t index) {
 }
 
 /**
+ * get_char - Bounds-checked character access for strings.
+ *
+ * Returns character at index. Supports negative indexing (Python semantics).
+ * Panics if index is out of bounds.
+ */
+inline char get_char(std::string_view s, int32_t index) {
+    auto i = normalize_index(s, index, "string index out of bounds");
+    return s[i];
+}
+
+/**
  * list_insert - Python list.insert() for std::vector.
  *
  * Inserts value at index. Supports negative indexing and clamps to valid range

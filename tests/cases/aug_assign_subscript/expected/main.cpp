@@ -46,13 +46,13 @@ void test_negative_index_aug_assign() {
   // 22:     nums: list[Int32] = [10, 20, 30]
   std::vector<int32_t> nums = {10, 20, 30};
   // 23:     nums[-1] += 5
-  tpy::set_item(nums, static_cast<int32_t>(nums.size() - 1), tpy::int32_add(tpy::get_item(nums, static_cast<int32_t>(nums.size() - 1)), 5));
+  tpy::set_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1), tpy::int32_add(tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)), 5));
   // 24:     print(nums[-1])  # 35
-  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 1)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)) << "\n";
   // 25:     nums[-2] *= 2
-  tpy::set_item(nums, static_cast<int32_t>(nums.size() - 2), tpy::int32_mul(tpy::get_item(nums, static_cast<int32_t>(nums.size() - 2)), 2));
+  tpy::set_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2), tpy::int32_mul(tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2)), 2));
   // 26:     print(nums[-2])  # 40
-  std::cout << tpy::get_item(nums, static_cast<int32_t>(nums.size() - 2)) << "\n";
+  std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2)) << "\n";
 }
 
 void __tpy_init() {

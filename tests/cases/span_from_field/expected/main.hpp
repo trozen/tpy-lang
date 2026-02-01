@@ -13,7 +13,7 @@ struct Box {
   std::array<int32_t, 3> items;
 
   Box() = default;
-  explicit Box(std::array<int32_t, 3> items) : items(items) {}
+  explicit Box(const std::array<int32_t, 3>& items) : items(items) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

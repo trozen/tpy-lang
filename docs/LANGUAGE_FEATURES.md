@@ -611,7 +611,31 @@ def bad(items: Sequence) -> Int32:  # ERROR: Generic protocol 'Sequence' require
     return len(items)
 ```
 
-**Conforming types**: `list[T]`, `Array[T, N]`, `Span[T]`, and `StaticList[T, N]` all conform to `Sequence[T]` when element types match.
+**Conforming types**:
+- `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` - built-in containers
+- `str` conforms to `Sequence[Char]` - strings are sequences of characters
+- User records with `__len__` and `__getitem__` methods (see below)
+
+**Read-only semantics**: `Sequence[T]` is treated as read-only. Protocol functions accept sequences by const reference in generated C++, which allows list literals and temporaries, but does not promise element mutation. If you need mutation through a protocol, use concrete container types for now. A `MutableSequence[T]` protocol (with non-const semantics) is planned.
+
+**User records as Sequence**: Records with `__len__` and `__getitem__` automatically conform to `Sequence[T]`. The compiler generates `operator[]` from `__getitem__`:
+```python
+class IntWrapper:
+    data: list[Int32]
+
+    def __len__(self) -> Int32:
+        return len(self.data)
+
+    def __getitem__(self, index: Int32) -> Int32:
+        return self.data[index]
+
+def sum_seq(s: Sequence[Int32]) -> Int32:
+    # Works with IntWrapper, list, Array, etc.
+    ...
+
+wrapper: IntWrapper = IntWrapper(nums)
+sum_seq(wrapper)  # OK - IntWrapper conforms to Sequence[Int32]
+```
 
 **Mixing protocols**: Generic and non-generic protocols can be used together:
 ```python
@@ -620,6 +644,29 @@ from typing import Sized, Sequence
 def process(items: Sequence[Int32], container: Sized) -> Int32:
     return items[0] + len(container)
 ```
+
+#### Planned: `MutableSequence[T]` (read/write sequences)
+
+`Sequence[T]` is intentionally **read-only** in TurboPython's codegen. This is a design choice to preserve Python-like ergonomics (list literals and temporaries should work) while keeping protocol usage simple and predictable.
+
+Why read-only:
+- **C++ binding rules**: a `const T&` parameter can bind to temporaries (`sum_seq([1, 2, 3])`), while `T&` cannot. Using `const` avoids unexpected compilation failures for common Python idioms.
+- **Predictability**: a `Sequence` protocol should not imply mutation. In Python typing, `Sequence` is also read-only, while `MutableSequence` is the mutable counterpart.
+
+When mutation is needed:
+- Mutating a **container** (e.g., `items[i] = ...`) should require a mutable protocol or a concrete container type.
+- Mutating **elements** (e.g., `items[i].increment()`) is more nuanced: in C++, this only works if the container provides mutable access. For built-in containers, that requires a non-const reference to the container.
+
+Planned design:
+- Introduce `MutableSequence[T]` that models read/write access.
+- Generated C++ signatures:
+  - `Sequence[T]` parameters → `const T&`
+  - `MutableSequence[T]` parameters → `T&`
+- `MutableSequence[T]` will require additional methods beyond `__len__` and `__getitem__` (likely `__setitem__`, and possibly `append`/`pop` for full Python parity).
+
+Current limitations (to revisit):
+- **User records**: we generate `operator[]` from `__getitem__`, but it currently returns by value. This prevents mutating elements through `items[i].method()` for user-defined record containers. Addressing this likely requires reference-capable `__getitem__` or a dedicated mutation API in the type system.
+- **No automatic mutability inference**: TurboPython does not currently infer whether a protocol parameter needs to be mutable. Explicit `MutableSequence[T]` will be preferred to keep behavior predictable.
 
 #### Planned: `Iterable[T]` and `Iterator[T]`
 

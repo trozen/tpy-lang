@@ -98,6 +98,11 @@ module.register_type(STR, cpp_type="std::string_view", methods={
         returns=INT32,
         cpp="static_cast<int32_t>({self}.size())",
     )],
+    "__getitem__": [MethodDef(
+        params=[ParamDef("index", INT32)],
+        returns=CHAR,
+        cpp="tpy::get_char({self}, {0})",
+    )],
 })
 
 # int: arbitrary precision integer (BigInt)
