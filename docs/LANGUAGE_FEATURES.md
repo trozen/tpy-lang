@@ -554,12 +554,12 @@ def count(items: Measurable) -> Int32:
 Generated C++:
 ```cpp
 template<typename T>
-concept Measurable = requires(const T& t) {
+concept Measurable = requires(T& t) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
 template<Measurable T_items>
-int32_t count(const T_items& items) {
+int32_t count(T_items& items) {
     return tpy::__len__(items);
 }
 ```
@@ -587,12 +587,12 @@ add_values(a, b)  # Int32 conforms: __add__(Int32) -> Int32
 Generated C++:
 ```cpp
 template<typename T>
-concept Addable = requires(const T& t) {
+concept Addable = requires(T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
 };
 
 template<Addable T_x, Addable T_y>
-void add_values(const T_x& x, const T_y& y) {
+void add_values(T_x& x, T_y& y) {
     auto result = (x + y);
     std::cout << result << "\n";
 }
@@ -625,6 +625,35 @@ class Point:
 `Point` conforms to `Addable` because `Point.__add__(Point) -> Own[Point]` matches `__add__(Self) -> Own[Self]` after substituting `Self` with `Point`.
 
 **Note**: `Self` can only be used within protocol method signatures. Using `Self` in regular functions or class methods produces an error.
+
+#### Working: Regular Method Calls on Protocol Types
+
+You can call any method defined in a protocol on a protocol-typed value:
+
+```python
+from __future__ import annotations
+from typing import Protocol, Self
+from tpy import Int32, Own
+
+class Duplicable(Protocol):
+    def duplicate(self) -> Own[Self]: ...
+
+class Value:
+    x: Int32
+
+    def __init__(self, x: Int32) -> None:
+        self.x = x
+
+    def duplicate(self) -> Own[Value]:
+        return Value(self.x * 2)
+
+def double_it(d: Duplicable) -> None:
+    result = d.duplicate()  # OK: calls method via protocol
+
+double_it(Value(21))  # OK: temporaries work via auto-generated temp vars
+```
+
+**Note on temporaries**: When passing a constructor expression (like `Value(21)`) to a protocol-typed parameter, the compiler generates a temporary variable. This is necessary because protocol parameters use mutable references (`T&`) in C++, which cannot bind directly to temporaries.
 
 #### Working: Generic Protocol `Sequence[T]`
 
@@ -678,7 +707,7 @@ def bad(items: Sequence) -> Int32:  # ERROR: Generic protocol 'Sequence' require
 - `str` conforms to `Sequence[Char]` - strings are sequences of characters
 - User records with `__len__` and `__getitem__` methods (see below)
 
-**Read-only semantics**: `Sequence[T]` is treated as read-only. Protocol functions accept sequences by const reference in generated C++, which allows list literals and temporaries, but does not promise element mutation. If you need mutation through a protocol, use concrete container types for now. A `MutableSequence[T]` protocol (with non-const semantics) is planned.
+**Temporaries**: Passing temporaries (list literals, constructor calls) to protocol-typed parameters works. The compiler generates temporary variables automatically since protocol parameters use mutable references (`T&`) in C++.
 
 **User records as Sequence**: Records with `__len__` and `__getitem__` automatically conform to `Sequence[T]`. The compiler generates `operator[]` from `__getitem__`:
 ```python
@@ -709,26 +738,14 @@ def process(items: Sequence[Int32], container: Sized) -> Int32:
 
 #### Planned: `MutableSequence[T]` (read/write sequences)
 
-`Sequence[T]` is intentionally **read-only** in TurboPython's codegen. This is a design choice to preserve Python-like ergonomics (list literals and temporaries should work) while keeping protocol usage simple and predictable.
-
-Why read-only:
-- **C++ binding rules**: a `const T&` parameter can bind to temporaries (`sum_seq([1, 2, 3])`), while `T&` cannot. Using `const` avoids unexpected compilation failures for common Python idioms.
-- **Predictability**: a `Sequence` protocol should not imply mutation. In Python typing, `Sequence` is also read-only, while `MutableSequence` is the mutable counterpart.
-
-When mutation is needed:
-- Mutating a **container** (e.g., `items[i] = ...`) should require a mutable protocol or a concrete container type.
-- Mutating **elements** (e.g., `items[i].increment()`) is more nuanced: in C++, this only works if the container provides mutable access. For built-in containers, that requires a non-const reference to the container.
+`Sequence[T]` currently only requires `__len__` and `__getitem__`. For full mutable sequence support:
 
 Planned design:
 - Introduce `MutableSequence[T]` that models read/write access.
-- Generated C++ signatures:
-  - `Sequence[T]` parameters → `const T&`
-  - `MutableSequence[T]` parameters → `T&`
 - `MutableSequence[T]` will require additional methods beyond `__len__` and `__getitem__` (likely `__setitem__`, and possibly `append`/`pop` for full Python parity).
 
-Current limitations (to revisit):
+Current limitations:
 - **User records**: we generate `operator[]` from `__getitem__`, but it currently returns by value. This prevents mutating elements through `items[i].method()` for user-defined record containers. Addressing this likely requires reference-capable `__getitem__` or a dedicated mutation API in the type system.
-- **No automatic mutability inference**: TurboPython does not currently infer whether a protocol parameter needs to be mutable. Explicit `MutableSequence[T]` will be preferred to keep behavior predictable.
 
 #### Planned: `Iterable[T]` and `Iterator[T]`
 

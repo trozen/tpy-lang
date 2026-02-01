@@ -17,6 +17,7 @@
 - inherit from protocol class to validate methods, e.g. `class MyIntList(Sequence[int])` or `class MyList[T](Sequence[T])`
 - how to handle const methods like `__len__` or `__getitem__`; how to handle constness in TPy?
 - template function implementation should be in some specific header file
+- `DeRef` protocol?
 
 ## Python features
 - dict full support

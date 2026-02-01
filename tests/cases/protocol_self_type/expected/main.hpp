@@ -8,12 +8,12 @@ namespace tpy_user::main {
 extern tpy::Global<std::string_view> __name__;
 
 template<typename T>
-concept Addable = requires(const T& t) {
+concept Addable = requires(T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
 };
 
 template<Addable T_x, Addable T_y>
-void add_values(const T_x& x, const T_y& y);
+void add_values(T_x& x, T_y& y);
 void main();
 
 void __tpy_init();

@@ -7,7 +7,7 @@ tpy::Global<std::string_view> __name__;
 
 // 19: def add_points(a: Addable, b: Addable) -> None:
 template<Addable T_a, Addable T_b>
-void add_points(const T_a& a, const T_b& b) {
+void add_points(T_a& a, T_b& b) {
   // 21:     result = a + b
   auto result = (a + b);
 }

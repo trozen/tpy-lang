@@ -38,9 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
 }
 
 template<tpy::Sequence<int32_t> T_s>
-int32_t sum_seq(const T_s& s);
+int32_t sum_seq(T_s& s);
 template<tpy::Sequence<int32_t> T_s>
-int32_t first(const T_s& s);
+int32_t first(T_s& s);
 void main();
 
 void __tpy_init();

@@ -59,6 +59,8 @@ uv run python tests/update_snapshots.py --exec       # execution tests only
 uv run python tests/update_snapshots.py --comp hello # specific case, comp only
 ```
 
+**Important**: If a change would modify expected output for *existing* tests (not new tests you're adding), consult with the user before running `update_snapshots.py`. Explain what generated code will change and confirm the change is desired.
+
 ### Test Structure
 
 ```

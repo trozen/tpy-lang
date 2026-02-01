@@ -8,9 +8,9 @@ namespace tpy_user::main {
 extern tpy::Global<std::string_view> __name__;
 
 template<tpy::Sequence<char> T_s>
-char first_char(const T_s& s);
+char first_char(T_s& s);
 template<tpy::Sequence<char> T_s>
-int32_t count_chars(const T_s& s);
+int32_t count_chars(T_s& s);
 void main();
 
 void __tpy_init();

@@ -7,7 +7,7 @@ tpy::Global<std::string_view> __name__;
 
 // 16: def sum_seq(s: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
-int32_t sum_seq(const T_s& s) {
+int32_t sum_seq(T_s& s) {
   // 17:     total: Int32 = 0
   int32_t total = 0;
   // 18:     i: Int32 = 0
@@ -25,7 +25,7 @@ int32_t sum_seq(const T_s& s) {
 
 // 24: def first(s: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
-int32_t first(const T_s& s) {
+int32_t first(T_s& s) {
   // 25:     return s[0]
   return s[0];
 }

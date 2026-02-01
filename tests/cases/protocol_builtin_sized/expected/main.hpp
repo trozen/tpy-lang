@@ -8,7 +8,7 @@ namespace tpy_user::main {
 extern tpy::Global<std::string_view> __name__;
 
 template<tpy::Sized T_items>
-int32_t count(const T_items& items);
+int32_t count(T_items& items);
 void main();
 
 void __tpy_init();

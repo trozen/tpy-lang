@@ -8,12 +8,12 @@ namespace tpy_user::main {
 extern tpy::Global<std::string_view> __name__;
 
 template<typename T>
-concept Measurable = requires(const T& t) {
+concept Measurable = requires(T& t) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
 template<Measurable T_items>
-int32_t count(const T_items& items);
+int32_t count(T_items& items);
 void main();
 
 void __tpy_init();

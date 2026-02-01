@@ -103,13 +103,13 @@ def _check_type_compatible(self, arg_type: TpyType, param_type: TpyType) -> bool
 ```cpp
 // Generated for Sized protocol
 template<typename T>
-concept Sized = requires(const T& t) {
+concept Sized = requires(T& t) {
     { t.__len__() } -> std::convertible_to<int32_t>;
 };
 
 // Function using protocol
 template<Sized T>
-int32_t process(const T& items) {
+int32_t process(T& items) {
     return items.__len__();
 }
 ```
@@ -349,6 +349,10 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Indexing support for protocol-typed variables
    - Validation: bare generic protocols (e.g., `Sequence` without type args) are compile errors
 4. **Phase 4**: `Iterable[T]` and `Iterator[T]` protocols (deferred - needs careful iterator design)
-5. **Phase 5**: `Self` type in protocols
+5. **Phase 5**: `Self` type in protocols ✅ **COMPLETE**
+   - `Self` type for protocol method signatures (parsed, substituted during conformance)
+   - Recursive substitution for nested types like `Own[Self]`, `Ptr[Self]`
+   - Validation: `Self` only allowed in protocol contexts
+   - Regular (non-dunder) method calls on protocol-typed values
 6. **Phase 6**: Compiler trait protocols (`CoercibleToSpan`, etc.)
 7. ~~**Phase 7**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)

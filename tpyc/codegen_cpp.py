@@ -615,7 +615,7 @@ class CodeGenerator:
         This allows the concept to check that e.g., T + T -> T.
         """
         out.write(f"template<typename T>\n")
-        out.write(f"concept {protocol.name} = requires(const T& t) {{\n")
+        out.write(f"concept {protocol.name} = requires(T& t) {{\n")
 
         # Mapping from Python dunder methods to C++ operators
         DUNDER_TO_OPERATOR = {
@@ -690,8 +690,8 @@ class CodeGenerator:
         result = []
         for pname, ptype in params:
             if isinstance(ptype, ProtocolType):
-                # Protocol param: const T_name& name
-                result.append(f"const T_{pname}& {pname}")
+                # Protocol param: T_name& name (mutable ref, no const methods required)
+                result.append(f"T_{pname}& {pname}")
             else:
                 result.append(ptype.to_cpp_param(pname))
         return ", ".join(result)
@@ -778,13 +778,51 @@ class CodeGenerator:
 
         Temporaries can't bind to non-const lvalue references, so they need
         to be stored in a temp variable when passed to mutable ref params.
+
+        Lvalues (don't need temps): variable names, field access
+        Rvalues (need temps): literals, binary/unary ops, calls, coercions, subscripts on records
         """
-        # Literals: [], [1,2,3], [0]*10
+        # Scalar literals: 1, 3.14, "x", True
+        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral)):
+            return True
+        # Container literals: [], [1,2,3], [0]*10
         if isinstance(expr, (TpyArrayLiteral, TpyListRepeat)):
             return True
-        # Constructor calls: list(), StaticList[T,N](), etc.
-        if isinstance(expr, TpyCall) and expr.call_type is not None:
+        # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
+        if isinstance(expr, TpyCoerce):
+            # Pointer dereference is an lvalue, not a temporary
+            if isinstance(expr.actual_type, (PtrType, ConstPtrType)):
+                return False
             return True
+        # Binary and unary ops always produce temporaries
+        if isinstance(expr, (TpyBinOp, TpyUnaryOp)):
+            return True
+        # Method calls produce temporaries (unless void, but void can't be passed anyway)
+        if isinstance(expr, TpyMethodCall):
+            return True
+        # Subscript on user records returns by value (rvalue)
+        # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
+        if isinstance(expr, TpySubscript):
+            container_type = self._get_resolved_type(expr.obj)
+            if isinstance(container_type, RecordType):
+                return True
+        # Function calls
+        if isinstance(expr, TpyCall):
+            # Generic type constructors (list(), StaticList[T,N](), etc.)
+            if expr.call_type is not None:
+                return True
+            # Record constructor calls (e.g., Point(1, 2))
+            if self.analyzer.registry.get_record(expr.func):
+                return True
+            # User-defined functions returning non-void
+            if func_info := self.analyzer.registry.get_function(expr.func):
+                return func_info.return_type != VOID
+            # Builtin functions (len, chr, ord, etc.) - always return values
+            if builtin_modules.lookup_function(expr.func):
+                return True
+            # Imported module functions (math.sqrt, etc.)
+            if expr.func in self.analyzer.imported_names:
+                return True
         return False
 
     def _emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
@@ -805,7 +843,9 @@ class CodeGenerator:
         """
         self._temp_counter += 1
         temp_name = f"__tmp_{self._temp_counter}"
-        self._pending_temps.append((temp_name, param_type.to_cpp(), init_expr))
+        # Protocol types use 'auto' since actual type is determined by the expression
+        type_cpp = "auto" if isinstance(param_type, ProtocolType) else param_type.to_cpp()
+        self._pending_temps.append((temp_name, type_cpp, init_expr))
         return temp_name
 
     def _flush_pending_temps(self, out: TextIO, indent: str) -> None:

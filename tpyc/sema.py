@@ -1255,6 +1255,26 @@ class SemanticAnalyzer:
                                                      coercion_ctx="arg")
                 return method_info.return_type
 
+        # Protocol-typed values - use protocol method signatures
+        if isinstance(obj_type, ProtocolType):
+            method_sig = self._get_protocol_method_signature(obj_type, expr.method)
+            if method_sig is None:
+                raise SemanticError(f"Protocol '{obj_type.name}' has no method '{expr.method}'")
+
+            params, return_type = method_sig
+            # Check argument count
+            if len(expr.args) != len(params):
+                raise SemanticError(
+                    f"Method '{expr.method}' expects {len(params)} arguments, "
+                    f"got {len(expr.args)}"
+                )
+            # Type-check and coerce arguments
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
+                arg_type = self._analyze_expr(arg)
+                expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                 coercion_ctx="arg")
+            return return_type
+
         raise SemanticError(f"Cannot call method '{expr.method}' on type {obj_type}")
 
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
@@ -1631,6 +1651,46 @@ class SemanticAnalyzer:
             return StaticListType(self._substitute_self(typ.element_type, actual), typ.capacity)
         else:
             return typ
+
+    def _get_protocol_method_signature(
+        self,
+        protocol: ProtocolType,
+        method_name: str,
+    ) -> tuple[list[tuple[str, TpyType]], TpyType] | None:
+        """Get a method's signature from a protocol.
+
+        Returns (params, return_type) with Self substituted, or None if not found.
+        """
+        # Check builtin protocols first
+        protocol_def = builtin_modules.lookup_protocol(protocol.name)
+        if protocol_def is not None:
+            method_def = protocol_def.methods.get(method_name)
+            if method_def is None:
+                return None
+
+            # Build type substitution: Self -> the protocol type itself
+            type_subst: dict[str, TpyType] = {"Self": protocol}
+            if protocol_def.type_params and protocol.type_args:
+                type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
+
+            resolved = builtin_modules.resolve_method(method_def, type_subst)
+            params = [(p.name, p.type) for p in resolved.params]
+            return (params, resolved.returns)
+
+        # Check user-defined protocols
+        protocol_info = self.registry.get_protocol(protocol.name)
+        if protocol_info is not None:
+            for method_sig in protocol_info.methods:
+                if method_sig.name == method_name:
+                    # Substitute Self -> protocol in params and return type
+                    params = [
+                        (pname, self._substitute_self(ptype, protocol))
+                        for pname, ptype in method_sig.params
+                    ]
+                    return_type = self._substitute_self(method_sig.return_type, protocol)
+                    return (params, return_type)
+
+        return None
 
     def _lookup_protocol_method_return(
         self,

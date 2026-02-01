@@ -36,12 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 template<typename T>
-concept Addable = requires(const T& t) {
+concept Addable = requires(T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
 };
 
 template<Addable T_a, Addable T_b>
-void add_points(const T_a& a, const T_b& b);
+void add_points(T_a& a, T_b& b);
 void main();
 
 void __tpy_init();
