@@ -1850,6 +1850,23 @@ class SemanticAnalyzer:
         # Look up the protocol definition (builtin first, then user-defined)
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
         if protocol_def is not None:
+            # Special handling for NativeIterable[T] - no methods, use is_iterable() trait
+            if protocol.name == "NativeIterable":
+                # If actual is also NativeIterable[T], check type args match
+                if isinstance(actual, ProtocolType) and actual.name == "NativeIterable":
+                    return actual.type_args == protocol.type_args
+                # Otherwise check concrete type via is_iterable() trait
+                if not actual.is_iterable():
+                    return False
+                if protocol.type_args:
+                    expected_elem = protocol.type_args[0]
+                    actual_elem = actual.get_element_type()
+                    if actual_elem is None:
+                        return False
+                    # Check element type compatibility
+                    return actual_elem == expected_elem or self._builtin_type_matches(actual_elem, expected_elem)
+                return True
+
             # Build type substitution map for generic protocols
             # Always include Self -> actual type
             type_subst: dict[str, TpyType] = {"Self": actual}
@@ -2204,4 +2221,9 @@ class SemanticAnalyzer:
             return iterable_type.element_type
         if isinstance(iterable_type, StrType):
             return CHAR
+        # Handle NativeIterable[T] protocol type
+        if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":
+            if iterable_type.type_args:
+                return iterable_type.type_args[0]
+            raise SemanticError("NativeIterable requires a type argument: NativeIterable[T]")
         raise SemanticError(f"Cannot iterate over type {iterable_type}")

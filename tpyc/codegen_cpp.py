@@ -1164,9 +1164,16 @@ class CodeGenerator:
         iterable_type = self._get_resolved_type(stmt.iterable)
 
         # Determine element type for the loop variable
-        elem_type = iterable_type.get_element_type()
-        if elem_type is None and isinstance(iterable_type, StrType):
-            elem_type = CHAR
+        # Handle protocol types (e.g., NativeIterable[T])
+        if isinstance(iterable_type, ProtocolType):
+            if iterable_type.name == "NativeIterable" and iterable_type.type_args:
+                elem_type = iterable_type.type_args[0]
+            else:
+                elem_type = None  # Will use auto
+        else:
+            elem_type = iterable_type.get_element_type()
+            if elem_type is None and isinstance(iterable_type, StrType):
+                elem_type = CHAR
 
         # Resolve IntLiteralType to BigInt (Python default for int lists)
         if isinstance(elem_type, IntLiteralType):

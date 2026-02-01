@@ -146,3 +146,13 @@ module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"
         cpp="tpy::set_item({self}, {0}, {1})",
     )],
 })
+
+# NativeIterable[T] protocol: types that support C++ range-based for loops
+# No methods - conformance checked via is_iterable() + element type
+# This is the "native" C++ iteration pattern using begin()/end().
+# Future: Iterable[T] will use Python's __iter__() -> Iterator[T] protocol.
+module.protocol("NativeIterable",
+    type_params=["T"],
+    methods={},  # Conformance via is_iterable() trait, not method checking
+    cpp_concept="tpy::NativeIterable",
+)

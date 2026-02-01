@@ -348,7 +348,12 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Parameterized C++20 concept generation (e.g., `tpy::Sequence<int32_t>`)
    - Indexing support for protocol-typed variables
    - Validation: bare generic protocols (e.g., `Sequence` without type args) are compile errors
-4. **Phase 4**: `Iterable[T]` and `Iterator[T]` protocols (deferred - needs careful iterator design)
+4. **Phase 4**: `NativeIterable[T]` protocol ✅ **COMPLETE**
+   - `NativeIterable[T]` in `tpy` module for C++ range-based for loops
+   - Conformance via `is_iterable()` trait + element type matching (no method checking)
+   - For-each loops work with protocol-typed parameters
+   - C++20 concept `tpy::NativeIterable<ElemT>` using `std::ranges::begin/end`
+   - **Note**: Python-compatible `Iterable[T]` and `Iterator[T]` deferred to Phase 8
 5. **Phase 5**: `Self` type in protocols ✅ **COMPLETE**
    - `Self` type for protocol method signatures (parsed, substituted during conformance)
    - Recursive substitution for nested types like `Own[Self]`, `Ptr[Self]`
@@ -356,3 +361,130 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Regular (non-dunder) method calls on protocol-typed values
 6. **Phase 6**: Compiler trait protocols (`CoercibleToSpan`, etc.)
 7. ~~**Phase 7**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)
+8. **Phase 8**: Python-compatible `Iterable[T]` and `Iterator[T]` (future)
+   - `Iterator[T]` with `__next__() -> T` + `raise StopIteration`
+   - Compiler optimization: detect StopIteration pattern → efficient has_next codegen
+   - `Iterable[T]` with `__iter__() -> Iterator[T]` for user-extensible iteration
+   - Requires: either exceptions or `Optional[T]` type support
+
+## 11. Iteration Protocol Design
+
+TurboPython has two iteration approaches, designed to balance Python compatibility with C++ performance.
+
+### Design Rationale: Why Two Protocols?
+
+**Problem**: Python's iteration model (`__iter__`/`__next__` with `StopIteration`) differs fundamentally from C++'s (`begin()`/`end()` iterators).
+
+**Key insight**: For-loops don't actually need Python's `Iterator[T]` at the language level—C++ handles iteration automatically via `begin()`/`end()`. Manual iteration (`it = iter(x); val = next(it)`) is rare.
+
+**Solution**: Two-tier approach:
+1. `NativeIterable[T]` (now) - enables for-loops over protocol params with zero overhead
+2. `Iterable[T]`/`Iterator[T]` (future) - Python-compatible, user-extensible
+
+### Naming: Why NativeIterable, not Iterable?
+
+We chose `NativeIterable[T]` instead of `Iterable[T]` because:
+
+| Concern | Rationale |
+|---------|-----------|
+| **Reserves standard name** | `Iterable[T]` in `typing` should match Python semantics |
+| **Sets expectations** | "Native" signals C++/compiler-level, not user-extensible |
+| **Avoids confusion** | Users won't expect to implement `__iter__` on their types |
+| **Optional divergence** | Like `Int32` vs `int`, users opt into TurboPython-specific types |
+
+### NativeIterable[T] (Current - Phase 4)
+
+```python
+from tpy import NativeIterable, Int32
+
+def sum_all(items: NativeIterable[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in items:
+        total += x
+    return total
+```
+
+**Characteristics**:
+- Defined in `tpy` module (TurboPython-specific)
+- Uses C++ `begin()`/`end()` under the hood
+- All built-in containers (list, Array, Span, StaticList) conform
+- Users **cannot** create custom NativeIterable types (requires C++ begin/end)
+- Zero overhead - compiles to C++ range-based for
+
+### Iterable[T] + Iterator[T] (Future - Phase 8)
+
+```python
+from typing import Iterable, Iterator
+
+class MyIterator(Iterator[Int32]):
+    def __next__(self) -> Int32:
+        if self.done:
+            raise StopIteration
+        return self.value
+
+class MyContainer(Iterable[Int32]):
+    def __iter__(self) -> Iterator[Int32]:
+        return MyIterator(self.data)
+```
+
+**Characteristics**:
+- Will be defined in `typing` module (Python-compatible)
+- Uses Python's `__iter__`/`__next__` protocol
+- Users **can** create custom iterable types
+- Enables manual iteration: `it = iter(x); val = next(it)`
+
+### Iterator Implementation Options (Phase 8)
+
+Three approaches were considered for signaling iteration exhaustion:
+
+| Option | Approach | Pros | Cons |
+|--------|----------|------|------|
+| **A** | `raise StopIteration` | Python-compatible | Requires exception support |
+| **B** | `__next__() -> Optional[T]` | No exceptions needed | Different signature than Python |
+| **C** | `has_next()` + `next()` | Works now, simple | Not Python-compatible, may need rework |
+
+**Chosen approach**: Option A with compiler optimization.
+
+Users write standard Python:
+```python
+def __next__(self) -> Int32:
+    if self.done:
+        raise StopIteration
+    return self.value
+```
+
+Compiler detects the `raise StopIteration` pattern and generates efficient C++:
+```cpp
+struct MyIterator {
+    bool __has_next__() const { return !done; }
+    int32_t __next__() { return value; }  // Only called when has_next
+};
+
+// for loop compiles to:
+for (auto it = container.__iter__(); it.__has_next__(); ) {
+    auto x = it.__next__();
+    // body
+}
+```
+
+**Benefits**:
+- Python-compatible user API
+- Zero-overhead C++ (no actual exceptions thrown)
+- Works with CPython without harness changes
+
+### Why Phase 8 Is Blocked
+
+Full `Iterator[T]` support requires one of:
+
+1. **Exception support** (`try`/`except`) - for `raise StopIteration`
+2. **`Optional[T]` type** - for exception-free `__next__() -> Optional[T]`
+
+Both are currently marked "Open" in LANGUAGE_FEATURES.md.
+
+### Summary
+
+| Protocol | Module | User-extensible | For-loops | Manual iteration | Status |
+|----------|--------|-----------------|-----------|------------------|--------|
+| `NativeIterable[T]` | `tpy` | No | ✅ | No | ✅ Phase 4 |
+| `Iterable[T]` | `typing` | Yes | ✅ | Yes | Phase 8 |
+| `Iterator[T]` | `typing` | Yes | N/A | Yes | Phase 8 |

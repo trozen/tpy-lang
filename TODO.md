@@ -23,7 +23,7 @@
 ## Python features
 - dict full support
 - str full support
-- tuple, multiple returns
+- tuple, multiple returns (mandelbrot TODOs)
 - `None` type, optional values, null pointers
 - list slicing (`items[1:3]`)
 - make sure docstrings work in every context
@@ -56,6 +56,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - better class operator<< tests (but missing str formatting/concatenation)
 - `import time as _time` syntax
 - dynamic dispatch
+- full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

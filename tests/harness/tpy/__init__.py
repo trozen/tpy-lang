@@ -321,3 +321,17 @@ def noalloc(func):
     The compiler enforces this constraint at compile time.
     """
     return func
+
+
+# NativeIterable protocol for CPython compatibility
+from typing import Protocol as _Protocol, runtime_checkable as _runtime_checkable
+
+
+@_runtime_checkable
+class NativeIterable(_Protocol[T]):
+    """Types that support C++ range-based for loops.
+
+    In CPython, this matches any iterable type.
+    The TurboPython compiler uses this for types with begin()/end().
+    """
+    def __iter__(self): ...

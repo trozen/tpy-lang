@@ -1479,6 +1479,21 @@ concept Sequence = requires(const T& t, int32_t i) {
     { t[i] } -> std::convertible_to<ElemT>;
 };
 
+/**
+ * NativeIterable concept - types that support C++ range-based for loops
+ *
+ * A type is NativeIterable<ElemT> if it supports begin()/end() iteration
+ * and dereferencing yields ElemT. This is the "native" C++ iteration pattern.
+ *
+ * Future: Iterable<T> will use Python's __iter__/__next__ protocol.
+ */
+template<typename T, typename ElemT>
+concept NativeIterable = requires(const T& t) {
+    { std::ranges::begin(t) } -> std::input_or_output_iterator;
+    { std::ranges::end(t) } -> std::sentinel_for<decltype(std::ranges::begin(t))>;
+    { *std::ranges::begin(t) } -> std::convertible_to<ElemT>;
+};
+
 // --- Collection printing (Python-style: [a, b, c]) ---
 
 template <typename T>
