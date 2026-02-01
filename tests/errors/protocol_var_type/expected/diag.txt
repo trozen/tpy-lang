@@ -1,0 +1,1 @@
+main.tp.py:5: error: Protocol type 'Sized' cannot be used as a variable type. Protocols are only valid for function parameters

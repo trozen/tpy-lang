@@ -183,10 +183,22 @@ class SemanticAnalyzer:
         # Validate field types
         for fld in record.fields:
             self._validate_type(fld.type)
+            # Protocol types cannot be used as field types
+            if isinstance(fld.type, ProtocolType):
+                raise SemanticError(
+                    f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
+                    f"Protocols are only valid for function parameters"
+                )
 
         init_params = []
         if record.init_method:
             for pname, ptype in record.init_method.params:
+                # Protocol types cannot be used in __init__ parameters
+                if isinstance(ptype, ProtocolType):
+                    raise SemanticError(
+                        f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.__init__'. "
+                        f"Protocols are only valid for free function parameters"
+                    )
                 init_params.append((pname, ptype, None))
 
         # Register all methods
@@ -194,7 +206,19 @@ class SemanticAnalyzer:
         for method in record.methods:
             for pname, ptype in method.params:
                 self._validate_type(ptype)
+                # Protocol types cannot be used in method parameters
+                if isinstance(ptype, ProtocolType):
+                    raise SemanticError(
+                        f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.{method.name}'. "
+                        f"Protocols are only valid for free function parameters"
+                    )
             self._validate_type(method.return_type)
+            # Protocol types cannot be used as method return types
+            if isinstance(method.return_type, ProtocolType):
+                raise SemanticError(
+                    f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
+                    f"Protocols are only valid for free function parameters"
+                )
             methods[method.name] = FunctionInfo(
                 name=method.name,
                 params=method.params,
@@ -226,6 +250,14 @@ class SemanticAnalyzer:
             self._validate_type(ptype)
         self._validate_type(func.return_type)
 
+        # Protocol types cannot be used as return types
+        if isinstance(func.return_type, ProtocolType):
+            raise SemanticError(
+                f"Protocol type '{func.return_type.name}' cannot be used as a return type. "
+                f"Protocols are only valid for function parameters",
+                func.loc
+            )
+
         info = FunctionInfo(
             name=func.name,
             params=func.params,
@@ -243,14 +275,16 @@ class SemanticAnalyzer:
                 pass
         elif isinstance(typ, (PtrType, ConstPtrType)):
             self._validate_type(typ.pointee)
-        elif isinstance(typ, StaticListType):
+            if isinstance(typ.pointee, ProtocolType):
+                raise SemanticError(
+                    f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type"
+                )
+        elif isinstance(typ, (StaticListType, ArrayType, SpanType, ListType)):
             self._validate_type(typ.element_type)
-        elif isinstance(typ, ArrayType):
-            self._validate_type(typ.element_type)
-        elif isinstance(typ, SpanType):
-            self._validate_type(typ.element_type)
-        elif isinstance(typ, ListType):
-            self._validate_type(typ.element_type)
+            if isinstance(typ.element_type, ProtocolType):
+                raise SemanticError(
+                    f"Protocol type '{typ.element_type.name}' cannot be used as a container element type"
+                )
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
         """Register top-level variable declarations in global scope.
@@ -431,6 +465,14 @@ class SemanticAnalyzer:
             raise self._error(
                 f"Own[{stmt.type.wrapped}] cannot be used as a variable type. "
                 f"Use '{stmt.type.wrapped}' instead (Own[T] is for parameters and return types only)",
+                stmt
+            )
+
+        # Protocol types can only be used for function parameters, not variables
+        if stmt.type and isinstance(stmt.type, ProtocolType):
+            raise self._error(
+                f"Protocol type '{stmt.type.name}' cannot be used as a variable type. "
+                f"Protocols are only valid for function parameters",
                 stmt
             )
 
@@ -1507,7 +1549,7 @@ class SemanticAnalyzer:
     def _type_conforms_to_protocol(self, actual: TpyType, protocol: ProtocolType) -> bool:
         """Check if actual type structurally conforms to a protocol.
 
-        A type conforms if it has all methods required by the protocol.
+        A type conforms if it has all methods required by the protocol with compatible signatures.
         """
         # Look up the protocol definition
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
@@ -1516,23 +1558,55 @@ class SemanticAnalyzer:
             protocol_info = self.registry.get_protocol(protocol.name)
             if protocol_info is None:
                 return False
-            # Check that actual type has all required methods
+            # Check that actual type has all required methods with matching signatures
             for method_sig in protocol_info.methods:
                 # For user records, check methods in RecordInfo
                 if isinstance(actual, RecordType):
                     record = self.registry.get_record(actual.name)
-                    if record is None or record.get_method(method_sig.name) is None:
+                    if record is None:
                         return False
+                    method = record.get_method(method_sig.name)
+                    if method is None:
+                        return False
+                    # Check return type compatibility
+                    if method.return_type != method_sig.return_type:
+                        return False
+                    # Check parameter count and types
+                    if len(method.params) != len(method_sig.params):
+                        return False
+                    for (_, actual_ptype), (_, expected_ptype) in zip(method.params, method_sig.params):
+                        if actual_ptype != expected_ptype:
+                            return False
                 else:
                     # For builtin types, check via module system
                     if not builtin_modules.lookup_type_method(actual, method_sig.name):
                         return False
             return True
 
-        # Built-in protocol - check via module system
-        for method_name in protocol_def.methods:
-            if not builtin_modules.lookup_type_method(actual, method_name):
-                return False
+        # Built-in protocol - check required methods with matching signatures
+        for method_name, method_def in protocol_def.methods.items():
+            # For user records, check methods in RecordInfo
+            if isinstance(actual, RecordType):
+                record = self.registry.get_record(actual.name)
+                if record is None:
+                    return False
+                method = record.get_method(method_name)
+                if method is None:
+                    return False
+                # Check return type compatibility
+                if method.return_type != method_def.returns:
+                    return False
+                # Check parameter count and types
+                expected_params = method_def.params
+                if len(method.params) != len(expected_params):
+                    return False
+                for (_, actual_ptype), expected_param in zip(method.params, expected_params):
+                    if actual_ptype != expected_param.type:
+                        return False
+            else:
+                # For builtin types, check via module system
+                if not builtin_modules.lookup_type_method(actual, method_name):
+                    return False
         return True
 
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,

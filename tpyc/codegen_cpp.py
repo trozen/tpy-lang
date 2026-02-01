@@ -485,11 +485,16 @@ class CodeGenerator:
                 non_init.append(stmt)
         return non_init
 
+    # Methods that should be const (don't mutate self)
+    CONST_METHODS = {"__len__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
+                     "__lt__", "__le__", "__gt__", "__ge__"}
+
     def _gen_method(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
         """Generate a method definition inside a struct."""
         ret_type = method.return_type.to_cpp_return()
         params = self._gen_params(method.params)
-        out.write(f"\n  {ret_type} {method.name}({params}) {{\n")
+        const_suffix = " const" if method.name in self.CONST_METHODS else ""
+        out.write(f"\n  {ret_type} {method.name}({params}){const_suffix} {{\n")
 
         # Reset declared vars and add parameters
         self.declared_vars = {pname for pname, _ in method.params}
