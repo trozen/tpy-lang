@@ -56,7 +56,9 @@ module.register_type(INT32, cpp_type="int32_t", constructors=[
 # Array[T, N]: Fixed-size array
 module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
             param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-            type_factory=lambda t, n: ArrayType(t, n), methods={
+            type_factory=lambda t, n: ArrayType(t, n),
+            extends=["NativeIterable[T]"],
+            methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -77,14 +79,14 @@ module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
         returns=VOID,
         cpp="{self}[{0}] = {1}",
     )],
-    # NativeIterable conformance - synthetic method for structural matching
-    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 })
 
 # Span[T]: Non-owning read-only view
 module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
             param_kinds=[TypeParamKind.TYPE],
-            type_factory=lambda t: SpanType(t), methods={
+            type_factory=lambda t: SpanType(t),
+            extends=["NativeIterable[T]"],
+            methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -100,15 +102,15 @@ module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
         returns="T",
         cpp="{self}[{0}]",
     )],
-    # NativeIterable conformance - synthetic method for structural matching
-    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 })
 
 # StaticList[T, N]: Fixed-capacity container
 # Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
 module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
             param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-            type_factory=lambda t, n: StaticListType(t, n), methods={
+            type_factory=lambda t, n: StaticListType(t, n),
+            extends=["NativeIterable[T]"],
+            methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -149,20 +151,14 @@ module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"
         returns=VOID,
         cpp="tpy::set_item({self}, {0}, {1})",
     )],
-    # NativeIterable conformance - synthetic method for structural matching
-    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 })
 
 # NativeIterable[T] protocol: types that support C++ range-based for loops
-# Conformance is structural - type must have __native_iter__() -> T method.
-# This is the "native" C++ iteration pattern using begin()/end().
+# This is a marker protocol - types declare conformance via extends=["NativeIterable[T]"].
+# Maps to C++ begin()/end() iteration pattern.
 # Future: Iterable[T] will use Python's __iter__() -> Iterator[T] protocol.
 module.protocol("NativeIterable",
     type_params=["T"],
-    methods={
-        # Synthetic method for structural conformance checking.
-        # Maps to C++ begin()/end() iteration - return type is element type T.
-        "__native_iter__": MethodDef(params=[], returns="T", cpp=""),
-    },
+    methods={},  # Marker protocol - conformance via extends declaration
     cpp_concept="tpy::NativeIterable",
 )

@@ -59,6 +59,7 @@ class BuiltinTypeDef:
     type_params: list[str] = field(default_factory=list)  # ["T"], ["T", "N"], etc.
     param_kinds: list[TypeParamKind] = field(default_factory=list)  # Kind of each type param
     type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
+    extends: list[str] = field(default_factory=list)  # Protocols: ["NativeIterable[T]"]
 
 
 @dataclass
@@ -100,7 +101,8 @@ class BuiltinModule:
 
     def register_type(self, type_obj: "TpyType", cpp_type: str,
                       methods: dict[str, list[MethodDef]] | None = None,
-                      constructors: list[MethodDef] | None = None):
+                      constructors: list[MethodDef] | None = None,
+                      extends: list[str] | None = None):
         """Register a built-in type using its type object. Preferred for non-parameterized types."""
         qname = type_obj.qualified_name()
         assert qname is not None, f"Type {type_obj} has no qualified_name"
@@ -109,6 +111,7 @@ class BuiltinModule:
             cpp_type=cpp_type,
             methods=methods or {},
             constructors=constructors or [],
+            extends=extends or [],
         )
 
     def type(self, name: str, cpp_type: str,
@@ -116,7 +119,8 @@ class BuiltinModule:
              constructors: list[MethodDef] | None = None,
              type_params: list[str] | None = None,
              param_kinds: list[TypeParamKind] | None = None,
-             type_factory: "Callable[..., TpyType] | None" = None):
+             type_factory: "Callable[..., TpyType] | None" = None,
+             extends: list[str] | None = None):
         """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
         type_params = type_params or []
         param_kinds = param_kinds or []
@@ -147,6 +151,7 @@ class BuiltinModule:
             type_params=type_params,
             param_kinds=param_kinds,
             type_factory=type_factory,
+            extends=extends or [],
         )
 
 
@@ -298,6 +303,90 @@ def lookup_protocol(name: str) -> ProtocolDef | None:
     if proto := typing_mod.protocols.get(name):
         return proto
     return None
+
+
+def _resolve_concrete_type_name(name: str) -> "TpyType | None":
+    """Resolve a concrete type name (like 'Char', 'Int32') to its TpyType singleton.
+
+    Used for resolving extends declarations like extends=["NativeIterable[Char]"].
+    """
+    from tpyc.typesys import CHAR, INT32, BOOL, STR, VOID, BIGINT, FLOAT
+
+    # Map of simple type names to their singleton instances
+    type_map = {
+        "Char": CHAR,
+        "Int32": INT32,
+        "Bool": BOOL,
+        "str": STR,
+        "int": BIGINT,
+        "float": FLOAT,
+        "None": VOID,
+    }
+    return type_map.get(name)
+
+
+def type_extends_protocol(tpy_type: "TpyType", protocol_name: str, protocol_type_args: list["TpyType"]) -> bool:
+    """Check if a type explicitly extends a protocol via 'extends' declaration.
+
+    For generic types like list[Int32] with extends=["NativeIterable[T]"],
+    substitutes T with Int32 before comparing with the expected protocol args.
+
+    For non-generic types like str with extends=["NativeIterable[Char]"],
+    resolves the concrete type name and compares.
+    """
+    type_def = lookup_type(tpy_type)
+    if type_def is None:
+        return False
+
+    # Get type parameters from the actual type (e.g., {"T": Int32} for list[Int32])
+    type_params = extract_type_params(tpy_type)
+
+    for ext in type_def.extends:
+        # Parse "Protocol[X]" pattern where X is a type param or concrete type
+        match = re.match(r"(\w+)\[(\w+)\]", ext)
+        if match:
+            ext_protocol = match.group(1)
+            ext_type_name = match.group(2)
+            if ext_protocol == protocol_name and len(protocol_type_args) == 1:
+                # Resolve the type: either a type param (T) or concrete type (Char, Int32, etc.)
+                if ext_type_name in type_params:
+                    actual_type_arg = type_params[ext_type_name]
+                else:
+                    # Try to resolve as a concrete type name
+                    actual_type_arg = _resolve_concrete_type_name(ext_type_name)
+                    if actual_type_arg is None:
+                        continue
+
+                # Allow coercible types (e.g., IntLiteralType -> Int32)
+                from tpyc.coercions import resolve_coercion
+                if actual_type_arg == protocol_type_args[0]:
+                    return True
+                if resolve_coercion(actual_type_arg, protocol_type_args[0], "return") is not None:
+                    return True
+        elif ext == protocol_name and not protocol_type_args:
+            # Non-generic protocol match
+            return True
+
+    return False
+
+
+def type_extends_any(tpy_type: "TpyType", protocol_name: str) -> bool:
+    """Check if a type extends any variant of a protocol (ignoring type args).
+
+    For example, type_extends_any(list[Int32], "NativeIterable") returns True
+    because list extends NativeIterable[T].
+    """
+    type_def = lookup_type(tpy_type)
+    if type_def is None:
+        return False
+
+    for ext in type_def.extends:
+        # Parse "Protocol[X]" or just "Protocol"
+        match = re.match(r"(\w+)(?:\[\w+\])?", ext)
+        if match and match.group(1) == protocol_name:
+            return True
+
+    return False
 
 
 def lookup_type(type_or_name: "TpyType | str") -> BuiltinTypeDef | None:

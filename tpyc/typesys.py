@@ -92,14 +92,6 @@ class TpyType:
         """Return the element type for container types, or None for non-containers."""
         return None
 
-    def is_sequence(self) -> bool:
-        """Return True if this type is a sequence container (list, Array, Span, StaticList).
-
-        Excludes str. Used for "Iterable" params in methods like extend()
-        where element type compatibility matters.
-        """
-        return False
-
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
         """Return C++ expression to construct this type from a range, or None if not supported."""
         return None
@@ -423,9 +415,6 @@ class StaticListType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def is_sequence(self) -> bool:
-        return True
-
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
         return f"{self.to_cpp()}({range_expr})"
 
@@ -450,9 +439,6 @@ class ArrayType(TpyType):
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
-
-    def is_sequence(self) -> bool:
-        return True
 
     def needs_explicit_element_target(self) -> bool:
         return True
@@ -482,9 +468,6 @@ class SpanType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def is_sequence(self) -> bool:
-        return True
-
     def needs_explicit_element_target(self) -> bool:
         return True
 
@@ -508,9 +491,6 @@ class ListType(TpyType):
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
-
-    def is_sequence(self) -> bool:
-        return True
 
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
         return f"tpy::to_vector<{elem_cpp}>({range_expr})"
@@ -536,9 +516,6 @@ class PendingListType(TpyType):
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
-
-    def is_sequence(self) -> bool:
-        return True
 
     def __str__(self) -> str:
         return f"PendingList[{self.element_type}, {self.size}]#{self.literal_id}"

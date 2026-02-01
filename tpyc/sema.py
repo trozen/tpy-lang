@@ -1573,7 +1573,7 @@ class SemanticAnalyzer:
                 if protocol_match:
                     protocol_name = protocol_match.group(1)
                     type_param = protocol_match.group(2)
-                    # Get element type from argument (via __native_iter__ or __getitem__)
+                    # Get element type from argument (via get_element_type)
                     elem_type = self._get_iterable_element_type_or_none(arg_type)
                     if elem_type is None:
                         return None  # Arg doesn't conform to iterable protocol
@@ -1845,9 +1845,14 @@ class SemanticAnalyzer:
             return False
 
     def _type_conforms_to_protocol(self, actual: TpyType, protocol: ProtocolType) -> bool:
-        """Check if actual type structurally conforms to a protocol.
+        """Check if actual type conforms to a protocol.
 
-        A type conforms if it has all methods required by the protocol with compatible signatures.
+        Two conformance mechanisms work in parallel:
+        1. Explicit extends: type declares extends=["Protocol[T]"]
+        2. Structural: type has all methods required by the protocol
+
+        For marker protocols (no methods), only explicit extends works.
+        For protocols with methods, either mechanism suffices.
 
         For generic protocols like Sequence[Int32]:
         - Build type substitution map: {"T": Int32}
@@ -1866,6 +1871,14 @@ class SemanticAnalyzer:
             if isinstance(actual, ProtocolType) and actual.name == protocol.name:
                 return actual.type_args == protocol.type_args
 
+            # Check explicit extends declaration
+            if builtin_modules.type_extends_protocol(actual, protocol.name, protocol.type_args):
+                return True
+
+            # Marker protocols (no methods) require explicit extends
+            if not protocol_def.methods:
+                return False
+
             # Build type substitution map for generic protocols
             # Always include Self -> actual type
             type_subst: dict[str, TpyType] = {"Self": actual}
@@ -1874,7 +1887,7 @@ class SemanticAnalyzer:
                     return False  # Mismatch in type parameter count
                 type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
 
-            # Built-in protocol
+            # Structural conformance: check all protocol methods
             for method_name, method_def in protocol_def.methods.items():
                 # Resolve method signature with type substitutions (including Self)
                 resolved = builtin_modules.resolve_method(method_def, type_subst)
@@ -2213,22 +2226,21 @@ class SemanticAnalyzer:
         self.pending_resolutions.clear()
 
     def _is_type_iterable(self, typ: TpyType) -> bool:
-        """Check if a type is iterable (has __native_iter__ method or is NativeIterable protocol).
+        """Check if a type is iterable (extends NativeIterable or is NativeIterable protocol).
 
-        Uses structural protocol conformance - a type is iterable if it has the
-        __native_iter__ synthetic method that NativeIterable[T] requires.
+        A type is iterable if it declares extends=["NativeIterable[T]"] or is itself
+        a NativeIterable[T] protocol type.
         """
         # NativeIterable[T] protocol type
         if isinstance(typ, ProtocolType) and typ.name == "NativeIterable":
             return True
-        # Check if type has __native_iter__ method (structural NativeIterable conformance)
-        methods = builtin_modules.lookup_type_method(typ, "__native_iter__")
-        return len(methods) > 0
+        # Check if type extends NativeIterable
+        return builtin_modules.type_extends_any(typ, "NativeIterable")
 
     def _get_iterable_element_type_or_none(self, iterable_type: TpyType) -> TpyType | None:
         """Get the element type of an iterable, or None if not iterable.
 
-        Uses __native_iter__ method return type for structural conformance.
+        For types extending NativeIterable[T], returns T.
         """
         # Handle NativeIterable[T] protocol type
         if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":
@@ -2236,20 +2248,16 @@ class SemanticAnalyzer:
                 return iterable_type.type_args[0]
             return None
 
-        # Get element type from __native_iter__ method return type
-        methods = builtin_modules.lookup_type_method(iterable_type, "__native_iter__")
-        if methods:
-            type_params = builtin_modules.extract_type_params(iterable_type)
-            resolved = builtin_modules.resolve_method(methods[0], type_params)
-            if isinstance(resolved.returns, TpyType):
-                return resolved.returns
+        # Handle str -> Char
+        if isinstance(iterable_type, StrType):
+            return CHAR
 
-        return None
+        # Use get_element_type() for container types (list, Array, Span, StaticList, etc.)
+        return iterable_type.get_element_type()
 
     def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
         """Get the element type of an iterable for for-each loops.
 
-        Uses __native_iter__ method return type for structural conformance.
         Raises SemanticError if type is not iterable.
         """
         elem_type = self._get_iterable_element_type_or_none(iterable_type)

@@ -1792,10 +1792,19 @@ class CodeGenerator:
             protocol_match = re.match(r"(\w+)\[(\w+)\]", param_type)
             if protocol_match:
                 protocol_name = protocol_match.group(1)
-                # For NativeIterable, check if type has __native_iter__ method
-                if protocol_name == "NativeIterable":
-                    methods = builtin_modules.lookup_type_method(arg_type, "__native_iter__")
-                    return len(methods) > 0
+                type_param = protocol_match.group(2)
+                # Get element type from arg to build concrete protocol type
+                elem_type = arg_type.get_element_type()
+                if elem_type is None:
+                    # No element type - check if it's a concrete protocol like NativeIterable[Char]
+                    # This handles str which has no get_element_type but extends NativeIterable[Char]
+                    from tpyc.typesys import StrType, CHAR
+                    if isinstance(arg_type, StrType) and protocol_name == "NativeIterable":
+                        elem_type = CHAR
+                    else:
+                        return False
+                # Check with type-arg-aware protocol conformance
+                return builtin_modules.type_extends_protocol(arg_type, protocol_name, [elem_type])
             return False
         if isinstance(param_type, TpyType):
             return arg_type == param_type or (

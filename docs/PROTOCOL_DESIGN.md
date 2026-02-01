@@ -275,22 +275,29 @@ if arg_type.conforms_to(HasLength):
 
 ### Type Declarations with Traits
 
-Types declare their capabilities in their definitions:
+Types declare their capabilities through two parallel mechanisms:
 
+**1. Structural conformance** - types that have all required methods automatically conform:
 ```python
-# tpy module source (or builtin module definition)
+# StaticList has __len__ and __getitem__, so it conforms to Sequence[T]
 class StaticList(Generic[T, N]):
-    """Fixed-capacity list with no heap allocation."""
-
-    def __len__(self) -> Int32: ...         # → conforms to HasLength
-    def __iter__(self) -> Iterator[T]: ...  # → conforms to Iterable[T]
-    def __span__(self) -> Span[T]: ...      # → conforms to CoercibleToSpan[T]
-    def __getitem__(self, i: Int32) -> T: ...
+    def __len__(self) -> Int32: ...         # → conforms to Sized
+    def __getitem__(self, i: Int32) -> T: ...  # + __len__ → conforms to Sequence[T]
     def __setitem__(self, i: Int32, v: T) -> None: ...
-
-    @classmethod
-    def from_range(cls, items: Iterable[T]) -> StaticList[T, N]: ...
 ```
+
+**2. Explicit extends** - for marker protocols with no methods:
+```python
+# In module system, types declare protocol conformance
+module.type("StaticList", ..., extends=["NativeIterable[T]"])
+module.type("list", ..., extends=["NativeIterable[T]"])
+module.register_type(STR, ..., extends=["NativeIterable[Char]"])
+```
+
+This design allows:
+- **Protocols with methods** (Sized, Sequence) use structural conformance
+- **Marker protocols** (NativeIterable) use explicit `extends` declaration
+- Both mechanisms work together - a type can use both
 
 ### Coercion via Protocols
 
@@ -350,8 +357,8 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Validation: bare generic protocols (e.g., `Sequence` without type args) are compile errors
 4. **Phase 4**: `NativeIterable[T]` protocol ✅ **COMPLETE**
    - `NativeIterable[T]` in `tpy` module for C++ range-based for loops
-   - Structural conformance via `__native_iter__() -> T` synthetic method
-   - Types with `__native_iter__` automatically conform to `NativeIterable[T]`
+   - Marker protocol with `extends` declaration (no methods required)
+   - Types declare conformance via `extends=["NativeIterable[T]"]` in module system
    - For-each loops work with protocol-typed parameters
    - C++20 concept `tpy::NativeIterable<ElemT>` using `std::ranges::begin/end`
    - **Note**: Python-compatible `Iterable[T]` and `Iterator[T]` deferred to Phase 8
@@ -407,10 +414,23 @@ def sum_all(items: NativeIterable[Int32]) -> Int32:
 
 **Characteristics**:
 - Defined in `tpy` module (TurboPython-specific)
+- **Marker protocol** - types declare conformance via `extends`, no methods required
 - Uses C++ `begin()`/`end()` under the hood
-- All built-in containers (list, Array, Span, StaticList) conform
+- All built-in containers (list, Array, Span, StaticList, str) conform via `extends`
 - Users **cannot** create custom NativeIterable types (requires C++ begin/end)
 - Zero overhead - compiles to C++ range-based for
+
+**Module system declaration**:
+```python
+# Types declare conformance explicitly
+module.type("list", ..., extends=["NativeIterable[T]"])
+module.type("Array", ..., extends=["NativeIterable[T]"])
+module.register_type(STR, ..., extends=["NativeIterable[Char]"])
+```
+
+**Two conformance mechanisms work in parallel**:
+1. **Explicit extends** - for marker protocols like `NativeIterable[T]` with no methods
+2. **Structural** - for protocols with methods (like `Sequence[T]` with `__len__` + `__getitem__`)
 
 ### Iterable[T] + Iterator[T] (Future - Phase 8)
 

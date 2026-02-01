@@ -37,7 +37,9 @@ module.function("chr", overloads=[
 # Methods use "T" string which gets resolved to element_type at lookup time
 module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
             param_kinds=[TypeParamKind.TYPE],
-            type_factory=lambda t: ListType(t), methods={
+            type_factory=lambda t: ListType(t),
+            extends=["NativeIterable[T]"],
+            methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -83,8 +85,6 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
         returns=VOID,
         cpp="tpy::list_extend({self}, {0})",
     )],
-    # NativeIterable conformance - synthetic method for structural matching
-    "__native_iter__": [MethodDef(params=[], returns="T", cpp="")],
 }, constructors=[
     # list(iterable) - create list from any iterable, inferring element type
     MethodDef(
@@ -94,7 +94,9 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
     ),
 ])
 
-module.register_type(STR, cpp_type="std::string_view", methods={
+module.register_type(STR, cpp_type="std::string_view",
+    extends=["NativeIterable[Char]"],
+    methods={
     "__len__": [MethodDef(
         params=[],
         returns=INT32,
@@ -105,9 +107,6 @@ module.register_type(STR, cpp_type="std::string_view", methods={
         returns=CHAR,
         cpp="tpy::get_char({self}, {0})",
     )],
-    # NativeIterable conformance - synthetic method for structural matching
-    # str iterates over Char
-    "__native_iter__": [MethodDef(params=[], returns=CHAR, cpp="")],
 })
 
 # int: arbitrary precision integer (BigInt)

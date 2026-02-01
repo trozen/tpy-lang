@@ -747,12 +747,44 @@ Planned design:
 Current limitations:
 - **User records**: we generate `operator[]` from `__getitem__`, but it currently returns by value. This prevents mutating elements through `items[i].method()` for user-defined record containers. Addressing this likely requires reference-capable `__getitem__` or a dedicated mutation API in the type system.
 
-#### Planned: `Iterable[T]` and `Iterator[T]`
+#### Working: `NativeIterable[T]` (C++ range-for iteration)
 
-Iterating protocols like `Iterable[T]` are not yet supported:
+`NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol.
 
 ```python
-# NOT YET WORKING
+from tpy import Int32, NativeIterable
+
+def sum_all(items: NativeIterable[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in items:
+        total += x
+    return total
+
+# All built-in containers work:
+nums: list[Int32] = [1, 2, 3]
+print(sum_all(nums))  # 6
+
+arr: Array[Int32, 3] = [10, 20, 30]
+print(sum_all(arr))   # 60
+```
+
+**Key characteristics**:
+- **Marker protocol**: Types declare conformance via `extends`, no methods required
+- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `NativeIterable[T]`
+- **str**: Extends `NativeIterable[Char]` (iterates over characters)
+- **Zero overhead**: Compiles to C++ range-based for loops
+- **Not user-extensible**: Requires C++ `begin()`/`end()` support
+
+**Difference from future `Iterable[T]`**: `NativeIterable[T]` is TurboPython-specific and uses C++ iteration. The future `Iterable[T]` (in `typing` module) will use Python's `__iter__()` → `Iterator[T]` protocol, allowing user-defined iterable types.
+
+See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
+
+#### Planned: `Iterable[T]` and `Iterator[T]`
+
+Python-compatible iterating protocols are not yet supported:
+
+```python
+# NOT YET WORKING - requires exception support
 class Iterable(Protocol[T]):
     def __iter__(self) -> Iterator[T]: ...
 ```
@@ -769,7 +801,8 @@ class CoercibleToSpan(Protocol[T]):
 With this design:
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
-- `for` loops work on any type conforming to `Iterable[T]` (planned)
+- `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
+- `for` loops work on `Iterable[T]`-typed parameters (planned - Python-compatible)
 - Implicit coercion to `Span[T]` works on any type conforming to `CoercibleToSpan[T]` (planned)
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
