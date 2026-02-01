@@ -96,6 +96,14 @@ class TpyType:
         """Return True if this type can be iterated over (for-each loops)."""
         return False
 
+    def is_sequence(self) -> bool:
+        """Return True if this type is a sequence container (list, Array, Span, StaticList).
+
+        Unlike is_iterable(), this excludes str. Used for "Iterable" params in
+        methods like extend() where element type compatibility matters.
+        """
+        return False
+
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
         """Return C++ expression to construct this type from a range, or None if not supported."""
         return None
@@ -166,6 +174,10 @@ class StrType(TpyType):
 
     def is_iterable(self) -> bool:
         return True
+
+    def get_element_type(self) -> Optional['TpyType']:
+        from tpyc.typesys import CHAR
+        return CHAR
 
 
 @dataclass(frozen=True)
@@ -421,6 +433,9 @@ class StaticListType(TpyType):
     def is_iterable(self) -> bool:
         return True
 
+    def is_sequence(self) -> bool:
+        return True
+
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
         return f"{self.to_cpp()}({range_expr})"
 
@@ -447,6 +462,9 @@ class ArrayType(TpyType):
         return self.element_type
 
     def is_iterable(self) -> bool:
+        return True
+
+    def is_sequence(self) -> bool:
         return True
 
     def needs_explicit_element_target(self) -> bool:
@@ -480,6 +498,9 @@ class SpanType(TpyType):
     def is_iterable(self) -> bool:
         return True
 
+    def is_sequence(self) -> bool:
+        return True
+
     def needs_explicit_element_target(self) -> bool:
         return True
 
@@ -505,6 +526,9 @@ class ListType(TpyType):
         return self.element_type
 
     def is_iterable(self) -> bool:
+        return True
+
+    def is_sequence(self) -> bool:
         return True
 
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
@@ -533,6 +557,9 @@ class PendingListType(TpyType):
         return self.element_type
 
     def is_iterable(self) -> bool:
+        return True
+
+    def is_sequence(self) -> bool:
         return True
 
     def __str__(self) -> str:

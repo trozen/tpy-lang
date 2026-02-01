@@ -767,10 +767,8 @@ class CodeGenerator:
             return self._contains_protocol_type(typ.wrapped)
         elif isinstance(typ, (PtrType, ConstPtrType)):
             return self._contains_protocol_type(typ.pointee)
-        elif isinstance(typ, (ListType, SpanType)):
-            return self._contains_protocol_type(typ.element_type)
-        elif isinstance(typ, (ArrayType, StaticListType)):
-            return self._contains_protocol_type(typ.element_type)
+        elif (elem_type := typ.get_element_type()) is not None:
+            return self._contains_protocol_type(elem_type)
         return False
 
     def _is_temporary_expr(self, expr: TpyExpr) -> bool:
@@ -1172,8 +1170,6 @@ class CodeGenerator:
                 elem_type = None  # Will use auto
         else:
             elem_type = iterable_type.get_element_type()
-            if elem_type is None and isinstance(iterable_type, StrType):
-                elem_type = CHAR
 
         # Resolve IntLiteralType to BigInt (Python default for int lists)
         if isinstance(elem_type, IntLiteralType):
@@ -1889,6 +1885,9 @@ class CodeGenerator:
             elif isinstance(arg_type, BoolType):
                 # Bool uses Python-style formatting via tpy::print_bool
                 parts.append(f'tpy::print_bool({self._gen_expr_deref(arg)})')
+            elif isinstance(arg_type, StrType):
+                # Strings print as-is (not using ListPrinter)
+                parts.append(self._gen_expr_deref(arg))
             elif arg_type.get_element_type() is not None:
                 # Container types use ListPrinter for formatting
                 if isinstance(arg, TpyArrayLiteral):

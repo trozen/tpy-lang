@@ -294,11 +294,11 @@ class SemanticAnalyzer:
                 raise SemanticError(
                     f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type"
                 )
-        elif isinstance(typ, (StaticListType, ArrayType, SpanType, ListType)):
-            self._validate_type(typ.element_type)
-            if isinstance(typ.element_type, ProtocolType):
+        elif (elem_type := typ.get_element_type()) is not None:
+            self._validate_type(elem_type)
+            if isinstance(elem_type, ProtocolType):
                 raise SemanticError(
-                    f"Protocol type '{typ.element_type.name}' cannot be used as a container element type"
+                    f"Protocol type '{elem_type.name}' cannot be used as a container element type"
                 )
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
@@ -836,9 +836,7 @@ class SemanticAnalyzer:
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
             # Right side must be iterable
-            if isinstance(right_type, (ListType, ArrayType, SpanType, StaticListType, PendingListType)):
-                return BOOL
-            if isinstance(right_type, StrType):
+            if right_type.is_iterable():
                 return BOOL
             raise SemanticError(f"Cannot use '{expr.op}' with non-iterable type {right_type}")
 
@@ -1141,11 +1139,12 @@ class SemanticAnalyzer:
             )
         for i, (arg, param) in enumerate(zip(expr.args, method.params)):
             arg_type = self._analyze_expr(arg)
-            # "Iterable" accepts container types (list, Array, Span, StaticList)
+            # "Iterable" accepts sequence containers (list, Array, Span, StaticList)
+            # but not strings - use is_sequence() to exclude str
             if param.type == "Iterable":
-                if not isinstance(arg_type, (ListType, PendingListType, ArrayType, SpanType, StaticListType)):
+                if not arg_type.is_sequence():
                     raise SemanticError(
-                        f"Expected iterable for {param.name} argument, got {arg_type}",
+                        f"Expected sequence for {param.name} argument, got {arg_type}",
                         loc=arg.loc
                     )
                 continue
@@ -1418,26 +1417,20 @@ class SemanticAnalyzer:
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"Subscript index must be an integer type, got {index_type}")
 
-        if isinstance(obj_type, ArrayType):
-            return obj_type.element_type
-        elif isinstance(obj_type, SpanType):
-            return obj_type.element_type
-        elif isinstance(obj_type, StaticListType):
-            return obj_type.element_type
-        elif isinstance(obj_type, ListType):
-            return obj_type.element_type
-        elif isinstance(obj_type, PendingListType):
-            return obj_type.element_type
-        elif isinstance(obj_type, StrType):
-            return CHAR
-        elif isinstance(obj_type, ProtocolType):
-            # For protocols with __getitem__, get the return type
+        # Use get_element_type() trait for containers and strings
+        elem_type = obj_type.get_element_type()
+        if elem_type is not None:
+            return elem_type
+
+        # Protocol types - lookup __getitem__ return type
+        if isinstance(obj_type, ProtocolType):
             return self._get_protocol_getitem_type(obj_type)
-        elif isinstance(obj_type, RecordType):
-            # User records with __getitem__ method
+
+        # User records with __getitem__ method
+        if isinstance(obj_type, RecordType):
             return self._get_record_getitem_type(obj_type)
-        else:
-            raise SemanticError(f"Cannot index type {obj_type}")
+
+        raise SemanticError(f"Cannot index type {obj_type}")
 
     def _get_protocol_getitem_type(self, protocol: ProtocolType) -> TpyType:
         """Get the return type of __getitem__ for a protocol type.
@@ -1578,15 +1571,17 @@ class SemanticAnalyzer:
         """Try to match constructor params against arg types and infer type parameters.
 
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
-        Currently supports "Iterable" params which match any container type and infer T.
+        Currently supports "Iterable" params which match sequence containers and infer T.
         """
         inferred: dict[str, TpyType] = {}
         for param, arg_type in zip(params, arg_types):
             if param.type == "Iterable":
-                # Extract element type from iterable argument
+                # Extract element type from sequence argument (excludes str)
+                if not arg_type.is_sequence():
+                    return None  # Not a sequence container
                 elem_type = self._get_element_type(arg_type)
                 if elem_type is None:
-                    return None  # Not an iterable
+                    return None  # No element type
                 # Check consistency with previously inferred T
                 if "T" in inferred and inferred["T"] != elem_type:
                     return None
@@ -1602,9 +1597,7 @@ class SemanticAnalyzer:
 
     def _get_element_type(self, typ: TpyType) -> TpyType | None:
         """Extract element type from an iterable type, or None if not iterable."""
-        if isinstance(typ, (ListType, PendingListType, ArrayType, StaticListType, SpanType)):
-            return typ.element_type
-        return None
+        return typ.get_element_type()
 
     def _pending_list_matches_array(self, actual: PendingListType, expected: ArrayType) -> bool:
         """Check if a pending list literal can match an Array type (including nested arrays)."""
@@ -2214,16 +2207,21 @@ class SemanticAnalyzer:
         self.pending_resolutions.clear()
 
     def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
-        """Get the element type of an iterable for for-each loops."""
-        if isinstance(iterable_type, (ListType, ArrayType, SpanType, StaticListType)):
-            return iterable_type.element_type
-        if isinstance(iterable_type, PendingListType):
-            return iterable_type.element_type
-        if isinstance(iterable_type, StrType):
-            return CHAR
+        """Get the element type of an iterable for for-each loops.
+
+        Uses is_iterable() and get_element_type() traits where possible,
+        with special handling for protocols and strings.
+        """
         # Handle NativeIterable[T] protocol type
         if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
             raise SemanticError("NativeIterable requires a type argument: NativeIterable[T]")
+
+        # Use trait methods for concrete types
+        if iterable_type.is_iterable():
+            elem_type = iterable_type.get_element_type()
+            if elem_type is not None:
+                return elem_type
+
         raise SemanticError(f"Cannot iterate over type {iterable_type}")

@@ -366,16 +366,8 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     Note: Only type parameters that are themselves types are extracted.
     Integer parameters like N in StaticList[T, N] are not included.
     """
-    from tpyc.typesys import ListType, PendingListType, StaticListType, ArrayType, SpanType
-
-    if isinstance(tpy_type, (ListType, PendingListType)):
-        return {"T": tpy_type.element_type}
-    elif isinstance(tpy_type, StaticListType):
-        return {"T": tpy_type.element_type}  # N is int, not TpyType
-    elif isinstance(tpy_type, ArrayType):
-        return {"T": tpy_type.element_type}  # N is int, not TpyType
-    elif isinstance(tpy_type, SpanType):
-        return {"T": tpy_type.element_type}
+    if (elem_type := tpy_type.get_element_type()) is not None:
+        return {"T": elem_type}
     return {}
 
 
