@@ -5,8 +5,8 @@ Usage:
     tpyc input.tp.py              # Compile to C++ in __tpyc__/
     tpyc input.tp.py -o out/      # Compile to C++ in out/
     tpyc input.tp.py --build      # Compile to C++ and build binary
-    tpyc input.tp.py --run        # Compile, build, and run
-    tpyc - --run                  # Read from stdin, build, and run
+    tpyc input.tp.py --exec       # Compile, build, and run
+    tpyc - --exec                 # Read from stdin, build, and run
     tpyc --repl                   # Start interactive REPL
     tpyc --repl file.tp.py        # Load file then start REPL
     tpyc --repl --verbose         # REPL with C++ output shown
@@ -95,8 +95,8 @@ def main() -> int:
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v for info, -vv for commands)")
     parser.add_argument("-b", "--build", action="store_true", help="Compile C++ to binary after generating")
-    parser.add_argument("-r", "--run", action="store_true", help="Build and run the program")
-    parser.add_argument("-R", "--release", action="store_true", help="Build with optimizations (default: debug)")
+    parser.add_argument("-x", "--exec", action="store_true", help="Build and run the program")
+    parser.add_argument("-O", "--release", action="store_true", help="Build with optimizations (default: debug)")
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
     parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
 
@@ -185,12 +185,12 @@ def main() -> int:
         hpp_path.write_text(hpp_code)
         cpp_path.write_text(cpp_code)
 
-        if args.verbose or not (args.build or args.run):
+        if args.verbose or not (args.build or args.exec):
             print(f"Generated: {hpp_path}")
             print(f"Generated: {cpp_path}")
 
         # Build if requested
-        if args.build or args.run:
+        if args.build or args.exec:
             runtime_dir = get_runtime_dir()
             # Binary goes at output root (no conflict with .d dir)
             binary_path = output_dir / module_name
@@ -221,11 +221,11 @@ def main() -> int:
                 print(result.stderr, file=sys.stderr)
                 return 1
 
-            if args.verbose or not args.run:
+            if args.verbose or not args.exec:
                 print(f"Built: {binary_path}")
 
             # Run if requested
-            if args.run:
+            if args.exec:
                 if args.verbose:
                     print(f"Running {binary_path}...")
                     print("---")

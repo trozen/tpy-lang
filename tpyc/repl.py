@@ -6,6 +6,7 @@ Provides an interactive Python-like experience with:
 - Expression auto-printing (bare `5+3` prints the result)
 - Error/panic recovery (failed statements don't accumulate)
 - Verbose mode showing generated C++
+- Trailing backslash continues to next line
 """
 
 from __future__ import annotations
@@ -91,11 +92,21 @@ class REPLSession:
             print(output, end="", file=sys.stderr)
             return False
 
+    def _setup_readline(self) -> None:
+        """Configure readline for history."""
+        history_path = Path.home() / ".tpyc_history"
+        try:
+            readline.read_history_file(history_path)
+        except FileNotFoundError:
+            pass
+        readline.set_history_length(1000)
+        atexit.register(readline.write_history_file, history_path)
+
     def run(self) -> int:
         """Main REPL loop. Returns exit code."""
         print("TurboPython REPL v0.1")
         print("Variables, functions, and classes are remembered between inputs.")
-        print("Empty line ends multi-line input. Ctrl+D to exit.")
+        print("Empty line unindents (or ends block at col 0). Trailing \\ continues input. Ctrl+D to exit.")
         if self.verbose:
             print(f"[src] {self.temp_dir}/")
 
@@ -105,14 +116,8 @@ class REPLSession:
             if not self._preload_file(filepath):
                 return 1
 
-        # Setup readline history
-        history_path = Path.home() / ".tpyc_history"
-        try:
-            readline.read_history_file(history_path)
-        except FileNotFoundError:
-            pass
-        readline.set_history_length(1000)
-        atexit.register(readline.write_history_file, history_path)
+        # Setup readline
+        self._setup_readline()
 
         while True:
             try:
@@ -125,26 +130,45 @@ class REPLSession:
                 if not stripped:
                     continue
 
-                # Check for multi-line continuation
+                # Alt+Enter inserts literal newlines into readline buffer,
+                # so input() may return multiline strings directly
                 full_input = line
+
+                # Handle backslash continuation (fallback for terminals
+                # where Alt+Enter doesn't work)
+                while full_input.rstrip().endswith("\\"):
+                    full_input = full_input.rstrip()[:-1]  # Remove trailing backslash
+                    try:
+                        cont_line = input("... ")
+                        full_input += "\n" + cont_line
+                    except EOFError:
+                        break
+
+                # Check for multi-line continuation (incomplete syntax)
                 if self._needs_continuation(full_input):
-                    in_block = line.rstrip().endswith(":")
-                    indent = self._get_indent_for_continuation(full_input)
+                    in_block = full_input.rstrip().endswith(":")
+                    indent_level = 4  # Start with one indent level
                     while True:
                         try:
+                            indent = " " * indent_level
                             cont_line = input("... " + indent)
-                            # Prepend the indent we showed in the prompt
+                            # Empty line: reduce indent or end block
+                            if not cont_line.strip():
+                                if indent_level > 0:
+                                    indent_level -= 4
+                                    continue  # Don't add empty line, just reduce indent
+                                else:
+                                    break  # At zero indent, end block
                             full_input += "\n" + indent + cont_line
                         except EOFError:
-                            break
-                        # Empty line ends multi-line input
-                        if not cont_line.strip():
                             break
                         # For blocks (def/class/if/etc), require empty line to end
                         # For other continuations (unclosed parens), end when complete
                         if not in_block and not self._needs_continuation(full_input):
                             break
-                        indent = self._get_indent_for_continuation(full_input)
+                        # Adjust indent based on what user typed
+                        if cont_line.rstrip().endswith(":"):
+                            indent_level += 4
 
                 self._process_input(full_input)
 

@@ -1,12 +1,16 @@
 # TODO
 
 ## Next
+- trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
 - True/False booleans
+- extract c++ compiler interface
 - `type()` function
 - `str()`, `str(123)`, `int("123")`
 - build/run in release mode
 - import user defined modules (properly set `__name__` in module)
 - require imports at the top of file, don't allow inline imports
+- type containing an allocated object (e.g. `Box[T]`)
+- investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 
 ## Python features
 - dict full support
@@ -17,10 +21,8 @@
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
-- trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
 - too many references to StaticListType, ArrayType, ListType etc in codegen_cpp.py, should be data driven
 - make `range` a generator function
-- extract c++ compiler interface
 - language restriction documentation
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
 - consider removing Bool type and just keeping bool (or an alias, but not sure if it's needed)

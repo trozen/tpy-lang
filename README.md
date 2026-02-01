@@ -2,6 +2,23 @@
 
 A proof-of-concept compiler that translates Python to C++.
 
+## Dependencies
+
+On macOS, install GMP (GNU Multiple Precision Arithmetic Library):
+
+```bash
+brew install gmp
+```
+
+For Apple Silicon Macs, add these to your shell profile (`.zshrc` or `.bashrc`):
+
+```bash
+export CPLUS_INCLUDE_PATH="/opt/homebrew/include:$CPLUS_INCLUDE_PATH"
+export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
+```
+
+For Intel Macs, use `/usr/local` instead of `/opt/homebrew`.
+
 ## Quick Start
 
 ```bash
@@ -9,10 +26,10 @@ A proof-of-concept compiler that translates Python to C++.
 uv sync
 
 # Compile and run a program
-tpyc -r examples/hello.tp.py
+tpyc -x examples/hello.tp.py
 
 # Release build (optimized)
-tpyc -rR examples/hello.tp.py
+tpyc -xO examples/hello.tp.py
 
 # Interactive REPL
 tpyc -i
@@ -24,9 +41,9 @@ tpyc -i
 tpyc [options] <file.py>
 
 Options:
-  -r, --run         Build and run the program
+  -x, --exec        Build and run the program
   -b, --build       Compile C++ to binary
-  -R, --release     Build with optimizations (default: debug)
+  -O, --release     Build with optimizations (default: debug)
   -i, --repl        Start interactive REPL
   -o <dir>          Output directory (default: __tpyc__/ next to source)
   -v                Verbose output
