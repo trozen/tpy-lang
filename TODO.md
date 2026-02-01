@@ -18,6 +18,7 @@
 - how to handle const methods like `__len__` or `__getitem__`; how to handle constness in TPy?
 - template function implementation should be in some specific header file
 - `DeRef` protocol?
+- allow type annotation to use "" (forward decl)
 
 ## Python features
 - dict full support

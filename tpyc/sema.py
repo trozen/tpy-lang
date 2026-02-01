@@ -1632,25 +1632,11 @@ class SemanticAnalyzer:
         """Recursively substitute SelfType with actual type throughout a type structure.
 
         Handles nested types like Own[Self], Ptr[Self], list[Self], etc.
+        Uses map_inner_types for generic traversal of wrapper types.
         """
         if isinstance(typ, SelfType):
             return actual
-        elif isinstance(typ, OwnType):
-            return OwnType(self._substitute_self(typ.wrapped, actual))
-        elif isinstance(typ, PtrType):
-            return PtrType(self._substitute_self(typ.pointee, actual))
-        elif isinstance(typ, ConstPtrType):
-            return ConstPtrType(self._substitute_self(typ.pointee, actual))
-        elif isinstance(typ, ListType):
-            return ListType(self._substitute_self(typ.element_type, actual))
-        elif isinstance(typ, ArrayType):
-            return ArrayType(self._substitute_self(typ.element_type, actual), typ.size)
-        elif isinstance(typ, SpanType):
-            return SpanType(self._substitute_self(typ.element_type, actual))
-        elif isinstance(typ, StaticListType):
-            return StaticListType(self._substitute_self(typ.element_type, actual), typ.capacity)
-        else:
-            return typ
+        return typ.map_inner_types(lambda t: self._substitute_self(t, actual))
 
     def _get_protocol_method_signature(
         self,

@@ -11,7 +11,7 @@ Defines the types available in TurboPython:
 
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Optional
+from typing import Callable, Optional
 
 
 @dataclass(frozen=True)
@@ -107,6 +107,14 @@ class TpyType:
         List and StaticList handle implicit conversions.
         """
         return False
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        """Apply fn to all inner/wrapped types and return new type.
+
+        Override in wrapper types (Own, Ptr, List, etc.) to transform inner types.
+        Default implementation returns self (no inner types to transform).
+        """
+        return self
 
 
 @dataclass(frozen=True)
@@ -337,6 +345,9 @@ class PtrType(TpyType):
     def to_cpp_return(self) -> str:
         return self.to_cpp()
 
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        return PtrType(fn(self.pointee))
+
 
 @dataclass(frozen=True)
 class ConstPtrType(TpyType):
@@ -358,6 +369,9 @@ class ConstPtrType(TpyType):
 
     def to_cpp_return(self) -> str:
         return self.to_cpp()
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        return ConstPtrType(fn(self.pointee))
 
 
 @dataclass(frozen=True)
@@ -381,6 +395,9 @@ class OwnType(TpyType):
 
     def __str__(self) -> str:
         return f"Own[{self.wrapped}]"
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        return OwnType(fn(self.wrapped))
 
 
 @dataclass(frozen=True)
@@ -407,6 +424,9 @@ class StaticListType(TpyType):
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
         return f"{self.to_cpp()}({range_expr})"
 
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        return StaticListType(fn(self.element_type), self.capacity)
+
 
 @dataclass(frozen=True)
 class ArrayType(TpyType):
@@ -431,6 +451,9 @@ class ArrayType(TpyType):
 
     def needs_explicit_element_target(self) -> bool:
         return True
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        return ArrayType(fn(self.element_type), self.size)
 
 
 @dataclass(frozen=True)
@@ -460,6 +483,9 @@ class SpanType(TpyType):
     def needs_explicit_element_target(self) -> bool:
         return True
 
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        return SpanType(fn(self.element_type))
+
 
 @dataclass(frozen=True)
 class ListType(TpyType):
@@ -483,6 +509,9 @@ class ListType(TpyType):
 
     def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
         return f"tpy::to_vector<{elem_cpp}>({range_expr})"
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        return ListType(fn(self.element_type))
 
 
 @dataclass(frozen=True)
