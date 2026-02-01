@@ -1546,67 +1546,89 @@ class SemanticAnalyzer:
 
         return False
 
+    def _type_has_method_with_signature(
+        self,
+        actual: TpyType,
+        method_name: str,
+        expected_params: list[TpyType],
+        expected_return: TpyType,
+    ) -> bool:
+        """Check if a type has a method with the expected signature.
+
+        Works for both user records (via RecordInfo) and builtin types (via module system).
+
+        Note: For builtin types with generic methods (e.g., list.append(value: T)), the type
+        parameter comparison uses direct equality, which doesn't resolve type variables.
+        This is fine for Phase 1 protocols (only Sized with __len__() -> Int32), but would
+        need type parameter resolution for generic protocols like Iterable[T].
+        """
+        if isinstance(actual, RecordType):
+            # User record - check methods in RecordInfo
+            record = self.registry.get_record(actual.name)
+            if record is None:
+                return False
+            method = record.get_method(method_name)
+            if method is None:
+                return False
+            # Check return type
+            if method.return_type != expected_return:
+                return False
+            # Check parameter count and types
+            if len(method.params) != len(expected_params):
+                return False
+            for (_, actual_ptype), expected_ptype in zip(method.params, expected_params):
+                if actual_ptype != expected_ptype:
+                    return False
+            return True
+        else:
+            # Builtin type - check via module system
+            overloads = builtin_modules.lookup_type_method(actual, method_name)
+            if overloads is None:
+                return False
+            # Check if any overload matches the expected signature
+            for method_def in overloads:
+                # Check return type
+                if method_def.returns != expected_return:
+                    continue
+                # Check parameter count and types
+                if len(method_def.params) != len(expected_params):
+                    continue
+                params_match = True
+                for param_def, expected_ptype in zip(method_def.params, expected_params):
+                    if param_def.type != expected_ptype:
+                        params_match = False
+                        break
+                if params_match:
+                    return True
+            return False
+
     def _type_conforms_to_protocol(self, actual: TpyType, protocol: ProtocolType) -> bool:
         """Check if actual type structurally conforms to a protocol.
 
         A type conforms if it has all methods required by the protocol with compatible signatures.
         """
-        # Look up the protocol definition
+        # Look up the protocol definition (builtin first, then user-defined)
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
-        if protocol_def is None:
-            # User-defined protocol - check in registry
-            protocol_info = self.registry.get_protocol(protocol.name)
-            if protocol_info is None:
-                return False
-            # Check that actual type has all required methods with matching signatures
-            for method_sig in protocol_info.methods:
-                # For user records, check methods in RecordInfo
-                if isinstance(actual, RecordType):
-                    record = self.registry.get_record(actual.name)
-                    if record is None:
-                        return False
-                    method = record.get_method(method_sig.name)
-                    if method is None:
-                        return False
-                    # Check return type compatibility
-                    if method.return_type != method_sig.return_type:
-                        return False
-                    # Check parameter count and types
-                    if len(method.params) != len(method_sig.params):
-                        return False
-                    for (_, actual_ptype), (_, expected_ptype) in zip(method.params, method_sig.params):
-                        if actual_ptype != expected_ptype:
-                            return False
-                else:
-                    # For builtin types, check via module system
-                    if not builtin_modules.lookup_type_method(actual, method_sig.name):
-                        return False
+        if protocol_def is not None:
+            # Built-in protocol
+            for method_name, method_def in protocol_def.methods.items():
+                expected_params = [p.type for p in method_def.params]
+                if not self._type_has_method_with_signature(
+                    actual, method_name, expected_params, method_def.returns
+                ):
+                    return False
             return True
 
-        # Built-in protocol - check required methods with matching signatures
-        for method_name, method_def in protocol_def.methods.items():
-            # For user records, check methods in RecordInfo
-            if isinstance(actual, RecordType):
-                record = self.registry.get_record(actual.name)
-                if record is None:
-                    return False
-                method = record.get_method(method_name)
-                if method is None:
-                    return False
-                # Check return type compatibility
-                if method.return_type != method_def.returns:
-                    return False
-                # Check parameter count and types
-                expected_params = method_def.params
-                if len(method.params) != len(expected_params):
-                    return False
-                for (_, actual_ptype), expected_param in zip(method.params, expected_params):
-                    if actual_ptype != expected_param.type:
-                        return False
-            else:
-                # For builtin types, check via module system
-                if not builtin_modules.lookup_type_method(actual, method_name):
-                    return False
+        # User-defined protocol - check in registry
+        protocol_info = self.registry.get_protocol(protocol.name)
+        if protocol_info is None:
+            return False
+        for method_sig in protocol_info.methods:
+            expected_params = [ptype for _, ptype in method_sig.params]
+            if not self._type_has_method_with_signature(
+                actual, method_sig.name, expected_params, method_sig.return_type
+            ):
+                return False
         return True
 
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,
