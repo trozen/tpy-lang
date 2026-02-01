@@ -15,8 +15,8 @@ from typing import Optional
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     StaticListType, ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
-    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType,
-    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
+    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType,
+    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
     ProtocolInfo, MethodSignature
 )
 from .namespace import Namespace, BindingKind, NameBinding
@@ -248,7 +248,22 @@ class SemanticAnalyzer:
         """Register a function."""
         for pname, ptype in func.params:
             self._validate_type(ptype)
+            # Self type can only be used in protocol method signatures
+            if isinstance(ptype, SelfType):
+                raise SemanticError(
+                    f"Self type cannot be used in function parameter '{pname}'. "
+                    f"Self is only valid in protocol method signatures",
+                    func.loc
+                )
         self._validate_type(func.return_type)
+
+        # Self type can only be used in protocol method signatures
+        if isinstance(func.return_type, SelfType):
+            raise SemanticError(
+                f"Self type cannot be used as a return type. "
+                f"Self is only valid in protocol method signatures",
+                func.loc
+            )
 
         # Protocol types cannot be used as return types
         if isinstance(func.return_type, ProtocolType):
@@ -835,9 +850,30 @@ class SemanticAnalyzer:
         if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
             return IntLiteralType(0)  # Value not tracked for compound expressions
 
+        # Protocol-typed operands - look up the dunder method in the protocol
+        # For Self in protocols, Self binds to the protocol itself when used as a value type
+        if isinstance(left_type, ProtocolType):
+            method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
+            if method_name:
+                return_type = self._lookup_protocol_method_return(left_type, method_name, [right_type])
+                if return_type is not None:
+                    return return_type
+
         # Arithmetic/bitwise operators - use module system
         if result := builtin_modules.lookup_binop(left_type, expr.op, right_type):
             return result.method.returns
+
+        # User-defined types (RecordType) with dunder methods
+        if isinstance(left_type, RecordType):
+            method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
+            if method_name:
+                record = self.registry.get_record(left_type.name)
+                if record and (method := record.get_method(method_name)):
+                    # Check parameter count and type
+                    if len(method.params) == 1:
+                        _, param_type = method.params[0]
+                        if param_type == right_type:
+                            return method.return_type
 
         raise SemanticError(f"Invalid operand types for '{expr.op}': {left_type} and {right_type}")
 
@@ -1572,6 +1608,88 @@ class SemanticAnalyzer:
 
         return False
 
+    def _substitute_self(self, typ: TpyType, actual: TpyType) -> TpyType:
+        """Recursively substitute SelfType with actual type throughout a type structure.
+
+        Handles nested types like Own[Self], Ptr[Self], list[Self], etc.
+        """
+        if isinstance(typ, SelfType):
+            return actual
+        elif isinstance(typ, OwnType):
+            return OwnType(self._substitute_self(typ.wrapped, actual))
+        elif isinstance(typ, PtrType):
+            return PtrType(self._substitute_self(typ.pointee, actual))
+        elif isinstance(typ, ConstPtrType):
+            return ConstPtrType(self._substitute_self(typ.pointee, actual))
+        elif isinstance(typ, ListType):
+            return ListType(self._substitute_self(typ.element_type, actual))
+        elif isinstance(typ, ArrayType):
+            return ArrayType(self._substitute_self(typ.element_type, actual), typ.size)
+        elif isinstance(typ, SpanType):
+            return SpanType(self._substitute_self(typ.element_type, actual))
+        elif isinstance(typ, StaticListType):
+            return StaticListType(self._substitute_self(typ.element_type, actual), typ.capacity)
+        else:
+            return typ
+
+    def _lookup_protocol_method_return(
+        self,
+        protocol: ProtocolType,
+        method_name: str,
+        arg_types: list[TpyType],
+    ) -> TpyType | None:
+        """Look up a method's return type in a protocol, checking argument compatibility.
+
+        For protocol-typed values, we use the protocol's method signatures.
+        Self in the protocol is bound to the protocol itself (not a concrete type).
+
+        Returns the method's return type if found and args match, None otherwise.
+        """
+        # Check builtin protocols first
+        protocol_def = builtin_modules.lookup_protocol(protocol.name)
+        if protocol_def is not None:
+            method_def = protocol_def.methods.get(method_name)
+            if method_def is None:
+                return None
+
+            # Build type substitution: Self -> the protocol type itself
+            type_subst: dict[str, TpyType] = {"Self": protocol}
+            if protocol_def.type_params and protocol.type_args:
+                type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
+
+            resolved = builtin_modules.resolve_method(method_def, type_subst)
+
+            # Check argument count
+            if len(resolved.params) != len(arg_types):
+                return None
+
+            # Check argument types
+            for param_def, arg_type in zip(resolved.params, arg_types):
+                if param_def.type != arg_type:
+                    return None
+
+            return resolved.returns
+
+        # Check user-defined protocols
+        protocol_info = self.registry.get_protocol(protocol.name)
+        if protocol_info is not None:
+            for method_sig in protocol_info.methods:
+                if method_sig.name == method_name:
+                    # Check argument count
+                    if len(method_sig.params) != len(arg_types):
+                        return None
+
+                    # Check argument types (recursively substituting Self -> protocol)
+                    for (_, ptype), arg_type in zip(method_sig.params, arg_types):
+                        expected_type = self._substitute_self(ptype, protocol)
+                        if expected_type != arg_type:
+                            return None
+
+                    # Return type (recursively substituting Self -> protocol)
+                    return self._substitute_self(method_sig.return_type, protocol)
+
+        return None
+
     def _type_has_method_with_signature(
         self,
         actual: TpyType,
@@ -1677,27 +1795,29 @@ class SemanticAnalyzer:
         - Build type substitution map: {"T": Int32}
         - Resolve each method signature with substitutions
         - Check if actual type has the resolved methods
+
+        For Self type in protocols:
+        - Self is substituted with the actual type being checked
+        - e.g., checking Int32 against Addable with __add__(Self) -> Self
+          expects __add__(Int32) -> Int32
         """
         # Look up the protocol definition (builtin first, then user-defined)
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
         if protocol_def is not None:
             # Build type substitution map for generic protocols
-            type_subst: dict[str, TpyType] = {}
+            # Always include Self -> actual type
+            type_subst: dict[str, TpyType] = {"Self": actual}
             if protocol_def.type_params and protocol.type_args:
                 if len(protocol_def.type_params) != len(protocol.type_args):
                     return False  # Mismatch in type parameter count
-                type_subst = dict(zip(protocol_def.type_params, protocol.type_args))
+                type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
 
             # Built-in protocol
             for method_name, method_def in protocol_def.methods.items():
-                # Resolve method signature with type substitutions
-                if type_subst:
-                    resolved = builtin_modules.resolve_method(method_def, type_subst)
-                    expected_params = [p.type for p in resolved.params]
-                    expected_return = resolved.returns
-                else:
-                    expected_params = [p.type for p in method_def.params]
-                    expected_return = method_def.returns
+                # Resolve method signature with type substitutions (including Self)
+                resolved = builtin_modules.resolve_method(method_def, type_subst)
+                expected_params = [p.type for p in resolved.params]
+                expected_return = resolved.returns
 
                 if not self._type_has_method_with_signature(
                     actual, method_name, expected_params, expected_return
@@ -1711,18 +1831,21 @@ class SemanticAnalyzer:
             return False
 
         # Build type substitution map for generic user protocols
-        type_subst: dict[str, TpyType] = {}
+        type_subst: dict[str, TpyType] = {"Self": actual}
         if protocol_info.type_params and protocol.type_args:
             if len(protocol_info.type_params) != len(protocol.type_args):
                 return False
-            type_subst = dict(zip(protocol_info.type_params, protocol.type_args))
+            type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
         for method_sig in protocol_info.methods:
-            expected_params = [ptype for _, ptype in method_sig.params]
-            expected_return = method_sig.return_type
+            # Recursively substitute SelfType with actual type in params and return type
+            # Handles nested types like Own[Self], Ptr[Self], etc.
+            expected_params = [
+                self._substitute_self(ptype, actual)
+                for _, ptype in method_sig.params
+            ]
+            expected_return = self._substitute_self(method_sig.return_type, actual)
 
-            # Resolve type parameters (user protocols don't use MethodDef, but direct TpyTypes)
-            # For now, user protocols are not generic - this path won't be hit
             if not self._type_has_method_with_signature(
                 actual, method_sig.name, expected_params, expected_return
             ):

@@ -297,6 +297,26 @@ class ProtocolType(TpyType):
 
 
 @dataclass(frozen=True)
+class SelfType(TpyType):
+    """Self type for protocol method signatures.
+
+    Represents the implementing type in protocol method signatures.
+    When checking if Int32 conforms to a protocol with Self, Self is
+    substituted with Int32.
+    """
+
+    def to_cpp(self) -> str:
+        # Template parameter in concepts - the implementing type
+        return "T"
+
+    def __str__(self) -> str:
+        return "Self"
+
+
+SELF = SelfType()
+
+
+@dataclass(frozen=True)
 class PtrType(TpyType):
     """Mutable pointer type: Ptr[T] -> T*"""
     pointee: TpyType

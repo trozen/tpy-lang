@@ -1,0 +1,1 @@
+main.tp.py:4: error: Self type cannot be used in function parameter 'x'. Self is only valid in protocol method signatures

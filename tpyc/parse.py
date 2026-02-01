@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
-    TpyType, RecordType, PtrType, ConstPtrType, OwnType, ProtocolType,
-    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, FieldInfo, RecordInfo, TypeRegistry,
+    TpyType, RecordType, PtrType, ConstPtrType, OwnType, ProtocolType, SelfType,
+    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo
 )
 from .modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, TypeParamKind, BuiltinTypeDef
@@ -300,7 +300,7 @@ class Parser:
         "lambda", "yield", "global", "nonlocal",
     }
 
-    ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}
+    ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing", "__future__"}
 
     def __init__(self):
         self.registry = TypeRegistry()
@@ -378,6 +378,9 @@ class Parser:
             raise ParseError(f"Import from '{node.module}' not allowed.", node)
         # Skip tpy - it's handled differently (type imports)
         if node.module == "tpy":
+            return
+        # Skip __future__ imports - they affect CPython parsing but are no-op for TurboPython
+        if node.module == "__future__":
             return
         # 'from X import Y, Z' -> module_name: {Y, Z}
         module_name = node.module
@@ -543,7 +546,9 @@ class Parser:
         """Parse a type annotation."""
         if isinstance(node, ast.Name):
             name = node.id
-            if name == "Int32":
+            if name == "Self":
+                return SELF
+            elif name == "Int32":
                 return INT32
             elif name == "int":
                 return BIGINT

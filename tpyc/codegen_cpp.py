@@ -14,7 +14,7 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
-    StaticListType, ArrayType, SpanType, ListType, PendingListType, ProtocolType,
+    StaticListType, ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
     INT32, VOID, BIGINT, FLOAT, CHAR, STR
 )
@@ -435,6 +435,9 @@ class CodeGenerator:
         # Generate operator[] if __getitem__ exists (enables Sequence protocol conformance)
         self._gen_subscript_operators(out, record)
 
+        # Generate arithmetic operators from dunder methods (enables protocol conformance)
+        self._gen_arithmetic_operators(out, record)
+
         out.write("};\n")
         self._gen_record_ostream(out, record)
 
@@ -491,14 +494,25 @@ class CodeGenerator:
 
     # Methods that should be const (don't mutate self)
     CONST_METHODS = {"__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
-                     "__lt__", "__le__", "__gt__", "__ge__"}
+                     "__lt__", "__le__", "__gt__", "__ge__",
+                     # Binary arithmetic operators (return new value, don't modify self)
+                     "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
+                     "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
+                     # Reverse operators
+                     "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
+                     # Unary operators
+                     "__neg__", "__pos__", "__invert__"}
 
     def _gen_method(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
         """Generate a method definition inside a struct."""
         is_const = method.name in self.CONST_METHODS
         # Const methods must return const refs for object types
         ret_type = method.return_type.to_cpp_return_const() if is_const else method.return_type.to_cpp_return()
-        params = self._gen_params(method.params)
+        # Const methods take parameters by const reference
+        if is_const:
+            params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
+        else:
+            params = self._gen_params(method.params)
         const_suffix = " const" if is_const else ""
         out.write(f"\n  {ret_type} {method.name}({params}){const_suffix} {{\n")
 
@@ -558,24 +572,83 @@ class CodeGenerator:
         out.write(f"    return __getitem__({index_param_name});\n")
         out.write("  }\n")
 
+    # Mapping from Python dunder methods to C++ binary operators
+    # Note: Both __truediv__ and __floordiv__ map to / in C++. For integer types,
+    # C++ / is truncating division (like Python //). For user types, they should
+    # implement the appropriate semantics in their __truediv__/__floordiv__ methods.
+    DUNDER_TO_BINARY_OP = {
+        "__add__": "+", "__sub__": "-", "__mul__": "*",
+        "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
+        "__and__": "&", "__or__": "|", "__xor__": "^",
+        "__lshift__": "<<", "__rshift__": ">>",
+    }
+
+    def _gen_arithmetic_operators(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate C++ operators from arithmetic dunder methods.
+
+        This enables user records to conform to C++ concepts that use operator syntax
+        (e.g., `t + other`) rather than method calls (e.g., `t.__add__(other)`).
+        """
+        for method in record.methods:
+            if method.name not in self.DUNDER_TO_BINARY_OP:
+                continue
+            if not method.params:
+                continue  # Binary operators need at least one parameter
+
+            cpp_op = self.DUNDER_TO_BINARY_OP[method.name]
+            param_name, param_type = method.params[0]
+            param_cpp = param_type.to_cpp_const_param(param_name)
+
+            # Return type - use to_cpp() for value/Own types
+            ret_cpp = method.return_type.to_cpp()
+
+            # Generate friend operator that delegates to the dunder method
+            # Using friend function allows symmetric operand handling
+            out.write(f"\n  friend {ret_cpp} operator{cpp_op}(const {record.name}& lhs, {param_cpp}) {{\n")
+            out.write(f"    return lhs.{method.name}({param_name});\n")
+            out.write("  }\n")
+
     def _gen_concept_decl(self, out: TextIO, protocol: TpyProtocol) -> None:
-        """Generate a C++20 concept for a user-defined protocol."""
+        """Generate a C++20 concept for a user-defined protocol.
+
+        SelfType in method signatures is rendered as 'T' (the template parameter).
+        This allows the concept to check that e.g., T + T -> T.
+        """
         out.write(f"template<typename T>\n")
         out.write(f"concept {protocol.name} = requires(const T& t) {{\n")
 
+        # Mapping from Python dunder methods to C++ operators
+        DUNDER_TO_OPERATOR = {
+            "__add__": "+", "__sub__": "-", "__mul__": "*",
+            "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
+            "__eq__": "==", "__ne__": "!=",
+            "__lt__": "<", "__le__": "<=", "__gt__": ">", "__ge__": ">=",
+            "__and__": "&", "__or__": "|", "__xor__": "^",
+            "__lshift__": "<<", "__rshift__": ">>",
+        }
+
         for method_sig in protocol.methods:
             # Generate requirement for each method
+            # SelfType.to_cpp() returns "T", so this handles Self -> T substitution
             ret_cpp = method_sig.return_type.to_cpp()
 
             # For dunder methods that have tpy:: free function equivalents, use those
             # This allows std types (vector, string, etc.) to satisfy the protocol
             if method_sig.name == "__len__":
                 out.write(f"    {{ tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
+            elif method_sig.name in DUNDER_TO_OPERATOR and len(method_sig.params) == 1:
+                # Binary operators - use C++ operator syntax
+                # e.g., __add__(Self) -> Self becomes { t + std::declval<T>() } -> convertible_to<T>
+                cpp_op = DUNDER_TO_OPERATOR[method_sig.name]
+                _, ptype = method_sig.params[0]
+                param_cpp = ptype.to_cpp()
+                out.write(f"    {{ t {cpp_op} std::declval<{param_cpp}>() }} -> std::convertible_to<{ret_cpp}>;\n")
             else:
                 # { t.method_name(args...) } -> std::convertible_to<return_type>;
                 params_str = ""
                 if method_sig.params:
-                    # For now, use std::declval for parameter types
+                    # Use std::declval for parameter types
+                    # SelfType.to_cpp() returns "T", so Self params become std::declval<T>()
                     param_exprs = [f"std::declval<{ptype.to_cpp()}>()" for _, ptype in method_sig.params]
                     params_str = ", ".join(param_exprs)
                 out.write(f"    {{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
@@ -681,6 +754,24 @@ class CodeGenerator:
     def _gen_params(self, params: list[tuple[str, TpyType]]) -> str:
         """Generate function parameter list."""
         return ", ".join(ptype.to_cpp_param(pname) for pname, ptype in params)
+
+    def _contains_protocol_type(self, typ: TpyType) -> bool:
+        """Check if a type contains ProtocolType or SelfType anywhere in its structure.
+
+        Used to determine if a variable should use 'auto' in C++ codegen because
+        the actual type depends on template parameters.
+        """
+        if isinstance(typ, (ProtocolType, SelfType)):
+            return True
+        elif isinstance(typ, OwnType):
+            return self._contains_protocol_type(typ.wrapped)
+        elif isinstance(typ, (PtrType, ConstPtrType)):
+            return self._contains_protocol_type(typ.pointee)
+        elif isinstance(typ, (ListType, SpanType)):
+            return self._contains_protocol_type(typ.element_type)
+        elif isinstance(typ, (ArrayType, StaticListType)):
+            return self._contains_protocol_type(typ.element_type)
+        return False
 
     def _is_temporary_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression produces a temporary (rvalue).
@@ -808,7 +899,11 @@ class CodeGenerator:
             self.current_ns.bind_variable(stmt.name, target_type)
 
         if stmt.type:
-            cpp_type = stmt.type.to_cpp()
+            # Protocol types use auto in generated code (the actual type is the template param)
+            if self._contains_protocol_type(stmt.type):
+                cpp_type = "auto"
+            else:
+                cpp_type = stmt.type.to_cpp()
         elif stmt.init:
             # Check if analyzer resolved the type based on usage
             resolved_type = self.analyzer.var_types.get(id(stmt))
@@ -832,7 +927,11 @@ class CodeGenerator:
                             inferred_type = ArrayType(BIGINT, inferred_type.size)
                         else:
                             inferred_type = ListType(BIGINT)
-                cpp_type = inferred_type.to_cpp()
+                # Protocol types use auto (the actual type is the template param)
+                if self._contains_protocol_type(inferred_type):
+                    cpp_type = "auto"
+                else:
+                    cpp_type = inferred_type.to_cpp()
         else:
             raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
 
@@ -1314,6 +1413,27 @@ class CodeGenerator:
                 left = self._gen_expr(expr.left, BIGINT)
                 right = self._gen_expr(expr.right, BIGINT)
                 cpp_op = "/" if expr.op == "//" else expr.op
+                return f"({left} {cpp_op} {right})"
+
+            # Protocol-typed operands - use C++ operator syntax
+            # The protocol constraint guarantees the operator exists
+            if isinstance(left_type, ProtocolType):
+                left = self._gen_expr(expr.left, left_type)
+                right = self._gen_expr(expr.right, right_type)
+                # Map Python operators to C++ operators
+                cpp_op = expr.op
+                if expr.op == "//":
+                    cpp_op = "/"  # Floor division maps to / in C++
+                return f"({left} {cpp_op} {right})"
+
+            # User-defined types (RecordType) - use generated C++ operator
+            if isinstance(left_type, RecordType):
+                left = self._gen_expr(expr.left, left_type)
+                right = self._gen_expr(expr.right, right_type)
+                # Map Python operators to C++ operators
+                cpp_op = expr.op
+                if expr.op == "//":
+                    cpp_op = "/"  # Floor division maps to / in C++
                 return f"({left} {cpp_op} {right})"
 
             raise RuntimeError(f"No codegen for binary operator {expr.op} with {left_type} and {right_type}")

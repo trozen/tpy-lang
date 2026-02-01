@@ -564,6 +564,68 @@ int32_t count(const T_items& items) {
 }
 ```
 
+#### Working: Self Type in Protocols
+
+The `Self` type can be used in protocol method signatures to refer to the implementing type. This enables patterns where the return type or parameter type should match the concrete type:
+
+```python
+from typing import Protocol, Self
+from tpy import Int32
+
+class Addable(Protocol):
+    def __add__(self, other: Self) -> Self: ...
+
+def add_values(x: Addable, y: Addable) -> None:
+    result = x + y
+    print(result)
+
+a: Int32 = 21
+b: Int32 = 21
+add_values(a, b)  # Int32 conforms: __add__(Int32) -> Int32
+```
+
+Generated C++:
+```cpp
+template<typename T>
+concept Addable = requires(const T& t) {
+    { t + std::declval<T>() } -> std::convertible_to<T>;
+};
+
+template<Addable T_x, Addable T_y>
+void add_values(const T_x& x, const T_y& y) {
+    auto result = (x + y);
+    std::cout << result << "\n";
+}
+```
+
+When checking protocol conformance, `Self` is substituted with the actual type being checked. For example, `Int32` conforms to `Addable` because `Int32.__add__(Int32) -> Int32` matches the protocol signature.
+
+`Self` can also be used inside wrapper types like `Own[Self]`:
+
+```python
+from __future__ import annotations
+from typing import Protocol, Self
+from tpy import Int32, Own
+
+class Addable(Protocol):
+    def __add__(self, other: Self) -> Own[Self]: ...
+
+class Point:
+    x: Int32
+    y: Int32
+
+    def __init__(self, x: Int32, y: Int32) -> None:
+        self.x = x
+        self.y = y
+
+    def __add__(self, other: Point) -> Own[Point]:
+        return Point(self.x + other.x, self.y + other.y)
+```
+
+`Point` conforms to `Addable` because `Point.__add__(Point) -> Own[Point]` matches `__add__(Self) -> Own[Self]` after substituting `Self` with `Point`.
+
+**Note**: `Self` can only be used within protocol method signatures. Using `Self` in regular functions or class methods produces an error.
+
 #### Working: Generic Protocol `Sequence[T]`
 
 The `Sequence[T]` generic protocol is available for types that support `len()` and indexing:

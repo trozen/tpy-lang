@@ -384,14 +384,30 @@ def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) ->
 
     Handles:
     - "T" -> type_params["T"]
+    - "Self" -> type_params["Self"] (for protocol Self type)
     - "Ptr[T]" -> PtrType(type_params["T"])
     - "Iterable" -> "Iterable" (kept as string, accepts container types)
     - TpyType -> returned as-is
+    - SelfType -> type_params["Self"] if available, else SELF
     """
+    from tpyc.typesys import SelfType, SELF
+
+    # Handle SelfType instances (from user-defined protocols)
+    if isinstance(t, SelfType):
+        if "Self" in type_params:
+            return type_params["Self"]
+        return SELF
+
     if isinstance(t, str):
         # "Iterable" accepts any container type (list, Array, Span, StaticList)
         if t == "Iterable":
             return "Iterable"
+
+        # "Self" type parameter for builtin protocols
+        if t == "Self":
+            if "Self" in type_params:
+                return type_params["Self"]
+            return SELF
 
         # Check for Ptr[X] pattern
         ptr_match = re.match(r"Ptr\[(\w+)\]", t)
