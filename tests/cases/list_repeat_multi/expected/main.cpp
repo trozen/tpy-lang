@@ -16,7 +16,7 @@ tpy::Global<std::vector<int32_t>> neg;
 void __tpy_init() {
   __name__ = "__main__";
   // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
-  sl = StaticList<int32_t, 8>(tpy::repeat_range<int32_t>(3, {1, 2}));
+  sl = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(3, {1, 2}));
   // 5: print(len(sl))
   std::cout << tpy::__len__((*sl)) << "\n";
   // 6: for i in range(len(sl)):
@@ -25,7 +25,7 @@ void __tpy_init() {
     std::cout << tpy::get_item((*sl), i) << "\n";
   }
   // 10: nums: list[Int32] = [10, 20] * 2
-  nums = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>(2, {10, 20}));
+  nums = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(2, {10, 20}));
   // 11: print(len(nums))
   std::cout << tpy::__len__((*nums)) << "\n";
   // 12: for i in range(len(nums)):
@@ -38,7 +38,7 @@ void __tpy_init() {
   // 17: print(len(empty))
   std::cout << tpy::__len__((*empty)) << "\n";
   // 20: neg: list[Int32] = [1, 2, 3] * -5
-  neg = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>((-5), {1, 2, 3}));
+  neg = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>((-5), {1, 2, 3}));
   // 21: print(len(neg))
   std::cout << tpy::__len__((*neg)) << "\n";
 }

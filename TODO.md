@@ -3,6 +3,8 @@
 ## Next
 - trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
 - support generics in code
+- allow protocol inheritance, with protocol check
+- allow inheritance of normal classes
 - `bool()`
 - extract c++ compiler interface
 - `type()` function

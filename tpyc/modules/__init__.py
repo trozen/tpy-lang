@@ -60,7 +60,6 @@ class BuiltinTypeDef:
     param_kinds: list[TypeParamKind] = field(default_factory=list)  # Kind of each type param
     type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
     extends: list[str] = field(default_factory=list)  # Protocols: ["NativeIterable[T]"]
-    cpp_from_range: str | None = None  # Template for range construction: "{type}({range})"
 
 
 @dataclass
@@ -121,8 +120,7 @@ class BuiltinModule:
              type_params: list[str] | None = None,
              param_kinds: list[TypeParamKind] | None = None,
              type_factory: "Callable[..., TpyType] | None" = None,
-             extends: list[str] | None = None,
-             cpp_from_range: str | None = None):
+             extends: list[str] | None = None):
         """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
         type_params = type_params or []
         param_kinds = param_kinds or []
@@ -154,7 +152,6 @@ class BuiltinModule:
             param_kinds=param_kinds,
             type_factory=type_factory,
             extends=extends or [],
-            cpp_from_range=cpp_from_range,
         )
 
 

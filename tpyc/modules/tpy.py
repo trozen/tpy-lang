@@ -110,8 +110,7 @@ module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
 module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
             param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
             type_factory=lambda t, n: ModuleType("tpy.StaticList", (t, n)),
-            cpp_from_range="{type}({range})",
-            extends=["NativeIterable[T]", "NativeContiguous[T]"],
+            extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],
@@ -173,4 +172,13 @@ module.protocol("NativeContiguous",
     type_params=["T"],
     methods={},  # Marker protocol - conformance via extends declaration
     cpp_concept="tpy::NativeContiguous",
+)
+
+# NativeRangeConstructible[T] protocol: types that can be constructed from a range
+# This is a marker protocol - types declare conformance via extends=["NativeRangeConstructible[T]"].
+# Used by codegen to generate tpy::from_range<Container>(range) calls.
+module.protocol("NativeRangeConstructible",
+    type_params=["T"],
+    methods={},  # Marker protocol - conformance via extends declaration
+    cpp_concept="tpy::NativeRangeConstructible",
 )

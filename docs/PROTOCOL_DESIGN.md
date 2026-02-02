@@ -211,14 +211,19 @@ class ProtocolType(TpyType):
 
 ## 8. Built-in protocols
 
-| Protocol | Methods | Used by |
-|----------|---------|---------|
-| `Sized` | `__len__` | `len()` |
-| `Iterable[T]` | `__iter__` | `for` loops |
-| `Iterator[T]` | `__next__` | iteration |
-| `Hashable` | `__hash__` | dict keys |
-| `SupportsInt` | `__int__` | `int()` coercion |
-| `SupportsIndex` | `__index__` | indexing |
+| Protocol | Methods | Used by | Status |
+|----------|---------|---------|--------|
+| `Sized` | `__len__` | `len()` | ✅ Working |
+| `Sequence[T]` | `__len__`, `__getitem__` | indexing | ✅ Working |
+| `MutableSequence[T]` | `__len__`, `__getitem__`, `__setitem__` | subscript assignment validation | ✅ Working |
+| `NativeIterable[T]` | (marker) | `for` loops | ✅ Working |
+| `NativeContiguous[T]` | (marker) | `Span[T]` coercion | ✅ Working |
+| `NativeRangeConstructible[T]` | (marker) | range construction | ✅ Working |
+| `Iterable[T]` | `__iter__` | user-extensible iteration | Phase 8 |
+| `Iterator[T]` | `__next__` | iteration | Phase 8 |
+| `Hashable` | `__hash__` | dict keys | Planned |
+| `SupportsInt` | `__int__` | `int()` coercion | Planned |
+| `SupportsIndex` | `__index__` | indexing | Planned |
 
 ## 9. Compiler Traits (Data-Driven Type Behavior)
 
@@ -373,9 +378,16 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Recursive substitution for nested types like `Own[Self]`, `Ptr[Self]`
    - Validation: `Self` only allowed in protocol contexts
    - Regular (non-dunder) method calls on protocol-typed values
-6. **Phase 6**: Compiler trait protocols ✅ **IN PROGRESS**
+6. **Phase 6**: Compiler trait protocols ✅ **COMPLETE**
    - `NativeContiguous[T]` - types with contiguous memory layout, coercible to `Span[T]`
-   - Remaining: `ConstructibleFromRange`, `SubscriptableRead`, etc.
+   - `MutableSequence[T]` - types that support `__len__`, `__getitem__`, and `__setitem__`
+     - Used by sema to validate subscript assignment (Span, str don't conform → read-only)
+     - C++20 concept `tpy::MutableSequence<ElemT>`
+   - `NativeRangeConstructible[T]` - types that can be constructed from a range
+     - Unified `tpy::from_range<Container>(range)` template using iterator-pair constructor
+     - Reserves capacity if container supports `reserve()` and range has known size
+     - C++20 concept `tpy::NativeRangeConstructible<ElemT>`
+     - list and StaticList extend this protocol
 7. ~~**Phase 7**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)
 8. **Phase 8**: Python-compatible `Iterable[T]` and `Iterator[T]` (future)
    - `Iterator[T]` with `__next__() -> T` + `raise StopIteration`

@@ -93,10 +93,6 @@ class TpyType:
         """Return the element type for container types, or None for non-containers."""
         return None
 
-    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
-        """Return C++ expression to construct this type from a range, or None if not supported."""
-        return None
-
     def needs_explicit_element_target(self) -> bool:
         """Return True if array literals need explicit element type targeting.
 
@@ -468,9 +464,6 @@ class ListType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
-        return f"tpy::to_vector<{elem_cpp}>({range_expr})"
-
     def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
         return ListType(fn(self.element_type))
 
@@ -557,16 +550,6 @@ class ModuleType(TpyType):
                 if isinstance(arg, TpyType):
                     return arg
         return None
-
-    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
-        type_def = self._get_type_def()
-        if type_def.cpp_from_range is None:
-            return None
-        # Substitute {type} and {range} in the template
-        result = type_def.cpp_from_range
-        result = result.replace("{type}", self.to_cpp())
-        result = result.replace("{range}", range_expr)
-        return result
 
     def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
         from tpyc.modules import TypeParamKind

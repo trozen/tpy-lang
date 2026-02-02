@@ -1542,7 +1542,7 @@ class CodeGenerator:
                 return f"{expr.func}({', '.join(gen_args)})"
             # Generic type instantiation (e.g., Container[T, N]())
             if expr.call_type is not None:
-                # List repeat already generates the target type via to_cpp_from_range
+                # List repeat already generates the target type via from_range
                 if len(expr.args) == 1 and isinstance(expr.args[0], TpyListRepeat):
                     return self._gen_expr(expr.args[0], expr.call_type)
                 # Check for constructor with cpp template (e.g., list(iterable))
@@ -1678,12 +1678,9 @@ class CodeGenerator:
             cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
             range_expr = f"tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
 
-            # Use type's range construction method
-            from_range = result_type.to_cpp_from_range(range_expr, cpp_elem_type)
-            if from_range:
-                return from_range
-            # Fallback for types without range constructor
-            return f"tpy::to_vector<{cpp_elem_type}>({range_expr})"
+            # Use unified from_range template for all range-constructible types
+            cpp_type = result_type.to_cpp()
+            return f"tpy::from_range<{cpp_type}>({range_expr})"
 
         elif isinstance(expr, TpySubscript):
             obj = self._gen_expr(expr.obj)

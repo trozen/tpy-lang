@@ -428,6 +428,29 @@ std::vector<T> to_vector(R&& range) {
 }
 
 /**
+ * from_range<Container> - Construct a container from a range.
+ *
+ * Constructs container using iterator-pair constructor (begin, end).
+ * If container supports reserve() and range has known size, reserves first.
+ * Works with std::vector, StaticList, and any container with this constructor.
+ *
+ * Usage: tpy::from_range<StaticList<int, 10>>(some_range)
+ *        tpy::from_range<std::vector<int>>(some_range)
+ */
+template<typename Container, std::ranges::input_range R>
+Container from_range(R&& range) {
+    if constexpr (requires(Container& c) { c.reserve(std::size_t{}); } &&
+                  std::ranges::sized_range<R>) {
+        Container result;
+        result.reserve(std::ranges::size(range));
+        result.assign(std::ranges::begin(range), std::ranges::end(range));
+        return result;
+    } else {
+        return Container(std::ranges::begin(range), std::ranges::end(range));
+    }
+}
+
+/**
  * StaticList<T, N> - Fixed-capacity container with std::vector-like interface.
  *
  * No dynamic allocation. Elements are stored inline.
@@ -460,15 +483,15 @@ public:
         }
     }
 
-    // Range constructor (C++23) - accepts any input range
-    template<std::ranges::input_range R>
-        requires std::convertible_to<std::ranges::range_value_t<R>, T>
-    StaticList(const R& range) : size_(0) {
-        for (const auto& elem : range) {
+    // Iterator-pair constructor
+    template<std::input_iterator InputIt>
+        requires std::convertible_to<std::iter_value_t<InputIt>, T>
+    StaticList(InputIt first, InputIt last) : size_(0) {
+        for (; first != last; ++first) {
             if (size_ >= N) {
                 tpy_panic("StaticList capacity exceeded");
             }
-            data_[size_++] = elem;
+            data_[size_++] = *first;
         }
     }
 
@@ -1504,6 +1527,28 @@ concept NativeIterable = requires(const T& t) {
 template<typename T, typename ElemT>
 concept NativeContiguous = std::ranges::contiguous_range<T> &&
     std::convertible_to<std::ranges::range_reference_t<T>, ElemT>;
+
+/**
+ * MutableSequence concept - types that support len(), read indexing, and write indexing
+ *
+ * A type is MutableSequence<ElemT> if it satisfies Sequence<ElemT> and additionally
+ * supports assignment via subscript operator (t[i] = v).
+ */
+template<typename T, typename ElemT>
+concept MutableSequence = Sequence<T, ElemT> && requires(T& t, int32_t i, ElemT v) {
+    { t[i] = v };
+};
+
+/**
+ * NativeRangeConstructible concept - types that can be constructed from a range
+ *
+ * A type is NativeRangeConstructible<ElemT> if from_range<T> can construct it.
+ * This requires an iterator-pair constructor (begin, end).
+ */
+template<typename T, typename ElemT>
+concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
+    T(std::ranges::begin(r), std::ranges::end(r));
+};
 
 // --- Collection printing (Python-style: [a, b, c]) ---
 

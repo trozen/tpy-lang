@@ -67,7 +67,7 @@ void __tpy_init() {
   // 15: count = 3
   count = tpy::BigInt(3);
   // 16: repeated: list[Int32] = [0] * count
-  repeated = tpy::to_vector<int32_t>(tpy::repeat_range<int32_t>((*count).to_int32(), {0}));
+  repeated = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>((*count).to_int32(), {0}));
   // 17: print(len(repeated))
   std::cout << tpy::__len__((*repeated)) << "\n";
   // 20: z = 0

@@ -617,13 +617,15 @@ class SemanticAnalyzer:
         target_type = self._analyze_expr(stmt.target)
         value_type = self._analyze_expr(stmt.value)
 
-        # Prevent assignment to Span or str elements (read-only views)
+        # Prevent assignment to read-only types via MutableSequence protocol check
         if isinstance(stmt.target, TpySubscript):
             obj_type = self.get_expr_type(stmt.target.obj)
-            if isinstance(obj_type, SpanType):
-                raise SemanticError("Cannot assign to elements of Span (read-only view)")
-            if isinstance(obj_type, StrType):
-                raise SemanticError("Cannot assign to elements of str (read-only)")
+            elem_type = obj_type.get_element_type()
+            if elem_type is not None:
+                # Check if type conforms to MutableSequence[elem_type]
+                mutable_seq = ProtocolType("MutableSequence", (elem_type,))
+                if not self._type_conforms_to_protocol(obj_type, mutable_seq):
+                    raise self._error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
 
         # Prevent assignment through ConstPtr (read-only pointer)
         if isinstance(stmt.target, TpyFieldAccess):
