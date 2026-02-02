@@ -147,18 +147,18 @@ class REPLSession:
                 # Check for multi-line continuation (incomplete syntax)
                 if self._needs_continuation(full_input):
                     in_block = full_input.rstrip().endswith(":")
-                    indent_level = 4  # Start with one indent level
+                    indent_level = 1  # Start with one indent level
                     while True:
                         try:
-                            indent = " " * indent_level
+                            indent = "\t" * indent_level
                             cont_line = input("... " + indent)
                             # Empty line: reduce indent or end block
                             if not cont_line.strip():
-                                if indent_level > 0:
-                                    indent_level -= 4
+                                if indent_level > 1:
+                                    indent_level -= 1
                                     continue  # Don't add empty line, just reduce indent
                                 else:
-                                    break  # At zero indent, end block
+                                    break  # At first block level (or zero), end block
                             full_input += "\n" + indent + cont_line
                         except EOFError:
                             break
@@ -168,7 +168,7 @@ class REPLSession:
                             break
                         # Adjust indent based on what user typed
                         if cont_line.rstrip().endswith(":"):
-                            indent_level += 4
+                            indent_level += 1
 
                 self._process_input(full_input)
 

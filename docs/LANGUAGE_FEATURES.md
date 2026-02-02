@@ -789,12 +789,12 @@ class Iterable(Protocol[T]):
     def __iter__(self) -> Iterator[T]: ...
 ```
 
-#### Working: `Contiguous[T]` (Span coercion)
+#### Working: `NativeContiguous[T]` (Span coercion)
 
-`Contiguous[T]` is a **marker protocol** for types with elements laid out contiguously in memory. Types extending `Contiguous[T]` can be implicitly coerced to `Span[T]`.
+`NativeContiguous[T]` is a **marker protocol** for types with elements laid out contiguously in memory. Types extending `NativeContiguous[T]` can be implicitly coerced to `Span[T]`.
 
 ```python
-from tpy import Int32, Span, Array, StaticList, Contiguous
+from tpy import Int32, Span, Array, StaticList, NativeContiguous
 
 def sum_span(values: Span[Int32]) -> Int32:
     total: Int32 = 0
@@ -802,7 +802,7 @@ def sum_span(values: Span[Int32]) -> Int32:
         total += v
     return total
 
-# All these work - Array, StaticList, list extend Contiguous[T]
+# All these work - Array, StaticList, list extend NativeContiguous[T]
 arr: Array[Int32, 3] = [1, 2, 3]
 sum_span(arr)  # OK
 
@@ -812,13 +812,13 @@ sum_span(sl)  # OK
 lst: list[Int32] = [4, 5, 6]
 sum_span(lst)  # OK
 
-# str does NOT extend Contiguous - this is an error
+# str does NOT extend NativeContiguous - this is an error
 # s: str = "hello"
-# takes_span(s)  # ERROR: str does not extend Contiguous
+# takes_span(s)  # ERROR: str does not extend NativeContiguous
 ```
 
 **Key points:**
-- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `Contiguous[T]`
+- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `NativeContiguous[T]`
 - **str excluded**: `str` iterates over `Char` but is not contiguous (it's `std::string_view`)
 - **Zero overhead**: Uses C++ `std::span` implicit construction from contiguous ranges
 - **C++ concept**: Maps to `std::ranges::contiguous_range`
@@ -830,7 +830,7 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
-- Implicit coercion to `Span[T]` works on types extending `Contiguous[T]` ✓ (working)
+- Implicit coercion to `Span[T]` works on types extending `NativeContiguous[T]` ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters (planned - Python-compatible)
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.

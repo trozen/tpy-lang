@@ -541,7 +541,7 @@ class SemanticAnalyzer:
                             self.pending_resolutions.append(literal_id)
                             init_type = PendingListType(elem_type, 0, literal_id)
                     else:
-                        # Other generic types (StaticList, Array, etc.): use annotation directly
+                        # Other generic types (Array, etc.): use annotation directly
                         init_type = stmt.type
                         # Set call_type so codegen knows the concrete template type
                         if is_generic_constructor:
@@ -661,13 +661,13 @@ class SemanticAnalyzer:
     def _analyze_expr_with_hint(self, expr: TpyExpr, type_hint: Optional[TpyType]) -> TpyType:
         """Analyze an expression with an optional type hint for inference.
 
-        The type hint allows constructs like list() or StaticList() to infer their
-        type parameters from context (e.g., function parameter type).
+        The type hint allows constructs like list() to infer their type parameters
+        from context (e.g., function parameter type).
         """
         if type_hint is None:
             return self._analyze_expr(expr)
 
-        # Check for generic type constructor (list(), StaticList(), etc.)
+        # Check for generic type constructor (list(), Container[T](), etc.)
         is_generic_constructor = (isinstance(expr, TpyCall) and
                                   not expr.args and
                                   expr.call_type is None and
@@ -714,7 +714,7 @@ class SemanticAnalyzer:
                     self.expr_types[id(expr)] = typ
                     return typ
                 else:
-                    # Other generic types (StaticList, Array, etc.): use hint directly
+                    # Other generic types (Array, etc.): use hint directly
                     # Set call_type so codegen knows the concrete template type
                     if is_generic_constructor:
                         expr.call_type = type_hint  # type: ignore
@@ -904,7 +904,7 @@ class SemanticAnalyzer:
 
     def _analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
-        # Generic type instantiation (e.g., StaticList[T, N]())
+        # Generic type instantiation (e.g., Container[T, N]())
         if expr.call_type is not None:
             for arg in expr.args:
                 self._analyze_expr(arg)
@@ -2215,7 +2215,7 @@ class SemanticAnalyzer:
         if isinstance(iterable_type, StrType):
             return CHAR
 
-        # Use get_element_type() for container types (list, Array, Span, StaticList, etc.)
+        # Use get_element_type() for container types (list, Array, Span, etc.)
         return iterable_type.get_element_type()
 
     def _get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:

@@ -7,7 +7,7 @@ tpy::Global<std::string_view> __name__;
 
 // 4: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {
-  // 5:     """Function accepting Span - any Contiguous[Int32] should work."""
+  // 5:     """Function accepting Span - any NativeContiguous[Int32] should work."""
   // 6:     total: Int32 = 0
   int32_t total = 0;
   // 7:     for v in values:
@@ -65,7 +65,7 @@ void main() {
 
 void __tpy_init() {
   __name__ = "__main__";
-  // 1: """Tests that Contiguous[T] types can coerce to Span[T]."""
+  // 1: """Tests that NativeContiguous[T] types can coerce to Span[T]."""
   // 45: main()
   main();
 }

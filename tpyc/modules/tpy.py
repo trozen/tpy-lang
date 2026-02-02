@@ -5,7 +5,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, StaticListType
+from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, ModuleType
 
 module = BuiltinModule("tpy")
 
@@ -57,7 +57,7 @@ module.register_type(INT32, cpp_type="int32_t", constructors=[
 module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
             param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
             type_factory=lambda t, n: ArrayType(t, n),
-            extends=["NativeIterable[T]", "Contiguous[T]"],
+            extends=["NativeIterable[T]", "NativeContiguous[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],
@@ -85,7 +85,7 @@ module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
 module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
             param_kinds=[TypeParamKind.TYPE],
             type_factory=lambda t: SpanType(t),
-            extends=["NativeIterable[T]", "Contiguous[T]"],
+            extends=["NativeIterable[T]", "NativeContiguous[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],
@@ -106,10 +106,12 @@ module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
 
 # StaticList[T, N]: Fixed-capacity container
 # Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
+# Fully module-defined via ModuleType - no hardcoded StaticListType class needed
 module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
             param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-            type_factory=lambda t, n: StaticListType(t, n),
-            extends=["NativeIterable[T]", "Contiguous[T]"],
+            type_factory=lambda t, n: ModuleType("tpy.StaticList", (t, n)),
+            cpp_from_range="{type}({range})",
+            extends=["NativeIterable[T]", "NativeContiguous[T]"],
             methods={
     "__len__": [MethodDef(
         params=[],
@@ -163,12 +165,12 @@ module.protocol("NativeIterable",
     cpp_concept="tpy::NativeIterable",
 )
 
-# Contiguous[T] protocol: types with elements laid out contiguously in memory
-# This is a marker protocol - types declare conformance via extends=["Contiguous[T]"].
-# Types conforming to Contiguous[T] can be implicitly converted to Span[T].
+# NativeContiguous[T] protocol: types with elements laid out contiguously in memory
+# This is a marker protocol - types declare conformance via extends=["NativeContiguous[T]"].
+# Types conforming to NativeContiguous[T] can be implicitly converted to Span[T].
 # Maps to C++ std::ranges::contiguous_range concept.
-module.protocol("Contiguous",
+module.protocol("NativeContiguous",
     type_params=["T"],
     methods={},  # Marker protocol - conformance via extends declaration
-    cpp_concept="tpy::Contiguous",
+    cpp_concept="tpy::NativeContiguous",
 )

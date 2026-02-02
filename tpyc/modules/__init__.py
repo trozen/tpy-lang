@@ -60,6 +60,7 @@ class BuiltinTypeDef:
     param_kinds: list[TypeParamKind] = field(default_factory=list)  # Kind of each type param
     type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
     extends: list[str] = field(default_factory=list)  # Protocols: ["NativeIterable[T]"]
+    cpp_from_range: str | None = None  # Template for range construction: "{type}({range})"
 
 
 @dataclass
@@ -120,7 +121,8 @@ class BuiltinModule:
              type_params: list[str] | None = None,
              param_kinds: list[TypeParamKind] | None = None,
              type_factory: "Callable[..., TpyType] | None" = None,
-             extends: list[str] | None = None):
+             extends: list[str] | None = None,
+             cpp_from_range: str | None = None):
         """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
         type_params = type_params or []
         param_kinds = param_kinds or []
@@ -152,6 +154,7 @@ class BuiltinModule:
             param_kinds=param_kinds,
             type_factory=type_factory,
             extends=extends or [],
+            cpp_from_range=cpp_from_range,
         )
 
 
@@ -433,7 +436,7 @@ class GenericTypeLookup:
 
 
 def lookup_generic_type(name: str) -> GenericTypeLookup | None:
-    """Lookup a parameterized type by its simple name (e.g., 'list', 'StaticList').
+    """Lookup a parameterized type by its simple name (e.g., 'list', 'Array').
 
     Only returns types that have type parameters and a type factory defined.
     Returns first match across modules - names must be unique to avoid ambiguity.
@@ -450,10 +453,10 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     """Extract type parameters from a concrete type instance.
 
     For list[Int32], returns {"T": Int32}.
-    For StaticList[Point, 10], returns {"T": Point}.
+    For Container[Point, 10], returns {"T": Point}.
 
     Note: Only type parameters that are themselves types are extracted.
-    Integer parameters like N in StaticList[T, N] are not included.
+    Integer parameters like N in Container[T, N] are not included.
     """
     if (elem_type := tpy_type.get_element_type()) is not None:
         return {"T": elem_type}

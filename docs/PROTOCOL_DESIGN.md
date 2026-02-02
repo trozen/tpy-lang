@@ -222,7 +222,9 @@ class ProtocolType(TpyType):
 
 ## 9. Compiler Traits (Data-Driven Type Behavior)
 
-A key goal is enabling types like `StaticList` to be fully defined in source code, without hardcoded compiler references. Protocols provide the mechanism: types declare their capabilities, and the compiler queries these declarations instead of checking `isinstance(type, StaticListType)`.
+A key goal is enabling types like `StaticList` to be fully defined in source code, without hardcoded compiler references. Protocols provide the mechanism: types declare their capabilities, and the compiler queries these declarations instead of checking `isinstance(type, SomeType)`.
+
+**Status**: `StaticList` is now fully module-defined via `ModuleType` - no hardcoded `StaticListType` class exists in the compiler. The type's behavior (C++ codegen, methods, protocol conformance) is entirely driven by its module definition in `tpyc/modules/tpy.py`.
 
 ### Built-in Trait Protocols
 
@@ -237,7 +239,7 @@ class Iterable(Protocol[T]):
     """Types that can be iterated over."""
     def __iter__(self) -> Iterator[T]: ...
 
-class Contiguous(Protocol[T]):
+class NativeContiguous(Protocol[T]):
     """Types with contiguous memory layout, coercible to Span[T]."""
     # Marker protocol - no methods, uses extends declaration
 
@@ -261,7 +263,7 @@ Instead of hardcoded type checks like:
 
 ```python
 # OLD: hardcoded in compiler
-if isinstance(arg_type, (StaticListType, ArrayType, ListType)):
+if isinstance(arg_type, (ArrayType, ListType)):
     # generate len() call
 ```
 
@@ -289,9 +291,9 @@ class StaticList(Generic[T, N]):
 **2. Explicit extends** - for marker protocols with no methods:
 ```python
 # In module system, types declare protocol conformance
-module.type("StaticList", ..., extends=["NativeIterable[T]", "Contiguous[T]"])
-module.type("list", ..., extends=["NativeIterable[T]", "Contiguous[T]"])
-module.register_type(STR, ..., extends=["NativeIterable[Char]"])  # str is not Contiguous
+module.type("StaticList", ..., extends=["NativeIterable[T]", "NativeContiguous[T]"])
+module.type("list", ..., extends=["NativeIterable[T]", "NativeContiguous[T]"])
+module.register_type(STR, ..., extends=["NativeIterable[Char]"])  # str is not NativeContiguous
 ```
 
 This design allows:
@@ -307,13 +309,13 @@ Implicit coercions are driven by protocol conformance:
 def takes_span(s: Span[Int32]) -> None: ...
 
 arr: Array[Int32, 3] = [1, 2, 3]
-takes_span(arr)  # OK: Array extends Contiguous[Int32]
+takes_span(arr)  # OK: Array extends NativeContiguous[Int32]
 
 lst: list[Int32] = [1, 2, 3]
-takes_span(lst)  # OK: list extends Contiguous[Int32]
+takes_span(lst)  # OK: list extends NativeContiguous[Int32]
 
 s: str = "hello"
-takes_span(s)  # ERROR: str does not extend Contiguous
+takes_span(s)  # ERROR: str does not extend NativeContiguous
 ```
 
 Generated C++:
@@ -372,7 +374,7 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Validation: `Self` only allowed in protocol contexts
    - Regular (non-dunder) method calls on protocol-typed values
 6. **Phase 6**: Compiler trait protocols ✅ **IN PROGRESS**
-   - `Contiguous[T]` - types with contiguous memory layout, coercible to `Span[T]`
+   - `NativeContiguous[T]` - types with contiguous memory layout, coercible to `Span[T]`
    - Remaining: `ConstructibleFromRange`, `SubscriptableRead`, etc.
 7. ~~**Phase 7**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)
 8. **Phase 8**: Python-compatible `Iterable[T]` and `Iterator[T]` (future)

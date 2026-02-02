@@ -1,12 +1,13 @@
 """
 TurboPython Type System
 
-Defines the types available in TurboPython:
+Defines the core types available in TurboPython:
 - Int32: 32-bit integer (maps to int32_t)
 - Ptr[T]: Mutable pointer (maps to T*)
 - ConstPtr[T]: Read-only pointer (maps to const T*)
-- StaticList[T, N]: Fixed-capacity container
+- Array[T, N], Span[T], list[T]: Container types
 - User-defined records (classes)
+- ModuleType: Generic parameterized types defined in the module system
 """
 
 from __future__ import annotations
@@ -100,7 +101,7 @@ class TpyType:
         """Return True if array literals need explicit element type targeting.
 
         Array and Span need explicit conversions in their initializer lists.
-        List and StaticList handle implicit conversions.
+        Dynamic containers (list, etc.) handle implicit conversions.
         """
         return False
 
@@ -398,31 +399,6 @@ class OwnType(TpyType):
 
 
 @dataclass(frozen=True)
-class StaticListType(TpyType):
-    """Fixed-capacity container: StaticList[T, N] -> StaticList<T, N>"""
-    element_type: TpyType
-    capacity: int
-
-    def to_cpp(self) -> str:
-        return f"StaticList<{self.element_type.to_cpp()}, {self.capacity}>"
-
-    def __str__(self) -> str:
-        return f"StaticList[{self.element_type}, {self.capacity}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.StaticList"
-
-    def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
-
-    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
-        return f"{self.to_cpp()}({range_expr})"
-
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        return StaticListType(fn(self.element_type), self.capacity)
-
-
-@dataclass(frozen=True)
 class ArrayType(TpyType):
     """Fixed-size array: Array[T, N] -> std::array<T, N>"""
     element_type: TpyType
@@ -524,6 +500,89 @@ class PendingListType(TpyType):
         return "builtins.list"
 
 
+@dataclass(frozen=True)
+class ModuleType(TpyType):
+    """A parameterized type fully defined in the module system.
+
+    This type gets all its behavior (to_cpp, methods, etc.) from the module
+    definition rather than having it hardcoded in the class. Used for types
+    that don't need special compiler treatment.
+    """
+    _qualified_name: str  # e.g., "mymodule.MyContainer"
+    _type_args: tuple  # e.g., (Int32Type(), 8) for MyContainer[Int32, 8]
+
+    def qualified_name(self) -> Optional[str]:
+        return self._qualified_name
+
+    def _get_type_def(self):
+        """Look up the module definition for this type."""
+        from tpyc.modules import lookup_type
+        type_def = lookup_type(self._qualified_name)
+        if type_def is None:
+            raise RuntimeError(f"ModuleType '{self._qualified_name}' not found in module system")
+        return type_def
+
+    def _get_param_map(self) -> dict[str, 'TpyType | int']:
+        """Build a mapping from type param names to their values."""
+        type_def = self._get_type_def()
+        return dict(zip(type_def.type_params, self._type_args))
+
+    def to_cpp(self) -> str:
+        type_def = self._get_type_def()
+        cpp = type_def.cpp_type
+        param_map = self._get_param_map()
+        for name, value in param_map.items():
+            if isinstance(value, TpyType):
+                cpp = cpp.replace(f"{{{name}}}", value.to_cpp())
+            else:
+                cpp = cpp.replace(f"{{{name}}}", str(value))
+        return cpp
+
+    def __str__(self) -> str:
+        # Extract simple name from qualified name (e.g., "MyType" from "mymodule.MyType")
+        simple_name = self._qualified_name.split(".")[-1]
+        args_str = ", ".join(
+            str(arg) if isinstance(arg, TpyType) else str(arg)
+            for arg in self._type_args
+        )
+        return f"{simple_name}[{args_str}]"
+
+    def get_element_type(self) -> Optional['TpyType']:
+        # Convention: first TYPE param is the element type
+        from tpyc.modules import TypeParamKind
+        type_def = self._get_type_def()
+        for i, kind in enumerate(type_def.param_kinds):
+            if kind == TypeParamKind.TYPE and i < len(self._type_args):
+                arg = self._type_args[i]
+                if isinstance(arg, TpyType):
+                    return arg
+        return None
+
+    def to_cpp_from_range(self, range_expr: str, elem_cpp: str) -> Optional[str]:
+        type_def = self._get_type_def()
+        if type_def.cpp_from_range is None:
+            return None
+        # Substitute {type} and {range} in the template
+        result = type_def.cpp_from_range
+        result = result.replace("{type}", self.to_cpp())
+        result = result.replace("{range}", range_expr)
+        return result
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        from tpyc.modules import TypeParamKind
+        type_def = self._get_type_def()
+        new_args = []
+        for i, arg in enumerate(self._type_args):
+            if i < len(type_def.param_kinds) and type_def.param_kinds[i] == TypeParamKind.TYPE:
+                if isinstance(arg, TpyType):
+                    new_args.append(fn(arg))
+                else:
+                    new_args.append(arg)
+            else:
+                new_args.append(arg)
+        return ModuleType(self._qualified_name, tuple(new_args))
+
+
 @dataclass
 class ListLiteralInfo:
     """Tracks usage information for a list literal to determine its resolved type."""
@@ -620,8 +679,8 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.functions: dict[str, FunctionInfo] = {}
         self.protocols: dict[str, ProtocolInfo] = {}
-        # Built-in types
-        self.builtins = {"Int32", "Bool", "Char", "Ptr", "ConstPtr", "Own", "StaticList", "Array", "Span", "str", "list", "int", "float"}
+        # Fundamental types not in module system (pointer wrappers)
+        self._fundamental_types = {"Ptr", "ConstPtr", "Own"}
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info
@@ -642,4 +701,15 @@ class TypeRegistry:
         return self.protocols.get(name)
 
     def is_known_type(self, name: str) -> bool:
-        return name in self.builtins or name in self.records or name in self.protocols
+        """Check if a name refers to a known type."""
+        if name in self._fundamental_types:
+            return True
+        if name in self.records or name in self.protocols:
+            return True
+        # Check module system for registered types
+        from tpyc.modules import get_builtins, get_tpy
+        for module in [get_builtins(), get_tpy()]:
+            qualified = f"{module.name}.{name}"
+            if qualified in module.types:
+                return True
+        return False

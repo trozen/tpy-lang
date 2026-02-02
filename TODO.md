@@ -30,7 +30,6 @@
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
-- too many references to StaticListType, ArrayType, ListType etc in codegen_cpp.py, should be data driven
 - make `range` a generator function
 - language restriction documentation
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)

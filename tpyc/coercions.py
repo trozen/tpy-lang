@@ -20,7 +20,7 @@ def _match_any(_: TpyType, __: TpyType) -> bool:
 
 
 def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
-    """Check if actual type (extending Contiguous[T]) can coerce to Span[T]."""
+    """Check if actual type (extending NativeContiguous[T]) can coerce to Span[T]."""
     if not isinstance(expected, SpanType):
         return False
     actual_elem = actual.get_element_type()
@@ -28,7 +28,7 @@ def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
         return False
     expected_elem = expected.element_type
 
-    # PendingListType is an internal compiler type that resolves to list (which extends Contiguous).
+    # PendingListType is an internal compiler type that resolves to list (which extends NativeContiguous).
     # Handle it directly since it's not in the module system.
     if isinstance(actual, PendingListType):
         if actual_elem == expected_elem:
@@ -38,15 +38,15 @@ def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
             return True
         return False
 
-    # Check if actual extends Contiguous[T] with matching element type
+    # Check if actual extends NativeContiguous[T] with matching element type
     from tpyc.modules import type_extends_protocol
     # Direct element type match
     if actual_elem == expected_elem:
-        return type_extends_protocol(actual, "Contiguous", [actual_elem])
+        return type_extends_protocol(actual, "NativeContiguous", [actual_elem])
     # Allow IntLiteral element to coerce to Int32/BigInt elements
-    # Check Contiguous[expected_elem] since containers extend Contiguous with concrete types
+    # Check NativeContiguous[expected_elem] since containers extend NativeContiguous with concrete types
     if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (Int32Type, BigIntType)):
-        return type_extends_protocol(actual, "Contiguous", [expected_elem])
+        return type_extends_protocol(actual, "NativeContiguous", [expected_elem])
     return False
 
 
@@ -153,7 +153,7 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"tpy::deref_ptr({e})",
     ),
 
-    # Span coercions: any Contiguous[T] type can coerce to Span[T]
+    # Span coercions: any NativeContiguous[T] type can coerce to Span[T]
     # Arg context allows temporaries
     Coercion(
         name="contiguous_to_span_arg",

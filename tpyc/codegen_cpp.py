@@ -360,7 +360,7 @@ class CodeGenerator:
             non_init_stmts = self._get_non_init_stmts(record.init_method)
 
             if has_params:
-                # Generate default constructor for C++ compatibility (e.g., StaticList<T>)
+                # Generate default constructor for C++ compatibility
                 out.write(f"  {record.name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
@@ -806,7 +806,7 @@ class CodeGenerator:
                 return True
         # Function calls
         if isinstance(expr, TpyCall):
-            # Generic type constructors (list(), StaticList[T,N](), etc.)
+            # Generic type constructors (list(), Container[T,N](), etc.)
             if expr.call_type is not None:
                 return True
             # Record constructor calls (e.g., Point(1, 2))
@@ -1540,7 +1540,7 @@ class CodeGenerator:
                         gen_arg = self._gen_expr(arg, ptype)
                         gen_args.append(gen_arg)
                 return f"{expr.func}({', '.join(gen_args)})"
-            # Generic type instantiation (e.g., StaticList[T, N]())
+            # Generic type instantiation (e.g., Container[T, N]())
             if expr.call_type is not None:
                 # List repeat already generates the target type via to_cpp_from_range
                 if len(expr.args) == 1 and isinstance(expr.args[0], TpyListRepeat):
@@ -1635,7 +1635,7 @@ class CodeGenerator:
 
         elif isinstance(expr, TpyArrayLiteral):
             # Some types need explicit element targeting (Array, Span)
-            # Others handle implicit conversions (List, StaticList)
+            # Others handle implicit conversions (list, etc.)
             elem_target = None
             if target_type and target_type.needs_explicit_element_target():
                 elem_target = target_type.get_element_type()

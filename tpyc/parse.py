@@ -106,7 +106,7 @@ class TpyCall(TpyExpr):
     """Function or constructor call."""
     func: str
     args: list[TpyExpr]
-    call_type: Optional[TpyType] = None  # For generic instantiation like StaticList[T, N]()
+    call_type: Optional[TpyType] = None  # For generic instantiation like MyContainer[T, N]()
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
 
 
@@ -601,7 +601,7 @@ class Parser:
                         type_args = self._parse_protocol_type_args(node, container, protocol_def.type_params)
                         return ProtocolType(container, type_args)
 
-                # Module-defined generic types (list, Array, Span, StaticList, etc.)
+                # Module-defined generic types (list, Array, Span, etc.)
                 if lookup := lookup_generic_type(container):
                     return self._parse_generic_type(node, container, lookup.type_def)
 
@@ -830,7 +830,7 @@ class Parser:
                 obj = self._parse_expr(node.func.value)
                 return TpyMethodCall(obj, node.func.attr, args, loc=loc)
             elif isinstance(node.func, ast.Subscript):
-                # Generic type instantiation: StaticList[T, N]()
+                # Generic type instantiation: MyContainer[T, N]()
                 call_type = self._parse_type_annotation(node.func)
                 if isinstance(node.func.value, ast.Name):
                     return TpyCall(node.func.value.id, args, call_type, loc=loc)
@@ -850,8 +850,15 @@ class Parser:
             # Subscript can be indexing (values[i]) or type annotation (Array[T, N])
             # If the value is a name that's a known generic type, it's a type annotation context
             # Otherwise, it's indexing
-            if isinstance(node.value, ast.Name) and node.value.id in ("Array", "Span", "StaticList", "Ptr", "ConstPtr", "Own"):
-                raise ParseError(f"Generic type '{node.value.id}' cannot be used as a value", node)
+            if isinstance(node.value, ast.Name):
+                name = node.value.id
+                # Fundamental generic types (not in module system)
+                if name in ("Ptr", "ConstPtr", "Own"):
+                    raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
+                # Module-defined generic types
+                from tpyc.modules import lookup_generic_type
+                if lookup_generic_type(name) is not None:
+                    raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
             index = self._parse_expr(node.slice)
             return TpySubscript(obj=obj, index=index, loc=loc)
