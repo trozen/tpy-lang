@@ -794,7 +794,7 @@ class Iterable(Protocol[T]):
 `NativeContiguous[T]` is a **marker protocol** for types with elements laid out contiguously in memory. Types extending `NativeContiguous[T]` can be implicitly coerced to `Span[T]`.
 
 ```python
-from tpy import Int32, Span, Array, StaticList, NativeContiguous
+from tpy import Int32, Span, Array, StaticList
 
 def sum_span(values: Span[Int32]) -> Int32:
     total: Int32 = 0
@@ -819,7 +819,7 @@ sum_span(lst)  # OK
 
 **Key points:**
 - **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `NativeContiguous[T]`
-- **str excluded**: `str` iterates over `Char` but is not contiguous (it's `std::string_view`)
+- **str excluded**: `str` iterates over `Char` but doesn't extend `NativeContiguous` (design choice)
 - **Zero overhead**: Uses C++ `std::span` implicit construction from contiguous ranges
 - **C++ concept**: Maps to `std::ranges::contiguous_range`
 
