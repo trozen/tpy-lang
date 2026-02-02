@@ -99,6 +99,7 @@ def main() -> int:
     parser.add_argument("-O", "--release", action="store_true", help="Build with optimizations (default: debug)")
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
     parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
+    parser.add_argument("--dump-types", action="store_true", help="Dump documentation for all builtin types")
 
     args = parser.parse_args()
 
@@ -110,6 +111,12 @@ def main() -> int:
             # Support multiple files separated by the input arg
             preload_files = [Path(args.input).resolve()]
         return REPLSession(verbose=args.verbose, preload_files=preload_files).run()
+
+    # Handle --dump-types
+    if args.dump_types:
+        from .dump_types import dump_builtin_types
+        dump_builtin_types()
+        return 0
 
     # Require input file for non-REPL modes
     if not args.input:

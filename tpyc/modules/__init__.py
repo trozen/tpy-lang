@@ -232,6 +232,11 @@ def _all_modules() -> list[BuiltinModule]:
     return [get_builtins(), get_tpy()]
 
 
+def get_all_modules() -> list[BuiltinModule]:
+    """Get all available modules."""
+    return [get_builtins(), get_tpy(), get_typing(), get_math(), get_time(), get_sys()]
+
+
 def get_module(name: str) -> BuiltinModule | None:
     """Get a module by name."""
     if name == "builtins":
