@@ -102,11 +102,30 @@ class REPLSession:
         readline.set_history_length(1000)
         atexit.register(readline.write_history_file, history_path)
 
+    def _read_paste_mode(self) -> str | None:
+        """Read multiline input in paste mode. Returns None if cancelled."""
+        print("Paste mode: paste your code, then Ctrl+D to execute (Ctrl+C to cancel)")
+        lines = []
+        try:
+            while True:
+                try:
+                    line = input("... ")
+                    lines.append(line)
+                except EOFError:
+                    break
+        except KeyboardInterrupt:
+            print("\nPaste cancelled.")
+            return None
+
+        print()  # Newline after Ctrl+D
+        return "\n".join(lines)
+
     def run(self) -> int:
         """Main REPL loop. Returns exit code."""
         print("TurboPython REPL v0.1")
         print("Variables, functions, and classes are remembered between inputs.")
         print("Empty line unindents (or ends block at col 0). Trailing \\ continues input. Ctrl+D to exit.")
+        print("Type .paste (or .p) for multiline input mode.")
         if self.verbose:
             print(f"[src] {self.temp_dir}/")
 
@@ -128,6 +147,16 @@ class REPLSession:
                 if stripped in ("exit", "quit"):
                     break
                 if not stripped:
+                    continue
+
+                # Dot commands
+                if stripped.startswith("."):
+                    if stripped in (".paste", ".p"):
+                        pasted = self._read_paste_mode()
+                        if pasted and pasted.strip():
+                            self._process_input(pasted)
+                    else:
+                        print(f"Unknown command: {stripped.split()[0]}")
                     continue
 
                 # Alt+Enter inserts literal newlines into readline buffer,

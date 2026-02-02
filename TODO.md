@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- repl paste text (proper indent when pasting)
 - Own[T] should require explicit copy() for lvalues: `return copy(self.value)` not `return self.value`; rvalues like `return T()` are OK without copy
 - Type parameter bounds: class SortedList[T: Comparable]
 - Integer type parameters: class FixedStack[T, N: int]
