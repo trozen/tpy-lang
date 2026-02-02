@@ -938,9 +938,10 @@ class Pair[A, B]:
         self.first = first
         self.second = second
 
-# Instantiation (explicit type arguments required)
-box: Box[Int32] = Box[Int32](42)
-pair: Pair[str, Int32] = Pair[str, Int32]("hello", 100)
+# Instantiation - type arguments can be explicit or inferred
+box: Box[Int32] = Box[Int32](42)  # Explicit
+box2 = Box(42)                    # Inferred as Box[int] from argument
+pair = Pair(1, "hello")           # Inferred as Pair[int, str]
 
 # Generic methods use substituted types
 print(box.get())  # Returns Int32
@@ -968,8 +969,15 @@ Box<int32_t> box{42};
 Pair<std::string_view, int32_t> pair{"hello", 100};
 ```
 
+**Type Inference**:
+- Type arguments can be inferred from constructor arguments: `Box(42)` → `Box[int]`
+- Inference works when all type parameters can be determined from arguments
+- If inference fails, explicit type arguments are required
+- When mixing int literals with `Int32`, inference upgrades to `Int32`: `Same(1, x: Int32)` → `Same[Int32]`
+- Supports inference through wrapper types: `Ptr[T]`, `ConstPtr[T]`, `Own[T]`, `list[T]`
+- `Ptr[T]` arguments match `ConstPtr[T]` parameters (follows coercion rules)
+
 **Limitations**:
-- Type arguments must be explicit at instantiation (`Box[Int32]()` not `Box(42)`)
 - Generic functions (`def first[T]`) not yet supported
 - Type parameter bounds (`class SortedList[T: Comparable]`) not yet supported
 - Integer type parameters (`class FixedStack[T, N: int]`) not yet supported

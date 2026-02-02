@@ -1272,13 +1272,41 @@ class SemanticAnalyzer:
                 for arg in expr.args:
                     self._analyze_expr(arg)
             return expr.call_type
-        # Non-generic record
+        # Generic record without explicit type args - try type inference
         if record.is_generic():
+            if record.has_init:
+                arg_types = [self._analyze_expr(arg) for arg in expr.args]
+                inferred = self._infer_type_params_for_record(record, arg_types)
+                if inferred:
+                    # Resolve pending types for codegen (Python semantics)
+                    for k, v in list(inferred.items()):
+                        if isinstance(v, IntLiteralType):
+                            inferred[k] = BIGINT
+                        elif isinstance(v, PendingListType):
+                            # Resolve PendingListType to ListType
+                            elem_type = v.element_type
+                            if isinstance(elem_type, IntLiteralType):
+                                elem_type = BIGINT
+                            inferred[k] = ListType(elem_type)
+                    type_args = tuple(inferred[p] for p in record.type_params)
+                    inferred_type = RecordType(record.name, type_args)
+                    expr.call_type = inferred_type
+                    # Coerce arguments with substitution
+                    type_subst = inferred
+                    for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
+                        resolved_ptype = self._substitute_type_params(ptype, type_subst)
+                        expr.args[i] = self._coerce_expr(
+                            arg, arg_types[i], resolved_ptype,
+                            f"argument '{pname}'", coercion_ctx=CoercionContext.ARG
+                        )
+                    return inferred_type
+            # Inference failed - require explicit type args
             raise self._error(
-                f"Generic record '{record.name}' requires type arguments: "
-                f"{record.name}[{', '.join(record.type_params)}]",
+                f"Cannot infer type arguments for '{record.name}'. "
+                f"Please specify explicitly: {record.name}[{', '.join(record.type_params)}](...)",
                 expr
             )
+        # Non-generic record
         for arg in expr.args:
             self._analyze_expr(arg)
         return RecordType(record.name)
@@ -1693,6 +1721,134 @@ class SemanticAnalyzer:
         # Default: assume safe
         return False
 
+    def _match_type_with_inference(
+        self,
+        param_type: TpyType | str,
+        arg_type: TpyType,
+        inferred: dict[str, TpyType]
+    ) -> bool:
+        """Match param_type against arg_type, collecting type param inferences.
+
+        Returns True if types match (with inference), False otherwise.
+        Supports:
+        - String type param "T" (builtin format)
+        - String protocol "NativeIterable[T]" (builtin format)
+        - TypeParamRef (user-defined records)
+        - ListType with nested TypeParamRef
+        - RecordType with type args (nested generics)
+        - Concrete types (compatibility check)
+        """
+        import re
+
+        # Case 1: String type param "T" (builtin format)
+        if isinstance(param_type, str) and param_type.isidentifier():
+            if param_type in inferred:
+                # Check consistency with already-inferred type
+                return self._types_match_for_inference(inferred[param_type], arg_type)
+            inferred[param_type] = arg_type
+            return True
+
+        # Case 2: String protocol "NativeIterable[T]" (builtin format)
+        if isinstance(param_type, str):
+            match = re.match(r"(\w+)\[(\w+)\]", param_type)
+            if match:
+                protocol_name, type_param = match.groups()
+                elem_type = self._get_iterable_element_type_or_none(arg_type)
+                if elem_type is None:
+                    return False
+                expected_protocol = ProtocolType(protocol_name, [elem_type])
+                if not self._type_conforms_to_protocol(arg_type, expected_protocol):
+                    return False
+                if type_param in inferred:
+                    if not self._types_match_for_inference(inferred[type_param], elem_type):
+                        return False
+                else:
+                    inferred[type_param] = elem_type
+                return True
+            return False
+
+        # Case 3: TypeParamRef (user-defined records)
+        if isinstance(param_type, TypeParamRef):
+            if param_type.name in inferred:
+                existing = inferred[param_type.name]
+                # Upgrade IntLiteralType to concrete int type if available
+                if isinstance(existing, IntLiteralType) and isinstance(arg_type, (Int32Type, BigIntType)):
+                    inferred[param_type.name] = arg_type
+                    return True
+                return self._types_match_for_inference(existing, arg_type)
+            inferred[param_type.name] = arg_type
+            return True
+
+        # Case 4: ListType with nested TypeParamRef (e.g., list[T])
+        if isinstance(param_type, ListType):
+            if isinstance(arg_type, (ListType, PendingListType)):
+                return self._match_type_with_inference(
+                    param_type.element_type, arg_type.element_type, inferred
+                )
+            return False
+
+        # Case 5: RecordType with type args (e.g., Box[T] nested)
+        if isinstance(param_type, RecordType) and param_type.type_args:
+            if isinstance(arg_type, RecordType) and arg_type.name == param_type.name:
+                if len(param_type.type_args) != len(arg_type.type_args):
+                    return False
+                return all(
+                    self._match_type_with_inference(pt, at, inferred)
+                    for pt, at in zip(param_type.type_args, arg_type.type_args)
+                )
+            return False
+
+        # Case 6: Pointer types (Ptr[T], ConstPtr[T])
+        if isinstance(param_type, PtrType):
+            if isinstance(arg_type, PtrType):
+                return self._match_type_with_inference(
+                    param_type.pointee, arg_type.pointee, inferred
+                )
+            return False
+
+        if isinstance(param_type, ConstPtrType):
+            # ConstPtr[T] accepts both ConstPtr[X] and Ptr[X] (Ptr coerces to ConstPtr)
+            if isinstance(arg_type, ConstPtrType):
+                return self._match_type_with_inference(
+                    param_type.pointee, arg_type.pointee, inferred
+                )
+            if isinstance(arg_type, PtrType):
+                return self._match_type_with_inference(
+                    param_type.pointee, arg_type.pointee, inferred
+                )
+            return False
+
+        # Case 7: Own[T] wrapper
+        if isinstance(param_type, OwnType):
+            if isinstance(arg_type, OwnType):
+                return self._match_type_with_inference(
+                    param_type.wrapped, arg_type.wrapped, inferred
+                )
+            return False
+
+        # Case 8: Concrete type - check compatibility
+        if isinstance(param_type, TpyType):
+            return self._types_match_for_inference(param_type, arg_type)
+
+        return False
+
+    def _types_match_for_inference(self, type_a: TpyType, type_b: TpyType) -> bool:
+        """Check if two types match for inference consistency.
+
+        Handles IntLiteralType matching other integer types (BigInt, Int32).
+        """
+        if type_a == type_b:
+            return True
+        # IntLiteralType matches any integer type
+        if isinstance(type_a, IntLiteralType) and isinstance(type_b, (BigIntType, Int32Type)):
+            return True
+        if isinstance(type_b, IntLiteralType) and isinstance(type_a, (BigIntType, Int32Type)):
+            return True
+        # Both IntLiteralType - they're compatible
+        if isinstance(type_a, IntLiteralType) and isinstance(type_b, IntLiteralType):
+            return True
+        return False
+
     def _match_generic_constructor(
         self, params: list[builtin_modules.ParamDef], arg_types: list[TpyType]
     ) -> dict[str, TpyType] | None:
@@ -1701,41 +1857,34 @@ class SemanticAnalyzer:
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
         Supports protocol params like "NativeIterable[T]" which infer T from element type.
         """
-        import re
         inferred: dict[str, TpyType] = {}
         for param, arg_type in zip(params, arg_types):
-            if isinstance(param.type, str):
-                # Check for Protocol[TypeParam] pattern (e.g., "NativeIterable[T]")
-                protocol_match = re.match(r"(\w+)\[(\w+)\]", param.type)
-                if protocol_match:
-                    protocol_name = protocol_match.group(1)
-                    type_param = protocol_match.group(2)
-                    # Get element type from argument (via get_element_type)
-                    elem_type = self._get_iterable_element_type_or_none(arg_type)
-                    if elem_type is None:
-                        return None  # Arg doesn't conform to iterable protocol
-                    # Check if arg conforms to the protocol with inferred element type
-                    expected_protocol = ProtocolType(protocol_name, [elem_type])
-                    if not self._type_conforms_to_protocol(arg_type, expected_protocol):
-                        return None
-                    # Check consistency with previously inferred type param
-                    if type_param in inferred and inferred[type_param] != elem_type:
-                        return None
-                    inferred[type_param] = elem_type
-                elif param.type in inferred:
-                    # Simple type param like "T" - check consistency
-                    if not builtin_modules._type_matches_param(arg_type, inferred[param.type]):
-                        return None
-                else:
-                    # Unknown string pattern
-                    return None
-            elif isinstance(param.type, TpyType):
-                # Concrete type - must match exactly
-                if not builtin_modules._type_matches_param(arg_type, param.type):
-                    return None
-            else:
-                # Unknown param type pattern
+            if not self._match_type_with_inference(param.type, arg_type, inferred):
                 return None
+        return inferred
+
+    def _infer_type_params_for_record(
+        self,
+        record: RecordInfo,
+        arg_types: list[TpyType]
+    ) -> dict[str, TpyType] | None:
+        """Infer type parameters from constructor arguments for user-defined generic record.
+
+        Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        """
+        if len(arg_types) != len(record.init_params):
+            return None
+
+        inferred: dict[str, TpyType] = {}
+        for (pname, ptype, _), arg_type in zip(record.init_params, arg_types):
+            if not self._match_type_with_inference(ptype, arg_type, inferred):
+                return None
+
+        # Verify all type params were inferred
+        for tp in record.type_params:
+            if tp not in inferred:
+                return None
+
         return inferred
 
     def _get_element_type(self, typ: TpyType) -> TpyType | None:
