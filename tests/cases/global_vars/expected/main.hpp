@@ -56,7 +56,7 @@ struct Counter {
 
   int32_t add(int32_t a) {
     // 87:         return self.val + a
-    return (tpy::int32_add(val, a));
+    return (tpy::int32_add(this->val, a));
   }
 };
 

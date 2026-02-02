@@ -20,12 +20,12 @@ struct Counter {
 
   tpy::BigInt get() {
     // 18:         return self.value
-    return value;
+    return this->value;
   }
 
   tpy::BigInt add(const tpy::BigInt& x) {
     // 21:         return self.value + x
-    return ((value) + (x));
+    return ((this->value) + (x));
   }
 };
 

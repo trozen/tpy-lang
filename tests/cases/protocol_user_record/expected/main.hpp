@@ -17,7 +17,7 @@ struct MyContainer {
 
   int32_t __len__() const {
     // 11:         return self.size
-    return size;
+    return this->size;
   }
 };
 

@@ -18,7 +18,7 @@ struct Point {
 
   Point __add__(const Point& other) const {
     // 17:         return Point(self.x + other.x, self.y + other.y)
-    return Point((tpy::int32_add(x, other.x)), (tpy::int32_add(y, other.y)));
+    return Point((tpy::int32_add(this->x, other.x)), (tpy::int32_add(this->y, other.y)));
   }
 
   friend Point operator+(const Point& lhs, const Point& other) {

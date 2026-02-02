@@ -265,15 +265,79 @@ class IntLiteralType(TpyType):
 
 
 @dataclass(frozen=True)
-class RecordType(TpyType):
-    """User-defined record type (class)."""
+class TypeParamRef(TpyType):
+    """Unresolved type parameter reference (e.g., T in class Stack[T]).
+
+    Used during parsing and semantic analysis of generic class definitions.
+    When the generic class is instantiated with concrete types, TypeParamRef
+    is substituted with the actual type.
+
+    C++ Code Generation Semantics:
+    - Parameters: Use `const T&` which works for both value types (compiler
+      optimizes away the indirection) and object types (avoids copies).
+    - Returns: Use `tpy::return_val_or_ref_t<T>` which resolves at C++ template
+      instantiation time to T for value types or T& for object types.
+      This preserves Python semantics where returning an object gives a mutable
+      reference, not a copy.
+    """
     name: str
 
     def to_cpp(self) -> str:
-        return self.name
+        return self.name  # Template parameter name
 
     def __str__(self) -> str:
         return self.name
+
+    def is_value_type(self) -> bool:
+        # Unknown at definition time - the trait decides at C++ instantiation
+        return False
+
+    def to_cpp_param(self, name: str) -> str:
+        # Use trait-based param type: const T& for value types, T& for object types
+        return f"tpy::param_val_or_ref_t<{self.name}> {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"const {self.to_cpp()}& {name}"
+
+    def to_cpp_return(self) -> str:
+        # Use trait-based return type: T for value types, T& for object types
+        return f"tpy::return_val_or_ref_t<{self.name}>"
+
+    def to_cpp_return_const(self) -> str:
+        # Use trait-based return type: T for value types, const T& for object types
+        return f"tpy::return_val_or_cref_t<{self.name}>"
+
+
+@dataclass(frozen=True)
+class RecordType(TpyType):
+    """User-defined record type (class).
+
+    For generic records like Stack[T]:
+    - type_args stores the concrete type arguments (e.g., (Int32,) for Stack[Int32])
+    """
+    name: str
+    type_args: tuple[TpyType, ...] = ()
+
+    def to_cpp(self) -> str:
+        if self.type_args:
+            args = ", ".join(t.to_cpp() for t in self.type_args)
+            return f"{self.name}<{args}>"
+        return self.name
+
+    def __str__(self) -> str:
+        if self.type_args:
+            args = ", ".join(str(t) for t in self.type_args)
+            return f"{self.name}[{args}]"
+        return self.name
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        """Apply fn to type arguments for proper substitution."""
+        if not self.type_args:
+            return self
+        new_args = tuple(fn(arg) for arg in self.type_args)
+        if new_args == self.type_args:
+            return self
+        return RecordType(self.name, new_args)
 
 
 @dataclass(frozen=True)
@@ -305,6 +369,15 @@ class ProtocolType(TpyType):
     def is_value_type(self) -> bool:
         # Protocol-typed params are passed by const ref
         return False
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        """Apply fn to type arguments for proper substitution."""
+        if not self.type_args:
+            return self
+        new_args = tuple(fn(arg) for arg in self.type_args)
+        if new_args == self.type_args:
+            return self
+        return ProtocolType(self.name, new_args)
 
 
 @dataclass(frozen=True)
@@ -613,21 +686,32 @@ class FieldInfo:
 
 @dataclass
 class RecordInfo:
-    """Information about a user-defined record (class)."""
+    """Information about a user-defined record (class).
+
+    For generic records like Stack[T]:
+    - type_params stores the type parameter names (e.g., ["T"])
+    """
     name: str
     fields: list[FieldInfo]
     has_init: bool = False
     init_params: list[tuple[str, TpyType, Optional[str]]] = None  # (name, type, default)
     methods: dict[str, 'FunctionInfo'] = None  # method_name -> FunctionInfo
+    type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
 
     def __post_init__(self):
         if self.init_params is None:
             self.init_params = []
         if self.methods is None:
             self.methods = {}
+        if self.type_params is None:
+            self.type_params = []
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         return self.methods.get(name)
+
+    def is_generic(self) -> bool:
+        """Return True if this is a generic record with type parameters."""
+        return bool(self.type_params)
 
 
 @dataclass

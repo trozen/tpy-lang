@@ -18,7 +18,7 @@ struct IntBox {
 
   int32_t get() {
     // 19:         return self.v
-    return v;
+    return this->v;
   }
 };
 
@@ -36,7 +36,7 @@ struct BoxContainer {
 
   const IntBox& __getitem__(int32_t i) const {
     // 27:         return self.items[i]
-    return tpy::get_item(items, i);
+    return tpy::get_item(this->items, i);
   }
 
   const IntBox& operator[](int32_t i) const {

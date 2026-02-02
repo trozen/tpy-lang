@@ -14,7 +14,7 @@ import io
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
-    ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType,
+    ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
     INT32, VOID, BIGINT, FLOAT, CHAR, STR
 )
@@ -198,7 +198,12 @@ class CodeGenerator:
 
         # Forward declare records (so global externs can reference them)
         for record in module.records:
-            hpp.write(f"struct {record.name};\n")
+            if record.type_params:
+                # Generic record: template<typename T, ...> struct Stack;
+                params = ", ".join(f"typename {p}" for p in record.type_params)
+                hpp.write(f"template<{params}> struct {record.name};\n")
+            else:
+                hpp.write(f"struct {record.name};\n")
         if module.records:
             hpp.write("\n")
 
@@ -341,6 +346,10 @@ class CodeGenerator:
 
     def _gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
+        # Generate template prefix for generic records
+        if record.type_params:
+            params = ", ".join(f"typename {p}" for p in record.type_params)
+            out.write(f"template<{params}>\n")
         out.write(f"struct {record.name} {{\n")
 
         # Fields
@@ -444,7 +453,14 @@ class CodeGenerator:
     def _gen_record_ostream(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator<< overload for printing a record."""
         name = record.name
-        out.write(f"\ninline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
+        # For template structs, generate a template operator<<
+        if record.type_params:
+            params = ", ".join(f"typename {p}" for p in record.type_params)
+            type_args = ", ".join(record.type_params)
+            out.write(f"\ntemplate<{params}>\n")
+            out.write(f"inline std::ostream& operator<<(std::ostream& os, const {name}<{type_args}>& obj) {{\n")
+        else:
+            out.write(f"\ninline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
         out.write(f'  os << "{name}("')
 
         for i, fld in enumerate(record.fields):
@@ -454,9 +470,13 @@ class CodeGenerator:
             # Handle strings - quote them
             if isinstance(fld.type, StrType):
                 out.write(f' << "\\"" << obj.{fld.name} << "\\""')
-            elif fld.type.get_element_type() is not None:
-                # Container - use ListPrinter
-                out.write(f' << tpy::ListPrinter(obj.{fld.name})')
+            elif fld.type.get_element_type() is not None or isinstance(fld.type, TypeParamRef):
+                # Container or type parameter - use ListPrinter for containers, direct output for others
+                # TypeParamRef fields may be containers, so try ListPrinter if applicable
+                if isinstance(fld.type, TypeParamRef):
+                    out.write(f' << obj.{fld.name}')
+                else:
+                    out.write(f' << tpy::ListPrinter(obj.{fld.name})')
             else:
                 out.write(f' << obj.{fld.name}')
 
@@ -1609,9 +1629,10 @@ class CodeGenerator:
             return f"{obj}{accessor}{expr.method}({args})"
 
         elif isinstance(expr, TpyFieldAccess):
-            # Handle self.field -> just field (inside method, implicit this)
+            # Handle self.field -> this->field (inside method)
+            # Using this-> avoids shadowing issues when field name matches parameter name
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
-                return expr.field
+                return f"this->{expr.field}"
 
             # Check for module variable access (e.g., sys.argv)
             if isinstance(expr.obj, TpyName):

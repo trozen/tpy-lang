@@ -15,7 +15,7 @@ from typing import Optional
 
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
-    ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo,
+    ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
     ProtocolInfo, MethodSignature
@@ -129,6 +129,9 @@ class SemanticAnalyzer:
         self.global_ns: Namespace = Namespace(parent=self.builtins_ns)
         self.current_ns: Optional[Namespace] = None
 
+        # Track current generic class type parameters (for allowing TypeParamRef in method locals)
+        self._current_record_type_params: list[str] | None = None
+
     def _error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
         """Create a SemanticError with location from a node."""
         loc = getattr(node, 'loc', None) if node else None
@@ -187,9 +190,13 @@ class SemanticAnalyzer:
 
     def _register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
+        # For generic records, skip validation of TypeParamRef types
+        is_generic = bool(record.type_params)
+
         # Validate field types
         for fld in record.fields:
-            self._validate_type(fld.type)
+            if not self._is_type_param_ref(fld.type):
+                self._validate_type(fld.type, allow_type_param_ref=is_generic)
             # Protocol types cannot be used as field types
             if isinstance(fld.type, ProtocolType):
                 raise SemanticError(
@@ -212,14 +219,16 @@ class SemanticAnalyzer:
         methods = {}
         for method in record.methods:
             for pname, ptype in method.params:
-                self._validate_type(ptype)
+                if not self._is_type_param_ref(ptype):
+                    self._validate_type(ptype, allow_type_param_ref=is_generic)
                 # Protocol types cannot be used in method parameters
                 if isinstance(ptype, ProtocolType):
                     raise SemanticError(
                         f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.{method.name}'. "
                         f"Protocols are only valid for free function parameters"
                     )
-            self._validate_type(method.return_type)
+            if not self._is_type_param_ref(method.return_type):
+                self._validate_type(method.return_type, allow_type_param_ref=is_generic)
             # Protocol types cannot be used as method return types
             if isinstance(method.return_type, ProtocolType):
                 raise SemanticError(
@@ -238,7 +247,8 @@ class SemanticAnalyzer:
             fields=record.fields,
             has_init=record.init_method is not None,
             init_params=init_params,
-            methods=methods
+            methods=methods,
+            type_params=record.type_params
         )
         self.registry.register_record(info)
         self.global_ns.bind_record(info)
@@ -289,24 +299,97 @@ class SemanticAnalyzer:
         self.registry.register_function(info)
         self.global_ns.bind_function(info)
 
-    def _validate_type(self, typ: TpyType) -> None:
-        """Validate that a type is well-formed."""
+    def _is_type_param_ref(self, typ: TpyType) -> bool:
+        """Check if a type is or contains a TypeParamRef."""
+        if isinstance(typ, TypeParamRef):
+            return True
+        if isinstance(typ, (PtrType, ConstPtrType)):
+            return self._is_type_param_ref(typ.pointee)
+        if isinstance(typ, OwnType):
+            return self._is_type_param_ref(typ.wrapped)
+        if isinstance(typ, (ListType, SpanType, ArrayType)):
+            return self._is_type_param_ref(typ.element_type)
+        return False
+
+    def _validate_type(self, typ: TpyType, allow_type_param_ref: bool = False) -> None:
+        """Validate that a type is well-formed.
+
+        Args:
+            typ: The type to validate.
+            allow_type_param_ref: If True, TypeParamRef is allowed (for generic class definitions).
+        """
+        if isinstance(typ, TypeParamRef):
+            if not allow_type_param_ref:
+                raise SemanticError(f"Type parameter '{typ.name}' used outside of generic class definition")
+            return
         if isinstance(typ, RecordType):
-            if not self.registry.get_record(typ.name):
+            record_info = self.registry.get_record(typ.name)
+            if not record_info:
                 # Allow forward references during registration
                 pass
+            elif typ.type_args:
+                # Validate type arguments for generic record
+                if not record_info.is_generic():
+                    raise SemanticError(f"Record '{typ.name}' is not generic, but type arguments were provided")
+                if len(typ.type_args) != len(record_info.type_params):
+                    raise SemanticError(
+                        f"Record '{typ.name}' expects {len(record_info.type_params)} type arguments, "
+                        f"got {len(typ.type_args)}"
+                    )
+                # Validate each type argument
+                for arg in typ.type_args:
+                    self._validate_type(arg, allow_type_param_ref)
+            elif record_info.is_generic():
+                # Generic record used without type arguments
+                raise SemanticError(
+                    f"Generic record '{typ.name}' requires type arguments: "
+                    f"{typ.name}[{', '.join(record_info.type_params)}]"
+                )
         elif isinstance(typ, (PtrType, ConstPtrType)):
-            self._validate_type(typ.pointee)
+            self._validate_type(typ.pointee, allow_type_param_ref)
             if isinstance(typ.pointee, ProtocolType):
                 raise SemanticError(
                     f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type"
                 )
         elif (elem_type := typ.get_element_type()) is not None:
-            self._validate_type(elem_type)
+            self._validate_type(elem_type, allow_type_param_ref)
             if isinstance(elem_type, ProtocolType):
                 raise SemanticError(
                     f"Protocol type '{elem_type.name}' cannot be used as a container element type"
                 )
+
+    def _substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+        """Substitute type parameters with concrete types.
+
+        Args:
+            typ: The type containing potential TypeParamRef instances.
+            subst: Mapping from type parameter names to concrete types.
+
+        Returns:
+            The type with all TypeParamRef instances replaced by their concrete types.
+        """
+        if isinstance(typ, TypeParamRef):
+            if typ.name in subst:
+                return subst[typ.name]
+            raise SemanticError(f"Unknown type parameter '{typ.name}'")
+        # Use map_inner_types for types that have inner types
+        return typ.map_inner_types(lambda t: self._substitute_type_params(t, subst))
+
+    def _build_type_substitution(self, record_type: RecordType) -> dict[str, TpyType]:
+        """Build a type parameter substitution map for a generic record instantiation.
+
+        Args:
+            record_type: A RecordType with type_args (e.g., Stack[Int32]).
+
+        Returns:
+            Mapping from type parameter names to concrete types (e.g., {"T": Int32}).
+        """
+        record_info = self.registry.get_record(record_type.name)
+        if not record_info or not record_info.is_generic():
+            return {}
+        if not record_type.type_args:
+            return {}
+        return dict(zip(record_info.type_params, record_type.type_args))
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
         """Register top-level variable declarations in global scope.
@@ -322,6 +405,9 @@ class SemanticAnalyzer:
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
+        # Track type parameters for generic records (allows TypeParamRef in method locals)
+        self._current_record_type_params = record.type_params if record.type_params else None
+
         for method in record.methods:
             self._reset_function_tracking()
             self.current_function = method
@@ -350,6 +436,8 @@ class SemanticAnalyzer:
             self.current_scope = None
             self.current_function = None
             self.current_ns = None
+
+        self._current_record_type_params = None
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
@@ -482,6 +570,14 @@ class SemanticAnalyzer:
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
+        # Validate the type annotation if present
+        # Allow TypeParamRef when inside a generic record's methods
+        if stmt.type:
+            try:
+                self._validate_type(stmt.type, allow_type_param_ref=bool(self._current_record_type_params))
+            except SemanticError as e:
+                raise self._error(str(e), stmt)
+
         # Own[T] is only valid for function parameters and return types, not variables
         if stmt.type and isinstance(stmt.type, OwnType):
             raise self._error(
@@ -1139,6 +1235,47 @@ class SemanticAnalyzer:
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
+        # Check if this is a generic record instantiation (e.g., Stack[Int32]())
+        if expr.call_type is not None and isinstance(expr.call_type, RecordType):
+            # Validate type arguments
+            if record.is_generic():
+                if not expr.call_type.type_args:
+                    raise self._error(
+                        f"Generic record '{record.name}' requires type arguments: "
+                        f"{record.name}[{', '.join(record.type_params)}]",
+                        expr
+                    )
+                if len(expr.call_type.type_args) != len(record.type_params):
+                    raise self._error(
+                        f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
+                        f"got {len(expr.call_type.type_args)}",
+                        expr
+                    )
+            # Analyze and type-check constructor arguments with type substitution
+            type_subst = self._build_type_substitution(expr.call_type)
+            if record.has_init:
+                # Type-check __init__ parameters
+                if len(expr.args) != len(record.init_params):
+                    raise self._error(
+                        f"{record.name}() takes {len(record.init_params)} argument(s), got {len(expr.args)}",
+                        expr
+                    )
+                for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
+                    arg_type = self._analyze_expr(arg)
+                    resolved_ptype = self._substitute_type_params(ptype, type_subst) if type_subst else ptype
+                    expr.args[i] = self._coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
+                                                     coercion_ctx=CoercionContext.ARG)
+            else:
+                for arg in expr.args:
+                    self._analyze_expr(arg)
+            return expr.call_type
+        # Non-generic record
+        if record.is_generic():
+            raise self._error(
+                f"Generic record '{record.name}' requires type arguments: "
+                f"{record.name}[{', '.join(record.type_params)}]",
+                expr
+            )
         for arg in expr.args:
             self._analyze_expr(arg)
         return RecordType(record.name)
@@ -1218,12 +1355,20 @@ class SemanticAnalyzer:
                         f"Method '{expr.method}' expects {len(method_info.params)} arguments, "
                         f"got {len(expr.args)}"
                     )
-                # Type-check arguments
+                # Build type substitution for generic records
+                type_subst = self._build_type_substitution(obj_type)
+                # Type-check arguments (with type parameter substitution)
                 for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
                     arg_type = self._analyze_expr(arg)
-                    expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                    # Substitute type parameters in parameter type
+                    resolved_ptype = self._substitute_type_params(ptype, type_subst) if type_subst else ptype
+                    expr.args[i] = self._coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                      coercion_ctx=CoercionContext.ARG)
-                return method_info.return_type
+                # Substitute type parameters in return type
+                return_type = method_info.return_type
+                if type_subst:
+                    return_type = self._substitute_type_params(return_type, type_subst)
+                return return_type
 
         # Protocol-typed values - use protocol method signatures
         if isinstance(obj_type, ProtocolType):
@@ -1274,9 +1419,15 @@ class SemanticAnalyzer:
             record = self.registry.get_record(actual_type.name)
             if not record:
                 raise SemanticError(f"Unknown record type: '{actual_type.name}'")
+            # Build type substitution for generic records
+            type_subst = self._build_type_substitution(actual_type)
             for fld in record.fields:
                 if fld.name == expr.field:
-                    return fld.type
+                    # Substitute type parameters in field type
+                    field_type = fld.type
+                    if type_subst:
+                        field_type = self._substitute_type_params(field_type, type_subst)
+                    return field_type
             raise SemanticError(f"Record '{actual_type.name}' has no field '{expr.field}'")
 
         raise SemanticError(f"Cannot access field '{expr.field}' on type {obj_type}")

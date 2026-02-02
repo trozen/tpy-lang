@@ -17,12 +17,12 @@ struct IntWrapper {
 
   int32_t __len__() const {
     // 11:         return len(self.data)
-    return tpy::__len__(data);
+    return tpy::__len__(this->data);
   }
 
   int32_t __getitem__(int32_t index) const {
     // 14:         return self.data[index]
-    return tpy::get_item(data, index);
+    return tpy::get_item(this->data, index);
   }
 
   int32_t operator[](int32_t index) const {

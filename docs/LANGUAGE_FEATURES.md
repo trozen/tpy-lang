@@ -910,10 +910,69 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 - **Working**: Typed fields
 - **Working**: `__init__`
 - **Working**: Instance methods
+- **Working**: Generic classes (Python 3.12+ syntax)
 - **Planned**: `@staticmethod` → free functions or static methods
 - **Open**: `@classmethod` → if use case is clear
 - **Open**: `@property` → getter/setter methods
 - **Open**: Inheritance → composition, or actual inheritance for simple cases
+
+### Generic Classes
+
+**Working**: Generic classes using Python 3.12+ syntax (`class Stack[T]:`)
+
+```python
+class Box[T]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+    def get(self) -> T:
+        return self.value
+
+class Pair[A, B]:
+    first: A
+    second: B
+
+    def __init__(self, first: A, second: B) -> None:
+        self.first = first
+        self.second = second
+
+# Instantiation (explicit type arguments required)
+box: Box[Int32] = Box[Int32](42)
+pair: Pair[str, Int32] = Pair[str, Int32]("hello", 100)
+
+# Generic methods use substituted types
+print(box.get())  # Returns Int32
+print(pair.first) # Type is str
+```
+
+Generated C++ (template structs):
+```cpp
+template<typename T>
+struct Box {
+  T value;
+  explicit Box(const T& value) : value(value) {}
+  T get() const { return this->value; }
+};
+
+template<typename A, typename B>
+struct Pair {
+  A first;
+  B second;
+  explicit Pair(const A& first, const B& second) : first(first), second(second) {}
+};
+
+// Instantiation
+Box<int32_t> box{42};
+Pair<std::string_view, int32_t> pair{"hello", 100};
+```
+
+**Limitations**:
+- Type arguments must be explicit at instantiation (`Box[Int32]()` not `Box(42)`)
+- Generic functions (`def first[T]`) not yet supported
+- Type parameter bounds (`class SortedList[T: Comparable]`) not yet supported
+- Integer type parameters (`class FixedStack[T, N: int]`) not yet supported
 
 ### Special Methods
 - **Working**: `__init__`

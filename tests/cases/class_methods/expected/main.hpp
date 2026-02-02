@@ -20,22 +20,22 @@ struct Counter {
 
   void increment() {
     // 10:         self.value = self.value + 1
-    value = (tpy::int32_add(value, 1));
+    this->value = (tpy::int32_add(this->value, 1));
   }
 
   void add(int32_t n) {
     // 13:         self.value = self.value + n
-    value = (tpy::int32_add(value, n));
+    this->value = (tpy::int32_add(this->value, n));
   }
 
   int32_t get() {
     // 16:         return self.value
-    return value;
+    return this->value;
   }
 
   void reset() {
     // 19:         self.value = 0
-    value = 0;
+    this->value = 0;
   }
 };
 

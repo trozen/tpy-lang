@@ -1,7 +1,11 @@
 # TODO
 
 ## Next
-- support generics in code
+- repl paste text (proper indent when pasting)
+- Type inference from constructor arguments
+- Generic functions: def first[T](items: list[T]) -> T
+- Type parameter bounds: class SortedList[T: Comparable]
+- Integer type parameters: class FixedStack[T, N: int]
 - allow protocol inheritance, with protocol check
 - allow inheritance of normal classes
 - extract c++ compiler interface
@@ -10,6 +14,7 @@
 - import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
 - require imports at the top of file, don't allow inline imports
 - type containing an allocated object (e.g. `Box[T]`)
+- type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - `Int32` should be imported from tpy, so it matches CPython (maybe use `from typ import *`?)
 - `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function

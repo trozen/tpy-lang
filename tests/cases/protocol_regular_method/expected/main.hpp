@@ -17,7 +17,7 @@ struct Value {
 
   Value duplicate() {
     // 15:         return Value(self.x * 2)
-    return Value((tpy::int32_mul(x, 2)));
+    return Value((tpy::int32_mul(this->x, 2)));
   }
 };
 

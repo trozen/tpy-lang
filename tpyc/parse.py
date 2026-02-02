@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
-    TpyType, RecordType, PtrType, ConstPtrType, OwnType, ProtocolType, SelfType,
+    TpyType, RecordType, PtrType, ConstPtrType, OwnType, ProtocolType, SelfType, TypeParamRef,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo
 )
@@ -262,10 +262,15 @@ class TpyFunction:
 
 @dataclass
 class TpyRecord:
-    """Record (class) definition."""
+    """Record (class) definition.
+
+    For generic records like Stack[T]:
+    - type_params stores the type parameter names (e.g., ["T"])
+    """
     name: str
     fields: list[FieldInfo]
     methods: list[TpyFunction] = field(default_factory=list)
+    type_params: list[str] = field(default_factory=list)
 
     @property
     def init_method(self) -> Optional[TpyFunction]:
@@ -311,6 +316,7 @@ class Parser:
     def __init__(self):
         self.registry = TypeRegistry()
         self.source_lines: list[str] = []
+        self._type_param_scope: set[str] | None = None  # Current type parameter scope for generic classes
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -411,6 +417,21 @@ class Parser:
         if node.decorator_list:
             raise ParseError(f"Decorators not allowed on class '{node.name}'", node)
 
+        # Extract type parameters from Python 3.12+ syntax: class Foo[T, U]:
+        type_params = []
+        if hasattr(node, 'type_params') and node.type_params:
+            for tp in node.type_params:
+                if isinstance(tp, ast.TypeVar):
+                    type_params.append(tp.name)
+                else:
+                    raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
+
+        # Create a set of type param names for scope during parsing
+        type_param_scope = set(type_params) if type_params else None
+        # Store scope for use during method body parsing (expression parsing uses this)
+        old_scope = self._type_param_scope
+        self._type_param_scope = type_param_scope
+
         fields = []
         methods = []
 
@@ -420,7 +441,7 @@ class Parser:
                 if not isinstance(item.target, ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.target.id
-                field_type = self._parse_type_annotation(item.annotation)
+                field_type = self._parse_type_annotation(item.annotation, type_param_scope)
                 default_val = None
                 if item.value is not None:
                     default_val = self._get_default_value(item.value)
@@ -436,13 +457,15 @@ class Parser:
                 default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val))
             elif isinstance(item, ast.FunctionDef):
-                methods.append(self._parse_method(item, node.name))
+                methods.append(self._parse_method(item, node.name, type_param_scope))
             elif isinstance(item, ast.Pass):
                 pass
             else:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 
-        return TpyRecord(name=node.name, fields=fields, methods=methods)
+        # Restore the scope
+        self._type_param_scope = old_scope
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params)
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
@@ -489,7 +512,7 @@ class Parser:
 
         return TpyProtocol(name=node.name, methods=methods, loc=self._loc(node))
 
-    def _parse_method(self, node: ast.FunctionDef, class_name: str) -> TpyFunction:
+    def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: set[str] | None = None) -> TpyFunction:
         """Parse a method definition."""
         params = []
         for i, arg in enumerate(node.args.args):
@@ -499,13 +522,13 @@ class Parser:
                 continue
             if arg.annotation is None:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-            param_type = self._parse_type_annotation(arg.annotation)
+            param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))
 
         # Get return type (default to Void for __init__)
         return_type = VOID
         if node.name != "__init__" and node.returns:
-            return_type = self._parse_type_annotation(node.returns)
+            return_type = self._parse_type_annotation(node.returns, type_param_scope)
 
         body = [self._parse_stmt(stmt) for stmt in node.body]
         return TpyFunction(
@@ -548,10 +571,22 @@ class Parser:
             loc=self._loc(node)
         )
 
-    def _parse_type_annotation(self, node: ast.expr) -> TpyType:
-        """Parse a type annotation."""
+    def _parse_type_annotation(self, node: ast.expr, type_param_scope: set[str] | None = None) -> TpyType:
+        """Parse a type annotation.
+
+        Args:
+            node: The AST node representing the type annotation.
+            type_param_scope: Set of type parameter names currently in scope (for generic classes).
+                              Falls back to self._type_param_scope if not provided.
+        """
+        # Use instance variable as fallback for type parameter scope
+        if type_param_scope is None:
+            type_param_scope = self._type_param_scope
         if isinstance(node, ast.Name):
             name = node.id
+            # Check if this is a type parameter reference
+            if type_param_scope and name in type_param_scope:
+                return TypeParamRef(name)
             if name == "Self":
                 return SELF
             elif name == "Int32":
@@ -592,24 +627,30 @@ class Parser:
                 container = node.value.id
                 # Pointer types are fundamental, not module-defined
                 if container == "Ptr":
-                    inner = self._parse_type_annotation(node.slice)
+                    inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return PtrType(inner)
                 elif container == "ConstPtr":
-                    inner = self._parse_type_annotation(node.slice)
+                    inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return ConstPtrType(inner)
                 elif container == "Own":
-                    inner = self._parse_type_annotation(node.slice)
+                    inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return OwnType(inner)
 
                 # Generic protocols (e.g., Sequence[Int32])
                 if protocol_def := lookup_builtin_protocol(container):
                     if protocol_def.type_params:
-                        type_args = self._parse_protocol_type_args(node, container, protocol_def.type_params)
+                        type_args = self._parse_protocol_type_args(node, container, protocol_def.type_params, type_param_scope)
                         return ProtocolType(container, type_args)
 
                 # Module-defined generic types (list, Array, Span, etc.)
                 if lookup := lookup_generic_type(container):
-                    return self._parse_generic_type(node, container, lookup.type_def)
+                    return self._parse_generic_type(node, container, lookup.type_def, type_param_scope)
+
+                # User-defined generic records (e.g., Stack[Int32])
+                # Check if it's a known record or looks like a record name (capitalized)
+                if self.registry.get_record(container) is not None or container[0].isupper():
+                    type_args = self._parse_record_type_args(node, container, type_param_scope)
+                    return RecordType(container, type_args)
 
                 raise ParseError(f"Unknown generic type: {container}", node)
 
@@ -619,7 +660,7 @@ class Parser:
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
     def _parse_protocol_type_args(self, node: ast.Subscript, name: str,
-                                    type_params: list[str]) -> tuple[TpyType, ...]:
+                                    type_params: list[str], type_param_scope: set[str] | None = None) -> tuple[TpyType, ...]:
         """Parse type arguments for a generic protocol like Sequence[Int32]."""
         expected_count = len(type_params)
 
@@ -635,10 +676,22 @@ class Parser:
             raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
 
         # Parse each type argument
-        type_args = tuple(self._parse_type_annotation(s) for s in slices)
+        type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
         return type_args
 
-    def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef) -> TpyType:
+    def _parse_record_type_args(self, node: ast.Subscript, name: str, type_param_scope: set[str] | None = None) -> tuple[TpyType, ...]:
+        """Parse type arguments for a user-defined generic record like Stack[Int32]."""
+        # Extract slice elements
+        if isinstance(node.slice, ast.Tuple):
+            slices = node.slice.elts
+        else:
+            slices = [node.slice]
+
+        # Parse each type argument
+        type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
+        return type_args
+
+    def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: set[str] | None = None) -> TpyType:
         """Parse a module-defined generic type using its metadata."""
         param_kinds = type_def.param_kinds
         expected_count = len(param_kinds)
@@ -658,7 +711,7 @@ class Parser:
         parsed_args: list[TpyType | int] = []
         for i, (slice_node, kind) in enumerate(zip(slices, param_kinds)):
             if kind == TypeParamKind.TYPE:
-                parsed_args.append(self._parse_type_annotation(slice_node))
+                parsed_args.append(self._parse_type_annotation(slice_node, type_param_scope))
             elif kind == TypeParamKind.INT:
                 if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, int):
                     parsed_args.append(slice_node.value)

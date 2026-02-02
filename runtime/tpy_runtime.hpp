@@ -354,6 +354,29 @@ template<> struct is_value_type<char> : std::true_type {};
 template<> struct is_value_type<std::string_view> : std::true_type {};
 
 /**
+ * Return type helpers for generic code.
+ *
+ * These pick value or reference return types based on is_value_type trait:
+ * - return_val_or_ref_t<T>: T for value types, T& for object types (mutable)
+ * - return_val_or_cref_t<T>: T for value types, const T& for object types (const)
+ */
+template<typename T>
+using return_val_or_ref_t = std::conditional_t<is_value_type<T>::value, T, T&>;
+
+template<typename T>
+using return_val_or_cref_t = std::conditional_t<is_value_type<T>::value, T, const T&>;
+
+/**
+ * Parameter type helper for generic code.
+ *
+ * Picks parameter type based on is_value_type trait:
+ * - const T& for value types (immutable in Python, compiler optimizes small types)
+ * - T& for object types (mutable in Python)
+ */
+template<typename T>
+using param_val_or_ref_t = std::conditional_t<is_value_type<T>::value, const T&, T&>;
+
+/**
  * repeat_range<T> - A range that yields elements from a sequence N times.
  *
  * Used to implement Python's list repetition: [a, b] * 3 -> [a, b, a, b, a, b]

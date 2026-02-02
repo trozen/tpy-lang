@@ -35,12 +35,12 @@ struct PointList {
 
   int32_t __len__() const {
     // 18:         return len(self.data)
-    return tpy::__len__(data);
+    return tpy::__len__(this->data);
   }
 
   const Point& __getitem__(int32_t index) const {
     // 21:         return self.data[index]
-    return tpy::get_item(data, index);
+    return tpy::get_item(this->data, index);
   }
 
   const Point& operator[](int32_t index) const {

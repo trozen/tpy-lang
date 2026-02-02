@@ -17,7 +17,7 @@ struct SimpleCalc {
 
   int32_t add(int32_t x) {
     // 16:         return self.base + x
-    return (tpy::int32_add(base, x));
+    return (tpy::int32_add(this->base, x));
   }
 
   int32_t multiply(int32_t x, int32_t y) {
