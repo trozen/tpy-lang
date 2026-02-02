@@ -1624,6 +1624,10 @@ class CodeGenerator:
                 obj_type = obj_type.wrapped
 
             # Try module lookup for methods on builtin types
+            # Use resolved_method from sema if available (for overload resolution)
+            if expr.resolved_method:
+                method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
+                return self._gen_method_from_def(method_obj, expr.args, expr.resolved_method)
             methods = builtin_modules.lookup_type_method(obj_type, expr.method)
             if methods:
                 # Globals need dereferencing for method template access

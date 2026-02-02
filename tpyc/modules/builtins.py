@@ -53,11 +53,18 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
         returns=VOID,
         cpp="{self}.push_back({0})",
     )],
-    "pop": [MethodDef(
-        params=[],
-        returns=T,
-        cpp="tpy::pop_back({self})",
-    )],
+    "pop": [
+        MethodDef(
+            params=[],
+            returns=T,
+            cpp="tpy::pop_back({self})",
+        ),
+        MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="tpy::list_pop_at({self}, {0})",
+        ),
+    ],
     "clear": [MethodDef(
         params=[],
         returns=VOID,
@@ -87,6 +94,26 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
         params=[ParamDef("other", ProtocolType("NativeIterable", (T,)))],
         returns=VOID,
         cpp="tpy::list_extend({self}, {0})",
+    )],
+    "index": [MethodDef(
+        params=[ParamDef("value", T)],
+        returns=INT32,
+        cpp="tpy::list_index({self}, {0})",
+    )],
+    "count": [MethodDef(
+        params=[ParamDef("value", T)],
+        returns=INT32,
+        cpp="tpy::list_count({self}, {0})",
+    )],
+    "reverse": [MethodDef(
+        params=[],
+        returns=VOID,
+        cpp="tpy::list_reverse({self})",
+    )],
+    "copy": [MethodDef(
+        params=[],
+        returns=ListType(T),
+        cpp="tpy::list_copy({self})",
     )],
 }, constructors=[
     # list(iterable) - create list from any iterable, inferring element type

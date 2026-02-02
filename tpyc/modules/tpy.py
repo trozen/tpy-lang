@@ -5,7 +5,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType
+from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ProtocolType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -125,11 +125,18 @@ module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"
         returns=VOID,
         cpp="{self}.push_back({0})",
     )],
-    "pop": [MethodDef(
-        params=[],
-        returns=T,
-        cpp="{self}.pop_back()",
-    )],
+    "pop": [
+        MethodDef(
+            params=[],
+            returns=T,
+            cpp="{self}.pop_back()",
+        ),
+        MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="tpy::staticlist_pop_at({self}, {0})",
+        ),
+    ],
     "clear": [MethodDef(
         params=[],
         returns=VOID,
@@ -154,6 +161,36 @@ module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"
         params=[ParamDef("index", INT32), ParamDef("value", T)],
         returns=VOID,
         cpp="tpy::set_item({self}, {0}, {1})",
+    )],
+    "extend": [MethodDef(
+        params=[ParamDef("other", ProtocolType("NativeIterable", (T,)))],
+        returns=VOID,
+        cpp="tpy::staticlist_extend({self}, {0})",
+    )],
+    "insert": [MethodDef(
+        params=[ParamDef("index", INT32), ParamDef("value", T)],
+        returns=VOID,
+        cpp="tpy::staticlist_insert({self}, {0}, {1})",
+    )],
+    "remove": [MethodDef(
+        params=[ParamDef("value", T)],
+        returns=VOID,
+        cpp="tpy::staticlist_remove({self}, {0})",
+    )],
+    "index": [MethodDef(
+        params=[ParamDef("value", T)],
+        returns=INT32,
+        cpp="tpy::staticlist_index({self}, {0})",
+    )],
+    "count": [MethodDef(
+        params=[ParamDef("value", T)],
+        returns=INT32,
+        cpp="tpy::staticlist_count({self}, {0})",
+    )],
+    "reverse": [MethodDef(
+        params=[],
+        returns=VOID,
+        cpp="tpy::staticlist_reverse({self})",
     )],
 })
 

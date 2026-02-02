@@ -1564,6 +1564,189 @@ void list_extend(std::vector<T>& v, std::initializer_list<T> other) {
     v.insert(v.end(), other);
 }
 
+/**
+ * list_pop_at - Python list.pop(index) for std::vector.
+ *
+ * Removes and returns element at index. Supports negative indexing.
+ * Panics if index is out of bounds.
+ */
+template<typename T>
+T list_pop_at(std::vector<T>& v, int32_t index) {
+    auto i = normalize_index(v, index, "pop index out of range");
+    T result = std::move(v[i]);
+    v.erase(v.begin() + i);
+    return result;
+}
+
+/**
+ * list_index - Python list.index(value) for std::vector.
+ *
+ * Returns index of first occurrence of value. Panics if not found.
+ */
+template<typename T>
+int32_t list_index(const std::vector<T>& v, const T& value) {
+    auto it = std::find(v.begin(), v.end(), value);
+    if (it == v.end()) {
+        tpy_panic("list.index(x): x not in list");
+    }
+    return static_cast<int32_t>(it - v.begin());
+}
+
+/**
+ * list_count - Python list.count(value) for std::vector.
+ *
+ * Returns number of occurrences of value.
+ */
+template<typename T>
+int32_t list_count(const std::vector<T>& v, const T& value) {
+    return static_cast<int32_t>(std::count(v.begin(), v.end(), value));
+}
+
+/**
+ * list_reverse - Python list.reverse() for std::vector.
+ *
+ * Reverses the list in place.
+ */
+template<typename T>
+void list_reverse(std::vector<T>& v) {
+    std::reverse(v.begin(), v.end());
+}
+
+/**
+ * list_copy - Python list.copy() for std::vector.
+ *
+ * Returns a shallow copy of the list.
+ */
+template<typename T>
+std::vector<T> list_copy(const std::vector<T>& v) {
+    return v;
+}
+
+// =============================================
+// StaticList helper functions
+// =============================================
+
+/**
+ * staticlist_extend - Python list.extend() for StaticList.
+ *
+ * Extends StaticList with elements from another container.
+ * Panics if capacity would be exceeded.
+ */
+template<typename T, std::size_t N, typename Container>
+void staticlist_extend(StaticList<T, N>& sl, const Container& other) {
+    for (const auto& elem : other) {
+        sl.push_back(elem);
+    }
+}
+
+template<typename T, std::size_t N>
+void staticlist_extend(StaticList<T, N>& sl, std::initializer_list<T> other) {
+    for (const auto& elem : other) {
+        sl.push_back(elem);
+    }
+}
+
+/**
+ * staticlist_insert - Python list.insert() for StaticList.
+ *
+ * Inserts value at index. Supports negative indexing and clamps to valid range.
+ * Panics if capacity would be exceeded.
+ * Does not require T to be default-constructible.
+ */
+template<typename T, std::size_t N, typename V>
+void staticlist_insert(StaticList<T, N>& sl, int32_t index, V&& value) {
+    std::ptrdiff_t i = index;
+    auto sz = static_cast<std::ptrdiff_t>(sl.size());
+    if (i < 0) {
+        i += sz;
+        if (i < 0) i = 0;
+    } else if (i > sz) {
+        i = sz;
+    }
+    // Inserting at end is just push_back
+    if (i == sz) {
+        sl.push_back(std::forward<V>(value));
+        return;
+    }
+    // Store value, extend by copying last element, shift, then place value
+    T temp(std::forward<V>(value));
+    sl.push_back(std::move(sl[sz - 1]));
+    for (std::ptrdiff_t j = sz - 1; j > i; --j) {
+        sl[j] = std::move(sl[j - 1]);
+    }
+    sl[i] = std::move(temp);
+}
+
+/**
+ * staticlist_remove - Python list.remove() for StaticList.
+ *
+ * Removes first occurrence of value. Panics if not found.
+ */
+template<typename T, std::size_t N>
+void staticlist_remove(StaticList<T, N>& sl, const T& value) {
+    auto it = std::find(sl.begin(), sl.end(), value);
+    if (it == sl.end()) {
+        tpy_panic("list.remove(x): x not in list");
+    }
+    // Shift elements left
+    for (auto p = it; p + 1 != sl.end(); ++p) {
+        *p = std::move(*(p + 1));
+    }
+    sl.pop_back();  // Decrease size (discards return value)
+}
+
+/**
+ * staticlist_pop_at - Python list.pop(index) for StaticList.
+ *
+ * Removes and returns element at index. Supports negative indexing.
+ * Panics if index is out of bounds.
+ */
+template<typename T, std::size_t N>
+T staticlist_pop_at(StaticList<T, N>& sl, int32_t index) {
+    auto i = normalize_index(sl, index, "pop index out of range");
+    T result = std::move(sl[i]);
+    // Shift elements left
+    for (std::size_t j = i; j + 1 < static_cast<std::size_t>(sl.size()); ++j) {
+        sl[j] = std::move(sl[j + 1]);
+    }
+    sl.pop_back();  // Decrease size (discards return value)
+    return result;
+}
+
+/**
+ * staticlist_index - Python list.index(value) for StaticList.
+ *
+ * Returns index of first occurrence of value. Panics if not found.
+ */
+template<typename T, std::size_t N>
+int32_t staticlist_index(const StaticList<T, N>& sl, const T& value) {
+    auto it = std::find(sl.begin(), sl.end(), value);
+    if (it == sl.end()) {
+        tpy_panic("list.index(x): x not in list");
+    }
+    return static_cast<int32_t>(it - sl.begin());
+}
+
+/**
+ * staticlist_count - Python list.count(value) for StaticList.
+ *
+ * Returns number of occurrences of value.
+ */
+template<typename T, std::size_t N>
+int32_t staticlist_count(const StaticList<T, N>& sl, const T& value) {
+    return static_cast<int32_t>(std::count(sl.begin(), sl.end(), value));
+}
+
+/**
+ * staticlist_reverse - Python list.reverse() for StaticList.
+ *
+ * Reverses the list in place.
+ */
+template<typename T, std::size_t N>
+void staticlist_reverse(StaticList<T, N>& sl) {
+    std::reverse(sl.begin(), sl.end());
+}
+
 // =============================================
 // Protocol free functions - unified interface for dunder methods
 // =============================================

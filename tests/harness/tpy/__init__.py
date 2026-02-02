@@ -213,6 +213,63 @@ class StaticList(metaclass=StaticListMeta):
     def __iter__(self):
         return iter(self._data)
 
+    def pop(self, index: int = None):
+        """Remove and return element at index (default last)."""
+        if len(self._data) == 0:
+            raise RuntimeError("StaticList pop from empty list")
+        if index is None:
+            return self._data.pop()
+        # Normalize negative index
+        if index < 0:
+            index += len(self._data)
+        if index < 0 or index >= len(self._data):
+            raise RuntimeError(f"pop index out of range")
+        return self._data.pop(index)
+
+    def clear(self) -> None:
+        """Remove all elements."""
+        self._data.clear()
+
+    def extend(self, iterable) -> None:
+        """Extend with elements from iterable."""
+        for item in iterable:
+            self.append(item)
+
+    def insert(self, index: int, value) -> None:
+        """Insert value at index."""
+        if len(self._data) >= self._capacity:
+            raise RuntimeError(f"StaticList capacity exceeded")
+        # Clamp index like Python's list.insert
+        if index < 0:
+            index += len(self._data)
+            if index < 0:
+                index = 0
+        elif index > len(self._data):
+            index = len(self._data)
+        self._data.insert(index, value)
+
+    def remove(self, value) -> None:
+        """Remove first occurrence of value."""
+        try:
+            self._data.remove(value)
+        except ValueError:
+            raise RuntimeError("list.remove(x): x not in list")
+
+    def index(self, value) -> Int32:
+        """Return index of first occurrence of value."""
+        try:
+            return Int32(self._data.index(value))
+        except ValueError:
+            raise RuntimeError("list.index(x): x not in list")
+
+    def count(self, value) -> Int32:
+        """Return number of occurrences of value."""
+        return Int32(self._data.count(value))
+
+    def reverse(self) -> None:
+        """Reverse in place."""
+        self._data.reverse()
+
 
 class ArrayMeta(type):
     """Metaclass to support Array[T, N] syntax."""

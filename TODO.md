@@ -2,9 +2,11 @@
 
 ## Next
 - repl paste text (proper indent when pasting)
+- Own[T] should require explicit copy() for lvalues: `return copy(self.value)` not `return self.value`; rvalues like `return T()` are OK without copy
 - Generic functions: def first[T](items: list[T]) -> T
 - Type parameter bounds: class SortedList[T: Comparable]
 - Integer type parameters: class FixedStack[T, N: int]
+- protocol fields? `class P(Protocol): value: Int32`
 - allow protocol inheritance, with protocol check
 - allow inheritance of normal classes
 - extract c++ compiler interface
@@ -24,8 +26,8 @@
 - allow type annotation to use "" (forward decl)
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
-- Own[T] should require explicit copy() for lvalues: `return copy(self.value)` not `return self.value`; rvalues like `return T()` are OK without copy
 - propert string handling (STRING_HANDLING.md)
+- `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
 
 ## Python features
 - dict full support
@@ -34,6 +36,7 @@
 - `None` type, optional values, null pointers
 - list slicing (`items[1:3]`)
 - make sure docstrings work in every context
+- list/StaticList operator (+=, *, +, in), sort
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
@@ -64,6 +67,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - dynamic dispatch
 - full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
 - formatting/linting like in genweb
+- properties with getter/setter
+- indexing: Int32 vs Int64 vs SizeType?
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

@@ -1331,6 +1331,21 @@ class SemanticAnalyzer:
         return_type: TpyType = method.returns  # type: ignore
         return return_type
 
+    def _check_method_args_resolved(self, expr: TpyMethodCall, method: builtin_modules.MethodDef,
+                                    obj_type: TpyType, arg_types: list[TpyType]) -> TpyType:
+        """Check method arguments with pre-analyzed argument types.
+
+        Similar to _check_method_args but accepts pre-computed arg_types to avoid
+        re-analyzing expressions when doing overload resolution.
+        """
+        for i, (arg, arg_t, param) in enumerate(zip(expr.args, arg_types, method.params)):
+            param_type: TpyType = param.type  # type: ignore
+            if arg_t != param_type:
+                expr.args[i] = self._coerce_expr(arg, arg_t, param_type, f"{param.name} argument",
+                                                 coercion_ctx=CoercionContext.ARG)
+        return_type: TpyType = method.returns  # type: ignore
+        return return_type
+
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
         # Check for module.function() pattern (import X -> X.func())
@@ -1368,7 +1383,7 @@ class SemanticAnalyzer:
 
         # List mutation methods - mark literal as mutated before module lookup
         if isinstance(obj_type, (PendingListType, ListType)):
-            mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "__setitem__"}
+            mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}
             if expr.method in mutation_methods:
                 self._mark_list_mutated(expr.obj)
 
@@ -1376,8 +1391,30 @@ class SemanticAnalyzer:
         type_params = builtin_modules.extract_type_params(obj_type)
         methods = builtin_modules.lookup_type_method(obj_type, expr.method)
         if methods:
-            resolved = builtin_modules.resolve_method(methods[0], type_params)
-            return self._check_method_args(expr, resolved, obj_type)
+            if len(methods) == 1:
+                # Single overload - use original path for better error messages
+                resolved = builtin_modules.resolve_method(methods[0], type_params)
+                expr.resolved_method = resolved
+                return self._check_method_args(expr, resolved, obj_type)
+            # Multiple overloads - try all to find a matching one
+            arg_types = [self._analyze_expr(arg) for arg in expr.args]
+            matching_overload = None
+            for method in methods:
+                resolved = builtin_modules.resolve_method(method, type_params)
+                if len(resolved.params) != len(arg_types):
+                    continue
+                # Check if all argument types are compatible
+                if all(self._builtin_type_matches(arg_t, param.type)
+                       for arg_t, param in zip(arg_types, resolved.params)):
+                    matching_overload = resolved
+                    break
+            if matching_overload is None:
+                # No matching overload - provide helpful error
+                arg_type_strs = ", ".join(str(t) for t in arg_types)
+                raise SemanticError(f"No matching overload for {expr.method}({arg_type_strs})")
+            # Store resolved method for codegen
+            expr.resolved_method = matching_overload
+            return self._check_method_args_resolved(expr, matching_overload, obj_type, arg_types)
 
         # User-defined record methods
         if isinstance(obj_type, RecordType):
