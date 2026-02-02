@@ -1,0 +1,1 @@
+main.tp.py:8: error: Cannot infer type arguments for 'identity'. Specify explicitly: identity[T](...)

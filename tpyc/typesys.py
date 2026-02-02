@@ -723,12 +723,25 @@ class RecordInfo:
 
 @dataclass
 class FunctionInfo:
-    """Information about a function."""
+    """Information about a function.
+
+    For generic functions like def first[T](items: list[T]) -> T:
+    - type_params stores the type parameter names (e.g., ["T"])
+    """
     name: str
     params: list[tuple[str, TpyType]]  # (name, type)
     return_type: TpyType
     is_noalloc: bool = False
     is_method: bool = False
+    type_params: list[str] = None
+
+    def __post_init__(self):
+        if self.type_params is None:
+            self.type_params = []
+
+    def is_generic(self) -> bool:
+        """Return True if this is a generic function with type parameters."""
+        return bool(self.type_params)
 
 
 @dataclass

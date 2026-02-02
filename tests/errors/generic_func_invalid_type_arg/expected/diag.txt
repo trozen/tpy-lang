@@ -1,0 +1,1 @@
+main.tp.py:9: error: Integer '123' is not a valid type argument

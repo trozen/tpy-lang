@@ -18,7 +18,7 @@ from .typesys import (
     ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
-    ProtocolInfo, MethodSignature
+    ProtocolInfo, MethodSignature, ModuleType
 )
 from .namespace import Namespace, BindingKind, NameBinding
 from .parse import (
@@ -263,8 +263,10 @@ class SemanticAnalyzer:
 
     def _register_function(self, func: TpyFunction) -> None:
         """Register a function."""
+        # Allow TypeParamRef in params/return for generic functions
+        is_generic = bool(func.type_params)
         for pname, ptype in func.params:
-            self._validate_type(ptype)
+            self._validate_type(ptype, allow_type_param_ref=is_generic)
             # Self type can only be used in protocol method signatures
             if isinstance(ptype, SelfType):
                 raise SemanticError(
@@ -272,7 +274,7 @@ class SemanticAnalyzer:
                     f"Self is only valid in protocol method signatures",
                     func.loc
                 )
-        self._validate_type(func.return_type)
+        self._validate_type(func.return_type, allow_type_param_ref=is_generic)
 
         # Self type can only be used in protocol method signatures
         if isinstance(func.return_type, SelfType):
@@ -282,7 +284,7 @@ class SemanticAnalyzer:
                 func.loc
             )
 
-        # Protocol types cannot be used as return types
+        # Protocol types cannot be used as return types (but TypeParamRef is OK)
         if isinstance(func.return_type, ProtocolType):
             raise SemanticError(
                 f"Protocol type '{func.return_type.name}' cannot be used as a return type. "
@@ -294,7 +296,8 @@ class SemanticAnalyzer:
             name=func.name,
             params=func.params,
             return_type=func.return_type,
-            is_noalloc=func.is_noalloc
+            is_noalloc=func.is_noalloc,
+            type_params=func.type_params
         )
         self.registry.register_function(info)
         self.global_ns.bind_function(info)
@@ -1019,11 +1022,18 @@ class SemanticAnalyzer:
 
     def _analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
-        # Generic type instantiation (e.g., Container[T, N]())
+        # Generic type instantiation (e.g., Container[T, N](), StaticList[Int32, 8]())
+        # Only if it's actually a type - for generic functions with uppercase names,
+        # call_type may be set but we should use type_args instead
         if expr.call_type is not None:
-            for arg in expr.args:
-                self._analyze_expr(arg)
-            return expr.call_type
+            # Check if this is a user-defined generic function
+            is_known_function = self.registry.get_function(expr.func) is not None
+            if not is_known_function:
+                # It's a type instantiation - use call_type
+                for arg in expr.args:
+                    self._analyze_expr(arg)
+                return expr.call_type
+            # Otherwise fall through to function handling (type_args will be used)
 
         # Check module registry for built-in functions (global builtins like chr)
         if builtin_fn := builtin_modules.lookup_function(expr.func):
@@ -1197,6 +1207,10 @@ class SemanticAnalyzer:
 
     def _analyze_user_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a call to a user-defined function."""
+        # Handle generic functions
+        if func.is_generic():
+            return self._analyze_generic_function_call(expr, func)
+
         if len(expr.args) != len(func.params):
             raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
@@ -1235,6 +1249,132 @@ class SemanticAnalyzer:
                 self._mark_list_param_context(arg, ptype)
 
         return func.return_type
+
+    def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
+        """Analyze a call to a generic function."""
+        # Check for invalid type arguments (e.g., first[123](x) or first[var](x))
+        if expr.type_args_parse_error:
+            raise self._error(expr.type_args_parse_error, expr)
+
+        # Check argument count first
+        if len(expr.args) != len(func.params):
+            raise self._error(
+                f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}",
+                expr
+            )
+
+        # Get type substitution from explicit args or inference
+        if expr.type_args:
+            # Explicit: first[Int32](items)
+            if len(expr.type_args) != len(func.type_params):
+                raise self._error(
+                    f"Function '{expr.func}' expects {len(func.type_params)} type arguments, "
+                    f"got {len(expr.type_args)}",
+                    expr
+                )
+            # Validate each explicit type argument
+            for i, type_arg in enumerate(expr.type_args):
+                # Protocol types cannot be used as type arguments
+                if isinstance(type_arg, ProtocolType):
+                    raise self._error(
+                        f"Protocol type '{type_arg.name}' cannot be used as a type argument. "
+                        f"Protocols are only valid for function parameters",
+                        expr
+                    )
+                # Check for unknown record types (no forward references allowed at call sites)
+                if isinstance(type_arg, RecordType) and not type_arg.type_args:
+                    if self.registry.get_record(type_arg.name) is None:
+                        raise self._error(f"Unknown type: {type_arg.name}", expr)
+                # Validate the type (checks for missing generic args, etc.)
+                self._validate_type(type_arg)
+            type_subst = dict(zip(func.type_params, expr.type_args))
+        else:
+            # Infer from arguments
+            arg_types = [self._analyze_expr(arg) for arg in expr.args]
+            type_subst = self._infer_type_params_for_function(func, arg_types)
+            if type_subst is None:
+                raise self._error(
+                    f"Cannot infer type arguments for '{func.name}'. "
+                    f"Specify explicitly: {func.name}[{', '.join(func.type_params)}](...)",
+                    expr
+                )
+
+        # Store inferred type args for codegen
+        expr.inferred_type_args = tuple(type_subst[p] for p in func.type_params)
+
+        # Resolve and check parameters
+        for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
+            resolved_ptype = self._substitute_type_params(ptype, type_subst)
+            arg_type = self._analyze_expr_with_hint(arg, resolved_ptype)
+
+            # Check for Own[T] passed directly to object type parameter
+            if isinstance(arg_type, OwnType) and not isinstance(resolved_ptype, OwnType) and not resolved_ptype.is_value_type():
+                if isinstance(arg, TpyName):
+                    hint = f"Declare the variable as '{arg_type.wrapped}' instead of 'Own[{arg_type.wrapped}]'"
+                else:
+                    hint = "Assign to a variable first: x = func(); other_func(x)"
+                raise self._error(
+                    f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
+                    f"(object types are passed by reference). {hint}",
+                    arg
+                )
+
+            # Check for T passed to Own[T] parameter - would be implicit copy
+            if isinstance(resolved_ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
+                raise self._error(
+                    f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{resolved_ptype.wrapped}]' "
+                    f"(would be implicit copy)",
+                    arg
+                )
+
+            # Special case: single-char string literal can be passed as Char
+            if not (isinstance(resolved_ptype, CharType) and isinstance(arg_type, StrType) and
+                    isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
+                coerced_arg = self._coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
+                                                coercion_ctx=CoercionContext.ARG)
+                expr.args[i] = coerced_arg
+
+            # Track parameter context for list inference
+            if isinstance(arg_type, PendingListType):
+                self._mark_list_param_context(arg, resolved_ptype)
+
+        # Resolve return type
+        return self._substitute_type_params(func.return_type, type_subst)
+
+    def _infer_type_params_for_function(
+        self,
+        func: FunctionInfo,
+        arg_types: list[TpyType]
+    ) -> dict[str, TpyType] | None:
+        """Infer type parameters from function arguments.
+
+        Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        """
+        if len(arg_types) != len(func.params):
+            return None
+
+        inferred: dict[str, TpyType] = {}
+        for (pname, ptype), arg_type in zip(func.params, arg_types):
+            if not self._match_type_with_inference(ptype, arg_type, inferred):
+                return None
+
+        # Resolve pending types for codegen (Python semantics)
+        for k, v in list(inferred.items()):
+            if isinstance(v, IntLiteralType):
+                inferred[k] = BIGINT
+            elif isinstance(v, PendingListType):
+                # Resolve PendingListType to ListType
+                elem_type = v.element_type
+                if isinstance(elem_type, IntLiteralType):
+                    elem_type = BIGINT
+                inferred[k] = ListType(elem_type)
+
+        # Check all type params were inferred
+        for tp in func.type_params:
+            if tp not in inferred:
+                return None
+
+        return inferred
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""

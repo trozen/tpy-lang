@@ -37,7 +37,7 @@ void __tpy_init() {
   // 13: mem[1] = 8
   tpy::set_item((*mem), 1, 8);
   // 14: print(sum_list(mem))
-  std::cout << sum_list(mem) << "\n";
+  std::cout << sum_list((*mem)) << "\n";
   // 15: print(len(mem))
   std::cout << tpy::__len__((*mem)) << "\n";
   // 18: data = [0] * 5

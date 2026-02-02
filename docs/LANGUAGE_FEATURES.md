@@ -900,7 +900,78 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 
 ### Type Polymorphism
 - **Open**: `def foo(x: int | str)` → template or overloads
-- **Open**: Generic functions `def foo[T](x: T)` → templates
+- **Working**: Generic functions `def foo[T](x: T)` → templates
+
+### Generic Functions
+
+**Working**: Generic functions using Python 3.12+ syntax (`def first[T]:`)
+
+```python
+def first[T](items: list[T]) -> T:
+    return items[0]
+
+def swap[T](a: T, b: T) -> None:
+    # T can be any type
+    temp = a
+    # ... swap logic
+
+def make_pair[A, B](a: A, b: B) -> Pair[A, B]:
+    return Pair(a, b)
+```
+
+**Type Inference**: Type arguments are inferred from function arguments:
+
+```python
+nums = [1, 2, 3]
+x = first(nums)        # T inferred as int from list[int]
+
+strs = ["a", "b"]
+s = first(strs)        # T inferred as str from list[str]
+
+points = [Point(1, 2)]
+p = first(points)      # T inferred as Point from list[Point]
+```
+
+**Explicit Type Arguments**: When inference isn't possible or you want explicit control:
+
+```python
+# Explicit type argument
+result: Int32 = first[Int32](nums)
+
+# Required when inference would be ambiguous
+def identity[T](x: T) -> T:
+    return x
+
+# Type annotation provides hint for inference
+y: Int32 = identity(42)  # T inferred as Int32 from annotation
+```
+
+Generated C++ (template functions):
+```cpp
+template<typename T>
+tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
+    return tpy::get_item(items, 0);
+}
+
+// Call site with explicit type args
+first<int32_t>(nums);
+
+// Call site with inferred type
+first<tpy::BigInt>(nums);  // compiler always emits explicit args
+```
+
+**Error Handling**: Invalid type arguments are caught at compile time:
+
+```python
+first[123](nums)        # Error: Integer '123' is not a valid type argument
+first[x](nums)          # Error: 'x' is not a valid type (if x is a variable)
+first[UnknownType](nums) # Error: Unknown type: UnknownType
+first[Printable](nums)  # Error: Protocol types cannot be used as type arguments
+```
+
+**Limitations**:
+- Type parameter bounds (`def foo[T: Comparable](x: T)`) not yet supported
+- Generic methods on classes (methods with their own type params) not yet supported
 
 ---
 
@@ -978,7 +1049,6 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 - `Ptr[T]` arguments match `ConstPtr[T]` parameters (follows coercion rules)
 
 **Limitations**:
-- Generic functions (`def first[T]`) not yet supported
 - Type parameter bounds (`class SortedList[T: Comparable]`) not yet supported
 - Integer type parameters (`class FixedStack[T, N: int]`) not yet supported
 
@@ -1384,6 +1454,5 @@ Key difference from Python Pydantic:
 3. **String semantics**: When does `str` allocate vs use SSO?
 4. **Inheritance**: Support simple cases or always composition?
 5. **Exceptions**: Error codes, `std::expected`, or actual exceptions?
-6. **Generics**: Python 3.12 syntax `def foo[T](x: T)` or something else?
-7. **Lambda efficiency**: Always template? Configurable? Type-erased fallback?
-8. **Macro system scope**: How much compile-time Python execution? Safety limits?
+6. **Lambda efficiency**: Always template? Configurable? Type-erased fallback?
+7. **Macro system scope**: How much compile-time Python execution? Safety limits?

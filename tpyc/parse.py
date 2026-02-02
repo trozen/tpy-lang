@@ -103,10 +103,18 @@ class TpyUnaryOp(TpyExpr):
 
 @dataclass
 class TpyCall(TpyExpr):
-    """Function or constructor call."""
+    """Function or constructor call.
+
+    For generic function calls like first[Int32](items):
+    - type_args stores the explicit type arguments (e.g., (Int32,))
+    - inferred_type_args is set by sema for codegen (resolved from inference or explicit)
+    """
     func: str
     args: list[TpyExpr]
     call_type: Optional[TpyType] = None  # For generic instantiation like MyContainer[T, N]()
+    type_args: tuple[TpyType, ...] = ()  # Explicit type args for generic function calls: func[T](args)
+    inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic function calls
+    type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
 
 
@@ -251,13 +259,18 @@ class TpyPassStmt(TpyStmt):
 
 @dataclass
 class TpyFunction:
-    """Function definition."""
+    """Function definition.
+
+    For generic functions like def first[T](items: list[T]) -> T:
+    - type_params stores the type parameter names (e.g., ["T"])
+    """
     name: str
     params: list[tuple[str, TpyType]]
     return_type: TpyType
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_method: bool = False
+    type_params: list[str] = field(default_factory=list)
     loc: SourceLocation | None = None
 
 
@@ -550,18 +563,35 @@ class Parser:
             else:
                 raise ParseError(f"Unknown decorator on function '{node.name}'", dec)
 
+        # Extract type parameters from Python 3.12+ syntax: def foo[T, U]():
+        type_params = []
+        if hasattr(node, 'type_params') and node.type_params:
+            for tp in node.type_params:
+                if isinstance(tp, ast.TypeVar):
+                    type_params.append(tp.name)
+                else:
+                    raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
+
+        # Set scope for parsing parameter and return types
+        type_param_scope = set(type_params) if type_params else None
+        old_scope = self._type_param_scope
+        self._type_param_scope = type_param_scope
+
         params = []
         for arg in node.args.args:
             if arg.annotation is None:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-            param_type = self._parse_type_annotation(arg.annotation)
+            param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))
 
         return_type = VOID
         if node.returns:
-            return_type = self._parse_type_annotation(node.returns)
+            return_type = self._parse_type_annotation(node.returns, type_param_scope)
 
         body = [self._parse_stmt(stmt) for stmt in node.body]
+
+        # Restore the scope
+        self._type_param_scope = old_scope
 
         return TpyFunction(
             name=node.name,
@@ -569,6 +599,7 @@ class Parser:
             return_type=return_type,
             body=body,
             is_noalloc=is_noalloc,
+            type_params=type_params,
             loc=self._loc(node)
         )
 
@@ -691,6 +722,30 @@ class Parser:
         # Parse each type argument
         type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
         return type_args
+
+    def _parse_type_args_from_subscript(self, node: ast.Subscript) -> tuple[TpyType, ...]:
+        """Extract type arguments from a subscript for generic function calls like first[Int32](x).
+
+        Raises ParseError if any element is not a valid type. The caller should catch
+        this for cases where non-type arguments are valid (e.g., StaticList[Int32, 8]).
+        """
+        # Extract slice elements
+        if isinstance(node.slice, ast.Tuple):
+            slices = node.slice.elts
+        else:
+            slices = [node.slice]
+
+        # Parse each type argument - raise error if any fails
+        type_args = []
+        for s in slices:
+            # Integer constants are not valid type arguments
+            if isinstance(s, ast.Constant) and isinstance(s.value, int):
+                raise ParseError(f"Integer '{s.value}' is not a valid type argument", s)
+            # Variable names that aren't types
+            if isinstance(s, ast.Name) and not self.registry.is_known_type(s.id) and s.id[0].islower():
+                raise ParseError(f"'{s.id}' is not a valid type", s)
+            type_args.append(self._parse_type_annotation(s))
+        return tuple(type_args)
 
     def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: set[str] | None = None) -> TpyType:
         """Parse a module-defined generic type using its metadata."""
@@ -890,10 +945,31 @@ class Parser:
                 obj = self._parse_expr(node.func.value)
                 return TpyMethodCall(obj, node.func.attr, args, loc=loc)
             elif isinstance(node.func, ast.Subscript):
-                # Generic type instantiation: MyContainer[T, N]()
-                call_type = self._parse_type_annotation(node.func)
+                # Could be generic type instantiation (Stack[Int32]()) or generic function call (First[Int32](x))
+                # Parse both call_type and type_args - sema decides which applies based on whether
+                # the name is a record or a function
                 if isinstance(node.func.value, ast.Name):
-                    return TpyCall(node.func.value.id, args, call_type, loc=loc)
+                    name = node.func.value.id
+                    # Try to extract type_args for potential generic function call
+                    type_args = ()
+                    type_args_parse_error = None
+                    try:
+                        type_args = self._parse_type_args_from_subscript(node.func)
+                    except ParseError as e:
+                        # Store error - sema will report it if this turns out to be a function call
+                        # (For type instantiations like StaticList[Int32, 8], non-type args are valid)
+                        type_args_parse_error = e.message
+                    # If name looks like a type (starts with uppercase or is registered), also parse as call_type
+                    call_type = None
+                    if name[0].isupper() or self.registry.is_known_type(name):
+                        try:
+                            call_type = self._parse_type_annotation(node.func)
+                        except ParseError:
+                            # call_type parsing failed - if type_args also failed, sema will report
+                            # the type_args_parse_error; otherwise it's a function call
+                            pass
+                    return TpyCall(name, args, call_type=call_type, type_args=type_args,
+                                   type_args_parse_error=type_args_parse_error, loc=loc)
                 raise ParseError("Unsupported generic call target", node)
             else:
                 raise ParseError("Unsupported call target", node)

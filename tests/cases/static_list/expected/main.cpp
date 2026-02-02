@@ -43,11 +43,11 @@ void __tpy_init() {
   // 29: items = StaticList[Item, 16]()
   items = StaticList<Item, 16>();
   // 30: process_list(items)
-  process_list(items);
+  process_list((*items));
   // 31: print(len(items))
   std::cout << tpy::__len__((*items)) << "\n";
   // 32: print_list(items)
-  print_list(items);
+  print_list((*items));
   // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
   nums = StaticList<int32_t, 8>({100, 200, 300});
   // 36: print(len(nums))

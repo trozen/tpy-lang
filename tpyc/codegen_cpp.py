@@ -704,6 +704,40 @@ class CodeGenerator:
                 template_parts.append(f"{concept_name} T_{pname}")
         return f"template<{', '.join(template_parts)}>\n"
 
+    def _gen_combined_template_header(
+        self,
+        type_params: list[str],
+        protocol_params: list[tuple[str, ProtocolType]]
+    ) -> str:
+        """Generate template header combining type parameters and concept constraints.
+
+        For generic functions: template<typename T>
+        For generic functions with protocols: template<typename T, tpy::Sized T_items>
+        """
+        template_parts = []
+
+        # Add type parameters for generic functions
+        for tp in type_params:
+            template_parts.append(f"typename {tp}")
+
+        # Add protocol params with concept constraints
+        for pname, ptype in protocol_params:
+            protocol_def = builtin_modules.lookup_protocol(ptype.name)
+            if protocol_def:
+                concept_name = protocol_def.cpp_concept
+            else:
+                concept_name = ptype.name
+
+            if ptype.type_args:
+                type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
+                template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
+            else:
+                template_parts.append(f"{concept_name} T_{pname}")
+
+        if not template_parts:
+            return ""
+        return f"template<{', '.join(template_parts)}>\n"
+
     def _gen_params_with_protocols(self, params: list[tuple[str, TpyType]]) -> str:
         """Generate function parameter list, using template types for protocol params."""
         result = []
@@ -718,12 +752,13 @@ class CodeGenerator:
     def _gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function declaration."""
         protocol_params = self._get_protocol_params(func.params)
+        is_generic = bool(func.type_params)
 
-        if protocol_params:
-            # Template function with concept constraints
-            out.write(self._gen_template_header(protocol_params))
+        if is_generic or protocol_params:
+            # Generate combined template header for generic functions and/or protocol params
+            out.write(self._gen_combined_template_header(func.type_params, protocol_params))
             ret_type = func.return_type.to_cpp_return()
-            params = self._gen_params_with_protocols(func.params)
+            params = self._gen_params_with_protocols(func.params) if protocol_params else self._gen_params(func.params)
             out.write(f"{ret_type} {func.name}({params});\n")
         else:
             ret_type = func.return_type.to_cpp_return()
@@ -735,12 +770,13 @@ class CodeGenerator:
         self._emit_source_comment(out, func.loc)
 
         protocol_params = self._get_protocol_params(func.params)
+        is_generic = bool(func.type_params)
 
-        if protocol_params:
-            # Template function with concept constraints
-            out.write(self._gen_template_header(protocol_params))
+        if is_generic or protocol_params:
+            # Generate combined template header for generic functions and/or protocol params
+            out.write(self._gen_combined_template_header(func.type_params, protocol_params))
             ret_type = func.return_type.to_cpp_return()
-            params = self._gen_params_with_protocols(func.params)
+            params = self._gen_params_with_protocols(func.params) if protocol_params else self._gen_params(func.params)
             out.write(f"{ret_type} {func.name}({params}) {{\n")
         else:
             ret_type = func.return_type.to_cpp_return()
@@ -852,6 +888,15 @@ class CodeGenerator:
         if 0 <= line_idx < len(self.source_lines):
             source_line = self.source_lines[line_idx].rstrip()
             out.write(f"{indent}// {loc.line}: {source_line}\n")
+
+    def _substitute_type_params_codegen(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+        """Substitute type parameters with concrete types for codegen.
+
+        This is simpler than the sema version - just applies the substitution.
+        """
+        if isinstance(typ, TypeParamRef):
+            return subst.get(typ.name, typ)
+        return typ.map_inner_types(lambda t: self._substitute_type_params_codegen(t, subst))
 
     def _create_temp_for_literal(self, param_type: TpyType, init_expr: str) -> str:
         """Create a temp variable for a literal passed to a mutable reference param.
@@ -1551,18 +1596,34 @@ class CodeGenerator:
             # Check if this is a function call that needs argument conversion
             func_info = self.analyzer.registry.get_function(expr.func)
             if func_info:
+                # Build type substitution for generic functions
+                type_subst = {}
+                if func_info.is_generic() and expr.inferred_type_args:
+                    type_subst = dict(zip(func_info.type_params, expr.inferred_type_args))
+
                 gen_args = []
                 for arg, (pname, ptype) in zip(expr.args, func_info.params):
+                    # Resolve TypeParamRef for generic functions
+                    resolved_ptype = self._substitute_type_params_codegen(ptype, type_subst) if type_subst else ptype
+
                     # Temporaries passed to mutable reference params need a temp variable
                     # because C++ can't bind rvalue to non-const lvalue reference
-                    if ptype.is_ref_param() and self._is_temporary_expr(arg):
-                        init_expr = self._gen_expr(arg, ptype)
-                        temp_name = self._create_temp_for_literal(ptype, init_expr)
+                    # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
+                    if (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self._is_temporary_expr(arg):
+                        init_expr = self._gen_expr(arg, resolved_ptype)
+                        temp_name = self._create_temp_for_literal(resolved_ptype, init_expr)
                         gen_args.append(temp_name)
                     else:
                         # Pass param type for BigInt promotion
-                        gen_arg = self._gen_expr(arg, ptype)
+                        # Dereference globals for function arguments
+                        gen_arg = self._gen_expr_deref(arg, resolved_ptype)
                         gen_args.append(gen_arg)
+
+                # For generic functions, always emit explicit type args to avoid C++ deduction issues
+                # with tpy::param_val_or_ref_t<T> parameters
+                if func_info.is_generic() and expr.inferred_type_args:
+                    type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
+                    return f"{expr.func}<{type_args_str}>({', '.join(gen_args)})"
                 return f"{expr.func}({', '.join(gen_args)})"
             # Generic type instantiation (e.g., Container[T, N]())
             if expr.call_type is not None:
