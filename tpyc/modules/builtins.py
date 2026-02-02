@@ -5,7 +5,7 @@ Defines functions like chr, print, len, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, ListType, ProtocolType
+from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, ProtocolType
 
 module = BuiltinModule("builtins")
 
@@ -238,3 +238,21 @@ module.register_type(FLOAT, cpp_type="double", constructors=[
         MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::pow(static_cast<double>({0}), {self})"),
     ],
 })
+
+# bool: Boolean type
+module.register_type(BOOL, cpp_type="bool", constructors=[
+    MethodDef(params=[], returns=BOOL, cpp="false"),
+    MethodDef(params=[ParamDef("x", BOOL)], returns=BOOL, cpp="{0}"),
+    MethodDef(params=[ParamDef("x", INT32)], returns=BOOL, cpp="({0} != 0)"),
+    MethodDef(params=[ParamDef("x", BIGINT)], returns=BOOL, cpp="({0} != 0)"),
+], methods={})
+
+# Char: Single character type
+module.register_type(CHAR, cpp_type="char", constructors=[
+    MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
+    MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
+    MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_int32())"),
+], methods={})
+
+# None: Void type (used for function returns)
+module.register_type(VOID, cpp_type="void", methods={})

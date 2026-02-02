@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- trait type system (e.g. protocols), like Iterable, HasLength, CoercionToSpan etc. (docs/PROTOCOL_DESIGN.md)
+- little tool to dump docs for builtin types (e.g. from modules); but first make sure that all types have their definitions in modules
 - support generics in code
 - allow protocol inheritance, with protocol check
 - allow inheritance of normal classes

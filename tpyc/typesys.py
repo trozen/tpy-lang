@@ -137,6 +137,9 @@ class VoidType(TpyType):
     def __str__(self) -> str:
         return "None"
 
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.None"
+
     def to_cpp_return(self) -> str:
         return "void"
 
@@ -172,6 +175,9 @@ class CharType(TpyType):
     def __str__(self) -> str:
         return "Char"
 
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.Char"
+
     def is_value_type(self) -> bool:
         return True
 
@@ -185,6 +191,9 @@ class BoolType(TpyType):
 
     def __str__(self) -> str:
         return "Bool"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.bool"
 
     def is_value_type(self) -> bool:
         return True
