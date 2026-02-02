@@ -10,6 +10,7 @@ Performs type checking and semantic validation:
 
 from __future__ import annotations
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Optional
 
 from .typesys import (
@@ -27,22 +28,28 @@ from .parse import (
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
-from .coercions import resolve_coercion, Coercion
+from .coercions import resolve_coercion, Coercion, CoercionContext
 from tpyc import modules as builtin_modules
+
+
+class DiagnosticLevel(Enum):
+    """Severity level of a compiler diagnostic."""
+    ERROR = "error"
+    WARNING = "warning"
 
 
 @dataclass
 class Diagnostic:
     """A compiler diagnostic (error or warning)."""
-    level: str  # "error" or "warning"
+    level: DiagnosticLevel
     message: str
     loc: SourceLocation | None = None
 
     def format(self, filename: str = "<unknown>") -> str:
         """Format diagnostic with file:line prefix."""
         if self.loc:
-            return f"{filename}:{self.loc.line}: {self.level}: {self.message}"
-        return f"{filename}: {self.level}: {self.message}"
+            return f"{filename}:{self.loc.line}: {self.level.value}: {self.message}"
+        return f"{filename}: {self.level.value}: {self.message}"
 
 
 class SemanticError(Exception):
@@ -130,7 +137,7 @@ class SemanticAnalyzer:
     def _warning(self, message: str, node: TpyExpr | TpyStmt | None = None) -> None:
         """Record a warning diagnostic (doesn't stop compilation)."""
         loc = getattr(node, 'loc', None) if node else None
-        self.diagnostics.append(Diagnostic("warning", message, loc))
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
@@ -413,7 +420,7 @@ class SemanticAnalyzer:
                 ret_type = self._analyze_expr(stmt.value)
                 expected = self.current_function.return_type if self.current_function else VOID
                 stmt.value = self._coerce_expr(stmt.value, ret_type, expected, "return value",
-                                               coercion_ctx="return", is_return=True)
+                                               coercion_ctx=CoercionContext.RETURN, is_return=True)
                 # Check for dangling reference (returning local/temporary as reference)
                 self._check_dangling_reference(stmt.value, expected, stmt.loc)
         elif isinstance(stmt, TpyIf):
@@ -576,7 +583,7 @@ class SemanticAnalyzer:
                 else:
                     stmt.init = self._coerce_expr(stmt.init, init_type, stmt.type,
                                                   f"variable '{stmt.name}'",
-                                                  coercion_ctx="init")
+                                                  coercion_ctx=CoercionContext.INIT)
                 var_type = stmt.type
             elif existing_type:
                 # Reassignment: check if we need to upgrade IntLiteralType
@@ -591,7 +598,7 @@ class SemanticAnalyzer:
                     # Normal reassignment: use existing type, check compatibility
                     stmt.init = self._coerce_expr(stmt.init, init_type, existing_type,
                                                   f"reassignment to '{stmt.name}'",
-                                                  coercion_ctx="assign")
+                                                  coercion_ctx=CoercionContext.ASSIGN)
                     var_type = existing_type
             else:
                 # New variable: resolve IntLiteralType to BigInt (Python int semantics)
@@ -648,7 +655,7 @@ class SemanticAnalyzer:
                 return
 
         stmt.value = self._coerce_expr(stmt.value, value_type, target_type, "assignment",
-                                       coercion_ctx="assign")
+                                       coercion_ctx=CoercionContext.ASSIGN)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -839,6 +846,13 @@ class SemanticAnalyzer:
         if expr.op in ("in", "not in"):
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
             if self._is_type_iterable(right_type):
+                # For string containers, LHS must be str or Char
+                if isinstance(right_type, StrType):
+                    if not isinstance(left_type, (StrType, CharType)):
+                        raise SemanticError(
+                            f"Cannot check '{left_type}' membership in str (expected str or Char)",
+                            expr.loc
+                        )
                 return BOOL
             raise SemanticError(f"Cannot use '{expr.op}' with non-iterable type {right_type}")
 
@@ -1002,7 +1016,7 @@ class SemanticAnalyzer:
                 if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
                         isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                     coerced_arg = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                    coercion_ctx="arg")
+                                                    coercion_ctx=CoercionContext.ARG)
                     expr.args[i] = coerced_arg
 
                 # Track parameter context for list inference
@@ -1063,7 +1077,7 @@ class SemanticAnalyzer:
                     if arg_t != param.type:
                         expr.args[i] = self._coerce_expr(arg, arg_t, param.type,
                                                          f"argument '{param.name}'",
-                                                         coercion_ctx="arg")
+                                                         coercion_ctx=CoercionContext.ARG)
                 return overload.returns
 
         # No matching overload found - build error message
@@ -1078,7 +1092,7 @@ class SemanticAnalyzer:
         if isinstance(param_type, ProtocolType):
             return self._type_conforms_to_protocol(arg_type, param_type)
         # Check if there's a coercion from arg_type to param_type
-        if resolve_coercion(arg_type, param_type, "arg") is not None:
+        if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
             return True
         return False
 
@@ -1114,7 +1128,7 @@ class SemanticAnalyzer:
             if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                 coerced_arg = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                coercion_ctx="arg")
+                                                coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
             # Track parameter context for list inference
@@ -1144,7 +1158,7 @@ class SemanticAnalyzer:
             # param.type is TpyType after resolve_method (including ProtocolType)
             param_type: TpyType = param.type  # type: ignore
             expr.args[i] = self._coerce_expr(arg, arg_type, param_type, f"{param.name} argument",
-                                             coercion_ctx="arg")
+                                             coercion_ctx=CoercionContext.ARG)
         # method.returns is TpyType after resolve_method (not TypeParam)
         return_type: TpyType = method.returns  # type: ignore
         return return_type
@@ -1208,7 +1222,7 @@ class SemanticAnalyzer:
                 for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
                     arg_type = self._analyze_expr(arg)
                     expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                     coercion_ctx="arg")
+                                                     coercion_ctx=CoercionContext.ARG)
                 return method_info.return_type
 
         # Protocol-typed values - use protocol method signatures
@@ -1228,7 +1242,7 @@ class SemanticAnalyzer:
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
                 arg_type = self._analyze_expr(arg)
                 expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                 coercion_ctx="arg")
+                                                 coercion_ctx=CoercionContext.ARG)
             return return_type
 
         raise SemanticError(f"Cannot call method '{expr.method}' on type {obj_type}")
@@ -1709,7 +1723,7 @@ class SemanticAnalyzer:
         if actual_return == expected_return:
             return True
         # Allow IntLiteralType to match any integer type it can coerce to
-        if resolve_coercion(actual_return, expected_return, "return") is not None:
+        if resolve_coercion(actual_return, expected_return, CoercionContext.RETURN) is not None:
             return True
         return False
 

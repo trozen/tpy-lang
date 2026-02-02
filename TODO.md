@@ -1,14 +1,11 @@
 # TODO
 
 ## Next
-- little tool to dump docs for builtin types (e.g. from modules); but first make sure that all types have their definitions in modules
 - support generics in code
 - allow protocol inheritance, with protocol check
 - allow inheritance of normal classes
-- `bool()`
 - extract c++ compiler interface
 - `type()` function
-- `str()`, `str(123)`, `int("123")`
 - build/run in release mode
 - import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
 - require imports at the top of file, don't allow inline imports
@@ -21,6 +18,7 @@
 - template function implementation should be in some specific header file
 - `DeRef` protocol?
 - allow type annotation to use "" (forward decl)
+- sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 
 ## Python features
 - dict full support
@@ -64,15 +62,14 @@ Random items that may or may not be implemented in the future, but putting them 
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
 
 ## Code Review Items (2026-01-27)
-- Class field defaults: strings emit `= hello` not `= "hello"`, bools emit `= True` not `= true`
 - Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
-- `in` on strings: `1 in "abc"` accepted (should require str/Char on LHS)
 - Unknown record types not rejected: `bar: UnknownType` passes sema, fails at C++ compile
 - Unary `not` not type-checked: `not items` (container) passes sema, fails C++ compile
 - `list.extend` lacks type validation: element type mismatch not checked
 - `and`/`or` return Bool not operand: `1 and 2` returns `1` (bool), Python returns `2`
-- `pass` emits `0;` statement instead of empty block or comment
-- Semantic warnings collected but never printed by CLI
+
+## Known Limitations
+- `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
 
 ## ShedSkin examples
 - score4

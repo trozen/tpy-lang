@@ -978,15 +978,20 @@ std::vector<tpy::BigInt> x({1, 2, 3});
 std::vector<T> y(arr.begin(), arr.end());
 ```
 
-**`int()` (Partial)**:
+**`int()` (Working)**:
 ```python
 x = int(3.14)     # → 3 (truncates toward zero)
 y = int(-2.7)     # → -2 (truncates toward zero)
 z = int(1e100)    # → large BigInt (works correctly)
 # int(float("nan"))  # panics: cannot convert float NaN to integer
 # int(float("inf"))  # panics: cannot convert float infinity to integer
+
+# From string
+a = int("42")     # → 42
+b = int("-123")   # → -123
+c = int("  99  ") # → 99 (whitespace trimmed)
+# int("abc")      # panics: invalid literal for int()
 ```
-- `int(str)` → not yet implemented
 
 **`float()` (Working)**:
 ```python
@@ -994,8 +999,35 @@ x = float(42)     # → 42.0
 y = float()       # → 0.0
 ```
 
-**`str()` (Open)**: Not yet implemented.
-- `str(42)` → convert int to string
+**`bool()` (Working)**:
+```python
+b = bool()        # → False (default)
+b = bool(True)    # → True (identity)
+b = bool(0)       # → False
+b = bool(42)      # → True (non-zero)
+b = bool(Int32(0))  # → False
+b = bool(Int32(1))  # → True
+```
+
+**`str()` (Partial - with caveats)**:
+```python
+s = str()         # → "" (empty string)
+s = str("hello")  # → "hello" (identity)
+s = str(True)     # → "True"
+s = str(False)    # → "False"
+s = str(c)        # → single-char string from Char
+
+# Numeric conversions (inline use only!)
+print(str(42))    # → "42" - safe inline
+print(str(3.14))  # → "3.14" - safe inline
+```
+
+**⚠️ Known UAF risk**: `str(numeric)` returns `std::string` but `str` maps to `std::string_view`. Storing in a variable creates a dangling reference:
+```python
+s: str = str(42)  # UNSAFE - s points to destroyed temporary
+print(s)          # undefined behavior
+```
+Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking.
 
 ---
 

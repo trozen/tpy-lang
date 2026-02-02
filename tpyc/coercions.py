@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Callable, Optional
 
 from .typesys import (
@@ -12,7 +13,12 @@ from .typesys import (
 )
 
 
-CoercionContext = str  # "assign" | "init" | "arg" | "return"
+class CoercionContext(Enum):
+    """Context in which a type coercion is being applied."""
+    ASSIGN = "assign"
+    INIT = "init"
+    ARG = "arg"
+    RETURN = "return"
 
 
 def _match_any(_: TpyType, __: TpyType) -> bool:
@@ -160,7 +166,7 @@ COERCIONS: list[Coercion] = [
         from_type=TpyType,  # Matches any type; _contiguous_to_span_match filters by protocol
         to_type=SpanType,
         type_match=_contiguous_to_span_match,
-        contexts={"arg"},
+        contexts={CoercionContext.ARG},
     ),
     # Non-arg contexts require lvalue (can't take span of temporary)
     Coercion(
@@ -168,7 +174,7 @@ COERCIONS: list[Coercion] = [
         from_type=TpyType,  # Matches any type; _contiguous_to_span_match filters by protocol
         to_type=SpanType,
         type_match=_contiguous_to_span_match,
-        contexts={"init", "assign", "return"},
+        contexts={CoercionContext.INIT, CoercionContext.ASSIGN, CoercionContext.RETURN},
         requires_lvalue=True,
         forbid_return_local=True,
     ),

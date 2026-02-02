@@ -17,7 +17,6 @@ struct Counter {
 
   void do_nothing() {
     // 42:         pass
-    0;
   }
 
   void maybe_increment(int32_t flag) {
@@ -27,7 +26,6 @@ struct Counter {
       value = tpy::int32_add(value, 1);
     } else {
       // 48:             pass
-      0;
     }
   }
 };

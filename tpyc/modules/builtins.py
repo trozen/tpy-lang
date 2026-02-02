@@ -96,6 +96,15 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
 
 module.register_type(STR, cpp_type="std::string_view",
     extends=["NativeIterable[Char]"],
+    constructors=[
+        MethodDef(params=[], returns=STR, cpp='""'),
+        MethodDef(params=[ParamDef("x", STR)], returns=STR, cpp="{0}"),
+        MethodDef(params=[ParamDef("x", BOOL)], returns=STR, cpp="tpy::bool_to_str({0})"),
+        MethodDef(params=[ParamDef("x", CHAR)], returns=STR, cpp="tpy::char_to_str({0})"),
+        MethodDef(params=[ParamDef("x", INT32)], returns=STR, cpp="tpy::int32_to_str({0})"),
+        MethodDef(params=[ParamDef("x", BIGINT)], returns=STR, cpp="tpy::bigint_to_str({0})"),
+        MethodDef(params=[ParamDef("x", FLOAT)], returns=STR, cpp="tpy::float_to_str({0})"),
+    ],
     methods={
     "__len__": [MethodDef(
         params=[],
@@ -116,6 +125,7 @@ module.register_type(BIGINT, cpp_type="tpy::BigInt", constructors=[
     MethodDef(params=[ParamDef("x", INT32)], returns=BIGINT, cpp="tpy::BigInt({0})"),
     MethodDef(params=[ParamDef("x", BIGINT)], returns=BIGINT, cpp="tpy::BigInt({0})"),
     MethodDef(params=[ParamDef("x", FLOAT)], returns=BIGINT, cpp="tpy::float_to_bigint({0})"),
+    MethodDef(params=[ParamDef("x", STR)], returns=BIGINT, cpp="tpy::str_to_bigint({0})"),
 ], methods={
     # Binary arithmetic operators
     "__add__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) + ({0})")],

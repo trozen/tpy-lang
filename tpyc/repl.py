@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 from .parse import Parser, ParseError, TpyExprStmt
-from .sema import SemanticAnalyzer, SemanticError
+from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenerator
 from .typesys import VoidType, StrType, CharType
 
@@ -337,7 +337,7 @@ class REPLSession:
         # Show warnings if any
         warning_output = ""
         for diag in analyzer.diagnostics:
-            if diag.level == "warning":
+            if diag.level == DiagnosticLevel.WARNING:
                 warning_output += f"{diag.format('repl')}\n"
 
         # Use unique module name for each compilation

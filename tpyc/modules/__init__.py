@@ -363,10 +363,10 @@ def type_extends_protocol(tpy_type: "TpyType", protocol_name: str, protocol_type
                         continue
 
                 # Allow coercible types (e.g., IntLiteralType -> Int32)
-                from tpyc.coercions import resolve_coercion
+                from tpyc.coercions import resolve_coercion, CoercionContext
                 if actual_type_arg == protocol_type_args[0]:
                     return True
-                if resolve_coercion(actual_type_arg, protocol_type_args[0], "return") is not None:
+                if resolve_coercion(actual_type_arg, protocol_type_args[0], CoercionContext.RETURN) is not None:
                     return True
         elif ext == protocol_name and not protocol_type_args:
             # Non-generic protocol match

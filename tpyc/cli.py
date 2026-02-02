@@ -20,7 +20,7 @@ import tempfile
 from pathlib import Path
 
 from .parse import Parser, ParseError
-from .sema import SemanticAnalyzer, SemanticError
+from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenerator, CodeGenOptions, CodeGenError
 
 
@@ -176,6 +176,11 @@ def main() -> int:
         # Semantic analysis
         analyzer = SemanticAnalyzer()
         analyzer.analyze(module)
+
+        # Print any warnings from semantic analysis
+        for diag in analyzer.diagnostics:
+            if diag.level == DiagnosticLevel.WARNING:
+                print(diag.format(source_name), file=sys.stderr)
 
         if args.verbose:
             print("  Semantic analysis passed")

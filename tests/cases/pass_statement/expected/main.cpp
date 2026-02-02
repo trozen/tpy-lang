@@ -8,7 +8,6 @@ tpy::Global<std::string_view> __name__;
 // 5: def empty_function() -> None:
 void empty_function() {
   // 6:     pass
-  0;
 }
 
 // 8: def function_with_pass_branch(x: Int32) -> Int32:
@@ -16,7 +15,6 @@ int32_t function_with_pass_branch(int32_t x) {
   // 9:     if x > 0:
   if ((x > 0)) {
     // 10:         pass
-    0;
   } else {
     // 12:         return -1
     return (-1);
@@ -36,7 +34,6 @@ int32_t pass_in_loop() {
     // 19:         if i % 2 == 0:
     if (((tpy::int32_mod(i, 2)) == 0)) {
       // 20:             pass
-      0;
     } else {
       // 22:             total += i
       total = tpy::int32_add(total, i);
@@ -58,7 +55,6 @@ int32_t pass_in_elif(int32_t x) {
     // 29:     elif x == 0:
     if ((x == 0)) {
       // 30:         pass
-      0;
     } else {
       // 32:         return 1
       return 1;

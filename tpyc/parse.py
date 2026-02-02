@@ -243,6 +243,12 @@ class TpyContinue(TpyStmt):
 
 
 @dataclass
+class TpyPassStmt(TpyStmt):
+    """Pass statement (no-op)."""
+    pass
+
+
+@dataclass
 class TpyFunction:
     """Function definition."""
     name: str
@@ -741,7 +747,7 @@ class Parser:
             return TpyForEach(var, iterable, body, loc=loc)
 
         elif isinstance(node, ast.Pass):
-            return TpyExprStmt(TpyIntLiteral(0), loc=loc)  # No-op
+            return TpyPassStmt(loc=loc)
 
         elif isinstance(node, ast.Break):
             return TpyBreak(loc=loc)
@@ -895,7 +901,13 @@ class Parser:
     def _get_default_value(self, node: ast.expr) -> str:
         """Get string representation of a default value for C++."""
         if isinstance(node, ast.Constant):
-            return str(node.value)
+            val = node.value
+            if isinstance(val, bool):
+                return "true" if val else "false"
+            elif isinstance(val, str):
+                escaped = val.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+                return f'"{escaped}"'
+            return str(val)
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # Int32(x) just becomes x in C++
             if node.func.id == "Int32":

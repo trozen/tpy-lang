@@ -8,12 +8,14 @@
 
 #pragma once
 
+#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <iterator>
 #include <algorithm>
 #include <array>
@@ -853,6 +855,7 @@ public:
     }
 
     friend BigInt float_to_bigint(double v);
+    friend BigInt str_to_bigint(std::string_view s);
 
 private:
     int64_t lo_;  // bit 0: tag. small: value << 1. big: 1
@@ -1274,6 +1277,127 @@ inline BigInt float_to_bigint(double v) {
     mpz_init(result);
     mpz_set_d(result, v);
     return BigInt::from_mpz(result);
+}
+
+/**
+ * Convert string to BigInt.
+ * Panics on invalid input (Python raises ValueError).
+ * Supports optional leading +/- and decimal digits only.
+ */
+inline BigInt str_to_bigint(std::string_view s) {
+    auto make_error = [&s]() -> std::string {
+        return std::string("invalid literal for int() with base 10: '") + std::string(s) + "'";
+    };
+
+    // Skip leading whitespace
+    size_t start = 0;
+    while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) {
+        ++start;
+    }
+    // Skip trailing whitespace
+    size_t end = s.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) {
+        --end;
+    }
+    if (start >= end) {
+        tpy_panic(make_error().c_str());
+    }
+
+    std::string_view trimmed = s.substr(start, end - start);
+
+    // Check for sign
+    bool negative = false;
+    size_t idx = 0;
+    if (trimmed[0] == '-') {
+        negative = true;
+        ++idx;
+    } else if (trimmed[0] == '+') {
+        ++idx;
+    }
+
+    if (idx >= trimmed.size()) {
+        tpy_panic(make_error().c_str());
+    }
+
+    // Check all remaining chars are digits
+    for (size_t i = idx; i < trimmed.size(); ++i) {
+        if (!std::isdigit(static_cast<unsigned char>(trimmed[i]))) {
+            tpy_panic(make_error().c_str());
+        }
+    }
+
+    // Use GMP to parse the string
+    mpz_t result;
+    mpz_init(result);
+    std::string num_str(trimmed.substr(idx));
+    if (mpz_set_str(result, num_str.c_str(), 10) != 0) {
+        mpz_clear(result);
+        tpy_panic(make_error().c_str());
+    }
+    if (negative) {
+        mpz_neg(result, result);
+    }
+    return BigInt::from_mpz(result);
+}
+
+/**
+ * bool_to_str - Convert bool to "True" or "False" string.
+ * Returns const char* pointing to static storage (safe for std::string_view).
+ */
+inline const char* bool_to_str(bool x) {
+    return x ? "True" : "False";
+}
+
+/**
+ * int32_to_str - Convert Int32 to string.
+ * Note: Returns std::string. Caller must ensure the result is used immediately
+ * or stored in std::string/auto, not std::string_view.
+ */
+inline std::string int32_to_str(int32_t x) {
+    return std::to_string(x);
+}
+
+/**
+ * bigint_to_str - Convert BigInt to string.
+ * Note: Returns std::string. Caller must ensure the result is used immediately
+ * or stored in std::string/auto, not std::string_view.
+ */
+inline std::string bigint_to_str(const BigInt& x) {
+    return x.to_string();
+}
+
+/**
+ * float_to_str - Convert double to string.
+ * Produces Python-like output (removes trailing zeros after decimal point).
+ * Note: Returns std::string. Caller must ensure the result is used immediately
+ * or stored in std::string/auto, not std::string_view.
+ */
+inline std::string float_to_str(double x) {
+    // Use Python's repr-like approach: shortest representation that round-trips
+    std::ostringstream oss;
+    oss << std::setprecision(15) << x;
+    std::string result = oss.str();
+
+    // If no decimal point and no exponent, add .0 for Python compatibility
+    if (result.find('.') == std::string::npos && result.find('e') == std::string::npos) {
+        result += ".0";
+    }
+
+    // Remove trailing zeros after decimal point (but keep at least one digit)
+    size_t dot = result.find('.');
+    if (dot != std::string::npos) {
+        size_t e_pos = result.find('e');
+        size_t end = (e_pos != std::string::npos) ? e_pos : result.size();
+        while (end > dot + 2 && result[end - 1] == '0') {
+            --end;
+        }
+        if (e_pos != std::string::npos) {
+            result = result.substr(0, end) + result.substr(e_pos);
+        } else {
+            result = result.substr(0, end);
+        }
+    }
+    return result;
 }
 
 /**

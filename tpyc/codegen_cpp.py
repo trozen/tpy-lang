@@ -22,7 +22,7 @@ from .namespace import Namespace, BindingKind
 from .parse import (
     SourceLocation,
     TpyModule, TpyRecord, TpyFunction, TpyProtocol, TpyStmt, TpyExpr,
-    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
+    TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn, TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
@@ -899,6 +899,8 @@ class CodeGenerator:
             return f"{indent}break;\n"
         elif isinstance(stmt, TpyContinue):
             return f"{indent}continue;\n"
+        elif isinstance(stmt, TpyPassStmt):
+            return ""  # No-op - emit nothing
         return None
 
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
