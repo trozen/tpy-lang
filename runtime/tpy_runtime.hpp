@@ -1779,6 +1779,34 @@ std::ostream& operator<<(std::ostream& os, const ListPrinter<StaticList<T, N>>& 
     return os;
 }
 
+// --- Generic value printing for type parameters ---
+
+/**
+ * ValuePrinter<T> - Prints values handling both scalars and containers.
+ *
+ * Used for generic type parameters where T might be a value type (int32_t)
+ * or a container type (std::vector). Uses ListPrinter for ranges.
+ */
+template<typename T>
+struct ValuePrinter {
+    const T& value;
+    explicit ValuePrinter(const T& v) : value(v) {}
+};
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
+    // String types are ranges but should print as strings, not char lists
+    if constexpr (std::is_same_v<T, std::string_view> ||
+                  std::is_same_v<T, std::string> ||
+                  std::is_same_v<T, const char*>) {
+        return os << p.value;
+    } else if constexpr (std::ranges::range<T>) {
+        return os << ListPrinter(p.value);
+    } else {
+        return os << p.value;
+    }
+}
+
 /**
  * Global<T> - Wrapper for module-level global variables.
  *

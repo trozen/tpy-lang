@@ -272,13 +272,16 @@ class TypeParamRef(TpyType):
     When the generic class is instantiated with concrete types, TypeParamRef
     is substituted with the actual type.
 
-    C++ Code Generation Semantics:
-    - Parameters: Use `const T&` which works for both value types (compiler
-      optimizes away the indirection) and object types (avoids copies).
-    - Returns: Use `tpy::return_val_or_ref_t<T>` which resolves at C++ template
-      instantiation time to T for value types or T& for object types.
-      This preserves Python semantics where returning an object gives a mutable
-      reference, not a copy.
+    C++ Code Generation Semantics (using tpy::is_value_type trait):
+    - Parameters: Use `tpy::param_val_or_ref_t<T>` which resolves to:
+      - `const T&` for value types (immutable, compiler optimizes small types)
+      - `T&` for object types (allows mutation per Python semantics)
+    - Returns: Use `tpy::return_val_or_ref_t<T>` which resolves to:
+      - `T` for value types (return by value)
+      - `T&` for object types (mutable reference, Python semantics)
+    - Const returns: Use `tpy::return_val_or_cref_t<T>` which resolves to:
+      - `T` for value types
+      - `const T&` for object types
     """
     name: str
 
@@ -468,6 +471,10 @@ class OwnType(TpyType):
 
     def to_cpp_return(self) -> str:
         return self.to_cpp()
+
+    def get_element_type(self) -> Optional['TpyType']:
+        # Forward to wrapped type for Own[list[T]] etc.
+        return self.wrapped.get_element_type()
 
     def __str__(self) -> str:
         return f"Own[{self.wrapped}]"

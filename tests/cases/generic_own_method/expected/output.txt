@@ -1,0 +1,5 @@
+chained call ok
+10
+20
+30
+40

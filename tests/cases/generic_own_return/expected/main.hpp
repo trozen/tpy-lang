@@ -17,7 +17,12 @@ struct Box {
   explicit Box(const T& value) : value(value) {}
 
   tpy::return_val_or_ref_t<T> get() {
-    // 10:         return self.value
+    // 11:         return self.value
+    return this->value;
+  }
+
+  T take() {
+    // 14:         return self.value
     return this->value;
   }
 };

@@ -470,13 +470,12 @@ class CodeGenerator:
             # Handle strings - quote them
             if isinstance(fld.type, StrType):
                 out.write(f' << "\\"" << obj.{fld.name} << "\\""')
-            elif fld.type.get_element_type() is not None or isinstance(fld.type, TypeParamRef):
-                # Container or type parameter - use ListPrinter for containers, direct output for others
-                # TypeParamRef fields may be containers, so try ListPrinter if applicable
-                if isinstance(fld.type, TypeParamRef):
-                    out.write(f' << obj.{fld.name}')
-                else:
-                    out.write(f' << tpy::ListPrinter(obj.{fld.name})')
+            elif isinstance(fld.type, TypeParamRef):
+                # Type parameter - use ValuePrinter which handles both scalars and containers
+                out.write(f' << tpy::ValuePrinter(obj.{fld.name})')
+            elif fld.type.get_element_type() is not None:
+                # Known container type - use ListPrinter
+                out.write(f' << tpy::ListPrinter(obj.{fld.name})')
             else:
                 out.write(f' << obj.{fld.name}')
 
@@ -861,8 +860,8 @@ class CodeGenerator:
         """
         self._temp_counter += 1
         temp_name = f"__tmp_{self._temp_counter}"
-        # Protocol types use 'auto' since actual type is determined by the expression
-        type_cpp = "auto" if isinstance(param_type, ProtocolType) else param_type.to_cpp()
+        # Protocol and TypeParamRef use 'auto' since actual type is determined by expression
+        type_cpp = "auto" if isinstance(param_type, (ProtocolType, TypeParamRef)) else param_type.to_cpp()
         self._pending_temps.append((temp_name, type_cpp, init_expr))
         return temp_name
 
@@ -943,6 +942,9 @@ class CodeGenerator:
                 target_type = resolved_type
             else:
                 target_type = self.analyzer.get_expr_type(stmt.init)
+                # Unwrap OwnType - it indicates ownership transfer, not variable type
+                if isinstance(target_type, OwnType):
+                    target_type = target_type.wrapped
                 # Resolve IntLiteralType to BigInt for standalone variable declarations
                 if isinstance(target_type, IntLiteralType):
                     target_type = BIGINT
@@ -1617,12 +1619,45 @@ class CodeGenerator:
             obj = self._gen_expr(expr.obj)
             obj_type = self._get_resolved_type(expr.obj)
 
+            # Unwrap OwnType for method lookup - Own[T] behaves as T for method calls
+            if isinstance(obj_type, OwnType):
+                obj_type = obj_type.wrapped
+
             # Try module lookup for methods on builtin types
             methods = builtin_modules.lookup_type_method(obj_type, expr.method)
             if methods:
                 # Globals need dereferencing for method template access
                 method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
                 return self._gen_method_from_def(method_obj, expr.args, methods[0])
+
+            # User-defined record methods may need temp handling for TypeParamRef params
+            # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
+            # Temporaries can't bind to non-const lvalue reference
+            if isinstance(obj_type, RecordType):
+                record_info = self.analyzer.registry.get_record(obj_type.name)
+                if record_info:
+                    method_info = record_info.get_method(expr.method)
+                    if method_info:
+                        # Build type substitution: {"T": Int32} for Box[Int32]
+                        type_subst = {}
+                        if record_info.type_params and obj_type.type_args:
+                            for param_name, arg_type in zip(record_info.type_params, obj_type.type_args):
+                                type_subst[param_name] = arg_type
+                        gen_args = []
+                        for arg, (pname, ptype) in zip(expr.args, method_info.params):
+                            if isinstance(ptype, TypeParamRef) and self._is_temporary_expr(arg):
+                                # Resolve TypeParamRef to actual type
+                                resolved_type = type_subst.get(ptype.name, ptype)
+                                # Only need temp for object types (T&), not value types (const T&)
+                                if not resolved_type.is_value_type():
+                                    init_expr = self._gen_expr(arg, resolved_type)
+                                    temp_name = self._create_temp_for_literal(resolved_type, init_expr)
+                                    gen_args.append(temp_name)
+                                else:
+                                    gen_args.append(self._gen_expr(arg))
+                            else:
+                                gen_args.append(self._gen_expr(arg))
+                        args = ", ".join(gen_args)
 
             # Use -> for globals (wrapped in tpy::Global<T>)
             accessor = "->" if self._is_global_name(expr.obj) else "."

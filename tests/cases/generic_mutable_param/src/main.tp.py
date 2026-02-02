@@ -25,9 +25,9 @@ def main() -> None:
     print(box_int.get())
 
     # Test 2: Box with object type (list) - param is T&
+    # Pass a literal - should create a temporary
     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
-    new_items: list[Int32] = [4, 5, 6]
-    box_list.set(new_items)
+    box_list.set([4, 5, 6])
     for x in box_list.get():
         print(x)
 

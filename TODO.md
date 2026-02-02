@@ -24,6 +24,8 @@
 - `DeRef` protocol?
 - allow type annotation to use "" (forward decl)
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
+- warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
+- Own[T] should require explicit copy() for lvalues: `return copy(self.value)` not `return self.value`; rvalues like `return T()` are OK without copy
 
 ## Python features
 - dict full support

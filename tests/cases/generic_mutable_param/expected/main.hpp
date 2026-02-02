@@ -30,7 +30,7 @@ struct Box {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
   os << "Box("
-     << "value=" << obj.value
+     << "value=" << tpy::ValuePrinter(obj.value)
      << ")";
   return os;
 }

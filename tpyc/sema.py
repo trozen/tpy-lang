@@ -701,6 +701,9 @@ class SemanticAnalyzer:
                 # This ensures Int32 + untyped_var promotes to BigInt correctly
                 if isinstance(init_type, IntLiteralType):
                     var_type = BIGINT
+                # Unwrap OwnType - Own[T] indicates ownership transfer, not variable type
+                elif isinstance(init_type, OwnType):
+                    var_type = init_type.wrapped
                 else:
                     var_type = init_type
         elif stmt.type:
@@ -1330,6 +1333,10 @@ class SemanticAnalyzer:
                         raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
 
         obj_type = self._analyze_expr(expr.obj)
+
+        # Unwrap OwnType for method lookup - Own[T] behaves as T for method calls
+        if isinstance(obj_type, OwnType):
+            obj_type = obj_type.wrapped
 
         # List mutation methods - mark literal as mutated before module lookup
         if isinstance(obj_type, (PendingListType, ListType)):

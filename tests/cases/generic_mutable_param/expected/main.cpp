@@ -19,12 +19,11 @@ void main() {
   box_int.set(99);
   // 25:     print(box_int.get())
   std::cout << box_int.get() << "\n";
-  // 28:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+  // 29:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
   Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-  // 29:     new_items: list[Int32] = [4, 5, 6]
-  std::vector<int32_t> new_items = {4, 5, 6};
-  // 30:     box_list.set(new_items)
-  box_list.set(new_items);
+  // 30:     box_list.set([4, 5, 6])
+  std::vector<int32_t> __tmp_1 = {4, 5, 6};
+  box_list.set(__tmp_1);
   // 31:     for x in box_list.get():
   for (int32_t x : box_list.get()) {
     // 32:         print(x)
