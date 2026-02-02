@@ -10,10 +10,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Union
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
+
+from tpyc.typesys import TypeParamRef, ProtocolType, PtrType, ConstPtrType
 
 
 class TypeParamKind(Enum):
@@ -22,23 +24,18 @@ class TypeParamKind(Enum):
     INT = "int"    # An integer literal like N
 
 
-# Type alias for method param/return types: concrete TpyType or string type param
-# Strings like "T" refer to declared type_params, "Ptr[T]" creates PtrType(T)
-TypeOrParam = Union["TpyType", str]
-
-
 @dataclass
 class ParamDef:
     """Parameter definition for a function/method."""
     name: str
-    type: TypeOrParam  # TpyType or string like "T" for type param
+    type: "TpyType"  # TpyType, use TypeParamRef("T") for type params
 
 
 @dataclass
 class MethodDef:
     """Definition of a function overload or type method."""
     params: list[ParamDef]
-    returns: TypeOrParam  # TpyType or string like "T", "Ptr[T]"
+    returns: "TpyType"  # TpyType, use TypeParamRef("T") for type params
     cpp: str  # Template: "{0}" for args, "{self}" for receiver
 
 
@@ -68,7 +65,7 @@ class ProtocolDef:
 
     For generic protocols like Sequence[T]:
     - type_params stores the type parameter names (e.g., ["T"])
-    - methods can use string type refs like "T" for return types/params
+    - methods use TypeParamRef("T") for type parameter references
     """
     name: str
     methods: dict[str, MethodDef]  # method_name -> signature
@@ -465,68 +462,60 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     return {}
 
 
-def _resolve_type_or_param(t: TypeOrParam, type_params: dict[str, "TpyType"]) -> "TpyType | str":
-    """Resolve a string type parameter to a concrete TpyType.
+def _resolve_type_or_param(t: "TpyType", type_params: dict[str, "TpyType"]) -> "TpyType":
+    """Resolve TypeParamRef instances to concrete types.
 
     Handles:
-    - "T" -> type_params["T"]
-    - "Self" -> type_params["Self"] (for protocol Self type)
-    - "Ptr[T]" -> PtrType(type_params["T"])
-    - "NativeIterable[T]" -> ProtocolType("NativeIterable", [type_params["T"]])
-    - TpyType -> returned as-is
+    - TypeParamRef("T") -> type_params["T"]
     - SelfType -> type_params["Self"] if available, else SELF
+    - ProtocolType with TypeParamRef args -> resolved ProtocolType
+    - PtrType/ConstPtrType with TypeParamRef pointee -> resolved pointer type
+    - Other TpyType -> returned as-is (uses map_inner_types for nested resolution)
     """
-    from tpyc.typesys import SelfType, SELF, ProtocolType
+    from tpyc.typesys import SelfType, SELF
 
-    # Handle SelfType instances (from user-defined protocols)
+    # Handle SelfType
     if isinstance(t, SelfType):
         if "Self" in type_params:
             return type_params["Self"]
         return SELF
 
-    if isinstance(t, str):
-        # "Self" type parameter for builtin protocols
-        if t == "Self":
-            if "Self" in type_params:
-                return type_params["Self"]
-            return SELF
+    # Handle TypeParamRef directly
+    if isinstance(t, TypeParamRef):
+        if t.name not in type_params:
+            raise ValueError(f"Unresolved type parameter: {t.name}")
+        return type_params[t.name]
 
-        # Check for Ptr[X] pattern
-        ptr_match = re.match(r"Ptr\[(\w+)\]", t)
-        if ptr_match:
-            from tpyc.typesys import PtrType
-            inner_name = ptr_match.group(1)
-            if inner_name not in type_params:
-                raise ValueError(f"Unresolved type parameter in Ptr[{inner_name}]")
-            return PtrType(type_params[inner_name])
+    # Handle ProtocolType with TypeParamRef in type_args
+    if isinstance(t, ProtocolType) and t.type_args:
+        resolved_args = tuple(
+            _resolve_type_or_param(arg, type_params) for arg in t.type_args
+        )
+        return ProtocolType(t.name, resolved_args)
 
-        # Check for Protocol[X] patterns (e.g., NativeIterable[T], Sequence[T])
-        protocol_match = re.match(r"(\w+)\[(\w+)\]", t)
-        if protocol_match:
-            protocol_name = protocol_match.group(1)
-            inner_name = protocol_match.group(2)
-            # Check if this is a known protocol
-            if lookup_protocol(protocol_name):
-                if inner_name not in type_params:
-                    raise ValueError(f"Unresolved type parameter in {protocol_name}[{inner_name}]")
-                return ProtocolType(protocol_name, [type_params[inner_name]])
+    # Handle PtrType with TypeParamRef pointee
+    if isinstance(t, PtrType):
+        resolved_pointee = _resolve_type_or_param(t.pointee, type_params)
+        return PtrType(resolved_pointee)
 
-        # Simple type param like "T"
-        if t not in type_params:
-            raise ValueError(f"Unresolved type parameter: {t}")
-        return type_params[t]
-    else:
-        return t  # Already a TpyType
+    # Handle ConstPtrType with TypeParamRef pointee
+    if isinstance(t, ConstPtrType):
+        resolved_pointee = _resolve_type_or_param(t.pointee, type_params)
+        return ConstPtrType(resolved_pointee)
+
+    # For other types, use map_inner_types for recursive substitution
+    return t.map_inner_types(lambda inner: _resolve_type_or_param(inner, type_params))
 
 
 def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> MethodDef:
-    """Resolve string type parameters in a method signature to concrete types.
+    """Resolve TypeParamRef instances in a method signature to concrete types.
 
-    Given a method with string type param placeholders and a dict mapping
+    Given a method with TypeParamRef placeholders and a dict mapping
     param names to concrete types, returns a new MethodDef with all types resolved.
 
     Example:
-        method = MethodDef(params=[ParamDef("value", "T")], returns="T", cpp=...)
+        method = MethodDef(params=[ParamDef("value", TypeParamRef("T"))],
+                           returns=TypeParamRef("T"), cpp=...)
         resolved = resolve_method(method, {"T": Int32})
         # resolved.params[0].type == Int32, resolved.returns == Int32
     """

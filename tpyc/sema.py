@@ -1723,7 +1723,7 @@ class SemanticAnalyzer:
 
     def _match_type_with_inference(
         self,
-        param_type: TpyType | str,
+        param_type: TpyType,
         arg_type: TpyType,
         inferred: dict[str, TpyType]
     ) -> bool:
@@ -1731,43 +1731,14 @@ class SemanticAnalyzer:
 
         Returns True if types match (with inference), False otherwise.
         Supports:
-        - String type param "T" (builtin format)
-        - String protocol "NativeIterable[T]" (builtin format)
-        - TypeParamRef (user-defined records)
+        - TypeParamRef for type parameters
+        - ProtocolType with TypeParamRef in type_args
         - ListType with nested TypeParamRef
         - RecordType with type args (nested generics)
+        - PtrType, ConstPtrType, OwnType wrappers
         - Concrete types (compatibility check)
         """
-        import re
-
-        # Case 1: String type param "T" (builtin format)
-        if isinstance(param_type, str) and param_type.isidentifier():
-            if param_type in inferred:
-                # Check consistency with already-inferred type
-                return self._types_match_for_inference(inferred[param_type], arg_type)
-            inferred[param_type] = arg_type
-            return True
-
-        # Case 2: String protocol "NativeIterable[T]" (builtin format)
-        if isinstance(param_type, str):
-            match = re.match(r"(\w+)\[(\w+)\]", param_type)
-            if match:
-                protocol_name, type_param = match.groups()
-                elem_type = self._get_iterable_element_type_or_none(arg_type)
-                if elem_type is None:
-                    return False
-                expected_protocol = ProtocolType(protocol_name, [elem_type])
-                if not self._type_conforms_to_protocol(arg_type, expected_protocol):
-                    return False
-                if type_param in inferred:
-                    if not self._types_match_for_inference(inferred[type_param], elem_type):
-                        return False
-                else:
-                    inferred[type_param] = elem_type
-                return True
-            return False
-
-        # Case 3: TypeParamRef (user-defined records)
+        # Case 1: TypeParamRef (type parameters)
         if isinstance(param_type, TypeParamRef):
             if param_type.name in inferred:
                 existing = inferred[param_type.name]
@@ -1779,7 +1750,30 @@ class SemanticAnalyzer:
             inferred[param_type.name] = arg_type
             return True
 
-        # Case 4: ListType with nested TypeParamRef (e.g., list[T])
+        # Case 2: ProtocolType with TypeParamRef in type_args (e.g., NativeIterable[T])
+        if isinstance(param_type, ProtocolType) and param_type.type_args:
+            # Check if any type_arg is a TypeParamRef that needs inference
+            has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
+            if has_type_param:
+                # Get element type from the argument (protocol conformance)
+                elem_type = self._get_iterable_element_type_or_none(arg_type)
+                if elem_type is None:
+                    return False
+                # Check conformance with the inferred element type
+                expected_protocol = ProtocolType(param_type.name, (elem_type,))
+                if not self._type_conforms_to_protocol(arg_type, expected_protocol):
+                    return False
+                # Infer type params from the protocol's type_args
+                for ta in param_type.type_args:
+                    if isinstance(ta, TypeParamRef):
+                        if ta.name in inferred:
+                            if not self._types_match_for_inference(inferred[ta.name], elem_type):
+                                return False
+                        else:
+                            inferred[ta.name] = elem_type
+                return True
+
+        # Case 3: ListType with nested TypeParamRef (e.g., list[T])
         if isinstance(param_type, ListType):
             if isinstance(arg_type, (ListType, PendingListType)):
                 return self._match_type_with_inference(
@@ -1787,7 +1781,7 @@ class SemanticAnalyzer:
                 )
             return False
 
-        # Case 5: RecordType with type args (e.g., Box[T] nested)
+        # Case 4: RecordType with type args (e.g., Box[T] nested)
         if isinstance(param_type, RecordType) and param_type.type_args:
             if isinstance(arg_type, RecordType) and arg_type.name == param_type.name:
                 if len(param_type.type_args) != len(arg_type.type_args):
@@ -1798,7 +1792,7 @@ class SemanticAnalyzer:
                 )
             return False
 
-        # Case 6: Pointer types (Ptr[T], ConstPtr[T])
+        # Case 5: Pointer types (Ptr[T], ConstPtr[T])
         if isinstance(param_type, PtrType):
             if isinstance(arg_type, PtrType):
                 return self._match_type_with_inference(
@@ -1818,7 +1812,7 @@ class SemanticAnalyzer:
                 )
             return False
 
-        # Case 7: Own[T] wrapper
+        # Case 6: Own[T] wrapper
         if isinstance(param_type, OwnType):
             if isinstance(arg_type, OwnType):
                 return self._match_type_with_inference(
@@ -1826,11 +1820,8 @@ class SemanticAnalyzer:
                 )
             return False
 
-        # Case 8: Concrete type - check compatibility
-        if isinstance(param_type, TpyType):
-            return self._types_match_for_inference(param_type, arg_type)
-
-        return False
+        # Case 7: Concrete type - check compatibility
+        return self._types_match_for_inference(param_type, arg_type)
 
     def _types_match_for_inference(self, type_a: TpyType, type_b: TpyType) -> bool:
         """Check if two types match for inference consistency.

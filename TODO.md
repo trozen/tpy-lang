@@ -2,7 +2,6 @@
 
 ## Next
 - repl paste text (proper indent when pasting)
-- Type inference from constructor arguments
 - Generic functions: def first[T](items: list[T]) -> T
 - Type parameter bounds: class SortedList[T: Comparable]
 - Integer type parameters: class FixedStack[T, N: int]
@@ -26,6 +25,7 @@
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
 - Own[T] should require explicit copy() for lvalues: `return copy(self.value)` not `return self.value`; rvalues like `return T()` are OK without copy
+- propert string handling (STRING_HANDLING.md)
 
 ## Python features
 - dict full support
@@ -63,6 +63,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - `import time as _time` syntax
 - dynamic dispatch
 - full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
+- formatting/linting like in genweb
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

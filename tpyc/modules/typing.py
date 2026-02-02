@@ -5,7 +5,10 @@ Provides Protocol types matching Python's typing module.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, VOID
+from tpyc.typesys import INT32, VOID, TypeParamRef
+
+# Shorthand for type parameter T
+T = TypeParamRef("T")
 
 module = BuiltinModule("typing")
 
@@ -22,7 +25,7 @@ module.protocol("Sequence",
     type_params=["T"],
     methods={
         "__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})"),
-        "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns="T", cpp="{self}[{0}]"),
+        "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="{self}[{0}]"),
     },
     cpp_concept="tpy::Sequence",
 )
@@ -33,8 +36,8 @@ module.protocol("MutableSequence",
     type_params=["T"],
     methods={
         "__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})"),
-        "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns="T", cpp="{self}[{0}]"),
-        "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", "T")], returns=VOID, cpp="{self}[{0}] = {1}"),
+        "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="{self}[{0}]"),
+        "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="{self}[{0}] = {1}"),
     },
     cpp_concept="tpy::MutableSequence",
 )

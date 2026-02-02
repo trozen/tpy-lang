@@ -1824,28 +1824,27 @@ class CodeGenerator:
         """Generate C++ code for a type constructor call."""
         return self._gen_overloaded_call(expr.args, type_def.constructors, expr.func)
 
-    def _ctor_param_matches(self, arg_type: TpyType, param_type: builtin_modules.TypeOrParam) -> bool:
+    def _ctor_param_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
-        import re
-        if isinstance(param_type, str):
-            # Check for Protocol[T] pattern (e.g., "NativeIterable[T]")
-            protocol_match = re.match(r"(\w+)\[(\w+)\]", param_type)
-            if protocol_match:
-                protocol_name = protocol_match.group(1)
-                type_param = protocol_match.group(2)
+        from tpyc.typesys import ProtocolType, TypeParamRef, StrType, CHAR
+
+        # Check for ProtocolType with TypeParamRef (e.g., ProtocolType("NativeIterable", (TypeParamRef("T"),)))
+        if isinstance(param_type, ProtocolType) and param_type.type_args:
+            has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
+            if has_type_param:
+                protocol_name = param_type.name
                 # Get element type from arg to build concrete protocol type
                 elem_type = arg_type.get_element_type()
                 if elem_type is None:
                     # No element type - check if it's a concrete protocol like NativeIterable[Char]
                     # This handles str which has no get_element_type but extends NativeIterable[Char]
-                    from tpyc.typesys import StrType, CHAR
                     if isinstance(arg_type, StrType) and protocol_name == "NativeIterable":
                         elem_type = CHAR
                     else:
                         return False
                 # Check with type-arg-aware protocol conformance
                 return builtin_modules.type_extends_protocol(arg_type, protocol_name, [elem_type])
-            return False
+
         if isinstance(param_type, TpyType):
             return arg_type == param_type or (
                 isinstance(arg_type, IntLiteralType) and isinstance(param_type, (Int32Type, BigIntType))

@@ -5,7 +5,10 @@ Defines functions like chr, print, len, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, ProtocolType
+from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, ProtocolType, TypeParamRef
+
+# Shorthand for type parameter T
+T = TypeParamRef("T")
 
 module = BuiltinModule("builtins")
 
@@ -34,7 +37,7 @@ module.function("chr", overloads=[
 ])
 
 # list[T]: Dynamic list backed by std::vector<T>
-# Methods use "T" string which gets resolved to element_type at lookup time
+# Methods use TypeParamRef("T") which gets resolved to element_type at lookup time
 module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
             param_kinds=[TypeParamKind.TYPE],
             type_factory=lambda t: ListType(t),
@@ -46,13 +49,13 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
         cpp="static_cast<int32_t>({self}.size())",
     )],
     "append": [MethodDef(
-        params=[ParamDef("value", "T")],
+        params=[ParamDef("value", T)],
         returns=VOID,
         cpp="{self}.push_back({0})",
     )],
     "pop": [MethodDef(
         params=[],
-        returns="T",
+        returns=T,
         cpp="tpy::pop_back({self})",
     )],
     "clear": [MethodDef(
@@ -62,34 +65,34 @@ module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
     )],
     "__getitem__": [MethodDef(
         params=[ParamDef("index", INT32)],
-        returns="T",
+        returns=T,
         cpp="tpy::get_item({self}, {0})",
     )],
     "__setitem__": [MethodDef(
-        params=[ParamDef("index", INT32), ParamDef("value", "T")],
+        params=[ParamDef("index", INT32), ParamDef("value", T)],
         returns=VOID,
         cpp="tpy::set_item({self}, {0}, {1})",
     )],
     "insert": [MethodDef(
-        params=[ParamDef("index", INT32), ParamDef("value", "T")],
+        params=[ParamDef("index", INT32), ParamDef("value", T)],
         returns=VOID,
         cpp="tpy::list_insert({self}, {0}, {1})",
     )],
     "remove": [MethodDef(
-        params=[ParamDef("value", "T")],
+        params=[ParamDef("value", T)],
         returns=VOID,
         cpp="tpy::list_remove({self}, {0})",
     )],
     "extend": [MethodDef(
-        params=[ParamDef("other", "NativeIterable[T]")],
+        params=[ParamDef("other", ProtocolType("NativeIterable", (T,)))],
         returns=VOID,
         cpp="tpy::list_extend({self}, {0})",
     )],
 }, constructors=[
     # list(iterable) - create list from any iterable, inferring element type
     MethodDef(
-        params=[ParamDef("x", "NativeIterable[T]")],
-        returns="T",  # Placeholder - sema infers actual list[T] from argument
+        params=[ParamDef("x", ProtocolType("NativeIterable", (T,)))],
+        returns=T,  # Placeholder - sema infers actual list[T] from argument
         cpp="std::vector<{T}>({0}.begin(), {0}.end())",
     ),
 ])
