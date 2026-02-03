@@ -702,6 +702,11 @@ class CodeGenerator:
                     params_str = ", ".join(param_exprs)
                 out.write(f"    {{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
 
+        # Generate field requirements
+        for field_name, field_type in protocol.fields:
+            field_cpp = subst_to_cpp(field_type)
+            out.write(f"    {{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
+
         out.write("};\n")
 
     def _get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, ProtocolType]]:

@@ -773,9 +773,12 @@ class ProtocolInfo:
     """
     name: str
     methods: list[MethodSignature]
+    fields: list[tuple[str, TpyType]] = None  # (field_name, field_type)
     type_params: list[str] = None
 
     def __post_init__(self):
+        if self.fields is None:
+            self.fields = []
         if self.type_params is None:
             self.type_params = []
 

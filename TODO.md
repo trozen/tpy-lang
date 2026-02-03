@@ -5,7 +5,6 @@
 - Type parameter bounds: protocol methods cannot reference user-defined record types (would need forward declarations before concepts)
 - "The _type_conforms_to_protocol doesn't handle generic user protocols." - why is it handled differently for user protocols vs builtin protocols?
 - multiple protocol bounds
-- protocol fields? `class P(Protocol): value: Int32`
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - Integer type parameters: class FixedStack[T, N: int]
 - allow protocol inheritance, with protocol check

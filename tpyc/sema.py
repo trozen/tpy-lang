@@ -273,6 +273,7 @@ class SemanticAnalyzer:
         info = ProtocolInfo(
             name=protocol.name,
             methods=protocol.methods,
+            fields=protocol.fields,
             type_params=protocol.type_params
         )
         self.registry.register_protocol(info)
@@ -1836,6 +1837,21 @@ class SemanticAnalyzer:
                     return field_type
             raise SemanticError(f"Record '{actual_type.name}' has no field '{expr.field}'")
 
+        # Bounded type parameter - access field from protocol bound
+        if isinstance(actual_type, TypeParamRef):
+            bound = self._get_type_param_bound(actual_type.name)
+            if bound is not None and isinstance(bound, ProtocolType):
+                protocol_info = self.registry.get_protocol(bound.name)
+                if protocol_info:
+                    for field_name, field_type in protocol_info.fields or []:
+                        if field_name == expr.field:
+                            # Substitute type params (Self -> T, protocol params)
+                            type_subst: dict[str, TpyType] = {"Self": actual_type}
+                            if protocol_info.type_params and bound.type_args:
+                                type_subst.update(dict(zip(protocol_info.type_params, bound.type_args)))
+                            return self._substitute_types(field_type, type_subst)
+                    raise self._error(f"Protocol '{bound.name}' has no field '{expr.field}'", expr)
+
         raise SemanticError(f"Cannot access field '{expr.field}' on type {obj_type}")
 
     def _analyze_array_literal(self, expr: TpyArrayLiteral) -> TpyType:
@@ -2530,6 +2546,20 @@ class SemanticAnalyzer:
                     return True
             return False
 
+    def _type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
+        """Check if a type has a field with the expected type."""
+        if isinstance(actual, RecordType):
+            record = self.registry.get_record(actual.name)
+            if record:
+                type_subst = self._build_type_substitution(actual)
+                for fld in record.fields:
+                    if fld.name == field_name:
+                        field_type = fld.type
+                        if type_subst:
+                            field_type = self._substitute_type_params(field_type, type_subst)
+                        return field_type == expected_type
+        return False
+
     def _type_conforms_to_protocol(self, actual: TpyType, protocol: ProtocolType) -> bool:
         """Check if actual type conforms to a protocol.
 
@@ -2617,6 +2647,13 @@ class SemanticAnalyzer:
                 actual, method_sig.name, expected_params, expected_return
             ):
                 return False
+
+        # Check all required fields
+        for field_name, field_type in protocol_info.fields or []:
+            expected_type = self._substitute_types(field_type, type_subst)
+            if not self._type_has_field_with_type(actual, field_name, expected_type):
+                return False
+
         return True
 
     def _check_type_compatible(self, actual: TpyType, expected: TpyType, context: str,

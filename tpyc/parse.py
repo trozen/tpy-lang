@@ -306,6 +306,7 @@ class TpyProtocol:
     """Protocol definition for structural subtyping."""
     name: str
     methods: list[MethodSignature]
+    fields: list[tuple[str, TpyType]] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     loc: SourceLocation | None = None
 
@@ -524,6 +525,7 @@ class Parser:
         self._type_param_scope = set(type_params) if type_params else None
 
         methods = []
+        fields = []
 
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
@@ -548,6 +550,13 @@ class Parser:
                     params=params,
                     return_type=return_type
                 ))
+            elif isinstance(item, ast.AnnAssign):
+                # Field declaration: name: Type
+                if not isinstance(item.target, ast.Name):
+                    raise ParseError("Invalid field declaration in protocol", item)
+                field_name = item.target.id
+                field_type = self._parse_type_annotation(item.annotation)
+                fields.append((field_name, field_type))
             elif isinstance(item, ast.Pass):
                 pass
             elif isinstance(item, ast.Expr):
@@ -563,7 +572,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyProtocol(name=node.name, methods=methods, type_params=type_params, loc=self._loc(node))
+        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, loc=self._loc(node))
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: set[str] | None = None) -> TpyFunction:
         """Parse a method definition."""

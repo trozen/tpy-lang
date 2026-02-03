@@ -574,6 +574,55 @@ int32_t count(T_items& items) {
 }
 ```
 
+#### Working: Protocol Fields
+
+Protocols can require fields in addition to methods:
+
+```python
+from typing import Protocol
+from tpy import Int32
+
+class HasValue(Protocol):
+    value: Int32
+
+class Point:
+    value: Int32
+    def __init__(self, v: Int32):
+        self.value = v
+
+def get_value[T: HasValue](item: T) -> Int32:
+    return item.value  # Access protocol field
+
+p = Point(42)
+print(get_value(p))  # Output: 42
+```
+
+Generated C++ concept:
+```cpp
+template<typename T>
+concept HasValue = requires(T& t) {
+    { t.value } -> std::convertible_to<int32_t>;
+};
+```
+
+Protocols can combine fields and methods:
+```python
+class Container(Protocol):
+    count: Int32
+    def is_empty(self) -> Bool: ...
+```
+
+Generic protocols can use type parameters in fields:
+```python
+class Holder[T](Protocol):
+    item: T
+
+def get_item[T: Holder[Int32]](h: T) -> Int32:
+    return h.item
+```
+
+**Conformance**: A type conforms to a protocol with fields if it has all required fields with matching types. Field type mismatches cause inference failures.
+
 #### Working: Self Type in Protocols
 
 The `Self` type can be used in protocol method signatures to refer to the implementing type. This enables patterns where the return type or parameter type should match the concrete type:
