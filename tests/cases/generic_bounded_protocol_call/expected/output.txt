@@ -1,0 +1,14 @@
+5
+5
+value
+42
+value
+Point
+value
+5
+test
+99
+5
+123
+True
+False

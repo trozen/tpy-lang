@@ -5,7 +5,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ProtocolType, OwnType
+from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ProtocolType, OwnType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -193,6 +193,15 @@ module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"
         cpp="tpy::staticlist_reverse({self})",
     )],
 })
+
+# Comparable protocol: types that support < operator
+# Used for bounded type parameters like T: Comparable
+module.protocol("Comparable",
+    methods={
+        "__lt__": MethodDef(params=[ParamDef("other", SELF)], returns=BOOL, cpp="{self} < {0}"),
+    },
+    cpp_concept="tpy::Comparable",
+)
 
 # NativeIterable[T] protocol: types that support C++ range-based for loops
 # This is a marker protocol - types declare conformance via extends=["NativeIterable[T]"].

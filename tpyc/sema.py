@@ -131,6 +131,8 @@ class SemanticAnalyzer:
 
         # Track current generic class type parameters (for allowing TypeParamRef in method locals)
         self._current_record_type_params: list[str] | None = None
+        # Track current generic class type parameter bounds (for protocol conformance checks)
+        self._current_record_type_param_bounds: dict[str, TpyType] | None = None
 
     def _error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
         """Create a SemanticError with location from a node."""
@@ -435,6 +437,7 @@ class SemanticAnalyzer:
         """Analyze all methods of a record."""
         # Track type parameters for generic records (allows TypeParamRef in method locals)
         self._current_record_type_params = record.type_params if record.type_params else None
+        self._current_record_type_param_bounds = record.type_param_bounds if record.type_param_bounds else None
 
         for method in record.methods:
             self._reset_function_tracking()
@@ -469,6 +472,7 @@ class SemanticAnalyzer:
             self.current_ns = None
 
         self._current_record_type_params = None
+        self._current_record_type_param_bounds = None
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
@@ -1275,7 +1279,7 @@ class SemanticAnalyzer:
 
         # No matching overload found - build error message
         arg_type_strs = ", ".join(str(t) for t in arg_types)
-        raise SemanticError(f"No matching overload for {fn_def.name}({arg_type_strs})")
+        raise self._error(f"No matching overload for {fn_def.name}({arg_type_strs})", expr)
 
     def _builtin_type_matches_exact(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if an argument type exactly matches a builtin parameter type (no coercions)."""
@@ -1768,7 +1772,31 @@ class SemanticAnalyzer:
                                                  coercion_ctx=CoercionContext.ARG)
             return return_type
 
-        raise SemanticError(f"Cannot call method '{expr.method}' on type {obj_type}")
+        # Bounded type parameter - treat method calls as if on the bound protocol
+        if isinstance(obj_type, TypeParamRef):
+            bound = self._get_type_param_bound(obj_type.name)
+            if bound is not None and isinstance(bound, ProtocolType):
+                # Pass obj_type as self_type so Self in signatures resolves to T, not the protocol
+                method_sig = self._get_protocol_method_signature(bound, expr.method, self_type=obj_type)
+                if method_sig is None:
+                    raise self._error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
+
+                params, return_type = method_sig
+                # Check argument count
+                if len(expr.args) != len(params):
+                    raise self._error(
+                        f"Method '{expr.method}' expects {len(params)} arguments, "
+                        f"got {len(expr.args)}",
+                        expr
+                    )
+                # Type-check and coerce arguments
+                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
+                    arg_type = self._analyze_expr(arg)
+                    expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                     coercion_ctx=CoercionContext.ARG)
+                return return_type
+
+        raise self._error(f"Cannot call method '{expr.method}' on type {obj_type}", expr)
 
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
@@ -2268,15 +2296,42 @@ class SemanticAnalyzer:
         """
         return self._substitute_types(typ, {"Self": actual})
 
+    def _get_type_param_bound(self, type_param_name: str) -> TpyType | None:
+        """Look up the bound for a type parameter from current context.
+
+        Checks current function's type_param_bounds first, then record's.
+        Returns None if no bound is declared.
+        """
+        # Check current function's type param bounds
+        if (self.current_function and isinstance(self.current_function, TpyFunction)
+                and type_param_name in self.current_function.type_param_bounds):
+            return self.current_function.type_param_bounds[type_param_name]
+        # Check current record's type param bounds (for methods in generic classes)
+        if (self._current_record_type_param_bounds
+                and type_param_name in self._current_record_type_param_bounds):
+            return self._current_record_type_param_bounds[type_param_name]
+        return None
+
     def _get_protocol_method_signature(
         self,
         protocol: ProtocolType,
         method_name: str,
+        self_type: TpyType | None = None,
     ) -> tuple[list[tuple[str, TpyType]], TpyType] | None:
         """Get a method's signature from a protocol.
 
         Returns (params, return_type) with Self substituted, or None if not found.
+
+        Args:
+            protocol: The protocol to look up the method in
+            method_name: Name of the method to find
+            self_type: Type to substitute for Self (defaults to protocol if None).
+                       For bounded type params like T: Sized, pass T so that
+                       Self in signatures resolves to T, not the protocol.
         """
+        # Default Self to the protocol type if not specified
+        actual_self = self_type if self_type is not None else protocol
+
         # Check builtin protocols first
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
         if protocol_def is not None:
@@ -2284,8 +2339,8 @@ class SemanticAnalyzer:
             if method_def is None:
                 return None
 
-            # Build type substitution: Self -> the protocol type itself
-            type_subst: dict[str, TpyType] = {"Self": protocol}
+            # Build type substitution: Self -> actual_self
+            type_subst: dict[str, TpyType] = {"Self": actual_self}
             if protocol_def.type_params and protocol.type_args:
                 type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
 
@@ -2298,12 +2353,12 @@ class SemanticAnalyzer:
         if protocol_info is not None:
             for method_sig in protocol_info.methods:
                 if method_sig.name == method_name:
-                    # Substitute Self -> protocol in params and return type
+                    # Substitute Self -> actual_self in params and return type
                     params = [
-                        (pname, self._substitute_self(ptype, protocol))
+                        (pname, self._substitute_self(ptype, actual_self))
                         for pname, ptype in method_sig.params
                     ]
-                    return_type = self._substitute_self(method_sig.return_type, protocol)
+                    return_type = self._substitute_self(method_sig.return_type, actual_self)
                     return (params, return_type)
 
         return None
@@ -2495,6 +2550,12 @@ class SemanticAnalyzer:
         - e.g., checking Int32 against Addable with __add__(Self) -> Self
           expects __add__(Int32) -> Int32
         """
+        # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
+        if isinstance(actual, TypeParamRef):
+            bound = self._get_type_param_bound(actual.name)
+            if bound is not None and isinstance(bound, ProtocolType):
+                return self._type_conforms_to_protocol(bound, protocol)
+
         # Look up the protocol definition (builtin first, then user-defined)
         protocol_def = builtin_modules.lookup_protocol(protocol.name)
         if protocol_def is not None:

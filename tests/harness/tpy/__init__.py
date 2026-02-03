@@ -433,3 +433,9 @@ class NativeIterable(_Protocol[T]):
     The TurboPython compiler uses this for types with begin()/end().
     """
     def __iter__(self): ...
+
+
+@_runtime_checkable
+class Comparable(_Protocol):
+    """Protocol for types supporting comparison with <."""
+    def __lt__(self, other: "Comparable") -> bool: ...
