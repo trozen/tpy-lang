@@ -525,6 +525,7 @@ class CodeGenerator:
     def _gen_method(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
         """Generate a method definition inside a struct."""
         is_const = method.name in self.CONST_METHODS
+        is_static = method.is_staticmethod
         # Const methods must return const refs for object types
         ret_type = method.return_type.to_cpp_return_const() if is_const else method.return_type.to_cpp_return()
         # Const methods take parameters by const reference
@@ -532,8 +533,9 @@ class CodeGenerator:
             params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
         else:
             params = self._gen_params(method.params)
-        const_suffix = " const" if is_const else ""
-        out.write(f"\n  {ret_type} {method.name}({params}){const_suffix} {{\n")
+        const_suffix = " const" if is_const and not is_static else ""
+        static_prefix = "static " if is_static else ""
+        out.write(f"\n  {static_prefix}{ret_type} {method.name}({params}){const_suffix} {{\n")
 
         # Reset declared vars and add parameters
         self.declared_vars = {pname for pname, _ in method.params}
@@ -541,9 +543,10 @@ class CodeGenerator:
         # Track params as local to prevent false global deref if they shadow globals
         self.local_scope_names = {pname for pname, _ in method.params}
 
-        # Set up local namespace for this method (bind self and params)
+        # Set up local namespace for this method (bind self and params, skip self for static)
         local_ns = Namespace(parent=self.analyzer.global_ns)
-        local_ns.bind_variable("self", RecordType(record_name))
+        if not is_static:
+            local_ns.bind_variable("self", RecordType(record_name))
         for pname, ptype in method.params:
             local_ns.bind_variable(pname, ptype)
         self.current_ns = local_ns
@@ -1662,6 +1665,9 @@ class CodeGenerator:
             # Handle self.method() -> just method() (inside method, implicit this)
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return f"{expr.method}({args})"
+            # Handle ClassName.staticmethod() -> ClassName::staticmethod()
+            if expr.is_static_call and isinstance(expr.obj, TpyName):
+                return f"{expr.obj.name}::{expr.method}({args})"
             # Handle module.function() (import X -> X.func())
             # Only if the name isn't shadowed by a variable, user-defined function, or record
             if isinstance(expr.obj, TpyName) and expr.obj.name in self.analyzer.imports:

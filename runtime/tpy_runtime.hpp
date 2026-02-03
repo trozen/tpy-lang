@@ -869,6 +869,11 @@ public:
         return result;
     }
 
+    // Absolute value (static method)
+    static BigInt abs(const BigInt& x) {
+        return x < BigInt(0) ? -x : x;
+    }
+
     // Check if value is zero (useful for conditionals)
     explicit operator bool() const {
         if (is_small()) {
@@ -877,8 +882,9 @@ public:
         return mpz_sgn(gmp_ptr()) != 0;
     }
 
-    friend BigInt float_to_bigint(double v);
-    friend BigInt str_to_bigint(std::string_view s);
+    // Static factory methods for conversions
+    static BigInt from_float(double v);
+    static BigInt from_str(std::string_view s);
 
 private:
     int64_t lo_;  // bit 0: tag. small: value << 1. big: 1
@@ -1284,11 +1290,11 @@ T pop_back(std::vector<T>& v) {
 template<> struct is_value_type<BigInt> : std::true_type {};
 
 /**
- * Convert float to BigInt with NaN/inf checking.
+ * BigInt::from_float - Convert float to BigInt with NaN/inf checking.
  * Panics on NaN or infinity (Python raises ValueError/OverflowError).
  * Uses GMP's mpz_set_d to correctly handle large finite values like 1e100.
  */
-inline BigInt float_to_bigint(double v) {
+inline BigInt BigInt::from_float(double v) {
     if (std::isnan(v)) {
         tpy_panic("cannot convert float NaN to integer");
     }
@@ -1299,15 +1305,15 @@ inline BigInt float_to_bigint(double v) {
     mpz_t result;
     mpz_init(result);
     mpz_set_d(result, v);
-    return BigInt::from_mpz(result);
+    return from_mpz(result);
 }
 
 /**
- * Convert string to BigInt.
+ * BigInt::from_str - Convert string to BigInt.
  * Panics on invalid input (Python raises ValueError).
  * Supports optional leading +/- and decimal digits only.
  */
-inline BigInt str_to_bigint(std::string_view s) {
+inline BigInt BigInt::from_str(std::string_view s) {
     auto make_error = [&s]() -> std::string {
         return std::string("invalid literal for int() with base 10: '") + std::string(s) + "'";
     };
@@ -1360,7 +1366,7 @@ inline BigInt str_to_bigint(std::string_view s) {
     if (negative) {
         mpz_neg(result, result);
     }
-    return BigInt::from_mpz(result);
+    return from_mpz(result);
 }
 
 /**
@@ -1378,15 +1384,6 @@ inline const char* bool_to_str(bool x) {
  */
 inline std::string int32_to_str(int32_t x) {
     return std::to_string(x);
-}
-
-/**
- * bigint_to_str - Convert BigInt to string.
- * Note: Returns std::string. Caller must ensure the result is used immediately
- * or stored in std::string/auto, not std::string_view.
- */
-inline std::string bigint_to_str(const BigInt& x) {
-    return x.to_string();
 }
 
 /**

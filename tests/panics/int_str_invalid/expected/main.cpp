@@ -10,7 +10,7 @@ tpy::Global<tpy::BigInt> x;
 void __tpy_init() {
   __name__ = "__main__";
   // 4: x: int = int("abc")
-  x = tpy::str_to_bigint("abc");
+  x = tpy::BigInt::from_str("abc");
   // 5: print(x)  # Should not reach here
   std::cout << (*x) << "\n";
 }

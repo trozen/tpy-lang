@@ -239,7 +239,8 @@ class SemanticAnalyzer:
                 name=method.name,
                 params=method.params,
                 return_type=method.return_type,
-                is_method=True
+                is_method=True,
+                is_staticmethod=method.is_staticmethod
             )
 
         info = RecordInfo(
@@ -415,8 +416,10 @@ class SemanticAnalyzer:
             self._reset_function_tracking()
             self.current_function = method
             self.current_scope = Scope(parent=self.global_scope)
-            # Add 'self' as the record type
-            self.current_scope.define("self", RecordType(record.name))
+
+            # Add 'self' as the record type (skip for static methods)
+            if not method.is_staticmethod:
+                self.current_scope.define("self", RecordType(record.name))
 
             # Add parameters
             for pname, ptype in method.params:
@@ -424,7 +427,8 @@ class SemanticAnalyzer:
 
             # Set up local namespace
             local_ns = Namespace(parent=self.global_ns)
-            local_ns.bind_variable("self", RecordType(record.name))
+            if not method.is_staticmethod:
+                local_ns.bind_variable("self", RecordType(record.name))
             for pname, ptype in method.params:
                 local_ns.bind_variable(pname, ptype)
             self.current_ns = local_ns
@@ -997,9 +1001,11 @@ class SemanticAnalyzer:
         """Analyze a unary operation."""
         operand_type = self._analyze_expr(expr.operand)
 
-        # Logical not always returns Bool
+        # Logical not: validate operand type (Bool or numeric types only)
         if expr.op == "!":
-            return BOOL
+            if isinstance(operand_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType)):
+                return BOOL
+            raise self._error(f"Invalid operand type for 'not': {operand_type} (expected Bool or numeric type)", expr)
 
         # FloatType supports unary negation
         if isinstance(operand_type, FloatType):
@@ -1173,9 +1179,21 @@ class SemanticAnalyzer:
         raise SemanticError(f"Unknown function or type: '{expr.func}'")
 
     def _analyze_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> TpyType:
-        """Type-check a call to a built-in function from the module registry."""
+        """Type-check a call to a built-in function from the module registry.
+
+        Uses two-pass overload resolution: prefer exact type matches over coercion matches.
+        """
         arg_types = [self._analyze_expr(arg) for arg in expr.args]
 
+        # First pass: look for exact match (no coercions needed)
+        for overload in fn_def.overloads:
+            if len(overload.params) != len(arg_types):
+                continue
+            if all(self._builtin_type_matches_exact(arg_t, param.type)
+                   for arg_t, param in zip(arg_types, overload.params)):
+                return overload.returns
+
+        # Second pass: allow coercions
         for overload in fn_def.overloads:
             if len(overload.params) != len(arg_types):
                 continue
@@ -1193,8 +1211,17 @@ class SemanticAnalyzer:
         arg_type_strs = ", ".join(str(t) for t in arg_types)
         raise SemanticError(f"No matching overload for {fn_def.name}({arg_type_strs})")
 
+    def _builtin_type_matches_exact(self, arg_type: TpyType, param_type: TpyType) -> bool:
+        """Check if an argument type exactly matches a builtin parameter type (no coercions)."""
+        if arg_type == param_type:
+            return True
+        # Protocol parameter: check if arg_type conforms to the protocol
+        if isinstance(param_type, ProtocolType):
+            return self._type_conforms_to_protocol(arg_type, param_type)
+        return False
+
     def _builtin_type_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
-        """Check if an argument type is compatible with a builtin parameter type."""
+        """Check if an argument type is compatible with a builtin parameter type (allows coercions)."""
         if arg_type == param_type:
             return True
         # Protocol parameter: check if arg_type conforms to the protocol
@@ -1488,6 +1515,41 @@ class SemanticAnalyzer:
 
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
+        # Check for ClassName.staticmethod() pattern
+        # Use namespace to verify the name refers to a record and isn't shadowed by a variable
+        if isinstance(expr.obj, TpyName):
+            is_record_name = False
+            if self.current_ns:
+                binding = self.current_ns.lookup(expr.obj.name)
+                if binding and binding.kind == BindingKind.RECORD:
+                    is_record_name = True
+            else:
+                # Fallback: check if it's a record and not shadowed by a variable
+                if (self.registry.get_record(expr.obj.name) is not None and
+                    self.current_scope.lookup(expr.obj.name) is None):
+                    is_record_name = True
+
+            if is_record_name:
+                record_info = self.registry.get_record(expr.obj.name)
+                method_info = record_info.get_method(expr.method)
+                if method_info and method_info.is_staticmethod:
+                    # It's a static method call via class name
+                    if len(expr.args) != len(method_info.params):
+                        raise SemanticError(
+                            f"Static method '{expr.method}' expects {len(method_info.params)} arguments, "
+                            f"got {len(expr.args)}"
+                        )
+                    # Type-check arguments
+                    for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
+                        arg_type = self._analyze_expr(arg)
+                        expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                         coercion_ctx=CoercionContext.ARG)
+                    # Mark as static call for codegen
+                    expr.is_static_call = True
+                    return method_info.return_type
+                elif method_info and not method_info.is_staticmethod:
+                    raise SemanticError(f"Method '{expr.method}' requires an instance (not a static method)")
+
         # Check for module.function() pattern (import X -> X.func())
         # Use namespace to check if module binding exists and isn't shadowed
         if isinstance(expr.obj, TpyName):

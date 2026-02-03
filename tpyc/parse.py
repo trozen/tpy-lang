@@ -125,6 +125,7 @@ class TpyMethodCall(TpyExpr):
     method: str
     args: list[TpyExpr]
     resolved_method: Any = None  # Set by sema for builtin method overload resolution
+    is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
 
 
 @dataclass
@@ -270,6 +271,7 @@ class TpyFunction:
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_method: bool = False
+    is_staticmethod: bool = False
     type_params: list[str] = field(default_factory=list)
     loc: SourceLocation | None = None
 
@@ -528,9 +530,20 @@ class Parser:
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: set[str] | None = None) -> TpyFunction:
         """Parse a method definition."""
+        # Check for @staticmethod decorator
+        is_staticmethod = False
+        for dec in node.decorator_list:
+            if isinstance(dec, ast.Name) and dec.id == "staticmethod":
+                is_staticmethod = True
+            else:
+                dec_name = dec.id if isinstance(dec, ast.Name) else type(dec).__name__
+                raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
+
         params = []
-        for i, arg in enumerate(node.args.args):
-            if i == 0:
+        args_iter = iter(enumerate(node.args.args))
+        for i, arg in args_iter:
+            if i == 0 and not is_staticmethod:
+                # Non-static methods must have 'self' as first parameter
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
                 continue
@@ -551,6 +564,7 @@ class Parser:
             return_type=return_type,
             body=body,
             is_method=True,
+            is_staticmethod=is_staticmethod,
             loc=self._loc(node)
         )
 

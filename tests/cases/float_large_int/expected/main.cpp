@@ -18,11 +18,11 @@ tpy::Global<tpy::BigInt> e;
 void __tpy_init() {
   __name__ = "__main__";
   // 2: a = int(1e18)  # Within int64 range
-  a = tpy::float_to_bigint(1e+18);
+  a = tpy::BigInt::from_float(1e+18);
   // 3: b = int(1e50)  # Way beyond int64 range
-  b = tpy::float_to_bigint(1e+50);
+  b = tpy::BigInt::from_float(1e+50);
   // 4: c = int(-1e50)  # Negative large value
-  c = tpy::float_to_bigint(-(1e+50));
+  c = tpy::BigInt::from_float(-(1e+50));
   // 6: print(a)
   std::cout << (*a) << "\n";
   // 7: print(b)
@@ -30,9 +30,9 @@ void __tpy_init() {
   // 8: print(c)
   std::cout << (*c) << "\n";
   // 11: d = int(1.9e20)
-  d = tpy::float_to_bigint(1.9e+20);
+  d = tpy::BigInt::from_float(1.9e+20);
   // 12: e = int(-1.9e20)
-  e = tpy::float_to_bigint(-(1.9e+20));
+  e = tpy::BigInt::from_float(-(1.9e+20));
   // 13: print(d)
   std::cout << (*d) << "\n";
   // 14: print(e)

@@ -733,6 +733,7 @@ class FunctionInfo:
     return_type: TpyType
     is_noalloc: bool = False
     is_method: bool = False
+    is_staticmethod: bool = False
     type_params: list[str] = None
 
     def __post_init__(self):
