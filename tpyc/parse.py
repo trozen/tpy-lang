@@ -308,6 +308,7 @@ class TpyProtocol:
     methods: list[MethodSignature]
     fields: list[tuple[str, TpyType]] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
+    parent_protocols: list[str] = field(default_factory=list)
     loc: SourceLocation | None = None
 
 
@@ -439,11 +440,14 @@ class Parser:
 
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""
-        # Check if this is a Protocol definition
+        # Check if this is a Protocol definition (has Protocol as one of its bases)
         if node.bases:
-            for base in node.bases:
-                if isinstance(base, ast.Name) and base.id == "Protocol":
-                    return self._parse_protocol(node)
+            has_protocol = any(
+                isinstance(base, ast.Name) and base.id == "Protocol"
+                for base in node.bases
+            )
+            if has_protocol:
+                return self._parse_protocol(node)
             raise ParseError(f"Inheritance not allowed in class '{node.name}'", node)
 
         if node.decorator_list:
@@ -511,6 +515,21 @@ class Parser:
         if node.decorator_list:
             raise ParseError(f"Decorators not allowed on protocol '{node.name}'", node)
 
+        # Extract parent protocols (excluding Protocol itself)
+        parent_protocols = []
+        for base in node.bases:
+            if isinstance(base, ast.Name):
+                if base.id != "Protocol":
+                    parent_protocols.append(base.id)
+            elif isinstance(base, ast.Subscript):
+                # Generic parent protocols like Parent[T] are not yet supported
+                if isinstance(base.value, ast.Name) and base.value.id != "Protocol":
+                    raise ParseError(
+                        f"Generic parent protocols are not yet supported: {base.value.id}[...]. "
+                        f"Use non-generic parent protocols instead.",
+                        base
+                    )
+
         # Extract type parameters from Python 3.12+ syntax: class Foo[T](Protocol):
         type_params = []
         if hasattr(node, 'type_params') and node.type_params:
@@ -572,7 +591,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, loc=self._loc(node))
+        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, loc=self._loc(node))
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: set[str] | None = None) -> TpyFunction:
         """Parse a method definition."""

@@ -168,9 +168,11 @@ class SemanticAnalyzer:
         for record in module.records:
             self._register_record(record)
 
-        # Register protocols
+        # Register protocols (two phases to allow forward references)
         for protocol in module.protocols:
             self._register_protocol(protocol)
+        for protocol in module.protocols:
+            self._validate_protocol_parents(protocol)
 
         # Second pass: register all functions
         for func in module.functions:
@@ -274,14 +276,47 @@ class SemanticAnalyzer:
         self.global_ns.bind_record(info)
 
     def _register_protocol(self, protocol: TpyProtocol) -> None:
-        """Register a protocol type."""
+        """Register a protocol type (without validating parents yet)."""
         info = ProtocolInfo(
             name=protocol.name,
             methods=protocol.methods,
             fields=protocol.fields,
-            type_params=protocol.type_params
+            type_params=protocol.type_params,
+            parent_protocols=protocol.parent_protocols
         )
         self.registry.register_protocol(info)
+
+    def _validate_protocol_parents(self, protocol: TpyProtocol) -> None:
+        """Validate that all parent protocols are actual protocols.
+
+        Called after all protocols are registered to allow forward references.
+        """
+        for parent_name in protocol.parent_protocols:
+            parent_info = self.registry.get_protocol(parent_name)
+            if parent_info is None:
+                # Check if it's a builtin protocol
+                parent_def = builtin_modules.lookup_protocol(parent_name)
+                if parent_def is None:
+                    raise SemanticError(
+                        f"Protocol '{protocol.name}' inherits from '{parent_name}', "
+                        f"which is not a defined protocol",
+                        protocol.loc
+                    )
+                # Builtin generic protocols (like Sequence[T]) can't be inherited without type args
+                if parent_def.type_params:
+                    raise SemanticError(
+                        f"Protocol '{protocol.name}' inherits from generic protocol '{parent_name}' "
+                        f"without type arguments. Generic protocol inheritance is not yet supported.",
+                        protocol.loc
+                    )
+            else:
+                # User-defined generic protocols can't be inherited without type args
+                if parent_info.type_params:
+                    raise SemanticError(
+                        f"Protocol '{protocol.name}' inherits from generic protocol '{parent_name}' "
+                        f"without type arguments. Generic protocol inheritance is not yet supported.",
+                        protocol.loc
+                    )
 
     def _register_function(self, func: TpyFunction) -> None:
         """Register a function."""
@@ -2333,6 +2368,81 @@ class SemanticAnalyzer:
             return self._current_record_type_param_bounds[type_param_name]
         return None
 
+    def _collect_protocol_methods(self, protocol_name: str, visited: set[str] | None = None) -> list[MethodSignature]:
+        """Collect methods from a protocol and all its parents.
+
+        Avoids duplicates by name (direct methods take precedence over inherited).
+        """
+        if visited is None:
+            visited = set()
+        if protocol_name in visited:
+            return []  # Prevent cycles
+        visited.add(protocol_name)
+
+        protocol_info = self.registry.get_protocol(protocol_name)
+        if protocol_info is None:
+            return []
+
+        # Start with direct methods
+        methods_by_name: dict[str, MethodSignature] = {}
+        for method in protocol_info.methods:
+            methods_by_name[method.name] = method
+
+        # Add inherited methods (only if not already defined directly)
+        for parent_name in protocol_info.parent_protocols:
+            for method in self._collect_protocol_methods(parent_name, visited):
+                if method.name not in methods_by_name:
+                    methods_by_name[method.name] = method
+
+        return list(methods_by_name.values())
+
+    def _collect_protocol_fields(self, protocol_name: str, visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
+        """Collect fields from a protocol and all its parents.
+
+        Avoids duplicates by name (direct fields take precedence over inherited).
+        """
+        if visited is None:
+            visited = set()
+        if protocol_name in visited:
+            return []  # Prevent cycles
+        visited.add(protocol_name)
+
+        protocol_info = self.registry.get_protocol(protocol_name)
+        if protocol_info is None:
+            return []
+
+        # Start with direct fields
+        fields_by_name: dict[str, tuple[str, TpyType]] = {}
+        for field_name, field_type in protocol_info.fields:
+            fields_by_name[field_name] = (field_name, field_type)
+
+        # Add inherited fields (only if not already defined directly)
+        for parent_name in protocol_info.parent_protocols:
+            for field_name, field_type in self._collect_protocol_fields(parent_name, visited):
+                if field_name not in fields_by_name:
+                    fields_by_name[field_name] = (field_name, field_type)
+
+        return list(fields_by_name.values())
+
+    def _protocol_inherits_from(self, protocol_name: str, ancestor_name: str, visited: set[str] | None = None) -> bool:
+        """Check if a protocol inherits from another protocol (directly or indirectly)."""
+        if visited is None:
+            visited = set()
+        if protocol_name in visited:
+            return False
+        if protocol_name == ancestor_name:
+            return True
+        visited.add(protocol_name)
+
+        protocol_info = self.registry.get_protocol(protocol_name)
+        if protocol_info is None:
+            return False
+
+        for parent_name in protocol_info.parent_protocols:
+            if self._protocol_inherits_from(parent_name, ancestor_name, visited):
+                return True
+        return False
+
     def _get_protocol_method_signature(
         self,
         protocol: ProtocolType,
@@ -2342,6 +2452,7 @@ class SemanticAnalyzer:
         """Get a method's signature from a protocol.
 
         Returns (params, return_type) with Self substituted, or None if not found.
+        Searches the protocol and all its parent protocols.
 
         Args:
             protocol: The protocol to look up the method in
@@ -2358,8 +2469,9 @@ class SemanticAnalyzer:
         if protocol_info is None:
             return None
 
-        # Find the method
-        for method_sig in protocol_info.methods:
+        # Find the method (including inherited methods)
+        all_methods = self._collect_protocol_methods(protocol.name)
+        for method_sig in all_methods:
             if method_sig.name == method_name:
                 # Build type substitution: Self -> actual_self, plus protocol type params
                 type_subst: dict[str, TpyType] = {"Self": actual_self}
@@ -2588,9 +2700,13 @@ class SemanticAnalyzer:
         if protocol_info is None:
             return False
 
-        # Protocol-to-protocol: check type args match
-        if isinstance(actual, ProtocolType) and actual.name == protocol.name:
-            return actual.type_args == protocol.type_args
+        # Protocol-to-protocol: check if actual inherits from protocol (or is same protocol)
+        if isinstance(actual, ProtocolType):
+            if actual.name == protocol.name:
+                return actual.type_args == protocol.type_args
+            # Check if actual protocol inherits from the required protocol
+            if self._protocol_inherits_from(actual.name, protocol.name):
+                return True
 
         # Check explicit extends declaration (for builtin types with marker protocols)
         if builtin_modules.type_extends_protocol(actual, protocol.name, protocol.type_args):
@@ -2607,8 +2723,9 @@ class SemanticAnalyzer:
                 return False
             type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
-        # Check all required methods
-        for method_sig in protocol_info.methods:
+        # Collect all required methods (including inherited)
+        all_methods = self._collect_protocol_methods(protocol.name)
+        for method_sig in all_methods:
             expected_params = [
                 self._substitute_types(ptype, type_subst)
                 for _, ptype in method_sig.params
@@ -2620,8 +2737,9 @@ class SemanticAnalyzer:
             ):
                 return False
 
-        # Check all required fields
-        for field_name, field_type in protocol_info.fields:
+        # Collect all required fields (including inherited)
+        all_fields = self._collect_protocol_fields(protocol.name)
+        for field_name, field_type in all_fields:
             expected_type = self._substitute_types(field_type, type_subst)
             if not self._type_has_field_with_type(actual, field_name, expected_type):
                 return False

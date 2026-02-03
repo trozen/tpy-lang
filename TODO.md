@@ -1,11 +1,9 @@
 # TODO
 
 ## Next
-- multiple protocol bounds
-- sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - Integer type parameters: class FixedStack[T, N: int]
-- allow protocol inheritance, with protocol check
 - allow inheritance of normal classes
+- sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
 - extract c++ compiler interface
 - `type()` function

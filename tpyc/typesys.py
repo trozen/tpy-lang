@@ -811,11 +811,15 @@ class ProtocolInfo:
     For builtin protocols:
     - cpp_concept stores the C++ concept name (e.g., "tpy::Sized")
     - is_marker indicates protocols with no methods (require explicit extends)
+
+    For protocol inheritance:
+    - parent_protocols stores names of parent protocols this protocol extends
     """
     name: str
     methods: list[MethodSignature]
     fields: list[tuple[str, TpyType]] = None  # (field_name, field_type)
     type_params: list[str] = None
+    parent_protocols: list[str] = None  # Names of parent protocols
     cpp_concept: str | None = None  # C++ concept name for builtin protocols
     is_marker: bool = False  # Marker protocols require explicit extends
 
@@ -824,6 +828,8 @@ class ProtocolInfo:
             self.fields = []
         if self.type_params is None:
             self.type_params = []
+        if self.parent_protocols is None:
+            self.parent_protocols = []
 
 
 class TypeRegistry:

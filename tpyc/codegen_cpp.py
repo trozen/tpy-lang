@@ -16,7 +16,7 @@ from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
-    INT32, VOID, BIGINT, FLOAT, CHAR, STR
+    INT32, VOID, BIGINT, FLOAT, CHAR, STR, MethodSignature
 )
 from .namespace import Namespace, BindingKind
 from .parse import (
@@ -805,6 +805,56 @@ class CodeGenerator:
             out.write(f"    return lhs.{method.name}({param_name});\n")
             out.write("  }\n")
 
+    def _collect_concept_methods(self, protocol_name: str, visited: set[str] | None = None) -> list[MethodSignature]:
+        """Collect methods from a protocol and all its parents for concept generation."""
+        if visited is None:
+            visited = set()
+        if protocol_name in visited:
+            return []
+        visited.add(protocol_name)
+
+        protocol_info = self.analyzer.registry.get_protocol(protocol_name)
+        if protocol_info is None:
+            return []
+
+        # Start with direct methods
+        methods_by_name: dict[str, MethodSignature] = {}
+        for method in protocol_info.methods:
+            methods_by_name[method.name] = method
+
+        # Add inherited methods (only if not already defined directly)
+        for parent_name in protocol_info.parent_protocols:
+            for method in self._collect_concept_methods(parent_name, visited):
+                if method.name not in methods_by_name:
+                    methods_by_name[method.name] = method
+
+        return list(methods_by_name.values())
+
+    def _collect_concept_fields(self, protocol_name: str, visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
+        """Collect fields from a protocol and all its parents for concept generation."""
+        if visited is None:
+            visited = set()
+        if protocol_name in visited:
+            return []
+        visited.add(protocol_name)
+
+        protocol_info = self.analyzer.registry.get_protocol(protocol_name)
+        if protocol_info is None:
+            return []
+
+        # Start with direct fields
+        fields_by_name: dict[str, tuple[str, TpyType]] = {}
+        for field_name, field_type in protocol_info.fields:
+            fields_by_name[field_name] = (field_name, field_type)
+
+        # Add inherited fields (only if not already defined directly)
+        for parent_name in protocol_info.parent_protocols:
+            for field_name, field_type in self._collect_concept_fields(parent_name, visited):
+                if field_name not in fields_by_name:
+                    fields_by_name[field_name] = (field_name, field_type)
+
+        return list(fields_by_name.values())
+
     def _gen_concept_decl(self, out: TextIO, protocol: TpyProtocol) -> None:
         """Generate a C++20 concept for a user-defined protocol.
 
@@ -814,6 +864,8 @@ class CodeGenerator:
         For generic protocols like Container[T], we generate:
         - template<typename T, typename _T0> where T is the checked type and _T0 is the protocol's T
         - Usage: Container<int32_t> V means V must satisfy Container<V, int32_t>
+
+        For protocol inheritance, includes requirements from all parent protocols.
         """
         # Build template params: T (checked type) + one for each protocol type param
         template_params = ["typename T"]
@@ -847,7 +899,9 @@ class CodeGenerator:
             """Convert type to C++, substituting protocol type params."""
             return subst_type(typ).to_cpp()
 
-        for method_sig in protocol.methods:
+        # Collect all methods including inherited ones
+        all_methods = self._collect_concept_methods(protocol.name)
+        for method_sig in all_methods:
             # Generate requirement for each method
             # SelfType.to_cpp() returns "T", so this handles Self -> T substitution
             # Protocol type params (e.g., T in Container[T]) are mapped to _T0, _T1, etc.
@@ -874,8 +928,9 @@ class CodeGenerator:
                     params_str = ", ".join(param_exprs)
                 out.write(f"    {{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
 
-        # Generate field requirements
-        for field_name, field_type in protocol.fields:
+        # Collect all fields including inherited ones
+        all_fields = self._collect_concept_fields(protocol.name)
+        for field_name, field_type in all_fields:
             field_cpp = subst_to_cpp(field_type)
             out.write(f"    {{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
 

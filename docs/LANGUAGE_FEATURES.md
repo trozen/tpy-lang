@@ -574,6 +574,71 @@ int32_t count(T_items& items) {
 }
 ```
 
+#### Working: Protocol Inheritance
+
+Protocols can inherit from other protocols, creating combined protocols that require all methods from parent protocols:
+
+```python
+from typing import Protocol, Sized
+from tpy import Int32
+
+class Printable(Protocol):
+    def to_str(self) -> str: ...
+
+# PrintableAndSized inherits from both Printable and Sized
+class PrintableAndSized(Printable, Sized, Protocol):
+    pass  # Inherits to_str() from Printable, __len__() from Sized
+
+class Message:
+    text: str
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+    def to_str(self) -> str:
+        return self.text
+
+    def __len__(self) -> Int32:
+        return Int32(5)
+
+class Container[T: PrintableAndSized]:
+    value: T
+
+    def describe(self) -> None:
+        print(self.value.to_str())  # From Printable
+        print(len(self.value))       # From Sized
+```
+
+Generated C++:
+```cpp
+template<typename T>
+concept Printable = requires(T& t) {
+    { t.to_str() } -> std::convertible_to<std::string_view>;
+};
+
+template<typename T>
+concept PrintableAndSized = requires(T& t) {
+    { t.to_str() } -> std::convertible_to<std::string_view>;
+    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
+};
+
+template<PrintableAndSized T>
+struct Container {
+    T value;
+    void describe() {
+        std::cout << this->value.to_str() << "\n";
+        std::cout << tpy::__len__(this->value) << "\n";
+    }
+};
+```
+
+**Key points:**
+- Child protocols inherit all methods and fields from parent protocols
+- A type conforming to a child protocol automatically conforms to all parent protocols
+- Bounded type parameters (`T: PrintableAndSized`) can use methods from all ancestor protocols
+- The generated C++ concept includes requirements from all parent protocols
+- Multiple inheritance is supported (e.g., inheriting from both `Printable` and `Sized`)
+
 #### Working: Protocol Fields
 
 Protocols can require fields in addition to methods:
@@ -1085,7 +1150,9 @@ struct SortedContainer {
 - `Comparable` - has comparison operators (`<`, `<=`, `>`, `>=`, `==`, `!=`)
 - `Sequence[T]` - has `__len__()` and `__getitem__()`
 - `NativeIterable[T]` - supports C++ range-for iteration
-- User-defined protocols
+- User-defined protocols (including protocols with inheritance)
+
+**Protocol Inheritance with Bounds**: When using a child protocol as a bound (e.g., `T: PrintableAndSized`), methods from all ancestor protocols are available on `T`.
 
 **Limitations**:
 - Generic methods on classes (methods with their own type params) not yet supported
