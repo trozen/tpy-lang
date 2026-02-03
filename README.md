@@ -4,7 +4,15 @@ A proof-of-concept compiler that translates Python to C++.
 
 ## Dependencies
 
-On macOS, install GMP (GNU Multiple Precision Arithmetic Library):
+Install GMP (GNU Multiple Precision Arithmetic Library):
+
+**Ubuntu/Debian:**
+
+```bash
+sudo apt install libgmp-dev
+```
+
+**macOS:**
 
 ```bash
 brew install gmp
