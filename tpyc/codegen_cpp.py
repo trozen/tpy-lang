@@ -447,8 +447,8 @@ class CodeGenerator:
         # Generate operator[] if __getitem__ exists (enables Sequence protocol conformance)
         self._gen_subscript_operators(out, record)
 
-        # Generate arithmetic operators from dunder methods (enables protocol conformance)
-        self._gen_arithmetic_operators(out, record)
+        # Generate binary operators from dunder methods (enables protocol conformance)
+        self._gen_binary_operators(out, record)
 
         out.write("};\n")
         self._gen_record_ostream(out, record)
@@ -606,13 +606,15 @@ class CodeGenerator:
         "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
         "__and__": "&", "__or__": "|", "__xor__": "^",
         "__lshift__": "<<", "__rshift__": ">>",
+        "__lt__": "<", "__le__": "<=", "__gt__": ">", "__ge__": ">=",
+        "__eq__": "==", "__ne__": "!=",
     }
 
-    def _gen_arithmetic_operators(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate C++ operators from arithmetic dunder methods.
+    def _gen_binary_operators(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate C++ operators from dunder methods (arithmetic and comparison).
 
         This enables user records to conform to C++ concepts that use operator syntax
-        (e.g., `t + other`) rather than method calls (e.g., `t.__add__(other)`).
+        (e.g., `t + other`, `t < other`) rather than method calls (e.g., `t.__add__(other)`).
         """
         for method in record.methods:
             if method.name not in self.DUNDER_TO_BINARY_OP:

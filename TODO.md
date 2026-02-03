@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- Type parameter bounds: generate operator< from __lt__ for Comparable bounds (sema checks __lt__ but C++ concept requires operator<)
 - Type parameter bounds: protocol methods cannot reference user-defined record types (would need forward declarations before concepts)
 - "The _type_conforms_to_protocol doesn't handle generic user protocols." - why is it handled differently for user protocols vs builtin protocols?
 - multiple protocol bounds
