@@ -246,7 +246,7 @@ module.register_type(BIGINT, cpp_type="tpy::BigInt", constructors=[
     "__rand__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) & ({self})")],
     "__ror__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) | ({self})")],
     "__rxor__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) ^ ({self})")],
-})
+}, extends=["Comparable"])
 
 # float: 64-bit IEEE 754 double precision floating point
 module.register_type(FLOAT, cpp_type="double", constructors=[
@@ -331,7 +331,7 @@ module.register_type(FLOAT, cpp_type="double", constructors=[
         MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="std::pow(static_cast<double>({0}), {self})"),
         MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::pow(static_cast<double>({0}), {self})"),
     ],
-})
+}, extends=["Comparable"])
 
 # bool: Boolean type
 module.register_type(BOOL, cpp_type="bool", constructors=[

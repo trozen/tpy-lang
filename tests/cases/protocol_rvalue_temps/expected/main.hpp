@@ -5,6 +5,11 @@
 
 namespace tpy_user::main {
 
+template<typename T>
+concept HasValue = requires(T& t) {
+    { t.get() } -> std::convertible_to<int32_t>;
+};
+
 struct IntBox;
 struct BoxContainer;
 
@@ -50,11 +55,6 @@ inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
      << ")";
   return os;
 }
-
-template<typename T>
-concept HasValue = requires(T& t) {
-    { t.get() } -> std::convertible_to<int32_t>;
-};
 
 template<HasValue T_h>
 void show(T_h& h);

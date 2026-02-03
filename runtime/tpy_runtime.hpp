@@ -1877,6 +1877,17 @@ concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
     T(std::ranges::begin(r), std::ranges::end(r));
 };
 
+/**
+ * Comparable concept - types that support the < operator
+ *
+ * A type is Comparable if it supports t < t comparison returning bool.
+ * This is used for bounded type parameters like T: Comparable.
+ */
+template<typename T>
+concept Comparable = requires(const T& a, const T& b) {
+    { a < b } -> std::convertible_to<bool>;
+};
+
 // --- Collection printing (Python-style: [a, b, c]) ---
 
 template <typename T>

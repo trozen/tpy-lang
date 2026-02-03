@@ -196,12 +196,20 @@ class CodeGenerator:
         if self._has_synthetic_name:
             self.global_names.add("__name__")
 
+        # Generate C++20 concepts for user-defined protocols FIRST
+        # (needed before forward declarations that may use them as type parameter bounds)
+        # Note: Protocol methods cannot reference user-defined record types (would need
+        # forward declarations first). This is a known limitation.
+        for protocol in module.protocols:
+            self._gen_concept_decl(hpp, protocol)
+            hpp.write("\n")
+
         # Forward declare records (so global externs can reference them)
         for record in module.records:
             if record.type_params:
-                # Generic record: template<typename T, ...> struct Stack;
-                params = ", ".join(f"typename {p}" for p in record.type_params)
-                hpp.write(f"template<{params}> struct {record.name};\n")
+                # Generic record with bounds: template<Comparable T> struct SortedList;
+                template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+                hpp.write(f"{template_header} struct {record.name};\n")
             else:
                 hpp.write(f"struct {record.name};\n")
         if module.records:
@@ -218,11 +226,6 @@ class CodeGenerator:
         # Generate full record definitions
         for record in module.records:
             self._gen_record_decl(hpp, record)
-            hpp.write("\n")
-
-        # Generate C++20 concepts for user-defined protocols
-        for protocol in module.protocols:
-            self._gen_concept_decl(hpp, protocol)
             hpp.write("\n")
 
         # Generate function declarations
@@ -348,8 +351,8 @@ class CodeGenerator:
         """Generate a struct declaration for a record."""
         # Generate template prefix for generic records
         if record.type_params:
-            params = ", ".join(f"typename {p}" for p in record.type_params)
-            out.write(f"template<{params}>\n")
+            template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+            out.write(f"{template_header}\n")
         out.write(f"struct {record.name} {{\n")
 
         # Fields
@@ -635,8 +638,20 @@ class CodeGenerator:
 
         SelfType in method signatures is rendered as 'T' (the template parameter).
         This allows the concept to check that e.g., T + T -> T.
+
+        For generic protocols like Container[T], we generate:
+        - template<typename T, typename _T0> where T is the checked type and _T0 is the protocol's T
+        - Usage: Container<int32_t> V means V must satisfy Container<V, int32_t>
         """
-        out.write(f"template<typename T>\n")
+        # Build template params: T (checked type) + one for each protocol type param
+        template_params = ["typename T"]
+        type_param_map: dict[str, str] = {}  # Protocol type param -> C++ template param
+        for i, tp in enumerate(protocol.type_params):
+            cpp_param = f"_T{i}"
+            template_params.append(f"typename {cpp_param}")
+            type_param_map[tp] = cpp_param
+
+        out.write(f"template<{', '.join(template_params)}>\n")
         out.write(f"concept {protocol.name} = requires(T& t) {{\n")
 
         # Mapping from Python dunder methods to C++ operators
@@ -649,10 +664,22 @@ class CodeGenerator:
             "__lshift__": "<<", "__rshift__": ">>",
         }
 
+        def subst_type(typ: TpyType) -> TpyType:
+            """Substitute protocol type params recursively in a type."""
+            if isinstance(typ, TypeParamRef) and typ.name in type_param_map:
+                # Return a TypeParamRef with the mapped name
+                return TypeParamRef(type_param_map[typ.name])
+            return typ.map_inner_types(subst_type)
+
+        def subst_to_cpp(typ: TpyType) -> str:
+            """Convert type to C++, substituting protocol type params."""
+            return subst_type(typ).to_cpp()
+
         for method_sig in protocol.methods:
             # Generate requirement for each method
             # SelfType.to_cpp() returns "T", so this handles Self -> T substitution
-            ret_cpp = method_sig.return_type.to_cpp()
+            # Protocol type params (e.g., T in Container[T]) are mapped to _T0, _T1, etc.
+            ret_cpp = subst_to_cpp(method_sig.return_type)
 
             # For dunder methods that have tpy:: free function equivalents, use those
             # This allows std types (vector, string, etc.) to satisfy the protocol
@@ -663,7 +690,7 @@ class CodeGenerator:
                 # e.g., __add__(Self) -> Self becomes { t + std::declval<T>() } -> convertible_to<T>
                 cpp_op = DUNDER_TO_OPERATOR[method_sig.name]
                 _, ptype = method_sig.params[0]
-                param_cpp = ptype.to_cpp()
+                param_cpp = subst_to_cpp(ptype)
                 out.write(f"    {{ t {cpp_op} std::declval<{param_cpp}>() }} -> std::convertible_to<{ret_cpp}>;\n")
             else:
                 # { t.method_name(args...) } -> std::convertible_to<return_type>;
@@ -671,7 +698,7 @@ class CodeGenerator:
                 if method_sig.params:
                     # Use std::declval for parameter types
                     # SelfType.to_cpp() returns "T", so Self params become std::declval<T>()
-                    param_exprs = [f"std::declval<{ptype.to_cpp()}>()" for _, ptype in method_sig.params]
+                    param_exprs = [f"std::declval<{subst_to_cpp(ptype)}>()" for _, ptype in method_sig.params]
                     params_str = ", ".join(param_exprs)
                 out.write(f"    {{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
 
@@ -680,6 +707,38 @@ class CodeGenerator:
     def _get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, ProtocolType]]:
         """Get list of protocol-typed parameters."""
         return [(pname, ptype) for pname, ptype in params if isinstance(ptype, ProtocolType)]
+
+    def _get_concept_name(self, protocol: ProtocolType) -> str:
+        """Get the C++ concept name for a protocol type."""
+        protocol_def = builtin_modules.lookup_protocol(protocol.name)
+        if protocol_def:
+            return protocol_def.cpp_concept
+        # User-defined protocol - use the protocol name directly
+        return protocol.name
+
+    def _gen_record_template_header(
+        self,
+        type_params: list[str],
+        type_param_bounds: dict[str, ProtocolType]
+    ) -> str:
+        """Generate template header for a generic record.
+
+        For unbounded: template<typename T>
+        For bounded: template<Comparable T>
+        """
+        template_parts = []
+        for tp in type_params:
+            if tp in type_param_bounds:
+                bound = type_param_bounds[tp]
+                concept_name = self._get_concept_name(bound)
+                if bound.type_args:
+                    type_args_cpp = ", ".join(t.to_cpp() for t in bound.type_args)
+                    template_parts.append(f"{concept_name}<{type_args_cpp}> {tp}")
+                else:
+                    template_parts.append(f"{concept_name} {tp}")
+            else:
+                template_parts.append(f"typename {tp}")
+        return f"template<{', '.join(template_parts)}>"
 
     def _gen_template_header(self, protocol_params: list[tuple[str, ProtocolType]]) -> str:
         """Generate template header with concept constraints for protocol params.
@@ -710,18 +769,29 @@ class CodeGenerator:
     def _gen_combined_template_header(
         self,
         type_params: list[str],
-        protocol_params: list[tuple[str, ProtocolType]]
+        protocol_params: list[tuple[str, ProtocolType]],
+        type_param_bounds: dict[str, ProtocolType] | None = None
     ) -> str:
         """Generate template header combining type parameters and concept constraints.
 
         For generic functions: template<typename T>
         For generic functions with protocols: template<typename T, tpy::Sized T_items>
+        For bounded type params: template<Comparable T>
         """
         template_parts = []
 
-        # Add type parameters for generic functions
+        # Add type parameters for generic functions (with optional bounds)
         for tp in type_params:
-            template_parts.append(f"typename {tp}")
+            if type_param_bounds and tp in type_param_bounds:
+                bound = type_param_bounds[tp]
+                concept_name = self._get_concept_name(bound)
+                if bound.type_args:
+                    type_args_cpp = ", ".join(t.to_cpp() for t in bound.type_args)
+                    template_parts.append(f"{concept_name}<{type_args_cpp}> {tp}")
+                else:
+                    template_parts.append(f"{concept_name} {tp}")
+            else:
+                template_parts.append(f"typename {tp}")
 
         # Add protocol params with concept constraints
         for pname, ptype in protocol_params:
@@ -759,7 +829,7 @@ class CodeGenerator:
 
         if is_generic or protocol_params:
             # Generate combined template header for generic functions and/or protocol params
-            out.write(self._gen_combined_template_header(func.type_params, protocol_params))
+            out.write(self._gen_combined_template_header(func.type_params, protocol_params, func.type_param_bounds))
             ret_type = func.return_type.to_cpp_return()
             params = self._gen_params_with_protocols(func.params) if protocol_params else self._gen_params(func.params)
             out.write(f"{ret_type} {func.name}({params});\n")
@@ -777,7 +847,7 @@ class CodeGenerator:
 
         if is_generic or protocol_params:
             # Generate combined template header for generic functions and/or protocol params
-            out.write(self._gen_combined_template_header(func.type_params, protocol_params))
+            out.write(self._gen_combined_template_header(func.type_params, protocol_params, func.type_param_bounds))
             ret_type = func.return_type.to_cpp_return()
             params = self._gen_params_with_protocols(func.params) if protocol_params else self._gen_params(func.params)
             out.write(f"{ret_type} {func.name}({params}) {{\n")

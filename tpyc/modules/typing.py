@@ -5,7 +5,7 @@ Provides Protocol types matching Python's typing module.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, VOID, TypeParamRef
+from tpyc.typesys import INT32, VOID, BOOL, TypeParamRef, SELF
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -40,6 +40,15 @@ module.protocol("MutableSequence",
         "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="{self}[{0}] = {1}"),
     },
     cpp_concept="tpy::MutableSequence",
+)
+
+# Comparable protocol: types that support < operator
+# Used for bounded type parameters like T: Comparable
+module.protocol("Comparable",
+    methods={
+        "__lt__": MethodDef(params=[ParamDef("other", SELF)], returns=BOOL, cpp="{self} < {0}"),
+    },
+    cpp_concept="tpy::Comparable",
 )
 
 # Protocol is recognized by the parser as the base class for user-defined protocols

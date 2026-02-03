@@ -244,13 +244,24 @@ class SemanticAnalyzer:
                 is_staticmethod=method.is_staticmethod
             )
 
+        # Convert parsed bounds to ProtocolType (validate they are protocols)
+        type_param_bounds: dict[str, ProtocolType] = {}
+        for param_name, bound_type in record.type_param_bounds.items():
+            if not isinstance(bound_type, ProtocolType):
+                raise SemanticError(
+                    f"Type parameter bound must be a protocol, got {bound_type}",
+                    None
+                )
+            type_param_bounds[param_name] = bound_type
+
         info = RecordInfo(
             name=record.name,
             fields=record.fields,
             has_init=record.init_method is not None,
             init_params=init_params,
             methods=methods,
-            type_params=record.type_params
+            type_params=record.type_params,
+            type_param_bounds=type_param_bounds
         )
         self.registry.register_record(info)
         self.global_ns.bind_record(info)
@@ -259,7 +270,8 @@ class SemanticAnalyzer:
         """Register a protocol type."""
         info = ProtocolInfo(
             name=protocol.name,
-            methods=protocol.methods
+            methods=protocol.methods,
+            type_params=protocol.type_params
         )
         self.registry.register_protocol(info)
 
@@ -294,12 +306,23 @@ class SemanticAnalyzer:
                 func.loc
             )
 
+        # Convert parsed bounds to ProtocolType (validate they are protocols)
+        type_param_bounds: dict[str, ProtocolType] = {}
+        for param_name, bound_type in func.type_param_bounds.items():
+            if not isinstance(bound_type, ProtocolType):
+                raise SemanticError(
+                    f"Type parameter bound must be a protocol, got {bound_type}",
+                    func.loc
+                )
+            type_param_bounds[param_name] = bound_type
+
         info = FunctionInfo(
             name=func.name,
             params=func.params,
             return_type=func.return_type,
             is_noalloc=func.is_noalloc,
-            type_params=func.type_params
+            type_params=func.type_params,
+            type_param_bounds=type_param_bounds
         )
         self.registry.register_function(info)
         self.global_ns.bind_function(info)
@@ -1044,7 +1067,11 @@ class SemanticAnalyzer:
             # Check if this is a user-defined generic function
             is_known_function = self.registry.get_function(expr.func) is not None
             if not is_known_function:
-                # It's a type instantiation - use call_type
+                # Check if it's a user-defined record - use _analyze_record_constructor for bound validation
+                record = self.registry.get_record(expr.func)
+                if record:
+                    return self._analyze_record_constructor(expr, record)
+                # It's a builtin type instantiation - use call_type directly
                 for arg in expr.args:
                     self._analyze_expr(arg)
                 return expr.call_type
@@ -1354,6 +1381,16 @@ class SemanticAnalyzer:
                 # Validate the type (checks for missing generic args, etc.)
                 self._validate_type(type_arg)
             type_subst = dict(zip(func.type_params, expr.type_args))
+            # Validate type parameter bounds
+            for param_name, type_arg in type_subst.items():
+                if param_name in func.type_param_bounds:
+                    bound = func.type_param_bounds[param_name]
+                    if not self._type_conforms_to_protocol(type_arg, bound):
+                        raise self._error(
+                            f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
+                            f"for type parameter '{param_name}' of '{func.name}'",
+                            expr
+                        )
         else:
             # Infer from arguments
             arg_types = [self._analyze_expr(arg) for arg in expr.args]
@@ -1440,6 +1477,14 @@ class SemanticAnalyzer:
             if tp not in inferred:
                 return None
 
+        # Validate type parameter bounds
+        for param_name, type_arg in inferred.items():
+            if param_name in func.type_param_bounds:
+                bound = func.type_param_bounds[param_name]
+                if not self._type_conforms_to_protocol(type_arg, bound):
+                    # Return None to signal inference failure (allows overload resolution to try other candidates)
+                    return None
+
         return inferred
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
@@ -1460,6 +1505,16 @@ class SemanticAnalyzer:
                         f"got {len(expr.call_type.type_args)}",
                         expr
                     )
+                # Validate type parameter bounds
+                for param_name, type_arg in zip(record.type_params, expr.call_type.type_args):
+                    if param_name in record.type_param_bounds:
+                        bound = record.type_param_bounds[param_name]
+                        if not self._type_conforms_to_protocol(type_arg, bound):
+                            raise self._error(
+                                f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
+                                f"for type parameter '{param_name}' of '{record.name}'",
+                                expr
+                            )
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self._build_type_substitution(expr.call_type)
             if record.has_init:
@@ -1494,6 +1549,16 @@ class SemanticAnalyzer:
                             if isinstance(elem_type, IntLiteralType):
                                 elem_type = BIGINT
                             inferred[k] = ListType(elem_type)
+                    # Validate type parameter bounds
+                    for param_name, type_arg in inferred.items():
+                        if param_name in record.type_param_bounds:
+                            bound = record.type_param_bounds[param_name]
+                            if not self._type_conforms_to_protocol(type_arg, bound):
+                                raise self._error(
+                                    f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
+                                    f"for type parameter '{param_name}' of '{record.name}'",
+                                    expr
+                                )
                     type_args = tuple(inferred[p] for p in record.type_params)
                     inferred_type = RecordType(record.name, type_args)
                     expr.call_type = inferred_type
@@ -2182,15 +2247,26 @@ class SemanticAnalyzer:
 
         return False
 
+    def _substitute_types(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+        """Recursively substitute types throughout a type structure.
+
+        Substitutes SelfType and TypeParamRef according to the substitution map.
+        Handles nested types like Own[Self], Ptr[T], list[T], etc.
+        Uses map_inner_types for generic traversal of wrapper types.
+        """
+        if isinstance(typ, SelfType) and "Self" in subst:
+            return subst["Self"]
+        if isinstance(typ, TypeParamRef) and typ.name in subst:
+            return subst[typ.name]
+        return typ.map_inner_types(lambda t: self._substitute_types(t, subst))
+
     def _substitute_self(self, typ: TpyType, actual: TpyType) -> TpyType:
         """Recursively substitute SelfType with actual type throughout a type structure.
 
         Handles nested types like Own[Self], Ptr[Self], list[Self], etc.
         Uses map_inner_types for generic traversal of wrapper types.
         """
-        if isinstance(typ, SelfType):
-            return actual
-        return typ.map_inner_types(lambda t: self._substitute_self(t, actual))
+        return self._substitute_types(typ, {"Self": actual})
 
     def _get_protocol_method_signature(
         self,
@@ -2468,13 +2544,13 @@ class SemanticAnalyzer:
             type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
         for method_sig in protocol_info.methods:
-            # Recursively substitute SelfType with actual type in params and return type
-            # Handles nested types like Own[Self], Ptr[Self], etc.
+            # Recursively substitute Self and type params in params and return type
+            # Handles nested types like Own[Self], Ptr[T], list[T], etc.
             expected_params = [
-                self._substitute_self(ptype, actual)
+                self._substitute_types(ptype, type_subst)
                 for _, ptype in method_sig.params
             ]
-            expected_return = self._substitute_self(method_sig.return_type, actual)
+            expected_return = self._substitute_types(method_sig.return_type, type_subst)
 
             if not self._type_has_method_with_signature(
                 actual, method_sig.name, expected_params, expected_return

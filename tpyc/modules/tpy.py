@@ -54,7 +54,7 @@ module.register_type(INT32, cpp_type="int32_t", constructors=[
     "__rand__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) & ({self})")],
     "__ror__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) | ({self})")],
     "__rxor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) ^ ({self})")],
-})
+}, extends=["Comparable"])
 
 # Array[T, N]: Fixed-size array
 module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],

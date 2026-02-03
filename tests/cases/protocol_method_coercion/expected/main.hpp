@@ -5,6 +5,12 @@
 
 namespace tpy_user::main {
 
+template<typename T>
+concept Calculator = requires(T& t) {
+    { t.add(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
+    { t.multiply(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
+};
+
 struct SimpleCalc;
 
 extern tpy::Global<std::string_view> __name__;
@@ -32,12 +38,6 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
      << ")";
   return os;
 }
-
-template<typename T>
-concept Calculator = requires(T& t) {
-    { t.add(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
-    { t.multiply(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
-};
 
 template<Calculator T_c>
 void use_calc(T_c& c);

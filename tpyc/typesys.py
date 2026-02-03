@@ -282,8 +282,11 @@ class TypeParamRef(TpyType):
     - Const returns: Use `tpy::return_val_or_cref_t<T>` which resolves to:
       - `T` for value types
       - `const T&` for object types
+
+    Bounded type parameters (e.g., T: Comparable) store the bound protocol.
     """
     name: str
+    bound: Optional['ProtocolType'] = None
 
     def to_cpp(self) -> str:
         return self.name  # Template parameter name
@@ -697,6 +700,7 @@ class RecordInfo:
 
     For generic records like Stack[T]:
     - type_params stores the type parameter names (e.g., ["T"])
+    - type_param_bounds stores bounds for each type param (e.g., {"T": Comparable})
     """
     name: str
     fields: list[FieldInfo]
@@ -704,6 +708,7 @@ class RecordInfo:
     init_params: list[tuple[str, TpyType, Optional[str]]] = None  # (name, type, default)
     methods: dict[str, 'FunctionInfo'] = None  # method_name -> FunctionInfo
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
+    type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
 
     def __post_init__(self):
         if self.init_params is None:
@@ -712,6 +717,8 @@ class RecordInfo:
             self.methods = {}
         if self.type_params is None:
             self.type_params = []
+        if self.type_param_bounds is None:
+            self.type_param_bounds = {}
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         return self.methods.get(name)
@@ -727,6 +734,7 @@ class FunctionInfo:
 
     For generic functions like def first[T](items: list[T]) -> T:
     - type_params stores the type parameter names (e.g., ["T"])
+    - type_param_bounds stores bounds for each type param (e.g., {"T": Comparable})
     """
     name: str
     params: list[tuple[str, TpyType]]  # (name, type)
@@ -735,10 +743,13 @@ class FunctionInfo:
     is_method: bool = False
     is_staticmethod: bool = False
     type_params: list[str] = None
+    type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
 
     def __post_init__(self):
         if self.type_params is None:
             self.type_params = []
+        if self.type_param_bounds is None:
+            self.type_param_bounds = {}
 
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""

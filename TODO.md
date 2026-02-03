@@ -1,11 +1,17 @@
 # TODO
 
 ## Next
-- Type parameter bounds: class SortedList[T: Comparable]
-- Integer type parameters: class FixedStack[T, N: int]
+- Type parameter bounds: calling protocol methods on T inside the generic (e.g., `len(self.item)` where `item: T` and `T: Sized`)
+- Type parameter bounds: generate operator< from __lt__ for Comparable bounds (sema checks __lt__ but C++ concept requires operator<)
+- Type parameter bounds: protocol methods cannot reference user-defined record types (would need forward declarations before concepts)
+- "The _type_conforms_to_protocol doesn't handle generic user protocols." - why is it handled differently for user protocols vs builtin protocols?
+- multiple protocol bounds
 - protocol fields? `class P(Protocol): value: Int32`
+- sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
+- Integer type parameters: class FixedStack[T, N: int]
 - allow protocol inheritance, with protocol check
 - allow inheritance of normal classes
+- require importing tpy items, not autoimport (preferred `from tpy import *`)
 - extract c++ compiler interface
 - `type()` function
 - build/run in release mode
@@ -21,7 +27,6 @@
 - template function implementation should be in some specific header file
 - `DeRef` protocol?
 - allow type annotation to use "" (forward decl)
-- sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
@@ -65,6 +70,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - formatting/linting like in genweb
 - properties with getter/setter
 - indexing: Int32 vs Int64 vs SizeType?
+- list[Ptr[Point]] not supported, but it should be, eventually
+- `Span(list([1,2,3]))` not supported
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

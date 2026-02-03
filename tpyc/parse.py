@@ -264,6 +264,7 @@ class TpyFunction:
 
     For generic functions like def first[T](items: list[T]) -> T:
     - type_params stores the type parameter names (e.g., ["T"])
+    - type_param_bounds stores bounds for each bounded type param (e.g., {"T": Comparable})
     """
     name: str
     params: list[tuple[str, TpyType]]
@@ -273,6 +274,7 @@ class TpyFunction:
     is_method: bool = False
     is_staticmethod: bool = False
     type_params: list[str] = field(default_factory=list)
+    type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     loc: SourceLocation | None = None
 
 
@@ -282,11 +284,13 @@ class TpyRecord:
 
     For generic records like Stack[T]:
     - type_params stores the type parameter names (e.g., ["T"])
+    - type_param_bounds stores bounds for each bounded type param (e.g., {"T": Comparable})
     """
     name: str
     fields: list[FieldInfo]
     methods: list[TpyFunction] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
+    type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
 
     @property
     def init_method(self) -> Optional[TpyFunction]:
@@ -302,6 +306,7 @@ class TpyProtocol:
     """Protocol definition for structural subtyping."""
     name: str
     methods: list[MethodSignature]
+    type_params: list[str] = field(default_factory=list)
     loc: SourceLocation | None = None
 
 
@@ -367,7 +372,8 @@ class Parser:
                     # Register the protocol type
                     self.registry.register_protocol(ProtocolInfo(
                         name=result.name,
-                        methods=result.methods
+                        methods=result.methods,
+                        type_params=result.type_params
                     ))
                 else:
                     records.append(result)
@@ -443,11 +449,18 @@ class Parser:
             raise ParseError(f"Decorators not allowed on class '{node.name}'", node)
 
         # Extract type parameters from Python 3.12+ syntax: class Foo[T, U]:
+        # Also extract bounds: class Foo[T: Comparable]:
         type_params = []
+        type_param_bounds: dict[str, TpyType] = {}
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
                     type_params.append(tp.name)
+                    if tp.bound is not None:
+                        bound_type = self._parse_type_annotation(tp.bound)
+                        if not isinstance(bound_type, ProtocolType):
+                            raise ParseError(f"Type parameter bound must be a protocol, got {bound_type}", tp)
+                        type_param_bounds[tp.name] = bound_type
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
@@ -490,12 +503,25 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params)
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_bounds=type_param_bounds)
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
         if node.decorator_list:
             raise ParseError(f"Decorators not allowed on protocol '{node.name}'", node)
+
+        # Extract type parameters from Python 3.12+ syntax: class Foo[T](Protocol):
+        type_params = []
+        if hasattr(node, 'type_params') and node.type_params:
+            for tp in node.type_params:
+                if isinstance(tp, ast.TypeVar):
+                    type_params.append(tp.name)
+                else:
+                    raise ParseError(f"Only simple type parameters supported in protocols, got {type(tp).__name__}", node)
+
+        # Set type param scope for parsing method signatures
+        old_scope = self._type_param_scope
+        self._type_param_scope = set(type_params) if type_params else None
 
         methods = []
 
@@ -535,7 +561,9 @@ class Parser:
             else:
                 raise ParseError(f"Unsupported construct in protocol '{node.name}': {type(item).__name__}", item)
 
-        return TpyProtocol(name=node.name, methods=methods, loc=self._loc(node))
+        # Restore the scope
+        self._type_param_scope = old_scope
+        return TpyProtocol(name=node.name, methods=methods, type_params=type_params, loc=self._loc(node))
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: set[str] | None = None) -> TpyFunction:
         """Parse a method definition."""
@@ -587,11 +615,18 @@ class Parser:
                 raise ParseError(f"Unknown decorator on function '{node.name}'", dec)
 
         # Extract type parameters from Python 3.12+ syntax: def foo[T, U]():
+        # Also extract bounds: def foo[T: Comparable]():
         type_params = []
+        type_param_bounds: dict[str, TpyType] = {}
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
                     type_params.append(tp.name)
+                    if tp.bound is not None:
+                        bound_type = self._parse_type_annotation(tp.bound)
+                        if not isinstance(bound_type, ProtocolType):
+                            raise ParseError(f"Type parameter bound must be a protocol, got {bound_type}", tp)
+                        type_param_bounds[tp.name] = bound_type
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
@@ -623,6 +658,7 @@ class Parser:
             body=body,
             is_noalloc=is_noalloc,
             type_params=type_params,
+            type_param_bounds=type_param_bounds,
             loc=self._loc(node)
         )
 
@@ -658,8 +694,15 @@ class Parser:
                 return STR
             elif name == "Char":
                 return CHAR
-            elif self.registry.get_protocol(name) is not None:
+            elif (user_protocol := self.registry.get_protocol(name)) is not None:
                 # User-defined protocol type
+                # Check if generic protocol requires type arguments
+                if user_protocol.type_params:
+                    raise ParseError(
+                        f"Generic protocol '{name}' requires type arguments: "
+                        f"{name}[{', '.join(user_protocol.type_params)}]",
+                        node
+                    )
                 return ProtocolType(name)
             elif (protocol_def := lookup_builtin_protocol(name)) is not None:
                 # Built-in protocol type (e.g., Sized)
@@ -700,6 +743,12 @@ class Parser:
                 # Module-defined generic types (list, Array, Span, etc.)
                 if lookup := lookup_generic_type(container):
                     return self._parse_generic_type(node, container, lookup.type_def, type_param_scope)
+
+                # User-defined generic protocols (e.g., Container[Int32])
+                if user_protocol := self.registry.get_protocol(container):
+                    if user_protocol.type_params:
+                        type_args = self._parse_protocol_type_args(node, container, user_protocol.type_params, type_param_scope)
+                        return ProtocolType(container, type_args)
 
                 # User-defined generic records (e.g., Stack[Int32])
                 # Check if it's a known record or looks like a record name (capitalized)

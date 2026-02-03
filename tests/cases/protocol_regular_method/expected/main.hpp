@@ -5,6 +5,11 @@
 
 namespace tpy_user::main {
 
+template<typename T>
+concept Duplicable = requires(T& t) {
+    { t.duplicate() } -> std::convertible_to<T>;
+};
+
 struct Value;
 
 extern tpy::Global<std::string_view> __name__;
@@ -27,11 +32,6 @@ inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
      << ")";
   return os;
 }
-
-template<typename T>
-concept Duplicable = requires(T& t) {
-    { t.duplicate() } -> std::convertible_to<T>;
-};
 
 template<Duplicable T_d>
 void double_it(T_d& d);

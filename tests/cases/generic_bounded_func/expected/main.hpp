@@ -5,15 +5,10 @@
 
 namespace tpy_user::main {
 
-template<typename T>
-concept Addable = requires(T& t) {
-    { t + std::declval<T>() } -> std::convertible_to<T>;
-};
-
 extern tpy::Global<std::string_view> __name__;
 
-template<Addable T_x, Addable T_y>
-void add_values(T_x& x, T_y& y);
+template<tpy::Sized T>
+tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item);
 void main();
 
 void __tpy_init();

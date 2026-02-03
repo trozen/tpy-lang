@@ -6,8 +6,8 @@
 namespace tpy_user::main {
 
 template<typename T>
-concept Addable = requires(T& t) {
-    { t + std::declval<T>() } -> std::convertible_to<T>;
+concept Printable = requires(T& t) {
+    { t.to_string() } -> std::convertible_to<std::string_view>;
 };
 
 struct Point;
@@ -21,13 +21,9 @@ struct Point {
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-  Point __add__(const Point& other) const {
-    // 17:         return Point(self.x + other.x, self.y + other.y)
-    return Point((tpy::int32_add(this->x, other.x)), (tpy::int32_add(this->y, other.y)));
-  }
-
-  friend Point operator+(const Point& lhs, const Point& other) {
-    return lhs.__add__(other);
+  std::string_view to_string() {
+    // 18:         return "Point"
+    return "Point";
   }
 };
 
@@ -40,8 +36,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
-template<Addable T_a, Addable T_b>
-void add_points(T_a& a, T_b& b);
+template<Printable T>
+void print_item(tpy::param_val_or_ref_t<T> item);
 void main();
 
 void __tpy_init();
