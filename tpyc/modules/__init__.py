@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Callable
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import TypeParamRef, ProtocolType, PtrType, ConstPtrType
+from tpyc.typesys import TypeParamRef, ProtocolType, PtrType, ConstPtrType, ProtocolInfo, MethodSignature
 
 
 class TypeParamKind(Enum):
@@ -312,6 +312,34 @@ def lookup_protocol(name: str) -> ProtocolDef | None:
     if proto := typing_mod.protocols.get(name):
         return proto
     return None
+
+
+def get_all_protocols() -> list[ProtocolDef]:
+    """Return all registered builtin protocols across all modules."""
+    result = []
+    for module in _all_modules():
+        result.extend(module.protocols.values())
+    # Also include typing module protocols
+    typing_mod = get_typing()
+    result.extend(typing_mod.protocols.values())
+    return result
+
+
+def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
+    """Convert builtin ProtocolDef to unified ProtocolInfo."""
+    methods = []
+    for name, method_def in pdef.methods.items():
+        params = [(p.name, p.type) for p in method_def.params]
+        methods.append(MethodSignature(name=name, params=params, return_type=method_def.returns))
+
+    return ProtocolInfo(
+        name=pdef.name,
+        methods=methods,
+        fields=[],
+        type_params=pdef.type_params,
+        cpp_concept=pdef.cpp_concept,
+        is_marker=len(pdef.methods) == 0
+    )
 
 
 def _resolve_concrete_type_name(name: str) -> "TpyType | None":

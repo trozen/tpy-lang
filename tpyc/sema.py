@@ -146,6 +146,11 @@ class SemanticAnalyzer:
 
     def analyze(self, module: TpyModule) -> None:
         """Analyze a module for semantic correctness."""
+        # Register all builtin protocols into the unified registry
+        for protocol_def in builtin_modules.get_all_protocols():
+            info = builtin_modules.protocol_def_to_info(protocol_def)
+            self.registry.register_protocol(info)
+
         # Process imports
         self.imports = module.imports
         for module_name, names in self.imports.items():
@@ -2348,34 +2353,26 @@ class SemanticAnalyzer:
         # Default Self to the protocol type if not specified
         actual_self = self_type if self_type is not None else protocol
 
-        # Check builtin protocols first
-        protocol_def = builtin_modules.lookup_protocol(protocol.name)
-        if protocol_def is not None:
-            method_def = protocol_def.methods.get(method_name)
-            if method_def is None:
-                return None
-
-            # Build type substitution: Self -> actual_self
-            type_subst: dict[str, TpyType] = {"Self": actual_self}
-            if protocol_def.type_params and protocol.type_args:
-                type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
-
-            resolved = builtin_modules.resolve_method(method_def, type_subst)
-            params = [(p.name, p.type) for p in resolved.params]
-            return (params, resolved.returns)
-
-        # Check user-defined protocols
+        # Unified lookup - all protocols are in the registry
         protocol_info = self.registry.get_protocol(protocol.name)
-        if protocol_info is not None:
-            for method_sig in protocol_info.methods:
-                if method_sig.name == method_name:
-                    # Substitute Self -> actual_self in params and return type
-                    params = [
-                        (pname, self._substitute_self(ptype, actual_self))
-                        for pname, ptype in method_sig.params
-                    ]
-                    return_type = self._substitute_self(method_sig.return_type, actual_self)
-                    return (params, return_type)
+        if protocol_info is None:
+            return None
+
+        # Find the method
+        for method_sig in protocol_info.methods:
+            if method_sig.name == method_name:
+                # Build type substitution: Self -> actual_self, plus protocol type params
+                type_subst: dict[str, TpyType] = {"Self": actual_self}
+                if protocol_info.type_params and protocol.type_args:
+                    type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
+
+                # Substitute Self and type params in params and return type
+                params = [
+                    (pname, self._substitute_types(ptype, type_subst))
+                    for pname, ptype in method_sig.params
+                ]
+                return_type = self._substitute_types(method_sig.return_type, type_subst)
+                return (params, return_type)
 
         return None
 
@@ -2567,7 +2564,7 @@ class SemanticAnalyzer:
         1. Explicit extends: type declares extends=["Protocol[T]"]
         2. Structural: type has all methods required by the protocol
 
-        For marker protocols (no methods), only explicit extends works.
+        For marker protocols (no methods/fields), only explicit extends works.
         For protocols with methods, either mechanism suffices.
 
         For generic protocols like Sequence[Int32]:
@@ -2586,57 +2583,32 @@ class SemanticAnalyzer:
             if bound is not None and isinstance(bound, ProtocolType):
                 return self._type_conforms_to_protocol(bound, protocol)
 
-        # Look up the protocol definition (builtin first, then user-defined)
-        protocol_def = builtin_modules.lookup_protocol(protocol.name)
-        if protocol_def is not None:
-            # Protocol-to-protocol: check type args match
-            if isinstance(actual, ProtocolType) and actual.name == protocol.name:
-                return actual.type_args == protocol.type_args
-
-            # Check explicit extends declaration
-            if builtin_modules.type_extends_protocol(actual, protocol.name, protocol.type_args):
-                return True
-
-            # Marker protocols (no methods) require explicit extends
-            if not protocol_def.methods:
-                return False
-
-            # Build type substitution map for generic protocols
-            # Always include Self -> actual type
-            type_subst: dict[str, TpyType] = {"Self": actual}
-            if protocol_def.type_params and protocol.type_args:
-                if len(protocol_def.type_params) != len(protocol.type_args):
-                    return False  # Mismatch in type parameter count
-                type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
-
-            # Structural conformance: check all protocol methods
-            for method_name, method_def in protocol_def.methods.items():
-                # Resolve method signature with type substitutions (including Self)
-                resolved = builtin_modules.resolve_method(method_def, type_subst)
-                expected_params = [p.type for p in resolved.params]
-                expected_return = resolved.returns
-
-                if not self._type_has_method_with_signature(
-                    actual, method_name, expected_params, expected_return
-                ):
-                    return False
-            return True
-
-        # User-defined protocol - check in registry
+        # Unified lookup - all protocols (builtin and user) are in the registry
         protocol_info = self.registry.get_protocol(protocol.name)
         if protocol_info is None:
             return False
 
-        # Build type substitution map for generic user protocols
+        # Protocol-to-protocol: check type args match
+        if isinstance(actual, ProtocolType) and actual.name == protocol.name:
+            return actual.type_args == protocol.type_args
+
+        # Check explicit extends declaration (for builtin types with marker protocols)
+        if builtin_modules.type_extends_protocol(actual, protocol.name, protocol.type_args):
+            return True
+
+        # Marker protocols require explicit extends
+        if protocol_info.is_marker:
+            return False
+
+        # Build type substitution map
         type_subst: dict[str, TpyType] = {"Self": actual}
         if protocol_info.type_params and protocol.type_args:
             if len(protocol_info.type_params) != len(protocol.type_args):
                 return False
             type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
+        # Check all required methods
         for method_sig in protocol_info.methods:
-            # Recursively substitute Self and type params in params and return type
-            # Handles nested types like Own[Self], Ptr[T], list[T], etc.
             expected_params = [
                 self._substitute_types(ptype, type_subst)
                 for _, ptype in method_sig.params
@@ -2649,7 +2621,7 @@ class SemanticAnalyzer:
                 return False
 
         # Check all required fields
-        for field_name, field_type in protocol_info.fields or []:
+        for field_name, field_type in protocol_info.fields:
             expected_type = self._substitute_types(field_type, type_subst)
             if not self._type_has_field_with_type(actual, field_name, expected_type):
                 return False

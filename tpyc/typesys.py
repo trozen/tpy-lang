@@ -770,11 +770,17 @@ class ProtocolInfo:
 
     For generic protocols like Sequence[T]:
     - type_params stores the type parameter names (e.g., ["T"])
+
+    For builtin protocols:
+    - cpp_concept stores the C++ concept name (e.g., "tpy::Sized")
+    - is_marker indicates protocols with no methods (require explicit extends)
     """
     name: str
     methods: list[MethodSignature]
     fields: list[tuple[str, TpyType]] = None  # (field_name, field_type)
     type_params: list[str] = None
+    cpp_concept: str | None = None  # C++ concept name for builtin protocols
+    is_marker: bool = False  # Marker protocols require explicit extends
 
     def __post_init__(self):
         if self.fields is None:

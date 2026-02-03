@@ -717,9 +717,10 @@ class CodeGenerator:
 
     def _get_concept_name(self, protocol: ProtocolType) -> str:
         """Get the C++ concept name for a protocol type."""
-        protocol_def = builtin_modules.lookup_protocol(protocol.name)
-        if protocol_def:
-            return protocol_def.cpp_concept
+        # Unified lookup via registry
+        protocol_info = self.analyzer.registry.get_protocol(protocol.name)
+        if protocol_info and protocol_info.cpp_concept:
+            return protocol_info.cpp_concept
         # User-defined protocol - use the protocol name directly
         return protocol.name
 
