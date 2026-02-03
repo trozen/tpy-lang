@@ -68,6 +68,14 @@ uv run pytest -n auto
 uv run pytest -k hello -n auto
 ```
 
+## View library documentation
+
+For pretty printing:
+
+```
+tpyc --dump-types | glow -p
+```
+
 ## Manual Build
 
 If you need to compile the generated C++ manually:
