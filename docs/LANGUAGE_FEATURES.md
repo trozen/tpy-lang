@@ -639,6 +639,10 @@ struct Container {
 - The generated C++ concept includes requirements from all parent protocols
 - Multiple inheritance is supported (e.g., inheriting from both `Printable` and `Sized`)
 
+**Limitations:**
+- Generic parent protocols are not yet supported (`class Child(Sequence[T], Protocol)` is an error)
+- Parent protocols must be non-generic (inheriting from `Sized` works, but not `Sequence[T]`)
+
 #### Working: Protocol Fields
 
 Protocols can require fields in addition to methods:
