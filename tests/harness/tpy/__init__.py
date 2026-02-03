@@ -81,6 +81,14 @@ class _Ptr(Generic[T]):
         else:
             setattr(self._obj, name, value)
 
+    def __deepcopy__(self, memo):
+        # Pointers shallow-copy: new Ptr wrapper pointing to same object
+        # This matches C++ where copying T* gives another pointer to same object
+        return _Ptr(self._obj)
+
+    def __copy__(self):
+        return _Ptr(self._obj)
+
 
 class _ConstPtr(Generic[T]):
     """Read-only pointer simulation."""
@@ -101,6 +109,13 @@ class _ConstPtr(Generic[T]):
 
     def __index__(self):
         return int(self._obj)
+
+    def __deepcopy__(self, memo):
+        # Pointers shallow-copy: new ConstPtr wrapper pointing to same object
+        return _ConstPtr(self._obj)
+
+    def __copy__(self):
+        return _ConstPtr(self._obj)
 
 
 class _PtrMeta(type):
@@ -370,6 +385,20 @@ class Span(metaclass=SpanMeta):
     def __iter__(self):
         return iter(self._data)
 
+    def __copy__(self):
+        """Shallow copy: new Span pointing to same data (like std::span)."""
+        new_span = object.__new__(type(self))
+        new_span._data = self._data  # Same reference, not copied
+        return new_span
+
+    def __deepcopy__(self, memo):
+        """Deep copy for Span is still shallow - it's a view type."""
+        # Views copy shallowly: new Span wrapper pointing to same underlying data
+        # This matches std::span semantics in C++
+        new_span = object.__new__(type(self))
+        new_span._data = self._data  # Same reference, not copied
+        return new_span
+
 
 def noalloc(func):
     """Decorator marking a function as no-allocation.
@@ -378,6 +407,18 @@ def noalloc(func):
     The compiler enforces this constraint at compile time.
     """
     return func
+
+
+import copy as _copy_module
+
+def copy(obj):
+    """Explicit copy for ownership transfer.
+
+    In CPython, uses copy.deepcopy() to match C++ by-value semantics.
+    When C++ returns a container by value, it deep-copies all elements.
+    In TurboPython, this marks the value as owned (by-value return).
+    """
+    return _copy_module.deepcopy(obj)
 
 
 # NativeIterable protocol for CPython compatibility

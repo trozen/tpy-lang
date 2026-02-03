@@ -439,15 +439,24 @@ def create_point() -> Point:
 The compiler detects this as a dangling reference error. Use `Own[T]` to indicate the function returns a newly constructed object by value (with move semantics):
 
 ```python
+from tpy import Int32, Own, copy
+
 def create_point() -> Own[Point]:
     p: Point = Point()
     p.x = 10
     p.y = 20
-    return p  # OK: returned by value (moved)
+    return copy(p)  # OK: explicit copy for ownership transfer
 
 def main():
     pt: Point = create_point()  # Own[Point] coerces to Point
     print(pt.x)  # 10
+```
+
+Returning an rvalue (like a constructor call) doesn't require `copy()`:
+
+```python
+def make_point(x: Int32, y: Int32) -> Own[Point]:
+    return Point(x, y)  # OK: constructor call is an rvalue
 ```
 
 Generated C++:
@@ -463,7 +472,8 @@ Point create_point() {  // Returns by value, no &
 Key points:
 - `Own[T]` → `T` in C++ (by value, no reference)
 - Relies on C++ move semantics and RVO/NRVO for efficiency
-- `T` coerces to `Own[T]` in return statements
+- Returning an lvalue (variable, field access) requires `copy()` to make the intent explicit
+- Returning an rvalue (constructor, function call) is OK without `copy()`
 - `Own[T]` coerces to `T` when receiving the value
 
 #### Owned Parameters (Working)
@@ -1064,7 +1074,7 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 
 ## Built-in Functions
 
-- **Working**: `print()`, `len()`, `range()`, `chr()`
+- **Working**: `print()`, `len()`, `range()`, `chr()`, `copy()`
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
 - **Working**: StaticList methods: `append()`, `pop()`, `clear()`, `push_empty()`, `get_mut()`
@@ -1146,6 +1156,31 @@ b = bool(Int32(0))  # → False
 b = bool(Int32(1))  # → True
 ```
 
+**`copy()` (Working)**:
+
+Used for explicit ownership transfer when returning lvalues (variables, field accesses) as `Own[T]`:
+
+```python
+from tpy import Int32, Own, copy
+
+class Box:
+    value: Int32
+
+def take_value(b: Box) -> Own[Int32]:
+    return copy(b.value)  # Explicit copy required for lvalue
+
+def make_box() -> Own[Box]:
+    return Box()  # No copy needed - constructor is an rvalue
+```
+
+The `copy()` function:
+- Takes exactly one argument of any type `T`
+- Returns `Own[T]` (owned value)
+- Required when returning lvalues (variables, field accesses, subscript) as `Own[T]`
+- Not required when returning rvalues (constructor calls, function calls)
+- In generated C++, `copy(x)` simply evaluates to `x` (the `Own[T]` return type handles the by-value semantics)
+- In CPython tests, uses `deepcopy` to match C++ by-value semantics (containers copy all elements)
+
 **`str()` (Partial - with caveats)**:
 ```python
 s = str()         # → "" (empty string)
@@ -1172,9 +1207,12 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 
 - **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `StaticList`)
 - **Working**: `import time` and `from time import time`
+- **Working**: Import aliases: `from time import time as get_time`, `from tpy import Int32 as I32`
+  - **Note**: Aliases work for function calls but not yet for type annotations (`x: I32` won't resolve)
 - **Working**: `import sys` - system module with `sys.argv`
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
+- **Planned**: Module-level aliases: `import time as _time`
 - **Planned**: Multi-file projects (user-defined modules)
 - **Open**: Importing additional Python stdlib subsets that can be statically compiled
 

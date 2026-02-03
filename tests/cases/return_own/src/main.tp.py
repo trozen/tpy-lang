@@ -1,4 +1,4 @@
-from tpy import Int32, Own
+from tpy import Int32, Own, copy
 
 
 class Point:
@@ -10,7 +10,7 @@ def create_point(x: Int32, y: Int32) -> Own[Point]:
     p: Point = Point()
     p.x = x
     p.y = y
-    return p  # tpyc: ok
+    return copy(p)  # tpyc: ok
 
 
 def main():

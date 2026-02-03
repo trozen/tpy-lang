@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- Own[T] should require explicit copy() for lvalues: `return copy(self.value)` not `return self.value`; rvalues like `return T()` are OK without copy
 - Type parameter bounds: class SortedList[T: Comparable]
 - Integer type parameters: class FixedStack[T, N: int]
 - protocol fields? `class P(Protocol): value: Int32`
@@ -61,7 +60,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - ability to define `__str__` method
 - `@staticmethod`
 - better class operator<< tests (but missing str formatting/concatenation)
-- `import time as _time` syntax
 - dynamic dispatch
 - full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
 - formatting/linting like in genweb
@@ -81,6 +79,8 @@ Random items that may or may not be implemented in the future, but putting them 
 
 ## Known Limitations
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
+- Import aliases don't work for type annotations: `from tpy import Int32 as I` allows `I(42)` but not `x: I`. Type parsing needs to consult imported aliases to support this.
+- Own[T] local variable optimization: allow `return local_var` without copy() since C++ uses NRVO (Named Return Value Optimization). Currently requires explicit copy() for all lvalues.
 
 ## ShedSkin examples
 - score4

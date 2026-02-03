@@ -9,7 +9,7 @@ tpy::Global<std::string_view> __name__;
 int32_t return_owned_int32() {
   // 8:     big: int = 42
   tpy::BigInt big = tpy::BigInt(42);
-  // 9:     return big  # BigInt -> Own[Int32] requires .to_int32() coercion
+  // 9:     return copy(big)  # BigInt -> Own[Int32] requires .to_int32() coercion
   return (big).to_int32();
 }
 

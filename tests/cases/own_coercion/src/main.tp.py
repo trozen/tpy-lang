@@ -2,11 +2,11 @@
 
 Own[T] should transparently allow inner type coercions like BigInt -> Int32.
 """
-from tpy import Int32, Own
+from tpy import Int32, Own, copy
 
 def return_owned_int32() -> Own[Int32]:
     big: int = 42
-    return big  # BigInt -> Own[Int32] requires .to_int32() coercion
+    return copy(big)  # BigInt -> Own[Int32] requires .to_int32() coercion
 
 def take_owned_int32(x: Own[Int32]) -> Int32:
     return x

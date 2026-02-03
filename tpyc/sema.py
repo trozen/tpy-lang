@@ -112,9 +112,9 @@ class SemanticAnalyzer:
         self.var_decl_by_name: dict[str, TpyVarDecl] = {}  # var_name -> TpyVarDecl node (current scope)
 
         # Import tracking
-        # imports: module_name -> set of imported names (for "from X import Y")
+        # imports: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
         #          module_name -> None (for "import X")
-        self.imports: dict[str, set[str] | None] = {}
+        self.imports: dict[str, set[tuple[str, str]] | None] = {}
         # imported_names: name -> (module_name, function_name) for direct function access
         self.imported_names: dict[str, tuple[str, str]] = {}
 
@@ -148,10 +148,11 @@ class SemanticAnalyzer:
         self.imports = module.imports
         for module_name, names in self.imports.items():
             if names is not None:
-                # "from X import Y" - register each imported name
-                for name in names:
-                    self.imported_names[name] = (module_name, name)
-                    self.global_ns.bind_imported_name(name, module_name, name)
+                # "from X import Y" or "from X import Y as Z"
+                # Stored as (original_name, local_name) tuples to support aliases
+                for original_name, local_name in names:
+                    self.imported_names[local_name] = (module_name, original_name)
+                    self.global_ns.bind_imported_name(local_name, module_name, original_name)
             else:
                 # "import X" - register module name
                 self.global_ns.bind_module(module_name)
@@ -516,6 +517,14 @@ class SemanticAnalyzer:
                 expected = self.current_function.return_type if self.current_function else VOID
                 stmt.value = self._coerce_expr(stmt.value, ret_type, expected, "return value",
                                                coercion_ctx=CoercionContext.RETURN, is_return=True)
+                # Check for lvalue returned as Own[T] without explicit copy()
+                if isinstance(expected, OwnType) and self._is_lvalue(stmt.value):
+                    if not self._is_copy_call(stmt.value):
+                        raise self._error(
+                            f"Cannot return lvalue as Own[{expected.wrapped}] without explicit copy(). "
+                            f"Use 'return copy(...)' instead.",
+                            stmt.value
+                        )
                 # Check for dangling reference (returning local/temporary as reference)
                 self._check_dangling_reference(stmt.value, expected, stmt.loc)
         elif isinstance(stmt, TpyIf):
@@ -1057,8 +1066,15 @@ class SemanticAnalyzer:
                     return self._analyze_record_constructor(expr, binding.record_info)
                 elif binding.kind == BindingKind.IMPORTED_NAME:
                     module_name, func_name = binding.import_source
+                    # Special handling for copy() from tpy - truly generic function
+                    if module_name == "tpy" and func_name == "copy":
+                        return self._analyze_tpy_copy(expr)
+                    # Check for module function (e.g., math.sqrt)
                     if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
                         return self._analyze_builtin_call(expr, imported_fn)
+                    # Check for type constructor (e.g., Int32 from tpy)
+                    if type_def := builtin_modules.lookup_type_by_func_name(func_name):
+                        return self._check_constructor(expr, type_def)
                     raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'")
                 elif binding.kind == BindingKind.MODULE:
                     raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()")
@@ -1074,8 +1090,15 @@ class SemanticAnalyzer:
                            self.registry.get_record(expr.func) is not None)
             if not is_shadowed:
                 module_name, func_name = self.imported_names[expr.func]
+                # Special handling for copy() from tpy - truly generic function
+                if module_name == "tpy" and func_name == "copy":
+                    return self._analyze_tpy_copy(expr)
+                # Check for module function
                 if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
                     return self._analyze_builtin_call(expr, imported_fn)
+                # Check for type constructor (e.g., Int32 from tpy)
+                if type_def := builtin_modules.lookup_type_by_func_name(func_name):
+                    return self._check_constructor(expr, type_def)
 
         # Built-in print()
         if expr.func == "print":
@@ -1177,6 +1200,21 @@ class SemanticAnalyzer:
             )
 
         raise SemanticError(f"Unknown function or type: '{expr.func}'")
+
+    def _analyze_tpy_copy(self, expr: TpyCall) -> TpyType:
+        """Analyze a call to tpy.copy() - explicit copy for ownership transfer.
+
+        copy() is truly generic (works with any type T, returns Own[T]).
+        This is handled specially because the module system doesn't support
+        truly generic functions yet.
+        """
+        if len(expr.args) != 1:
+            raise SemanticError("copy() takes exactly 1 argument")
+        arg_type = self._analyze_expr(expr.args[0])
+        # Unwrap OwnType if already wrapped
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        return OwnType(arg_type)
 
     def _analyze_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> TpyType:
         """Type-check a call to a built-in function from the module registry.
@@ -2616,6 +2654,18 @@ class SemanticAnalyzer:
         if isinstance(expr, TpySubscript):
             return self._is_lvalue(expr.obj)
         # Everything else (calls, literals, operators) are rvalues
+        return False
+
+    def _is_copy_call(self, expr: TpyExpr) -> bool:
+        """Check if expression is a copy() call from the tpy module."""
+        if isinstance(expr, TpyCoerce):
+            return self._is_copy_call(expr.expr)
+        if not isinstance(expr, TpyCall):
+            return False
+        # Check if this function name maps to tpy.copy (handles aliases like "from tpy import copy as c")
+        if expr.func in self.imported_names:
+            module_name, func_name = self.imported_names[expr.func]
+            return module_name == "tpy" and func_name == "copy"
         return False
 
     def _is_mutable_lvalue(self, expr: TpyExpr) -> bool:

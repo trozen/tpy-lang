@@ -1,4 +1,4 @@
-from tpy import Int32, Own
+from tpy import Int32, Own, copy
 
 
 class Box[T]:
@@ -11,7 +11,7 @@ class Box[T]:
         return self.value
 
     def take(self) -> Own[T]:
-        return self.value
+        return copy(self.value)
 
 
 def main() -> None:

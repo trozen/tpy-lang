@@ -22,7 +22,7 @@ struct Box {
   }
 
   T take() {
-    // 14:         return self.value
+    // 14:         return copy(self.value)
     return this->value;
   }
 };

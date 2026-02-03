@@ -222,3 +222,10 @@ module.protocol("NativeRangeConstructible",
     methods={},  # Marker protocol - conformance via extends declaration
     cpp_concept="tpy::NativeRangeConstructible",
 )
+
+# Note: copy() function is NOT registered here because it's handled specially:
+# - Parser tracks all tpy imports (types and functions alike)
+# - Sema handles copy() via _analyze_tpy_copy() for type checking
+# - Codegen handles copy() in the imported function path
+# This avoids lookup_function("copy") finding an empty-overload definition
+# and failing in _analyze_builtin_call.

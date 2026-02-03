@@ -17,7 +17,7 @@ struct Box {
   explicit Box(const T& value) : value(value) {}
 
   T take() {
-    // 11:         return self.value
+    // 11:         return copy(self.value)
     return this->value;
   }
 };

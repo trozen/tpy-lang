@@ -1594,8 +1594,15 @@ class CodeGenerator:
                                self.analyzer.registry.get_record(expr.func) is not None)
                 if not is_shadowed:
                     module_name, func_name = self.analyzer.imported_names[expr.func]
+                    # copy(x) from tpy - just returns x (Own[T] return type handles by-value)
+                    if module_name == "tpy" and func_name == "copy":
+                        return self._gen_expr(expr.args[0])
+                    # Check for module function
                     if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
                         return self._gen_builtin_call(expr, imported_fn)
+                    # Check for type constructor (e.g., Int32 from tpy)
+                    if type_def := builtin_modules.lookup_type_by_func_name(func_name):
+                        return self._gen_constructor(expr, type_def)
             # Check if this is a function call that needs argument conversion
             func_info = self.analyzer.registry.get_function(expr.func)
             if func_info:
