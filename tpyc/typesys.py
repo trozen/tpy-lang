@@ -101,13 +101,26 @@ class TpyType:
         """
         return False
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        """Apply fn to all inner/wrapped types and return new type.
+    def inner_types(self) -> tuple['TpyType', ...]:
+        """Return inner/wrapped types for traversal.
 
-        Override in wrapper types (Own, Ptr, List, etc.) to transform inner types.
-        Default implementation returns self (no inner types to transform).
+        Override in wrapper types (Own, Ptr, List, etc.) to expose inner types.
+        """
+        return ()
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        """Return copy of this type with new inner types.
+
+        Override in wrapper types (Own, Ptr, List, etc.) to support reconstruction.
         """
         return self
+
+    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+        """Apply fn to all inner/wrapped types and return new type."""
+        inner = self.inner_types()
+        if not inner:
+            return self
+        return self.with_inner_types(tuple(fn(t) for t in inner))
 
 
 @dataclass(frozen=True)
@@ -336,14 +349,11 @@ class RecordType(TpyType):
             return f"{self.name}[{args}]"
         return self.name
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        """Apply fn to type arguments for proper substitution."""
-        if not self.type_args:
-            return self
-        new_args = tuple(fn(arg) for arg in self.type_args)
-        if new_args == self.type_args:
-            return self
-        return RecordType(self.name, new_args)
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return self.type_args
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return RecordType(self.name, types)
 
 
 @dataclass(frozen=True)
@@ -376,14 +386,11 @@ class ProtocolType(TpyType):
         # Protocol-typed params are passed by const ref
         return False
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        """Apply fn to type arguments for proper substitution."""
-        if not self.type_args:
-            return self
-        new_args = tuple(fn(arg) for arg in self.type_args)
-        if new_args == self.type_args:
-            return self
-        return ProtocolType(self.name, new_args)
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return self.type_args
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return ProtocolType(self.name, types)
 
 
 @dataclass(frozen=True)
@@ -427,8 +434,11 @@ class PtrType(TpyType):
     def to_cpp_return(self) -> str:
         return self.to_cpp()
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        return PtrType(fn(self.pointee))
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.pointee,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return PtrType(types[0])
 
 
 @dataclass(frozen=True)
@@ -452,8 +462,11 @@ class ConstPtrType(TpyType):
     def to_cpp_return(self) -> str:
         return self.to_cpp()
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        return ConstPtrType(fn(self.pointee))
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.pointee,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return ConstPtrType(types[0])
 
 
 @dataclass(frozen=True)
@@ -482,8 +495,11 @@ class OwnType(TpyType):
     def __str__(self) -> str:
         return f"Own[{self.wrapped}]"
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        return OwnType(fn(self.wrapped))
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return OwnType(types[0])
 
 
 @dataclass(frozen=True)
@@ -507,8 +523,11 @@ class ArrayType(TpyType):
     def needs_explicit_element_target(self) -> bool:
         return True
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        return ArrayType(fn(self.element_type), self.size)
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.element_type,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return ArrayType(types[0], self.size)
 
 
 @dataclass(frozen=True)
@@ -535,8 +554,11 @@ class SpanType(TpyType):
     def needs_explicit_element_target(self) -> bool:
         return True
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        return SpanType(fn(self.element_type))
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.element_type,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return SpanType(types[0])
 
 
 @dataclass(frozen=True)
@@ -556,8 +578,11 @@ class ListType(TpyType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
-        return ListType(fn(self.element_type))
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.element_type,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return ListType(types[0])
 
 
 @dataclass(frozen=True)
@@ -643,14 +668,26 @@ class ModuleType(TpyType):
                     return arg
         return None
 
-    def map_inner_types(self, fn: Callable[['TpyType'], 'TpyType']) -> 'TpyType':
+    def inner_types(self) -> tuple['TpyType', ...]:
         from tpyc.modules import TypeParamKind
         type_def = self._get_type_def()
-        new_args = []
+        result = []
         for i, arg in enumerate(self._type_args):
             if i < len(type_def.param_kinds) and type_def.param_kinds[i] == TypeParamKind.TYPE:
                 if isinstance(arg, TpyType):
-                    new_args.append(fn(arg))
+                    result.append(arg)
+        return tuple(result)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        from tpyc.modules import TypeParamKind
+        type_def = self._get_type_def()
+        new_args = []
+        type_idx = 0
+        for i, arg in enumerate(self._type_args):
+            if i < len(type_def.param_kinds) and type_def.param_kinds[i] == TypeParamKind.TYPE:
+                if isinstance(arg, TpyType):
+                    new_args.append(types[type_idx])
+                    type_idx += 1
                 else:
                     new_args.append(arg)
             else:

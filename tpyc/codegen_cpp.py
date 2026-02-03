@@ -196,16 +196,182 @@ class CodeGenerator:
         if self._has_synthetic_name:
             self.global_names.add("__name__")
 
-        # Generate C++20 concepts for user-defined protocols FIRST
-        # (needed before forward declarations that may use them as type parameter bounds)
-        # Note: Protocol methods cannot reference user-defined record types (would need
-        # forward declarations first). This is a known limitation.
+        # Collect all record types referenced in protocol signatures
+        # These need to be forward declared BEFORE concepts are generated
+        protocol_referenced_records: set[str] = set()
         for protocol in module.protocols:
-            self._gen_concept_decl(hpp, protocol)
+            for method_sig in protocol.methods:
+                self._collect_record_types_from_type(method_sig.return_type, protocol_referenced_records)
+                for _, param_type in method_sig.params:
+                    self._collect_record_types_from_type(param_type, protocol_referenced_records)
+            for _, field_type in protocol.fields:
+                self._collect_record_types_from_type(field_type, protocol_referenced_records)
+
+        module_record_names = {r.name for r in module.records}
+        records_by_name = {r.name: r for r in module.records}
+
+        # Find user-defined protocols that are used as bounds on protocol-referenced records
+        # These concepts must be generated BEFORE forward declaring those records
+        bound_protocols: set[str] = set()
+        for record_name in protocol_referenced_records:
+            if record_name in module_record_names:
+                record = records_by_name[record_name]
+                for bound in record.type_param_bounds.values():
+                    proto_info = self.analyzer.registry.get_protocol(bound.name)
+                    if proto_info is None or proto_info.cpp_concept is None:
+                        # User-defined protocol used as bound
+                        bound_protocols.add(bound.name)
+
+        # Collect records referenced by bound protocols - these need forward decl first
+        bound_protocol_records: set[str] = set()
+        for protocol in module.protocols:
+            if protocol.name in bound_protocols:
+                for method_sig in protocol.methods:
+                    self._collect_record_types_from_type(method_sig.return_type, bound_protocol_records)
+                    for _, param_type in method_sig.params:
+                        self._collect_record_types_from_type(param_type, bound_protocol_records)
+                for _, field_type in protocol.fields:
+                    self._collect_record_types_from_type(field_type, bound_protocol_records)
+
+        # Find records used as type arguments to bounded records in protocol signatures
+        # These need FULL DEFINITIONS early so C++ can verify constraint satisfaction
+        early_definition_records: set[str] = set()
+        for protocol in module.protocols:
+            if protocol.name in bound_protocols:
+                continue  # Skip bound protocols - they don't reference other records
+            for method_sig in protocol.methods:
+                self._collect_type_args_of_bounded_records(
+                    method_sig.return_type, records_by_name, early_definition_records
+                )
+                for _, param_type in method_sig.params:
+                    self._collect_type_args_of_bounded_records(
+                        param_type, records_by_name, early_definition_records
+                    )
+            for _, field_type in protocol.fields:
+                self._collect_type_args_of_bounded_records(
+                    field_type, records_by_name, early_definition_records
+                )
+
+        # Find user-defined protocols that are bounds on bound_protocol_records
+        # These "prereq protocols" must be emitted before we can forward declare those records
+        prereq_protocols: set[str] = set()
+        for record_name in bound_protocol_records:
+            if record_name in module_record_names:
+                record = records_by_name[record_name]
+                for bound in record.type_param_bounds.values():
+                    proto_info = self.analyzer.registry.get_protocol(bound.name)
+                    if proto_info is None or proto_info.cpp_concept is None:
+                        prereq_protocols.add(bound.name)
+
+        # Collect records referenced by prereq protocols - need forward decl first
+        prereq_protocol_records: set[str] = set()
+        for protocol in module.protocols:
+            if protocol.name in prereq_protocols:
+                for method_sig in protocol.methods:
+                    self._collect_record_types_from_type(method_sig.return_type, prereq_protocol_records)
+                    for _, param_type in method_sig.params:
+                        self._collect_record_types_from_type(param_type, prereq_protocol_records)
+                for _, field_type in protocol.fields:
+                    self._collect_record_types_from_type(field_type, prereq_protocol_records)
+
+        # Forward declare records referenced by prereq protocols
+        for record_name in sorted(prereq_protocol_records):
+            if record_name in module_record_names:
+                record = records_by_name[record_name]
+                if record.type_params:
+                    # Use unconstrained forward decl - bounds may not be available yet
+                    tparams = ", ".join(f"typename {tp}" for tp in record.type_params)
+                    hpp.write(f"template<{tparams}> struct {record_name};\n")
+                else:
+                    hpp.write(f"struct {record_name};\n")
+
+        if prereq_protocol_records & module_record_names:
             hpp.write("\n")
 
-        # Forward declare records (so global externs can reference them)
+        # Generate prereq protocols (bounds needed for constrained forward decls)
+        for protocol in module.protocols:
+            if protocol.name in prereq_protocols:
+                self._gen_concept_decl(hpp, protocol)
+                hpp.write("\n")
+
+        # Forward declare records referenced by bound protocols
+        for record_name in sorted(bound_protocol_records):
+            if record_name in module_record_names:
+                if record_name in prereq_protocol_records:
+                    continue  # Already forward declared above
+                record = records_by_name[record_name]
+                if record.type_params:
+                    if record.type_param_bounds:
+                        # Use constrained forward decl - bounds are now available
+                        template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+                        hpp.write(f"{template_header} struct {record_name};\n")
+                    else:
+                        # No bounds - unconstrained forward decl
+                        tparams = ", ".join(f"typename {tp}" for tp in record.type_params)
+                        hpp.write(f"template<{tparams}> struct {record_name};\n")
+                else:
+                    hpp.write(f"struct {record_name};\n")
+
+        if bound_protocol_records & module_record_names:
+            hpp.write("\n")
+
+        # Generate bound protocol concepts (skip prereq protocols already emitted)
+        for protocol in module.protocols:
+            if protocol.name in bound_protocols and protocol.name not in prereq_protocols:
+                self._gen_concept_decl(hpp, protocol)
+                hpp.write("\n")
+
+        # Fully define records referenced by bound protocols
+        # Needed so implementations of those protocols can use these types
         for record in module.records:
+            if record.name in bound_protocol_records:
+                self._gen_record_decl(hpp, record)
+                hpp.write("\n")
+
+        # Generate FULL definitions for records that are type args to bounded records
+        # These must be complete so C++ can verify constraints in protocol concepts
+        for record in module.records:
+            if record.name in early_definition_records:
+                if record.name in bound_protocol_records:
+                    continue  # Already fully defined above
+                self._gen_record_decl(hpp, record)
+                hpp.write("\n")
+
+        # Forward declare records referenced in protocols (bounds are now available)
+        for record_name in sorted(protocol_referenced_records):
+            if record_name in module_record_names:
+                if record_name in early_definition_records:
+                    continue  # Already fully defined above
+                if record_name in bound_protocol_records:
+                    continue  # Already forward declared above
+                if record_name in prereq_protocol_records:
+                    continue  # Already forward declared above
+                record = records_by_name[record_name]
+                if record.type_params:
+                    template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+                    hpp.write(f"{template_header} struct {record_name};\n")
+                else:
+                    hpp.write(f"struct {record_name};\n")
+
+        if protocol_referenced_records & module_record_names:
+            hpp.write("\n")
+
+        # Generate remaining C++20 concepts for user-defined protocols
+        for protocol in module.protocols:
+            if protocol.name not in bound_protocols and protocol.name not in prereq_protocols:
+                self._gen_concept_decl(hpp, protocol)
+                hpp.write("\n")
+
+        # Forward declare remaining records (so global externs can reference them)
+        for record in module.records:
+            if record.name in protocol_referenced_records:
+                continue  # Already forward declared above
+            if record.name in early_definition_records:
+                continue  # Already fully defined above
+            if record.name in bound_protocol_records:
+                continue  # Already forward declared above
+            if record.name in prereq_protocol_records:
+                continue  # Already forward declared above
             if record.type_params:
                 # Generic record with bounds: template<Comparable T> struct SortedList;
                 template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
@@ -223,8 +389,12 @@ class CodeGenerator:
             self._gen_global_extern(hpp, stmt)
         hpp.write("\n")
 
-        # Generate full record definitions
+        # Generate full record definitions (skip those already defined early)
         for record in module.records:
+            if record.name in early_definition_records:
+                continue  # Already fully defined above
+            if record.name in bound_protocol_records:
+                continue  # Already fully defined above
             self._gen_record_decl(hpp, record)
             hpp.write("\n")
 
@@ -710,6 +880,43 @@ class CodeGenerator:
             out.write(f"    {{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
 
         out.write("};\n")
+
+    def _collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
+        """Recursively collect all RecordType names from a type."""
+        if isinstance(typ, RecordType):
+            result.add(typ.name)
+        for inner in typ.inner_types():
+            self._collect_record_types_from_type(inner, result)
+
+    def _collect_type_args_of_bounded_records(
+        self,
+        typ: TpyType,
+        records_by_name: dict[str, 'TpyRecord'],
+        result: set[str]
+    ) -> None:
+        """Collect record names used as type args to records with user-defined bounds.
+
+        When a protocol references Container[Message] where Container has a user-defined
+        protocol bound, C++ needs Message to be fully defined to check the constraint.
+        """
+        if isinstance(typ, RecordType) and typ.type_args:
+            record = records_by_name.get(typ.name)
+            if record and record.type_param_bounds:
+                # Check if any bound is a user-defined protocol
+                has_user_bound = any(
+                    self.analyzer.registry.get_protocol(bound.name) is None or
+                    self.analyzer.registry.get_protocol(bound.name).cpp_concept is None
+                    for bound in record.type_param_bounds.values()
+                )
+                if has_user_bound:
+                    # Collect all type args as needing early definition
+                    for type_arg in typ.type_args:
+                        if isinstance(type_arg, RecordType):
+                            result.add(type_arg.name)
+
+        # Recurse into inner types
+        for inner in typ.inner_types():
+            self._collect_type_args_of_bounded_records(inner, records_by_name, result)
 
     def _get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, ProtocolType]]:
         """Get list of protocol-typed parameters."""

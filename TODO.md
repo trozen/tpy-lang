@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- Type parameter bounds: protocol methods cannot reference user-defined record types (would need forward declarations before concepts)
 - multiple protocol bounds
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - Integer type parameters: class FixedStack[T, N: int]
@@ -54,12 +53,11 @@ Random items that may or may not be implemented in the future, but putting them 
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
 - `copy()` builtin for explicit copying
 - support augmented arithmetic operators, like `__iadd__` for `+=` etc.
-- support all dunder methods: comparison (`__eq__`, `__lt__`, `__gt__`, etc.), `__str__`, `__bool__` etc
+- support more dunder methods: `__str__`, `__bool__`, `__hash__`, etc.
 - split tpy_runtime.hpp
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - ability to define `__str__` method
-- `@staticmethod`
 - better class operator<< tests (but missing str formatting/concatenation)
 - dynamic dispatch
 - full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
@@ -68,6 +66,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - indexing: Int32 vs Int64 vs SizeType?
 - list[Ptr[Point]] not supported, but it should be, eventually
 - `Span(list([1,2,3]))` not supported
+- existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

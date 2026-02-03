@@ -1028,8 +1028,66 @@ first[UnknownType](nums) # Error: Unknown type: UnknownType
 first[Printable](nums)  # Error: Protocol types cannot be used as type arguments
 ```
 
+### Type Parameter Bounds
+
+**Working**: Constrain type parameters using protocol bounds (Python 3.12+ syntax):
+
+```python
+from typing import Sized
+from tpy import Int32, Comparable
+
+# Function with bounded type parameter
+def get_length[T: Sized](items: T) -> Int32:
+    return len(items)  # OK: T conforms to Sized, so len() works
+
+# Class with bounded type parameter
+class SortedContainer[T: Comparable]:
+    data: list[T]
+
+    def add(self, item: T) -> None:
+        # Can use comparison operators because T: Comparable
+        ...
+
+# Multiple bounds on different type parameters
+def process[T: Sized, U: Comparable](items: T, key: U) -> Int32:
+    return len(items)
+```
+
+**Protocol Method Calls**: You can call protocol methods on bounded type parameters:
+
+```python
+from typing import Protocol, Self
+from tpy import Int32, Own
+
+class Clonable(Protocol):
+    def clone(self) -> Own[Self]: ...
+
+def duplicate[T: Clonable](item: T) -> Own[T]:
+    return item.clone()  # OK: T conforms to Clonable
+```
+
+Generated C++ (concept-constrained templates):
+```cpp
+template<tpy::Sized T>
+int32_t get_length(const T& items) {
+    return tpy::__len__(items);
+}
+
+template<tpy::Comparable T>
+struct SortedContainer {
+    std::vector<T> data;
+    void add(const T& item) { ... }
+};
+```
+
+**Available Protocol Bounds**:
+- `Sized` - has `__len__()` method
+- `Comparable` - has comparison operators (`<`, `<=`, `>`, `>=`, `==`, `!=`)
+- `Sequence[T]` - has `__len__()` and `__getitem__()`
+- `NativeIterable[T]` - supports C++ range-for iteration
+- User-defined protocols
+
 **Limitations**:
-- Type parameter bounds (`def foo[T: Comparable](x: T)`) not yet supported
 - Generic methods on classes (methods with their own type params) not yet supported
 
 ---
@@ -1041,7 +1099,7 @@ first[Printable](nums)  # Error: Protocol types cannot be used as type arguments
 - **Working**: `__init__`
 - **Working**: Instance methods
 - **Working**: Generic classes (Python 3.12+ syntax)
-- **Planned**: `@staticmethod` → free functions or static methods
+- **Working**: `@staticmethod` → static methods
 - **Open**: `@classmethod` → if use case is clear
 - **Open**: `@property` → getter/setter methods
 - **Open**: Inheritance → composition, or actual inheritance for simple cases
@@ -1108,14 +1166,16 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 - `Ptr[T]` arguments match `ConstPtr[T]` parameters (follows coercion rules)
 
 **Limitations**:
-- Type parameter bounds (`class SortedList[T: Comparable]`) not yet supported
 - Integer type parameters (`class FixedStack[T, N: int]`) not yet supported
 
 ### Special Methods
 - **Working**: `__init__`
+- **Working**: `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__` → comparison operators
+- **Working**: `__add__`, `__sub__`, `__mul__`, etc. → arithmetic operators
+- **Working**: `__len__` → `__len__()` method (used by `len()`)
+- **Working**: `__getitem__` → `operator[]` (for `Sequence` conformance)
 - **Planned**: `__del__` (destructor)
-- **Open**: `__eq__`, `__lt__` → `operator==`, `operator<`
-- **Open**: `__getitem__`, `__setitem__` → `operator[]`
+- **Open**: `__setitem__` → mutable `operator[]`
 - **Open**: `__str__` → if we have string type
 - **Open**: `__enter__`, `__exit__` → RAII wrapper
 
@@ -1135,7 +1195,7 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
   - Single-element: uses efficient fill constructor
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
-- **Planned**: `abs()`, `min()`, `max()`
+- **Working**: `abs()`, `min()`, `max()` for numeric types
 - **Planned**: List slicing: `items[1:3]`
 - **Open**: `isinstance()` → compile-time type check / type narrowing
 - **Open**: `type()` → compile-time type info
