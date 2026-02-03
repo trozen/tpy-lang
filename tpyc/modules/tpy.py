@@ -5,7 +5,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ProtocolType
+from tpyc.typesys import INT32, BIGINT, VOID, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ProtocolType, OwnType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -223,9 +223,16 @@ module.protocol("NativeRangeConstructible",
     cpp_concept="tpy::NativeRangeConstructible",
 )
 
-# Note: copy() function is NOT registered here because it's handled specially:
-# - Parser tracks all tpy imports (types and functions alike)
-# - Sema handles copy() via _analyze_tpy_copy() for type checking
-# - Codegen handles copy() in the imported function path
-# This avoids lookup_function("copy") finding an empty-overload definition
-# and failing in _analyze_builtin_call.
+# copy() - explicit copy for ownership transfer
+# Truly generic: def copy[T](x: T) -> Own[T]
+# Requires explicit import: from tpy import copy
+# Special handling in sema (_analyze_tpy_copy) and codegen because:
+# - It's truly generic (works with any type including user records)
+# - The module system's overload matching can't handle T -> Own[T]
+module.function("copy", overloads=[
+    MethodDef(
+        params=[ParamDef("x", T)],
+        returns=OwnType(T),
+        cpp="{0}",
+    ),
+], special_handling=True)

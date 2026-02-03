@@ -1584,7 +1584,8 @@ class CodeGenerator:
                 return self._gen_print(expr.args, expr.kwargs)
             # Check module registry for built-in functions
             if builtin_fn := builtin_modules.lookup_function(expr.func):
-                return self._gen_builtin_call(expr, builtin_fn)
+                if not builtin_fn.special_handling:
+                    return self._gen_builtin_call(expr, builtin_fn)
             # Check for imported function (from X import Y -> Y())
             # Only if not shadowed by a variable, user-defined function, or record
             if expr.func in self.analyzer.imported_names:

@@ -1052,7 +1052,8 @@ class SemanticAnalyzer:
 
         # Check module registry for built-in functions (global builtins like chr)
         if builtin_fn := builtin_modules.lookup_function(expr.func):
-            return self._analyze_builtin_call(expr, builtin_fn)
+            if not builtin_fn.special_handling:
+                return self._analyze_builtin_call(expr, builtin_fn)
 
         # Use namespace for unified lookup - handles shadowing automatically
         if self.current_ns:
@@ -1199,7 +1200,7 @@ class SemanticAnalyzer:
                 expr
             )
 
-        raise SemanticError(f"Unknown function or type: '{expr.func}'")
+        raise self._error(f"Unknown function or type: '{expr.func}'", expr)
 
     def _analyze_tpy_copy(self, expr: TpyCall) -> TpyType:
         """Analyze a call to tpy.copy() - explicit copy for ownership transfer.

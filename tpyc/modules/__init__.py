@@ -44,6 +44,7 @@ class BuiltinFunctionDef:
     """Definition of a built-in function with its overloads."""
     name: str
     overloads: list[MethodDef]
+    special_handling: bool = False  # True if sema/codegen handle this specially (skip overload matching)
 
 
 @dataclass
@@ -82,9 +83,15 @@ class BuiltinModule:
         self.types: dict[str, BuiltinTypeDef] = {}  # keyed by qualified name
         self.protocols: dict[str, ProtocolDef] = {}  # protocol_name -> ProtocolDef
 
-    def function(self, name: str, overloads: list[MethodDef]):
-        """Register a built-in function."""
-        self.functions[name] = BuiltinFunctionDef(name=name, overloads=overloads)
+    def function(self, name: str, overloads: list[MethodDef], special_handling: bool = False):
+        """Register a built-in function.
+
+        Args:
+            name: Function name
+            overloads: List of overload signatures
+            special_handling: If True, sema/codegen handle this specially (skip overload matching)
+        """
+        self.functions[name] = BuiltinFunctionDef(name=name, overloads=overloads, special_handling=special_handling)
 
     def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str,
                  type_params: list[str] | None = None):

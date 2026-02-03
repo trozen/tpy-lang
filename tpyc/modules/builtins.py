@@ -350,3 +350,15 @@ module.register_type(CHAR, cpp_type="char", constructors=[
 
 # None: Void type (used for function returns)
 module.register_type(VOID, cpp_type="void", methods={})
+
+# print() - variadic print function
+# Signature: print(*args) -> None
+# Special handling in sema.py and codegen_cpp.py because:
+# - Variadic: accepts any number of arguments
+# - Polymorphic: accepts any printable type (primitives, records, containers)
+module.function("print", overloads=[], special_handling=True)
+
+# range() - range iterator for for loops
+# Signatures: range(stop), range(start, stop), range(start, stop, step)
+# Special handling in parser (transforms for-range to C++ for loop).
+module.function("range", overloads=[], special_handling=True)
