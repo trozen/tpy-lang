@@ -2225,30 +2225,53 @@ class SemanticAnalyzer:
         # User-defined record methods (including inherited methods from builtins)
         if isinstance(obj_type, RecordType):
             record_info = self.registry.get_record(obj_type.name)
-            method_info = self._lookup_record_method(record_info, expr.method) if record_info else None
-            if method_info:
-                # Check argument count
-                if len(expr.args) != len(method_info.params):
-                    raise SemanticError(
-                        f"Method '{expr.method}' expects {len(method_info.params)} arguments, "
-                        f"got {len(expr.args)}"
-                    )
-                # Build type substitution for generic records
-                type_subst = self._build_type_substitution(obj_type)
-                # Type-check arguments (with type parameter substitution)
-                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
-                    arg_type = self._analyze_expr(arg)
-                    # Substitute type parameters in parameter type
-                    resolved_ptype = self._substitute_type_params(ptype, type_subst) if type_subst else ptype
-                    expr.args[i] = self._coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
-                                                     coercion_ctx=CoercionContext.ARG)
-                # Store resolved method info for codegen (needed for inherited builtin methods)
-                expr.resolved_function_info = method_info
-                # Substitute type parameters in return type
-                return_type = method_info.return_type
-                if type_subst:
-                    return_type = self._substitute_type_params(return_type, type_subst)
-                return return_type
+            if record_info:
+                overloads, inherited_subst = self._lookup_record_method_overloads(record_info, expr.method)
+                if overloads:
+                    # Build type substitution for generic records (combine with inherited)
+                    type_subst = {**inherited_subst, **self._build_type_substitution(obj_type)}
+
+                    if len(overloads) == 1:
+                        # Single overload - check args directly for better error messages
+                        method_info = overloads[0]
+                        resolved = self._substitute_method_type_params(method_info, type_subst) if type_subst else method_info
+                        if len(expr.args) != len(resolved.params):
+                            raise SemanticError(
+                                f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
+                                f"got {len(expr.args)}"
+                            )
+                        expr.resolved_function_info = resolved
+                        # Type-check and coerce arguments
+                        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                            arg_type = self._analyze_expr(arg)
+                            expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                             coercion_ctx=CoercionContext.ARG)
+                        return resolved.return_type
+                    else:
+                        # Multiple overloads - do overload resolution
+                        arg_types = [self._analyze_expr(arg) for arg in expr.args]
+                        for method_info in overloads:
+                            resolved = self._substitute_method_type_params(method_info, type_subst) if type_subst else method_info
+                            if len(resolved.params) != len(arg_types):
+                                continue
+                            # Check if all args match params
+                            match = True
+                            for arg_type, (pname, ptype) in zip(arg_types, resolved.params):
+                                if not builtin_modules._type_matches_param(arg_type, ptype):
+                                    match = False
+                                    break
+                            if match:
+                                expr.resolved_function_info = resolved
+                                # Coerce arguments
+                                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                                    expr.args[i] = self._coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
+                                                                     coercion_ctx=CoercionContext.ARG)
+                                return resolved.return_type
+                        # No matching overload found
+                        param_types_str = ", ".join(str(t) for t in arg_types)
+                        raise SemanticError(
+                            f"No matching overload for '{expr.method}' with argument types ({param_types_str})"
+                        )
 
         # Protocol-typed values - use protocol method signatures
         if isinstance(obj_type, ProtocolType):
@@ -3098,6 +3121,50 @@ class SemanticAnalyzer:
 
         return None
 
+    def _lookup_record_method_overloads(
+        self, record_info: RecordInfo, method_name: str
+    ) -> tuple[list[FunctionInfo], dict[str, TpyType]]:
+        """Look up all overloads for a method in a record, including inherited methods.
+
+        Returns (overloads, type_subst) where type_subst should be applied to
+        substitute parent type parameters with concrete types.
+
+        For inherited methods from builtin types with multiple overloads (like pop()),
+        this returns all overloads so proper overload resolution can be done.
+        """
+        # Check this record's own methods first
+        overloads = record_info.get_method_overloads(method_name)
+        if overloads:
+            return (overloads, {})
+
+        # Check parent class (user-defined)
+        if record_info.parent:
+            parent_info = self.registry.get_record(record_info.parent.name)
+            if parent_info:
+                inherited, parent_subst = self._lookup_record_method_overloads(parent_info, method_name)
+                if inherited:
+                    # Combine parent's substitution with this class's substitution
+                    type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
+                    # Merge substitutions (parent_subst should already be resolved)
+                    combined_subst = {**parent_subst, **type_subst}
+                    return (inherited, combined_subst)
+
+        # Check parent builtin type
+        if record_info.parent_builtin:
+            parent_qname = record_info.parent_builtin.qualified_name()
+            if parent_qname:
+                parent_info = self.registry.get_builtin_record(parent_qname)
+                if parent_info:
+                    inherited = parent_info.get_method_overloads(method_name)
+                    if inherited:
+                        # Build type substitution from builtin's type args
+                        type_subst = self._get_builtin_parent_type_subst(
+                            record_info.parent_builtin, parent_info
+                        )
+                        return (inherited, type_subst)
+
+        return ([], {})
+
     def _get_builtin_parent_type_subst(
         self, parent_type: TpyType, parent_info: RecordInfo
     ) -> dict[str, TpyType]:
@@ -3240,19 +3307,26 @@ class SemanticAnalyzer:
             record = self.registry.get_record(actual.name)
             if record is None:
                 return False
-            method = self._lookup_record_method(record, method_name)
-            if method is None:
+            overloads, type_subst = self._lookup_record_method_overloads(record, method_name)
+            if not overloads:
                 return False
-            # Check return type
-            if method.return_type != expected_return:
-                return False
-            # Check parameter count and types
-            if len(method.params) != len(expected_params):
-                return False
-            for (_, actual_ptype), expected_ptype in zip(method.params, expected_params):
-                if actual_ptype != expected_ptype:
-                    return False
-            return True
+            # Check if any overload matches the expected signature
+            for method in overloads:
+                resolved = self._substitute_method_type_params(method, type_subst) if type_subst else method
+                # Check return type
+                if resolved.return_type != expected_return:
+                    continue
+                # Check parameter count and types
+                if len(resolved.params) != len(expected_params):
+                    continue
+                match = True
+                for (_, actual_ptype), expected_ptype in zip(resolved.params, expected_params):
+                    if actual_ptype != expected_ptype:
+                        match = False
+                        break
+                if match:
+                    return True
+            return False
         else:
             # Builtin type - check via registry (unified with user records)
             record_info = self.registry.get_record_for_type(actual)
