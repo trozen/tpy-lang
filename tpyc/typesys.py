@@ -12,7 +12,14 @@ Defines the core types available in TurboPython:
 
 from __future__ import annotations
 from dataclasses import dataclass
+from enum import Enum
 from typing import Callable, Optional
+
+
+class TypeParamKind(Enum):
+    """Kind of type parameter in a generic type."""
+    TYPE = "type"  # A type parameter like T
+    INT = "int"    # An integer literal like N
 
 
 @dataclass(frozen=True)
@@ -285,44 +292,63 @@ class TypeParamRef(TpyType):
     When the generic class is instantiated with concrete types, TypeParamRef
     is substituted with the actual type.
 
-    C++ Code Generation Semantics (using tpy::is_value_type trait):
-    - Parameters: Use `tpy::param_val_or_ref_t<T>` which resolves to:
-      - `const T&` for value types (immutable, compiler optimizes small types)
-      - `T&` for object types (allows mutation per Python semantics)
-    - Returns: Use `tpy::return_val_or_ref_t<T>` which resolves to:
-      - `T` for value types (return by value)
-      - `T&` for object types (mutable reference, Python semantics)
-    - Const returns: Use `tpy::return_val_or_cref_t<T>` which resolves to:
-      - `T` for value types
-      - `const T&` for object types
+    For TYPE kind (default):
+    - C++ Code Generation Semantics (using tpy::is_value_type trait):
+      - Parameters: Use `tpy::param_val_or_ref_t<T>` which resolves to:
+        - `const T&` for value types (immutable, compiler optimizes small types)
+        - `T&` for object types (allows mutation per Python semantics)
+      - Returns: Use `tpy::return_val_or_ref_t<T>` which resolves to:
+        - `T` for value types (return by value)
+        - `T&` for object types (mutable reference, Python semantics)
+      - Const returns: Use `tpy::return_val_or_cref_t<T>` which resolves to:
+        - `T` for value types
+        - `const T&` for object types
+
+    For INT kind:
+    - Represents a compile-time integer constant (e.g., N in Matrix[T, N: int])
+    - Maps to std::size_t in C++
+    - Can be used as values in expressions (e.g., Int32(N))
 
     Bounded type parameters (e.g., T: Comparable) store the bound protocol.
     """
     name: str
     bound: Optional['ProtocolType'] = None
+    kind: TypeParamKind = TypeParamKind.TYPE
 
     def to_cpp(self) -> str:
-        return self.name  # Template parameter name
+        return self.name  # Template parameter name (works for both TYPE and INT)
 
     def __str__(self) -> str:
         return self.name
 
     def is_value_type(self) -> bool:
+        if self.kind == TypeParamKind.INT:
+            # INT type params are std::size_t values
+            return True
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
 
     def to_cpp_param(self, name: str) -> str:
+        if self.kind == TypeParamKind.INT:
+            # INT params are passed by value (they're std::size_t)
+            return f"std::size_t {name}"
         # Use trait-based param type: const T& for value types, T& for object types
         return f"tpy::param_val_or_ref_t<{self.name}> {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
+        if self.kind == TypeParamKind.INT:
+            return f"std::size_t {name}"
         return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_return(self) -> str:
+        if self.kind == TypeParamKind.INT:
+            return "std::size_t"
         # Use trait-based return type: T for value types, T& for object types
         return f"tpy::return_val_or_ref_t<{self.name}>"
 
     def to_cpp_return_const(self) -> str:
+        if self.kind == TypeParamKind.INT:
+            return "std::size_t"
         # Use trait-based return type: T for value types, const T& for object types
         return f"tpy::return_val_or_cref_t<{self.name}>"
 
@@ -333,27 +359,45 @@ class RecordType(TpyType):
 
     For generic records like Stack[T]:
     - type_args stores the concrete type arguments (e.g., (Int32,) for Stack[Int32])
+
+    For generic records with integer type parameters like Matrix[T, N: int]:
+    - type_args can contain both TpyType and int values (e.g., (Int32, 8))
     """
     name: str
-    type_args: tuple[TpyType, ...] = ()
+    type_args: tuple['TpyType | int', ...] = ()
 
     def to_cpp(self) -> str:
         if self.type_args:
-            args = ", ".join(t.to_cpp() for t in self.type_args)
+            args = ", ".join(
+                t.to_cpp() if isinstance(t, TpyType) else str(t)
+                for t in self.type_args
+            )
             return f"{self.name}<{args}>"
         return self.name
 
     def __str__(self) -> str:
         if self.type_args:
-            args = ", ".join(str(t) for t in self.type_args)
+            args = ", ".join(
+                str(t) if isinstance(t, TpyType) else str(t)
+                for t in self.type_args
+            )
             return f"{self.name}[{args}]"
         return self.name
 
     def inner_types(self) -> tuple['TpyType', ...]:
-        return self.type_args
+        # Only return actual types, skip integer values
+        return tuple(t for t in self.type_args if isinstance(t, TpyType))
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return RecordType(self.name, types)
+        # Reconstruct type_args preserving integer positions
+        new_args: list[TpyType | int] = []
+        type_iter = iter(types)
+        for arg in self.type_args:
+            if isinstance(arg, TpyType):
+                new_args.append(next(type_iter))
+            else:
+                new_args.append(arg)  # Keep integer as-is
+        return RecordType(self.name, tuple(new_args))
 
 
 @dataclass(frozen=True)
@@ -729,6 +773,7 @@ class FieldInfo:
     name: str
     type: TpyType
     default_value: Optional[str] = None
+    loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
 
 
 @dataclass
@@ -737,7 +782,12 @@ class RecordInfo:
 
     For generic records like Stack[T]:
     - type_params stores the type parameter names (e.g., ["T"])
+    - type_param_kinds stores the kind of each type param (TYPE or INT)
     - type_param_bounds stores bounds for each type param (e.g., {"T": Comparable})
+
+    For generic records with integer type params like Matrix[T, N: int]:
+    - type_params = ["T", "N"]
+    - type_param_kinds = [TYPE, INT]
 
     For class inheritance:
     - parent stores the parent class type with type args (single inheritance)
@@ -756,6 +806,7 @@ class RecordInfo:
     methods: dict[str, list['FunctionInfo']] = None  # method_name -> list of overloads
     constructors: list['FunctionInfo'] = None  # Constructor overloads (for unified handling)
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
+    type_param_kinds: list[TypeParamKind] = None  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
     parent: Optional['RecordType'] = None  # Parent class type with type args (single inheritance)
     parent_builtin: Optional['TpyType'] = None  # Parent builtin type (e.g., StaticListType for inheritance)
@@ -772,6 +823,8 @@ class RecordInfo:
             self.constructors = []
         if self.type_params is None:
             self.type_params = []
+        if self.type_param_kinds is None:
+            self.type_param_kinds = []
         if self.type_param_bounds is None:
             self.type_param_bounds = {}
         if self.implemented_protocols is None:

@@ -17,7 +17,7 @@ from .typesys import (
     ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
     INT32, VOID, BIGINT, FLOAT, CHAR, STR, MethodSignature, FunctionInfo,
-    ResolvedBinop, ResolvedUnaryop
+    ResolvedBinop, ResolvedUnaryop, TypeParamKind
 )
 from .namespace import Namespace, BindingKind
 from .parse import (
@@ -338,12 +338,12 @@ class CodeGenerator:
                     continue  # Already forward declared above
                 record = records_by_name[record_name]
                 if record.type_params:
-                    if record.type_param_bounds:
-                        # Use constrained forward decl - bounds are now available
-                        template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+                    if record.type_param_bounds or record.type_param_kinds:
+                        # Use constrained forward decl - bounds or int params are present
+                        template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds, record.type_param_kinds)
                         hpp.write(f"{template_header} struct {record_name};\n")
                     else:
-                        # No bounds - unconstrained forward decl
+                        # No bounds or int params - unconstrained forward decl
                         tparams = ", ".join(f"typename {tp}" for tp in record.type_params)
                         hpp.write(f"template<{tparams}> struct {record_name};\n")
                 else:
@@ -385,7 +385,7 @@ class CodeGenerator:
                     continue  # Already forward declared above
                 record = records_by_name[record_name]
                 if record.type_params:
-                    template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+                    template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds, record.type_param_kinds)
                     hpp.write(f"{template_header} struct {record_name};\n")
                 else:
                     hpp.write(f"struct {record_name};\n")
@@ -410,8 +410,8 @@ class CodeGenerator:
             if record.name in prereq_protocol_records:
                 continue  # Already forward declared above
             if record.type_params:
-                # Generic record with bounds: template<Comparable T> struct SortedList;
-                template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+                # Generic record with bounds/int params: template<Comparable T, std::size_t N> struct SortedList;
+                template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds, record.type_param_kinds)
                 hpp.write(f"{template_header} struct {record.name};\n")
             else:
                 hpp.write(f"struct {record.name};\n")
@@ -563,7 +563,7 @@ class CodeGenerator:
 
         # Generate template prefix for generic records
         if record.type_params:
-            template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
+            template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds, record.type_param_kinds)
             out.write(f"{template_header}\n")
 
         # Generate struct with optional inheritance
@@ -677,7 +677,15 @@ class CodeGenerator:
         name = record.name
         # For template structs, generate a template operator<<
         if record.type_params:
-            params = ", ".join(f"typename {p}" for p in record.type_params)
+            # Build params respecting INT type params
+            params_parts = []
+            for i, p in enumerate(record.type_params):
+                kind = record.type_param_kinds[i] if record.type_param_kinds and i < len(record.type_param_kinds) else TypeParamKind.TYPE
+                if kind == TypeParamKind.INT:
+                    params_parts.append(f"std::size_t {p}")
+                else:
+                    params_parts.append(f"typename {p}")
+            params = ", ".join(params_parts)
             type_args = ", ".join(record.type_params)
             out.write(f"\ntemplate<{params}>\n")
             out.write(f"inline std::ostream& operator<<(std::ostream& os, const {name}<{type_args}>& obj) {{\n")
@@ -1054,16 +1062,22 @@ class CodeGenerator:
     def _gen_record_template_header(
         self,
         type_params: list[str],
-        type_param_bounds: dict[str, ProtocolType]
+        type_param_bounds: dict[str, ProtocolType],
+        type_param_kinds: list[TypeParamKind] | None = None
     ) -> str:
         """Generate template header for a generic record.
 
-        For unbounded: template<typename T>
-        For bounded: template<Comparable T>
+        For unbounded TYPE params: template<typename T>
+        For bounded TYPE params: template<Comparable T>
+        For INT params: template<std::size_t N>
         """
         template_parts = []
-        for tp in type_params:
-            if tp in type_param_bounds:
+        for i, tp in enumerate(type_params):
+            # Check if this is an INT type param
+            kind = type_param_kinds[i] if type_param_kinds and i < len(type_param_kinds) else TypeParamKind.TYPE
+            if kind == TypeParamKind.INT:
+                template_parts.append(f"std::size_t {tp}")
+            elif tp in type_param_bounds:
                 bound = type_param_bounds[tp]
                 concept_name = self._get_concept_name(bound)
                 if bound.type_args:
@@ -2399,6 +2413,9 @@ class CodeGenerator:
                 return self._is_runtime_bigint(arg, arg_type)
             if isinstance(param_type, Int32Type):
                 return not self._is_runtime_bigint(arg, arg_type)
+        # INT TypeParamRef can match Int32 or BigInt (it's a compile-time constant)
+        if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
+            return isinstance(param_type, (Int32Type, BigIntType))
         # TpyCoerce nodes match their expected type
         if isinstance(arg, TpyCoerce):
             return arg.expected_type == param_type

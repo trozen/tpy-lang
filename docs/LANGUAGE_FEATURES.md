@@ -1240,8 +1240,80 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 - Supports inference through wrapper types: `Ptr[T]`, `ConstPtr[T]`, `Own[T]`, `list[T]`
 - `Ptr[T]` arguments match `ConstPtr[T]` parameters (follows coercion rules)
 
-**Limitations**:
-- Integer type parameters (`class FixedStack[T, N: int]`) not yet supported
+### Integer Type Parameters
+
+**Working**: Generic classes can have integer type parameters using Python 3.12+ syntax with `: int` bound:
+
+```python
+from tpy import Int32
+
+class Container[T, N: int]:
+    size: Int32
+
+    def __init__(self) -> None:
+        self.size = Int32(N)
+
+    def get_capacity(self) -> Int32:
+        return Int32(N)
+
+# Instantiation with integer type argument
+c: Container[str, 10] = Container[str, 10]()
+print(c.size)          # 10
+print(c.get_capacity()) # 10
+```
+
+Generated C++ (non-type template parameters):
+```cpp
+template<typename T, std::size_t N>
+struct Container {
+  int32_t size;
+
+  Container() : size(N) {}
+
+  int32_t get_capacity() {
+    return N;
+  }
+};
+
+// Instantiation
+Container<std::string_view, 10> c{};
+```
+
+**Key points:**
+- Use `: int` bound to declare integer type parameters: `class Foo[T, N: int]`
+- Integer type parameters become `std::size_t` template parameters in C++
+- Can use `Int32(N)` to convert the integer constant to Int32 inside methods
+- Integer type arguments are literal integers in instantiations: `Container[str, 10]`
+
+**Forwarding integer type parameters in inheritance:**
+
+```python
+class Base[T, N: int]:
+    value: T
+
+class Child[T, N: int](Base[T, N]):
+    pass  # N is forwarded to parent
+
+c: Child[str, 20] = Child[str, 20]()
+```
+
+Generated C++:
+```cpp
+template<typename T, std::size_t N>
+struct Child : Base<T, N> {
+  // N is forwarded to parent template
+};
+```
+
+**CPython compatibility:**
+- Using `N` in methods works in CPython via `__orig_class__` (available after `__init__`)
+- Using `N` in `__init__` (e.g., `self.size = Int32(N)`) is **TurboPython-only** - CPython cannot access type args during construction
+- Tests using `N` inside `__init__` cannot be validated against CPython
+
+**Limitations:**
+- Built-in generic types (like `Array[T, N]`) cannot yet accept forwarded integer type params
+  - `Array[T, N]` inside a generic class requires N to be a literal, not a TypeParamRef
+  - Use workarounds like storing the data differently for now
 
 ### Class Inheritance
 

@@ -1,0 +1,3 @@
+This test uses integer type parameter N as a runtime value.
+In TurboPython, N is a compile-time constant accessible in method bodies.
+In CPython, N is just a type variable name with no runtime value.

@@ -13,9 +13,9 @@ from typing import Optional, Union, TYPE_CHECKING
 from .typesys import (
     TpyType, RecordType, PtrType, ConstPtrType, OwnType, ProtocolType, SelfType, TypeParamRef,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
-    MethodSignature, ProtocolInfo
+    MethodSignature, ProtocolInfo, TypeParamKind
 )
-from .modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, TypeParamKind, BuiltinTypeDef
+from .modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 
 
 class ParseError(Exception):
@@ -287,7 +287,12 @@ class TpyRecord:
 
     For generic records like Stack[T]:
     - type_params stores the type parameter names (e.g., ["T"])
+    - type_param_kinds stores the kind of each type param (TYPE or INT)
     - type_param_bounds stores bounds for each bounded type param (e.g., {"T": Comparable})
+
+    For generic records with integer type params like Matrix[T, N: int]:
+    - type_params = ["T", "N"]
+    - type_param_kinds = [TYPE, INT]
 
     For class inheritance:
     - bases stores the parsed base types (classes or protocols)
@@ -297,6 +302,7 @@ class TpyRecord:
     fields: list[FieldInfo]
     methods: list[TpyFunction] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
+    type_param_kinds: list[TypeParamKind] = field(default_factory=list)
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     bases: list[TpyType] = field(default_factory=list)
     loc: SourceLocation | None = None
@@ -348,7 +354,7 @@ class Parser:
     def __init__(self):
         self.registry = TypeRegistry()
         self.source_lines: list[str] = []
-        self._type_param_scope: set[str] | None = None  # Current type parameter scope for generic classes
+        self._type_param_scope: dict[str, TypeParamKind] | None = None  # Current type parameter scope for generic classes
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -463,23 +469,32 @@ class Parser:
 
         # Extract type parameters FIRST so they're in scope when parsing bases
         # Python 3.12+ syntax: class Foo[T, U]:
-        # Also extract bounds: class Foo[T: Comparable]:
+        # Also extract bounds: class Foo[T: Comparable]: or class Foo[N: int]:
         type_params = []
+        type_param_kinds: list[TypeParamKind] = []
         type_param_bounds: dict[str, TpyType] = {}
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
                     type_params.append(tp.name)
                     if tp.bound is not None:
-                        bound_type = self._parse_type_annotation(tp.bound)
-                        if not isinstance(bound_type, ProtocolType):
-                            raise ParseError(f"Type parameter bound must be a protocol, got {bound_type}", tp)
-                        type_param_bounds[tp.name] = bound_type
+                        # Check for N: int syntax (integer type parameter)
+                        if isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
+                            type_param_kinds.append(TypeParamKind.INT)
+                        else:
+                            # Regular protocol bound
+                            type_param_kinds.append(TypeParamKind.TYPE)
+                            bound_type = self._parse_type_annotation(tp.bound)
+                            if not isinstance(bound_type, ProtocolType):
+                                raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
+                            type_param_bounds[tp.name] = bound_type
+                    else:
+                        type_param_kinds.append(TypeParamKind.TYPE)
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
-        # Create a set of type param names for scope during parsing
-        type_param_scope = set(type_params) if type_params else None
+        # Create a dict of type param names to kinds for scope during parsing
+        type_param_scope = dict(zip(type_params, type_param_kinds)) if type_params else None
         # Store scope for use during method body parsing (expression parsing uses this)
         old_scope = self._type_param_scope
         self._type_param_scope = type_param_scope
@@ -504,7 +519,7 @@ class Parser:
                 default_val = None
                 if item.value is not None:
                     default_val = self._get_default_value(item.value)
-                fields.append(FieldInfo(field_name, field_type, default_val))
+                fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
             elif isinstance(item, ast.Assign):
                 # Field with inferred type: name = Int32(0)
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
@@ -514,7 +529,7 @@ class Parser:
                 if field_type is None:
                     raise ParseError(f"Cannot infer type for field '{field_name}'", item)
                 default_val = self._get_default_value(item.value)
-                fields.append(FieldInfo(field_name, field_type, default_val))
+                fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
             elif isinstance(item, ast.FunctionDef):
                 methods.append(self._parse_method(item, node.name, type_param_scope))
             elif isinstance(item, ast.Pass):
@@ -524,7 +539,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_bounds=type_param_bounds, bases=bases, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, loc=self._loc(node))
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
@@ -547,6 +562,7 @@ class Parser:
                     )
 
         # Extract type parameters from Python 3.12+ syntax: class Foo[T](Protocol):
+        # Note: Protocols don't support INT type params (only TYPE)
         type_params = []
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
@@ -555,9 +571,9 @@ class Parser:
                 else:
                     raise ParseError(f"Only simple type parameters supported in protocols, got {type(tp).__name__}", node)
 
-        # Set type param scope for parsing method signatures
+        # Set type param scope for parsing method signatures (all TYPE kind for protocols)
         old_scope = self._type_param_scope
-        self._type_param_scope = set(type_params) if type_params else None
+        self._type_param_scope = {tp: TypeParamKind.TYPE for tp in type_params} if type_params else None
 
         methods = []
         fields = []
@@ -609,7 +625,7 @@ class Parser:
         self._type_param_scope = old_scope
         return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, loc=self._loc(node))
 
-    def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: set[str] | None = None) -> TpyFunction:
+    def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyFunction:
         """Parse a method definition."""
         # Check for @staticmethod decorator
         is_staticmethod = False
@@ -660,6 +676,7 @@ class Parser:
 
         # Extract type parameters from Python 3.12+ syntax: def foo[T, U]():
         # Also extract bounds: def foo[T: Comparable]():
+        # Note: Functions don't currently support INT type params (only TYPE)
         type_params = []
         type_param_bounds: dict[str, TpyType] = {}
         if hasattr(node, 'type_params') and node.type_params:
@@ -674,8 +691,8 @@ class Parser:
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
-        # Set scope for parsing parameter and return types
-        type_param_scope = set(type_params) if type_params else None
+        # Set scope for parsing parameter and return types (all TYPE kind for functions)
+        type_param_scope = {tp: TypeParamKind.TYPE for tp in type_params} if type_params else None
         old_scope = self._type_param_scope
         self._type_param_scope = type_param_scope
 
@@ -706,12 +723,12 @@ class Parser:
             loc=self._loc(node)
         )
 
-    def _parse_type_annotation(self, node: ast.expr, type_param_scope: set[str] | None = None) -> TpyType:
+    def _parse_type_annotation(self, node: ast.expr, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
         """Parse a type annotation.
 
         Args:
             node: The AST node representing the type annotation.
-            type_param_scope: Set of type parameter names currently in scope (for generic classes).
+            type_param_scope: Dict of type parameter names to their kinds currently in scope.
                               Falls back to self._type_param_scope if not provided.
         """
         # Use instance variable as fallback for type parameter scope
@@ -721,7 +738,8 @@ class Parser:
             name = node.id
             # Check if this is a type parameter reference
             if type_param_scope and name in type_param_scope:
-                return TypeParamRef(name)
+                kind = type_param_scope[name]
+                return TypeParamRef(name, kind=kind)
             if name == "Self":
                 return SELF
             elif name == "Int32":
@@ -808,7 +826,7 @@ class Parser:
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
     def _parse_protocol_type_args(self, node: ast.Subscript, name: str,
-                                    type_params: list[str], type_param_scope: set[str] | None = None) -> tuple[TpyType, ...]:
+                                    type_params: list[str], type_param_scope: dict[str, TypeParamKind] | None = None) -> tuple[TpyType, ...]:
         """Parse type arguments for a generic protocol like Sequence[Int32]."""
         expected_count = len(type_params)
 
@@ -827,17 +845,32 @@ class Parser:
         type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
         return type_args
 
-    def _parse_record_type_args(self, node: ast.Subscript, name: str, type_param_scope: set[str] | None = None) -> tuple[TpyType, ...]:
-        """Parse type arguments for a user-defined generic record like Stack[Int32]."""
+    def _parse_record_type_args(self, node: ast.Subscript, name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> tuple[TpyType | int, ...]:
+        """Parse type arguments for a user-defined generic record like Stack[Int32] or Matrix[Int32, 8].
+
+        For records with integer type parameters, integer literals are allowed in type argument positions.
+        The validation of which positions accept integers is done in sema (since the record info
+        may not be registered yet during parsing).
+        """
         # Extract slice elements
         if isinstance(node.slice, ast.Tuple):
             slices = node.slice.elts
         else:
             slices = [node.slice]
 
-        # Parse each type argument
-        type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
-        return type_args
+        # Parse each type argument (allowing integer literals)
+        type_args: list[TpyType | int] = []
+        for s in slices:
+            # Check for integer literals
+            if isinstance(s, ast.Constant) and isinstance(s.value, int):
+                type_args.append(s.value)
+            # Check for type parameter references that are INT kind (forward as TypeParamRef)
+            elif isinstance(s, ast.Name) and type_param_scope and s.id in type_param_scope:
+                kind = type_param_scope[s.id]
+                type_args.append(TypeParamRef(s.id, kind=kind))
+            else:
+                type_args.append(self._parse_type_annotation(s, type_param_scope))
+        return tuple(type_args)
 
     def _parse_type_args_from_subscript(self, node: ast.Subscript) -> tuple[TpyType, ...]:
         """Extract type arguments from a subscript for generic function calls like first[Int32](x).
@@ -863,7 +896,7 @@ class Parser:
             type_args.append(self._parse_type_annotation(s))
         return tuple(type_args)
 
-    def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: set[str] | None = None) -> TpyType:
+    def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
         """Parse a module-defined generic type using its metadata."""
         param_kinds = type_def.param_kinds
         expected_count = len(param_kinds)

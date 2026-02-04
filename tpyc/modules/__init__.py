@@ -9,19 +9,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import TypeParamRef, ProtocolType, PtrType, ConstPtrType, ProtocolInfo, MethodSignature
-
-
-class TypeParamKind(Enum):
-    """Kind of type parameter in a generic type."""
-    TYPE = "type"  # A type parameter like T
-    INT = "int"    # An integer literal like N
+from tpyc.typesys import TypeParamRef, ProtocolType, PtrType, ConstPtrType, ProtocolInfo, MethodSignature, TypeParamKind
 
 
 @dataclass
@@ -612,5 +605,8 @@ def _type_matches_param(arg_type: "TpyType", param_type: "TpyType") -> bool:
         return True
     # IntLiteralType can match Int32 or BigInt
     if isinstance(arg_type, IntLiteralType):
+        return isinstance(param_type, (Int32Type, BigIntType))
+    # INT TypeParamRef can match Int32 or BigInt (compile-time constant)
+    if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
         return isinstance(param_type, (Int32Type, BigIntType))
     return False

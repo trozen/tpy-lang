@@ -1,0 +1,2 @@
+This test uses integer type parameter N in arithmetic expressions.
+N is a compile-time constant in TurboPython but not accessible in CPython.

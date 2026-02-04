@@ -36,20 +36,28 @@ def make_exec_test(case_dir, main_src):
         run_result = build_and_run(tmp_path, module_name)
 
         if run_result.success:
-            # Get expected output from CPython
-            cpython_output = run_cpython(main_src)
+            # Check for no_cpython.txt marker (TurboPython-only features)
+            skip_cpython = (case_dir / "no_cpython.txt").exists()
 
-            # Verify C++ output matches CPython (only in test mode)
-            if not UPDATE_EXPECTED and run_result.stdout != cpython_output:
-                pytest.fail(
-                    f"Output mismatch.\n"
-                    f"--- CPython ---\n{cpython_output}\n"
-                    f"--- C++ ---\n{run_result.stdout}"
-                )
+            if skip_cpython:
+                # Use C++ output directly (no CPython comparison)
+                expected_output = expected_dir / "output.txt"
+                check_or_update(run_result.stdout, expected_output, "Output")
+            else:
+                # Get expected output from CPython
+                cpython_output = run_cpython(main_src)
 
-            # Check/update output.txt
-            expected_output = expected_dir / "output.txt"
-            check_or_update(cpython_output, expected_output, "Output")
+                # Verify C++ output matches CPython (only in test mode)
+                if not UPDATE_EXPECTED and run_result.stdout != cpython_output:
+                    pytest.fail(
+                        f"Output mismatch.\n"
+                        f"--- CPython ---\n{cpython_output}\n"
+                        f"--- C++ ---\n{run_result.stdout}"
+                    )
+
+                # Check/update output.txt
+                expected_output = expected_dir / "output.txt"
+                check_or_update(cpython_output, expected_output, "Output")
 
             # Clean up stale panic.txt in update mode
             if UPDATE_EXPECTED:

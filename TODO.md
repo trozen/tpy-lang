@@ -1,15 +1,12 @@
 # TODO
 
 ## Next
-- Integer type parameters: class FixedStack[T, N: int]
-- Generic child class forwarding type params: `class Child[T](Parent[T])`
-- Partial type substitution in generics: `class Child[T](Parent[T, Int32])`
 - `super()` support for inheritance
+- warning when hiding method in inheritance -- types may behave differently between TPython and CPython
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
 - extract c++ compiler interface
 - `type()` function
-- build/run in release mode
 - import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
 - require imports at the top of file, don't allow inline imports
 - type containing an allocated object (e.g. `Box[T]`)
@@ -24,7 +21,6 @@
 - warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
-- warning when hiding method in inheritance -- types may behave differently between TPython and CPython
 
 ## Python features
 - dict full support

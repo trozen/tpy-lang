@@ -9,7 +9,7 @@ from typing import Callable, Optional
 from .typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     RecordType, PtrType, ConstPtrType, CharType, StrType,
-    SpanType, PendingListType,
+    SpanType, PendingListType, TypeParamRef, TypeParamKind,
 )
 
 
@@ -23,6 +23,11 @@ class CoercionContext(Enum):
 
 def _match_any(_: TpyType, __: TpyType) -> bool:
     return True
+
+
+def _int_type_param_match(actual: TpyType, expected: TpyType) -> bool:
+    """Check if actual is an INT TypeParamRef."""
+    return isinstance(actual, TypeParamRef) and actual.kind == TypeParamKind.INT
 
 
 def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
@@ -73,6 +78,23 @@ class Coercion:
 
 # NOTE: Order matters; higher priority first for overlapping rules.
 COERCIONS: list[Coercion] = [
+    # INT type parameter coercions (compile-time constants)
+    # INT type params (like N in Matrix[T, N: int]) can coerce to Int32
+    Coercion(
+        name="int_type_param_to_int32",
+        from_type=TypeParamRef,
+        to_type=Int32Type,
+        type_match=_int_type_param_match,
+        codegen=lambda e, _a, _b, _c: f"static_cast<int32_t>({e})",
+    ),
+    Coercion(
+        name="int_type_param_to_bigint",
+        from_type=TypeParamRef,
+        to_type=BigIntType,
+        type_match=_int_type_param_match,
+        codegen=lambda e, _a, _b, _c: f"tpy::BigInt(static_cast<int64_t>({e}))",
+    ),
+
     # Integer coercions
     Coercion(
         name="int_literal_to_int32",

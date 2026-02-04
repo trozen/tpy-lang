@@ -18,7 +18,7 @@ from .typesys import (
     ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
-    ProtocolInfo, MethodSignature, ModuleType, ResolvedBinop, ResolvedUnaryop
+    ProtocolInfo, MethodSignature, ModuleType, ResolvedBinop, ResolvedUnaryop, TypeParamKind
 )
 from .namespace import Namespace, BindingKind, NameBinding
 from .parse import (
@@ -167,6 +167,8 @@ class SemanticAnalyzer:
 
         # Track current generic class type parameters (for allowing TypeParamRef in method locals)
         self._current_record_type_params: list[str] | None = None
+        # Track current generic class type parameter kinds (for INT type params used as values)
+        self._current_record_type_param_kinds: list[TypeParamKind] | None = None
         # Track current generic class type parameter bounds (for protocol conformance checks)
         self._current_record_type_param_bounds: dict[str, TpyType] | None = None
 
@@ -294,13 +296,19 @@ class SemanticAnalyzer:
 
         # Validate field types
         for fld in record.fields:
-            if not self._is_type_param_ref(fld.type):
-                self._validate_type(fld.type, allow_type_param_ref=is_generic)
+            # Check INT type params before general validation (to provide field location)
+            if isinstance(fld.type, TypeParamRef) and fld.type.kind == TypeParamKind.INT:
+                raise SemanticError(
+                    f"Integer type parameter '{fld.type.name}' cannot be used as a type annotation",
+                    loc=fld.loc
+                )
+            self._validate_type(fld.type, allow_type_param_ref=is_generic)
             # Protocol types cannot be used as field types
             if isinstance(fld.type, ProtocolType):
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
-                    f"Protocols are only valid for function parameters"
+                    f"Protocols are only valid for function parameters",
+                    loc=fld.loc
                 )
 
         init_params = []
@@ -362,6 +370,7 @@ class SemanticAnalyzer:
             init_params=init_params,
             methods=methods,
             type_params=record.type_params,
+            type_param_kinds=record.type_param_kinds,
             type_param_bounds=type_param_bounds,
             parent=None,
             implemented_protocols=[]
@@ -689,6 +698,8 @@ class SemanticAnalyzer:
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:
                 raise SemanticError(f"Type parameter '{typ.name}' used outside of generic class definition")
+            if typ.kind == TypeParamKind.INT:
+                raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation")
             return
         if isinstance(typ, RecordType):
             record_info = self.registry.get_record(typ.name)
@@ -704,9 +715,8 @@ class SemanticAnalyzer:
                         f"Record '{typ.name}' expects {len(record_info.type_params)} type arguments, "
                         f"got {len(typ.type_args)}"
                     )
-                # Validate each type argument
-                for arg in typ.type_args:
-                    self._validate_type(arg, allow_type_param_ref)
+                # Validate each type argument matches its expected kind
+                self._validate_record_type_args(typ, record_info, allow_type_param_ref)
             elif record_info.is_generic():
                 # Generic record used without type arguments
                 raise SemanticError(
@@ -726,31 +736,83 @@ class SemanticAnalyzer:
                     f"Protocol type '{elem_type.name}' cannot be used as a container element type"
                 )
 
-    def _substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+    def _validate_record_type_args(self, typ: RecordType, record_info: RecordInfo, allow_type_param_ref: bool = False) -> None:
+        """Validate that type arguments match their expected kinds (TYPE vs INT).
+
+        Args:
+            typ: The RecordType with type_args to validate.
+            record_info: The RecordInfo with type_param_kinds.
+            allow_type_param_ref: If True, allow TypeParamRef as valid types.
+        """
+        if not record_info.type_param_kinds:
+            # Legacy: no kinds specified, assume all TYPE
+            for arg in typ.type_args:
+                if isinstance(arg, TpyType):
+                    self._validate_type(arg, allow_type_param_ref)
+                else:
+                    raise SemanticError(
+                        f"Record '{typ.name}' does not accept integer type arguments"
+                    )
+            return
+
+        for i, (arg, kind) in enumerate(zip(typ.type_args, record_info.type_param_kinds)):
+            param_name = record_info.type_params[i]
+            if kind == TypeParamKind.INT:
+                # Expect an integer value or INT TypeParamRef (forwarding)
+                if isinstance(arg, int):
+                    continue  # Valid: integer literal
+                if isinstance(arg, TypeParamRef) and arg.kind == TypeParamKind.INT:
+                    continue  # Valid: forwarding an INT type param
+                raise SemanticError(
+                    f"Type parameter '{param_name}' of '{typ.name}' requires an integer, "
+                    f"got {arg}"
+                )
+            else:
+                # Expect a type value
+                if isinstance(arg, int):
+                    raise SemanticError(
+                        f"Type parameter '{param_name}' of '{typ.name}' requires a type, "
+                        f"got integer {arg}"
+                    )
+                if isinstance(arg, TpyType):
+                    self._validate_type(arg, allow_type_param_ref)
+                else:
+                    raise SemanticError(
+                        f"Invalid type argument for '{param_name}' of '{typ.name}': {arg}"
+                    )
+
+    def _substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
         """Substitute type parameters with concrete types.
 
         Args:
             typ: The type containing potential TypeParamRef instances.
-            subst: Mapping from type parameter names to concrete types.
+            subst: Mapping from type parameter names to concrete types or integers.
 
         Returns:
             The type with all TypeParamRef instances replaced by their concrete types.
+            For INT kind TypeParamRef, returns the TypeParamRef unchanged (it's a compile-time constant).
         """
         if isinstance(typ, TypeParamRef):
             if typ.name in subst:
-                return subst[typ.name]
+                replacement = subst[typ.name]
+                if isinstance(replacement, int):
+                    # INT type params stay as TypeParamRef (they're compile-time constants)
+                    # The actual int value will be used in codegen
+                    return typ
+                return replacement
             raise SemanticError(f"Unknown type parameter '{typ.name}'")
         # Use map_inner_types for types that have inner types
         return typ.map_inner_types(lambda t: self._substitute_type_params(t, subst))
 
-    def _build_type_substitution(self, record_type: RecordType) -> dict[str, TpyType]:
+    def _build_type_substitution(self, record_type: RecordType) -> dict[str, TpyType | int]:
         """Build a type parameter substitution map for a generic record instantiation.
 
         Args:
-            record_type: A RecordType with type_args (e.g., Stack[Int32]).
+            record_type: A RecordType with type_args (e.g., Stack[Int32] or Matrix[Int32, 8]).
 
         Returns:
-            Mapping from type parameter names to concrete types (e.g., {"T": Int32}).
+            Mapping from type parameter names to concrete types or integers.
+            For example: {"T": Int32, "N": 8} for Matrix[Int32, 8].
         """
         record_info = self.registry.get_record(record_type.name)
         if not record_info or not record_info.is_generic():
@@ -789,6 +851,7 @@ class SemanticAnalyzer:
         """Analyze all methods of a record."""
         # Track type parameters for generic records (allows TypeParamRef in method locals)
         self._current_record_type_params = record.type_params if record.type_params else None
+        self._current_record_type_param_kinds = record.type_param_kinds if record.type_param_kinds else None
         self._current_record_type_param_bounds = record.type_param_bounds if record.type_param_bounds else None
 
         for method in record.methods:
@@ -824,6 +887,7 @@ class SemanticAnalyzer:
             self.current_ns = None
 
         self._current_record_type_params = None
+        self._current_record_type_param_kinds = None
         self._current_record_type_param_bounds = None
 
     def _analyze_function(self, func: TpyFunction) -> None:
@@ -1304,6 +1368,18 @@ class SemanticAnalyzer:
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
+        # Check for INT type parameter references in generic class context
+        # INT type params can be used as values in expressions (e.g., Int32(N))
+        if self._current_record_type_params and self._current_record_type_param_kinds:
+            try:
+                idx = self._current_record_type_params.index(expr.name)
+                if self._current_record_type_param_kinds[idx] == TypeParamKind.INT:
+                    # INT type param - return TypeParamRef with INT kind
+                    # This represents a compile-time constant, treated as Int32-compatible
+                    return TypeParamRef(expr.name, kind=TypeParamKind.INT)
+            except ValueError:
+                pass  # Not a type parameter
+
         # Use namespace for unified lookup (includes builtins)
         if self.current_ns:
             binding = self.current_ns.lookup(expr.name)
@@ -1329,6 +1405,9 @@ class SemanticAnalyzer:
         """Get the effective type for binop resolution, treating IntLiteralType as BigInt."""
         if isinstance(tpy_type, IntLiteralType):
             return BIGINT
+        # INT TypeParamRef (e.g., N: int) treated as Int32 for arithmetic
+        if isinstance(tpy_type, TypeParamRef) and tpy_type.kind == TypeParamKind.INT:
+            return INT32
         return tpy_type
 
     def _binop_type_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
@@ -1338,6 +1417,9 @@ class SemanticAnalyzer:
         # IntLiteralType can match Int32 or BigInt
         if isinstance(arg_type, IntLiteralType):
             return isinstance(param_type, (Int32Type, BigIntType, IntLiteralType))
+        # INT TypeParamRef can match Int32 or BigInt
+        if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
+            return isinstance(param_type, (Int32Type, BigIntType))
         return False
 
     def _find_binop_overload(self, overloads: list[FunctionInfo], arg_type: TpyType) -> FunctionInfo | None:
