@@ -7,5 +7,5 @@ class Container[T]:
         self.value = value
 
 
-class IntContainer(Container[Int32]):  # tpyc: error(/Generic base class.*not yet supported/)
+class Wrapper[T](Container[T]):  # tpyc: error(/Generic base class with forwarded type parameters not yet supported/)
     extra: Int32

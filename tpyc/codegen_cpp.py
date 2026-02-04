@@ -170,8 +170,8 @@ class CodeGenerator:
         dependencies: dict[str, set[str]] = {r.name: set() for r in records}
         for record in records:
             record_info = self.analyzer.registry.get_record(record.name)
-            if record_info and record_info.parent and record_info.parent in record_by_name:
-                dependencies[record.name].add(record_info.parent)
+            if record_info and record_info.parent and record_info.parent.name in record_by_name:
+                dependencies[record.name].add(record_info.parent.name)
 
         # Topological sort (Kahn's algorithm)
         result = []
@@ -567,7 +567,7 @@ class CodeGenerator:
 
         # Generate struct with optional inheritance
         if record_info and record_info.parent:
-            out.write(f"struct {record.name} : {record_info.parent} {{\n")
+            out.write(f"struct {record.name} : {record_info.parent.to_cpp()} {{\n")
         else:
             out.write(f"struct {record.name} {{\n")
 

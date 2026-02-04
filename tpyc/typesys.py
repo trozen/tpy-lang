@@ -740,7 +740,7 @@ class RecordInfo:
     - type_param_bounds stores bounds for each type param (e.g., {"T": Comparable})
 
     For class inheritance:
-    - parent stores the parent class name (single inheritance)
+    - parent stores the parent class type with type args (single inheritance)
     - implemented_protocols stores explicitly declared protocol implementations
     """
     name: str
@@ -750,7 +750,7 @@ class RecordInfo:
     methods: dict[str, 'FunctionInfo'] = None  # method_name -> FunctionInfo
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
-    parent: Optional[str] = None  # Parent class name (single inheritance)
+    parent: Optional['RecordType'] = None  # Parent class type with type args (single inheritance)
     implemented_protocols: list['ProtocolType'] = None  # Explicit protocol implementations
 
     def __post_init__(self):

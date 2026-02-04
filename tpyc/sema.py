@@ -295,7 +295,7 @@ class SemanticAnalyzer:
 
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in _register_record) so forward-referenced protocols are recognized
-        parent: str | None = None
+        parent: RecordType | None = None
         implemented_protocols: list[ProtocolType] = []
 
         for base_type in record.bases:
@@ -327,13 +327,6 @@ class SemanticAnalyzer:
                         f"Use protocols for multiple interfaces.",
                         record.loc
                     )
-                # Check for generic base classes (not yet supported)
-                if base_type.type_args:
-                    raise SemanticError(
-                        f"Generic base class '{base_type}' not yet supported in '{record.name}'. "
-                        f"Use a non-generic base class.",
-                        record.loc
-                    )
                 # Check if parent is generic and requires type args
                 parent_info = self.registry.get_record(base_type.name)
                 if parent_info is None:
@@ -347,7 +340,17 @@ class SemanticAnalyzer:
                         f"Use '{base_type.name}[T]' with appropriate type arguments.",
                         record.loc
                     )
-                parent = base_type.name
+                # Check that type args are fully concrete (no forwarded type params)
+                if base_type.type_args and record.type_params:
+                    for type_arg in base_type.type_args:
+                        if self._is_forwarded_type_param(type_arg, record.type_params):
+                            raise SemanticError(
+                                f"Generic base class with forwarded type parameters not yet supported: "
+                                f"'{base_type}' in '{record.name}'. "
+                                f"Use concrete type arguments instead.",
+                                record.loc
+                            )
+                parent = base_type
             elif isinstance(base_type, ProtocolType):
                 # Already handled above when is_protocol is True
                 pass
@@ -365,9 +368,9 @@ class SemanticAnalyzer:
         # Validate parent class
         if record_info.parent:
             # Check for circular inheritance
-            if self._has_circular_inheritance(record.name, record_info.parent):
+            if self._has_circular_inheritance(record.name, record_info.parent.name):
                 raise SemanticError(
-                    f"Circular inheritance detected: '{record.name}' inherits from '{record_info.parent}'",
+                    f"Circular inheritance detected: '{record.name}' inherits from '{record_info.parent.name}'",
                     record.loc
                 )
 
@@ -412,7 +415,7 @@ class SemanticAnalyzer:
             parent_info = self.registry.get_record(current)
             if parent_info is None:
                 return False
-            current = parent_info.parent
+            current = parent_info.parent.name if parent_info.parent else None
         return False
 
     def _get_missing_protocol_methods(self, record_type: RecordType, protocol: ProtocolType) -> list[str]:
@@ -554,6 +557,36 @@ class SemanticAnalyzer:
             return self._is_type_param_ref(typ.element_type)
         return False
 
+    def _is_forwarded_type_param(self, typ: TpyType, type_params: list[str]) -> bool:
+        """Check if a type references one of the given type parameters.
+
+        At parse time, type parameters in base class type args appear as RecordType
+        (e.g., Container[T] has T as RecordType("T"), not TypeParamRef("T")).
+        This function checks for both forms.
+        """
+        if isinstance(typ, TypeParamRef):
+            return typ.name in type_params
+        if isinstance(typ, RecordType):
+            # A RecordType with no type_args and name matching a type param is a forwarded param
+            if not typ.type_args and typ.name in type_params:
+                return True
+            # Also check nested type args (e.g., Container[list[T]])
+            for type_arg in typ.type_args:
+                if self._is_forwarded_type_param(type_arg, type_params):
+                    return True
+        if isinstance(typ, ProtocolType):
+            # Check nested type args in protocols (e.g., Parent[Sequence[T]])
+            for type_arg in typ.type_args:
+                if self._is_forwarded_type_param(type_arg, type_params):
+                    return True
+        if isinstance(typ, (PtrType, ConstPtrType)):
+            return self._is_forwarded_type_param(typ.pointee, type_params)
+        if isinstance(typ, OwnType):
+            return self._is_forwarded_type_param(typ.wrapped, type_params)
+        if isinstance(typ, (ListType, SpanType, ArrayType)):
+            return self._is_forwarded_type_param(typ.element_type, type_params)
+        return False
+
     def _validate_type(self, typ: TpyType, allow_type_param_ref: bool = False) -> None:
         """Validate that a type is well-formed.
 
@@ -633,6 +666,20 @@ class SemanticAnalyzer:
         if not record_type.type_args:
             return {}
         return dict(zip(record_info.type_params, record_type.type_args))
+
+    def _get_parent_type_subst(self, parent_type: RecordType, parent_info: RecordInfo) -> dict[str, TpyType]:
+        """Build substitution map from parent's type parameters to concrete type args.
+
+        Args:
+            parent_type: The parent type as declared in the child (e.g., Container[Int32]).
+            parent_info: The RecordInfo for the parent class.
+
+        Returns:
+            Mapping from parent's type parameter names to concrete types.
+        """
+        if not parent_info.type_params or not parent_type.type_args:
+            return {}
+        return dict(zip(parent_info.type_params, parent_type.type_args))
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
         """Register top-level variable declarations in global scope.
@@ -2732,29 +2779,75 @@ class SemanticAnalyzer:
         return False
 
     def _lookup_record_field(self, record_info: RecordInfo, field_name: str) -> FieldInfo | None:
-        """Look up a field in a record, including inherited fields."""
+        """Look up a field in a record, including inherited fields.
+
+        For generic parent classes, substitutes type parameters with concrete types.
+        E.g., if Container[T] has field `value: T` and IntContainer extends Container[Int32],
+        looking up `value` on IntContainer returns FieldInfo with type Int32.
+        """
         # Check this record's own fields first
         for fld in record_info.fields:
             if fld.name == field_name:
                 return fld
         # Check parent class
         if record_info.parent:
-            parent_info = self.registry.get_record(record_info.parent)
+            parent_info = self.registry.get_record(record_info.parent.name)
             if parent_info:
-                return self._lookup_record_field(parent_info, field_name)
+                inherited = self._lookup_record_field(parent_info, field_name)
+                if inherited:
+                    # Substitute parent's type params with concrete type args
+                    type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
+                    if type_subst:
+                        substituted_type = self._substitute_type_params(inherited.type, type_subst)
+                        return FieldInfo(
+                            name=inherited.name,
+                            type=substituted_type,
+                            default_value=inherited.default_value
+                        )
+                    return inherited
         return None
 
     def _lookup_record_method(self, record_info: RecordInfo, method_name: str) -> FunctionInfo | None:
-        """Look up a method in a record, including inherited methods."""
+        """Look up a method in a record, including inherited methods.
+
+        For generic parent classes, substitutes type parameters with concrete types.
+        E.g., if Container[T] has method `get() -> T` and IntContainer extends Container[Int32],
+        looking up `get` on IntContainer returns FunctionInfo with return type Int32.
+        """
         # Check this record's own methods first
         method = record_info.get_method(method_name)
         if method is not None:
             return method
         # Check parent class
         if record_info.parent:
-            parent_info = self.registry.get_record(record_info.parent)
+            parent_info = self.registry.get_record(record_info.parent.name)
             if parent_info:
-                return self._lookup_record_method(parent_info, method_name)
+                inherited = self._lookup_record_method(parent_info, method_name)
+                if inherited:
+                    # Substitute parent's type params with concrete type args
+                    type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
+                    if type_subst:
+                        substituted_params = [
+                            (pname, self._substitute_type_params(ptype, type_subst))
+                            for pname, ptype in inherited.params
+                        ]
+                        substituted_return = self._substitute_type_params(inherited.return_type, type_subst)
+                        # Substitute type params in bounds (e.g., U: Sequence[T] -> U: Sequence[Int32])
+                        substituted_bounds = {}
+                        if inherited.type_param_bounds:
+                            for param_name, bound in inherited.type_param_bounds.items():
+                                substituted_bounds[param_name] = self._substitute_type_params(bound, type_subst)
+                        return FunctionInfo(
+                            name=inherited.name,
+                            params=substituted_params,
+                            return_type=substituted_return,
+                            is_noalloc=inherited.is_noalloc,
+                            is_method=inherited.is_method,
+                            is_staticmethod=inherited.is_staticmethod,
+                            type_params=inherited.type_params,
+                            type_param_bounds=substituted_bounds if substituted_bounds else inherited.type_param_bounds,
+                        )
+                    return inherited
         return None
 
     def _type_has_method_with_signature(

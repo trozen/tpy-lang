@@ -2,7 +2,9 @@
 
 ## Next
 - Integer type parameters: class FixedStack[T, N: int]
-- allow inheritance of normal classes
+- Generic child class forwarding type params: `class Child[T](Parent[T])`
+- Partial type substitution in generics: `class Child[T](Parent[T, Int32])`
+- `super()` support for inheritance
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
 - extract c++ compiler interface
@@ -15,7 +17,6 @@
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - `Int32` should be imported from tpy, so it matches CPython (maybe use `from typ import *`?)
 - `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function
-- inherit from protocol class to validate methods, e.g. `class MyIntList(Sequence[int])` or `class MyList[T](Sequence[T])`
 - how to handle const methods like `__len__` or `__getitem__`; how to handle constness in TPy?
 - template function implementation should be in some specific header file
 - `DeRef` protocol?
@@ -65,6 +66,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - list[Ptr[Point]] not supported, but it should be, eventually
 - `Span(list([1,2,3]))` not supported
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
+- implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

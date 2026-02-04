@@ -1307,8 +1307,41 @@ struct Dog : Animal {
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
 
+**Working**: Inheriting from generic classes with concrete type arguments:
+```python
+from tpy import Int32
+
+class Container[T]:
+    value: T
+    def __init__(self, value: T) -> None:
+        self.value = value
+    def get(self) -> T:
+        return self.value
+
+class IntContainer(Container[Int32]):
+    extra: Int32
+    def __init__(self, value: Int32, extra: Int32) -> None:
+        self.value = value   # Inherited field, type is Int32 (not T)
+        self.extra = extra
+
+c = IntContainer(42, 100)
+print(c.get())   # Returns Int32, not T
+```
+
+Generated C++:
+```cpp
+template<typename T>
+struct Container { T value; /* ... */ };
+
+struct IntContainer : Container<int32_t> {
+    int32_t extra;
+    /* ... */
+};
+```
+
 **Limitations:**
-- Generic base classes not yet supported (`class Child(Parent[Int32])` is an error)
+- Generic child forwarding type params not yet supported (`class Child[T](Parent[T])`)
+- Partial type substitution not yet supported (`class Child[T](Parent[T, Int32])`)
 - Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
 - No `super()` calls - child must initialize parent fields directly
 

@@ -1,0 +1,4 @@
+mybox
+42
+100
+hello

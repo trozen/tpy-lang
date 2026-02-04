@@ -1,0 +1,1 @@
+main.tp.py:11: error: Generic base class with forwarded type parameters not yet supported: 'Container[Sequence[T]]' in 'Child'. Use concrete type arguments instead.
