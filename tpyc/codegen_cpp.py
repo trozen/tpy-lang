@@ -1467,10 +1467,10 @@ class CodeGenerator:
             subscript_obj = f"(*{obj})" if self._is_global_name(stmt.target.obj) else obj
             index_expr = self._gen_index_expr(subscript_obj, stmt.target.index, index_type)
 
-            # Use module lookup for __setitem__
-            methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
-            if methods:
-                code = methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", value)
+            # Use registry lookup for __setitem__
+            cpp_template = self._get_type_method_template(obj_type, "__setitem__")
+            if cpp_template:
+                code = cpp_template.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", value)
                 return f"{indent}{code};\n"
             else:
                 return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
@@ -1535,10 +1535,10 @@ class CodeGenerator:
                 f"(element type: {elem_type})"
             )
 
-        # Generate read expression using module lookup for __getitem__
-        get_methods = builtin_modules.lookup_type_method(obj_type, "__getitem__")
-        if get_methods:
-            read_expr = get_methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr)
+        # Generate read expression using registry lookup for __getitem__
+        get_template = self._get_type_method_template(obj_type, "__getitem__")
+        if get_template:
+            read_expr = get_template.replace("{self}", subscript_obj).replace("{0}", index_expr)
         else:
             read_expr = f"{subscript_obj}[{index_expr}]"
 
@@ -1560,10 +1560,10 @@ class CodeGenerator:
             cpp_op = "/" if stmt.op == "//" else stmt.op
             result_expr = f"{read_expr} {cpp_op} {value}"
 
-        # Generate write using module lookup for __setitem__
-        set_methods = builtin_modules.lookup_type_method(obj_type, "__setitem__")
-        if set_methods:
-            code = set_methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", result_expr)
+        # Generate write using registry lookup for __setitem__
+        set_template = self._get_type_method_template(obj_type, "__setitem__")
+        if set_template:
+            code = set_template.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", result_expr)
             return f"{indent}{code};\n"
         else:
             return f"{indent}{subscript_obj}[{index_expr}] = {result_expr};\n"
@@ -1743,22 +1743,10 @@ class CodeGenerator:
             index_expr = f"{index_expr}.to_int32()"
         return index_expr
 
-    def _gen_method_from_def(self, obj: str, args: list[TpyExpr],
-                             method: builtin_modules.MethodDef) -> str:
-        """Generate method call code from a MethodDef.
-
-        Substitutes {self} with obj and {0}, {1}, etc. with generated args.
-        """
-        result = method.cpp.replace("{self}", obj)
-        for i, arg in enumerate(args):
-            result = result.replace(f"{{{i}}}", self._gen_expr(arg))
-        return result
-
     def _gen_method_from_function_info(self, obj: str, args: list[TpyExpr],
                                        method: 'FunctionInfo') -> str:
         """Generate method call code from a FunctionInfo with cpp_template.
 
-        Similar to _gen_method_from_def but works with FunctionInfo.
         Substitutes {self} with obj and {0}, {1}, etc. with generated args.
         """
         assert method.cpp_template is not None
@@ -1766,6 +1754,18 @@ class CodeGenerator:
         for i, arg in enumerate(args):
             result = result.replace(f"{{{i}}}", self._gen_expr(arg))
         return result
+
+    def _get_type_method_template(self, tpy_type: TpyType, method_name: str) -> str | None:
+        """Look up a method's cpp_template from the registry.
+
+        Returns the cpp_template string if found, None otherwise.
+        """
+        record_info = self.analyzer.registry.get_record_for_type(tpy_type)
+        if record_info:
+            method_info = record_info.methods.get(method_name)
+            if method_info and method_info.cpp_template:
+                return method_info.cpp_template
+        return None
 
     def _gen_binop_from_result(self, binop_result: builtin_modules.BinopResult,
                                left: str, right: str) -> str:
@@ -1895,12 +1895,12 @@ class CodeGenerator:
                 # Pass target_type to handle nested binops like 1 + (2 + 3)
                 left = self._gen_expr(expr.left, target_type)
                 right = self._gen_expr(expr.right, target_type)
-                # Use module system to get Int32 binary operator
+                # Use registry to get Int32 binary operator
                 method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
                 if method_name:
-                    methods = builtin_modules.lookup_type_method(INT32, method_name)
-                    if method := builtin_modules._find_matching_overload(methods, INT32):
-                        result = method.cpp.replace("{self}", left).replace("{0}", right)
+                    cpp_template = self._get_type_method_template(INT32, method_name)
+                    if cpp_template:
+                        result = cpp_template.replace("{self}", left).replace("{0}", right)
                         return result
                 # Fallback for operators not in module system (bitwise operators)
                 return f"({left} {expr.op} {right})"
@@ -2129,16 +2129,13 @@ class CodeGenerator:
             if isinstance(obj_type, OwnType):
                 obj_type = obj_type.wrapped
 
-            # Try module lookup for methods on builtin types
-            # Use resolved_method from sema if available (for overload resolution)
-            if expr.resolved_method:
-                method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
-                return self._gen_method_from_def(method_obj, expr.args, expr.resolved_method)
-            methods = builtin_modules.lookup_type_method(obj_type, expr.method)
-            if methods:
-                # Globals need dereferencing for method template access
-                method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
-                return self._gen_method_from_def(method_obj, expr.args, methods[0])
+            # Builtin methods with cpp_template (resolved by sema)
+            if hasattr(expr, 'resolved_function_info') and expr.resolved_function_info:
+                method_info = expr.resolved_function_info
+                if method_info.cpp_template:
+                    # Globals need dereferencing for method template access
+                    method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
+                    return self._gen_method_from_function_info(method_obj, expr.args, method_info)
 
             # User-defined record methods may need temp handling for TypeParamRef params
             # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
@@ -2258,10 +2255,10 @@ class CodeGenerator:
             subscript_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
             index_expr = self._gen_index_expr(subscript_obj, expr.index, index_type)
 
-            # Use module lookup for __getitem__
-            methods = builtin_modules.lookup_type_method(obj_type, "__getitem__")
-            if methods:
-                return methods[0].cpp.replace("{self}", subscript_obj).replace("{0}", index_expr)
+            # Use registry lookup for __getitem__
+            cpp_template = self._get_type_method_template(obj_type, "__getitem__")
+            if cpp_template:
+                return cpp_template.replace("{self}", subscript_obj).replace("{0}", index_expr)
             # Fallback for types without __getitem__ (e.g., str)
             return f"{subscript_obj}[{index_expr}]"
 

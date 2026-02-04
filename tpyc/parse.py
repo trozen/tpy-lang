@@ -124,8 +124,8 @@ class TpyMethodCall(TpyExpr):
     obj: TpyExpr
     method: str
     args: list[TpyExpr]
-    resolved_method: Any = None  # Set by sema for builtin method overload resolution
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
+    # Note: sema sets resolved_function_info (FunctionInfo) for codegen
 
 
 @dataclass

@@ -2006,7 +2006,8 @@ class SemanticAnalyzer:
             if len(methods) == 1:
                 # Single overload - use original path for better error messages
                 resolved = builtin_modules.resolve_method(methods[0], type_params)
-                expr.resolved_method = resolved
+                # Convert to FunctionInfo for unified codegen
+                expr.resolved_function_info = self._method_def_to_function_info(resolved, expr.method)
                 return self._check_method_args(expr, resolved, obj_type)
             # Multiple overloads - try all to find a matching one
             arg_types = [self._analyze_expr(arg) for arg in expr.args]
@@ -2024,8 +2025,8 @@ class SemanticAnalyzer:
                 # No matching overload - provide helpful error
                 arg_type_strs = ", ".join(str(t) for t in arg_types)
                 raise SemanticError(f"No matching overload for {expr.method}({arg_type_strs})")
-            # Store resolved method for codegen
-            expr.resolved_method = matching_overload
+            # Convert to FunctionInfo for unified codegen
+            expr.resolved_function_info = self._method_def_to_function_info(matching_overload, expr.method)
             return self._check_method_args_resolved(expr, matching_overload, obj_type, arg_types)
 
         # User-defined record methods (including inherited methods from builtins)
@@ -2947,6 +2948,18 @@ class SemanticAnalyzer:
             cpp_template=method.cpp_template,  # Preserve cpp_template for codegen
         )
 
+    def _method_def_to_function_info(
+        self, method: builtin_modules.MethodDef, name: str
+    ) -> FunctionInfo:
+        """Convert a resolved MethodDef to FunctionInfo for unified handling."""
+        return FunctionInfo(
+            name=name,
+            params=[(p.name, p.type) for p in method.params],
+            return_type=method.returns,
+            is_method=True,
+            cpp_template=method.cpp,
+        )
+
     def _type_has_method_with_signature(
         self,
         actual: TpyType,
@@ -3012,36 +3025,30 @@ class SemanticAnalyzer:
                     return False
             return True
         else:
-            # Builtin type - check via module system
-            overloads = builtin_modules.lookup_type_method(actual, method_name)
-            if overloads is None:
+            # Builtin type - check via registry (unified with user records)
+            record_info = self.registry.get_record_for_type(actual)
+            if record_info is None:
                 return False
 
-            # Extract type parameters from the actual type (e.g., {"T": Int32} for list[Int32])
+            method_info = record_info.methods.get(method_name)
+            if method_info is None:
+                return False
+
+            # Extract type parameters and substitute
             type_params = builtin_modules.extract_type_params(actual)
+            if type_params:
+                method_info = self._substitute_method_type_params(method_info, type_params)
 
-            # Check if any overload matches the expected signature
-            for method_def in overloads:
-                # Resolve method signature with type parameters from actual type
-                if type_params:
-                    resolved = builtin_modules.resolve_method(method_def, type_params)
-                else:
-                    resolved = method_def
-
-                # Check return type (allow coercions like IntLiteral -> Int32)
-                if not self._types_compatible_for_protocol(resolved.returns, expected_return):
-                    continue
-                # Check parameter count and types
-                if len(resolved.params) != len(expected_params):
-                    continue
-                params_match = True
-                for param_def, expected_ptype in zip(resolved.params, expected_params):
-                    if not self._types_compatible_for_protocol(param_def.type, expected_ptype):
-                        params_match = False
-                        break
-                if params_match:
-                    return True
-            return False
+            # Check return type (allow coercions like IntLiteral -> Int32)
+            if not self._types_compatible_for_protocol(method_info.return_type, expected_return):
+                return False
+            # Check parameter count and types
+            if len(method_info.params) != len(expected_params):
+                return False
+            for (_, actual_ptype), expected_ptype in zip(method_info.params, expected_params):
+                if not self._types_compatible_for_protocol(actual_ptype, expected_ptype):
+                    return False
+            return True
 
     def _type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
         """Check if a type has a field with the expected type."""
