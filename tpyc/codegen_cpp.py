@@ -1759,12 +1759,20 @@ class CodeGenerator:
         """Look up a method's cpp_template from the registry.
 
         Returns the cpp_template string if found, None otherwise.
+        Requires single overload - errors if multiple overloads exist.
+        For methods with multiple overloads, sema should resolve and attach
+        the correct FunctionInfo to the AST node.
         """
         record_info = self.analyzer.registry.get_record_for_type(tpy_type)
         if record_info:
-            method_info = record_info.methods.get(method_name)
-            if method_info and method_info.cpp_template:
-                return method_info.cpp_template
+            overloads = record_info.get_method_overloads(method_name)
+            if len(overloads) > 1:
+                raise RuntimeError(
+                    f"_get_type_method_template called for multi-overload method '{method_name}' "
+                    f"on {tpy_type}; use resolved_function_info instead"
+                )
+            if overloads and overloads[0].cpp_template:
+                return overloads[0].cpp_template
         return None
 
     def _gen_binop_from_result(self, binop_result: builtin_modules.BinopResult,

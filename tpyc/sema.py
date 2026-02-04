@@ -264,13 +264,13 @@ class SemanticAnalyzer:
                     f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                     f"Protocols are only valid for free function parameters"
                 )
-            methods[method.name] = FunctionInfo(
+            methods[method.name] = [FunctionInfo(
                 name=method.name,
                 params=method.params,
                 return_type=method.return_type,
                 is_method=True,
                 is_staticmethod=method.is_staticmethod
-            )
+            )]
 
         # Convert parsed bounds to ProtocolType (validate they are protocols)
         type_param_bounds: dict[str, ProtocolType] = {}
@@ -1596,6 +1596,9 @@ class SemanticAnalyzer:
         """Check if an argument type is compatible with a builtin parameter type (allows coercions)."""
         if arg_type == param_type:
             return True
+        # IntLiteralType matches any IntLiteralType (regardless of value field)
+        if isinstance(arg_type, IntLiteralType) and isinstance(param_type, IntLiteralType):
+            return True
         # Protocol parameter: check if arg_type conforms to the protocol
         if isinstance(param_type, ProtocolType):
             return self._type_conforms_to_protocol(arg_type, param_type)
@@ -1999,35 +2002,44 @@ class SemanticAnalyzer:
             if expr.method in mutation_methods:
                 self._mark_list_mutated(expr.obj)
 
-        # Built-in type methods - use module lookup (works for any type with qualified_name)
-        type_params = builtin_modules.extract_type_params(obj_type)
-        methods = builtin_modules.lookup_type_method(obj_type, expr.method)
-        if methods:
-            if len(methods) == 1:
-                # Single overload - use original path for better error messages
-                resolved = builtin_modules.resolve_method(methods[0], type_params)
-                # Convert to FunctionInfo for unified codegen
-                expr.resolved_function_info = self._method_def_to_function_info(resolved, expr.method)
-                return self._check_method_args(expr, resolved, obj_type)
-            # Multiple overloads - try all to find a matching one
-            arg_types = [self._analyze_expr(arg) for arg in expr.args]
-            matching_overload = None
-            for method in methods:
-                resolved = builtin_modules.resolve_method(method, type_params)
-                if len(resolved.params) != len(arg_types):
-                    continue
-                # Check if all argument types are compatible
-                if all(self._builtin_type_matches(arg_t, param.type)
-                       for arg_t, param in zip(arg_types, resolved.params)):
-                    matching_overload = resolved
-                    break
-            if matching_overload is None:
-                # No matching overload - provide helpful error
-                arg_type_strs = ", ".join(str(t) for t in arg_types)
-                raise SemanticError(f"No matching overload for {expr.method}({arg_type_strs})")
-            # Convert to FunctionInfo for unified codegen
-            expr.resolved_function_info = self._method_def_to_function_info(matching_overload, expr.method)
-            return self._check_method_args_resolved(expr, matching_overload, obj_type, arg_types)
+        # Built-in type methods - use registry lookup
+        # (Skip for RecordType - those are handled in the user record path below)
+        if not isinstance(obj_type, RecordType):
+            record_info = self.registry.get_record_for_type(obj_type)
+            if record_info:
+                overloads = record_info.get_method_overloads(expr.method)
+                if overloads:
+                    type_subst = builtin_modules.extract_type_params(obj_type)
+
+                    if len(overloads) == 1:
+                        # Single overload - go directly to arg checking for better error messages
+                        resolved = self._substitute_method_type_params(overloads[0], type_subst) if type_subst else overloads[0]
+                        if len(expr.args) != len(resolved.params):
+                            raise SemanticError(
+                                f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
+                                f"got {len(expr.args)}"
+                            )
+                        expr.resolved_function_info = resolved
+                        # Type-check and coerce arguments (gives detailed error messages)
+                        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                            arg_type = self._analyze_expr(arg)
+                            expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"{pname} argument",
+                                                             coercion_ctx=CoercionContext.ARG)
+                        return resolved.return_type
+                    else:
+                        # Multiple overloads - find matching one
+                        arg_types = [self._analyze_expr(arg) for arg in expr.args]
+                        resolved = self._resolve_method_overload(overloads, arg_types, type_subst)
+                        if resolved is None:
+                            arg_type_strs = ", ".join(str(t) for t in arg_types)
+                            raise SemanticError(f"No matching overload for {expr.method}({arg_type_strs})")
+
+                        expr.resolved_function_info = resolved
+                        # Type-check and coerce arguments
+                        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                            expr.args[i] = self._coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
+                                                             coercion_ctx=CoercionContext.ARG)
+                        return resolved.return_type
 
         # User-defined record methods (including inherited methods from builtins)
         if isinstance(obj_type, RecordType):
@@ -2960,6 +2972,42 @@ class SemanticAnalyzer:
             cpp_template=method.cpp,
         )
 
+    def _resolve_method_overload(
+        self,
+        overloads: list[FunctionInfo],
+        arg_types: list[TpyType],
+        type_subst: dict[str, TpyType]
+    ) -> FunctionInfo | None:
+        """Find matching overload from list of FunctionInfo.
+
+        Args:
+            overloads: List of method overloads to check
+            arg_types: Already-analyzed argument types
+            type_subst: Type parameter substitution (e.g., {"T": Int32})
+
+        Returns:
+            The matching FunctionInfo with type params substituted, or None
+        """
+        for method in overloads:
+            # Substitute type params in method signature
+            resolved = self._substitute_method_type_params(method, type_subst) if type_subst else method
+
+            # Check param count
+            if len(resolved.params) != len(arg_types):
+                continue
+
+            # Check param types
+            params_match = True
+            for arg_t, (_, param_t) in zip(arg_types, resolved.params):
+                if not self._builtin_type_matches(arg_t, param_t):
+                    params_match = False
+                    break
+
+            if params_match:
+                return resolved
+
+        return None
+
     def _type_has_method_with_signature(
         self,
         actual: TpyType,
@@ -3030,25 +3078,34 @@ class SemanticAnalyzer:
             if record_info is None:
                 return False
 
-            method_info = record_info.methods.get(method_name)
-            if method_info is None:
+            overloads = record_info.get_method_overloads(method_name)
+            if not overloads:
                 return False
 
-            # Extract type parameters and substitute
+            # Extract type parameters for substitution
             type_params = builtin_modules.extract_type_params(actual)
-            if type_params:
-                method_info = self._substitute_method_type_params(method_info, type_params)
 
-            # Check return type (allow coercions like IntLiteral -> Int32)
-            if not self._types_compatible_for_protocol(method_info.return_type, expected_return):
-                return False
-            # Check parameter count and types
-            if len(method_info.params) != len(expected_params):
-                return False
-            for (_, actual_ptype), expected_ptype in zip(method_info.params, expected_params):
-                if not self._types_compatible_for_protocol(actual_ptype, expected_ptype):
-                    return False
-            return True
+            # Check if any overload matches the expected signature
+            for method_info in overloads:
+                if type_params:
+                    resolved = self._substitute_method_type_params(method_info, type_params)
+                else:
+                    resolved = method_info
+
+                # Check return type (allow coercions like IntLiteral -> Int32)
+                if not self._types_compatible_for_protocol(resolved.return_type, expected_return):
+                    continue
+                # Check parameter count and types
+                if len(resolved.params) != len(expected_params):
+                    continue
+                params_match = True
+                for (_, actual_ptype), expected_ptype in zip(resolved.params, expected_params):
+                    if not self._types_compatible_for_protocol(actual_ptype, expected_ptype):
+                        params_match = False
+                        break
+                if params_match:
+                    return True
+            return False
 
     def _type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
         """Check if a type has a field with the expected type."""

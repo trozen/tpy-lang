@@ -352,15 +352,17 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
 
     methods = {}
     for method_name, overloads in type_def.methods.items():
-        # For now, store first overload; method lookup handles overload resolution
-        method = overloads[0]
-        methods[method_name] = FunctionInfo(
-            name=method_name,
-            params=[(p.name, p.type) for p in method.params],
-            return_type=method.returns,
-            is_method=True,
-            cpp_template=method.cpp,
-        )
+        # Store all overloads as list of FunctionInfo
+        methods[method_name] = [
+            FunctionInfo(
+                name=method_name,
+                params=[(p.name, p.type) for p in method.params],
+                return_type=method.returns,
+                is_method=True,
+                cpp_template=method.cpp,
+            )
+            for method in overloads
+        ]
 
     # Extract simple name from qualified name
     simple_name = qname.split(".")[-1]

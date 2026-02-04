@@ -752,7 +752,7 @@ class RecordInfo:
     fields: list[FieldInfo]
     has_init: bool = False
     init_params: list[tuple[str, TpyType, Optional[str]]] = None  # (name, type, default)
-    methods: dict[str, 'FunctionInfo'] = None  # method_name -> FunctionInfo
+    methods: dict[str, list['FunctionInfo']] = None  # method_name -> list of overloads
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
     parent: Optional['RecordType'] = None  # Parent class type with type args (single inheritance)
@@ -777,7 +777,13 @@ class RecordInfo:
             self.extends_protocols = []
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
-        return self.methods.get(name)
+        """Get first overload of a method (for single-overload cases)."""
+        overloads = self.methods.get(name)
+        return overloads[0] if overloads else None
+
+    def get_method_overloads(self, name: str) -> list['FunctionInfo']:
+        """Get all overloads for a method."""
+        return self.methods.get(name, [])
 
     def is_generic(self) -> bool:
         """Return True if this is a generic record with type parameters."""

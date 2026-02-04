@@ -1917,6 +1917,14 @@ Key difference from Python Pydantic:
    - Generated code should be readable and idiomatic
    - Easy to call C++ from TurboPython and vice versa
 
+## Implementation Notes
+
+### Method Overload Resolution
+
+Builtin method calls go through overload resolution in sema, which attaches `resolved_function_info` to the AST node. Codegen then uses this resolved info.
+
+**Limitation**: Subscript (`__getitem__`, `__setitem__`) and binary operator codegen paths currently fall back to registry lookup without `resolved_function_info`. This works because these methods are single-overload today. If multi-overload subscript or binop methods are needed in the future, those codegen paths must be updated to thread `resolved_function_info` through (similar to regular method calls).
+
 ## Open Questions
 
 1. **Allocation control ergonomics**: `@noalloc` vs `@alloc` vs module-level vs compiler flag?
