@@ -1,1 +1,0 @@
-main.tp.py:10: error: Generic base class with forwarded type parameters not yet supported: 'Container[T]' in 'Wrapper'. Use concrete type arguments instead.

@@ -450,7 +450,6 @@ class Parser:
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""
         # Check if this is a Protocol definition (has Protocol as one of its bases)
-        bases: list[TpyType] = []
         if node.bases:
             has_protocol = any(
                 isinstance(base, ast.Name) and base.id == "Protocol"
@@ -459,16 +458,11 @@ class Parser:
             if has_protocol:
                 return self._parse_protocol(node)
 
-            # Parse base classes/protocols for inheritance
-            # Classification into parent class vs protocol is deferred to sema
-            for base in node.bases:
-                base_type = self._parse_type_annotation(base)
-                bases.append(base_type)
-
         if node.decorator_list:
             raise ParseError(f"Decorators not allowed on class '{node.name}'", node)
 
-        # Extract type parameters from Python 3.12+ syntax: class Foo[T, U]:
+        # Extract type parameters FIRST so they're in scope when parsing bases
+        # Python 3.12+ syntax: class Foo[T, U]:
         # Also extract bounds: class Foo[T: Comparable]:
         type_params = []
         type_param_bounds: dict[str, TpyType] = {}
@@ -489,6 +483,13 @@ class Parser:
         # Store scope for use during method body parsing (expression parsing uses this)
         old_scope = self._type_param_scope
         self._type_param_scope = type_param_scope
+
+        # Parse base classes/protocols for inheritance (with type params in scope)
+        # Classification into parent class vs protocol is deferred to sema
+        bases: list[TpyType] = []
+        for base in node.bases:
+            base_type = self._parse_type_annotation(base, type_param_scope)
+            bases.append(base_type)
 
         fields = []
         methods = []

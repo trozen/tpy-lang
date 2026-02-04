@@ -512,6 +512,7 @@ This is because functions returning `Own[T]` create temporaries (rvalues) that c
 ### User-Defined
 - **Working**: Classes → C++ structs
 - **Working**: Single class inheritance (`class Child(Parent)`)
+- **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
 - **Planned**: Enums → `enum class`
 
@@ -1173,6 +1174,7 @@ struct SortedContainer {
 - **Working**: Generic classes (Python 3.12+ syntax)
 - **Working**: `@staticmethod` → static methods
 - **Working**: Single class inheritance (`class Child(Parent)`)
+- **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)
 - **Open**: `@classmethod` → if use case is clear
 - **Open**: `@property` → getter/setter methods
@@ -1339,6 +1341,68 @@ struct IntContainer : Container<int32_t> {
 };
 ```
 
+**Working**: Generic child classes forwarding type parameters:
+```python
+from tpy import Int32
+
+class Container[T]:
+    value: T
+    def __init__(self, value: T) -> None:
+        self.value = value
+    def get(self) -> T:
+        return self.value
+
+# Forward type parameter to parent
+class Wrapper[T](Container[T]):
+    extra: Int32
+    def __init__(self, value: T, extra: Int32) -> None:
+        self.value = value
+        self.extra = extra
+
+w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
+print(w.get())  # Returns str - inherited method with forwarded type
+```
+
+**Working**: Partial type substitution (mix forwarded and concrete):
+```python
+class Pair[T, U]:
+    first: T
+    second: U
+    def __init__(self, first: T, second: U) -> None:
+        self.first = first
+        self.second = second
+    def get_first(self) -> T:
+        return self.first
+    def get_second(self) -> U:
+        return self.second
+
+# Forward T, fix U to Int32
+class IntPair[T](Pair[T, Int32]):
+    def __init__(self, first: T, second: Int32) -> None:
+        self.first = first
+        self.second = second
+
+p: IntPair[str] = IntPair[str]("hello", Int32(42))
+print(p.get_first())   # Returns str (forwarded T)
+print(p.get_second())  # Returns Int32 (fixed U)
+```
+
+**Working**: Nested type parameters in inheritance:
+```python
+class Container[T]:
+    value: T
+    def get(self) -> T:
+        return self.value
+
+# Parent's T is list[Child's T]
+class ListContainer[T](Container[list[T]]):
+    def __init__(self, value: list[T]) -> None:
+        self.value = value
+
+c: ListContainer[str] = ListContainer[str](["a", "b"])
+items: list[str] = c.get()  # Returns list[str]
+```
+
 **Working**: Inheriting from builtin types with concrete type arguments:
 ```python
 from tpy import StaticList, Int32
@@ -1405,8 +1469,6 @@ std::cout << stack[0] << "\n";              // 10
 - Subscript (`stack[i]`) and `len(stack)` work on child types
 
 **Limitations:**
-- Generic child forwarding type params not yet supported (`class Child[T](Parent[T])`)
-- Partial type substitution not yet supported (`class Child[T](Parent[T, Int32])`)
 - Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
 - No `super()` calls - child must initialize parent fields directly
 - Cannot inherit from builtins with forwarded type parameters (`class Child[T](StaticList[T, 100])`)

@@ -432,16 +432,6 @@ class SemanticAnalyzer:
                         f"Use '{base_type.name}[T]' with appropriate type arguments.",
                         record.loc
                     )
-                # Check that type args are fully concrete (no forwarded type params)
-                if base_type.type_args and record.type_params:
-                    for type_arg in base_type.type_args:
-                        if self._is_forwarded_type_param(type_arg, record.type_params):
-                            raise SemanticError(
-                                f"Generic base class with forwarded type parameters not yet supported: "
-                                f"'{base_type}' in '{record.name}'. "
-                                f"Use concrete type arguments instead.",
-                                record.loc
-                            )
                 parent = base_type
             elif isinstance(base_type, ProtocolType):
                 # Already handled above when is_protocol is True
@@ -2251,8 +2241,19 @@ class SemanticAnalyzer:
             if record_info:
                 overloads, inherited_subst = self._lookup_record_method_overloads(record_info, expr.method)
                 if overloads:
-                    # Build type substitution for generic records (combine with inherited)
-                    type_subst = {**inherited_subst, **self._build_type_substitution(obj_type)}
+                    # Build type substitution for generic records
+                    # Resolve any TypeParamRefs in inherited_subst using instance's type args
+                    instance_subst = self._build_type_substitution(obj_type)
+                    if inherited_subst and instance_subst:
+                        # Resolve TypeParamRefs in inherited values
+                        type_subst = {
+                            k: self._substitute_type_params(v, instance_subst)
+                            for k, v in inherited_subst.items()
+                        }
+                    elif inherited_subst:
+                        type_subst = inherited_subst
+                    else:
+                        type_subst = instance_subst
 
                     if len(overloads) == 1:
                         # Single overload - check args directly for better error messages
