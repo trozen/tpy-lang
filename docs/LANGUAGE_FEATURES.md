@@ -1309,6 +1309,7 @@ struct Dog : Animal {
 
 **Limitations:**
 - Generic base classes not yet supported (`class Child(Parent[Int32])` is an error)
+- Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
 - No `super()` calls - child must initialize parent fields directly
 
 ### Explicit Protocol Implementation
