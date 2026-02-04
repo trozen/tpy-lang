@@ -18,7 +18,7 @@ from .typesys import (
     ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
-    ProtocolInfo, MethodSignature, ModuleType
+    ProtocolInfo, MethodSignature, ModuleType, ResolvedBinop, ResolvedUnaryop
 )
 from .namespace import Namespace, BindingKind, NameBinding
 from .parse import (
@@ -30,6 +30,42 @@ from .parse import (
 )
 from .coercions import resolve_coercion, Coercion, CoercionContext
 from tpyc import modules as builtin_modules
+
+# C++ templates for user-defined dunder methods (used for unified operator resolution)
+# These use C++ operator syntax which works for user types with operator overloads
+DUNDER_CPP_TEMPLATES: dict[str, str] = {
+    # Binary operators
+    "__add__": "({self}) + ({0})",
+    "__sub__": "({self}) - ({0})",
+    "__mul__": "({self}) * ({0})",
+    "__truediv__": "({self}) / ({0})",
+    "__floordiv__": "({self}) / ({0})",  # User types use regular division
+    "__mod__": "({self}) % ({0})",
+    "__pow__": "std::pow({self}, {0})",
+    "__lshift__": "({self}) << ({0})",
+    "__rshift__": "({self}) >> ({0})",
+    "__and__": "({self}) & ({0})",
+    "__or__": "({self}) | ({0})",
+    "__xor__": "({self}) ^ ({0})",
+    # Reverse operators
+    "__radd__": "({0}) + ({self})",
+    "__rsub__": "({0}) - ({self})",
+    "__rmul__": "({0}) * ({self})",
+    "__rtruediv__": "({0}) / ({self})",
+    "__rfloordiv__": "({0}) / ({self})",
+    "__rmod__": "({0}) % ({self})",
+    "__rpow__": "std::pow({0}, {self})",
+    "__rlshift__": "({0}) << ({self})",
+    "__rrshift__": "({0}) >> ({self})",
+    "__rand__": "({0}) & ({self})",
+    "__ror__": "({0}) | ({self})",
+    "__rxor__": "({0}) ^ ({self})",
+    # Unary operators
+    "__neg__": "-({self})",
+    "__invert__": "~({self})",
+    # Conversion methods (used for operator promotion)
+    "__int__": "({self}).__int__()",
+}
 
 
 class DiagnosticLevel(Enum):
@@ -269,7 +305,8 @@ class SemanticAnalyzer:
                 params=method.params,
                 return_type=method.return_type,
                 is_method=True,
-                is_staticmethod=method.is_staticmethod
+                is_staticmethod=method.is_staticmethod,
+                cpp_template=DUNDER_CPP_TEMPLATES.get(method.name)
             )]
 
         # Convert parsed bounds to ProtocolType (validate they are protocols)
@@ -1110,6 +1147,14 @@ class SemanticAnalyzer:
             raise SemanticError(f"Augmented assignment target must be a numeric type, got {target_type}")
         if not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
             raise SemanticError(f"Augmented assignment value must be a numeric type, got {value_type}")
+        # Special case: Int32 += BigInt should use Int32 ops (value gets converted to Int32)
+        # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
+        resolve_value_type = value_type
+        if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
+            resolve_value_type = INT32
+        # Resolve the binary operation for codegen
+        if result := self._resolve_binop(target_type, stmt.op, resolve_value_type):
+            stmt.resolved_binop = result
 
     def _analyze_expr_with_hint(self, expr: TpyExpr, type_hint: Optional[TpyType]) -> TpyType:
         """Analyze an expression with an optional type hint for inference.
@@ -1267,6 +1312,128 @@ class SemanticAnalyzer:
             raise SemanticError(f"Undefined variable: '{expr.name}'")
         return typ
 
+    def _get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
+        """Get the effective type for binop resolution, treating IntLiteralType as BigInt."""
+        if isinstance(tpy_type, IntLiteralType):
+            return BIGINT
+        return tpy_type
+
+    def _binop_type_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
+        """Check if an argument type matches a parameter type for binop resolution."""
+        if arg_type == param_type:
+            return True
+        # IntLiteralType can match Int32 or BigInt
+        if isinstance(arg_type, IntLiteralType):
+            return isinstance(param_type, (Int32Type, BigIntType, IntLiteralType))
+        return False
+
+    def _find_binop_overload(self, overloads: list[FunctionInfo], arg_type: TpyType) -> FunctionInfo | None:
+        """Find an overload that accepts the given argument type."""
+        for method in overloads:
+            if len(method.params) == 1:
+                _, param_type = method.params[0]
+                if self._binop_type_matches(arg_type, param_type):
+                    return method
+        return None
+
+    def _resolve_binop(self, left_type: TpyType, op: str, right_type: TpyType) -> ResolvedBinop | None:
+        """Resolve binary operator using registry.
+
+        Handles both builtin types and user-defined types with dunder methods.
+        User-defined methods have cpp_template set to C++ operator syntax.
+
+        Tries in order:
+        1. left.__add__(right) - direct match
+        2. If left has __int__ returning right's type, promote left and use right's __add__
+        3. right.__radd__(left) - reverse operator
+        4. If right has __int__ returning left's type, promote right and use left's __add__
+        """
+        method_name = builtin_modules.BINOP_TO_METHOD.get(op)
+        rmethod_name = builtin_modules.BINOP_TO_RMETHOD.get(op)
+        if not method_name:
+            return None
+
+        # Get effective types (IntLiteralType -> BigInt)
+        left_effective = self._get_effective_type_for_binop(left_type)
+        right_effective = self._get_effective_type_for_binop(right_type)
+
+        left_record = self.registry.get_record_for_type(left_effective)
+        right_record = self.registry.get_record_for_type(right_effective)
+
+        # 1. Try direct: left.__add__(right)
+        if left_record:
+            overloads = left_record.get_method_overloads(method_name)
+            if method := self._find_binop_overload(overloads, right_type):
+                return ResolvedBinop(
+                    method=method,
+                    left_wrapper="{expr}",
+                    right_wrapper="{expr}",
+                    receiver_type=left_effective
+                )
+
+        # 2. Try promoting left to right's type via __int__
+        if left_record and right_record:
+            int_overloads = left_record.get_method_overloads("__int__")
+            if int_overloads:
+                int_method = int_overloads[0]
+                promoted_type = int_method.return_type
+                # Check if promoted type matches right's type
+                if self.registry.get_record_for_type(promoted_type) == right_record:
+                    right_overloads = right_record.get_method_overloads(method_name)
+                    if method := self._find_binop_overload(right_overloads, right_type):
+                        return ResolvedBinop(
+                            method=method,
+                            left_wrapper=int_method.cpp_template or "{expr}",
+                            right_wrapper="{expr}",
+                            receiver_type=right_effective
+                        )
+
+        # 3. Try reverse: right.__radd__(left)
+        if right_record and rmethod_name:
+            overloads = right_record.get_method_overloads(rmethod_name)
+            if method := self._find_binop_overload(overloads, left_type):
+                return ResolvedBinop(
+                    method=method,
+                    left_wrapper="{expr}",
+                    right_wrapper="{expr}",
+                    is_reverse=True,
+                    receiver_type=right_effective
+                )
+
+        # 4. Try promoting right to left's type via __int__, then use left's operator
+        if right_record and left_record:
+            int_overloads = right_record.get_method_overloads("__int__")
+            if int_overloads:
+                int_method = int_overloads[0]
+                promoted_type = int_method.return_type
+                # Check if promoted type matches left's type
+                if self.registry.get_record_for_type(promoted_type) == left_record:
+                    left_overloads = left_record.get_method_overloads(method_name)
+                    if method := self._find_binop_overload(left_overloads, promoted_type):
+                        return ResolvedBinop(
+                            method=method,
+                            left_wrapper="{expr}",
+                            right_wrapper=int_method.cpp_template or "{expr}",
+                            receiver_type=left_effective
+                        )
+
+        return None
+
+    def _resolve_unaryop(self, operand_type: TpyType, op: str) -> ResolvedUnaryop | None:
+        """Resolve unary operator using registry."""
+        method_name = builtin_modules.UNARYOP_TO_METHOD.get(op)
+        if not method_name:
+            return None
+
+        effective_type = self._get_effective_type_for_binop(operand_type)
+        record = self.registry.get_record_for_type(effective_type)
+        if record:
+            overloads = record.get_method_overloads(method_name)
+            if overloads and len(overloads[0].params) == 0:
+                return ResolvedUnaryop(method=overloads[0])
+
+        return None
+
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""
         left_type = self._analyze_expr(expr.left)
@@ -1306,6 +1473,9 @@ class SemanticAnalyzer:
 
         # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
         if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
+            # Still resolve for codegen (bitwise ops need the cpp template)
+            if result := self._resolve_binop(left_type, expr.op, right_type):
+                expr.resolved_binop = result
             return IntLiteralType(0)  # Value not tracked for compound expressions
 
         # Protocol-typed operands - look up the dunder method in the protocol
@@ -1317,9 +1487,10 @@ class SemanticAnalyzer:
                 if return_type is not None:
                     return return_type
 
-        # Arithmetic/bitwise operators - use module system
-        if result := builtin_modules.lookup_binop(left_type, expr.op, right_type):
-            return result.method.returns
+        # Arithmetic/bitwise operators - use registry
+        if result := self._resolve_binop(left_type, expr.op, right_type):
+            expr.resolved_binop = result
+            return result.method.return_type
 
         # User-defined types (RecordType) with dunder methods
         if isinstance(left_type, RecordType):
@@ -1348,19 +1519,29 @@ class SemanticAnalyzer:
         # FloatType supports unary negation
         if isinstance(operand_type, FloatType):
             if expr.op == "-":
+                # Still resolve for codegen
+                if result := self._resolve_unaryop(operand_type, expr.op):
+                    expr.resolved_unaryop = result
                 return FLOAT
 
         # IntLiteralType special cases - preserve literal nature when possible
         if isinstance(operand_type, IntLiteralType):
             if expr.op == "-":
+                # Still resolve for codegen (needs cpp template)
+                if result := self._resolve_unaryop(operand_type, expr.op):
+                    expr.resolved_unaryop = result
                 return IntLiteralType(-operand_type.value)
             if expr.op == "~":
                 # Bitwise not on literal - treat as Int32
+                # Still resolve for codegen
+                if result := self._resolve_unaryop(operand_type, expr.op):
+                    expr.resolved_unaryop = result
                 return INT32
 
-        # Use module system for unary operators
-        if result := builtin_modules.lookup_unaryop(operand_type, expr.op):
-            return result.method.returns
+        # Use registry for unary operators
+        if result := self._resolve_unaryop(operand_type, expr.op):
+            expr.resolved_unaryop = result
+            return result.method.return_type
 
         raise SemanticError(f"Invalid operand type for unary '{expr.op}': {operand_type}")
 

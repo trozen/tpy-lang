@@ -26,9 +26,9 @@ void __tpy_init() {
   // 12: print(10 ** 20)  # 100000000000000000000
   std::cout << ((tpy::BigInt(10)).pow(tpy::BigInt(20))) << "\n";
   // 15: print((-2) ** 3)  # -8
-  std::cout << (((-tpy::BigInt(2))).pow(tpy::BigInt(3))) << "\n";
+  std::cout << ((-(tpy::BigInt(2))).pow(tpy::BigInt(3))) << "\n";
   // 16: print((-2) ** 4)  # 16
-  std::cout << (((-tpy::BigInt(2))).pow(tpy::BigInt(4))) << "\n";
+  std::cout << ((-(tpy::BigInt(2))).pow(tpy::BigInt(4))) << "\n";
   // 19: print(0 ** 5)  # 0
   std::cout << ((tpy::BigInt(0)).pow(tpy::BigInt(5))) << "\n";
   // 20: print(0 ** 0)  # 1 (by convention)

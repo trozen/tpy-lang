@@ -38,7 +38,7 @@ void __tpy_init() {
   // 17: print(len(empty))
   std::cout << tpy::__len__((*empty)) << "\n";
   // 20: neg: list[Int32] = [1, 2, 3] * -5
-  neg = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>((-5), {1, 2, 3}));
+  neg = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(-(5), {1, 2, 3}));
   // 21: print(len(neg))
   std::cout << tpy::__len__((*neg)) << "\n";
 }

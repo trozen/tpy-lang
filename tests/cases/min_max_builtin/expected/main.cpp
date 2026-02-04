@@ -39,13 +39,13 @@ void __tpy_init() {
   // 13: x = 100
   x = tpy::BigInt(100);
   // 14: y = -50
-  y = (-tpy::BigInt(50));
+  y = -(tpy::BigInt(50));
   // 15: print(min(x, y))
   std::cout << (((*x)) < ((*y)) ? ((*x)) : ((*y))) << "\n";
   // 16: print(max(x, y))
   std::cout << (((*x)) > ((*y)) ? ((*x)) : ((*y))) << "\n";
   // 18: big1 = int(-1000000)
-  big1 = tpy::BigInt((-1000000));
+  big1 = tpy::BigInt(-(1000000));
   // 19: big2 = int(1000000)
   big2 = tpy::BigInt(1000000);
   // 20: print(min(big1, big2))

@@ -21,7 +21,7 @@ void main() {
   // 27:     add_points(p1, p2)
   add_points(p1, p2);
   // 30:     p3 = p1 + p2
-  Point p3 = (p1 + p2);
+  Point p3 = ((p1) + (p2));
   // 31:     print(p3.x)
   std::cout << p3.x << "\n";
   // 32:     print(p3.y)

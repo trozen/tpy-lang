@@ -55,7 +55,7 @@ void test_pop_at_index() {
   // 36:     print_list(nums)
   print_list(nums);
   // 39:     val = nums.pop(-1)
-  val = tpy::list_pop_at(nums, (-1));
+  val = tpy::list_pop_at(nums, -(1));
   // 40:     print(val)
   std::cout << val << "\n";
   // 41:     print_list(nums)

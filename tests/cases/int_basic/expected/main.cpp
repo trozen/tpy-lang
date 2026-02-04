@@ -35,7 +35,7 @@ void test_arithmetic() {
   // 19:     print(a % b)  # 1
   std::cout << ((a) % (b)) << "\n";
   // 22:     c = -7
-  tpy::BigInt c = (-tpy::BigInt(7));
+  tpy::BigInt c = -(tpy::BigInt(7));
   // 23:     d = 3
   tpy::BigInt d = tpy::BigInt(3);
   // 24:     print(c // d)  # -3 (not -2!)
@@ -79,7 +79,7 @@ void __tpy_init() {
   // 47: test_comparison()
   test_comparison();
   // 50: neg = -42
-  neg = (-tpy::BigInt(42));
+  neg = -(tpy::BigInt(42));
   // 51: print(neg)
   std::cout << (*neg) << "\n";
 }

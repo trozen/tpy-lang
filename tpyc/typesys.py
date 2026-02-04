@@ -743,7 +743,7 @@ class RecordInfo:
     - parent stores the parent class type with type args (single inheritance)
     - implemented_protocols stores explicitly declared protocol implementations
 
-    For builtin types (is_builtin=True):
+    For builtin types:
     - cpp_type stores the C++ type template (e.g., "std::vector<{T}>")
     - extends_protocols stores protocol implementations (e.g., ["NativeIterable[T]"])
     - Methods have cpp_template for codegen
@@ -758,7 +758,6 @@ class RecordInfo:
     parent: Optional['RecordType'] = None  # Parent class type with type args (single inheritance)
     parent_builtin: Optional['TpyType'] = None  # Parent builtin type (e.g., StaticListType for inheritance)
     implemented_protocols: list['ProtocolType'] = None  # Explicit protocol implementations
-    is_builtin: bool = False  # True for types from module system
     extends_protocols: list[str] = None  # Protocol extensions: ["NativeIterable[T]"]
     cpp_type: Optional[str] = None  # C++ type template for builtins
 
@@ -820,6 +819,25 @@ class FunctionInfo:
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""
         return bool(self.type_params)
+
+
+@dataclass
+class ResolvedBinop:
+    """Result of binary operator resolution in sema.
+
+    Stores all info needed by codegen to generate the operation.
+    """
+    method: FunctionInfo
+    left_wrapper: str   # cpp template for left, e.g., "tpy::BigInt({expr})" or "{expr}"
+    right_wrapper: str  # cpp template for right
+    is_reverse: bool = False  # True if using reverse operator (swap {self} and {0})
+    receiver_type: 'TpyType | None' = None  # Type of the receiver ({self})
+
+
+@dataclass
+class ResolvedUnaryop:
+    """Result of unary operator resolution in sema."""
+    method: FunctionInfo
 
 
 @dataclass

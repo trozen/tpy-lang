@@ -10,7 +10,7 @@ int32_t classify(int32_t x) {
   // 5:     if x < 0:
   if ((x < 0)) {
     // 6:         return -1
-    return (-1);
+    return -(1);
   } else {
     // 7:     elif x == 0:
     if ((x == 0)) {
@@ -55,7 +55,7 @@ int32_t complex_condition(int32_t a, int32_t b) {
     // 28:     elif a < 0 or b < 0:
     if (((a < 0) || (b < 0))) {
       // 29:         return -1
-      return (-1);
+      return -(1);
     } else {
       // 31:         return 0
       return 0;
@@ -66,7 +66,7 @@ int32_t complex_condition(int32_t a, int32_t b) {
 void __tpy_init() {
   __name__ = "__main__";
   // 33: print(classify(-5))
-  std::cout << classify((-5)) << "\n";
+  std::cout << classify(-(5)) << "\n";
   // 34: print(classify(0))
   std::cout << classify(0) << "\n";
   // 35: print(classify(5))
@@ -76,7 +76,7 @@ void __tpy_init() {
   // 37: print(check_range(15))
   std::cout << check_range(15) << "\n";
   // 38: print(check_bounds(-1))
-  std::cout << check_bounds((-1)) << "\n";
+  std::cout << check_bounds(-(1)) << "\n";
   // 39: print(check_bounds(50))
   std::cout << check_bounds(50) << "\n";
   // 40: print(check_bounds(101))
@@ -84,7 +84,7 @@ void __tpy_init() {
   // 41: print(complex_condition(1, 1))
   std::cout << complex_condition(1, 1) << "\n";
   // 42: print(complex_condition(-1, 1))
-  std::cout << complex_condition((-1), 1) << "\n";
+  std::cout << complex_condition(-(1), 1) << "\n";
   // 43: print(complex_condition(0, 0))
   std::cout << complex_condition(0, 0) << "\n";
 }

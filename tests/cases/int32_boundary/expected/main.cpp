@@ -21,7 +21,7 @@ void __tpy_init() {
   // 8: print(x // 2)
   std::cout << (tpy::int32_div((*x), 2)) << "\n";
   // 11: y: Int32 = -2147483648
-  y = (-2147483648);
+  y = -(2147483648);
   // 12: print(y)
   std::cout << (*y) << "\n";
   // 13: print(y + 1)

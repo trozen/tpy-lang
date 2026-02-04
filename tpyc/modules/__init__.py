@@ -372,7 +372,6 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         fields=[],
         methods=methods,
         type_params=type_def.type_params,
-        is_builtin=True,
         extends_protocols=type_def.extends,
         cpp_type=type_def.cpp_type,
     )
@@ -473,13 +472,6 @@ def lookup_type(type_or_name: "TpyType | str") -> BuiltinTypeDef | None:
     for module in _all_modules():
         if typ := module.types.get(qname):
             return typ
-    return None
-
-
-def lookup_type_method(type_or_name: "TpyType | str", method_name: str) -> list[MethodDef] | None:
-    """Lookup a method on a built-in type."""
-    if typ := lookup_type(type_or_name):
-        return typ.methods.get(method_name)
     return None
 
 
@@ -619,43 +611,6 @@ UNARYOP_TO_METHOD = {
 }
 
 
-@dataclass
-class BinopResult:
-    """Result of binary operator lookup."""
-    method: MethodDef
-    left_wrapper: str   # cpp template for left, e.g., "tpy::BigInt({expr})" or "{expr}"
-    right_wrapper: str  # cpp template for right
-    is_reverse: bool = False  # True if using reverse operator (swap {self} and {0})
-    receiver_type: "TpyType | None" = None  # Type of the receiver ({self})
-
-
-@dataclass
-class UnaryopResult:
-    """Result of unary operator lookup."""
-    method: MethodDef
-
-
-def _get_effective_qname(tpy_type: "TpyType") -> str | None:
-    """Get qualified name for method lookup, treating IntLiteralType as builtins.int."""
-    from tpyc.typesys import IntLiteralType
-
-    if isinstance(tpy_type, IntLiteralType):
-        return "builtins.int"
-    return tpy_type.qualified_name()
-
-
-def _get_type_for_qname(qname: str) -> "TpyType | None":
-    """Get the TpyType instance for a qualified name."""
-    from tpyc.typesys import BIGINT, INT32, FLOAT
-    if qname == "builtins.int":
-        return BIGINT
-    if qname == "builtins.float":
-        return FLOAT
-    if qname == "tpy.Int32":
-        return INT32
-    return None
-
-
 def _type_matches_param(arg_type: "TpyType", param_type: "TpyType") -> bool:
     """Check if an argument type matches a parameter type."""
     # Import here to avoid circular imports
@@ -667,103 +622,3 @@ def _type_matches_param(arg_type: "TpyType", param_type: "TpyType") -> bool:
     if isinstance(arg_type, IntLiteralType):
         return isinstance(param_type, (Int32Type, BigIntType))
     return False
-
-
-def _find_matching_overload(methods: list[MethodDef] | None, arg_type: "TpyType") -> MethodDef | None:
-    """Find an overload that accepts the given argument type."""
-    if not methods:
-        return None
-    for method in methods:
-        if len(method.params) == 1 and _type_matches_param(arg_type, method.params[0].type):
-            return method
-    return None
-
-
-def lookup_binop(left_type: "TpyType", op: str, right_type: "TpyType") -> BinopResult | None:
-    """
-    Lookup binary operator implementation.
-
-    Tries in order:
-    1. left.__add__(right) - direct match
-    2. If left has __int__ returning right's type, promote left and use right's __add__
-    3. right.__radd__(left) - reverse operator
-    4. If right has __int__ returning left's type, promote right and use left's __add__
-
-    Returns BinopResult with method and wrapper templates, or None if not found.
-    """
-    method_name = BINOP_TO_METHOD.get(op)
-    rmethod_name = BINOP_TO_RMETHOD.get(op)
-    if not method_name:
-        return None
-
-    left_qname = _get_effective_qname(left_type)
-    right_qname = _get_effective_qname(right_type)
-
-    # 1. Try direct: left.__add__(right)
-    if left_qname:
-        methods = lookup_type_method(left_qname, method_name)
-        if method := _find_matching_overload(methods, right_type):
-            receiver = _get_type_for_qname(left_qname)
-            return BinopResult(method=method, left_wrapper="{expr}", right_wrapper="{expr}",
-                               receiver_type=receiver)
-
-    # 2. Try promoting left to right's type via __int__
-    if left_qname and right_qname:
-        int_methods = lookup_type_method(left_qname, "__int__")
-        if int_methods:
-            promoted_type = int_methods[0].returns
-            if promoted_type.qualified_name() == right_qname:
-                # left can promote to right's type
-                methods = lookup_type_method(right_qname, method_name)
-                if method := _find_matching_overload(methods, right_type):
-                    receiver = _get_type_for_qname(right_qname)
-                    return BinopResult(
-                        method=method,
-                        left_wrapper=int_methods[0].cpp,  # e.g., "tpy::BigInt({self})"
-                        right_wrapper="{expr}",
-                        receiver_type=receiver,
-                    )
-
-    # 3. Try reverse: right.__radd__(left)
-    if right_qname and rmethod_name:
-        methods = lookup_type_method(right_qname, rmethod_name)
-        if method := _find_matching_overload(methods, left_type):
-            receiver = _get_type_for_qname(right_qname)
-            return BinopResult(method=method, left_wrapper="{expr}", right_wrapper="{expr}",
-                               is_reverse=True, receiver_type=receiver)
-
-    # 4. Try promoting right to left's type via __int__, then use left's operator
-    if right_qname and left_qname:
-        int_methods = lookup_type_method(right_qname, "__int__")
-        if int_methods:
-            promoted_type = int_methods[0].returns
-            if promoted_type.qualified_name() == left_qname:
-                # right can promote to left's type
-                methods = lookup_type_method(left_qname, method_name)
-                if method := _find_matching_overload(methods, promoted_type):
-                    receiver = _get_type_for_qname(left_qname)
-                    return BinopResult(
-                        method=method,
-                        left_wrapper="{expr}",
-                        right_wrapper=int_methods[0].cpp,  # e.g., "tpy::BigInt({self})"
-                        receiver_type=receiver,
-                    )
-
-    return None
-
-
-def lookup_unaryop(operand_type: "TpyType", op: str) -> UnaryopResult | None:
-    """Lookup unary operator implementation."""
-    method_name = UNARYOP_TO_METHOD.get(op)
-    if not method_name:
-        return None
-
-    qname = operand_type.qualified_name()
-    if not qname:
-        return None
-
-    methods = lookup_type_method(qname, method_name)
-    if methods and len(methods) > 0 and len(methods[0].params) == 0:
-        return UnaryopResult(method=methods[0])
-
-    return None

@@ -92,6 +92,7 @@ class TpyBinOp(TpyExpr):
     left: TpyExpr
     op: str  # '+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>='
     right: TpyExpr
+    resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
 
 
 @dataclass
@@ -99,6 +100,7 @@ class TpyUnaryOp(TpyExpr):
     """Unary operation."""
     op: str  # '-', 'not'
     operand: TpyExpr
+    resolved_unaryop: 'ResolvedUnaryop | None' = None  # Set by sema for builtin ops
 
 
 @dataclass
@@ -194,6 +196,7 @@ class TpyAugAssign(TpyStmt):
     target: TpyExpr
     op: str
     value: TpyExpr
+    resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
 
 
 @dataclass

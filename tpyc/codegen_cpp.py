@@ -16,7 +16,8 @@ from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
-    INT32, VOID, BIGINT, FLOAT, CHAR, STR, MethodSignature, FunctionInfo
+    INT32, VOID, BIGINT, FLOAT, CHAR, STR, MethodSignature, FunctionInfo,
+    ResolvedBinop, ResolvedUnaryop
 )
 from .namespace import Namespace, BindingKind
 from .parse import (
@@ -1501,8 +1502,8 @@ class CodeGenerator:
             value = f"({value}).to_int32()"
             value_type = INT32
 
-        # Try module system for augmented assignment (a += b is a = a + b)
-        if target_type and (binop_result := builtin_modules.lookup_binop(target_type, stmt.op, value_type)):
+        # Use resolved binop from sema for augmented assignment (a += b is a = a + b)
+        if binop_result := stmt.resolved_binop:
             result = self._gen_binop_from_result(binop_result, target, value)
             return f"{indent}{target} = {result};\n"
         else:
@@ -1553,8 +1554,8 @@ class CodeGenerator:
             value = f"({value}).to_int32()"
             value_type = INT32
 
-        # Compute the result expression
-        if elem_type and (binop_result := builtin_modules.lookup_binop(elem_type, stmt.op, value_type)):
+        # Compute the result expression using resolved binop from sema
+        if binop_result := stmt.resolved_binop:
             result_expr = self._gen_binop_from_result(binop_result, read_expr, value)
         else:
             cpp_op = "/" if stmt.op == "//" else stmt.op
@@ -1775,19 +1776,20 @@ class CodeGenerator:
                 return overloads[0].cpp_template
         return None
 
-    def _gen_binop_from_result(self, binop_result: builtin_modules.BinopResult,
+    def _gen_binop_from_result(self, binop_result: ResolvedBinop,
                                left: str, right: str) -> str:
-        """Generate binary operation code from a BinopResult.
+        """Generate binary operation code from a ResolvedBinop.
 
         Applies wrappers to operands and substitutes into the method template.
         Handles is_reverse flag for reverse operators (__radd__, etc.).
         """
         wrapped_left = binop_result.left_wrapper.replace("{self}", left).replace("{expr}", left)
         wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
+        cpp_template = binop_result.method.cpp_template
         if binop_result.is_reverse:
-            return binop_result.method.cpp.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
+            return cpp_template.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
         else:
-            return binop_result.method.cpp.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+            return cpp_template.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
 
     def _gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression, dereferencing globals.
@@ -1913,10 +1915,11 @@ class CodeGenerator:
                 # Fallback for operators not in module system (bitwise operators)
                 return f"({left} {expr.op} {right})"
 
-            # Try module system for arithmetic/bitwise operators
-            if binop_result := builtin_modules.lookup_binop(left_type, expr.op, right_type):
+            # Use resolved binop from sema (builtin arithmetic/bitwise operators)
+            if binop_result := expr.resolved_binop:
                 # Get types for proper literal promotion
-                param_type = binop_result.method.params[0].type if binop_result.method.params else None
+                # FunctionInfo.params is list[tuple[str, TpyType]]
+                param_type = binop_result.method.params[0][1] if binop_result.method.params else None
                 receiver_type = binop_result.receiver_type
                 # For reverse operators, {self} is the right operand, {0} is left
                 # For forward operators, {self} is the left operand, {0} is right
@@ -1990,9 +1993,9 @@ class CodeGenerator:
             if self._is_global_name(expr.operand):
                 operand = f"(*{operand})"
 
-            # Try module system for unary operators
-            if unaryop_result := builtin_modules.lookup_unaryop(operand_type, expr.op):
-                return unaryop_result.method.cpp.format(self=operand)
+            # Use resolved unary op from sema
+            if unaryop_result := expr.resolved_unaryop:
+                return unaryop_result.method.cpp_template.replace("{self}", operand)
 
             # Fallback for IntLiteralType (not in module system)
             if isinstance(operand_type, IntLiteralType):

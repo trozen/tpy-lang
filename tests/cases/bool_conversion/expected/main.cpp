@@ -46,7 +46,7 @@ void __tpy_init() {
   // 18: print(b4)  # True
   std::cout << tpy::print_bool((*b4)) << "\n";
   // 19: b5: Bool = bool(Int32(-5))
-  b5 = ((-5) != 0);
+  b5 = (-(5) != 0);
   // 20: print(b5)  # True
   std::cout << tpy::print_bool((*b5)) << "\n";
   // 23: b6: Bool = bool(0)
@@ -58,7 +58,7 @@ void __tpy_init() {
   // 26: print(b7)  # True
   std::cout << tpy::print_bool((*b7)) << "\n";
   // 27: b8: Bool = bool(-100)
-  b8 = ((-100) != 0);
+  b8 = (-(100) != 0);
   // 28: print(b8)  # True
   std::cout << tpy::print_bool((*b8)) << "\n";
 }

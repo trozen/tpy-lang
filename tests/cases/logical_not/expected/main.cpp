@@ -120,7 +120,7 @@ bool is_valid(int32_t x) {
 void test_not_with_function_call() {
   // 77:     """Test 'not' with function return value."""
   // 78:     if not is_valid(-5):
-  if ((!is_valid((-5)))) {
+  if ((!is_valid(-(5)))) {
     // 79:         print("not is_valid(-5): yes")
     std::cout << "not is_valid(-5): yes" << "\n";
   }

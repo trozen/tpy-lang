@@ -16,7 +16,7 @@ void __tpy_init() {
   // 2: x = 2
   x = tpy::BigInt(2);
   // 3: y = -1
-  y = (-tpy::BigInt(1));
+  y = -(tpy::BigInt(1));
   // 4: z = x ** y  # Should panic
   z = (((*x)).pow((*y)));
 }

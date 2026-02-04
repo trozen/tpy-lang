@@ -17,7 +17,7 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test abs() builtin function for Int32, BigInt, and float."""
   // 5: x: Int32 = -42
-  x = (-42);
+  x = -(42);
   // 6: print(abs(x))
   std::cout << std::abs((*x)) << "\n";
   // 7: print(abs(Int32(10)))
@@ -25,13 +25,13 @@ void __tpy_init() {
   // 8: print(abs(Int32(0)))
   std::cout << std::abs(0) << "\n";
   // 11: y = -100
-  y = (-tpy::BigInt(100));
+  y = -(tpy::BigInt(100));
   // 12: print(abs(y))
   std::cout << tpy::BigInt::abs((*y)) << "\n";
   // 13: print(abs(99))
   std::cout << std::abs(99) << "\n";
   // 15: big = int(-1000000)
-  big = tpy::BigInt((-1000000));
+  big = tpy::BigInt(-(1000000));
   // 16: print(abs(big))
   std::cout << tpy::BigInt::abs((*big)) << "\n";
   // 19: z: float = -3.14

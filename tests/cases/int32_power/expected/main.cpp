@@ -31,7 +31,7 @@ void __tpy_init() {
   // 17: print(x ** 1)   # 2
   std::cout << (tpy::int32_pow((*x), 1)) << "\n";
   // 20: n: Int32 = -2
-  n = (-2);
+  n = -(2);
   // 21: print(n ** 3)   # -8
   std::cout << (tpy::int32_pow((*n), 3)) << "\n";
   // 22: print(n ** 4)   # 16

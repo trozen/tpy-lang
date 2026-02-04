@@ -24,6 +24,7 @@
 - warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
+- warning when hiding method in inheritance -- types may behave differently between TPython and CPython
 
 ## Python features
 - dict full support
@@ -67,6 +68,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - `Span(list([1,2,3]))` not supported
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
+- `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
