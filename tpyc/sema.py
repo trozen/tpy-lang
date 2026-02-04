@@ -643,7 +643,11 @@ class SemanticAnalyzer:
             return self._is_type_param_ref(typ.pointee)
         if isinstance(typ, OwnType):
             return self._is_type_param_ref(typ.wrapped)
-        if isinstance(typ, (ListType, SpanType, ArrayType)):
+        if isinstance(typ, ArrayType):
+            if self._is_type_param_ref(typ.element_type):
+                return True
+            return isinstance(typ.size, TypeParamRef)
+        if isinstance(typ, (ListType, SpanType)):
             return self._is_type_param_ref(typ.element_type)
         return False
 
@@ -790,17 +794,25 @@ class SemanticAnalyzer:
 
         Returns:
             The type with all TypeParamRef instances replaced by their concrete types.
-            For INT kind TypeParamRef, returns the TypeParamRef unchanged (it's a compile-time constant).
         """
         if isinstance(typ, TypeParamRef):
             if typ.name in subst:
                 replacement = subst[typ.name]
                 if isinstance(replacement, int):
-                    # INT type params stay as TypeParamRef (they're compile-time constants)
-                    # The actual int value will be used in codegen
+                    # INT type params: keep as TypeParamRef for expression contexts (codegen uses the name)
+                    # Type-level substitution for ArrayType etc. is handled below
                     return typ
                 return replacement
             raise SemanticError(f"Unknown type parameter '{typ.name}'")
+        # Special handling for ArrayType: substitute size if it's a TypeParamRef
+        if isinstance(typ, ArrayType):
+            new_elem = self._substitute_type_params(typ.element_type, subst)
+            new_size = typ.size
+            if isinstance(typ.size, TypeParamRef) and typ.size.name in subst:
+                new_size = subst[typ.size.name]
+            if new_elem != typ.element_type or new_size != typ.size:
+                return ArrayType(new_elem, new_size)
+            return typ
         # Use map_inner_types for types that have inner types
         return typ.map_inner_types(lambda t: self._substitute_type_params(t, subst))
 
@@ -2795,6 +2807,34 @@ class SemanticAnalyzer:
                 return self._match_type_with_inference(
                     param_type.element_type, arg_type.element_type, inferred
                 )
+            return False
+
+        # Case 3b: ArrayType with TypeParamRef element or size (e.g., Array[T, N])
+        if isinstance(param_type, ArrayType):
+            if isinstance(arg_type, ArrayType):
+                # Match element types
+                if not self._match_type_with_inference(
+                    param_type.element_type, arg_type.element_type, inferred
+                ):
+                    return False
+                # Match sizes
+                if isinstance(param_type.size, TypeParamRef):
+                    # Infer size from arg
+                    if isinstance(arg_type.size, int):
+                        param_name = param_type.size.name
+                        if param_name in inferred:
+                            # Already inferred - check consistency
+                            if inferred[param_name] != arg_type.size:
+                                return False
+                        else:
+                            inferred[param_name] = arg_type.size
+                        return True
+                    elif isinstance(arg_type.size, TypeParamRef):
+                        # Both are TypeParamRef - must have same name
+                        return param_type.size.name == arg_type.size.name
+                else:
+                    # param_type.size is int - must match exactly
+                    return param_type.size == arg_type.size
             return False
 
         # Case 4: RecordType with type args (e.g., Box[T] nested)

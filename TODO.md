@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
 - `super()` support for inheritance
 - warning when hiding method in inheritance -- types may behave differently between TPython and CPython
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp

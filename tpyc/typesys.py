@@ -550,13 +550,15 @@ class OwnType(TpyType):
 class ArrayType(TpyType):
     """Fixed-size array: Array[T, N] -> std::array<T, N>"""
     element_type: TpyType
-    size: int
+    size: "int | TypeParamRef"  # Can be literal int or forwarded INT type param
 
     def to_cpp(self) -> str:
-        return f"std::array<{self.element_type.to_cpp()}, {self.size}>"
+        size_cpp = self.size.name if isinstance(self.size, TypeParamRef) else str(self.size)
+        return f"std::array<{self.element_type.to_cpp()}, {size_cpp}>"
 
     def __str__(self) -> str:
-        return f"Array[{self.element_type}, {self.size}]"
+        size_str = self.size.name if isinstance(self.size, TypeParamRef) else str(self.size)
+        return f"Array[{self.element_type}, {size_str}]"
 
     def qualified_name(self) -> Optional[str]:
         return "tpy.Array"

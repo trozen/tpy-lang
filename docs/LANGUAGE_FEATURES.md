@@ -1308,12 +1308,8 @@ struct Child : Base<T, N> {
 **CPython compatibility:**
 - Using `N` in methods works in CPython via `__orig_class__` (available after `__init__`)
 - Using `N` in `__init__` (e.g., `self.size = Int32(N)`) is **TurboPython-only** - CPython cannot access type args during construction
+- `Array[T, N]` with forwarded N works as type annotation, but instantiation in `__init__` is TurboPython-only
 - Tests using `N` inside `__init__` cannot be validated against CPython
-
-**Limitations:**
-- Built-in generic types (like `Array[T, N]`) cannot yet accept forwarded integer type params
-  - `Array[T, N]` inside a generic class requires N to be a literal, not a TypeParamRef
-  - Use workarounds like storing the data differently for now
 
 ### Class Inheritance
 

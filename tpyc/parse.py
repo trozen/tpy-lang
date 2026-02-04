@@ -920,8 +920,16 @@ class Parser:
             elif kind == TypeParamKind.INT:
                 if isinstance(slice_node, ast.Constant) and isinstance(slice_node.value, int):
                     parsed_args.append(slice_node.value)
+                elif isinstance(slice_node, ast.Name) and type_param_scope and slice_node.id in type_param_scope:
+                    # Allow forwarded INT type params (e.g., Array[T, N] where N: int)
+                    param_name = slice_node.id
+                    param_kind = type_param_scope[param_name]
+                    if param_kind == TypeParamKind.INT:
+                        parsed_args.append(TypeParamRef(param_name, kind=TypeParamKind.INT))
+                    else:
+                        raise ParseError(f"{name} parameter {i + 1} requires an integer, got type parameter '{param_name}'", node)
                 else:
-                    raise ParseError(f"{name} parameter {i + 1} must be an integer literal", node)
+                    raise ParseError(f"{name} parameter {i + 1} must be an integer literal or int type parameter", node)
 
         assert type_def.type_factory is not None
         try:

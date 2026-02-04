@@ -1,0 +1,2 @@
+This test uses Array[T, N] with forwarded integer type parameter N.
+In CPython, Array's metaclass stores N as a TypeVar, not an integer.
