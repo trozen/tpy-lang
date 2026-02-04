@@ -511,8 +511,9 @@ This is because functions returning `Own[T]` create temporaries (rvalues) that c
 
 ### User-Defined
 - **Working**: Classes → C++ structs
+- **Working**: Single class inheritance (`class Child(Parent)`)
+- **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
 - **Planned**: Enums → `enum class`
-- **Open**: Inheritance → could support simple cases
 
 ### Protocols (Partial)
 
@@ -1171,9 +1172,10 @@ struct SortedContainer {
 - **Working**: Instance methods
 - **Working**: Generic classes (Python 3.12+ syntax)
 - **Working**: `@staticmethod` → static methods
+- **Working**: Single class inheritance (`class Child(Parent)`)
+- **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)
 - **Open**: `@classmethod` → if use case is clear
 - **Open**: `@property` → getter/setter methods
-- **Open**: Inheritance → composition, or actual inheritance for simple cases
 
 ### Generic Classes
 
@@ -1238,6 +1240,156 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 
 **Limitations**:
 - Integer type parameters (`class FixedStack[T, N: int]`) not yet supported
+
+### Class Inheritance
+
+**Working**: Single class inheritance with optional protocol implementations.
+
+```python
+from tpy import Int32
+from typing import Protocol
+
+# Base class
+class Animal:
+    name: str
+    age: Int32
+
+    def __init__(self, name: str, age: Int32) -> None:
+        self.name = name
+        self.age = age
+
+    def speak(self) -> str:
+        return "..."
+
+# Child class inheriting from Animal
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, name: str, age: Int32, breed: str) -> None:
+        self.name = name    # Initialize inherited field
+        self.age = age      # Initialize inherited field
+        self.breed = breed  # Initialize own field
+
+    def speak(self) -> str:  # Override parent method
+        return "Woof!"
+
+# Usage
+d = Dog("Buddy", 3, "Golden Retriever")
+print(d.name)      # Access inherited field: "Buddy"
+print(d.speak())   # Call overridden method: "Woof!"
+```
+
+Generated C++:
+```cpp
+struct Animal {
+  std::string_view name;
+  int32_t age;
+  Animal() = default;
+  explicit Animal(std::string_view name, int32_t age) : name(name), age(age) {}
+  std::string_view speak() { return "..."; }
+};
+
+struct Dog : Animal {
+  std::string_view breed;
+  Dog() = default;
+  explicit Dog(std::string_view name, int32_t age, std::string_view breed) : breed(breed) {
+    this->name = name;  // Inherited fields assigned in body
+    this->age = age;
+  }
+  std::string_view speak() { return "Woof!"; }
+};
+```
+
+**Key points:**
+- Single class inheritance only (multiple class inheritance is an error)
+- Child `__init__` must initialize all fields (parent and own) directly
+- No `super()` support yet - parent fields are initialized by direct assignment
+- Method override works by simply defining a method with the same name
+- Inherited fields and methods are accessible via `self.field` and `self.method()`
+
+**Limitations:**
+- Generic base classes not yet supported (`class Child(Parent[Int32])` is an error)
+- No `super()` calls - child must initialize parent fields directly
+
+### Explicit Protocol Implementation
+
+**Working**: Classes can declare protocol implementations explicitly.
+
+```python
+from tpy import Int32
+from typing import Protocol
+
+# Define a protocol
+class Printable(Protocol):
+    def __str__(self) -> str:
+        ...
+
+# Explicit protocol implementation
+class Person(Printable):
+    name: str
+    age: Int32
+
+    def __init__(self, name: str, age: Int32) -> None:
+        self.name = name
+        self.age = age
+
+    def __str__(self) -> str:  # Required by Printable
+        return self.name
+```
+
+The compiler validates that declared protocols are actually implemented:
+```python
+class BadPerson(Printable):  # ERROR: missing required methods: __str__
+    name: str
+```
+
+**Multiple protocol implementations:**
+```python
+class Describable(Protocol):
+    def describe(self) -> str: ...
+
+class Measurable(Protocol):
+    def size(self) -> Int32: ...
+
+# Implement multiple protocols
+class Box(Printable, Describable, Measurable):
+    width: Int32
+    height: Int32
+
+    def __str__(self) -> str:
+        return "Box"
+
+    def describe(self) -> str:
+        return "A rectangular box"
+
+    def size(self) -> Int32:
+        return self.width * self.height
+```
+
+**Combined class inheritance and protocol implementation:**
+```python
+# Inherit from class AND implement protocols
+class Car(Vehicle, Printable, Measurable):
+    model: str
+
+    def __init__(self, brand: str, year: Int32, model: str) -> None:
+        self.brand = brand  # From Vehicle
+        self.year = year    # From Vehicle
+        self.model = model
+
+    def __str__(self) -> str:
+        return self.model
+
+    def weight(self) -> Int32:
+        return 1500
+```
+
+**Rules:**
+- At most one class parent (single inheritance)
+- Multiple protocol implementations allowed
+- Class parent must come first in the base list: `class Child(Parent, Protocol1, Protocol2)`
+- All declared protocol methods must be implemented (compiler validates)
+- Protocols provide no implementation - they're pure interfaces
 
 ### Special Methods
 - **Working**: `__init__`
@@ -1670,7 +1822,6 @@ Key difference from Python Pydantic:
 1. **Allocation control ergonomics**: `@noalloc` vs `@alloc` vs module-level vs compiler flag?
 2. **Container element storage**: How to spell "list of values" vs "list of pointers"?
 3. **String semantics**: When does `str` allocate vs use SSO?
-4. **Inheritance**: Support simple cases or always composition?
-5. **Exceptions**: Error codes, `std::expected`, or actual exceptions?
-6. **Lambda efficiency**: Always template? Configurable? Type-erased fallback?
-7. **Macro system scope**: How much compile-time Python execution? Safety limits?
+4. **Exceptions**: Error codes, `std::expected`, or actual exceptions?
+5. **Lambda efficiency**: Always template? Configurable? Type-erased fallback?
+6. **Macro system scope**: How much compile-time Python execution? Safety limits?

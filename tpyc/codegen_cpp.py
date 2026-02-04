@@ -159,6 +159,42 @@ class CodeGenerator:
             return ListType(BIGINT)
         return typ
 
+    def _sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
+        """Sort records so parent classes come before children.
+
+        Uses topological sort based on inheritance relationships.
+        """
+        record_by_name = {r.name: r for r in records}
+
+        # Build dependency graph
+        dependencies: dict[str, set[str]] = {r.name: set() for r in records}
+        for record in records:
+            record_info = self.analyzer.registry.get_record(record.name)
+            if record_info and record_info.parent and record_info.parent in record_by_name:
+                dependencies[record.name].add(record_info.parent)
+
+        # Topological sort (Kahn's algorithm)
+        result = []
+        no_deps = [name for name, deps in dependencies.items() if not deps]
+
+        while no_deps:
+            name = no_deps.pop(0)
+            result.append(record_by_name[name])
+
+            # Remove this record from all dependents
+            for dep_name, deps in dependencies.items():
+                if name in deps:
+                    deps.remove(name)
+                    if not deps and dep_name not in [r.name for r in result]:
+                        no_deps.append(dep_name)
+
+        # If any records are left (circular dependency), add them at the end
+        for record in records:
+            if record not in result:
+                result.append(record)
+
+        return result
+
     def generate(self, module: TpyModule, module_name: str = "generated") -> tuple[str, str]:
         """Generate C++ header and source files.
 
@@ -390,7 +426,9 @@ class CodeGenerator:
         hpp.write("\n")
 
         # Generate full record definitions (skip those already defined early)
-        for record in module.records:
+        # Sort by inheritance order so parent classes come before children
+        sorted_records = self._sort_records_by_inheritance(module.records)
+        for record in sorted_records:
             if record.name in early_definition_records:
                 continue  # Already fully defined above
             if record.name in bound_protocol_records:
@@ -519,11 +557,19 @@ class CodeGenerator:
 
     def _gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
+        # Get record info for inheritance information
+        record_info = self.analyzer.registry.get_record(record.name)
+
         # Generate template prefix for generic records
         if record.type_params:
             template_header = self._gen_record_template_header(record.type_params, record.type_param_bounds)
             out.write(f"{template_header}\n")
-        out.write(f"struct {record.name} {{\n")
+
+        # Generate struct with optional inheritance
+        if record_info and record_info.parent:
+            out.write(f"struct {record.name} : {record_info.parent} {{\n")
+        else:
+            out.write(f"struct {record.name} {{\n")
 
         # Fields
         for fld in record.fields:
@@ -538,8 +584,8 @@ class CodeGenerator:
         # Determine constructor generation strategy
         if record.init_method:
             has_params = bool(record.init_method.params)
-            inits = self._extract_field_inits(record.init_method)
-            non_init_stmts = self._get_non_init_stmts(record.init_method)
+            inits = self._extract_field_inits(record.init_method, record)
+            non_init_stmts = self._get_non_init_stmts(record.init_method, record)
 
             if has_params:
                 # Generate default constructor for C++ compatibility
@@ -656,31 +702,47 @@ class CodeGenerator:
         out.write("  return os;\n")
         out.write("}\n")
 
-    def _extract_field_inits(self, init_method: TpyFunction) -> list[tuple[str, str]]:
-        """Extract field initializations from __init__ body."""
+    def _extract_field_inits(self, init_method: TpyFunction, record: TpyRecord) -> list[tuple[str, str]]:
+        """Extract field initializations from __init__ body.
+
+        Only extracts initializations for fields that belong to this class directly,
+        not inherited fields. Inherited field assignments must go in the constructor body.
+        """
+        # Get the set of this record's own field names
+        own_field_names = {fld.name for fld in record.fields}
+
         inits = []
         for stmt in init_method.body:
             if isinstance(stmt, TpyAssign):
                 if isinstance(stmt.target, TpyFieldAccess):
                     if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
                         field_name = stmt.target.field
-                        value = self._gen_expr(stmt.value)
-                        inits.append((field_name, value))
+                        # Only add to member init list if it's this class's own field
+                        if field_name in own_field_names:
+                            value = self._gen_expr(stmt.value)
+                            inits.append((field_name, value))
         return inits
 
-    def _get_non_init_stmts(self, init_method: TpyFunction) -> list[TpyStmt]:
+    def _get_non_init_stmts(self, init_method: TpyFunction, record: TpyRecord) -> list[TpyStmt]:
         """Get statements from __init__ that aren't simple field assignments.
 
         These need to go in the constructor body, not the initializer list.
+        Includes assignments to inherited fields (they can't be in the member init list).
         """
+        # Get the set of this record's own field names
+        own_field_names = {fld.name for fld in record.fields}
+
         non_init = []
         for stmt in init_method.body:
-            is_field_init = False
+            is_own_field_init = False
             if isinstance(stmt, TpyAssign):
                 if isinstance(stmt.target, TpyFieldAccess):
                     if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
-                        is_field_init = True
-            if not is_field_init:
+                        field_name = stmt.target.field
+                        # Only skip if it's this class's own field
+                        if field_name in own_field_names:
+                            is_own_field_init = True
+            if not is_own_field_init:
                 non_init.append(stmt)
         return non_init
 

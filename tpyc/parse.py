@@ -285,12 +285,18 @@ class TpyRecord:
     For generic records like Stack[T]:
     - type_params stores the type parameter names (e.g., ["T"])
     - type_param_bounds stores bounds for each bounded type param (e.g., {"T": Comparable})
+
+    For class inheritance:
+    - bases stores the parsed base types (classes or protocols)
+    - Classification into parent class vs protocol implementations is done in sema
     """
     name: str
     fields: list[FieldInfo]
     methods: list[TpyFunction] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
+    bases: list[TpyType] = field(default_factory=list)
+    loc: SourceLocation | None = None
 
     @property
     def init_method(self) -> Optional[TpyFunction]:
@@ -441,6 +447,7 @@ class Parser:
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""
         # Check if this is a Protocol definition (has Protocol as one of its bases)
+        bases: list[TpyType] = []
         if node.bases:
             has_protocol = any(
                 isinstance(base, ast.Name) and base.id == "Protocol"
@@ -448,7 +455,12 @@ class Parser:
             )
             if has_protocol:
                 return self._parse_protocol(node)
-            raise ParseError(f"Inheritance not allowed in class '{node.name}'", node)
+
+            # Parse base classes/protocols for inheritance
+            # Classification into parent class vs protocol is deferred to sema
+            for base in node.bases:
+                base_type = self._parse_type_annotation(base)
+                bases.append(base_type)
 
         if node.decorator_list:
             raise ParseError(f"Decorators not allowed on class '{node.name}'", node)
@@ -508,7 +520,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_bounds=type_param_bounds)
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_bounds=type_param_bounds, bases=bases, loc=self._loc(node))
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""

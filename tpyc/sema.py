@@ -174,6 +174,10 @@ class SemanticAnalyzer:
         for protocol in module.protocols:
             self._validate_protocol_parents(protocol)
 
+        # Validate inheritance relationships (after all records and protocols are registered)
+        for record in module.records:
+            self._validate_record_inheritance(record)
+
         # Second pass: register all functions
         for func in module.functions:
             self._register_function(func)
@@ -263,6 +267,8 @@ class SemanticAnalyzer:
                 )
             type_param_bounds[param_name] = bound_type
 
+        # Don't classify bases here - defer to _validate_record_inheritance
+        # (so forward-referenced protocols are properly recognized)
         info = RecordInfo(
             name=record.name,
             fields=record.fields,
@@ -270,10 +276,176 @@ class SemanticAnalyzer:
             init_params=init_params,
             methods=methods,
             type_params=record.type_params,
-            type_param_bounds=type_param_bounds
+            type_param_bounds=type_param_bounds,
+            parent=None,
+            implemented_protocols=[]
         )
         self.registry.register_record(info)
         self.global_ns.bind_record(info)
+
+    def _validate_record_inheritance(self, record: TpyRecord) -> None:
+        """Validate inheritance relationships for a record.
+
+        Called after all records AND protocols are registered to allow forward references.
+        This is where we classify bases into parent class vs protocol implementations.
+        """
+        record_info = self.registry.get_record(record.name)
+        if record_info is None:
+            return
+
+        # Classify bases into parent class vs protocol implementations
+        # We do this here (not in _register_record) so forward-referenced protocols are recognized
+        parent: str | None = None
+        implemented_protocols: list[ProtocolType] = []
+
+        for base_type in record.bases:
+            # Get the base name to check if it's actually a protocol
+            base_name = None
+            if isinstance(base_type, ProtocolType):
+                base_name = base_type.name
+            elif isinstance(base_type, RecordType):
+                base_name = base_type.name
+
+            # Check if this base is actually a protocol (handles forward references)
+            is_protocol = False
+            if base_name and self.registry.get_protocol(base_name) is not None:
+                is_protocol = True
+
+            if is_protocol:
+                # It's a protocol implementation
+                if isinstance(base_type, RecordType):
+                    # Convert RecordType to ProtocolType (was misclassified due to forward ref)
+                    protocol_type = ProtocolType(base_type.name, base_type.type_args)
+                else:
+                    protocol_type = base_type
+                implemented_protocols.append(protocol_type)
+            elif isinstance(base_type, RecordType):
+                # It's a class - check for multiple inheritance
+                if parent is not None:
+                    raise SemanticError(
+                        f"Multiple class inheritance not allowed in '{record.name}'. "
+                        f"Use protocols for multiple interfaces.",
+                        record.loc
+                    )
+                # Check for generic base classes (not yet supported)
+                if base_type.type_args:
+                    raise SemanticError(
+                        f"Generic base class '{base_type}' not yet supported in '{record.name}'. "
+                        f"Use a non-generic base class.",
+                        record.loc
+                    )
+                # Check if parent is generic and requires type args
+                parent_info = self.registry.get_record(base_type.name)
+                if parent_info is None:
+                    raise SemanticError(
+                        f"Parent class '{base_type.name}' not defined for '{record.name}'",
+                        record.loc
+                    )
+                if parent_info.is_generic() and not base_type.type_args:
+                    raise SemanticError(
+                        f"Generic class '{base_type.name}' requires type arguments in '{record.name}'. "
+                        f"Use '{base_type.name}[T]' with appropriate type arguments.",
+                        record.loc
+                    )
+                parent = base_type.name
+            elif isinstance(base_type, ProtocolType):
+                # Already handled above when is_protocol is True
+                pass
+            else:
+                raise SemanticError(
+                    f"Invalid base type '{base_type}' in '{record.name}'. "
+                    f"Only classes and protocols can be inherited.",
+                    record.loc
+                )
+
+        # Update RecordInfo with classified bases
+        record_info.parent = parent
+        record_info.implemented_protocols = implemented_protocols
+
+        # Validate parent class
+        if record_info.parent:
+            # Check for circular inheritance
+            if self._has_circular_inheritance(record.name, record_info.parent):
+                raise SemanticError(
+                    f"Circular inheritance detected: '{record.name}' inherits from '{record_info.parent}'",
+                    record.loc
+                )
+
+        # Validate protocol implementations
+        for protocol in record_info.implemented_protocols:
+            protocol_info = self.registry.get_protocol(protocol.name)
+            if protocol_info is None:
+                raise SemanticError(
+                    f"Protocol '{protocol.name}' not defined for implementation in '{record.name}'",
+                    record.loc
+                )
+
+            # Check if record implements all protocol methods
+            record_type = RecordType(record.name)
+            if not self._type_conforms_to_protocol(record_type, protocol):
+                # Generate helpful error message listing missing methods
+                missing = self._get_missing_protocol_methods(record_type, protocol)
+                if missing:
+                    methods_str = ", ".join(missing)
+                    raise SemanticError(
+                        f"Class '{record.name}' declares implementation of protocol '{protocol}' "
+                        f"but is missing required methods: {methods_str}",
+                        record.loc
+                    )
+                # If no missing methods, it might be a field or signature issue
+                raise SemanticError(
+                    f"Class '{record.name}' declares implementation of protocol '{protocol}' "
+                    f"but does not satisfy the protocol requirements",
+                    record.loc
+                )
+
+    def _has_circular_inheritance(self, record_name: str, parent_name: str) -> bool:
+        """Check if record_name would be in the inheritance chain of parent_name."""
+        visited = set()
+        current = parent_name
+        while current:
+            if current == record_name:
+                return True
+            if current in visited:
+                return False  # Already detected a cycle elsewhere
+            visited.add(current)
+            parent_info = self.registry.get_record(current)
+            if parent_info is None:
+                return False
+            current = parent_info.parent
+        return False
+
+    def _get_missing_protocol_methods(self, record_type: RecordType, protocol: ProtocolType) -> list[str]:
+        """Get list of protocol methods missing from record."""
+        record_info = self.registry.get_record(record_type.name)
+        if record_info is None:
+            return []
+
+        protocol_info = self.registry.get_protocol(protocol.name)
+        if protocol_info is None:
+            return []
+
+        missing = []
+        # Build type substitution map
+        type_subst: dict[str, TpyType] = {"Self": record_type}
+        if protocol_info.type_params and protocol.type_args:
+            type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
+
+        # Collect all required methods (including inherited)
+        all_methods = self._collect_protocol_methods(protocol.name)
+        for method_sig in all_methods:
+            expected_params = [
+                self._substitute_types(ptype, type_subst)
+                for _, ptype in method_sig.params
+            ]
+            expected_return = self._substitute_types(method_sig.return_type, type_subst)
+
+            if not self._type_has_method_with_signature(
+                record_type, method_sig.name, expected_params, expected_return
+            ):
+                missing.append(method_sig.name)
+
+        return missing
 
     def _register_protocol(self, protocol: TpyProtocol) -> None:
         """Register a protocol type (without validating parents yet)."""
@@ -1680,7 +1852,7 @@ class SemanticAnalyzer:
 
             if is_record_name:
                 record_info = self.registry.get_record(expr.obj.name)
-                method_info = record_info.get_method(expr.method)
+                method_info = self._lookup_record_method(record_info, expr.method)
                 if method_info and method_info.is_staticmethod:
                     # It's a static method call via class name
                     if len(expr.args) != len(method_info.params):
@@ -1767,11 +1939,11 @@ class SemanticAnalyzer:
             expr.resolved_method = matching_overload
             return self._check_method_args_resolved(expr, matching_overload, obj_type, arg_types)
 
-        # User-defined record methods
+        # User-defined record methods (including inherited methods)
         if isinstance(obj_type, RecordType):
             record_info = self.registry.get_record(obj_type.name)
-            if record_info and record_info.get_method(expr.method):
-                method_info = record_info.get_method(expr.method)
+            method_info = self._lookup_record_method(record_info, expr.method) if record_info else None
+            if method_info:
                 # Check argument count
                 if len(expr.args) != len(method_info.params):
                     raise SemanticError(
@@ -1868,13 +2040,13 @@ class SemanticAnalyzer:
                 raise SemanticError(f"Unknown record type: '{actual_type.name}'")
             # Build type substitution for generic records
             type_subst = self._build_type_substitution(actual_type)
-            for fld in record.fields:
-                if fld.name == expr.field:
-                    # Substitute type parameters in field type
-                    field_type = fld.type
-                    if type_subst:
-                        field_type = self._substitute_type_params(field_type, type_subst)
-                    return field_type
+            # Look up field (including inherited fields)
+            field_info = self._lookup_record_field(record, expr.field)
+            if field_info:
+                field_type = field_info.type
+                if type_subst:
+                    field_type = self._substitute_type_params(field_type, type_subst)
+                return field_type
             raise SemanticError(f"Record '{actual_type.name}' has no field '{expr.field}'")
 
         # Bounded type parameter - access field from protocol bound
@@ -2559,6 +2731,32 @@ class SemanticAnalyzer:
             return True
         return False
 
+    def _lookup_record_field(self, record_info: RecordInfo, field_name: str) -> FieldInfo | None:
+        """Look up a field in a record, including inherited fields."""
+        # Check this record's own fields first
+        for fld in record_info.fields:
+            if fld.name == field_name:
+                return fld
+        # Check parent class
+        if record_info.parent:
+            parent_info = self.registry.get_record(record_info.parent)
+            if parent_info:
+                return self._lookup_record_field(parent_info, field_name)
+        return None
+
+    def _lookup_record_method(self, record_info: RecordInfo, method_name: str) -> FunctionInfo | None:
+        """Look up a method in a record, including inherited methods."""
+        # Check this record's own methods first
+        method = record_info.get_method(method_name)
+        if method is not None:
+            return method
+        # Check parent class
+        if record_info.parent:
+            parent_info = self.registry.get_record(record_info.parent)
+            if parent_info:
+                return self._lookup_record_method(parent_info, method_name)
+        return None
+
     def _type_has_method_with_signature(
         self,
         actual: TpyType,
@@ -2606,11 +2804,11 @@ class SemanticAnalyzer:
                         return True
             return False
         elif isinstance(actual, RecordType):
-            # User record - check methods in RecordInfo
+            # User record - check methods in RecordInfo (including inherited methods)
             record = self.registry.get_record(actual.name)
             if record is None:
                 return False
-            method = record.get_method(method_name)
+            method = self._lookup_record_method(record, method_name)
             if method is None:
                 return False
             # Check return type
