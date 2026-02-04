@@ -16,7 +16,7 @@ from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType, TypeParamRef,
     StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType,
-    INT32, VOID, BIGINT, FLOAT, CHAR, STR, MethodSignature
+    INT32, VOID, BIGINT, FLOAT, CHAR, STR, MethodSignature, FunctionInfo
 )
 from .namespace import Namespace, BindingKind
 from .parse import (
@@ -568,6 +568,8 @@ class CodeGenerator:
         # Generate struct with optional inheritance
         if record_info and record_info.parent:
             out.write(f"struct {record.name} : {record_info.parent.to_cpp()} {{\n")
+        elif record_info and record_info.parent_builtin:
+            out.write(f"struct {record.name} : {record_info.parent_builtin.to_cpp()} {{\n")
         else:
             out.write(f"struct {record.name} {{\n")
 
@@ -1752,6 +1754,19 @@ class CodeGenerator:
             result = result.replace(f"{{{i}}}", self._gen_expr(arg))
         return result
 
+    def _gen_method_from_function_info(self, obj: str, args: list[TpyExpr],
+                                       method: 'FunctionInfo') -> str:
+        """Generate method call code from a FunctionInfo with cpp_template.
+
+        Similar to _gen_method_from_def but works with FunctionInfo.
+        Substitutes {self} with obj and {0}, {1}, etc. with generated args.
+        """
+        assert method.cpp_template is not None
+        result = method.cpp_template.replace("{self}", obj)
+        for i, arg in enumerate(args):
+            result = result.replace(f"{{{i}}}", self._gen_expr(arg))
+        return result
+
     def _gen_binop_from_result(self, binop_result: builtin_modules.BinopResult,
                                left: str, right: str) -> str:
         """Generate binary operation code from a BinopResult.
@@ -2072,6 +2087,20 @@ class CodeGenerator:
 
         elif isinstance(expr, TpyMethodCall):
             args = ", ".join(self._gen_expr(a) for a in expr.args)
+
+            # Check for inherited builtin method with cpp_template first
+            # This must be checked before the self.method() shortcut because
+            # inherited builtin methods need the cpp_template substitution
+            if hasattr(expr, 'resolved_function_info') and expr.resolved_function_info:
+                method_info = expr.resolved_function_info
+                if method_info.cpp_template:
+                    # For self.inherited_method(), use (*this) as the receiver
+                    if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
+                        return self._gen_method_from_function_info("(*this)", expr.args, method_info)
+                    obj = self._gen_expr(expr.obj)
+                    method_obj = f"(*{obj})" if self._is_global_name(expr.obj) else obj
+                    return self._gen_method_from_function_info(method_obj, expr.args, method_info)
+
             # Handle self.method() -> just method() (inside method, implicit this)
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return f"{expr.method}({args})"

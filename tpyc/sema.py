@@ -151,6 +151,9 @@ class SemanticAnalyzer:
             info = builtin_modules.protocol_def_to_info(protocol_def)
             self.registry.register_protocol(info)
 
+        # Register all builtin types as RecordInfo for unified lookup
+        self._register_builtin_types()
+
         # Process imports
         self.imports = module.imports
         for module_name, names in self.imports.items():
@@ -201,6 +204,18 @@ class SemanticAnalyzer:
         # Sixth pass: analyze function bodies
         for func in module.functions:
             self._analyze_function(func)
+
+    def _register_builtin_types(self) -> None:
+        """Register builtin types as RecordInfo for unified method lookup.
+
+        This converts BuiltinTypeDef entries from the module system into
+        RecordInfo entries, enabling unified method lookup for both
+        user-defined and builtin types.
+        """
+        for module in builtin_modules.get_all_modules():
+            for qname, type_def in module.types.items():
+                info = builtin_modules.builtin_type_to_record_info(qname, type_def)
+                self.registry.register_builtin_record(qname, info)
 
     def _register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
@@ -288,6 +303,11 @@ class SemanticAnalyzer:
 
         Called after all records AND protocols are registered to allow forward references.
         This is where we classify bases into parent class vs protocol implementations.
+
+        Supports inheritance from:
+        - User-defined classes (RecordType)
+        - Builtin types (ModuleType, ListType, ArrayType, etc.)
+        - Protocols (ProtocolType)
         """
         record_info = self.registry.get_record(record.name)
         if record_info is None:
@@ -296,6 +316,7 @@ class SemanticAnalyzer:
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in _register_record) so forward-referenced protocols are recognized
         parent: RecordType | None = None
+        parent_builtin: TpyType | None = None
         implemented_protocols: list[ProtocolType] = []
 
         for base_type in record.bases:
@@ -320,8 +341,8 @@ class SemanticAnalyzer:
                     protocol_type = base_type
                 implemented_protocols.append(protocol_type)
             elif isinstance(base_type, RecordType):
-                # It's a class - check for multiple inheritance
-                if parent is not None:
+                # It's a user-defined class - check for multiple inheritance
+                if parent is not None or parent_builtin is not None:
                     raise SemanticError(
                         f"Multiple class inheritance not allowed in '{record.name}'. "
                         f"Use protocols for multiple interfaces.",
@@ -354,15 +375,25 @@ class SemanticAnalyzer:
             elif isinstance(base_type, ProtocolType):
                 # Already handled above when is_protocol is True
                 pass
+            elif self._is_inheritable_builtin(base_type):
+                # It's a builtin type - check for multiple inheritance
+                if parent is not None or parent_builtin is not None:
+                    raise SemanticError(
+                        f"Multiple class inheritance not allowed in '{record.name}'. "
+                        f"Use protocols for multiple interfaces.",
+                        record.loc
+                    )
+                parent_builtin = base_type
             else:
                 raise SemanticError(
                     f"Invalid base type '{base_type}' in '{record.name}'. "
-                    f"Only classes and protocols can be inherited.",
+                    f"Only classes, builtin types, and protocols can be inherited.",
                     record.loc
                 )
 
         # Update RecordInfo with classified bases
         record_info.parent = parent
+        record_info.parent_builtin = parent_builtin
         record_info.implemented_protocols = implemented_protocols
 
         # Validate parent class
@@ -586,6 +617,17 @@ class SemanticAnalyzer:
         if isinstance(typ, (ListType, SpanType, ArrayType)):
             return self._is_forwarded_type_param(typ.element_type, type_params)
         return False
+
+    def _is_inheritable_builtin(self, typ: TpyType) -> bool:
+        """Check if a type is a builtin type that can be inherited from.
+
+        Returns True for module-defined types (like StaticList, Array) that have
+        a registered RecordInfo in the builtin_records registry.
+        """
+        qname = typ.qualified_name()
+        if qname is None:
+            return False
+        return self.registry.get_builtin_record(qname) is not None
 
     def _validate_type(self, typ: TpyType, allow_type_param_ref: bool = False) -> None:
         """Validate that a type is well-formed.
@@ -1986,7 +2028,7 @@ class SemanticAnalyzer:
             expr.resolved_method = matching_overload
             return self._check_method_args_resolved(expr, matching_overload, obj_type, arg_types)
 
-        # User-defined record methods (including inherited methods)
+        # User-defined record methods (including inherited methods from builtins)
         if isinstance(obj_type, RecordType):
             record_info = self.registry.get_record(obj_type.name)
             method_info = self._lookup_record_method(record_info, expr.method) if record_info else None
@@ -2006,6 +2048,8 @@ class SemanticAnalyzer:
                     resolved_ptype = self._substitute_type_params(ptype, type_subst) if type_subst else ptype
                     expr.args[i] = self._coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                      coercion_ctx=CoercionContext.ARG)
+                # Store resolved method info for codegen (needed for inherited builtin methods)
+                expr.resolved_function_info = method_info
                 # Substitute type parameters in return type
                 return_type = method_info.return_type
                 if type_subst:
@@ -2265,14 +2309,23 @@ class SemanticAnalyzer:
         raise SemanticError(f"Protocol {protocol.name} does not support indexing")
 
     def _get_record_getitem_type(self, record_type: RecordType) -> TpyType:
-        """Get the return type of __getitem__ for a user record type."""
+        """Get the return type of __getitem__ for a user record type.
+
+        Uses _lookup_record_method to support inherited methods from parent
+        classes and builtin types.
+        """
         record = self.registry.get_record(record_type.name)
         if record is None:
             raise SemanticError(f"Unknown record type: {record_type.name}")
 
-        getitem = record.get_method("__getitem__")
+        getitem = self._lookup_record_method(record, "__getitem__")
         if getitem is None:
             raise SemanticError(f"Cannot index type {record_type}: no __getitem__ method")
+
+        # Substitute type parameters if the record is generic
+        type_subst = self._build_type_substitution(record_type)
+        if type_subst:
+            return self._substitute_type_params(getitem.return_type, type_subst)
 
         return getitem.return_type
 
@@ -2813,12 +2866,15 @@ class SemanticAnalyzer:
         For generic parent classes, substitutes type parameters with concrete types.
         E.g., if Container[T] has method `get() -> T` and IntContainer extends Container[Int32],
         looking up `get` on IntContainer returns FunctionInfo with return type Int32.
+
+        Supports inheritance from both user-defined classes and builtin types.
         """
         # Check this record's own methods first
         method = record_info.get_method(method_name)
         if method is not None:
             return method
-        # Check parent class
+
+        # Check parent class (user-defined)
         if record_info.parent:
             parent_info = self.registry.get_record(record_info.parent.name)
             if parent_info:
@@ -2827,28 +2883,69 @@ class SemanticAnalyzer:
                     # Substitute parent's type params with concrete type args
                     type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
                     if type_subst:
-                        substituted_params = [
-                            (pname, self._substitute_type_params(ptype, type_subst))
-                            for pname, ptype in inherited.params
-                        ]
-                        substituted_return = self._substitute_type_params(inherited.return_type, type_subst)
-                        # Substitute type params in bounds (e.g., U: Sequence[T] -> U: Sequence[Int32])
-                        substituted_bounds = {}
-                        if inherited.type_param_bounds:
-                            for param_name, bound in inherited.type_param_bounds.items():
-                                substituted_bounds[param_name] = self._substitute_type_params(bound, type_subst)
-                        return FunctionInfo(
-                            name=inherited.name,
-                            params=substituted_params,
-                            return_type=substituted_return,
-                            is_noalloc=inherited.is_noalloc,
-                            is_method=inherited.is_method,
-                            is_staticmethod=inherited.is_staticmethod,
-                            type_params=inherited.type_params,
-                            type_param_bounds=substituted_bounds if substituted_bounds else inherited.type_param_bounds,
-                        )
+                        return self._substitute_method_type_params(inherited, type_subst)
                     return inherited
+
+        # Check parent builtin type
+        if record_info.parent_builtin:
+            parent_qname = record_info.parent_builtin.qualified_name()
+            if parent_qname:
+                parent_info = self.registry.get_builtin_record(parent_qname)
+                if parent_info:
+                    inherited = parent_info.get_method(method_name)
+                    if inherited:
+                        # Build type substitution from builtin's type args
+                        type_subst = self._get_builtin_parent_type_subst(
+                            record_info.parent_builtin, parent_info
+                        )
+                        if type_subst:
+                            return self._substitute_method_type_params(inherited, type_subst)
+                        return inherited
+
         return None
+
+    def _get_builtin_parent_type_subst(
+        self, parent_type: TpyType, parent_info: RecordInfo
+    ) -> dict[str, TpyType]:
+        """Build substitution map from a builtin parent's type parameters.
+
+        For types like StaticList[Int32, 10], extracts the type params from
+        the concrete type instance and maps them to the type parameter names.
+        """
+        if not parent_info.type_params:
+            return {}
+
+        # Extract type params from the builtin type instance
+        type_params = builtin_modules.extract_type_params(parent_type)
+        return type_params
+
+    def _substitute_method_type_params(
+        self, method: FunctionInfo, type_subst: dict[str, TpyType]
+    ) -> FunctionInfo:
+        """Substitute type parameters in a method signature."""
+        substituted_params = [
+            (pname, self._substitute_type_params(ptype, type_subst))
+            for pname, ptype in method.params
+        ]
+        substituted_return = self._substitute_type_params(method.return_type, type_subst)
+
+        # Substitute type params in bounds
+        substituted_bounds = {}
+        if method.type_param_bounds:
+            for param_name, bound in method.type_param_bounds.items():
+                substituted_bounds[param_name] = self._substitute_type_params(bound, type_subst)
+
+        return FunctionInfo(
+            name=method.name,
+            params=substituted_params,
+            return_type=substituted_return,
+            is_noalloc=method.is_noalloc,
+            is_method=method.is_method,
+            is_staticmethod=method.is_staticmethod,
+            type_params=method.type_params,
+            type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,
+            cpp_template=method.cpp_template,  # Preserve cpp_template for codegen
+        )
 
     def _type_has_method_with_signature(
         self,

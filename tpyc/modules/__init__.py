@@ -342,6 +342,40 @@ def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
     )
 
 
+def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "RecordInfo":
+    """Convert BuiltinTypeDef to RecordInfo for unified lookup.
+
+    This creates a RecordInfo that represents the builtin type's interface
+    (methods with cpp_template) while preserving type parameter information.
+    """
+    from tpyc.typesys import RecordInfo, FunctionInfo
+
+    methods = {}
+    for method_name, overloads in type_def.methods.items():
+        # For now, store first overload; method lookup handles overload resolution
+        method = overloads[0]
+        methods[method_name] = FunctionInfo(
+            name=method_name,
+            params=[(p.name, p.type) for p in method.params],
+            return_type=method.returns,
+            is_method=True,
+            cpp_template=method.cpp,
+        )
+
+    # Extract simple name from qualified name
+    simple_name = qname.split(".")[-1]
+
+    return RecordInfo(
+        name=simple_name,
+        fields=[],
+        methods=methods,
+        type_params=type_def.type_params,
+        is_builtin=True,
+        extends_protocols=type_def.extends,
+        cpp_type=type_def.cpp_type,
+    )
+
+
 def _resolve_concrete_type_name(name: str) -> "TpyType | None":
     """Resolve a concrete type name (like 'Char', 'Int32') to its TpyType singleton.
 

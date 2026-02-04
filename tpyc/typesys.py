@@ -733,7 +733,7 @@ class FieldInfo:
 
 @dataclass
 class RecordInfo:
-    """Information about a user-defined record (class).
+    """Information about a user-defined record (class) or builtin type.
 
     For generic records like Stack[T]:
     - type_params stores the type parameter names (e.g., ["T"])
@@ -742,6 +742,11 @@ class RecordInfo:
     For class inheritance:
     - parent stores the parent class type with type args (single inheritance)
     - implemented_protocols stores explicitly declared protocol implementations
+
+    For builtin types (is_builtin=True):
+    - cpp_type stores the C++ type template (e.g., "std::vector<{T}>")
+    - extends_protocols stores protocol implementations (e.g., ["NativeIterable[T]"])
+    - Methods have cpp_template for codegen
     """
     name: str
     fields: list[FieldInfo]
@@ -751,7 +756,11 @@ class RecordInfo:
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
     parent: Optional['RecordType'] = None  # Parent class type with type args (single inheritance)
+    parent_builtin: Optional['TpyType'] = None  # Parent builtin type (e.g., StaticListType for inheritance)
     implemented_protocols: list['ProtocolType'] = None  # Explicit protocol implementations
+    is_builtin: bool = False  # True for types from module system
+    extends_protocols: list[str] = None  # Protocol extensions: ["NativeIterable[T]"]
+    cpp_type: Optional[str] = None  # C++ type template for builtins
 
     def __post_init__(self):
         if self.init_params is None:
@@ -764,6 +773,8 @@ class RecordInfo:
             self.type_param_bounds = {}
         if self.implemented_protocols is None:
             self.implemented_protocols = []
+        if self.extends_protocols is None:
+            self.extends_protocols = []
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         return self.methods.get(name)
@@ -780,6 +791,9 @@ class FunctionInfo:
     For generic functions like def first[T](items: list[T]) -> T:
     - type_params stores the type parameter names (e.g., ["T"])
     - type_param_bounds stores bounds for each type param (e.g., {"T": Comparable})
+
+    For builtin methods:
+    - cpp_template stores the C++ code template (e.g., "{self}.push_back({0})")
     """
     name: str
     params: list[tuple[str, TpyType]]  # (name, type)
@@ -789,6 +803,7 @@ class FunctionInfo:
     is_staticmethod: bool = False
     type_params: list[str] = None
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
+    cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
 
     def __post_init__(self):
         if self.type_params is None:
@@ -845,6 +860,7 @@ class TypeRegistry:
 
     def __init__(self):
         self.records: dict[str, RecordInfo] = {}
+        self.builtin_records: dict[str, RecordInfo] = {}  # By qualified name (e.g., "builtins.list")
         self.functions: dict[str, FunctionInfo] = {}
         self.protocols: dict[str, ProtocolInfo] = {}
         # Fundamental types not in module system (pointer wrappers)
@@ -852,6 +868,10 @@ class TypeRegistry:
 
     def register_record(self, info: RecordInfo) -> None:
         self.records[info.name] = info
+
+    def register_builtin_record(self, qname: str, info: RecordInfo) -> None:
+        """Register a builtin type's RecordInfo by its qualified name."""
+        self.builtin_records[qname] = info
 
     def register_function(self, info: FunctionInfo) -> None:
         self.functions[info.name] = info
@@ -861,6 +881,23 @@ class TypeRegistry:
 
     def get_record(self, name: str) -> Optional[RecordInfo]:
         return self.records.get(name)
+
+    def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:
+        """Get a builtin record by qualified name."""
+        return self.builtin_records.get(qname)
+
+    def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
+        """Unified lookup for any type's RecordInfo.
+
+        For user records (RecordType), looks up by name in self.records.
+        For builtin types, looks up by qualified_name in self.builtin_records.
+        """
+        if isinstance(tpy_type, RecordType):
+            return self.records.get(tpy_type.name)
+        qname = tpy_type.qualified_name()
+        if qname:
+            return self.builtin_records.get(qname)
+        return None
 
     def get_function(self, name: str) -> Optional[FunctionInfo]:
         return self.functions.get(name)

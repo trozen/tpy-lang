@@ -174,13 +174,19 @@ class StaticList(metaclass=StaticListMeta):
     _elem_type = None
     _capacity = 0
 
+    def __new__(cls, *args, **kwargs):
+        instance = super().__new__(cls)
+        # Initialize _data in __new__ so it's available even if subclass
+        # doesn't call super().__init__() (mimics C++ behavior where base
+        # class default ctor is automatically called)
+        instance._data = []
+        return instance
+
     def __init__(self, init=None):
         if init is not None:
             if len(init) > self._capacity:
                 raise RuntimeError(f"StaticList initializer exceeds capacity {self._capacity}")
-            self._data: list = list(init)
-        else:
-            self._data: list = []
+            self._data = list(init)
 
     def append(self, value) -> None:
         if len(self._data) >= self._capacity:

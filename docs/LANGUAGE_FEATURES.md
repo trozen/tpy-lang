@@ -1339,11 +1339,77 @@ struct IntContainer : Container<int32_t> {
 };
 ```
 
+**Working**: Inheriting from builtin types with concrete type arguments:
+```python
+from tpy import StaticList, Int32
+
+class IntStack(StaticList[Int32, 100]):
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def push(self, value: Int32) -> None:
+        self.append(value)  # Inherited from StaticList
+
+def main() -> Int32:
+    stack = IntStack("my_stack")
+
+    # Use inherited methods
+    stack.push(Int32(10))
+    stack.push(Int32(20))
+
+    # Use inherited __len__
+    print(len(stack))  # 2
+
+    # Use inherited __getitem__
+    print(stack[0])    # 10
+
+    # Access own field
+    print(stack.name)  # "my_stack"
+
+    return Int32(0)
+```
+
+Generated C++:
+```cpp
+struct IntStack : StaticList<int32_t, 100> {
+  std::string_view name;
+
+  IntStack() = default;
+  explicit IntStack(std::string_view name) : name(name) {}
+
+  void push(int32_t value) {
+    (*this).push_back(value);  // Calls inherited method
+  }
+};
+
+// Usage
+IntStack stack("my_stack");
+stack.push(10);
+stack.push(20);
+std::cout << tpy::__len__(stack) << "\n";  // 2
+std::cout << stack[0] << "\n";              // 10
+```
+
+**Supported builtin parents:**
+- `StaticList[T, N]` - fixed-capacity list
+- `Array[T, N]` - fixed-size array (planned)
+- `list[T]` - dynamic list (planned)
+
+**Key points:**
+- Inherited methods from builtins work automatically (e.g., `append`, `__getitem__`, `__len__`)
+- Type parameters are substituted with concrete types (e.g., `T` → `Int32`)
+- No `super().__init__()` needed - C++ base class default constructor is called automatically
+- Can add custom fields and methods to the child class
+- Subscript (`stack[i]`) and `len(stack)` work on child types
+
 **Limitations:**
 - Generic child forwarding type params not yet supported (`class Child[T](Parent[T])`)
 - Partial type substitution not yet supported (`class Child[T](Parent[T, Int32])`)
 - Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
 - No `super()` calls - child must initialize parent fields directly
+- Cannot inherit from builtins with forwarded type parameters (`class Child[T](StaticList[T, 100])`)
 
 ### Explicit Protocol Implementation
 
