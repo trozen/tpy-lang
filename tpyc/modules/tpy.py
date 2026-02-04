@@ -10,238 +10,245 @@ from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, M
 # Shorthand for type parameter T
 T = TypeParamRef("T")
 
-module = BuiltinModule("tpy")
+NAME = "tpy"
 
-# Int32: 32-bit signed integer with checked arithmetic
-module.register_type(INT32, cpp_type="int32_t", constructors=[
-    MethodDef(params=[], returns=INT32, cpp="0"),
-    MethodDef(params=[ParamDef("x", INT32)], returns=INT32, cpp="{0}"),
-    MethodDef(params=[ParamDef("x", BIGINT)], returns=INT32, cpp="{0}.to_int32()"),
-], methods={
-    # Conversion to BigInt (for promotion)
-    "__int__": [MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt({self})")],
 
-    # Binary arithmetic operators (Int32 only - mixed operations promote via __int__)
-    "__add__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({self}, {0})")],
-    "__sub__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({self}, {0})")],
-    "__mul__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({self}, {0})")],
-    "__floordiv__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({self}, {0})")],
-    "__mod__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({self}, {0})")],
-    "__pow__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({self}, {0})")],
+def init_module() -> BuiltinModule:
+    """Initialize and return the tpy module."""
+    module = BuiltinModule(NAME)
 
-    # Shift operators
-    "__lshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_lshift({self}, {0})")],
-    "__rshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_rshift({self}, {0})")],
+    # Int32: 32-bit signed integer with checked arithmetic
+    module.register_type(INT32, cpp_type="int32_t", constructors=[
+        MethodDef(params=[], returns=INT32, cpp="0"),
+        MethodDef(params=[ParamDef("x", INT32)], returns=INT32, cpp="{0}"),
+        MethodDef(params=[ParamDef("x", BIGINT)], returns=INT32, cpp="{0}.to_int32()"),
+    ], methods={
+        # Conversion to BigInt (for promotion)
+        "__int__": [MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt({self})")],
 
-    # Bitwise operators
-    "__and__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) & ({0})")],
-    "__or__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) | ({0})")],
-    "__xor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) ^ ({0})")],
+        # Binary arithmetic operators (Int32 only - mixed operations promote via __int__)
+        "__add__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({self}, {0})")],
+        "__sub__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({self}, {0})")],
+        "__mul__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({self}, {0})")],
+        "__floordiv__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({self}, {0})")],
+        "__mod__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({self}, {0})")],
+        "__pow__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({self}, {0})")],
 
-    # Unary operators
-    "__neg__": [MethodDef(params=[], returns=INT32, cpp="tpy::int32_neg({self})")],
-    "__invert__": [MethodDef(params=[], returns=INT32, cpp="~({self})")],
+        # Shift operators
+        "__lshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_lshift({self}, {0})")],
+        "__rshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_rshift({self}, {0})")],
 
-    # Reverse operators (for IntLiteral + Int32)
-    "__radd__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({0}, {self})")],
-    "__rsub__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({0}, {self})")],
-    "__rmul__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({0}, {self})")],
-    "__rfloordiv__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({0}, {self})")],
-    "__rmod__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({0}, {self})")],
-    "__rpow__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({0}, {self})")],
-    "__rlshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_lshift({0}, {self})")],
-    "__rrshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_rshift({0}, {self})")],
-    "__rand__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) & ({self})")],
-    "__ror__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) | ({self})")],
-    "__rxor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) ^ ({self})")],
-}, extends=["Comparable"])
+        # Bitwise operators
+        "__and__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) & ({0})")],
+        "__or__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) | ({0})")],
+        "__xor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) ^ ({0})")],
 
-# Array[T, N]: Fixed-size array
-module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
-            param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-            type_factory=lambda t, n: ArrayType(t, n),
-            extends=["NativeIterable[T]", "NativeContiguous[T]"],
-            methods={
-    "__len__": [MethodDef(
-        params=[],
-        returns=INT32,
-        cpp="static_cast<int32_t>({self}.size())",
-    )],
-    "get": [MethodDef(
-        params=[ParamDef("index", INT32)],
-        returns=T,
-        cpp="{self}[{0}]",
-    )],
-    "__getitem__": [MethodDef(
-        params=[ParamDef("index", INT32)],
-        returns=T,
-        cpp="{self}[{0}]",
-    )],
-    "__setitem__": [MethodDef(
-        params=[ParamDef("index", INT32), ParamDef("value", T)],
-        returns=VOID,
-        cpp="{self}[{0}] = {1}",
-    )],
-})
+        # Unary operators
+        "__neg__": [MethodDef(params=[], returns=INT32, cpp="tpy::int32_neg({self})")],
+        "__invert__": [MethodDef(params=[], returns=INT32, cpp="~({self})")],
 
-# Span[T]: Non-owning read-only view
-module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
-            param_kinds=[TypeParamKind.TYPE],
-            type_factory=lambda t: SpanType(t),
-            extends=["NativeIterable[T]", "NativeContiguous[T]"],
-            methods={
-    "__len__": [MethodDef(
-        params=[],
-        returns=INT32,
-        cpp="static_cast<int32_t>({self}.size())",
-    )],
-    "get": [MethodDef(
-        params=[ParamDef("index", INT32)],
-        returns=T,
-        cpp="{self}[{0}]",
-    )],
-    "__getitem__": [MethodDef(
-        params=[ParamDef("index", INT32)],
-        returns=T,
-        cpp="{self}[{0}]",
-    )],
-})
+        # Reverse operators (for IntLiteral + Int32)
+        "__radd__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({0}, {self})")],
+        "__rsub__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({0}, {self})")],
+        "__rmul__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({0}, {self})")],
+        "__rfloordiv__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({0}, {self})")],
+        "__rmod__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({0}, {self})")],
+        "__rpow__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({0}, {self})")],
+        "__rlshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_lshift({0}, {self})")],
+        "__rrshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_rshift({0}, {self})")],
+        "__rand__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) & ({self})")],
+        "__ror__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) | ({self})")],
+        "__rxor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) ^ ({self})")],
+    }, extends=["Comparable"])
 
-# StaticList[T, N]: Fixed-capacity container
-# Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
-# Fully module-defined via ModuleType - no hardcoded StaticListType class needed
-module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
-            param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-            type_factory=lambda t, n: ModuleType("tpy.StaticList", (t, n)),
-            extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]"],
-            methods={
-    "__len__": [MethodDef(
-        params=[],
-        returns=INT32,
-        cpp="{self}.size()",
-    )],
-    "append": [MethodDef(
-        params=[ParamDef("value", T)],
-        returns=VOID,
-        cpp="{self}.push_back({0})",
-    )],
-    "pop": [
-        MethodDef(
+    # Array[T, N]: Fixed-size array
+    module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
+                param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
+                type_factory=lambda t, n: ArrayType(t, n),
+                extends=["NativeIterable[T]", "NativeContiguous[T]"],
+                methods={
+        "__len__": [MethodDef(
             params=[],
-            returns=T,
-            cpp="{self}.pop_back()",
-        ),
-        MethodDef(
+            returns=INT32,
+            cpp="static_cast<int32_t>({self}.size())",
+        )],
+        "get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
-            cpp="tpy::staticlist_pop_at({self}, {0})",
+            cpp="{self}[{0}]",
+        )],
+        "__getitem__": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="{self}[{0}]",
+        )],
+        "__setitem__": [MethodDef(
+            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            returns=VOID,
+            cpp="{self}[{0}] = {1}",
+        )],
+    })
+
+    # Span[T]: Non-owning read-only view
+    module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
+                param_kinds=[TypeParamKind.TYPE],
+                type_factory=lambda t: SpanType(t),
+                extends=["NativeIterable[T]", "NativeContiguous[T]"],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="static_cast<int32_t>({self}.size())",
+        )],
+        "get": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="{self}[{0}]",
+        )],
+        "__getitem__": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="{self}[{0}]",
+        )],
+    })
+
+    # StaticList[T, N]: Fixed-capacity container
+    # Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
+    # Fully module-defined via ModuleType - no hardcoded StaticListType class needed
+    module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
+                param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
+                type_factory=lambda t, n: ModuleType("tpy.StaticList", (t, n)),
+                extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]"],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="{self}.size()",
+        )],
+        "append": [MethodDef(
+            params=[ParamDef("value", T)],
+            returns=VOID,
+            cpp="{self}.push_back({0})",
+        )],
+        "pop": [
+            MethodDef(
+                params=[],
+                returns=T,
+                cpp="{self}.pop_back()",
+            ),
+            MethodDef(
+                params=[ParamDef("index", INT32)],
+                returns=T,
+                cpp="tpy::staticlist_pop_at({self}, {0})",
+            ),
+        ],
+        "clear": [MethodDef(
+            params=[],
+            returns=VOID,
+            cpp="{self}.clear()",
+        )],
+        "push_empty": [MethodDef(
+            params=[],
+            returns=PtrType(T),
+            cpp="{self}.push_empty()",
+        )],
+        "get_mut": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=PtrType(T),
+            cpp="tpy::get_mut({self}, {0})",
+        )],
+        "__getitem__": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="tpy::get_item({self}, {0})",
+        )],
+        "__setitem__": [MethodDef(
+            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            returns=VOID,
+            cpp="tpy::set_item({self}, {0}, {1})",
+        )],
+        "extend": [MethodDef(
+            params=[ParamDef("other", ProtocolType("NativeIterable", (T,)))],
+            returns=VOID,
+            cpp="tpy::staticlist_extend({self}, {0})",
+        )],
+        "insert": [MethodDef(
+            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            returns=VOID,
+            cpp="tpy::staticlist_insert({self}, {0}, {1})",
+        )],
+        "remove": [MethodDef(
+            params=[ParamDef("value", T)],
+            returns=VOID,
+            cpp="tpy::staticlist_remove({self}, {0})",
+        )],
+        "index": [MethodDef(
+            params=[ParamDef("value", T)],
+            returns=INT32,
+            cpp="tpy::staticlist_index({self}, {0})",
+        )],
+        "count": [MethodDef(
+            params=[ParamDef("value", T)],
+            returns=INT32,
+            cpp="tpy::staticlist_count({self}, {0})",
+        )],
+        "reverse": [MethodDef(
+            params=[],
+            returns=VOID,
+            cpp="tpy::staticlist_reverse({self})",
+        )],
+    })
+
+    # Comparable protocol: types that support < operator
+    # Used for bounded type parameters like T: Comparable
+    module.protocol("Comparable",
+        methods={
+            "__lt__": MethodDef(params=[ParamDef("other", SELF)], returns=BOOL, cpp="{self} < {0}"),
+        },
+        cpp_concept="tpy::Comparable",
+    )
+
+    # NativeIterable[T] protocol: types that support C++ range-based for loops
+    # This is a marker protocol - types declare conformance via extends=["NativeIterable[T]"].
+    # Maps to C++ begin()/end() iteration pattern.
+    # Future: Iterable[T] will use Python's __iter__() -> Iterator[T] protocol.
+    module.protocol("NativeIterable",
+        type_params=["T"],
+        methods={},  # Marker protocol - conformance via extends declaration
+        cpp_concept="tpy::NativeIterable",
+    )
+
+    # NativeContiguous[T] protocol: types with elements laid out contiguously in memory
+    # This is a marker protocol - types declare conformance via extends=["NativeContiguous[T]"].
+    # Types conforming to NativeContiguous[T] can be implicitly converted to Span[T].
+    # Maps to C++ std::ranges::contiguous_range concept.
+    module.protocol("NativeContiguous",
+        type_params=["T"],
+        methods={},  # Marker protocol - conformance via extends declaration
+        cpp_concept="tpy::NativeContiguous",
+    )
+
+    # NativeRangeConstructible[T] protocol: types that can be constructed from a range
+    # This is a marker protocol - types declare conformance via extends=["NativeRangeConstructible[T]"].
+    # Used by codegen to generate tpy::from_range<Container>(range) calls.
+    module.protocol("NativeRangeConstructible",
+        type_params=["T"],
+        methods={},  # Marker protocol - conformance via extends declaration
+        cpp_concept="tpy::NativeRangeConstructible",
+    )
+
+    # copy() - explicit copy for ownership transfer
+    # Truly generic: def copy[T](x: T) -> Own[T]
+    # Requires explicit import: from tpy import copy
+    # Special handling in sema (_analyze_tpy_copy) and codegen because:
+    # - It's truly generic (works with any type including user records)
+    # - The module system's overload matching can't handle T -> Own[T]
+    module.function("copy", overloads=[
+        MethodDef(
+            params=[ParamDef("x", T)],
+            returns=OwnType(T),
+            cpp="{0}",
         ),
-    ],
-    "clear": [MethodDef(
-        params=[],
-        returns=VOID,
-        cpp="{self}.clear()",
-    )],
-    "push_empty": [MethodDef(
-        params=[],
-        returns=PtrType(T),
-        cpp="{self}.push_empty()",
-    )],
-    "get_mut": [MethodDef(
-        params=[ParamDef("index", INT32)],
-        returns=PtrType(T),
-        cpp="tpy::get_mut({self}, {0})",
-    )],
-    "__getitem__": [MethodDef(
-        params=[ParamDef("index", INT32)],
-        returns=T,
-        cpp="tpy::get_item({self}, {0})",
-    )],
-    "__setitem__": [MethodDef(
-        params=[ParamDef("index", INT32), ParamDef("value", T)],
-        returns=VOID,
-        cpp="tpy::set_item({self}, {0}, {1})",
-    )],
-    "extend": [MethodDef(
-        params=[ParamDef("other", ProtocolType("NativeIterable", (T,)))],
-        returns=VOID,
-        cpp="tpy::staticlist_extend({self}, {0})",
-    )],
-    "insert": [MethodDef(
-        params=[ParamDef("index", INT32), ParamDef("value", T)],
-        returns=VOID,
-        cpp="tpy::staticlist_insert({self}, {0}, {1})",
-    )],
-    "remove": [MethodDef(
-        params=[ParamDef("value", T)],
-        returns=VOID,
-        cpp="tpy::staticlist_remove({self}, {0})",
-    )],
-    "index": [MethodDef(
-        params=[ParamDef("value", T)],
-        returns=INT32,
-        cpp="tpy::staticlist_index({self}, {0})",
-    )],
-    "count": [MethodDef(
-        params=[ParamDef("value", T)],
-        returns=INT32,
-        cpp="tpy::staticlist_count({self}, {0})",
-    )],
-    "reverse": [MethodDef(
-        params=[],
-        returns=VOID,
-        cpp="tpy::staticlist_reverse({self})",
-    )],
-})
+    ], special_handling=True)
 
-# Comparable protocol: types that support < operator
-# Used for bounded type parameters like T: Comparable
-module.protocol("Comparable",
-    methods={
-        "__lt__": MethodDef(params=[ParamDef("other", SELF)], returns=BOOL, cpp="{self} < {0}"),
-    },
-    cpp_concept="tpy::Comparable",
-)
-
-# NativeIterable[T] protocol: types that support C++ range-based for loops
-# This is a marker protocol - types declare conformance via extends=["NativeIterable[T]"].
-# Maps to C++ begin()/end() iteration pattern.
-# Future: Iterable[T] will use Python's __iter__() -> Iterator[T] protocol.
-module.protocol("NativeIterable",
-    type_params=["T"],
-    methods={},  # Marker protocol - conformance via extends declaration
-    cpp_concept="tpy::NativeIterable",
-)
-
-# NativeContiguous[T] protocol: types with elements laid out contiguously in memory
-# This is a marker protocol - types declare conformance via extends=["NativeContiguous[T]"].
-# Types conforming to NativeContiguous[T] can be implicitly converted to Span[T].
-# Maps to C++ std::ranges::contiguous_range concept.
-module.protocol("NativeContiguous",
-    type_params=["T"],
-    methods={},  # Marker protocol - conformance via extends declaration
-    cpp_concept="tpy::NativeContiguous",
-)
-
-# NativeRangeConstructible[T] protocol: types that can be constructed from a range
-# This is a marker protocol - types declare conformance via extends=["NativeRangeConstructible[T]"].
-# Used by codegen to generate tpy::from_range<Container>(range) calls.
-module.protocol("NativeRangeConstructible",
-    type_params=["T"],
-    methods={},  # Marker protocol - conformance via extends declaration
-    cpp_concept="tpy::NativeRangeConstructible",
-)
-
-# copy() - explicit copy for ownership transfer
-# Truly generic: def copy[T](x: T) -> Own[T]
-# Requires explicit import: from tpy import copy
-# Special handling in sema (_analyze_tpy_copy) and codegen because:
-# - It's truly generic (works with any type including user records)
-# - The module system's overload matching can't handle T -> Own[T]
-module.function("copy", overloads=[
-    MethodDef(
-        params=[ParamDef("x", T)],
-        returns=OwnType(T),
-        cpp="{0}",
-    ),
-], special_handling=True)
+    return module

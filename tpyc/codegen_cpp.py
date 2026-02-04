@@ -1085,13 +1085,8 @@ class CodeGenerator:
             return ""
         template_parts = []
         for pname, ptype in protocol_params:
-            # Look up protocol to get C++ concept name
-            protocol_def = builtin_modules.lookup_protocol(ptype.name)
-            if protocol_def:
-                concept_name = protocol_def.cpp_concept
-            else:
-                # User-defined protocol - use the protocol name directly
-                concept_name = ptype.name
+            # Look up protocol to get C++ concept name via unified registry
+            concept_name = self._get_concept_name(ptype)
 
             # For generic protocols, add type arguments
             if ptype.type_args:
@@ -1130,11 +1125,7 @@ class CodeGenerator:
 
         # Add protocol params with concept constraints
         for pname, ptype in protocol_params:
-            protocol_def = builtin_modules.lookup_protocol(ptype.name)
-            if protocol_def:
-                concept_name = protocol_def.cpp_concept
-            else:
-                concept_name = ptype.name
+            concept_name = self._get_concept_name(ptype)
 
             if ptype.type_args:
                 type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
@@ -1279,7 +1270,7 @@ class CodeGenerator:
             if func_info := self.analyzer.registry.get_function(expr.func):
                 return func_info.return_type != VOID
             # Builtin functions (len, chr, ord, etc.) - always return values
-            if builtin_modules.lookup_function(expr.func):
+            if self.analyzer.registry.get_builtin_function_overloads(expr.func):
                 return True
             # Imported module functions (math.sqrt, etc.)
             if expr.func in self.analyzer.imported_names:
@@ -2005,15 +1996,15 @@ class CodeGenerator:
 
         elif isinstance(expr, TpyCall):
             # Check if it's a builtin type constructor (e.g., Int32, int)
-            if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
-                return self._gen_constructor(expr, type_def)
+            if record_info := self.analyzer.registry.get_builtin_record_by_name(expr.func):
+                return self._gen_builtin_constructor(expr, record_info)
             # print() maps to std::printf
             if expr.func == "print":
                 return self._gen_print(expr.args, expr.kwargs)
-            # Check module registry for built-in functions
-            if builtin_fn := builtin_modules.lookup_function(expr.func):
-                if not builtin_fn.special_handling:
-                    return self._gen_builtin_call(expr, builtin_fn)
+            # Check registry for built-in functions
+            if overloads := self.analyzer.registry.get_builtin_function_overloads(expr.func):
+                if not overloads[0].special_handling:
+                    return self._gen_builtin_function_overloads(expr, overloads)
             # Check for imported function (from X import Y -> Y())
             # Only if not shadowed by a variable, user-defined function, or record
             if expr.func in self.analyzer.imported_names:
@@ -2027,11 +2018,12 @@ class CodeGenerator:
                     if module_name == "tpy" and func_name == "copy":
                         return self._gen_expr(expr.args[0])
                     # Check for module function
-                    if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
-                        return self._gen_builtin_call(expr, imported_fn)
+                    module_info = self.analyzer.registry.get_module(module_name)
+                    if module_info and func_name in module_info.functions:
+                        return self._gen_builtin_function_overloads(expr, module_info.functions[func_name])
                     # Check for type constructor (e.g., Int32 from tpy)
-                    if type_def := builtin_modules.lookup_type_by_func_name(func_name):
-                        return self._gen_constructor(expr, type_def)
+                    if record_info := self.analyzer.registry.get_builtin_record_by_name(func_name):
+                        return self._gen_builtin_constructor(expr, record_info)
             # Check if this is a function call that needs argument conversion
             func_info = self.analyzer.registry.get_function(expr.func)
             if func_info:
@@ -2129,10 +2121,11 @@ class CodeGenerator:
                                self.analyzer.registry.get_record(module_name) is not None)
                 if not is_shadowed:
                     if self.analyzer.imports[module_name] is None:
-                        if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
+                        module_info = self.analyzer.registry.get_module(module_name)
+                        if module_info and expr.method in module_info.functions:
                             # Create a temp call for code generation
                             temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                            return self._gen_builtin_call(temp_call, module_fn)
+                            return self._gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
             obj = self._gen_expr(expr.obj)
             obj_type = self._get_resolved_type(expr.obj)
 
@@ -2193,8 +2186,9 @@ class CodeGenerator:
                     binding = self.current_ns.lookup(expr.obj.name)
                     if binding and binding.kind == BindingKind.MODULE:
                         module_name = expr.obj.name
-                        if module_var := builtin_modules.lookup_module_var(module_name, expr.field):
-                            return module_var.cpp
+                        module_info = self.analyzer.registry.get_module(module_name)
+                        if module_info and expr.field in module_info.variables:
+                            return module_info.variables[expr.field].cpp_expr
 
             obj = self._gen_expr(expr.obj)
             # Check if obj is a pointer type or global - use -> instead of .
@@ -2319,28 +2313,20 @@ class CodeGenerator:
             return self._involves_variables(expr)
         return False
 
-    def _gen_overloaded_call(self, args: list[TpyExpr], overloads: list[builtin_modules.MethodDef], name: str) -> str:
-        """Generate C++ for an overloaded call (constructor or builtin function).
-
-        Finds matching overload, generates args with proper type coercion, substitutes into template.
-        """
+    def _gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:
+        """Generate C++ code for a builtin type constructor using unified RecordInfo.constructors."""
+        args = expr.args
         arg_types = [self.analyzer.get_expr_type(arg) for arg in args]
 
-        for overload in overloads:
-            if len(overload.params) != len(args):
+        for ctor in record_info.constructors:
+            if len(ctor.params) != len(args):
                 continue
-            if all(self._builtin_codegen_type_matches(arg, arg_t, param.type)
-                   for arg, arg_t, param in zip(args, arg_types, overload.params)):
-                # Generate args with proper type coercion (e.g., int literal → BigInt)
-                # Use _gen_expr_deref to handle globals (tpy::Global<T> needs dereferencing)
-                gen_args = [self._gen_expr_deref(arg, param.type) for arg, param in zip(args, overload.params)]
-                return overload.cpp.format(*gen_args)
+            if all(self._builtin_codegen_type_matches(arg, arg_t, ptype)
+                   for arg, arg_t, (_, ptype) in zip(args, arg_types, ctor.params)):
+                gen_args = [self._gen_expr_deref(arg, ptype) for arg, (_, ptype) in zip(args, ctor.params)]
+                return ctor.cpp_template.format(*gen_args)
 
-        raise RuntimeError(f"No matching overload for {name}")
-
-    def _gen_constructor(self, expr: TpyCall, type_def: builtin_modules.BuiltinTypeDef) -> str:
-        """Generate C++ code for a type constructor call."""
-        return self._gen_overloaded_call(expr.args, type_def.constructors, expr.func)
+        raise RuntimeError(f"No matching constructor for {expr.func}")
 
     def _ctor_param_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
@@ -2382,9 +2368,22 @@ class CodeGenerator:
             result = result.replace(f"{{{name}}}", typ.to_cpp())
         return result
 
-    def _gen_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> str:
-        """Generate C++ code for a built-in function call from the module registry."""
-        return self._gen_overloaded_call(expr.args, fn_def.overloads, fn_def.name)
+    def _gen_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:
+        """Generate C++ code for a builtin function call using unified FunctionInfo overloads."""
+        args = expr.args
+        arg_types = [self.analyzer.get_expr_type(arg) for arg in args]
+
+        for overload in overloads:
+            if len(overload.params) != len(args):
+                continue
+            if all(self._builtin_codegen_type_matches(arg, arg_t, ptype)
+                   for arg, arg_t, (_, ptype) in zip(args, arg_types, overload.params)):
+                # Generate args with proper type coercion (e.g., int literal → BigInt)
+                # Use _gen_expr_deref to handle globals (tpy::Global<T> needs dereferencing)
+                gen_args = [self._gen_expr_deref(arg, ptype) for arg, (_, ptype) in zip(args, overload.params)]
+                return overload.cpp_template.format(*gen_args)
+
+        raise RuntimeError(f"No matching overload for {expr.func}")
 
     def _builtin_codegen_type_matches(self, arg: TpyExpr, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if an argument matches a parameter type for codegen purposes."""

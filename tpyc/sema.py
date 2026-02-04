@@ -190,6 +190,12 @@ class SemanticAnalyzer:
         # Register all builtin types as RecordInfo for unified lookup
         self._register_builtin_types()
 
+        # Register all builtin functions for unified lookup
+        self._register_builtin_functions()
+
+        # Register all builtin modules for unified lookup
+        self._register_builtin_modules()
+
         # Process imports
         self.imports = module.imports
         for module_name, names in self.imports.items():
@@ -252,6 +258,34 @@ class SemanticAnalyzer:
             for qname, type_def in module.types.items():
                 info = builtin_modules.builtin_type_to_record_info(qname, type_def)
                 self.registry.register_builtin_record(qname, info)
+
+    def _register_builtin_functions(self) -> None:
+        """Register builtin functions for unified function lookup.
+
+        This converts BuiltinFunctionDef entries from the default modules
+        (builtins + tpy) into FunctionInfo entries in the registry.
+        """
+        for module in [builtin_modules.get_builtins(), builtin_modules.get_tpy()]:
+            for name, fn_def in module.functions.items():
+                overloads = builtin_modules.builtin_function_to_info(fn_def)
+                self.registry.register_builtin_function_overloads(name, overloads)
+
+    def _register_builtin_modules(self) -> None:
+        """Register builtin modules for unified module lookup.
+
+        This converts BuiltinModule entries into ModuleInfo for the registry,
+        enabling unified lookup of module functions and variables.
+        """
+        for module in builtin_modules.get_importable_modules():
+            info = builtin_modules.builtin_module_to_info(module)
+            self.registry.register_module(info)
+
+    def _get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
+        """Look up function overloads in a module using the unified registry."""
+        module_info = self.registry.get_module(module_name)
+        if module_info and func_name in module_info.functions:
+            return module_info.functions[func_name]
+        return None
 
     def _register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
@@ -537,29 +571,18 @@ class SemanticAnalyzer:
         for parent_name in protocol.parent_protocols:
             parent_info = self.registry.get_protocol(parent_name)
             if parent_info is None:
-                # Check if it's a builtin protocol
-                parent_def = builtin_modules.lookup_protocol(parent_name)
-                if parent_def is None:
-                    raise SemanticError(
-                        f"Protocol '{protocol.name}' inherits from '{parent_name}', "
-                        f"which is not a defined protocol",
-                        protocol.loc
-                    )
-                # Builtin generic protocols (like Sequence[T]) can't be inherited without type args
-                if parent_def.type_params:
-                    raise SemanticError(
-                        f"Protocol '{protocol.name}' inherits from generic protocol '{parent_name}' "
-                        f"without type arguments. Generic protocol inheritance is not yet supported.",
-                        protocol.loc
-                    )
-            else:
-                # User-defined generic protocols can't be inherited without type args
-                if parent_info.type_params:
-                    raise SemanticError(
-                        f"Protocol '{protocol.name}' inherits from generic protocol '{parent_name}' "
-                        f"without type arguments. Generic protocol inheritance is not yet supported.",
-                        protocol.loc
-                    )
+                raise SemanticError(
+                    f"Protocol '{protocol.name}' inherits from '{parent_name}', "
+                    f"which is not a defined protocol",
+                    protocol.loc
+                )
+            # Generic protocols can't be inherited without type args
+            if parent_info.type_params:
+                raise SemanticError(
+                    f"Protocol '{protocol.name}' inherits from generic protocol '{parent_name}' "
+                    f"without type arguments. Generic protocol inheritance is not yet supported.",
+                    protocol.loc
+                )
 
     def _register_function(self, func: TpyFunction) -> None:
         """Register a function."""
@@ -1222,26 +1245,26 @@ class SemanticAnalyzer:
         # Fall back to regular analysis
         return self._analyze_expr(expr)
 
-    def _check_constructor(self, expr: TpyCall, type_def: builtin_modules.BuiltinTypeDef) -> TpyType:
-        """Check a type constructor call against its overloads."""
+    def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
+        """Check a builtin type constructor call using unified RecordInfo.constructors."""
         type_name = expr.func
         arg_types = [self._analyze_expr(arg) for arg in expr.args]
 
         # Find a matching constructor overload
-        for ctor in type_def.constructors:
+        for ctor in record_info.constructors:
             if len(ctor.params) != len(arg_types):
                 continue
             # Check if all arguments match
             match = True
-            for param, arg_type in zip(ctor.params, arg_types):
-                if not builtin_modules._type_matches_param(arg_type, param.type):
+            for (pname, ptype), arg_type in zip(ctor.params, arg_types):
+                if not builtin_modules._type_matches_param(arg_type, ptype):
                     match = False
                     break
             if match:
-                return ctor.returns
+                return ctor.return_type
 
         # No matching overload found
-        if not type_def.constructors:
+        if not record_info.constructors:
             raise self._error(f"{type_name}() is not callable", expr)
         elif len(arg_types) == 0:
             raise self._error(f"{type_name}() requires an argument", expr)
@@ -1564,10 +1587,10 @@ class SemanticAnalyzer:
                 return expr.call_type
             # Otherwise fall through to function handling (type_args will be used)
 
-        # Check module registry for built-in functions (global builtins like chr)
-        if builtin_fn := builtin_modules.lookup_function(expr.func):
-            if not builtin_fn.special_handling:
-                return self._analyze_builtin_call(expr, builtin_fn)
+        # Check registry for built-in functions (global builtins like chr)
+        if overloads := self.registry.get_builtin_function_overloads(expr.func):
+            if not overloads[0].special_handling:
+                return self._analyze_builtin_function_overloads(expr, overloads)
 
         # Use namespace for unified lookup - handles shadowing automatically
         if self.current_ns:
@@ -1585,11 +1608,11 @@ class SemanticAnalyzer:
                     if module_name == "tpy" and func_name == "copy":
                         return self._analyze_tpy_copy(expr)
                     # Check for module function (e.g., math.sqrt)
-                    if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
-                        return self._analyze_builtin_call(expr, imported_fn)
+                    if overloads := self._get_module_function_overloads(module_name, func_name):
+                        return self._analyze_builtin_function_overloads(expr, overloads)
                     # Check for type constructor (e.g., Int32 from tpy)
-                    if type_def := builtin_modules.lookup_type_by_func_name(func_name):
-                        return self._check_constructor(expr, type_def)
+                    if record_info := self.registry.get_builtin_record_by_name(func_name):
+                        return self._check_builtin_constructor(expr, record_info)
                     raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'")
                 elif binding.kind == BindingKind.MODULE:
                     raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()")
@@ -1609,11 +1632,11 @@ class SemanticAnalyzer:
                 if module_name == "tpy" and func_name == "copy":
                     return self._analyze_tpy_copy(expr)
                 # Check for module function
-                if imported_fn := builtin_modules.lookup_module_function(module_name, func_name):
-                    return self._analyze_builtin_call(expr, imported_fn)
+                if overloads := self._get_module_function_overloads(module_name, func_name):
+                    return self._analyze_builtin_function_overloads(expr, overloads)
                 # Check for type constructor (e.g., Int32 from tpy)
-                if type_def := builtin_modules.lookup_type_by_func_name(func_name):
-                    return self._check_constructor(expr, type_def)
+                if record_info := self.registry.get_builtin_record_by_name(func_name):
+                    return self._check_builtin_constructor(expr, record_info)
 
         # Built-in print()
         if expr.func == "print":
@@ -1622,8 +1645,8 @@ class SemanticAnalyzer:
             return VOID
 
         # Check if it's a builtin type constructor (e.g., Int32, int)
-        if type_def := builtin_modules.lookup_type_by_func_name(expr.func):
-            return self._check_constructor(expr, type_def)
+        if record_info := self.registry.get_builtin_record_by_name(expr.func):
+            return self._check_builtin_constructor(expr, record_info)
 
         # Fallback: Check if it's a record constructor
         record = self.registry.get_record(expr.func)
@@ -1731,38 +1754,38 @@ class SemanticAnalyzer:
             arg_type = arg_type.wrapped
         return OwnType(arg_type)
 
-    def _analyze_builtin_call(self, expr: TpyCall, fn_def: builtin_modules.BuiltinFunctionDef) -> TpyType:
-        """Type-check a call to a built-in function from the module registry.
+    def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
+        """Type-check a call to a builtin function using unified FunctionInfo overloads.
 
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
         """
         arg_types = [self._analyze_expr(arg) for arg in expr.args]
 
         # First pass: look for exact match (no coercions needed)
-        for overload in fn_def.overloads:
+        for overload in overloads:
             if len(overload.params) != len(arg_types):
                 continue
-            if all(self._builtin_type_matches_exact(arg_t, param.type)
-                   for arg_t, param in zip(arg_types, overload.params)):
-                return overload.returns
+            if all(self._builtin_type_matches_exact(arg_t, ptype)
+                   for arg_t, (_, ptype) in zip(arg_types, overload.params)):
+                return overload.return_type
 
         # Second pass: allow coercions
-        for overload in fn_def.overloads:
+        for overload in overloads:
             if len(overload.params) != len(arg_types):
                 continue
-            if all(self._builtin_type_matches(arg_t, param.type)
-                   for arg_t, param in zip(arg_types, overload.params)):
+            if all(self._builtin_type_matches(arg_t, ptype)
+                   for arg_t, (_, ptype) in zip(arg_types, overload.params)):
                 # Apply coercions to arguments where needed
-                for i, (arg, arg_t, param) in enumerate(zip(expr.args, arg_types, overload.params)):
-                    if arg_t != param.type:
-                        expr.args[i] = self._coerce_expr(arg, arg_t, param.type,
-                                                         f"argument '{param.name}'",
+                for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, overload.params)):
+                    if arg_t != ptype:
+                        expr.args[i] = self._coerce_expr(arg, arg_t, ptype,
+                                                         f"argument '{pname}'",
                                                          coercion_ctx=CoercionContext.ARG)
-                return overload.returns
+                return overload.return_type
 
         # No matching overload found - build error message
         arg_type_strs = ", ".join(str(t) for t in arg_types)
-        raise self._error(f"No matching overload for {fn_def.name}({arg_type_strs})", expr)
+        raise self._error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
 
     def _builtin_type_matches_exact(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if an argument type exactly matches a builtin parameter type (no coercions)."""
@@ -2152,9 +2175,9 @@ class SemanticAnalyzer:
                 if binding and binding.kind == BindingKind.MODULE:
                     # It's a module call: module.function()
                     module_name = expr.obj.name
-                    if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
+                    if overloads := self._get_module_function_overloads(module_name, expr.method):
                         temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                        return self._analyze_builtin_call(temp_call, module_fn)
+                        return self._analyze_builtin_function_overloads(temp_call, overloads)
                     raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
             # Fallback for when namespace isn't set
             elif expr.obj.name in self.imports:
@@ -2165,10 +2188,10 @@ class SemanticAnalyzer:
                     self.registry.get_record(module_name) is None):
                     # Module was imported with 'import X' (not 'from X import ...')
                     if self.imports[module_name] is None:
-                        if module_fn := builtin_modules.lookup_module_function(module_name, expr.method):
+                        if overloads := self._get_module_function_overloads(module_name, expr.method):
                             # Create a temporary TpyCall to analyze the function call
                             temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                            return self._analyze_builtin_call(temp_call, module_fn)
+                            return self._analyze_builtin_function_overloads(temp_call, overloads)
                         raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
 
         obj_type = self._analyze_expr(expr.obj)
@@ -2327,8 +2350,9 @@ class SemanticAnalyzer:
                 binding = self.current_ns.lookup(expr.obj.name)
                 if binding and binding.kind == BindingKind.MODULE:
                     module_name = expr.obj.name
-                    if module_var := builtin_modules.lookup_module_var(module_name, expr.field):
-                        return module_var.type
+                    module_info = self.registry.get_module(module_name)
+                    if module_info and expr.field in module_info.variables:
+                        return module_info.variables[expr.field].type
                     # If not a variable, let it fall through to error at the end
                     # (method calls are handled in _analyze_method_call)
 
@@ -2501,26 +2525,19 @@ class SemanticAnalyzer:
 
         For generic protocols like Sequence[T], this resolves T to the concrete type.
         """
-        protocol_def = builtin_modules.lookup_protocol(protocol.name)
-        if protocol_def is not None:
-            getitem_method = protocol_def.methods.get("__getitem__")
-            if getitem_method is None:
-                raise SemanticError(f"Protocol {protocol.name} does not support indexing")
-
-            # Build type substitution map for generic protocols
-            if protocol_def.type_params and protocol.type_args:
-                type_subst = dict(zip(protocol_def.type_params, protocol.type_args))
-                resolved = builtin_modules.resolve_method(getitem_method, type_subst)
-                return resolved.returns
-            return getitem_method.returns
-
-        # User-defined protocol - check in registry
         protocol_info = self.registry.get_protocol(protocol.name)
         if protocol_info is None:
             raise SemanticError(f"Unknown protocol: {protocol.name}")
 
+        # Build type substitution map for generic protocols
+        type_subst: dict[str, TpyType] = {}
+        if protocol_info.type_params and protocol.type_args:
+            type_subst = dict(zip(protocol_info.type_params, protocol.type_args))
+
         for method_sig in protocol_info.methods:
             if method_sig.name == "__getitem__":
+                if type_subst:
+                    return self._substitute_types(method_sig.return_type, type_subst)
                 return method_sig.return_type
 
         raise SemanticError(f"Protocol {protocol.name} does not support indexing")
@@ -2990,48 +3007,29 @@ class SemanticAnalyzer:
 
         Returns the method's return type if found and args match, None otherwise.
         """
-        # Check builtin protocols first
-        protocol_def = builtin_modules.lookup_protocol(protocol.name)
-        if protocol_def is not None:
-            method_def = protocol_def.methods.get(method_name)
-            if method_def is None:
-                return None
+        protocol_info = self.registry.get_protocol(protocol.name)
+        if protocol_info is None:
+            return None
 
-            # Build type substitution: Self -> the protocol type itself
-            type_subst: dict[str, TpyType] = {"Self": protocol}
-            if protocol_def.type_params and protocol.type_args:
-                type_subst.update(dict(zip(protocol_def.type_params, protocol.type_args)))
+        # Build type substitution: Self -> the protocol type itself, plus type params
+        type_subst: dict[str, TpyType] = {"Self": protocol}
+        if protocol_info.type_params and protocol.type_args:
+            type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
-            resolved = builtin_modules.resolve_method(method_def, type_subst)
-
-            # Check argument count
-            if len(resolved.params) != len(arg_types):
-                return None
-
-            # Check argument types
-            for param_def, arg_type in zip(resolved.params, arg_types):
-                if param_def.type != arg_type:
+        for method_sig in protocol_info.methods:
+            if method_sig.name == method_name:
+                # Check argument count
+                if len(method_sig.params) != len(arg_types):
                     return None
 
-            return resolved.returns
-
-        # Check user-defined protocols
-        protocol_info = self.registry.get_protocol(protocol.name)
-        if protocol_info is not None:
-            for method_sig in protocol_info.methods:
-                if method_sig.name == method_name:
-                    # Check argument count
-                    if len(method_sig.params) != len(arg_types):
+                # Check argument types (recursively substituting Self and type params)
+                for (_, ptype), arg_type in zip(method_sig.params, arg_types):
+                    expected_type = self._substitute_types(ptype, type_subst)
+                    if expected_type != arg_type:
                         return None
 
-                    # Check argument types (recursively substituting Self -> protocol)
-                    for (_, ptype), arg_type in zip(method_sig.params, arg_types):
-                        expected_type = self._substitute_self(ptype, protocol)
-                        if expected_type != arg_type:
-                            return None
-
-                    # Return type (recursively substituting Self -> protocol)
-                    return self._substitute_self(method_sig.return_type, protocol)
+                # Return type (recursively substituting Self and type params)
+                return self._substitute_types(method_sig.return_type, type_subst)
 
         return None
 
@@ -3273,34 +3271,29 @@ class SemanticAnalyzer:
         need type parameter resolution for generic protocols like Iterable[T].
         """
         if isinstance(actual, ProtocolType):
-            # Protocol type - check methods in protocol definition
-            # First check builtin protocols
-            protocol_def = builtin_modules.lookup_protocol(actual.name)
-            if protocol_def is not None:
-                method_def = protocol_def.methods.get(method_name)
-                if method_def is None:
-                    return False
-                if method_def.returns != expected_return:
-                    return False
-                if len(method_def.params) != len(expected_params):
-                    return False
-                for param_def, expected_ptype in zip(method_def.params, expected_params):
-                    if param_def.type != expected_ptype:
-                        return False
-                return True
-            # Check user-defined protocols
+            # Protocol type - check methods in protocol definition via unified registry
             protocol_info = self.registry.get_protocol(actual.name)
-            if protocol_info is not None:
-                for method_sig in protocol_info.methods:
-                    if method_sig.name == method_name:
-                        if method_sig.return_type != expected_return:
+            if protocol_info is None:
+                return False
+
+            # Build type substitution map for generic protocols
+            type_subst: dict[str, TpyType] = {}
+            if protocol_info.type_params and actual.type_args:
+                type_subst = dict(zip(protocol_info.type_params, actual.type_args))
+
+            for method_sig in protocol_info.methods:
+                if method_sig.name == method_name:
+                    # Resolve types with substitution
+                    resolved_return = self._substitute_types(method_sig.return_type, type_subst) if type_subst else method_sig.return_type
+                    if resolved_return != expected_return:
+                        return False
+                    if len(method_sig.params) != len(expected_params):
+                        return False
+                    for (_, actual_ptype), expected_ptype in zip(method_sig.params, expected_params):
+                        resolved_ptype = self._substitute_types(actual_ptype, type_subst) if type_subst else actual_ptype
+                        if resolved_ptype != expected_ptype:
                             return False
-                        if len(method_sig.params) != len(expected_params):
-                            return False
-                        for (_, actual_ptype), expected_ptype in zip(method_sig.params, expected_params):
-                            if actual_ptype != expected_ptype:
-                                return False
-                        return True
+                    return True
             return False
         elif isinstance(actual, RecordType):
             # User record - check methods in RecordInfo (including inherited methods)

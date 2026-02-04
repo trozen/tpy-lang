@@ -747,12 +747,14 @@ class RecordInfo:
     - cpp_type stores the C++ type template (e.g., "std::vector<{T}>")
     - extends_protocols stores protocol implementations (e.g., ["NativeIterable[T]"])
     - Methods have cpp_template for codegen
+    - constructors stores constructor overloads with cpp_template
     """
     name: str
     fields: list[FieldInfo]
     has_init: bool = False
     init_params: list[tuple[str, TpyType, Optional[str]]] = None  # (name, type, default)
     methods: dict[str, list['FunctionInfo']] = None  # method_name -> list of overloads
+    constructors: list['FunctionInfo'] = None  # Constructor overloads (for unified handling)
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
     parent: Optional['RecordType'] = None  # Parent class type with type args (single inheritance)
@@ -766,6 +768,8 @@ class RecordInfo:
             self.init_params = []
         if self.methods is None:
             self.methods = {}
+        if self.constructors is None:
+            self.constructors = []
         if self.type_params is None:
             self.type_params = []
         if self.type_param_bounds is None:
@@ -799,6 +803,10 @@ class FunctionInfo:
 
     For builtin methods:
     - cpp_template stores the C++ code template (e.g., "{self}.push_back({0})")
+
+    For builtin global functions (len, chr, etc.):
+    - is_builtin_function = True
+    - special_handling = True if sema/codegen handle it specially (skip overload matching)
     """
     name: str
     params: list[tuple[str, TpyType]]  # (name, type)
@@ -809,6 +817,8 @@ class FunctionInfo:
     type_params: list[str] = None
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
+    is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
+    special_handling: bool = False  # True if sema/codegen handle specially
 
     def __post_init__(self):
         if self.type_params is None:
@@ -879,14 +889,41 @@ class ProtocolInfo:
             self.parent_protocols = []
 
 
+@dataclass
+class ModuleVarInfo:
+    """Information about a module-level variable."""
+    name: str
+    type: TpyType
+    cpp_expr: str  # C++ expression to access the variable
+
+
+@dataclass
+class ModuleInfo:
+    """Information about a module (builtin or user-defined)."""
+    name: str
+    functions: dict[str, list[FunctionInfo]] = None  # func_name -> overloads
+    variables: dict[str, ModuleVarInfo] = None  # var_name -> ModuleVarInfo
+    types: dict[str, RecordInfo] = None  # type_name -> RecordInfo (exported types)
+
+    def __post_init__(self):
+        if self.functions is None:
+            self.functions = {}
+        if self.variables is None:
+            self.variables = {}
+        if self.types is None:
+            self.types = {}
+
+
 class TypeRegistry:
     """Registry of all known types and symbols."""
 
     def __init__(self):
         self.records: dict[str, RecordInfo] = {}
         self.builtin_records: dict[str, RecordInfo] = {}  # By qualified name (e.g., "builtins.list")
-        self.functions: dict[str, FunctionInfo] = {}
+        self.functions: dict[str, FunctionInfo] = {}  # User-defined functions
+        self.builtin_function_overloads: dict[str, list[FunctionInfo]] = {}  # Builtin function overloads
         self.protocols: dict[str, ProtocolInfo] = {}
+        self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
         # Fundamental types not in module system (pointer wrappers)
         self._fundamental_types = {"Ptr", "ConstPtr", "Own"}
 
@@ -900,8 +937,24 @@ class TypeRegistry:
     def register_function(self, info: FunctionInfo) -> None:
         self.functions[info.name] = info
 
+    def register_builtin_function_overloads(self, name: str, overloads: list[FunctionInfo]) -> None:
+        """Register builtin function overloads by name."""
+        self.builtin_function_overloads[name] = overloads
+
+    def get_builtin_function_overloads(self, name: str) -> list[FunctionInfo]:
+        """Get builtin function overloads by name."""
+        return self.builtin_function_overloads.get(name, [])
+
     def register_protocol(self, info: ProtocolInfo) -> None:
         self.protocols[info.name] = info
+
+    def register_module(self, info: ModuleInfo) -> None:
+        """Register a module by name."""
+        self.modules[info.name] = info
+
+    def get_module(self, name: str) -> Optional[ModuleInfo]:
+        """Get a module by name."""
+        return self.modules.get(name)
 
     def get_record(self, name: str) -> Optional[RecordInfo]:
         return self.records.get(name)
@@ -909,6 +962,20 @@ class TypeRegistry:
     def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:
         """Get a builtin record by qualified name."""
         return self.builtin_records.get(qname)
+
+    def get_builtin_record_by_name(self, name: str) -> Optional[RecordInfo]:
+        """Get a builtin record by simple name (e.g., 'Int32' -> tpy.Int32 RecordInfo).
+
+        Only returns non-generic types with constructors.
+        """
+        from tpyc.modules import get_builtins, get_tpy
+        for module in [get_builtins(), get_tpy()]:
+            qname = f"{module.name}.{name}"
+            if info := self.builtin_records.get(qname):
+                # Only return non-generic types with constructors
+                if info.constructors and not info.type_params:
+                    return info
+        return None
 
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.

@@ -74,6 +74,14 @@ class ProtocolDef:
     type_params: list[str] = field(default_factory=list)
 
 
+@dataclass
+class ModuleVarDef:
+    """Definition of a module-level variable."""
+    name: str
+    type: "TpyType"
+    cpp_expr: str  # C++ expression to access the variable
+
+
 class BuiltinModule:
     """A module containing built-in functions and types."""
 
@@ -82,6 +90,7 @@ class BuiltinModule:
         self.functions: dict[str, BuiltinFunctionDef] = {}
         self.types: dict[str, BuiltinTypeDef] = {}  # keyed by qualified name
         self.protocols: dict[str, ProtocolDef] = {}  # protocol_name -> ProtocolDef
+        self.variables: dict[str, ModuleVarDef] = {}  # var_name -> ModuleVarDef
 
     def function(self, name: str, overloads: list[MethodDef], special_handling: bool = False):
         """Register a built-in function.
@@ -102,6 +111,10 @@ class BuiltinModule:
             cpp_concept=cpp_concept,
             type_params=type_params or []
         )
+
+    def variable(self, name: str, var_type: "TpyType", cpp_expr: str):
+        """Register a module-level variable."""
+        self.variables[name] = ModuleVarDef(name=name, type=var_type, cpp_expr=cpp_expr)
 
     def register_type(self, type_obj: "TpyType", cpp_type: str,
                       methods: dict[str, list[MethodDef]] | None = None,
@@ -159,73 +172,60 @@ class BuiltinModule:
         )
 
 
-# Module instances (lazy-loaded)
-_builtins: BuiltinModule | None = None
-_tpy: BuiltinModule | None = None
-_time: BuiltinModule | None = None
-_sys: BuiltinModule | None = None
-_math: BuiltinModule | None = None
-_typing: BuiltinModule | None = None
+# Import module definitions
+from tpyc.modules import builtins as _builtins_mod
+from tpyc.modules import tpy as _tpy_mod
+from tpyc.modules import math as _math_mod
+from tpyc.modules import time as _time_mod
+from tpyc.modules import sys as _sys_mod
+from tpyc.modules import typing as _typing_mod
+
+# Map module name -> factory function
+_MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
+    _builtins_mod.NAME: _builtins_mod.init_module,
+    _tpy_mod.NAME: _tpy_mod.init_module,
+    _math_mod.NAME: _math_mod.init_module,
+    _time_mod.NAME: _time_mod.init_module,
+    _sys_mod.NAME: _sys_mod.init_module,
+    _typing_mod.NAME: _typing_mod.init_module,
+}
+
+# Cache for loaded modules
+_module_cache: dict[str, BuiltinModule] = {}
+
+
+def get_module(name: str) -> BuiltinModule | None:
+    """Get a module by name, lazy-loading on first access."""
+    if name in _module_cache:
+        return _module_cache[name]
+
+    factory = _MODULE_FACTORIES.get(name)
+    if factory is None:
+        return None
+
+    _module_cache[name] = factory()
+    return _module_cache[name]
 
 
 def get_builtins() -> BuiltinModule:
-    """Get the builtins module, loading it on first access."""
-    global _builtins
-    if _builtins is None:
-        from tpyc.modules import builtins as builtins_module
-        _builtins = builtins_module.module
-    assert _builtins is not None
-    return _builtins
+    """Get the builtins module."""
+    result = get_module("builtins")
+    assert result is not None
+    return result
 
 
 def get_tpy() -> BuiltinModule:
-    """Get the tpy module, loading it on first access."""
-    global _tpy
-    if _tpy is None:
-        from tpyc.modules import tpy as tpy_module
-        _tpy = tpy_module.module
-    assert _tpy is not None
-    return _tpy
-
-
-def get_time() -> BuiltinModule:
-    """Get the time module, loading it on first access."""
-    global _time
-    if _time is None:
-        from tpyc.modules import time as time_module
-        _time = time_module.module
-    assert _time is not None
-    return _time
-
-
-def get_sys() -> BuiltinModule:
-    """Get the sys module, loading it on first access."""
-    global _sys
-    if _sys is None:
-        from tpyc.modules import sys as sys_module
-        _sys = sys_module.module
-    assert _sys is not None
-    return _sys
-
-
-def get_math() -> BuiltinModule:
-    """Get the math module, loading it on first access."""
-    global _math
-    if _math is None:
-        from tpyc.modules import math as math_module
-        _math = math_module.module
-    assert _math is not None
-    return _math
+    """Get the tpy module."""
+    result = get_module("tpy")
+    assert result is not None
+    return result
 
 
 def get_typing() -> BuiltinModule:
-    """Get the typing module, loading it on first access."""
-    global _typing
-    if _typing is None:
-        from tpyc.modules import typing as typing_module
-        _typing = typing_module.module
-    assert _typing is not None
-    return _typing
+    """Get the typing module."""
+    result = get_module("typing")
+    assert result is not None
+    return result
 
 
 def _all_modules() -> list[BuiltinModule]:
@@ -238,71 +238,19 @@ def _all_modules() -> list[BuiltinModule]:
 
 def get_all_modules() -> list[BuiltinModule]:
     """Get all available modules."""
-    return [get_builtins(), get_tpy(), get_typing(), get_math(), get_time(), get_sys()]
+    return [get_module(name) for name in _MODULE_FACTORIES if (m := get_module(name)) is not None]
 
 
-def get_module(name: str) -> BuiltinModule | None:
-    """Get a module by name."""
-    if name == "builtins":
-        return get_builtins()
-    elif name == "tpy":
-        return get_tpy()
-    elif name == "time":
-        return get_time()
-    elif name == "sys":
-        return get_sys()
-    elif name == "math":
-        return get_math()
-    elif name == "typing":
-        return get_typing()
-    return None
-
-
-def lookup_module_function(module_name: str, func_name: str) -> BuiltinFunctionDef | None:
-    """Lookup a function in a specific module by name."""
-    module = get_module(module_name)
-    if module:
-        return module.functions.get(func_name)
-    return None
-
-
-@dataclass
-class ModuleVarDef:
-    """Definition of a module-level variable."""
-    name: str
-    type: "TpyType"
-    cpp: str  # C++ expression to access the variable
-
-
-def lookup_module_var(module_name: str, var_name: str) -> ModuleVarDef | None:
-    """Lookup a module variable by name.
-
-    Module variables are defined in MODULE_VARS dict in each module file.
-    Returns the variable definition with its type and C++ accessor.
-    """
-    # Module variables are defined in module files, not in BuiltinModule
-    # We handle them specially here
-    if module_name == "sys":
-        from tpyc.modules import sys as sys_module
-        if var_name in sys_module.MODULE_VARS:
-            return ModuleVarDef(
-                name=var_name,
-                type=sys_module.MODULE_VARS[var_name],
-                cpp=f"tpy::sys_{var_name}",  # tpy::sys_argv
-            )
-    return None
-
-
-def lookup_function(name: str) -> BuiltinFunctionDef | None:
-    """Lookup a function by name in the built-in modules."""
-    for module in _all_modules():
-        if fn := module.functions.get(name):
-            return fn
-    return None
+def get_importable_modules() -> list[BuiltinModule]:
+    """Get modules that require explicit import (excludes builtins)."""
+    return [m for m in get_all_modules() if m.name != "builtins"]
 
 
 def lookup_protocol(name: str) -> ProtocolDef | None:
-    """Lookup a protocol by name across all modules."""
+    """Lookup a protocol by name across all modules.
+
+    Used by the parser to check protocol type annotations before semantic analysis.
+    """
     # Check default modules first
     for module in _all_modules():
         if proto := module.protocols.get(name):
@@ -364,6 +312,16 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
             for method in overloads
         ]
 
+    # Convert constructors
+    constructors = []
+    for ctor in type_def.constructors:
+        constructors.append(FunctionInfo(
+            name="__init__",
+            params=[(p.name, p.type) for p in ctor.params],
+            return_type=ctor.returns,
+            cpp_template=ctor.cpp,
+        ))
+
     # Extract simple name from qualified name
     simple_name = qname.split(".")[-1]
 
@@ -371,9 +329,58 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         name=simple_name,
         fields=[],
         methods=methods,
+        constructors=constructors,
         type_params=type_def.type_params,
         extends_protocols=type_def.extends,
         cpp_type=type_def.cpp_type,
+    )
+
+
+def builtin_function_to_info(fn_def: BuiltinFunctionDef) -> list["FunctionInfo"]:
+    """Convert BuiltinFunctionDef to list of FunctionInfo (one per overload).
+
+    Used to register builtin functions in the unified TypeRegistry.
+    """
+    from tpyc.typesys import FunctionInfo
+
+    result = []
+    for overload in fn_def.overloads:
+        result.append(FunctionInfo(
+            name=fn_def.name,
+            params=[(p.name, p.type) for p in overload.params],
+            return_type=overload.returns,
+            cpp_template=overload.cpp,
+            is_builtin_function=True,
+            special_handling=fn_def.special_handling,
+        ))
+    return result
+
+
+def builtin_module_to_info(module: BuiltinModule) -> "ModuleInfo":
+    """Convert BuiltinModule to ModuleInfo for unified registry storage.
+
+    Used to register builtin modules (math, time, sys) in the unified TypeRegistry.
+    """
+    from tpyc.typesys import ModuleInfo, ModuleVarInfo
+
+    # Convert functions to FunctionInfo overloads
+    functions = {}
+    for name, fn_def in module.functions.items():
+        functions[name] = builtin_function_to_info(fn_def)
+
+    # Convert module variables
+    variables = {}
+    for var_name, var_def in module.variables.items():
+        variables[var_name] = ModuleVarInfo(
+            name=var_def.name,
+            type=var_def.type,
+            cpp_expr=var_def.cpp_expr,
+        )
+
+    return ModuleInfo(
+        name=module.name,
+        functions=functions,
+        variables=variables,
     )
 
 
@@ -472,21 +479,6 @@ def lookup_type(type_or_name: "TpyType | str") -> BuiltinTypeDef | None:
     for module in _all_modules():
         if typ := module.types.get(qname):
             return typ
-    return None
-
-
-def lookup_type_by_func_name(func_name: str) -> BuiltinTypeDef | None:
-    """Lookup a type by constructor function name (e.g., 'Int32').
-
-    Only returns non-generic types with constructors. Generic types (like list)
-    go through lookup_generic_type for proper type parameter inference.
-    """
-    for module in _all_modules():
-        qualified = f"{module.name}.{func_name}"
-        if typ := module.types.get(qualified):
-            # Only return non-generic types with constructors
-            if typ.constructors and not typ.type_params:
-                return typ
     return None
 
 
