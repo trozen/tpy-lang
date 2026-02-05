@@ -119,7 +119,8 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 | `typesys.py` | Type definitions (Int32, Bool, Void, Str, Record, Ptr, ConstPtr, StaticList, Array, Span) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis: type checking, type inference (composable package) |
 | `codegen_cpp/` | C++ code generation: expressions, statements, records, protocols (composable package) |
-| `modules/` | Built-in function and type definitions (chr, len, __len__, etc.) with C++ templates |
+| `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
+| `modules/` | Built-in function/type definitions and module resolution (`resolver.py` for user modules) |
 
 ### Runtime (`runtime/`)
 

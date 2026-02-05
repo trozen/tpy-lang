@@ -1830,9 +1830,59 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 - **Working**: `import sys` - system module with `sys.argv`
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
+- **Working**: User-defined modules (multi-file projects)
 - **Planned**: Module-level aliases: `import time as _time`
-- **Planned**: Multi-file projects (user-defined modules)
+- **Planned**: Package support (`__init__.tp.py`, submodule imports, relative imports)
 - **Open**: Importing additional Python stdlib subsets that can be statically compiled
+
+### User-Defined Modules (Working)
+
+TurboPython supports importing from other `.tp.py` files in the same directory:
+
+```python
+# utils.tp.py
+from tpy import Int32
+
+class Point:
+    x: Int32
+    y: Int32
+
+    def __init__(self, x: Int32, y: Int32):
+        self.x = x
+        self.y = y
+
+def add(a: Int32, b: Int32) -> Int32:
+    return a + b
+
+MAX: Int32 = Int32(100)
+```
+
+```python
+# main.tp.py
+from tpy import Int32
+from utils import Point, add, MAX
+
+p = Point(Int32(1), Int32(2))
+result = add(p.x, p.y)
+print(MAX)  # 100
+```
+
+**Supported import styles:**
+- `from mod import func, Record, Protocol` - import specific items
+- `import mod` then `mod.func()` - module-qualified access
+- `from mod import X as Y` - import with alias
+
+**Module resolution:**
+- Looks for `mod.tp.py` first, falls back to `mod.py`
+- Only same-directory imports supported (no packages yet)
+
+**`__name__` variable:**
+- Entry point module: `__name__ == "__main__"`
+- Imported modules: `__name__ == "module_name"`
+
+**Circular imports:** Detected at compile time with clear error messages.
+
+**C++ mapping:** Each module gets its own namespace (`tpy_user::utils::Point`). Cross-module references use fully qualified names.
 
 ### Standard Library Modules
 
