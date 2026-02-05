@@ -55,12 +55,13 @@ def run_cpython(src_file: Path) -> str:
 
 def compile_and_run_cpp(build_dir: Path, module_name: str) -> str:
     """Compile generated C++ and run the executable."""
-    module_dir = build_dir / f"{module_name}.d"
-    cpp_file = module_dir / f"{module_name}.cpp"
+    root_dir = build_dir / f"{module_name}.d"
+    cpp_file = root_dir / "src" / f"{module_name}.cpp"
     exe_file = build_dir / "program"
 
     result = subprocess.run(
-        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-o", str(exe_file), str(cpp_file), "-lgmp"],
+        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-I", str(root_dir / "include"),
+         "-o", str(exe_file), str(cpp_file), "-lgmp"],
         capture_output=True,
         text=True,
     )
@@ -109,18 +110,19 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
         diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
 
         # Generate code for all modules and track paths
+        entry_module = next(m for m in compiled_modules if m.is_entry_point)
         all_modules = []
         for mod in compiled_modules:
             hpp_path, cpp_path = compiler.generate_code(
-                mod, output_dir, TEST_CODEGEN_OPTIONS
+                mod, output_dir, entry_module_name=entry_module.name,
+                options=TEST_CODEGEN_OPTIONS
             )
             all_modules.append((mod.name, hpp_path, cpp_path))
 
         # Return paths for the entry point module
-        entry_module = next(m for m in compiled_modules if m.is_entry_point)
-        module_dir = output_dir / f"{entry_module.name}.d"
-        hpp_path = module_dir / f"{entry_module.name}.hpp"
-        cpp_path = module_dir / f"{entry_module.name}.cpp"
+        root_dir = output_dir / f"{entry_module.name}.d"
+        hpp_path = root_dir / "include" / f"{entry_module.name}.hpp"
+        cpp_path = root_dir / "src" / f"{entry_module.name}.cpp"
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path, all_modules=all_modules)
 
     except CompileError as e:
@@ -155,18 +157,18 @@ def build_and_run(build_dir: Path, module_name: str,
         all_cpp_files: List of all C++ files to compile (for multi-module).
                        If None, compiles only the entry module.
     """
+    root_dir = build_dir / f"{module_name}.d"
     exe_file = build_dir / "program"
 
     # Determine C++ files to compile
     if all_cpp_files is None:
-        module_dir = build_dir / f"{module_name}.d"
-        cpp_files = [module_dir / f"{module_name}.cpp"]
+        cpp_files = [root_dir / "src" / f"{module_name}.cpp"]
     else:
         cpp_files = all_cpp_files
 
     # Compile C++ with include path for cross-module references
     result = subprocess.run(
-        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-I", str(build_dir),
+        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-I", str(root_dir / "include"),
          "-o", str(exe_file)] + [str(f) for f in cpp_files] + ["-lgmp"],
         capture_output=True,
         text=True,

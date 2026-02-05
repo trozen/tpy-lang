@@ -69,6 +69,8 @@ class CodeGenContext:
 
     # User module imports for cross-module reference generation
     user_module_imports: set[str] = field(default_factory=set)
+    # All discovered user modules (including parent packages) for __tpy_init generation
+    all_user_modules: set[str] = field(default_factory=set)
     # Track imported items from user modules for qualified name generation
     # Maps local_name -> (source_module, original_name) to support import aliases
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)

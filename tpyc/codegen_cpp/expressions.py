@@ -119,9 +119,10 @@ class ExpressionGenerator:
                     # At top level: use local only if current line >= declaration line
                     if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
                         return expr.name
-                # Use qualified import reference
+                # Use qualified import reference (convert dotted name to C++ namespace)
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
-                return f"tpy_user::{source_module}::{original_name}"
+                cpp_ns = source_module.replace('.', '::')
+                return f"tpy_user::{cpp_ns}::{original_name}"
             return expr.name
 
         elif isinstance(expr, TpyBinOp):
@@ -363,7 +364,8 @@ class ExpressionGenerator:
             func_cpp_name = expr.func
             if expr.func in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func]
-                func_cpp_name = f"tpy_user::{source_module}::{original_name}"
+                cpp_ns = source_module.replace('.', '::')
+                func_cpp_name = f"tpy_user::{cpp_ns}::{original_name}"
 
             # For generic functions, always emit explicit type args to avoid C++ deduction issues
             # with tpy::param_val_or_ref_t<T> parameters
@@ -408,7 +410,8 @@ class ExpressionGenerator:
             # Qualify imported records (use original name for aliases)
             if expr.func in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[expr.func]
-                return f"tpy_user::{source_module}::{original_name}({args})"
+                cpp_ns = source_module.replace('.', '::')
+                return f"tpy_user::{cpp_ns}::{original_name}({args})"
             return f"{expr.func}({args})"
         args = ", ".join(self.gen_expr(a) for a in expr.args)
         return f"{expr.func}({args})"
@@ -420,7 +423,8 @@ class ExpressionGenerator:
         # Handle user module function calls: module.func() -> tpy_user::module::func()
         if expr.user_module_call is not None:
             module_name = expr.user_module_call
-            return f"tpy_user::{module_name}::{expr.method}({args})"
+            cpp_ns = module_name.replace('.', '::')
+            return f"tpy_user::{cpp_ns}::{expr.method}({args})"
 
         # Check for inherited builtin method with cpp_template first
         # This must be checked before the self.method() shortcut because

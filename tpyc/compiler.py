@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule
 from .sema import SemanticAnalyzer, SemanticError
-from .modules.resolver import ModuleResolver
+from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 
@@ -102,8 +102,9 @@ class Compiler:
             SemanticError: If semantic analysis fails.
         """
         # 1. Discover all modules (starting from entry point)
+        # Entry point uses simple name (not dotted) since it's the root
         entry_name = ModuleResolver.get_module_name(self.entry_point)
-        self._discover_modules(entry_name, self.entry_point, [])
+        self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
 
         # 2. Compute compilation order (topological sort)
         self._compute_compile_order()
@@ -117,14 +118,15 @@ class Compiler:
         return [self.modules[name] for name in self.compile_order]
 
     def _discover_modules(self, module_name: str, path: Path, import_chain: list[str],
-                          import_lineno: int | None = None) -> None:
+                          import_lineno: int | None = None, is_entry_point: bool = False) -> None:
         """Recursively discover modules starting from the given module.
 
         Args:
-            module_name: Name of the module to discover.
+            module_name: Canonical name of the module (dotted for packages, e.g., "mypackage.submod").
             path: Path to the module file.
             import_chain: Current import chain for cycle detection.
             import_lineno: Line number of the import statement that triggered this discovery.
+            is_entry_point: True if this is the entry point module.
 
         Raises:
             CompileError: If circular import detected or module not found.
@@ -150,24 +152,21 @@ class Compiler:
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
 
-        # Determine if this is the entry point
-        is_entry = (path == self.entry_point)
-
         # Create module entry (exports filled during analysis)
         self.modules[module_name] = CompiledModule(
             name=module_name,
             path=path,
             ast=ast,
             exports=ModuleExports(),
-            is_entry_point=is_entry,
+            is_entry_point=is_entry_point,
         )
 
         # Recursively discover imported user modules
         new_chain = import_chain + [module_name]
         builtin_names = get_builtin_module_names()
         for imported_name, import_lineno in ast.user_module_imports.items():
-            imported_path = self.resolver.resolve(imported_name)
-            if imported_path is None:
+            resolved = self.resolver.resolve(imported_name)
+            if resolved is None:
                 # No user file found - check if it's a builtin module
                 if imported_name in builtin_names:
                     # Builtin module, no user file - skip (handled by builtin system)
@@ -182,7 +181,30 @@ class Compiler:
                 if imported_name not in self.shadowed_builtins:
                     self.shadowed_builtins[imported_name] = set()
                 self.shadowed_builtins[imported_name].add((module_name, import_lineno))
-            self._discover_modules(imported_name, imported_path, new_chain, import_lineno)
+            # Discover parent package __init__ files first (if any)
+            self._discover_package_inits(imported_name, new_chain, import_lineno)
+            # Use canonical name from resolution (handles __init__ correctly)
+            self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno)
+
+    def _discover_package_inits(self, dotted_name: str, import_chain: list[str],
+                                 import_lineno: int | None) -> None:
+        """Ensure all parent package __init__.tp.py files are discovered.
+
+        For "a.b.c", ensures a/__init__.tp.py and a/b/__init__.tp.py are discovered
+        (if they exist) before a/b/c.tp.py.
+
+        Args:
+            dotted_name: Dotted module path (e.g., "mypackage.submod").
+            import_chain: Current import chain for cycle detection.
+            import_lineno: Line number of the import.
+        """
+        parts = dotted_name.split('.')
+        for i in range(1, len(parts)):
+            package = '.'.join(parts[:i])
+            if package not in self.modules:
+                resolved = self.resolver.resolve(package)
+                if resolved and resolved.is_package_init:
+                    self._discover_modules(package, resolved.path, import_chain, import_lineno)
 
     def _compute_compile_order(self) -> None:
         """Compute topological sort of modules (dependencies first).
@@ -315,7 +337,7 @@ class Compiler:
         """Convert ModuleExports to ModuleInfo for unified registry storage.
 
         Args:
-            name: Module name.
+            name: Module name (may be dotted, e.g., "mypackage.submod").
             exports: The module exports to convert.
 
         Returns:
@@ -326,9 +348,12 @@ class Compiler:
         # Wrap single functions in lists for uniform overload handling
         functions = {k: [v] for k, v in exports.functions.items()}
 
+        # Convert dotted name to C++ nested namespace (e.g., "pkg.mod" -> "pkg::mod")
+        cpp_ns = name.replace('.', '::')
+
         # Create ModuleVarInfo with generated cpp_expr
         variables = {
-            k: ModuleVarInfo(k, v, f"tpy_user::{name}::{k}")
+            k: ModuleVarInfo(k, v, f"tpy_user::{cpp_ns}::{k}")
             for k, v in exports.variables.items()
         }
 
@@ -342,20 +367,51 @@ class Compiler:
         )
 
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
+                      entry_module_name: str | None = None,
                       options: CodeGenOptions | None = None) -> tuple[Path, Path]:
         """Generate C++ code for a compiled module.
 
         Args:
             compiled: The compiled module.
             output_dir: Root output directory.
+            entry_module_name: Name of the entry point module (for root dir naming).
             options: Code generation options (optional).
 
         Returns:
             Tuple of (hpp_path, cpp_path) for the generated files.
         """
         mod_name = compiled.name
-        mod_dir = output_dir / f"{mod_name}.d"
-        mod_dir.mkdir(parents=True, exist_ok=True)
+
+        # Determine root directory name from entry module
+        if entry_module_name is None:
+            # Find entry module name from compiled modules
+            for m in self.modules.values():
+                if m.is_entry_point:
+                    entry_module_name = m.name
+                    break
+            else:
+                entry_module_name = mod_name
+
+        # Root is {entry}.d/ containing include/ and src/
+        root_dir = output_dir / f"{entry_module_name}.d"
+        include_dir = root_dir / "include"
+        src_dir = root_dir / "src"
+
+        # Compute header/source paths based on module name
+        # mypackage → include/mypackage.hpp, src/mypackage.cpp
+        # mypackage.sub → include/mypackage/sub.hpp, src/mypackage/sub.cpp
+        parts = mod_name.split('.')
+        if len(parts) == 1:
+            hpp_path = include_dir / f"{parts[0]}.hpp"
+            cpp_path = src_dir / f"{parts[0]}.cpp"
+        else:
+            # pkg.sub.mod → include/pkg/sub/mod.hpp, src/pkg/sub/mod.cpp
+            rel_dir = '/'.join(parts[:-1])
+            hpp_path = include_dir / rel_dir / f"{parts[-1]}.hpp"
+            cpp_path = src_dir / rel_dir / f"{parts[-1]}.cpp"
+
+        hpp_path.parent.mkdir(parents=True, exist_ok=True)
+        cpp_path.parent.mkdir(parents=True, exist_ok=True)
 
         codegen = CodeGenerator(compiled.analyzer, options)
         # Pass actual user modules (those in self.modules, not builtins without user files)
@@ -366,8 +422,6 @@ class Compiler:
             actual_user_modules=actual_user_modules
         )
 
-        hpp_path = mod_dir / f"{mod_name}.hpp"
-        cpp_path = mod_dir / f"{mod_name}.cpp"
         hpp_path.write_text(hpp_code)
         cpp_path.write_text(cpp_code)
 

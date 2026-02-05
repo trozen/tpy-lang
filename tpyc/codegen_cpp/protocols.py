@@ -54,7 +54,8 @@ class ProtocolGenerator:
         # Check if this is an imported protocol from another user module
         if protocol.name in self.ctx.user_imported_protocols:
             source_module, original_name = self.ctx.user_imported_protocols[protocol.name]
-            return f"tpy_user::{source_module}::{original_name}"
+            cpp_ns = source_module.replace('.', '::')
+            return f"tpy_user::{cpp_ns}::{original_name}"
         # User-defined protocol - use the protocol name directly
         return protocol.name
 

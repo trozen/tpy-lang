@@ -190,9 +190,14 @@ class FunctionGenerator:
             out.write("  main();\n")
         out.write("}\n\n")
 
+    def _module_to_namespace(self, module_name: str) -> str:
+        """Convert dotted module name to C++ nested namespace."""
+        return module_name.replace('.', '::')
+
     def gen_namespace_close(self, out: TextIO) -> None:
         """Close the namespace in source file (for non-entry-point modules)."""
-        out.write(f"}} // namespace tpy_user::{self.ctx.module_name}\n")
+        cpp_ns = self._module_to_namespace(self.ctx.module_name)
+        out.write(f"}} // namespace tpy_user::{cpp_ns}\n")
 
     def gen_main(self, out: TextIO) -> None:
         """Generate C++ main() that calls module init.
@@ -200,9 +205,10 @@ class FunctionGenerator:
         The namespace is closed before main() so main is in global namespace.
         Accepts argc/argv and initializes tpy::sys_argv for sys.argv support.
         """
-        out.write(f"}} // namespace tpy_user::{self.ctx.module_name}\n\n")
+        cpp_ns = self._module_to_namespace(self.ctx.module_name)
+        out.write(f"}} // namespace tpy_user::{cpp_ns}\n\n")
         out.write("int main(int argc, char* argv[]) {\n")
         out.write("  tpy::init_sys_argv(argc, argv);\n")
-        out.write(f"  tpy_user::{self.ctx.module_name}::__tpy_init();\n")
+        out.write(f"  tpy_user::{cpp_ns}::__tpy_init();\n")
         out.write("  return 0;\n")
         out.write("}\n")

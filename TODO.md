@@ -4,6 +4,7 @@
 - make a doc with TPy vs Python differences
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
 - require imports at the top of file, don't allow inline imports
+- compare cpython as separate test executor
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
@@ -26,11 +27,15 @@ Future improvements to the module system architecture:
 
 1. ~~**Import initialization order**~~: ✅ **DONE** - Imports are now regular statements (`TpyImport`) that emit `__tpy_init()` calls inline. This matches Python semantics where imports execute at their source location, not hoisted to the top. Guard prevents double initialization.
 
-2. **Package support**: Add support for package directories with `__init__.tp.py` (or `__init__.py`):
-   - Package directories recognized by presence of `__init__.tp.py`
-   - Submodule imports: `from package.submodule import something`
-   - Package-level exports via `__init__.tp.py`
-   - Relative imports: `from . import sibling`, `from .. import parent`
+2. **Package support (Phase 1 done)**: Basic package support is implemented:
+   - ✅ Dotted imports: `from package.submodule import something`
+   - ✅ Package `__init__.tp.py` (or `__init__.py`) with exports
+   - ✅ Namespace packages (no `__init__` required for simple submodule imports)
+   - ✅ Nested namespaces in C++: `tpy_user::mypackage::submod`
+
+   Future phases:
+   - **Phase 2**: Relative imports (`from . import sibling`, `from .. import parent`)
+   - **Phase 3**: Re-exports in `__init__.tp.py` (e.g., `from .submod import X` at package level)
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)

@@ -1831,8 +1831,9 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Working**: User-defined modules (multi-file projects)
+- **Working**: Package support (dotted imports, `__init__.tp.py`, namespace packages)
 - **Planned**: Module-level aliases: `import time as _time`
-- **Planned**: Package support (`__init__.tp.py`, submodule imports, relative imports)
+- **Planned**: Relative imports (`from . import sibling`, `from .. import parent`)
 - **Open**: Importing additional Python stdlib subsets that can be statically compiled
 
 ### User-Defined Modules (Working)
@@ -1874,7 +1875,7 @@ print(MAX)  # 100
 
 **Module resolution:**
 - Looks for `mod.tp.py` first, falls back to `mod.py`
-- Only same-directory imports supported (no packages yet)
+- Supports package directories with `__init__.tp.py` or `__init__.py`
 
 **`__name__` variable:**
 - Entry point module: `__name__ == "__main__"`
@@ -1898,7 +1899,47 @@ Each module initializes only once (double-init guard prevents diamond dependency
 main.tp.py:1: warning: import 'math' shadows builtin module
 ```
 
-**C++ mapping:** Each module gets its own namespace (`tpy_user::utils::Point`). Cross-module references use fully qualified names.
+**C++ mapping:** Each module gets its own namespace (`tpy_user::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpy_user::mypackage::submod::func`).
+
+### Packages (Working)
+
+TurboPython supports Python-style packages with `__init__.tp.py` files:
+
+```
+project/
+├── main.tp.py
+└── mypackage/
+    ├── __init__.tp.py    # Package init (can export functions/variables)
+    ├── utils.tp.py       # Submodule
+    └── inner/
+        ├── __init__.tp.py
+        └── core.tp.py
+```
+
+**Importing from packages:**
+```python
+# Import from submodule
+from mypackage.utils import add
+
+# Import from package __init__
+from mypackage import CONST, func
+
+# Nested packages
+from mypackage.inner.core import helper
+```
+
+**Namespace packages:** TurboPython supports namespace packages (no `__init__` required for simple submodule imports). If `mypackage/utils.tp.py` exists, `from mypackage.utils import X` works without requiring `mypackage/__init__.tp.py`.
+
+**Package initialization:** Parent package `__init__` files are discovered and initialized before submodules, matching Python import semantics. When importing `from mypackage.submod import X`, the `mypackage/__init__` is executed first (side effects like `print()` run), then the submodule is initialized.
+
+**C++ mapping:**
+- `mypackage/__init__.tp.py` → `namespace tpy_user::mypackage`
+- `mypackage/utils.tp.py` → `namespace tpy_user::mypackage::utils`
+- Output structure: `__tpyc__/mypackage/utils.d/utils.{hpp,cpp}`
+
+**Not yet supported:**
+- Relative imports (`from . import sibling`)
+- Re-exports in `__init__` (e.g., `from .submod import X` at package level)
 
 ### Standard Library Modules
 

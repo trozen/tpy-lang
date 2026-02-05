@@ -103,7 +103,19 @@ class StatementGenerator:
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for actual user modules (not builtins)
             if stmt.module_name in self.ctx.user_module_imports:
-                return f"{indent}tpy_user::{stmt.module_name}::__tpy_init();\n"
+                result = ""
+                # For dotted imports, emit parent package inits first (Python semantics)
+                # e.g., "mypackage.utils" -> init mypackage first, then mypackage.utils
+                parts = stmt.module_name.split('.')
+                for i in range(1, len(parts)):
+                    parent_pkg = '.'.join(parts[:i])
+                    if parent_pkg in self.ctx.all_user_modules:
+                        cpp_ns = parent_pkg.replace('.', '::')
+                        result += f"{indent}tpy_user::{cpp_ns}::__tpy_init();\n"
+                # Then init the submodule itself
+                cpp_ns = stmt.module_name.replace('.', '::')
+                result += f"{indent}tpy_user::{cpp_ns}::__tpy_init();\n"
+                return result
             return ""  # Builtin module - no init needed
         return None
 

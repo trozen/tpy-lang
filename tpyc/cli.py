@@ -202,10 +202,6 @@ def main() -> int:
             compiled_modules = compiler.compile()
 
             for compiled in compiled_modules:
-                mod_name = compiled.name
-                mod_dir = output_dir / f"{mod_name}.d"
-                mod_dir.mkdir(parents=True, exist_ok=True)
-
                 if args.verbose:
                     print(f"Compiling {compiled.path}...")
                     print(f"  Parsed {len(compiled.ast.records)} records, {len(compiled.ast.functions)} functions")
@@ -219,20 +215,8 @@ def main() -> int:
                 if args.verbose:
                     print("  Semantic analysis passed")
 
-                # Code generation
-                codegen = CodeGenerator(compiled.analyzer, options)
-                # Pass actual user modules (those that were compiled, not builtins without user files)
-                actual_user_modules = {m.name for m in compiled_modules}
-                hpp_code, cpp_code = codegen.generate(
-                    compiled.ast, mod_name,
-                    is_entry_point=compiled.is_entry_point,
-                    actual_user_modules=actual_user_modules
-                )
-
-                hpp_path = mod_dir / f"{mod_name}.hpp"
-                cpp_path = mod_dir / f"{mod_name}.cpp"
-                hpp_path.write_text(hpp_code)
-                cpp_path.write_text(cpp_code)
+                # Code generation (uses compiler's generate_code for proper path handling)
+                hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
                 all_cpp_paths.append(cpp_path)
 
                 if args.verbose or not (args.build or args.exec):
@@ -242,7 +226,9 @@ def main() -> int:
         # Build if requested
         if args.build or args.exec:
             runtime_dir = get_runtime_dir()
-            binary_path = output_dir / module_name
+            # Binary goes in {module_name}.d/ alongside include/ and src/
+            root_dir = output_dir / f"{module_name}.d"
+            binary_path = root_dir / module_name
 
             if args.verbose:
                 print(f"Building {binary_path}...")
@@ -252,12 +238,12 @@ def main() -> int:
             else:
                 opt_flags = ["-g", "-O0"]
 
-            # Include output_dir for cross-module includes
+            # Include root_dir/include/ for cross-module includes
             compile_cmd = [
                 "g++", "-std=c++23",
                 *opt_flags,
                 "-I", str(runtime_dir / "cpp" / "include"),
-                "-I", str(output_dir),
+                "-I", str(root_dir / "include"),
                 "-o", str(binary_path),
                 *[str(p) for p in all_cpp_paths],
                 "-lgmp"
