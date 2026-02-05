@@ -520,6 +520,16 @@ public:
         }
     }
 
+    // Span constructor
+    StaticList(std::span<const T> items) : size_(0) {
+        if (items.size() > N) {
+            tpy_panic("StaticList capacity exceeded");
+        }
+        for (const auto& val : items) {
+            data_[size_++] = val;
+        }
+    }
+
     // --- std::vector-compatible interface ---
 
     void push_back(const T& value) {

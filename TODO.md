@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- `super()` support for inheritance
 - warning when hiding method in inheritance -- types may behave differently between TPython and CPython
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - make a doc with TPy vs Python differences

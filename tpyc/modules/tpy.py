@@ -119,6 +119,10 @@ def init_module() -> BuiltinModule:
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
                 type_factory=lambda t, n: ModuleType("tpy.StaticList", (t, n)),
                 extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]"],
+                constructors=[
+                    MethodDef(params=[], returns=VOID, cpp=""),
+                    MethodDef(params=[ParamDef("items", SpanType(T))], returns=VOID, cpp="{0}"),
+                ],
                 methods={
         "__len__": [MethodDef(
             params=[],

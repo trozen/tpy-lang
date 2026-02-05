@@ -399,8 +399,7 @@ class SemanticAnalyzer:
 
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in _register_record) so forward-referenced protocols are recognized
-        parent: RecordType | None = None
-        parent_builtin: TpyType | None = None
+        parent: TpyType | None = None  # Can be RecordType or builtin type
         implemented_protocols: list[ProtocolType] = []
 
         for base_type in record.bases:
@@ -426,7 +425,7 @@ class SemanticAnalyzer:
                 implemented_protocols.append(protocol_type)
             elif isinstance(base_type, RecordType):
                 # It's a user-defined class - check for multiple inheritance
-                if parent is not None or parent_builtin is not None:
+                if parent is not None:
                     raise SemanticError(
                         f"Multiple class inheritance not allowed in '{record.name}'. "
                         f"Use protocols for multiple interfaces.",
@@ -451,13 +450,13 @@ class SemanticAnalyzer:
                 pass
             elif self._is_inheritable_builtin(base_type):
                 # It's a builtin type - check for multiple inheritance
-                if parent is not None or parent_builtin is not None:
+                if parent is not None:
                     raise SemanticError(
                         f"Multiple class inheritance not allowed in '{record.name}'. "
                         f"Use protocols for multiple interfaces.",
                         record.loc
                     )
-                parent_builtin = base_type
+                parent = base_type
             else:
                 raise SemanticError(
                     f"Invalid base type '{base_type}' in '{record.name}'. "
@@ -467,11 +466,10 @@ class SemanticAnalyzer:
 
         # Update RecordInfo with classified bases
         record_info.parent = parent
-        record_info.parent_builtin = parent_builtin
         record_info.implemented_protocols = implemented_protocols
 
-        # Validate parent class
-        if record_info.parent:
+        # Validate parent class (only check circular inheritance for user-defined types)
+        if record_info.parent and isinstance(record_info.parent, RecordType):
             # Check for circular inheritance
             if self._has_circular_inheritance(record.name, record_info.parent.name):
                 raise SemanticError(
@@ -837,8 +835,27 @@ class SemanticAnalyzer:
             return {}
         return dict(zip(record_info.type_params, record_type.type_args))
 
-    def _get_parent_type_subst(self, parent_type: RecordType, parent_info: RecordInfo) -> dict[str, TpyType]:
+    def _get_parent_record_info(self, parent_type: TpyType) -> RecordInfo | None:
+        """Get RecordInfo for a parent type (user-defined or builtin).
+
+        Args:
+            parent_type: The parent type (RecordType or builtin TpyType).
+
+        Returns:
+            RecordInfo for the parent, or None if not found.
+        """
+        if isinstance(parent_type, RecordType):
+            return self.registry.get_record(parent_type.name)
+        else:
+            qname = parent_type.qualified_name()
+            return self.registry.get_builtin_record(qname) if qname else None
+
+    def _get_parent_type_subst(
+        self, parent_type: TpyType, parent_info: RecordInfo
+    ) -> dict[str, TpyType | int]:
         """Build substitution map from parent's type parameters to concrete type args.
+
+        Handles both user-defined classes (RecordType) and builtin types.
 
         Args:
             parent_type: The parent type as declared in the child (e.g., Container[Int32]).
@@ -847,9 +864,17 @@ class SemanticAnalyzer:
         Returns:
             Mapping from parent's type parameter names to concrete types.
         """
-        if not parent_info.type_params or not parent_type.type_args:
+        if not parent_info.type_params:
             return {}
-        return dict(zip(parent_info.type_params, parent_type.type_args))
+
+        if isinstance(parent_type, RecordType):
+            # User-defined class: extract type args directly
+            if not parent_type.type_args:
+                return {}
+            return dict(zip(parent_info.type_params, parent_type.type_args))
+        else:
+            # Builtin type: use extract_type_params to get type params
+            return builtin_modules.extract_type_params(parent_type)
 
     def _register_globals(self, stmts: list[TpyStmt]) -> None:
         """Register top-level variable declarations in global scope.
@@ -1896,9 +1921,9 @@ class SemanticAnalyzer:
         assert isinstance(super_type, SuperType)
 
         parent_type = super_type.parent_type
-        parent_info = self.registry.get_record(parent_type.name)
+        parent_info = self._get_parent_record_info(parent_type)
         if parent_info is None:
-            raise self._error(f"Parent class '{parent_type.name}' not found", expr)
+            raise self._error(f"Parent class '{parent_type}' not found", expr)
 
         # Special handling for super().__init__()
         if expr.method == "__init__":
@@ -1917,13 +1942,17 @@ class SemanticAnalyzer:
             # Track this call for later validation (must be first statement)
             self._super_init_call = expr
 
-            # If parent has no explicit __init__, allow calling default constructor
-            overloads = parent_info.get_method_overloads("__init__")
-            if not overloads:
-                # Parent has no explicit __init__, allow with no arguments
+            # Check for __init__ method or constructors (builtin types use constructors)
+            init_overloads = parent_info.get_method_overloads("__init__")
+            if not init_overloads and parent_info.constructors:
+                # Builtin type with constructors - use those as overloads
+                init_overloads = parent_info.constructors
+
+            if not init_overloads:
+                # Parent has no explicit __init__ or constructors, allow with no arguments
                 if expr.args:
                     raise self._error(
-                        f"Parent class '{parent_type.name}' has no __init__, "
+                        f"Parent class '{parent_type}' has no __init__, "
                         "super().__init__() must be called with no arguments",
                         expr
                     )
@@ -1932,18 +1961,19 @@ class SemanticAnalyzer:
                 return VOID
 
         # Look up the method in the parent class
-        overloads = parent_info.get_method_overloads(expr.method)
+        # For __init__, we already have init_overloads; for other methods, look up
+        if expr.method == "__init__":
+            overloads = init_overloads
+        else:
+            overloads = parent_info.get_method_overloads(expr.method)
         if not overloads:
             raise self._error(
-                f"Parent class '{parent_type.name}' has no method '{expr.method}'",
+                f"Parent class '{parent_type}' has no method '{expr.method}'",
                 expr
             )
 
         # Build type substitution for generic parent (e.g., Container[Int32] -> {"T": Int32})
-        type_subst: dict[str, TpyType | int] = {}
-        if parent_info.type_params and parent_type.type_args:
-            for param_name, arg_type in zip(parent_info.type_params, parent_type.type_args):
-                type_subst[param_name] = arg_type
+        type_subst = self._get_parent_type_subst(parent_type, parent_info)
 
         # For single overload, resolve directly
         if len(overloads) == 1:
@@ -2370,8 +2400,20 @@ class SemanticAnalyzer:
                 expr
             )
         # Non-generic record
-        for arg in expr.args:
-            self._analyze_expr(arg)
+        if record.has_init:
+            # Type-check __init__ parameters
+            if len(expr.args) != len(record.init_params):
+                raise self._error(
+                    f"{record.name}() takes {len(record.init_params)} argument(s), got {len(expr.args)}",
+                    expr
+                )
+            for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
+                arg_type = self._analyze_expr(arg)
+                expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                 coercion_ctx=CoercionContext.ARG)
+        else:
+            for arg in expr.args:
+                self._analyze_expr(arg)
         return RecordType(record.name)
 
     def _check_method_args(self, expr: TpyMethodCall, method: builtin_modules.MethodDef,
@@ -3411,11 +3453,15 @@ class SemanticAnalyzer:
         if method is not None:
             return method
 
-        # Check parent class (user-defined)
+        # Check parent (user-defined or builtin)
         if record_info.parent:
-            parent_info = self.registry.get_record(record_info.parent.name)
+            parent_info = self._get_parent_record_info(record_info.parent)
             if parent_info:
-                inherited = self._lookup_record_method(parent_info, method_name)
+                # For user-defined parents, recurse; for builtins, just check directly
+                if isinstance(record_info.parent, RecordType):
+                    inherited = self._lookup_record_method(parent_info, method_name)
+                else:
+                    inherited = parent_info.get_method(method_name)
                 if inherited:
                     # Substitute parent's type params with concrete type args
                     type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
@@ -3423,27 +3469,11 @@ class SemanticAnalyzer:
                         return self._substitute_method_type_params(inherited, type_subst)
                     return inherited
 
-        # Check parent builtin type
-        if record_info.parent_builtin:
-            parent_qname = record_info.parent_builtin.qualified_name()
-            if parent_qname:
-                parent_info = self.registry.get_builtin_record(parent_qname)
-                if parent_info:
-                    inherited = parent_info.get_method(method_name)
-                    if inherited:
-                        # Build type substitution from builtin's type args
-                        type_subst = self._get_builtin_parent_type_subst(
-                            record_info.parent_builtin, parent_info
-                        )
-                        if type_subst:
-                            return self._substitute_method_type_params(inherited, type_subst)
-                        return inherited
-
         return None
 
     def _lookup_record_method_overloads(
         self, record_info: RecordInfo, method_name: str
-    ) -> tuple[list[FunctionInfo], dict[str, TpyType]]:
+    ) -> tuple[list[FunctionInfo], dict[str, TpyType | int]]:
         """Look up all overloads for a method in a record, including inherited methods.
 
         Returns (overloads, type_subst) where type_subst should be applied to
@@ -3457,48 +3487,27 @@ class SemanticAnalyzer:
         if overloads:
             return (overloads, {})
 
-        # Check parent class (user-defined)
+        # Check parent (user-defined or builtin)
         if record_info.parent:
-            parent_info = self.registry.get_record(record_info.parent.name)
+            parent_info = self._get_parent_record_info(record_info.parent)
             if parent_info:
-                inherited, parent_subst = self._lookup_record_method_overloads(parent_info, method_name)
-                if inherited:
-                    # Combine parent's substitution with this class's substitution
-                    type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
-                    # Merge substitutions (parent_subst should already be resolved)
-                    combined_subst = {**parent_subst, **type_subst}
-                    return (inherited, combined_subst)
-
-        # Check parent builtin type
-        if record_info.parent_builtin:
-            parent_qname = record_info.parent_builtin.qualified_name()
-            if parent_qname:
-                parent_info = self.registry.get_builtin_record(parent_qname)
-                if parent_info:
+                # For user-defined parents, recurse; for builtins, just check directly
+                if isinstance(record_info.parent, RecordType):
+                    inherited, parent_subst = self._lookup_record_method_overloads(parent_info, method_name)
+                    if inherited:
+                        # Combine parent's substitution with this class's substitution
+                        type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
+                        # Merge substitutions (parent_subst should already be resolved)
+                        combined_subst = {**parent_subst, **type_subst}
+                        return (inherited, combined_subst)
+                else:
                     inherited = parent_info.get_method_overloads(method_name)
                     if inherited:
                         # Build type substitution from builtin's type args
-                        type_subst = self._get_builtin_parent_type_subst(
-                            record_info.parent_builtin, parent_info
-                        )
+                        type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
                         return (inherited, type_subst)
 
         return ([], {})
-
-    def _get_builtin_parent_type_subst(
-        self, parent_type: TpyType, parent_info: RecordInfo
-    ) -> dict[str, TpyType]:
-        """Build substitution map from a builtin parent's type parameters.
-
-        For types like StaticList[Int32, 10], extracts the type params from
-        the concrete type instance and maps them to the type parameter names.
-        """
-        if not parent_info.type_params:
-            return {}
-
-        # Extract type params from the builtin type instance
-        type_params = builtin_modules.extract_type_params(parent_type)
-        return type_params
 
     def _substitute_method_type_params(
         self, method: FunctionInfo, type_subst: dict[str, TpyType]

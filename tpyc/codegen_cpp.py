@@ -168,10 +168,13 @@ class CodeGenerator:
         record_by_name = {r.name: r for r in records}
 
         # Build dependency graph
+        # Only consider user-defined parents (RecordType), not builtin types
         dependencies: dict[str, set[str]] = {r.name: set() for r in records}
         for record in records:
             record_info = self.analyzer.registry.get_record(record.name)
-            if record_info and record_info.parent and record_info.parent.name in record_by_name:
+            if (record_info and record_info.parent and
+                isinstance(record_info.parent, RecordType) and
+                record_info.parent.name in record_by_name):
                 dependencies[record.name].add(record_info.parent.name)
 
         # Topological sort (Kahn's algorithm)
@@ -569,8 +572,6 @@ class CodeGenerator:
         # Generate struct with optional inheritance
         if record_info and record_info.parent:
             out.write(f"struct {record.name} : {record_info.parent.to_cpp()} {{\n")
-        elif record_info and record_info.parent_builtin:
-            out.write(f"struct {record.name} : {record_info.parent_builtin.to_cpp()} {{\n")
         else:
             out.write(f"struct {record.name} {{\n")
 

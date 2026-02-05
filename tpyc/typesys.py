@@ -470,8 +470,11 @@ class SuperType(TpyType):
                 super().__init__(name)  # Returns SuperType(parent_type=Animal)
 
     The super().__init__(name) call resolves to calling Animal.__init__.
+
+    The parent_type can be either a RecordType (user-defined class) or a
+    builtin type like StaticListType.
     """
-    parent_type: RecordType
+    parent_type: 'TpyType'  # Can be RecordType or builtin type
     child_record_name: str
 
     def to_cpp(self) -> str:
@@ -816,7 +819,7 @@ class RecordInfo:
     - type_param_kinds = [TYPE, INT]
 
     For class inheritance:
-    - parent stores the parent class type with type args (single inheritance)
+    - parent stores the parent type (user-defined RecordType or builtin TpyType)
     - implemented_protocols stores explicitly declared protocol implementations
 
     For builtin types:
@@ -834,8 +837,7 @@ class RecordInfo:
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = None  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
-    parent: Optional['RecordType'] = None  # Parent class type with type args (single inheritance)
-    parent_builtin: Optional['TpyType'] = None  # Parent builtin type (e.g., StaticListType for inheritance)
+    parent: Optional['TpyType'] = None  # Parent type (RecordType or builtin TpyType)
     implemented_protocols: list['ProtocolType'] = None  # Explicit protocol implementations
     extends_protocols: list[str] = None  # Protocol extensions: ["NativeIterable[T]"]
     cpp_type: Optional[str] = None  # C++ type template for builtins
