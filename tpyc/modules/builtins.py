@@ -358,7 +358,7 @@ def init_module() -> BuiltinModule:
 
     # print() - variadic print function
     # Signature: print(*args) -> None
-    # Special handling in sema.py and codegen_cpp.py because:
+    # Special handling in sema/ and codegen_cpp/ because:
     # - Variadic: accepts any number of arguments
     # - Polymorphic: accepts any printable type (primitives, records, containers)
     module.function("print", overloads=[], special_handling=True)

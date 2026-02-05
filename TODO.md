@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- codegen_cpp refactoring (sema/ done), also tpy_runtime.hpp
+- tpy_runtime.hpp refactoring
 - make a doc with TPy vs Python differences
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
 - import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
