@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
-    PendingListType, ListType, ArrayType, TypeParamRef, RecordType,
+    PendingListType, ListType, ArrayType, TypeParamRef, NamedType,
     INT32, BIGINT, FLOAT
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
@@ -174,7 +174,7 @@ class TypeResolver:
         For imported record types from user modules, generates fully qualified names
         like tpy_user::utils::Point.
         """
-        if isinstance(typ, RecordType):
+        if isinstance(typ, NamedType) and typ.is_record:
             # Check if this record is imported from a user module
             if typ.name in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[typ.name]

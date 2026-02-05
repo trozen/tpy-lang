@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, ListType, ArrayType, PendingListType, SpanType, IntLiteralType,
-    StrType, ProtocolType, BIGINT, CHAR
+    StrType, NamedType, BIGINT, CHAR,
 )
 from ..parse import TpyExpr, TpyName, TpyCoerce
 from .diagnostics import SemanticError
@@ -126,7 +126,7 @@ class ListLiteralTracker:
         a NativeIterable[T] protocol type.
         """
         # NativeIterable[T] protocol type
-        if isinstance(typ, ProtocolType) and typ.name == "NativeIterable":
+        if isinstance(typ, NamedType) and typ.is_protocol and typ.name == "NativeIterable":
             return True
         # Check if type extends NativeIterable
         return builtin_modules.type_extends_any(typ, "NativeIterable")
@@ -137,7 +137,7 @@ class ListLiteralTracker:
         For types extending NativeIterable[T], returns T.
         """
         # Handle NativeIterable[T] protocol type
-        if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":
+        if isinstance(iterable_type, NamedType) and iterable_type.is_protocol and iterable_type.name == "NativeIterable":
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
             return None

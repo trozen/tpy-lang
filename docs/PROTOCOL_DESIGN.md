@@ -60,23 +60,26 @@ module.protocol("SupportsAdd", methods=[
 ```python
 # tpyc/typesys.py
 
-@dataclass
-class ProtocolType(TpyType):
-    """A structural protocol type."""
-    name: str
-    methods: dict[str, MethodSig]  # method_name -> signature
-    type_params: list[str] = field(default_factory=list)
+@dataclass(frozen=True)
+class NamedType(TpyType):
+    """A user-defined type (record or protocol).
 
-    def matches(self, concrete_type: TpyType, registry: TypeRegistry) -> bool:
-        """Check if concrete_type structurally matches this protocol."""
-        for method_name, sig in self.methods.items():
-            # Look up method on concrete type
-            method = lookup_type_method(concrete_type, method_name)
-            if not method:
-                return False
-            if not sig.compatible_with(method):
-                return False
-        return True
+    During parsing, is_protocol defaults to False (unknown).
+    After registration in sema, is_protocol is set correctly.
+    """
+    name: str
+    type_args: tuple[TpyType | int, ...] = ()
+    is_protocol: bool = False
+
+    @property
+    def is_record(self) -> bool:
+        return not self.is_protocol
+
+    def with_protocol_flag(self, is_protocol: bool) -> 'NamedType':
+        """Return a copy with is_protocol set."""
+        if self.is_protocol == is_protocol:
+            return self
+        return NamedType(self.name, self.type_args, is_protocol)
 ```
 
 ## 4. Semantic analysis
@@ -90,8 +93,8 @@ def _check_type_compatible(self, arg_type: TpyType, param_type: TpyType) -> bool
         return True
 
     # Protocol matching (structural)
-    if isinstance(param_type, ProtocolType):
-        return param_type.matches(arg_type, self.registry)
+    if isinstance(param_type, NamedType) and param_type.is_protocol:
+        return self.protocols.type_conforms_to_protocol(arg_type, param_type)
 
     # ... other rules
 ```
@@ -172,10 +175,10 @@ This approach:
 ```python
 # tpyc/modules/builtins.py
 
-from tpyc.typesys import ProtocolType
+from tpyc.typesys import NamedType
 
 # Sized protocol type for len() parameter
-SIZED = ProtocolType("Sized")
+SIZED = NamedType("Sized", is_protocol=True)
 
 module.function("len", overloads=[
     MethodDef(
@@ -192,21 +195,25 @@ The semantic analyzer checks if the argument type conforms to `Sized` by verifyi
 
 ```python
 @dataclass
-class ProtocolDef:
+class ProtocolInfo:
+    """Protocol metadata in the TypeRegistry."""
     name: str
-    methods: list[MethodSig]
+    methods: list[MethodSignature]
     type_params: list[str] = field(default_factory=list)
+    parent_protocols: list[str] = field(default_factory=list)
 
 @dataclass
-class MethodSig:
+class MethodSignature:
     name: str
-    params: list[ParamDef]
-    returns: TpyType | str  # str for "Self" or type param refs
+    params: list[tuple[str, TpyType]]
+    return_type: TpyType
 
-@dataclass
-class ProtocolType(TpyType):
-    protocol: ProtocolDef
-    type_args: list[TpyType] = field(default_factory=list)  # for generic protocols
+@dataclass(frozen=True)
+class NamedType(TpyType):
+    """Unified type for records and protocols."""
+    name: str
+    type_args: tuple[TpyType | int, ...] = ()
+    is_protocol: bool = False  # True for protocols, False for records
 ```
 
 ## 8. Built-in protocols
@@ -360,8 +367,8 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Template function generation for protocol-typed parameters
 2. **Phase 2**: Protocol matching in sema for function params ✅ **COMPLETE** (included in Phase 1)
 3. **Phase 3**: Generic protocols (`Sequence[T]`) ✅ **COMPLETE**
-   - Generic protocol definitions with type_params in ProtocolDef
-   - ProtocolType with type_args for instantiated generic protocols
+   - Generic protocol definitions with type_params in ProtocolInfo
+   - NamedType with type_args for instantiated generic protocols
    - Type parameter substitution in protocol conformance checking
    - Parameterized C++20 concept generation (e.g., `tpy::Sequence<int32_t>`)
    - Indexing support for protocol-typed variables

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    ProtocolType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
+    NamedType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     CHAR
 )
 from ..parse import (
@@ -87,8 +87,8 @@ class BuiltinGenerator:
 
     def ctor_param_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
-        # Check for ProtocolType with TypeParamRef (e.g., ProtocolType("NativeIterable", (TypeParamRef("T"),)))
-        if isinstance(param_type, ProtocolType) and param_type.type_args:
+        # Check for protocol type with TypeParamRef (e.g., NativeIterable[T])
+        if isinstance(param_type, NamedType) and param_type.is_protocol and param_type.type_args:
             has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
             if has_type_param:
                 protocol_name = param_type.name
@@ -146,7 +146,7 @@ class BuiltinGenerator:
         if isinstance(arg_type, type(param_type)) and arg_type == param_type:
             return True
         # Protocol parameter: sema already verified conformance, accept any arg
-        if isinstance(param_type, ProtocolType):
+        if isinstance(param_type, NamedType) and param_type.is_protocol:
             return True
         # IntLiteral can match Int32 (if compile-time) or BigInt (if runtime)
         if isinstance(arg_type, IntLiteralType):

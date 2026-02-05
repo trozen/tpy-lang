@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Callable
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import TypeParamRef, ProtocolType, PtrType, ConstPtrType, ProtocolInfo, MethodSignature, TypeParamKind
+from tpyc.typesys import TypeParamRef, NamedType, PtrType, ConstPtrType, ProtocolInfo, MethodSignature, TypeParamKind
 
 
 @dataclass
@@ -527,7 +527,7 @@ def _resolve_type_or_param(t: "TpyType", type_params: dict[str, "TpyType"]) -> "
     Handles:
     - TypeParamRef("T") -> type_params["T"]
     - SelfType -> type_params["Self"] if available, else SELF
-    - ProtocolType with TypeParamRef args -> resolved ProtocolType
+    - NamedType (protocol) with TypeParamRef args -> resolved NamedType
     - PtrType/ConstPtrType with TypeParamRef pointee -> resolved pointer type
     - Other TpyType -> returned as-is (uses map_inner_types for nested resolution)
     """
@@ -545,12 +545,12 @@ def _resolve_type_or_param(t: "TpyType", type_params: dict[str, "TpyType"]) -> "
             raise ValueError(f"Unresolved type parameter: {t.name}")
         return type_params[t.name]
 
-    # Handle ProtocolType with TypeParamRef in type_args
-    if isinstance(t, ProtocolType) and t.type_args:
+    # Handle NamedType (protocol) with TypeParamRef in type_args
+    if isinstance(t, NamedType) and t.is_protocol and t.type_args:
         resolved_args = tuple(
             _resolve_type_or_param(arg, type_params) for arg in t.type_args
         )
-        return ProtocolType(t.name, resolved_args)
+        return NamedType(t.name, resolved_args, is_protocol=True)
 
     # Handle PtrType with TypeParamRef pointee
     if isinstance(t, PtrType):

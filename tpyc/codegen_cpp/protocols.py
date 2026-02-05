@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, RecordType, ProtocolType, TypeParamRef, TypeParamKind,
+    TpyType, NamedType, TypeParamRef, TypeParamKind,
     MethodSignature
 )
 from ..parse import TpyProtocol, TpyRecord
@@ -24,28 +24,28 @@ class ProtocolGenerator:
         self.ctx = ctx
 
     def resolve_type_for_codegen(self, typ: TpyType) -> TpyType:
-        """Resolve a type, converting RecordType to ProtocolType if it's a protocol.
+        """Resolve a type, setting is_protocol flag if it's actually a protocol.
 
-        During parsing, some types may be classified as RecordType when they're
+        During parsing, some types may be classified as records when they're
         actually protocols (e.g., imported protocols). This method fixes that for codegen.
         """
-        if isinstance(typ, RecordType):
+        if isinstance(typ, NamedType) and not typ.is_protocol:
             # Check if this is actually a protocol
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
             if protocol_info is not None:
-                return ProtocolType(typ.name, typ.type_args)
+                return typ.with_protocol_flag(is_protocol=True)
         return typ
 
-    def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, ProtocolType]]:
+    def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType]]:
         """Get list of protocol-typed parameters."""
         result = []
         for pname, ptype in params:
             resolved = self.resolve_type_for_codegen(ptype)
-            if isinstance(resolved, ProtocolType):
+            if isinstance(resolved, NamedType) and resolved.is_protocol:
                 result.append((pname, resolved))
         return result
 
-    def get_concept_name(self, protocol: ProtocolType) -> str:
+    def get_concept_name(self, protocol: NamedType) -> str:
         """Get the C++ concept name for a protocol type."""
         # Unified lookup via registry
         protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
@@ -61,7 +61,7 @@ class ProtocolGenerator:
     def gen_record_template_header(
         self,
         type_params: list[str],
-        type_param_bounds: dict[str, ProtocolType],
+        type_param_bounds: dict[str, NamedType],
         type_param_kinds: list[TypeParamKind] | None = None
     ) -> str:
         """Generate template header for a generic record.
@@ -88,7 +88,7 @@ class ProtocolGenerator:
                 template_parts.append(f"typename {tp}")
         return f"template<{', '.join(template_parts)}>"
 
-    def gen_template_header(self, protocol_params: list[tuple[str, ProtocolType]]) -> str:
+    def gen_template_header(self, protocol_params: list[tuple[str, NamedType]]) -> str:
         """Generate template header with concept constraints for protocol params.
 
         For non-generic protocols: template<tpy::Sized T_items>
@@ -112,8 +112,8 @@ class ProtocolGenerator:
     def gen_combined_template_header(
         self,
         type_params: list[str],
-        protocol_params: list[tuple[str, ProtocolType]],
-        type_param_bounds: dict[str, ProtocolType] | None = None
+        protocol_params: list[tuple[str, NamedType]],
+        type_param_bounds: dict[str, NamedType] | None = None
     ) -> str:
         """Generate template header combining type parameters and concept constraints.
 
@@ -282,8 +282,8 @@ class ProtocolGenerator:
         out.write("};\n")
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
-        """Recursively collect all RecordType names from a type."""
-        if isinstance(typ, RecordType):
+        """Recursively collect all record type names from a type."""
+        if isinstance(typ, NamedType) and typ.is_record:
             result.add(typ.name)
         for inner in typ.inner_types():
             self.collect_record_types_from_type(inner, result)
@@ -299,7 +299,7 @@ class ProtocolGenerator:
         When a protocol references Container[Message] where Container has a user-defined
         protocol bound, C++ needs Message to be fully defined to check the constraint.
         """
-        if isinstance(typ, RecordType) and typ.type_args:
+        if isinstance(typ, NamedType) and typ.is_record and typ.type_args:
             record = records_by_name.get(typ.name)
             if record and record.type_param_bounds:
                 # Check if any bound is a user-defined protocol
@@ -311,7 +311,7 @@ class ProtocolGenerator:
                 if has_user_bound:
                     # Collect all type args as needing early definition
                     for type_arg in typ.type_args:
-                        if isinstance(type_arg, RecordType):
+                        if isinstance(type_arg, NamedType) and type_arg.is_record:
                             result.add(type_arg.name)
 
         # Recurse into inner types

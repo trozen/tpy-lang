@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, RecordType, ProtocolType, OwnType, ListType, PendingListType,
+    TpyType, NamedType, OwnType, ListType, PendingListType,
     SuperType, TypeParamRef, FunctionInfo, VOID
 )
 from ..parse import (
@@ -183,8 +183,8 @@ class MethodAnalyzer:
                 tracker.mark_list_mutated(expr.obj)
 
         # Built-in type methods - use registry lookup
-        # (Skip for RecordType - those are handled in the user record path below)
-        if not isinstance(obj_type, RecordType):
+        # (Skip for NamedType records - those are handled in the user record path below)
+        if not (isinstance(obj_type, NamedType) and obj_type.is_record):
             record_info = self.ctx.registry.get_record_for_type(obj_type)
             if record_info:
                 overloads = record_info.get_method_overloads(expr.method)
@@ -222,7 +222,7 @@ class MethodAnalyzer:
                         return resolved.return_type
 
         # User-defined record methods (including inherited methods from builtins)
-        if isinstance(obj_type, RecordType):
+        if isinstance(obj_type, NamedType) and obj_type.is_record:
             record_info = self.ctx.registry.get_record(obj_type.name)
             if record_info:
                 overloads, inherited_subst = self.protocols.lookup_record_method_overloads(record_info, expr.method)
@@ -284,7 +284,7 @@ class MethodAnalyzer:
                         )
 
         # Protocol-typed values - use protocol method signatures
-        if isinstance(obj_type, ProtocolType):
+        if isinstance(obj_type, NamedType) and obj_type.is_protocol:
             method_sig = self.protocols.get_protocol_method_signature(obj_type, expr.method)
             if method_sig is None:
                 raise SemanticError(f"Protocol '{obj_type.name}' has no method '{expr.method}'")
@@ -306,7 +306,7 @@ class MethodAnalyzer:
         # Bounded type parameter - treat method calls as if on the bound protocol
         if isinstance(obj_type, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(obj_type.name)
-            if bound is not None and isinstance(bound, ProtocolType):
+            if bound is not None and isinstance(bound, NamedType) and bound.is_protocol:
                 # Pass obj_type as self_type so Self in signatures resolves to T, not the protocol
                 method_sig = self.protocols.get_protocol_method_signature(bound, expr.method, self_type=obj_type)
                 if method_sig is None:
@@ -480,7 +480,7 @@ class MethodAnalyzer:
                 if isinstance(arg_t, IntLiteralType) and isinstance(param_t, IntLiteralType):
                     continue
                 # Protocol parameter: check conformance
-                if isinstance(param_t, ProtocolType):
+                if isinstance(param_t, NamedType) and param_t.is_protocol:
                     if self.protocols.type_conforms_to_protocol(arg_t, param_t):
                         continue
                 # Check if there's a coercion
@@ -531,7 +531,7 @@ class MethodAnalyzer:
         """Check if argument type exactly matches parameter type."""
         if arg_type == param_type:
             return True
-        if isinstance(param_type, ProtocolType):
+        if isinstance(param_type, NamedType) and param_type.is_protocol:
             return self.protocols.type_conforms_to_protocol(arg_type, param_type)
         return False
 
@@ -543,7 +543,7 @@ class MethodAnalyzer:
             return True
         if isinstance(arg_type, IntLiteralType) and isinstance(param_type, IntLiteralType):
             return True
-        if isinstance(param_type, ProtocolType):
+        if isinstance(param_type, NamedType) and param_type.is_protocol:
             return self.protocols.type_conforms_to_protocol(arg_type, param_type)
         if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
             return True

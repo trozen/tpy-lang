@@ -8,7 +8,7 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
-    RecordType, PtrType, ConstPtrType, CharType, StrType,
+    NamedType, PtrType, ConstPtrType, CharType, StrType,
     SpanType, PendingListType, TypeParamRef, TypeParamKind,
 )
 
@@ -146,10 +146,10 @@ COERCIONS: list[Coercion] = [
     # Pointer coercions
     Coercion(
         name="record_to_ptr",
-        from_type=RecordType,
+        from_type=NamedType,
         to_type=PtrType,
         type_match=lambda rec, ptr: (
-            isinstance(ptr, PtrType) and isinstance(ptr.pointee, RecordType) and rec.name == ptr.pointee.name
+            rec.is_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         requires_mutable=True,
@@ -158,10 +158,10 @@ COERCIONS: list[Coercion] = [
     ),
     Coercion(
         name="record_to_const_ptr",
-        from_type=RecordType,
+        from_type=NamedType,
         to_type=ConstPtrType,
         type_match=lambda rec, ptr: (
-            isinstance(ptr, ConstPtrType) and isinstance(ptr.pointee, RecordType) and rec.name == ptr.pointee.name
+            rec.is_record and isinstance(ptr, ConstPtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         forbid_return_local=True,
@@ -176,8 +176,8 @@ COERCIONS: list[Coercion] = [
     Coercion(
         name="ptr_to_record",
         from_type=PtrType,
-        to_type=RecordType,
-        type_match=lambda ptr, rec: isinstance(ptr, PtrType) and isinstance(rec, RecordType) and ptr.pointee == rec,
+        to_type=NamedType,
+        type_match=lambda ptr, rec: isinstance(ptr, PtrType) and isinstance(rec, NamedType) and rec.is_record and ptr.pointee == rec,
         codegen=lambda e, _a, _b, _c: f"tpy::deref_ptr({e})",
     ),
 

@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, RecordType, PtrType, ConstPtrType, OwnType,
-    ArrayType, SpanType, ListType, PendingListType, ProtocolType, SelfType,
+    TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType,
+    ArrayType, SpanType, ListType, PendingListType, SelfType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     RecordInfo, FunctionInfo
 )
@@ -27,25 +27,25 @@ class TypeOperations:
         self.ctx = ctx
 
     def resolve_type(self, typ: TpyType) -> TpyType:
-        """Resolve a type, converting RecordType to ProtocolType if needed.
+        """Resolve a type, setting is_protocol flag on NamedType when needed.
 
-        During parsing, some types may be classified as RecordType when they're
-        actually protocols (e.g., imported protocols). This method fixes that.
+        During parsing, NamedType may be created with is_protocol=False for
+        names that are actually protocols. This method sets the flag correctly.
         """
-        if isinstance(typ, RecordType):
-            # Check if this is actually a protocol
+        if isinstance(typ, NamedType):
+            # Check if this should have is_protocol set
             protocol_info = self.ctx.registry.get_protocol(typ.name)
-            if protocol_info is not None:
-                # Convert RecordType to ProtocolType
-                return ProtocolType(typ.name, typ.type_args)
+            resolved_is_protocol = protocol_info is not None
             # Recursively resolve type arguments
             if typ.type_args:
                 new_args = tuple(
                     self.resolve_type(arg) if isinstance(arg, TpyType) else arg
                     for arg in typ.type_args
                 )
-                if new_args != typ.type_args:
-                    return RecordType(typ.name, new_args)
+                if new_args != typ.type_args or typ.is_protocol != resolved_is_protocol:
+                    return NamedType(typ.name, new_args, resolved_is_protocol)
+            elif typ.is_protocol != resolved_is_protocol:
+                return typ.with_protocol_flag(resolved_is_protocol)
         elif isinstance(typ, (ListType, ArrayType, SpanType)):
             elem = typ.get_element_type()
             if elem:
@@ -60,15 +60,6 @@ class TypeOperations:
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped != typ.wrapped:
                 return OwnType(resolved_wrapped)
-        elif isinstance(typ, ProtocolType):
-            # Recursively resolve type arguments for generic protocols
-            if typ.type_args:
-                new_args = tuple(
-                    self.resolve_type(arg) if isinstance(arg, TpyType) else arg
-                    for arg in typ.type_args
-                )
-                if new_args != typ.type_args:
-                    return ProtocolType(typ.name, new_args)
         return typ
 
     def validate_type(self, typ: TpyType, allow_type_param_ref: bool = False) -> None:
@@ -84,7 +75,7 @@ class TypeOperations:
             if typ.kind == TypeParamKind.INT:
                 raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation")
             return
-        if isinstance(typ, RecordType):
+        if isinstance(typ, NamedType) and typ.is_record:
             record_info = self.ctx.registry.get_record(typ.name)
             if not record_info:
                 # Allow forward references during registration
@@ -108,24 +99,24 @@ class TypeOperations:
                 )
         elif isinstance(typ, (PtrType, ConstPtrType)):
             self.validate_type(typ.pointee, allow_type_param_ref)
-            if isinstance(typ.pointee, ProtocolType):
+            if isinstance(typ.pointee, NamedType) and typ.pointee.is_protocol:
                 raise SemanticError(
                     f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type"
                 )
         elif (elem_type := typ.get_element_type()) is not None:
             self.validate_type(elem_type, allow_type_param_ref)
-            if isinstance(elem_type, ProtocolType):
+            if isinstance(elem_type, NamedType) and elem_type.is_protocol:
                 raise SemanticError(
                     f"Protocol type '{elem_type.name}' cannot be used as a container element type"
                 )
 
     def validate_record_type_args(
-        self, typ: RecordType, record_info: RecordInfo, allow_type_param_ref: bool = False
+        self, typ: NamedType, record_info: RecordInfo, allow_type_param_ref: bool = False
     ) -> None:
         """Validate that type arguments match their expected kinds (TYPE vs INT).
 
         Args:
-            typ: The RecordType with type_args to validate.
+            typ: The NamedType with type_args to validate.
             record_info: The RecordInfo with type_param_kinds.
             allow_type_param_ref: If True, allow TypeParamRef as valid types.
         """
@@ -197,11 +188,11 @@ class TypeOperations:
         # Use map_inner_types for types that have inner types
         return typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
 
-    def build_type_substitution(self, record_type: RecordType) -> dict[str, TpyType | int]:
+    def build_type_substitution(self, record_type: NamedType) -> dict[str, TpyType | int]:
         """Build a type parameter substitution map for a generic record instantiation.
 
         Args:
-            record_type: A RecordType with type_args (e.g., Stack[Int32] or Matrix[Int32, 8]).
+            record_type: A NamedType with type_args (e.g., Stack[Int32] or Matrix[Int32, 8]).
 
         Returns:
             Mapping from type parameter names to concrete types or integers.
@@ -254,24 +245,19 @@ class TypeOperations:
     def is_forwarded_type_param(self, typ: TpyType, type_params: list[str]) -> bool:
         """Check if a type references one of the given type parameters.
 
-        At parse time, type parameters in base class type args appear as RecordType
-        (e.g., Container[T] has T as RecordType("T"), not TypeParamRef("T")).
+        At parse time, type parameters in base class type args appear as NamedType
+        (e.g., Container[T] has T as NamedType("T"), not TypeParamRef("T")).
         This function checks for both forms.
         """
         if isinstance(typ, TypeParamRef):
             return typ.name in type_params
-        if isinstance(typ, RecordType):
-            # A RecordType with no type_args and name matching a type param is a forwarded param
+        if isinstance(typ, NamedType):
+            # A NamedType with no type_args and name matching a type param is a forwarded param
             if not typ.type_args and typ.name in type_params:
                 return True
-            # Also check nested type args (e.g., Container[list[T]])
+            # Also check nested type args (e.g., Container[list[T]] or Parent[Sequence[T]])
             for type_arg in typ.type_args:
-                if self.is_forwarded_type_param(type_arg, type_params):
-                    return True
-        if isinstance(typ, ProtocolType):
-            # Check nested type args in protocols (e.g., Parent[Sequence[T]])
-            for type_arg in typ.type_args:
-                if self.is_forwarded_type_param(type_arg, type_params):
+                if isinstance(type_arg, TpyType) and self.is_forwarded_type_param(type_arg, type_params):
                     return True
         if isinstance(typ, (PtrType, ConstPtrType)):
             return self.is_forwarded_type_param(typ.pointee, type_params)
@@ -309,9 +295,9 @@ class TypeOperations:
         Returns True if types match (with inference), False otherwise.
         Supports:
         - TypeParamRef for type parameters
-        - ProtocolType with TypeParamRef in type_args
+        - NamedType (protocol) with TypeParamRef in type_args
         - ListType with nested TypeParamRef
-        - RecordType with type args (nested generics)
+        - NamedType (record) with type args (nested generics)
         - PtrType, ConstPtrType, OwnType wrappers
         - Concrete types (compatibility check)
         """
@@ -330,8 +316,8 @@ class TypeOperations:
             inferred[param_type.name] = arg_type
             return True
 
-        # Case 2: ProtocolType with TypeParamRef in type_args (e.g., NativeIterable[T])
-        if isinstance(param_type, ProtocolType) and param_type.type_args:
+        # Case 2: NamedType (protocol) with TypeParamRef in type_args (e.g., NativeIterable[T])
+        if isinstance(param_type, NamedType) and param_type.is_protocol and param_type.type_args:
             # Check if any type_arg is a TypeParamRef that needs inference
             has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
             if has_type_param:
@@ -340,7 +326,7 @@ class TypeOperations:
                 if elem_type is None:
                     return False
                 # Check conformance with the inferred element type
-                expected_protocol = ProtocolType(param_type.name, (elem_type,))
+                expected_protocol = NamedType(param_type.name, (elem_type,), is_protocol=True)
                 # Need protocols checker - defer to context-level conformance check
                 if not builtin_modules.type_extends_any(arg_type, "NativeIterable"):
                     return False
@@ -390,15 +376,35 @@ class TypeOperations:
                     return param_type.size == arg_type.size
             return False
 
-        # Case 4: RecordType with type args (e.g., Box[T] nested)
-        if isinstance(param_type, RecordType) and param_type.type_args:
-            if isinstance(arg_type, RecordType) and arg_type.name == param_type.name:
+        # Case 4: NamedType (record) with type args (e.g., Box[T] nested)
+        if isinstance(param_type, NamedType) and param_type.is_record and param_type.type_args:
+            if isinstance(arg_type, NamedType) and arg_type.is_record and arg_type.name == param_type.name:
                 if len(param_type.type_args) != len(arg_type.type_args):
                     return False
-                return all(
-                    self.match_type_with_inference(pt, at, inferred)
-                    for pt, at in zip(param_type.type_args, arg_type.type_args)
-                )
+                for pt, at in zip(param_type.type_args, arg_type.type_args):
+                    if isinstance(pt, TpyType) and isinstance(at, TpyType):
+                        # Both are types - recurse
+                        if not self.match_type_with_inference(pt, at, inferred):
+                            return False
+                    elif isinstance(pt, TypeParamRef) and pt.kind == TypeParamKind.INT and isinstance(at, int):
+                        # INT type param vs concrete int - infer
+                        if pt.name in inferred:
+                            if inferred[pt.name] != at:
+                                return False
+                        else:
+                            inferred[pt.name] = at
+                    elif isinstance(pt, int) and isinstance(at, int):
+                        # Both concrete ints - must match exactly
+                        if pt != at:
+                            return False
+                    elif isinstance(pt, TypeParamRef) and isinstance(at, TypeParamRef):
+                        # Both TypeParamRef - names must match
+                        if pt.name != at.name:
+                            return False
+                    else:
+                        # Mismatched arg kinds (e.g., int vs TpyType)
+                        return False
+                return True
             return False
 
         # Case 5: Pointer types (Ptr[T], ConstPtr[T])
@@ -589,9 +595,10 @@ class TypeOperations:
         from ..typesys import StrType, CharType, CHAR
 
         # Handle NativeIterable[T] protocol type
-        if isinstance(iterable_type, ProtocolType) and iterable_type.name == "NativeIterable":
+        if isinstance(iterable_type, NamedType) and iterable_type.is_protocol and iterable_type.name == "NativeIterable":
             if iterable_type.type_args:
-                return iterable_type.type_args[0]
+                first_arg = iterable_type.type_args[0]
+                return first_arg if isinstance(first_arg, TpyType) else None
             return None
 
         # Handle str -> Char

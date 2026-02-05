@@ -312,7 +312,7 @@ class TypeParamRef(TpyType):
     Bounded type parameters (e.g., T: Comparable) store the bound protocol.
     """
     name: str
-    bound: Optional['ProtocolType'] = None
+    bound: Optional['NamedType'] = None  # Must be a protocol (is_protocol=True)
     kind: TypeParamKind = TypeParamKind.TYPE
 
     def to_cpp(self) -> str:
@@ -354,10 +354,13 @@ class TypeParamRef(TpyType):
 
 
 @dataclass(frozen=True)
-class RecordType(TpyType):
-    """User-defined record type (class).
+class NamedType(TpyType):
+    """A user-defined type (record or protocol).
 
-    For generic records like Stack[T]:
+    During parsing, is_protocol defaults to False (unknown).
+    After registration in sema, is_protocol is set correctly.
+
+    For generic types like Stack[T] or Sequence[T]:
     - type_args stores the concrete type arguments (e.g., (Int32,) for Stack[Int32])
 
     For generic records with integer type parameters like Matrix[T, N: int]:
@@ -365,8 +368,23 @@ class RecordType(TpyType):
     """
     name: str
     type_args: tuple['TpyType | int', ...] = ()
+    is_protocol: bool = False
+
+    @property
+    def is_record(self) -> bool:
+        """Return True if this is a record type (not a protocol)."""
+        return not self.is_protocol
+
+    def with_protocol_flag(self, is_protocol: bool) -> 'NamedType':
+        """Return a copy with is_protocol set."""
+        if self.is_protocol == is_protocol:
+            return self
+        return NamedType(self.name, self.type_args, is_protocol)
 
     def to_cpp(self) -> str:
+        if self.is_protocol:
+            # Template parameter placeholder - actual type substituted at instantiation
+            return "T"
         if self.type_args:
             args = ", ".join(
                 t.to_cpp() if isinstance(t, TpyType) else str(t)
@@ -384,6 +402,16 @@ class RecordType(TpyType):
             return f"{self.name}[{args}]"
         return self.name
 
+    def qualified_name(self) -> Optional[str]:
+        if self.is_protocol:
+            return f"typing.{self.name}"
+        return None
+
+    def is_value_type(self) -> bool:
+        # Protocol-typed params are passed by const ref
+        # Records are object types (not value types)
+        return False
+
     def inner_types(self) -> tuple['TpyType', ...]:
         # Only return actual types, skip integer values
         return tuple(t for t in self.type_args if isinstance(t, TpyType))
@@ -397,44 +425,7 @@ class RecordType(TpyType):
                 new_args.append(next(type_iter))
             else:
                 new_args.append(arg)  # Keep integer as-is
-        return RecordType(self.name, tuple(new_args))
-
-
-@dataclass(frozen=True)
-class ProtocolType(TpyType):
-    """Protocol type for structural subtyping.
-
-    A protocol defines required methods. Any type implementing those methods
-    satisfies the protocol. Compiles to C++20 concepts.
-
-    For generic protocols like Sequence[T]:
-    - type_args stores the concrete type arguments (e.g., (Int32,) for Sequence[Int32])
-    """
-    name: str
-    type_args: tuple[TpyType, ...] = ()
-
-    def to_cpp(self) -> str:
-        # Template parameter placeholder - actual type substituted at instantiation
-        return "T"
-
-    def __str__(self) -> str:
-        if self.type_args:
-            args = ", ".join(str(t) for t in self.type_args)
-            return f"{self.name}[{args}]"
-        return self.name
-
-    def qualified_name(self) -> Optional[str]:
-        return f"typing.{self.name}"
-
-    def is_value_type(self) -> bool:
-        # Protocol-typed params are passed by const ref
-        return False
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return self.type_args
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return ProtocolType(self.name, types)
+        return NamedType(self.name, tuple(new_args), self.is_protocol)
 
 
 @dataclass(frozen=True)
@@ -836,9 +827,9 @@ class RecordInfo:
     constructors: list['FunctionInfo'] = None  # Constructor overloads (for unified handling)
     type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = None  # [TYPE, INT] for class Matrix[T, N: int]
-    type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
-    parent: Optional['TpyType'] = None  # Parent type (RecordType or builtin TpyType)
-    implemented_protocols: list['ProtocolType'] = None  # Explicit protocol implementations
+    type_param_bounds: dict[str, 'NamedType'] = None  # {"T": Comparable} (must be protocols)
+    parent: Optional['TpyType'] = None  # Parent type (NamedType or builtin TpyType)
+    implemented_protocols: list['NamedType'] = None  # Explicit protocol implementations
     extends_protocols: list[str] = None  # Protocol extensions: ["NativeIterable[T]"]
     cpp_type: Optional[str] = None  # C++ type template for builtins
 
@@ -896,7 +887,7 @@ class FunctionInfo:
     is_method: bool = False
     is_staticmethod: bool = False
     type_params: list[str] = None
-    type_param_bounds: dict[str, 'ProtocolType'] = None  # {"T": Comparable}
+    type_param_bounds: dict[str, 'NamedType'] = None  # {"T": Comparable} (must be protocols)
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
@@ -1086,10 +1077,10 @@ class TypeRegistry:
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.
 
-        For user records (RecordType), looks up by name in self.records.
+        For user records (NamedType with is_record), looks up by name in self.records.
         For builtin types, looks up by qualified_name in self.builtin_records.
         """
-        if isinstance(tpy_type, RecordType):
+        if isinstance(tpy_type, NamedType) and tpy_type.is_record:
             return self.records.get(tpy_type.name)
         qname = tpy_type.qualified_name()
         if qname:

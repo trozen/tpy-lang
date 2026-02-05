@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, RecordType
+from ..typesys import TpyType, NamedType
 from ..parse import TpyModule, TpyVarDecl
 
 from .context import CodeGenContext, CodeGenOptions

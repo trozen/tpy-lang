@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, RecordType, ProtocolType, OwnType, ListType, PendingListType, IntLiteralType,
+    TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo,
     VOID, BIGINT
 )
@@ -145,7 +145,7 @@ class CallAnalyzer:
             # Analyze arguments
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
-            return RecordType(expr.func)
+            return NamedType(expr.func)
 
         # Fallback: Check if it's a function call
         func = self.ctx.registry.get_function(expr.func)
@@ -278,7 +278,7 @@ class CallAnalyzer:
         if arg_type == param_type:
             return True
         # Protocol parameter: check if arg_type conforms to the protocol
-        if isinstance(param_type, ProtocolType):
+        if isinstance(param_type, NamedType) and param_type.is_protocol:
             return self.protocols.type_conforms_to_protocol(arg_type, param_type)
         return False
 
@@ -291,7 +291,7 @@ class CallAnalyzer:
         if isinstance(arg_type, IntLiteralType) and isinstance(param_type, IntLiteralType):
             return True
         # Protocol parameter: check if arg_type conforms to the protocol
-        if isinstance(param_type, ProtocolType):
+        if isinstance(param_type, NamedType) and param_type.is_protocol:
             return self.protocols.type_conforms_to_protocol(arg_type, param_type)
         # Check if there's a coercion from arg_type to param_type
         if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
@@ -368,14 +368,14 @@ class CallAnalyzer:
             # Validate each explicit type argument
             for i, type_arg in enumerate(expr.type_args):
                 # Protocol types cannot be used as type arguments
-                if isinstance(type_arg, ProtocolType):
+                if isinstance(type_arg, NamedType) and type_arg.is_protocol:
                     raise self.ctx.error(
                         f"Protocol type '{type_arg.name}' cannot be used as a type argument. "
                         f"Protocols are only valid for function parameters",
                         expr
                     )
                 # Check for unknown record types (no forward references allowed at call sites)
-                if isinstance(type_arg, RecordType) and not type_arg.type_args:
+                if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:
                     if self.ctx.registry.get_record(type_arg.name) is None:
                         raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
                 # Validate the type (checks for missing generic args, etc.)
@@ -449,7 +449,7 @@ class CallAnalyzer:
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
         # Check if this is a generic record instantiation (e.g., Stack[Int32]())
-        if expr.call_type is not None and isinstance(expr.call_type, RecordType):
+        if expr.call_type is not None and isinstance(expr.call_type, NamedType) and expr.call_type.is_record:
             # Validate type arguments
             if record.is_generic():
                 if not expr.call_type.type_args:
@@ -520,7 +520,7 @@ class CallAnalyzer:
                                 )
                     type_args = tuple(inferred[p] for p in record.type_params)
                     # Use expr.func (local name) not record.name (original) for alias support
-                    inferred_type = RecordType(expr.func, type_args)
+                    inferred_type = NamedType(expr.func, type_args)
                     expr.call_type = inferred_type
                     # Coerce arguments with substitution
                     type_subst = inferred
@@ -553,7 +553,7 @@ class CallAnalyzer:
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
         # Use expr.func (local name) not record.name (original) for alias support
-        return RecordType(expr.func)
+        return NamedType(expr.func)
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""

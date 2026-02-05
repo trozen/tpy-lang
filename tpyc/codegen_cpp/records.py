@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, RecordType, StrType, TypeParamRef, TypeParamKind
+    TpyType, NamedType, StrType, TypeParamRef, TypeParamKind
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -77,12 +77,12 @@ class RecordGenerator:
         record_by_name = {r.name: r for r in records}
 
         # Build dependency graph
-        # Only consider user-defined parents (RecordType), not builtin types
+        # Only consider user-defined parents (NamedType records), not builtin types
         dependencies: dict[str, set[str]] = {r.name: set() for r in records}
         for record in records:
             record_info = self.ctx.analyzer.registry.get_record(record.name)
             if (record_info and record_info.parent and
-                isinstance(record_info.parent, RecordType) and
+                isinstance(record_info.parent, NamedType) and record_info.parent.is_record and
                 record_info.parent.name in record_by_name):
                 dependencies[record.name].add(record_info.parent.name)
 
@@ -170,7 +170,7 @@ class RecordGenerator:
                     self.ctx.local_scope_names = {pname for pname, _ in record.init_method.params}
                     # Set up local namespace for constructor (bind self and params)
                     local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-                    local_ns.bind_variable("self", RecordType(record.name))
+                    local_ns.bind_variable("self", NamedType(record.name))
                     for pname, ptype in record.init_method.params:
                         local_ns.bind_variable(pname, ptype)
                     self.ctx.current_ns = local_ns
@@ -203,7 +203,7 @@ class RecordGenerator:
                     self.ctx.local_scope_names = set()
                     # Set up local namespace for constructor (bind self)
                     local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-                    local_ns.bind_variable("self", RecordType(record.name))
+                    local_ns.bind_variable("self", NamedType(record.name))
                     self.ctx.current_ns = local_ns
                     self.ctx.indent_level = 2
                     self.ctx.in_method = True
@@ -373,7 +373,7 @@ class RecordGenerator:
         # Set up local namespace for this method (bind self and params, skip self for static)
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not is_static:
-            local_ns.bind_variable("self", RecordType(record_name))
+            local_ns.bind_variable("self", NamedType(record_name))
         for pname, ptype in method.params:
             local_ns.bind_variable(pname, ptype)
         self.ctx.current_ns = local_ns

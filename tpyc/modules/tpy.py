@@ -5,7 +5,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ProtocolType, OwnType
+from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, NamedType, OwnType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -172,7 +172,7 @@ def init_module() -> BuiltinModule:
             cpp="tpy::set_item({self}, {0}, {1})",
         )],
         "extend": [MethodDef(
-            params=[ParamDef("other", ProtocolType("NativeIterable", (T,)))],
+            params=[ParamDef("other", NamedType("NativeIterable", (T,), is_protocol=True))],
             returns=VOID,
             cpp="tpy::staticlist_extend({self}, {0})",
         )],

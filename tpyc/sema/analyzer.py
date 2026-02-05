@@ -7,7 +7,7 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, RecordType, STR
+from ..typesys import TpyType, TypeRegistry, NamedType, STR
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
 
@@ -251,7 +251,7 @@ class SemanticAnalyzer:
 
             # Add 'self' as the record type (skip for static methods)
             if not method.is_staticmethod:
-                self.ctx.current_scope.define("self", RecordType(record.name))
+                self.ctx.current_scope.define("self", NamedType(record.name))
 
             # Add parameters
             for pname, ptype in method.params:
@@ -260,7 +260,7 @@ class SemanticAnalyzer:
             # Set up local namespace
             local_ns = Namespace(parent=self.ctx.global_ns)
             if not method.is_staticmethod:
-                local_ns.bind_variable("self", RecordType(record.name))
+                local_ns.bind_variable("self", NamedType(record.name))
             for pname, ptype in method.params:
                 local_ns.bind_variable(pname, ptype)
             self.ctx.current_ns = local_ns

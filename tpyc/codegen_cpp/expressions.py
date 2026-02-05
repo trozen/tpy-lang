@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    RecordType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
-    SpanType, ProtocolType, TypeParamRef,
+    NamedType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
+    SpanType, TypeParamRef,
     INT32, BIGINT, FLOAT, CHAR, VOID,
     ResolvedBinop
 )
@@ -258,7 +258,7 @@ class ExpressionGenerator:
 
         # Protocol-typed operands - use C++ operator syntax
         # The protocol constraint guarantees the operator exists
-        if isinstance(left_type, ProtocolType):
+        if isinstance(left_type, NamedType) and left_type.is_protocol:
             left = self.gen_expr(expr.left, left_type)
             right = self.gen_expr(expr.right, right_type)
             # Map Python operators to C++ operators
@@ -267,8 +267,8 @@ class ExpressionGenerator:
                 cpp_op = "/"  # Floor division maps to / in C++
             return f"({left} {cpp_op} {right})"
 
-        # User-defined types (RecordType) - use generated C++ operator
-        if isinstance(left_type, RecordType):
+        # User-defined types (records) - use generated C++ operator
+        if isinstance(left_type, NamedType) and left_type.is_record:
             left = self.gen_expr(expr.left, left_type)
             right = self.gen_expr(expr.right, right_type)
             # Map Python operators to C++ operators
@@ -480,7 +480,7 @@ class ExpressionGenerator:
         # User-defined record methods may need temp handling for TypeParamRef params
         # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
         # Temporaries can't bind to non-const lvalue reference
-        if isinstance(obj_type, RecordType):
+        if isinstance(obj_type, NamedType) and obj_type.is_record:
             record_info = self.ctx.analyzer.registry.get_record(obj_type.name)
             if record_info:
                 method_info = record_info.get_method(expr.method)

@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    VoidType, RecordType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
-    SpanType, ProtocolType, TypeParamRef, TypeParamKind, ListLiteralInfo,
+    VoidType, NamedType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
+    SpanType, TypeParamRef, TypeParamKind, ListLiteralInfo,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT
 )
 from ..parse import (
@@ -241,7 +241,7 @@ class ExpressionAnalyzer:
 
         # Protocol-typed operands - look up the dunder method in the protocol
         # For Self in protocols, Self binds to the protocol itself when used as a value type
-        if isinstance(left_type, ProtocolType):
+        if isinstance(left_type, NamedType) and left_type.is_protocol:
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
                 return_type = self.protocols.lookup_protocol_method_return(left_type, method_name, [right_type])
@@ -253,8 +253,8 @@ class ExpressionAnalyzer:
             expr.resolved_binop = result
             return result.method.return_type
 
-        # User-defined types (RecordType) with dunder methods
-        if isinstance(left_type, RecordType):
+        # User-defined types (NamedType record) with dunder methods
+        if isinstance(left_type, NamedType) and left_type.is_record:
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
                 record = self.ctx.registry.get_record(left_type.name)
@@ -330,7 +330,7 @@ class ExpressionAnalyzer:
         elif isinstance(obj_type, OwnType):
             actual_type = obj_type.wrapped
 
-        if isinstance(actual_type, RecordType):
+        if isinstance(actual_type, NamedType) and actual_type.is_record:
             record = self.ctx.registry.get_record(actual_type.name)
             if not record:
                 raise SemanticError(f"Unknown record type: '{actual_type.name}'")
@@ -348,7 +348,7 @@ class ExpressionAnalyzer:
         # Bounded type parameter - access field from protocol bound
         if isinstance(actual_type, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(actual_type.name)
-            if bound is not None and isinstance(bound, ProtocolType):
+            if bound is not None and isinstance(bound, NamedType) and bound.is_protocol:
                 protocol_info = self.ctx.registry.get_protocol(bound.name)
                 if protocol_info:
                     for field_name, field_type in protocol_info.fields or []:
@@ -475,16 +475,16 @@ class ExpressionAnalyzer:
             return elem_type
 
         # Protocol types - lookup __getitem__ return type
-        if isinstance(obj_type, ProtocolType):
+        if isinstance(obj_type, NamedType) and obj_type.is_protocol:
             return self._get_protocol_getitem_type(obj_type)
 
         # User records with __getitem__ method
-        if isinstance(obj_type, RecordType):
+        if isinstance(obj_type, NamedType) and obj_type.is_record:
             return self._get_record_getitem_type(obj_type)
 
         raise SemanticError(f"Cannot index type {obj_type}")
 
-    def _get_protocol_getitem_type(self, protocol: ProtocolType) -> TpyType:
+    def _get_protocol_getitem_type(self, protocol: NamedType) -> TpyType:
         """Get the return type of __getitem__ for a protocol type.
 
         For generic protocols like Sequence[T], this resolves T to the concrete type.
@@ -506,7 +506,7 @@ class ExpressionAnalyzer:
 
         raise SemanticError(f"Protocol {protocol.name} does not support indexing")
 
-    def _get_record_getitem_type(self, record_type: RecordType) -> TpyType:
+    def _get_record_getitem_type(self, record_type: NamedType) -> TpyType:
         """Get the return type of __getitem__ for a user record type.
 
         Uses lookup_record_method to support inherited methods from parent

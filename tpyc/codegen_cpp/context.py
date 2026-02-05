@@ -9,8 +9,8 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, PtrType, ConstPtrType, OwnType, ProtocolType, SelfType,
-    RecordType, BigIntType, IntLiteralType, TypeParamRef,
+    TpyType, PtrType, ConstPtrType, OwnType, NamedType, SelfType,
+    BigIntType, IntLiteralType, TypeParamRef,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -160,7 +160,7 @@ class CodeGenContext:
         if isinstance(expr, TpySubscript):
             from .types import TypeResolver
             container_type = self.analyzer.get_expr_type(expr.obj)
-            if isinstance(container_type, RecordType):
+            if isinstance(container_type, NamedType) and container_type.is_record:
                 return True
         # Function calls
         if isinstance(expr, TpyCall):
@@ -182,12 +182,14 @@ class CodeGenContext:
         return False
 
     def contains_protocol_type(self, typ: TpyType) -> bool:
-        """Check if a type contains ProtocolType or SelfType anywhere in its structure.
+        """Check if a type contains a protocol or SelfType anywhere in its structure.
 
         Used to determine if a variable should use 'auto' in C++ codegen because
         the actual type depends on template parameters.
         """
-        if isinstance(typ, (ProtocolType, SelfType)):
+        if isinstance(typ, SelfType):
+            return True
+        if isinstance(typ, NamedType) and typ.is_protocol:
             return True
         elif isinstance(typ, OwnType):
             return self.contains_protocol_type(typ.wrapped)
@@ -205,7 +207,8 @@ class CodeGenContext:
         self._temp_counter += 1
         temp_name = f"__tmp_{self._temp_counter}"
         # Protocol and TypeParamRef use 'auto' since actual type is determined by expression
-        type_cpp = "auto" if isinstance(param_type, (ProtocolType, TypeParamRef)) else param_type.to_cpp()
+        is_protocol = isinstance(param_type, NamedType) and param_type.is_protocol
+        type_cpp = "auto" if is_protocol or isinstance(param_type, TypeParamRef) else param_type.to_cpp()
         self._pending_temps.append((temp_name, type_cpp, init_expr))
         return temp_name
 

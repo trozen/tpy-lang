@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, ProtocolType, RecordType, TypeParamRef, SelfType,
+    TpyType, NamedType, TypeParamRef, SelfType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -27,7 +27,7 @@ class ProtocolChecker:
         self.ctx = ctx
         self.type_ops = type_ops
 
-    def type_conforms_to_protocol(self, actual: TpyType, protocol: ProtocolType) -> bool:
+    def type_conforms_to_protocol(self, actual: TpyType, protocol: NamedType) -> bool:
         """Check if actual type conforms to a protocol.
 
         Two conformance mechanisms work in parallel:
@@ -50,7 +50,7 @@ class ProtocolChecker:
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(actual.name)
-            if bound is not None and isinstance(bound, ProtocolType):
+            if bound is not None and isinstance(bound, NamedType) and bound.is_protocol:
                 return self.type_conforms_to_protocol(bound, protocol)
 
         # Unified lookup - all protocols (builtin and user) are in the registry
@@ -59,7 +59,7 @@ class ProtocolChecker:
             return False
 
         # Protocol-to-protocol: check if actual inherits from protocol (or is same protocol)
-        if isinstance(actual, ProtocolType):
+        if isinstance(actual, NamedType) and actual.is_protocol:
             if actual.name == protocol.name:
                 return actual.type_args == protocol.type_args
             # Check if actual protocol inherits from the required protocol
@@ -120,7 +120,7 @@ class ProtocolChecker:
         This is fine for Phase 1 protocols (only Sized with __len__() -> Int32), but would
         need type parameter resolution for generic protocols like Iterable[T].
         """
-        if isinstance(actual, ProtocolType):
+        if isinstance(actual, NamedType) and actual.is_protocol:
             # Protocol type - check methods in protocol definition via unified registry
             protocol_info = self.ctx.registry.get_protocol(actual.name)
             if protocol_info is None:
@@ -145,7 +145,7 @@ class ProtocolChecker:
                             return False
                     return True
             return False
-        elif isinstance(actual, RecordType):
+        elif isinstance(actual, NamedType) and actual.is_record:
             # User record - check methods in RecordInfo (including inherited methods)
             record = self.ctx.registry.get_record(actual.name)
             if record is None:
@@ -207,7 +207,7 @@ class ProtocolChecker:
 
     def type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
         """Check if a type has a field with the expected type."""
-        if isinstance(actual, RecordType):
+        if isinstance(actual, NamedType) and actual.is_record:
             record = self.ctx.registry.get_record(actual.name)
             if record:
                 type_subst = self.type_ops.build_type_substitution(actual)
@@ -309,7 +309,7 @@ class ProtocolChecker:
 
     def get_protocol_method_signature(
         self,
-        protocol: ProtocolType,
+        protocol: NamedType,
         method_name: str,
         self_type: TpyType | None = None,
     ) -> tuple[list[tuple[str, TpyType]], TpyType] | None:
@@ -354,7 +354,7 @@ class ProtocolChecker:
 
     def lookup_protocol_method_return(
         self,
-        protocol: ProtocolType,
+        protocol: NamedType,
         method_name: str,
         arg_types: list[TpyType],
     ) -> TpyType | None:
@@ -439,7 +439,7 @@ class ProtocolChecker:
             parent_info = self._get_parent_record_info(record_info.parent)
             if parent_info:
                 # For user-defined parents, recurse; for builtins, just check directly
-                if isinstance(record_info.parent, RecordType):
+                if isinstance(record_info.parent, NamedType) and record_info.parent.is_record:
                     inherited = self.lookup_record_method(parent_info, method_name)
                 else:
                     inherited = parent_info.get_method(method_name)
@@ -473,7 +473,7 @@ class ProtocolChecker:
             parent_info = self._get_parent_record_info(record_info.parent)
             if parent_info:
                 # For user-defined parents, recurse; for builtins, just check directly
-                if isinstance(record_info.parent, RecordType):
+                if isinstance(record_info.parent, NamedType) and record_info.parent.is_record:
                     inherited, parent_subst = self.lookup_record_method_overloads(parent_info, method_name)
                     if inherited:
                         # Combine parent's substitution with this class's substitution
@@ -494,12 +494,12 @@ class ProtocolChecker:
         """Get RecordInfo for a parent type (user-defined or builtin).
 
         Args:
-            parent_type: The parent type (RecordType or builtin TpyType).
+            parent_type: The parent type (NamedType or builtin TpyType).
 
         Returns:
             RecordInfo for the parent, or None if not found.
         """
-        if isinstance(parent_type, RecordType):
+        if isinstance(parent_type, NamedType) and parent_type.is_record:
             return self.ctx.registry.get_record(parent_type.name)
         else:
             qname = parent_type.qualified_name()
@@ -510,7 +510,7 @@ class ProtocolChecker:
     ) -> dict[str, TpyType | int]:
         """Build substitution map from parent's type parameters to concrete type args.
 
-        Handles both user-defined classes (RecordType) and builtin types.
+        Handles both user-defined classes (NamedType) and builtin types.
 
         Args:
             parent_type: The parent type as declared in the child (e.g., Container[Int32]).
@@ -522,7 +522,7 @@ class ProtocolChecker:
         if not parent_info.type_params:
             return {}
 
-        if isinstance(parent_type, RecordType):
+        if isinstance(parent_type, NamedType) and parent_type.is_record:
             # User-defined class: extract type args directly
             if not parent_type.type_args:
                 return {}
@@ -531,7 +531,7 @@ class ProtocolChecker:
             # Builtin type: use extract_type_params to get type params
             return builtin_modules.extract_type_params(parent_type)
 
-    def get_missing_protocol_methods(self, record_type: RecordType, protocol: ProtocolType) -> list[str]:
+    def get_missing_protocol_methods(self, record_type: NamedType, protocol: NamedType) -> list[str]:
         """Get list of protocol methods missing from record."""
         record_info = self.ctx.registry.get_record(record_type.name)
         if record_info is None:

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
-    ListType, PendingListType, ProtocolType, CharType, StrType,
+    ListType, PendingListType, NamedType, CharType, StrType,
     ListLiteralInfo, ConstPtrType, INT32, VOID, BIGINT
 )
 from ..parse import (
@@ -153,7 +153,7 @@ class StatementAnalyzer:
             )
 
         # Protocol types can only be used for function parameters, not variables
-        if stmt.type and isinstance(stmt.type, ProtocolType):
+        if stmt.type and isinstance(stmt.type, NamedType) and stmt.type.is_protocol:
             raise self.ctx.error(
                 f"Protocol type '{stmt.type.name}' cannot be used as a variable type. "
                 f"Protocols are only valid for function parameters",
@@ -303,7 +303,7 @@ class StatementAnalyzer:
             elem_type = obj_type.get_element_type()
             if elem_type is not None:
                 # Check if type conforms to MutableSequence[elem_type]
-                mutable_seq = ProtocolType("MutableSequence", (elem_type,))
+                mutable_seq = NamedType("MutableSequence", (elem_type,), is_protocol=True)
                 if not self.protocols.type_conforms_to_protocol(obj_type, mutable_seq):
                     raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
 

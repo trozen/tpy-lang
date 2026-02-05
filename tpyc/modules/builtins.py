@@ -5,13 +5,13 @@ Defines functions like chr, print, len, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, ProtocolType, TypeParamRef
+from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, NamedType, TypeParamRef
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
 
 # Sized protocol type for len() parameter
-SIZED = ProtocolType("Sized")
+SIZED = NamedType("Sized", is_protocol=True)
 
 NAME = "builtins"
 
@@ -150,7 +150,7 @@ def init_module() -> BuiltinModule:
             cpp="tpy::list_remove({self}, {0})",
         )],
         "extend": [MethodDef(
-            params=[ParamDef("other", ProtocolType("NativeIterable", (T,)))],
+            params=[ParamDef("other", NamedType("NativeIterable", (T,), is_protocol=True))],
             returns=VOID,
             cpp="tpy::list_extend({self}, {0})",
         )],
@@ -177,7 +177,7 @@ def init_module() -> BuiltinModule:
     }, constructors=[
         # list(iterable) - create list from any iterable, inferring element type
         MethodDef(
-            params=[ParamDef("x", ProtocolType("NativeIterable", (T,)))],
+            params=[ParamDef("x", NamedType("NativeIterable", (T,), is_protocol=True))],
             returns=T,  # Placeholder - sema infers actual list[T] from argument
             cpp="std::vector<{T}>({0}.begin(), {0}.end())",
         ),

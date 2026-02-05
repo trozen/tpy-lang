@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
-    ArrayType, ListType, PendingListType, OwnType, ProtocolType, StrType,
+    ArrayType, ListType, PendingListType, OwnType, NamedType, StrType,
     INT32, BIGINT
 )
 from ..parse import (
@@ -367,7 +367,7 @@ class StatementGenerator:
 
         # Determine element type for the loop variable
         # Handle protocol types (e.g., NativeIterable[T])
-        if isinstance(iterable_type, ProtocolType):
+        if isinstance(iterable_type, NamedType) and iterable_type.is_protocol:
             if iterable_type.name == "NativeIterable" and iterable_type.type_args:
                 elem_type = iterable_type.type_args[0]
             else:

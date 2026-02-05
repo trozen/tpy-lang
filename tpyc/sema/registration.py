@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, RecordType, ProtocolType, TypeParamRef, RecordInfo, FunctionInfo,
+    TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo,
     TypeParamKind
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl
@@ -111,7 +111,7 @@ class TypeRegistrar:
                 )
             self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic)
             # Protocol types cannot be used as field types
-            if isinstance(fld.type, ProtocolType):
+            if isinstance(fld.type, NamedType) and fld.type.is_protocol:
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
                     f"Protocols are only valid for function parameters",
@@ -122,7 +122,7 @@ class TypeRegistrar:
         if record.init_method:
             for pname, ptype in record.init_method.params:
                 # Protocol types cannot be used in __init__ parameters
-                if isinstance(ptype, ProtocolType):
+                if isinstance(ptype, NamedType) and ptype.is_protocol:
                     raise SemanticError(
                         f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.__init__'. "
                         f"Protocols are only valid for free function parameters"
@@ -136,7 +136,7 @@ class TypeRegistrar:
                 if not self.type_ops.is_type_param_ref(ptype):
                     self.type_ops.validate_type(ptype, allow_type_param_ref=is_generic)
                 # Protocol types cannot be used in method parameters
-                if isinstance(ptype, ProtocolType):
+                if isinstance(ptype, NamedType) and ptype.is_protocol:
                     raise SemanticError(
                         f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.{method.name}'. "
                         f"Protocols are only valid for free function parameters"
@@ -144,7 +144,7 @@ class TypeRegistrar:
             if not self.type_ops.is_type_param_ref(method.return_type):
                 self.type_ops.validate_type(method.return_type, allow_type_param_ref=is_generic)
             # Protocol types cannot be used as method return types
-            if isinstance(method.return_type, ProtocolType):
+            if isinstance(method.return_type, NamedType) and method.return_type.is_protocol:
                 raise SemanticError(
                     f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                     f"Protocols are only valid for free function parameters"
@@ -158,10 +158,10 @@ class TypeRegistrar:
                 cpp_template=DUNDER_CPP_TEMPLATES.get(method.name)
             )]
 
-        # Convert parsed bounds to ProtocolType (validate they are protocols)
-        type_param_bounds: dict[str, ProtocolType] = {}
+        # Convert parsed bounds to NamedType (validate they are protocols)
+        type_param_bounds: dict[str, NamedType] = {}
         for param_name, bound_type in record.type_param_bounds.items():
-            if not isinstance(bound_type, ProtocolType):
+            if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
                 raise SemanticError(
                     f"Type parameter bound must be a protocol, got {bound_type}",
                     None
@@ -192,9 +192,9 @@ class TypeRegistrar:
         This is where we classify bases into parent class vs protocol implementations.
 
         Supports inheritance from:
-        - User-defined classes (RecordType)
+        - User-defined classes (NamedType with is_record)
         - Builtin types (ModuleType, ListType, ArrayType, etc.)
-        - Protocols (ProtocolType)
+        - Protocols (NamedType with is_protocol)
         """
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None:
@@ -202,31 +202,25 @@ class TypeRegistrar:
 
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in register_record) so forward-referenced protocols are recognized
-        parent: TpyType | None = None  # Can be RecordType or builtin type
-        implemented_protocols: list[ProtocolType] = []
+        parent: TpyType | None = None  # Can be NamedType or builtin type
+        implemented_protocols: list[NamedType] = []
 
         for base_type in record.bases:
             # Get the base name to check if it's actually a protocol
             base_name = None
-            if isinstance(base_type, ProtocolType):
-                base_name = base_type.name
-            elif isinstance(base_type, RecordType):
+            if isinstance(base_type, NamedType):
                 base_name = base_type.name
 
             # Check if this base is actually a protocol (handles forward references)
-            is_protocol = False
+            is_protocol_base = False
             if base_name and self.ctx.registry.get_protocol(base_name) is not None:
-                is_protocol = True
+                is_protocol_base = True
 
-            if is_protocol:
-                # It's a protocol implementation
-                if isinstance(base_type, RecordType):
-                    # Convert RecordType to ProtocolType (was misclassified due to forward ref)
-                    protocol_type = ProtocolType(base_type.name, base_type.type_args)
-                else:
-                    protocol_type = base_type
+            if is_protocol_base:
+                # It's a protocol implementation - set the is_protocol flag correctly
+                protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NamedType) else base_type
                 implemented_protocols.append(protocol_type)
-            elif isinstance(base_type, RecordType):
+            elif isinstance(base_type, NamedType) and base_type.is_record:
                 # It's a user-defined class - check for multiple inheritance
                 if parent is not None:
                     raise SemanticError(
@@ -248,9 +242,6 @@ class TypeRegistrar:
                         record.loc
                     )
                 parent = base_type
-            elif isinstance(base_type, ProtocolType):
-                # Already handled above when is_protocol is True
-                pass
             elif self._is_inheritable_builtin(base_type):
                 # It's a builtin type - check for multiple inheritance
                 if parent is not None:
@@ -272,7 +263,7 @@ class TypeRegistrar:
         record_info.implemented_protocols = implemented_protocols
 
         # Validate parent class (only check circular inheritance for user-defined types)
-        if record_info.parent and isinstance(record_info.parent, RecordType):
+        if record_info.parent and isinstance(record_info.parent, NamedType) and record_info.parent.is_record:
             # Check for circular inheritance
             if self._has_circular_inheritance(record.name, record_info.parent.name):
                 raise SemanticError(
@@ -294,7 +285,7 @@ class TypeRegistrar:
                 )
 
             # Check if record implements all protocol methods
-            record_type = RecordType(record.name)
+            record_type = NamedType(record.name)
             if not self.protocols.type_conforms_to_protocol(record_type, protocol):
                 # Generate helpful error message listing missing methods
                 missing = self.protocols.get_missing_protocol_methods(record_type, protocol)
@@ -390,12 +381,12 @@ class TypeRegistrar:
         """Get RecordInfo for a parent type (user-defined or builtin).
 
         Args:
-            parent_type: The parent type (RecordType or builtin TpyType).
+            parent_type: The parent type (NamedType or builtin TpyType).
 
         Returns:
             RecordInfo for the parent, or None if not found.
         """
-        if isinstance(parent_type, RecordType):
+        if isinstance(parent_type, NamedType) and parent_type.is_record:
             return self.ctx.registry.get_record(parent_type.name)
         else:
             qname = parent_type.qualified_name()
@@ -440,7 +431,7 @@ class TypeRegistrar:
         # Allow TypeParamRef in params/return for generic functions
         is_generic = bool(func.type_params)
 
-        # Resolve types (converts RecordType to ProtocolType for imported protocols)
+        # Resolve types (sets is_protocol flag correctly for imported protocols)
         resolved_params = []
         for pname, ptype in func.params:
             resolved_ptype = self.type_ops.resolve_type(ptype)
@@ -466,18 +457,18 @@ class TypeRegistrar:
             )
 
         # Protocol types cannot be used as return types (but TypeParamRef is OK)
-        if isinstance(resolved_return, ProtocolType):
+        if isinstance(resolved_return, NamedType) and resolved_return.is_protocol:
             raise SemanticError(
                 f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
                 f"Protocols are only valid for function parameters",
                 func.loc
             )
 
-        # Convert parsed bounds to ProtocolType (validate they are protocols)
-        type_param_bounds: dict[str, ProtocolType] = {}
+        # Convert parsed bounds to NamedType (validate they are protocols)
+        type_param_bounds: dict[str, NamedType] = {}
         for param_name, bound_type in func.type_param_bounds.items():
             resolved_bound = self.type_ops.resolve_type(bound_type)
-            if not isinstance(resolved_bound, ProtocolType):
+            if not isinstance(resolved_bound, NamedType) or not resolved_bound.is_protocol:
                 raise SemanticError(
                     f"Type parameter bound must be a protocol, got {resolved_bound}",
                     func.loc

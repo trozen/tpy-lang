@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
-    TpyType, RecordType, PtrType, ConstPtrType, OwnType, ProtocolType, SelfType, TypeParamRef,
+    TpyType, NamedType, PtrType, ConstPtrType, OwnType, SelfType, TypeParamRef,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind
 )
@@ -516,7 +516,7 @@ class Parser:
                             # Regular protocol bound
                             type_param_kinds.append(TypeParamKind.TYPE)
                             bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, ProtocolType):
+                            if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
                                 raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                             type_param_bounds[tp.name] = bound_type
                     else:
@@ -716,7 +716,7 @@ class Parser:
                     type_params.append(tp.name)
                     if tp.bound is not None:
                         bound_type = self._parse_type_annotation(tp.bound)
-                        if not isinstance(bound_type, ProtocolType):
+                        if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
                             raise ParseError(f"Type parameter bound must be a protocol, got {bound_type}", tp)
                         type_param_bounds[tp.name] = bound_type
                 else:
@@ -796,7 +796,7 @@ class Parser:
                         f"{name}[{', '.join(user_protocol.type_params)}]",
                         node
                     )
-                return ProtocolType(name)
+                return NamedType(name, is_protocol=True)
             elif (protocol_def := lookup_builtin_protocol(name)) is not None:
                 # Built-in protocol type (e.g., Sized)
                 # Check if generic protocol requires type arguments
@@ -806,10 +806,10 @@ class Parser:
                         f"{name}[{', '.join(protocol_def.type_params)}]",
                         node
                     )
-                return ProtocolType(name)
+                return NamedType(name, is_protocol=True)
             elif self.registry.is_known_type(name) or name[0].isupper():
                 # Assume it's a record type (will be validated later)
-                return RecordType(name)
+                return NamedType(name)
             else:
                 raise ParseError(f"Unknown type: {name}", node)
 
@@ -831,7 +831,7 @@ class Parser:
                 if protocol_def := lookup_builtin_protocol(container):
                     if protocol_def.type_params:
                         type_args = self._parse_protocol_type_args(node, container, protocol_def.type_params, type_param_scope)
-                        return ProtocolType(container, type_args)
+                        return NamedType(container, type_args, is_protocol=True)
 
                 # Module-defined generic types (list, Array, Span, etc.)
                 if lookup := lookup_generic_type(container):
@@ -841,13 +841,13 @@ class Parser:
                 if user_protocol := self.registry.get_protocol(container):
                     if user_protocol.type_params:
                         type_args = self._parse_protocol_type_args(node, container, user_protocol.type_params, type_param_scope)
-                        return ProtocolType(container, type_args)
+                        return NamedType(container, type_args, is_protocol=True)
 
                 # User-defined generic records (e.g., Stack[Int32])
                 # Check if it's a known record or looks like a record name (capitalized)
                 if self.registry.get_record(container) is not None or container[0].isupper():
                     type_args = self._parse_record_type_args(node, container, type_param_scope)
-                    return RecordType(container, type_args)
+                    return NamedType(container, type_args)
 
                 raise ParseError(f"Unknown generic type: {container}", node)
 
@@ -1256,5 +1256,5 @@ class Parser:
             # Check if it's a known record type
             record_info = self.registry.get_record(type_name)
             if record_info:
-                return RecordType(type_name)
+                return NamedType(type_name)
         return None

@@ -7,7 +7,7 @@ Generates C++ function declarations, definitions, and global variables.
 from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
-from ..typesys import TpyType, ProtocolType
+from ..typesys import TpyType, NamedType
 from ..parse import TpyFunction, TpyVarDecl
 from ..namespace import Namespace
 
@@ -45,9 +45,9 @@ class FunctionGenerator:
         """Generate function parameter list, using template types for protocol params."""
         result = []
         for pname, ptype in params:
-            # Resolve type in case it's a RecordType that's actually a protocol
+            # Resolve type in case it's a NamedType that's actually a protocol
             resolved = self.protocols.resolve_type_for_codegen(ptype)
-            if isinstance(resolved, ProtocolType):
+            if isinstance(resolved, NamedType) and resolved.is_protocol:
                 # Protocol param: T_name& name (mutable ref, no const methods required)
                 result.append(f"T_{pname}& {pname}")
             else:

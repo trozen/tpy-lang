@@ -24,13 +24,9 @@
 ## Module System Refactoring
 Future improvements to the module system architecture:
 
-1. **RecordType vs ProtocolType resolution**: During parsing, we don't know if a name refers to a record or protocol (especially for imports), so we create `RecordType` and later convert to `ProtocolType` via `resolve_type()`. Consider either:
-   - Unified `NamedType` with `is_protocol` flag resolved after registration
-   - `UnresolvedType` during parsing, resolved to `RecordType` or `ProtocolType` after all types are registered
+1. **Import initialization order**: Module `__tpy_init()` calls are made in dependency order (topological sort), which is semantically correct but may differ from Python's source order for independent imports. This only matters for side effects in unrelated modules.
 
-2. **Import initialization order**: Module `__tpy_init()` calls are made in dependency order (topological sort), which is semantically correct but may differ from Python's source order for independent imports. This only matters for side effects in unrelated modules.
-
-3. **Package support**: Add support for package directories with `__init__.tp.py` (or `__init__.py`):
+2. **Package support**: Add support for package directories with `__init__.tp.py` (or `__init__.py`):
    - Package directories recognized by presence of `__init__.tp.py`
    - Submodule imports: `from package.submodule import something`
    - Package-level exports via `__init__.tp.py`
