@@ -16,7 +16,7 @@ from typing import Optional
 from .typesys import (
     TpyType, Int32Type, VoidType, RecordType, PtrType, ConstPtrType, OwnType,
     ArrayType, SpanType, ListType, PendingListType, ListLiteralInfo, TypeParamRef,
-    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType,
+    StrType, CharType, BoolType, BigIntType, IntLiteralType, FloatType, ProtocolType, SelfType, SuperType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, FunctionInfo, TypeRegistry,
     ProtocolInfo, MethodSignature, ModuleType, ResolvedBinop, ResolvedUnaryop, TypeParamKind
 )
@@ -171,6 +171,10 @@ class SemanticAnalyzer:
         self._current_record_type_param_kinds: list[TypeParamKind] | None = None
         # Track current generic class type parameter bounds (for protocol conformance checks)
         self._current_record_type_param_bounds: dict[str, TpyType] | None = None
+        # Track current record being analyzed (for super() support)
+        self._current_record: TpyRecord | None = None
+        # Track super().__init__() calls in current __init__ method for validation
+        self._super_init_call: TpyMethodCall | None = None
 
     def _error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
         """Create a SemanticError with location from a node."""
@@ -861,6 +865,8 @@ class SemanticAnalyzer:
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
+        # Track current record for super() support
+        self._current_record = record
         # Track type parameters for generic records (allows TypeParamRef in method locals)
         self._current_record_type_params = record.type_params if record.type_params else None
         self._current_record_type_param_kinds = record.type_param_kinds if record.type_param_kinds else None
@@ -891,6 +897,18 @@ class SemanticAnalyzer:
             for stmt in method.body:
                 self._analyze_stmt(stmt)
 
+            # Validate super().__init__() position in __init__ methods
+            if method.name == "__init__" and self._super_init_call is not None:
+                # super().__init__() must be the first non-docstring statement
+                first_real_stmt = self._find_first_non_docstring_stmt(method.body)
+                if first_real_stmt is not None:
+                    # Check if first real statement contains the super().__init__() call
+                    if not self._stmt_contains_super_init(first_real_stmt, self._super_init_call):
+                        raise self._error(
+                            "super().__init__() must be the first statement in __init__",
+                            self._super_init_call
+                        )
+
             # Resolve pending list types after analyzing the full method
             self._resolve_pending_list_types()
 
@@ -898,6 +916,7 @@ class SemanticAnalyzer:
             self.current_function = None
             self.current_ns = None
 
+        self._current_record = None
         self._current_record_type_params = None
         self._current_record_type_param_kinds = None
         self._current_record_type_param_bounds = None
@@ -1654,6 +1673,10 @@ class SemanticAnalyzer:
 
     def _analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
+        # Handle super() call
+        if expr.func == "super":
+            return self._analyze_super_call(expr)
+
         # Generic type instantiation (e.g., Container[T, N](), StaticList[Int32, 8]())
         # Only if it's actually a type - for generic functions with uppercase names,
         # call_type may be set but we should use type_args instead
@@ -1822,6 +1845,178 @@ class SemanticAnalyzer:
             )
 
         raise self._error(f"Unknown function or type: '{expr.func}'", expr)
+
+    def _analyze_super_call(self, expr: TpyCall) -> TpyType:
+        """Analyze a super() call.
+
+        super() can only be called:
+        - Inside a method (not at module level)
+        - In a class that has a parent class
+        - Without arguments (Python 3 style)
+
+        Returns a SuperType that wraps the parent class type.
+        """
+        # Validate context: must be in a method
+        if self.current_function is None or not isinstance(self.current_function, TpyFunction):
+            raise self._error("super() can only be used inside a method", expr)
+
+        if not self.current_function.is_method:
+            raise self._error("super() can only be used inside a method", expr)
+
+        if self.current_function.is_staticmethod:
+            raise self._error("super() cannot be used in a static method", expr)
+
+        # Validate context: must have a current record
+        if self._current_record is None:
+            raise self._error("super() can only be used inside a class method", expr)
+
+        # Validate: class must have a parent
+        record_info = self.registry.get_record(self._current_record.name)
+        if record_info is None or record_info.parent is None:
+            raise self._error(
+                f"super() requires a parent class, but '{self._current_record.name}' has no parent",
+                expr
+            )
+
+        # Validate: no arguments (Python 3 style only)
+        if expr.args:
+            raise self._error("super() takes no arguments (Python 3 style)", expr)
+
+        return SuperType(record_info.parent, self._current_record.name)
+
+    def _analyze_super_method_call(self, expr: TpyMethodCall) -> TpyType:
+        """Analyze a super().method() call.
+
+        The method is looked up in the parent class and type arguments are
+        substituted for generic parent classes.
+        """
+        # Analyze super() to get the SuperType
+        assert isinstance(expr.obj, TpyCall) and expr.obj.func == "super"
+        super_type = self._analyze_super_call(expr.obj)
+        assert isinstance(super_type, SuperType)
+
+        parent_type = super_type.parent_type
+        parent_info = self.registry.get_record(parent_type.name)
+        if parent_info is None:
+            raise self._error(f"Parent class '{parent_type.name}' not found", expr)
+
+        # Special handling for super().__init__()
+        if expr.method == "__init__":
+            # super().__init__() can only be called inside __init__
+            if self.current_function is None or self.current_function.name != "__init__":
+                raise self._error(
+                    "super().__init__() can only be called inside __init__",
+                    expr
+                )
+            # Check for duplicate super().__init__() calls
+            if self._super_init_call is not None:
+                raise self._error(
+                    "super().__init__() can only be called once",
+                    expr
+                )
+            # Track this call for later validation (must be first statement)
+            self._super_init_call = expr
+
+            # If parent has no explicit __init__, allow calling default constructor
+            overloads = parent_info.get_method_overloads("__init__")
+            if not overloads:
+                # Parent has no explicit __init__, allow with no arguments
+                if expr.args:
+                    raise self._error(
+                        f"Parent class '{parent_type.name}' has no __init__, "
+                        "super().__init__() must be called with no arguments",
+                        expr
+                    )
+                # Store parent type for codegen (will generate default base init)
+                expr.super_parent_type = parent_type
+                return VOID
+
+        # Look up the method in the parent class
+        overloads = parent_info.get_method_overloads(expr.method)
+        if not overloads:
+            raise self._error(
+                f"Parent class '{parent_type.name}' has no method '{expr.method}'",
+                expr
+            )
+
+        # Build type substitution for generic parent (e.g., Container[Int32] -> {"T": Int32})
+        type_subst: dict[str, TpyType | int] = {}
+        if parent_info.type_params and parent_type.type_args:
+            for param_name, arg_type in zip(parent_info.type_params, parent_type.type_args):
+                type_subst[param_name] = arg_type
+
+        # For single overload, resolve directly
+        if len(overloads) == 1:
+            method_info = overloads[0]
+            resolved = self._substitute_method_type_params(method_info, type_subst) if type_subst else method_info
+
+            if len(expr.args) != len(resolved.params):
+                raise self._error(
+                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
+                    f"got {len(expr.args)}",
+                    expr
+                )
+
+            # Type-check and coerce arguments
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                arg_type = self._analyze_expr(arg)
+                expr.args[i] = self._coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                 coercion_ctx=CoercionContext.ARG)
+
+            # Store parent type for codegen
+            expr.super_parent_type = parent_type
+            return resolved.return_type
+
+        # Multiple overloads - find matching one
+        arg_types = [self._analyze_expr(arg) for arg in expr.args]
+        for method_info in overloads:
+            resolved = self._substitute_method_type_params(method_info, type_subst) if type_subst else method_info
+            if len(resolved.params) != len(arg_types):
+                continue
+            # Check if all args match params
+            match = True
+            for arg_type, (pname, ptype) in zip(arg_types, resolved.params):
+                if not builtin_modules._type_matches_param(arg_type, ptype):
+                    match = False
+                    break
+            if match:
+                # Coerce arguments
+                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                    expr.args[i] = self._coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
+                                                     coercion_ctx=CoercionContext.ARG)
+                # Store parent type for codegen
+                expr.super_parent_type = parent_type
+                return resolved.return_type
+
+        # No matching overload found
+        param_types_str = ", ".join(str(t) for t in arg_types)
+        raise self._error(
+            f"No matching overload for '{expr.method}' with argument types ({param_types_str})",
+            expr
+        )
+
+    def _stmt_contains_super_init(self, stmt: TpyStmt, super_init: TpyMethodCall) -> bool:
+        """Check if a statement contains the given super().__init__() call.
+
+        Used to validate that super().__init__() is the first statement.
+        """
+        # Direct expression statement containing the super().__init__() call
+        if isinstance(stmt, TpyExprStmt):
+            return stmt.expr is super_init
+        return False
+
+    def _find_first_non_docstring_stmt(self, stmts: list[TpyStmt]) -> TpyStmt | None:
+        """Find the first non-docstring statement in a list.
+
+        Docstrings are expression statements containing a string literal.
+        Returns None if all statements are docstrings or list is empty.
+        """
+        for stmt in stmts:
+            # Skip docstrings (expression statements with string literals)
+            if isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyStrLiteral):
+                continue
+            return stmt
+        return None
 
     def _analyze_tpy_copy(self, expr: TpyCall) -> TpyType:
         """Analyze a call to tpy.copy() - explicit copy for ownership transfer.
@@ -2216,6 +2411,10 @@ class SemanticAnalyzer:
 
     def _analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
+        # Handle super().method() calls
+        if isinstance(expr.obj, TpyCall) and expr.obj.func == "super":
+            return self._analyze_super_method_call(expr)
+
         # Check for ClassName.staticmethod() pattern
         # Use namespace to verify the name refers to a record and isn't shadowed by a variable
         if isinstance(expr.obj, TpyName):
@@ -3878,6 +4077,7 @@ class SemanticAnalyzer:
         """Reset per-function tracking state between function analyses."""
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
+        self._super_init_call = None
 
     def _is_type_iterable(self, typ: TpyType) -> bool:
         """Check if a type is iterable (extends NativeIterable or is NativeIterable protocol).

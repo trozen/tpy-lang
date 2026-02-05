@@ -1336,9 +1336,8 @@ class Dog(Animal):
     breed: str
 
     def __init__(self, name: str, age: Int32, breed: str) -> None:
-        self.name = name    # Initialize inherited field
-        self.age = age      # Initialize inherited field
-        self.breed = breed  # Initialize own field
+        super().__init__(name, age)  # Call parent constructor
+        self.breed = breed           # Initialize own field
 
     def speak(self) -> str:  # Override parent method
         return "Woof!"
@@ -1362,20 +1361,77 @@ struct Animal {
 struct Dog : Animal {
   std::string_view breed;
   Dog() = default;
-  explicit Dog(std::string_view name, int32_t age, std::string_view breed) : breed(breed) {
-    this->name = name;  // Inherited fields assigned in body
-    this->age = age;
-  }
+  explicit Dog(std::string_view name, int32_t age, std::string_view breed)
+    : Animal(name, age), breed(breed) {}  // Base init + field init
   std::string_view speak() { return "Woof!"; }
 };
 ```
 
 **Key points:**
 - Single class inheritance only (multiple class inheritance is an error)
-- Child `__init__` must initialize all fields (parent and own) directly
-- No `super()` support yet - parent fields are initialized by direct assignment
+- Use `super().__init__(args)` to call the parent constructor
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
+
+#### `super()` Support
+
+**Working**: Python 3-style `super()` for calling parent class constructors and methods.
+
+**Calling parent constructor:**
+```python
+class Dog(Animal):
+    breed: str
+
+    def __init__(self, name: str, age: Int32, breed: str) -> None:
+        super().__init__(name, age)  # Calls Animal.__init__
+        self.breed = breed
+```
+
+Generated C++ uses proper base class initializer:
+```cpp
+explicit Dog(std::string_view name, int32_t age, std::string_view breed)
+  : Animal(name, age), breed(breed) {}
+```
+
+**Calling overridden parent method:**
+```python
+class Dog(Animal):
+    def speak(self) -> str:
+        return "Woof!"
+
+    def full_speak(self) -> str:
+        parent_msg = super().speak()  # Calls Animal.speak()
+        return parent_msg
+```
+
+Generated C++ uses qualified method call:
+```cpp
+std::string_view full_speak() {
+  std::string_view parent_msg = Animal::speak();
+  return parent_msg;
+}
+```
+
+**Works with generic parents:**
+```python
+class Container[T]:
+    value: T
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+class LabeledContainer(Container[Int32]):
+    label: str
+    def __init__(self, label: str, value: Int32) -> None:
+        super().__init__(value)  # Type-aware: calls Container<int32_t>
+        self.label = label
+```
+
+**Restrictions:**
+- Python 3 style only: `super()` with no arguments
+- Must be inside a non-static method
+- Class must have a parent class
+- `super()` in `@staticmethod` is an error
+- `super()` not supported for builtin type parents (`list`, `StaticList`, etc.) - use implicit default construction instead
 
 **Working**: Inheriting from generic classes with concrete type arguments:
 ```python

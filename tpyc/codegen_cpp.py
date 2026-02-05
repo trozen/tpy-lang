@@ -587,6 +587,7 @@ class CodeGenerator:
         # Determine constructor generation strategy
         if record.init_method:
             has_params = bool(record.init_method.params)
+            base_init = self._extract_base_init(record.init_method, record)
             inits = self._extract_field_inits(record.init_method, record)
             non_init_stmts = self._get_non_init_stmts(record.init_method, record)
 
@@ -601,9 +602,14 @@ class CodeGenerator:
                     for pname, ptype in record.init_method.params
                 )
                 out.write(f"  explicit {record.name}({params})")
-                if inits:
+                # Build member init list: base init (if any) + field inits
+                all_inits = []
+                if base_init:
+                    all_inits.append(base_init)
+                all_inits.extend(f"{name}({val})" for name, val in inits)
+                if all_inits:
                     out.write(" : ")
-                    out.write(", ".join(f"{name}({val})" for name, val in inits))
+                    out.write(", ".join(all_inits))
                 if non_init_stmts:
                     out.write(" {\n")
                     self.declared_vars = {pname for pname, _ in record.init_method.params}
@@ -630,9 +636,14 @@ class CodeGenerator:
             else:
                 # No params: generate default constructor with body
                 out.write(f"  {record.name}()")
-                if inits:
+                # Build member init list: base init (if any) + field inits
+                all_inits = []
+                if base_init:
+                    all_inits.append(base_init)
+                all_inits.extend(f"{name}({val})" for name, val in inits)
+                if all_inits:
                     out.write(" : ")
-                    out.write(", ".join(f"{name}({val})" for name, val in inits))
+                    out.write(", ".join(all_inits))
                 if non_init_stmts:
                     out.write(" {\n")
                     self.declared_vars = set()
@@ -713,6 +724,31 @@ class CodeGenerator:
         out.write("  return os;\n")
         out.write("}\n")
 
+    def _is_super_init_call(self, stmt: TpyStmt) -> bool:
+        """Check if a statement is a super().__init__() call."""
+        if isinstance(stmt, TpyExprStmt):
+            expr = stmt.expr
+            if isinstance(expr, TpyMethodCall) and expr.method == "__init__":
+                if expr.super_parent_type is not None:
+                    return True
+        return False
+
+    def _extract_base_init(self, init_method: TpyFunction, record: TpyRecord) -> str | None:
+        """Extract super().__init__() call and return base class initializer string.
+
+        Returns the C++ base initializer (e.g., "Animal(name, age)") or None if
+        no super().__init__() is present.
+        """
+        for stmt in init_method.body:
+            if self._is_super_init_call(stmt):
+                assert isinstance(stmt, TpyExprStmt)
+                expr = stmt.expr
+                assert isinstance(expr, TpyMethodCall)
+                parent_type = expr.super_parent_type
+                args = ", ".join(self._gen_expr(a) for a in expr.args)
+                return f"{parent_type.to_cpp()}({args})"
+        return None
+
     def _extract_field_inits(self, init_method: TpyFunction, record: TpyRecord) -> list[tuple[str, str]]:
         """Extract field initializations from __init__ body.
 
@@ -739,12 +775,16 @@ class CodeGenerator:
 
         These need to go in the constructor body, not the initializer list.
         Includes assignments to inherited fields (they can't be in the member init list).
+        Skips super().__init__() calls (handled separately in base initializer).
         """
         # Get the set of this record's own field names
         own_field_names = {fld.name for fld in record.fields}
 
         non_init = []
         for stmt in init_method.body:
+            # Skip super().__init__() calls - handled as base initializer
+            if self._is_super_init_call(stmt):
+                continue
             is_own_field_init = False
             if isinstance(stmt, TpyAssign):
                 if isinstance(stmt.target, TpyFieldAccess):
@@ -2121,6 +2161,10 @@ class CodeGenerator:
             # Handle self.method() -> just method() (inside method, implicit this)
             if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                 return f"{expr.method}({args})"
+            # Handle super().method() -> ParentClass::method(args)
+            if expr.super_parent_type is not None:
+                parent_cpp = expr.super_parent_type.to_cpp()
+                return f"{parent_cpp}::{expr.method}({args})"
             # Handle ClassName.staticmethod() -> ClassName::staticmethod()
             if expr.is_static_call and isinstance(expr.obj, TpyName):
                 return f"{expr.obj.name}::{expr.method}({args})"

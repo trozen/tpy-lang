@@ -1,0 +1,1 @@
+main.tp.py:13: error: super().__init__() can only be called once

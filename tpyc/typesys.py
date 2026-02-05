@@ -458,6 +458,30 @@ SELF = SelfType()
 
 
 @dataclass(frozen=True)
+class SuperType(TpyType):
+    """Super proxy type returned by super() call.
+
+    When super() is called in a method, it returns a SuperType that wraps
+    the parent class type. Method calls on SuperType resolve to parent methods.
+
+    For example, in:
+        class Dog(Animal):
+            def __init__(self, name: str):
+                super().__init__(name)  # Returns SuperType(parent_type=Animal)
+
+    The super().__init__(name) call resolves to calling Animal.__init__.
+    """
+    parent_type: RecordType
+    child_record_name: str
+
+    def to_cpp(self) -> str:
+        return self.parent_type.to_cpp()
+
+    def __str__(self) -> str:
+        return f"super[{self.parent_type}]"
+
+
+@dataclass(frozen=True)
 class PtrType(TpyType):
     """Mutable pointer type: Ptr[T] -> T*"""
     pointee: TpyType

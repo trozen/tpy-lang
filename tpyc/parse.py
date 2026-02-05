@@ -127,6 +127,7 @@ class TpyMethodCall(TpyExpr):
     method: str
     args: list[TpyExpr]
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
+    super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     # Note: sema sets resolved_function_info (FunctionInfo) for codegen
 
 

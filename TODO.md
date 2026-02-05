@@ -1,18 +1,18 @@
 # TODO
 
 ## Next
-- Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
 - `super()` support for inheritance
 - warning when hiding method in inheritance -- types may behave differently between TPython and CPython
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
+- make a doc with TPy vs Python differences
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
-- extract c++ compiler interface
-- `type()` function
 - import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
 - require imports at the top of file, don't allow inline imports
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
+- `type()` function
+- extract c++ compiler interface
 - `Int32` should be imported from tpy, so it matches CPython (maybe use `from typ import *`?)
 - `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function
 - how to handle const methods like `__len__` or `__getitem__`; how to handle constness in TPy?
@@ -22,6 +22,7 @@
 - warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
+- Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
 
 ## Python features
 - dict full support
