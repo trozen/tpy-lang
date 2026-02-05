@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- tpy_runtime.hpp refactoring
 - make a doc with TPy vs Python differences
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
 - import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
@@ -56,7 +55,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - `copy()` builtin for explicit copying
 - support augmented arithmetic operators, like `__iadd__` for `+=` etc.
 - support more dunder methods: `__str__`, `__bool__`, `__hash__`, etc.
-- split tpy_runtime.hpp
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - ability to define `__str__` method

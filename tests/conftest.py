@@ -29,7 +29,7 @@ ERRORS_DIR = TESTS_DIR / "errors"  # Compilation error tests
 PANICS_DIR = TESTS_DIR / "panics"  # Runtime panic tests
 HARNESS_DIR = TESTS_DIR / "harness"
 PROJECT_ROOT = TESTS_DIR.parent
-RUNTIME_DIR = PROJECT_ROOT / "runtime"
+RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
 
 
 def run_cpython(src_file: Path) -> str:

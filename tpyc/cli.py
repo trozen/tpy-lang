@@ -218,7 +218,7 @@ def main() -> int:
             compile_cmd = [
                 "g++", "-std=c++23",
                 *opt_flags,
-                "-I", str(runtime_dir),
+                "-I", str(runtime_dir / "cpp" / "include"),
                 "-o", str(binary_path),
                 str(cpp_path),
                 "-lgmp"

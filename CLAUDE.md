@@ -123,7 +123,24 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 
 ### Runtime (`runtime/`)
 
-`tpy_runtime.hpp` provides C++ template utilities, primarily `StaticList<T, N>` - a fixed-capacity container with zero dynamic allocation. Generated code requires C++23 (for `std::ranges` concepts used in multi-element list repetition).
+The C++ runtime is organized as a modular header library in `runtime/cpp/include/tpy/`:
+
+| Header | Purpose |
+|--------|---------|
+| `tpy.hpp` | Main header - includes all modules |
+| `core.hpp` | `tpy_panic`, `deref_ptr` |
+| `format.hpp` | Python-style printing (`print_bool`, `print_float`, `char_to_str`) |
+| `int32.hpp` | Checked Int32 arithmetic with overflow detection |
+| `type_traits.hpp` | `is_value_type` trait for value/reference semantics |
+| `ranges.hpp` | `repeat_range`, `to_vector`, `from_range` utilities |
+| `static_list.hpp` | `StaticList<T, N>` fixed-capacity container |
+| `bigint.hpp` | `BigInt` arbitrary precision integer (GMP-based) |
+| `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |
+| `protocols.hpp` | `__len__`, `Sized`, `Sequence` concepts |
+| `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
+| `system.hpp` | `Global<T>`, `time_*`, `sys_argv` |
+
+`runtime/tpy_runtime.hpp` is a compatibility shim that includes `tpy.hpp`. Generated code requires C++23 (for `std::ranges` concepts).
 
 ## Performance Profiles (Planned)
 
