@@ -18,6 +18,10 @@ tpy::Global<ConstPtrHolder<Point>> const_holder;
 tpy::Global<ConstPtrHolder<Point>> const_holder2;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test type inference with Ptr[T] and ConstPtr[T] parameters."""
   // 24: pt: Point = Point()

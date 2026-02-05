@@ -387,6 +387,10 @@ void test_staticlist_get_mut() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 257: print("=== list pop(index) ===")
   std::cout << "=== list pop(index) ===" << "\n";

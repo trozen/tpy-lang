@@ -201,9 +201,6 @@ def main() -> int:
             compiler = Compiler(input_path)
             compiled_modules = compiler.compile()
 
-            # Get all non-entry modules in dependency order for init calls
-            all_imported = [m.name for m in compiled_modules if not m.is_entry_point]
-
             for compiled in compiled_modules:
                 mod_name = compiled.name
                 mod_dir = output_dir / f"{mod_name}.d"
@@ -229,7 +226,6 @@ def main() -> int:
                 hpp_code, cpp_code = codegen.generate(
                     compiled.ast, mod_name,
                     is_entry_point=compiled.is_entry_point,
-                    all_imported_modules=all_imported if compiled.is_entry_point else None,
                     actual_user_modules=actual_user_modules
                 )
 

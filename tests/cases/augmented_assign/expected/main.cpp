@@ -62,6 +62,10 @@ void test_aug_assign() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 51: test_aug_assign()
   test_aug_assign();

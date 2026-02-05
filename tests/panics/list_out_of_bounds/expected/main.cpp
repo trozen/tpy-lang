@@ -22,6 +22,10 @@ void test_out_of_bounds() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 15: test_out_of_bounds()
   test_out_of_bounds();

@@ -47,6 +47,10 @@ void main() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests that list literals can be coerced to Array types.
   // 42: main()

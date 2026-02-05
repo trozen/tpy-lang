@@ -10,6 +10,10 @@ tpy::Global<Dog> d;
 tpy::Global<Animal> a;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 31: d = Dog("Buddy", 3, "Golden Retriever")
   d = Dog("Buddy", 3, "Golden Retriever");

@@ -162,6 +162,10 @@ void test_combined_operations() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 119: print("=== pop ===")
   std::cout << "=== pop ===" << "\n";

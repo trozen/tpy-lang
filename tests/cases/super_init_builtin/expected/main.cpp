@@ -10,6 +10,10 @@ tpy::Global<std::vector<int32_t>> nums;
 tpy::Global<MyList> m;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 10: nums: list[Int32] = [1, 2, 3]
   nums = {1, 2, 3};

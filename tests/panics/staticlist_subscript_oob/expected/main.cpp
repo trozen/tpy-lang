@@ -22,6 +22,10 @@ void test_subscript_oob() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 16: test_subscript_oob()
   test_subscript_oob();

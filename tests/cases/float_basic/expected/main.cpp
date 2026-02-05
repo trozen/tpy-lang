@@ -10,6 +10,10 @@ tpy::Global<double> x;
 tpy::Global<double> y;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 2: x = 3.5
   x = 3.5;

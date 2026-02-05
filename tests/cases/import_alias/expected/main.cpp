@@ -20,8 +20,13 @@ int32_t main() {
 }
 
 void __tpy_init() {
-  tpy_user::utils::__tpy_init();
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 2: from utils import Point as Pt, MAX_VALUE as MAX, add as sum_nums
+  tpy_user::utils::__tpy_init();
   // 11: main()
   main();
 }

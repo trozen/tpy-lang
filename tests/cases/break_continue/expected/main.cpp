@@ -84,6 +84,10 @@ void test_nested_continue() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 41: test_break()
   test_break();

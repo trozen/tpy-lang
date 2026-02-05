@@ -10,6 +10,10 @@ tpy::Global<std::vector<tpy::BigInt>> nums;
 tpy::Global<std::vector<std::vector<tpy::BigInt>>> nested;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: nums = [1, 2, 3]
   nums = {1, 2, 3};

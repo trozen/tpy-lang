@@ -64,6 +64,10 @@ void test_negative_division() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test Int32 arithmetic operations with overflow checks."""
   // 61: test_binary_ops()

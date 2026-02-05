@@ -1,0 +1,6 @@
+mod_c init
+mod_a init
+mod_b init
+main init
+func_a called
+func_b called

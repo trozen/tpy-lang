@@ -12,7 +12,12 @@ tpy::BigInt time() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 1: from time import time
   // 6: print(time())
   std::cout << time() << "\n";
 }

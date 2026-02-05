@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<LabeledContainer> lc;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 25: lc = LabeledContainer("count", 42)
   lc = LabeledContainer("count", 42);

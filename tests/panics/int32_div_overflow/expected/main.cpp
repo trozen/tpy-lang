@@ -12,6 +12,10 @@ tpy::Global<int32_t> y;
 tpy::Global<int32_t> z;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test Int32 division overflow panic at runtime."""
   // 4: x: Int32 = -2147483648  # INT32_MIN

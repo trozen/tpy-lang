@@ -64,6 +64,10 @@ int32_t complex_condition(int32_t a, int32_t b) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 33: print(classify(-5))
   std::cout << classify(-(5)) << "\n";

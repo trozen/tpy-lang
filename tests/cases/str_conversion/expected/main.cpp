@@ -10,6 +10,10 @@ tpy::Global<char> c;
 tpy::Global<double> x;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 5: print(str())  # empty
   std::cout << "" << "\n";

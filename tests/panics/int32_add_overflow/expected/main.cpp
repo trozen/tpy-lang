@@ -10,6 +10,10 @@ tpy::Global<int32_t> x;
 tpy::Global<int32_t> y;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test Int32 addition overflow panic at runtime."""
   // 4: x: Int32 = 2147483647  # INT32_MAX

@@ -36,7 +36,9 @@ RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
 def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
-    env["PYTHONPATH"] = str(HARNESS_DIR)
+    # Include both harness dir and source dir for multi-module imports
+    src_dir = src_file.parent
+    env["PYTHONPATH"] = f"{HARNESS_DIR}:{src_dir}"
 
     result = subprocess.run(
         [sys.executable, str(src_file)],
@@ -106,15 +108,11 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
                 all_diags.append(d.format(mod.path.name))
         diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
 
-        # Get all non-entry modules in dependency order for init calls
-        all_imported = [m.name for m in compiled_modules if not m.is_entry_point]
-
         # Generate code for all modules and track paths
         all_modules = []
         for mod in compiled_modules:
             hpp_path, cpp_path = compiler.generate_code(
-                mod, output_dir, TEST_CODEGEN_OPTIONS,
-                all_imported_modules=all_imported if mod.is_entry_point else None
+                mod, output_dir, TEST_CODEGEN_OPTIONS
             )
             all_modules.append((mod.name, hpp_path, cpp_path))
 

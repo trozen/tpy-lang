@@ -14,6 +14,10 @@ int32_t get_max() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "config";
   // 3: MAX_VALUE: Int32 = Int32(100)
   MAX_VALUE = 100;

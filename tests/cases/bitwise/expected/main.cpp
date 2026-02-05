@@ -22,6 +22,10 @@ tpy::Global<tpy::BigInt> big1;
 tpy::Global<tpy::BigInt> big2;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 3: a: Int32 = 12      # 0b1100
   a = 12;

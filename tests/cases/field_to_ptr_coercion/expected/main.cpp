@@ -48,6 +48,10 @@ void test_subscript_to_ptr() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 38: print("=== field to ptr ===")
   std::cout << "=== field to ptr ===" << "\n";

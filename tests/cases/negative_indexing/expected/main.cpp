@@ -104,6 +104,10 @@ void test_array_negative_assignment() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 86: print("=== list ===")
   std::cout << "=== list ===" << "\n";

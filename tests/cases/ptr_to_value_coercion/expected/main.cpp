@@ -76,6 +76,10 @@ void test_ptr_to_value_return() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 57: print("=== call ===")
   std::cout << "=== call ===" << "\n";

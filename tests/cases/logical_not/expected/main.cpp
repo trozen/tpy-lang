@@ -156,6 +156,10 @@ void test_not_in_while() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 99: test_not_with_bool_literals()
   test_not_with_bool_literals();

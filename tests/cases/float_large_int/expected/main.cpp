@@ -16,6 +16,10 @@ tpy::Global<tpy::BigInt> d;
 tpy::Global<tpy::BigInt> e;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 2: a = int(1e18)  # Within int64 range
   a = tpy::BigInt::from_float(1e+18);

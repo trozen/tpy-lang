@@ -53,7 +53,6 @@ class CodeGenerator:
 
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
-                 all_imported_modules: list[str] | None = None,
                  actual_user_modules: set[str] | None = None) -> tuple[str, str]:
         """Generate C++ header and source files.
 
@@ -61,7 +60,6 @@ class CodeGenerator:
             module: The parsed TurboPython module AST.
             module_name: Name for the generated files (used in #include).
             is_entry_point: True if this is the entry point module (generates main()).
-            all_imported_modules: For entry point, list of ALL modules to initialize (in order).
             actual_user_modules: Set of module names that are actually user modules (have .tp.py files).
                                  If None, uses module.user_module_imports (legacy behavior).
         """
@@ -129,15 +127,10 @@ class CodeGenerator:
         self.functions.gen_module_init_decl(hpp)
         # Pass module name for __name__ variable initialization
         tpy_module_name = self.analyzer.ctx.module_name
-        # Only entry point module initializes imported modules (to avoid duplicate init)
-        # Use all_imported_modules if provided (in dependency order), otherwise fall back to direct imports
-        if is_entry_point:
-            imported_modules = all_imported_modules if all_imported_modules is not None else sorted(self.ctx.user_module_imports)
-        else:
-            imported_modules = None
+        # Imports are now included in top_level_stmts as TpyImport nodes
+        # They get emitted as __tpy_init() calls in statement order (Python semantics)
         self.functions.gen_module_init(cpp, module.top_level_stmts, seen_globals,
-                                       has_user_main=False, module_name=tpy_module_name,
-                                       imported_modules=imported_modules)
+                                       has_user_main=False, module_name=tpy_module_name)
         # Only generate C++ main() for entry point module
         if is_entry_point:
             self.functions.gen_main(cpp)

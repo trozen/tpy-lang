@@ -14,6 +14,10 @@ tpy::Global<std::vector<int32_t>> empty;
 tpy::Global<std::vector<int32_t>> neg;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
   sl = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(3, {1, 2}));

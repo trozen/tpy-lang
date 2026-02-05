@@ -10,6 +10,10 @@ tpy::Global<Box<int32_t>> b;
 tpy::Global<Wrapper<std::string_view>> w;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 32: b = Box[Int32]("mybox", 42)
   b = Box<int32_t>("mybox", 42);

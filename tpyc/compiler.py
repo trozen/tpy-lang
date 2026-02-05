@@ -342,15 +342,13 @@ class Compiler:
         )
 
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
-                      options: CodeGenOptions | None = None,
-                      all_imported_modules: list[str] | None = None) -> tuple[Path, Path]:
+                      options: CodeGenOptions | None = None) -> tuple[Path, Path]:
         """Generate C++ code for a compiled module.
 
         Args:
             compiled: The compiled module.
             output_dir: Root output directory.
             options: Code generation options (optional).
-            all_imported_modules: For entry point, list of ALL modules to initialize (in order).
 
         Returns:
             Tuple of (hpp_path, cpp_path) for the generated files.
@@ -365,7 +363,6 @@ class Compiler:
         hpp_code, cpp_code = codegen.generate(
             compiled.ast, mod_name,
             is_entry_point=compiled.is_entry_point,
-            all_imported_modules=all_imported_modules if compiled.is_entry_point else None,
             actual_user_modules=actual_user_modules
         )
 

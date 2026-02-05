@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<tpy::BigInt> x;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: x: int = int("abc")
   x = tpy::BigInt::from_str("abc");

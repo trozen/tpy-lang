@@ -167,6 +167,10 @@ void test_membership_with_variables() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 102: test_list_membership()
   test_list_membership();

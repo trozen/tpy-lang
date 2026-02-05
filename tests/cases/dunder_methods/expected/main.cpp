@@ -12,6 +12,10 @@ tpy::Global<StaticList<int32_t, 10>> sl;
 tpy::Global<std::array<int32_t, 3>> arr;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test explicit dunder method calls on container types.
   // 10: items: list[Int32] = []

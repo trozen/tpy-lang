@@ -20,6 +20,10 @@ void test_setitem_mutation() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test that __setitem__ marks a pending list as mutated.
   // 16: test_setitem_mutation()

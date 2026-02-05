@@ -14,6 +14,10 @@ tpy::Global<tpy::BigInt> big;
 tpy::Global<double> z;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test abs() builtin function for Int32, BigInt, and float."""
   // 5: x: Int32 = -42

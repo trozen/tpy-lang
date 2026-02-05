@@ -10,6 +10,10 @@ tpy::Global<int32_t> MAX;
 tpy::Global<int32_t> MIN;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "utils";
   // 3: MAX: Int32 = Int32(100)
   MAX = 100;

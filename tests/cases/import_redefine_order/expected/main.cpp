@@ -10,8 +10,13 @@ tpy::Global<int32_t> MAX;
 tpy::Global<tpy::BigInt> MIN;
 
 void __tpy_init() {
-  tpy_user::utils::__tpy_init();
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 2: from utils import MAX, MIN
+  tpy_user::utils::__tpy_init();
   // 5: print(MAX)  # 100
   std::cout << (*tpy_user::utils::MAX) << "\n";
   // 6: print(MIN)  # 1

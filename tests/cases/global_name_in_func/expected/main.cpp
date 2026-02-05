@@ -13,6 +13,10 @@ void f() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   // 1: __name__ = "custom"
   __name__ = "custom";
   // 6: f()

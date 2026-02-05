@@ -10,6 +10,10 @@ tpy::Global<tpy::BigInt> x;
 tpy::Global<tpy::BigInt> y;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: print(2 ** 0)   # 1
   std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(0))) << "\n";

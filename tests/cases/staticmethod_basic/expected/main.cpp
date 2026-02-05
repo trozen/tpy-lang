@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<Counter> c;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test @staticmethod decorator on class methods."""
   // 22: print(Counter.zero())

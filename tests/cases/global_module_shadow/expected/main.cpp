@@ -14,7 +14,12 @@ void f() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 1: import time
   // 7: time: Timer = Timer()
   time = Timer();
   // 8: time.x = 99

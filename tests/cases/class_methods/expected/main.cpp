@@ -12,6 +12,10 @@ tpy::Global<int32_t> a;
 tpy::Global<int32_t> b;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 22: c = Counter(100)
   c = Counter(100);

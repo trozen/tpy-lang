@@ -36,6 +36,10 @@ void test_local_list() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests list[T]() constructor syntax."""
   // 19: nums = list[Int32]()

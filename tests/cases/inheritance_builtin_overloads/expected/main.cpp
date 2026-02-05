@@ -14,6 +14,10 @@ tpy::Global<int32_t> first;
 tpy::Global<std::vector<int32_t>> items;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test inherited builtin methods with multiple overloads.
   // 15: ml: MyList = MyList("test")

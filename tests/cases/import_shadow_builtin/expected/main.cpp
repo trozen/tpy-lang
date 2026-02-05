@@ -14,8 +14,13 @@ void main() {
 }
 
 void __tpy_init() {
-  tpy_user::math::__tpy_init();
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 1: from math import custom_add, MAGIC  # tpyc: warning(/shadows builtin module/)
+  tpy_user::math::__tpy_init();
   // 7: main()
   main();
 }

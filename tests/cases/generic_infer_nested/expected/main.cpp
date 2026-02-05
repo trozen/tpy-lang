@@ -12,6 +12,10 @@ tpy::Global<Outer<Inner<tpy::BigInt>>> outer;
 tpy::Global<Outer<Inner<tpy::BigInt>>> outer2;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test type inference with nested generic classes."""
   // 19: inner = Inner[int](42)

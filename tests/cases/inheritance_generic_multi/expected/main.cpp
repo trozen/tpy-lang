@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<Leaf<std::string_view>> leaf;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test comprehensive generic inheritance edge cases.
   // 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")

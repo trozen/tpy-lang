@@ -17,6 +17,10 @@ tpy::BigInt factorial(const tpy::BigInt& n) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 8: print(factorial(20))
   std::cout << factorial(tpy::BigInt(20)) << "\n";

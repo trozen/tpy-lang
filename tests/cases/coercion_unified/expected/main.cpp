@@ -251,6 +251,10 @@ void test_subscript_to_ptr() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests all type coercions through the unified _apply_coercion path.
   // 231: test_bigint_to_int32()

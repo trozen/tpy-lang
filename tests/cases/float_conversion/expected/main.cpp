@@ -12,6 +12,10 @@ tpy::Global<double> b;
 tpy::Global<double> c;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 2: a = float(5)
   a = static_cast<double>(5);

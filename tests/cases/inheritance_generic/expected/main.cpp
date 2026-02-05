@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<IntContainer> c;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 21: c = IntContainer(42, 100)
   c = IntContainer(42, 100);

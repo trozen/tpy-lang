@@ -1880,6 +1880,17 @@ print(MAX)  # 100
 - Entry point module: `__name__ == "__main__"`
 - Imported modules: `__name__ == "module_name"`
 
+**Import execution order:** Imports execute at their source location, matching Python semantics. Top-level code in imported modules runs when the import statement is reached, not hoisted to the beginning:
+
+```python
+# main.tp.py
+print("before import")  # runs first
+from helper import func  # helper's top-level code runs now
+print("after import")   # runs last
+```
+
+Each module initializes only once (double-init guard prevents diamond dependency issues).
+
 **Circular imports:** Detected at compile time with clear error messages.
 
 **Shadowing builtin modules:** User modules can shadow builtin modules (`math`, `time`, `sys`). If you create `math.tp.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:

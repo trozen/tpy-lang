@@ -12,6 +12,10 @@ tpy::Global<int32_t> x;
 tpy::Global<Box<int32_t>> box32;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test basic type inference for user-defined generic classes."""
   // 13: box = Box(42)

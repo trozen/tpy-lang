@@ -112,6 +112,10 @@ void test_literal_expr_to_int32() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests type coercions with expressions (not just simple variables).
   // 141: test_bigint_expr_to_int32()

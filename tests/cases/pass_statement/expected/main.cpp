@@ -83,6 +83,10 @@ void test_class_with_pass() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 60: empty_function()
   empty_function();

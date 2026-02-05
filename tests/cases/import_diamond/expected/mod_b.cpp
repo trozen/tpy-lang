@@ -12,7 +12,13 @@ int32_t b_value() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "mod_b";
+  // 2: from mod_d import d_value
+  tpy_user::mod_d::__tpy_init();
 }
 
 } // namespace tpy_user::mod_b

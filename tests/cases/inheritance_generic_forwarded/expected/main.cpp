@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<Wrapper<std::string_view>> w;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 24: w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
   w = Wrapper<std::string_view>("hello", 42);

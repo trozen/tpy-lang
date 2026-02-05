@@ -58,6 +58,10 @@ int32_t nested_sum() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: items = [1, 2, 3, 4, 5]
   items = {1, 2, 3, 4, 5};

@@ -24,6 +24,10 @@ Pair<A, B> create_pair(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> 
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test generic functions with multiple type parameters."""
   // 23: p1 = create_pair(10, "hello")

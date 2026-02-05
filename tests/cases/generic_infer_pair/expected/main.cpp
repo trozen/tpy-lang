@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<Pair<tpy::BigInt, std::string_view>> pair;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test type inference with multiple type parameters."""
   // 14: pair = Pair(1, "hello")

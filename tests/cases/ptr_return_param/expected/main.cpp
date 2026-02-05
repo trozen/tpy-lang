@@ -34,6 +34,10 @@ void main() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 11: global_pt: Point = Point(1, 2)
   global_pt = Point(1, 2);

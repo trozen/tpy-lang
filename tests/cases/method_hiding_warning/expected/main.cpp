@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<Dog> d;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 12: d = Dog()
   d = Dog();

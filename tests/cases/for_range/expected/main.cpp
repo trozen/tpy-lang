@@ -28,6 +28,10 @@ int32_t sum_range(int32_t n) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 14: for i in range(5):
   for (int32_t i = 0; i < 5; ++i) {

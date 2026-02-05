@@ -69,6 +69,10 @@ void main() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests that str conforms to NativeIterable[Char] via extends declaration."""
   // 39: main()

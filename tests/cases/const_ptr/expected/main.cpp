@@ -60,6 +60,10 @@ void test_const_ptr_preserves_value() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 56: print("=== ptr to const ===")
   std::cout << "=== ptr to const ===" << "\n";

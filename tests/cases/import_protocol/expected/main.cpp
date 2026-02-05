@@ -23,8 +23,13 @@ int32_t main() {
 }
 
 void __tpy_init() {
-  tpy_user::traits::__tpy_init();
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 2: from traits import Printable
+  tpy_user::traits::__tpy_init();
   // 21: main()
   main();
 }

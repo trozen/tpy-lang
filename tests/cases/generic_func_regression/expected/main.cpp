@@ -38,6 +38,10 @@ tpy::return_val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Regression tests for generic functions with various edge cases."""
   // 20: nums = [10, 20, 30]

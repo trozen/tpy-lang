@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<Same<tpy::BigInt>> same;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test type inference with same type param used twice."""
   // 14: same = Same(1, 2)

@@ -36,6 +36,10 @@ void takes_static(StaticList<int32_t, 10>& x) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 19: takes_list([])
   std::vector<tpy::BigInt> __tmp_1 = std::vector<tpy::BigInt>{};

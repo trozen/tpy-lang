@@ -27,6 +27,10 @@ int32_t count_char(std::string_view text, char target) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 13: print(count_char("xoxox", "x"))
   std::cout << count_char("xoxox", 'x') << "\n";

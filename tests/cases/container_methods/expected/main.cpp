@@ -22,6 +22,10 @@ void span_ops(std::span<const int32_t> sp) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests that methods work on all container types via unified module lookup."""
   // 5: sl: StaticList[Int32, 8] = StaticList[Int32, 8]()

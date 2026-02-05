@@ -14,8 +14,13 @@ int32_t main() {
 }
 
 void __tpy_init() {
-  tpy_user::helper::__tpy_init();
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 2: from helper import get_value
+  tpy_user::helper::__tpy_init();
   // 8: main()
   main();
 }

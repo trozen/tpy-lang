@@ -12,6 +12,10 @@ tpy::Global<Child<std::string_view>> c;
 tpy::Global<std::vector<std::string_view>> val;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 24: items: list[str] = ["hello", "world"]
   items = {"hello", "world"};

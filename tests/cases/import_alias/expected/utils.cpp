@@ -14,6 +14,10 @@ int32_t add(int32_t a, int32_t b) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "utils";
   // 11: MAX_VALUE: Int32 = Int32(100)
   MAX_VALUE = 100;

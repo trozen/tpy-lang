@@ -10,6 +10,10 @@ tpy::Global<std::array<int32_t, 3>> arr;
 tpy::Global<StaticList<int32_t, 4>> items;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: arr: Array[Int32, 3] = [1, 2, 3]
   arr = {1, 2, 3};

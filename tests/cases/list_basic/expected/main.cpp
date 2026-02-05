@@ -29,6 +29,10 @@ int32_t sum_list(std::vector<int32_t>& nums) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 11: mem: list[Int32] = [0] * 10
   mem = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(10, {0}));

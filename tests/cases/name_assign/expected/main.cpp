@@ -7,6 +7,10 @@ namespace tpy_user::main {
 tpy::Global<std::string_view> __name__;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   // 1: __name__ = "custom"
   __name__ = "custom";
   // 2: print(__name__)

@@ -264,6 +264,16 @@ class TpyPassStmt(TpyStmt):
 
 
 @dataclass
+class TpyImport(TpyStmt):
+    """Import statement for user modules.
+
+    Only user module imports (not builtins like tpy, typing) become TpyImport nodes.
+    These are emitted as __tpy_init() calls in codegen.
+    """
+    module_name: str
+
+
+@dataclass
 class TpyFunction:
     """Function definition.
 
@@ -388,9 +398,9 @@ class Parser:
 
         for node in tree.body:
             if isinstance(node, ast.ImportFrom):
-                self._check_import_from(node, imports, user_module_imports)
+                self._check_import_from(node, imports, user_module_imports, top_level_stmts)
             elif isinstance(node, ast.Import):
-                self._check_import(node, imports, user_module_imports)
+                self._check_import(node, imports, user_module_imports, top_level_stmts)
             elif isinstance(node, ast.ClassDef):
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):
@@ -418,7 +428,7 @@ class Parser:
 
         return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports)
 
-    def _check_import(self, node: ast.Import, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int]) -> None:
+    def _check_import(self, node: ast.Import, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt]) -> None:
         """Check and track 'import X' statement."""
         for alias in node.names:
             module_name = alias.name
@@ -426,9 +436,12 @@ class Parser:
                 raise ParseError(f"Import aliases not supported: 'import {module_name} as {alias.asname}'", node)
             # Check if it's a user module (not builtin)
             if module_name not in self.SPECIAL_MODULES:
-                # User module import - track line number
+                # User module import - track line number and add to statements
                 user_module_imports[module_name] = node.lineno
                 imports[module_name] = None
+                # Add TpyImport statement (only first time we see this module)
+                if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
+                    top_level_stmts.append(TpyImport(module_name=module_name, loc=SourceLocation(node.lineno, node.col_offset)))
                 continue
             # Skip tpy - it's handled differently (type imports)
             if module_name == "tpy":
@@ -436,7 +449,7 @@ class Parser:
             # 'import X' -> module_name: None (whole module imported)
             imports[module_name] = None
 
-    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int]) -> None:
+    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt]) -> None:
         """Check and track 'from X import Y' statement."""
         module_name = node.module
         if module_name is None:
@@ -454,6 +467,9 @@ class Parser:
                         raise ParseError(f"'from {module_name} import *' not supported for user modules", node)
                     local_name = alias.asname if alias.asname else alias.name
                     current.add((alias.name, local_name))
+            # Add TpyImport statement (only first time we see this module)
+            if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
+                top_level_stmts.append(TpyImport(module_name=module_name, loc=SourceLocation(node.lineno, node.col_offset)))
             return
         # Skip __future__ imports - they affect CPython parsing but are no-op for TurboPython
         if module_name == "__future__":

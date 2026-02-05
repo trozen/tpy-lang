@@ -278,6 +278,10 @@ void test_char_to_str_coercion() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 143: print("=== literals ===")
   std::cout << "=== literals ===" << "\n";

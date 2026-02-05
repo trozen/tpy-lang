@@ -64,6 +64,10 @@ void main() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests that NativeContiguous[T] types can coerce to Span[T]."""
   // 45: main()

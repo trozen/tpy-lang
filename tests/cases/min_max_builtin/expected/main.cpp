@@ -22,6 +22,10 @@ tpy::Global<double> f1;
 tpy::Global<double> f2;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test min() and max() builtin functions."""
   // 5: a: Int32 = 10

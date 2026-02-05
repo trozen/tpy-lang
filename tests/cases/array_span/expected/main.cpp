@@ -29,6 +29,10 @@ int32_t sum_span(std::span<const int32_t> values) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 12: print(sum_span([1, 2, 3, 4, 5]))
   std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";

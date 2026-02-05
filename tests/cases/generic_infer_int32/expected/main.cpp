@@ -12,6 +12,10 @@ tpy::Global<Same<int32_t>> same1;
 tpy::Global<Same<int32_t>> same2;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test that inference upgrades IntLiteralType to concrete int type."""
   // 15: x: Int32 = 10

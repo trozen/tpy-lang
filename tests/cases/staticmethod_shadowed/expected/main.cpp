@@ -14,6 +14,10 @@ int32_t use_helper(Helper& Helper) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test that local variables correctly shadow class names for method calls."""
   // 23: print(Helper.add(10, 20))

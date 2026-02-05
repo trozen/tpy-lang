@@ -56,6 +56,10 @@ int32_t test_span_param() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: global_list: list[Int32] = [1, 2, 3]
   global_list = {1, 2, 3};

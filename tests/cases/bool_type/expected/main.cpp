@@ -60,6 +60,10 @@ void test_bool() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 39: test_bool()
   test_bool();

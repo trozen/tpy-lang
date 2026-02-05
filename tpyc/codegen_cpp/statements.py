@@ -15,7 +15,7 @@ from ..typesys import (
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
-    TpySubscript, TpyStrLiteral, TpyName
+    TpyImport, TpySubscript, TpyStrLiteral, TpyName
 )
 from ..namespace import Namespace
 from .context import CodeGenError
@@ -100,6 +100,11 @@ class StatementGenerator:
             return f"{indent}continue;\n"
         elif isinstance(stmt, TpyPassStmt):
             return ""  # No-op - emit nothing
+        elif isinstance(stmt, TpyImport):
+            # Only emit __tpy_init() for actual user modules (not builtins)
+            if stmt.module_name in self.ctx.user_module_imports:
+                return f"{indent}tpy_user::{stmt.module_name}::__tpy_init();\n"
+            return ""  # Builtin module - no init needed
         return None
 
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:

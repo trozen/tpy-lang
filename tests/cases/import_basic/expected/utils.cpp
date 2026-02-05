@@ -12,6 +12,10 @@ int32_t add(int32_t a, int32_t b) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "utils";
 }
 

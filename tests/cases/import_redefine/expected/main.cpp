@@ -8,8 +8,13 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<int32_t> MAX;
 
 void __tpy_init() {
-  tpy_user::utils::__tpy_init();
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 2: from utils import MAX
+  tpy_user::utils::__tpy_init();
   // 5: MAX: Int32 = Int32(42)
   MAX = 42;
   // 8: print(MAX)  # Should print 42

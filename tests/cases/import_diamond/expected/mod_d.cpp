@@ -12,6 +12,10 @@ int32_t d_value() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "mod_d";
   // 4: print("D init")
   std::cout << "D init" << "\n";

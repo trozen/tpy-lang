@@ -16,8 +16,13 @@ int32_t main() {
 }
 
 void __tpy_init() {
-  tpy_user::utils::__tpy_init();
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
+  // 2: from utils import get_name
+  tpy_user::utils::__tpy_init();
   // 9: main()
   main();
 }

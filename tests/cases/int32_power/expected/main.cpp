@@ -14,6 +14,10 @@ tpy::Global<int32_t> z;
 tpy::Global<int32_t> n;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test Int32 power operator."""
   // 5: x: Int32 = 2

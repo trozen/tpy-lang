@@ -24,7 +24,7 @@
 ## Module System Refactoring
 Future improvements to the module system architecture:
 
-1. **Import initialization order**: Module `__tpy_init()` calls are made in dependency order (topological sort), which is semantically correct but may differ from Python's source order for independent imports. This only matters for side effects in unrelated modules.
+1. ~~**Import initialization order**~~: ✅ **DONE** - Imports are now regular statements (`TpyImport`) that emit `__tpy_init()` calls inline. This matches Python semantics where imports execute at their source location, not hoisted to the top. Guard prevents double initialization.
 
 2. **Package support**: Add support for package directories with `__init__.tp.py` (or `__init__.py`):
    - Package directories recognized by presence of `__init__.tp.py`

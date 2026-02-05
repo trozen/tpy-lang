@@ -21,6 +21,10 @@ tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test generic functions with type annotation hints."""
   // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]

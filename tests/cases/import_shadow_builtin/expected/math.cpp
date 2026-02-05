@@ -14,6 +14,10 @@ int32_t custom_add(int32_t x, int32_t y) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "math";
   // 7: MAGIC: Int32 = 42
   MAGIC = 42;

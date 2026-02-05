@@ -8,6 +8,10 @@ tpy::Global<std::string_view> __name__;
 tpy::Global<Box<std::vector<tpy::BigInt>>> box;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Test type inference with list argument."""
   // 12: box = Box([1, 2, 3])

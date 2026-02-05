@@ -44,6 +44,10 @@ void main() {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 24: arr_global: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
   arr_global = {10, 20, 30};

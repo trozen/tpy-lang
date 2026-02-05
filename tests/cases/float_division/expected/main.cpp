@@ -6,6 +6,10 @@ namespace tpy_user::main {
 tpy::Global<std::string_view> __name__;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 2: print(10 / 4)
   std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(4)))) << "\n";

@@ -48,6 +48,10 @@ tpy::Global<std::vector<int32_t>> arr;
 tpy::Global<tpy::BigInt> delta;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: start = 0
   start = tpy::BigInt(0);

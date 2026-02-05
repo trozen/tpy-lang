@@ -16,6 +16,10 @@ tpy::Global<int32_t> n;
 tpy::Global<std::vector<int32_t>> dynamic;
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 1: """Tests single-element list repeat with repeat_range codegen."""
   // 5: zeros: list[Int32] = [0] * 5

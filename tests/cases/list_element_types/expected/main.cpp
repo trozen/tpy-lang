@@ -62,6 +62,10 @@ tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
 }
 
 void __tpy_init() {
+  static bool initialized = false;
+  if (initialized) return;
+  initialized = true;
+
   __name__ = "__main__";
   // 4: pure_literals = [1, 2, 3]
   pure_literals = {1, 2, 3};

@@ -149,23 +149,21 @@ class FunctionGenerator:
         out.write("void __tpy_init();\n")
 
     def gen_module_init(self, out: TextIO, stmts: list, global_types: dict[str, TpyType | None] | None = None,
-                        has_user_main: bool = False, module_name: str = "__main__",
-                        imported_modules: list[str] | None = None) -> None:
+                        has_user_main: bool = False, module_name: str = "__main__") -> None:
         """Generate module init function containing top-level statements.
 
         Args:
             out: Output stream.
-            stmts: Top-level statements.
+            stmts: Top-level statements (including TpyImport for user module imports).
             global_types: Dict of global variable names to types.
             has_user_main: If True, call main() at end.
             module_name: Value for __name__ ("__main__" for entry point, module name otherwise).
-            imported_modules: List of imported user module names to initialize (in dependency order).
         """
         out.write("void __tpy_init() {\n")
-        # Initialize imported modules first (before our code runs), in dependency order
-        if imported_modules:
-            for mod_name in imported_modules:
-                out.write(f"  tpy_user::{mod_name}::__tpy_init();\n")
+        # Guard against double initialization (handles diamond dependencies)
+        out.write("  static bool initialized = false;\n")
+        out.write("  if (initialized) return;\n")
+        out.write("  initialized = true;\n\n")
         # Initialize synthetic __name__ if not user-defined
         if self.ctx._has_synthetic_name:
             out.write(f'  __name__ = "{module_name}";\n')
