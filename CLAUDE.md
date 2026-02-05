@@ -117,7 +117,7 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
 | `typesys.py` | Type definitions (Int32, Bool, Void, Str, Record, Ptr, ConstPtr, StaticList, Array, Span) and TypeRegistry |
-| `sema.py` | Multi-pass semantic analysis: type checking, type inference |
+| `sema/` | Multi-pass semantic analysis: type checking, type inference (composable package) |
 | `codegen_cpp.py` | Generates `.hpp` (header) and `.cpp` (source) files |
 | `modules/` | Built-in function and type definitions (chr, len, __len__, etc.) with C++ templates |
 
