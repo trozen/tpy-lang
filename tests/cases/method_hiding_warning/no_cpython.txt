@@ -1,0 +1,2 @@
+This test demonstrates semantic difference between TurboPython (C++) and CPython.
+C++ uses static dispatch, CPython uses dynamic dispatch.

@@ -181,7 +181,7 @@ class SemanticAnalyzer:
         loc = getattr(node, 'loc', None) if node else None
         return SemanticError(message, loc)
 
-    def _warning(self, message: str, node: TpyExpr | TpyStmt | None = None) -> None:
+    def _warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
         """Record a warning diagnostic (doesn't stop compilation)."""
         loc = getattr(node, 'loc', None) if node else None
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
@@ -477,6 +477,10 @@ class SemanticAnalyzer:
                     record.loc
                 )
 
+        # Check for method hiding (child defines method with same name as parent)
+        if record_info.parent:
+            self._check_method_hiding(record, record_info)
+
         # Validate protocol implementations
         for protocol in record_info.implemented_protocols:
             protocol_info = self.registry.get_protocol(protocol.name)
@@ -520,6 +524,53 @@ class SemanticAnalyzer:
                 return False
             current = parent_info.parent.name if parent_info.parent else None
         return False
+
+    def _check_method_hiding(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """Warn when child class defines method with same name as parent.
+
+        In Python, methods use dynamic dispatch (virtual by default).
+        In C++, methods use static dispatch (non-virtual by default).
+        This causes different behavior when a parent method calls self.method().
+        """
+        if not record_info.parent:
+            return
+
+        parent_info = self._get_parent_record_info(record_info.parent)
+        if not parent_info:
+            return
+
+        # Check each method defined in this class
+        for method_name in record_info.methods:
+            if method_name == "__init__":
+                continue  # __init__ hiding is expected (constructors)
+
+            # Check if any ancestor has this method
+            ancestor_with_method = self._find_ancestor_with_method(parent_info, method_name)
+            if ancestor_with_method:
+                self._warning(
+                    f"Method '{record.name}.{method_name}' hides '{ancestor_with_method}.{method_name}'. "
+                    f"In Python, parent methods calling 'self.{method_name}()' use dynamic dispatch "
+                    f"(child method called). In C++, static dispatch is used (parent method called). "
+                    f"This may cause different behavior between TurboPython and CPython.",
+                    record
+                )
+
+    def _find_ancestor_with_method(self, record_info: RecordInfo, method_name: str) -> str | None:
+        """Find the nearest ancestor that defines a method with the given name.
+
+        Returns the ancestor's name if found, None otherwise.
+        """
+        # Check this record's own methods
+        if record_info.get_method(method_name) is not None:
+            return record_info.name
+
+        # Check parent recursively
+        if record_info.parent:
+            parent_info = self._get_parent_record_info(record_info.parent)
+            if parent_info:
+                return self._find_ancestor_with_method(parent_info, method_name)
+
+        return None
 
     def _get_missing_protocol_methods(self, record_type: RecordType, protocol: ProtocolType) -> list[str]:
         """Get list of protocol methods missing from record."""

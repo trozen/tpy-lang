@@ -162,8 +162,8 @@ def main() -> int:
         if not reading_from_stdin:
             source = input_path.read_text()
 
+        source_name = "<stdin>" if reading_from_stdin else str(input_path)
         if args.verbose:
-            source_name = "<stdin>" if reading_from_stdin else str(input_path)
             print(f"Compiling {source_name}...")
 
         # Parse

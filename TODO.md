@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- warning when hiding method in inheritance -- types may behave differently between TPython and CPython
 - sema/codegen_cpp refactoring, got too large, same for tpy_runtime.hpp
 - make a doc with TPy vs Python differences
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
@@ -22,6 +21,12 @@
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
 - Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
+
+## Polymorphism
+- Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
+- Ptr constructor: `Ptr(value)` to explicitly create pointers
+- Polymorphic coercion: `Dog` → `Ptr[Animal]` (child to parent pointer)
+- Virtual dispatch (requires C++ `virtual` methods) - currently `self.method()` in parent uses static dispatch
 
 ## Python features
 - dict full support
