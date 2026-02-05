@@ -80,6 +80,16 @@ class SemanticAnalyzer:
         self.global_scope = self.ctx.global_scope
         self.diagnostics = self.ctx.diagnostics
 
+        # Register all builtins at init time, before user modules are registered
+        # User modules registered later (in Compiler._analyze_module) will overwrite
+        # builtins with the same name, allowing user code to shadow math/time/sys.
+        for protocol_def in builtin_modules.get_all_protocols():
+            info = builtin_modules.protocol_def_to_info(protocol_def)
+            self.ctx.registry.register_protocol(info)
+        self.registrar.register_builtin_types()
+        self.registrar.register_builtin_functions()
+        self.registrar.register_builtin_modules()
+
     # Public API compatibility properties
     @property
     def current_scope(self) -> Optional[Scope]:
@@ -125,32 +135,18 @@ class SemanticAnalyzer:
         """Record a warning diagnostic."""
         self.ctx.warning(message, node)
 
-    def analyze(self, module: TpyModule, module_name: str = "__main__",
-                available_modules: dict | None = None) -> None:
+    def analyze(self, module: TpyModule, module_name: str = "__main__") -> None:
         """Analyze a module for semantic correctness.
 
         Args:
             module: The parsed module AST.
             module_name: Name of this module ("__main__" for entry point).
-            available_modules: Dict of module name -> ModuleExports for imported user modules.
+
+        Note: User module dependencies should be registered in registry.modules
+        before calling this method (via register_module).
         """
         # Set module context
         self.ctx.module_name = module_name
-        self.ctx.available_modules = available_modules or {}
-
-        # Register all builtin protocols into the unified registry
-        for protocol_def in builtin_modules.get_all_protocols():
-            info = builtin_modules.protocol_def_to_info(protocol_def)
-            self.ctx.registry.register_protocol(info)
-
-        # Register all builtin types as RecordInfo for unified lookup
-        self.registrar.register_builtin_types()
-
-        # Register all builtin functions for unified lookup
-        self.registrar.register_builtin_functions()
-
-        # Register all builtin modules for unified lookup
-        self.registrar.register_builtin_modules()
 
         # Process imports
         self.ctx.imports = module.imports
@@ -331,33 +327,39 @@ class SemanticAnalyzer:
     def _register_user_module_import(self, module_name: str, original_name: str, local_name: str) -> None:
         """Register an imported item from a user module.
 
-        Looks up the item in available_modules and registers it in the appropriate
+        Looks up the item in the unified registry (user modules are registered
+        as ModuleInfo before analysis) and registers it in the appropriate
         namespace (function, record, or protocol).
         """
-        if module_name not in self.ctx.available_modules:
-            raise self._error(f"Module '{module_name}' not available")
+        module_info = self.ctx.registry.get_module(module_name)
+        if module_info is None:
+            # Module not in registry - could be builtin without user file, skip
+            return
+        if module_info.is_builtin:
+            # Builtin module (no user file shadowing it), skip to let builtin handling work
+            return
 
-        exports = self.ctx.available_modules[module_name]
-
-        # Check for function
-        if original_name in exports.functions:
-            func_info = exports.functions[original_name]
+        # Check for function (now always list of overloads)
+        if module_info.functions and original_name in module_info.functions:
+            overloads = module_info.functions[original_name]
+            # For user modules, single overload - take first
+            func_info = overloads[0]
             # Register with local name for lookup
             self.ctx.registry.register_function(func_info, local_name)
             self.ctx.user_imported_functions[local_name] = (module_name, original_name)
             return
 
         # Check for record
-        if original_name in exports.records:
-            record_info = exports.records[original_name]
+        if module_info.records and original_name in module_info.records:
+            record_info = module_info.records[original_name]
             # Register with local name for lookup
             self.ctx.registry.register_record(record_info, local_name)
             self.ctx.user_imported_records[local_name] = (module_name, original_name)
             return
 
         # Check for protocol
-        if original_name in exports.protocols:
-            protocol_info = exports.protocols[original_name]
+        if module_info.protocols and original_name in module_info.protocols:
+            protocol_info = module_info.protocols[original_name]
             # Register with local name for lookup (supports aliases)
             self.ctx.registry.register_protocol(protocol_info, local_name)
             # Also bind in namespace so it can be resolved as a type
@@ -366,10 +368,10 @@ class SemanticAnalyzer:
             return
 
         # Check for variable
-        if original_name in exports.variables:
-            var_type = exports.variables[original_name]
-            self.ctx.global_scope.define(local_name, var_type)
-            self.ctx.global_ns.bind_variable(local_name, var_type)
+        if module_info.variables and original_name in module_info.variables:
+            var_info = module_info.variables[original_name]
+            self.ctx.global_scope.define(local_name, var_info.type)
+            self.ctx.global_ns.bind_variable(local_name, var_info.type)
             self.ctx.user_imported_variables[local_name] = (module_name, original_name)
             return
 

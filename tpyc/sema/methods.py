@@ -134,22 +134,17 @@ class MethodAnalyzer:
                     # It's a module call: module.function()
                     module_name = expr.obj.name
 
-                    # Check for user module first
-                    if module_name in self.ctx.available_modules:
-                        exports = self.ctx.available_modules[module_name]
-                        if expr.method in exports.functions:
-                            func_info = exports.functions[expr.method]
-                            return self._analyze_user_module_function_call(expr, func_info, module_name)
-                        raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
-
-                    # Builtin module
+                    # Check unified registry for both user and builtin modules
                     module_info = self.ctx.registry.get_module(module_name)
-                    if module_info and expr.method in module_info.functions:
+                    if module_info and module_info.functions and expr.method in module_info.functions:
                         overloads = module_info.functions[expr.method]
-                        temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                        from .calls import CallAnalyzer
-                        # Use the calls analyzer for builtin function analysis
-                        return self._analyze_builtin_function_overloads(temp_call, overloads)
+                        if module_info.is_builtin:
+                            temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                            return self._analyze_builtin_function_overloads(temp_call, overloads)
+                        else:
+                            # User module: single overload
+                            func_info = overloads[0]
+                            return self._analyze_user_module_function_call(expr, func_info, module_name)
                     raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
             # Fallback for when namespace isn't set
             elif expr.obj.name in self.ctx.imports:
@@ -160,19 +155,17 @@ class MethodAnalyzer:
                     self.ctx.registry.get_record(module_name) is None):
                     # Module was imported with 'import X' (not 'from X import ...')
                     if self.ctx.imports[module_name] is None:
-                        # Check for user module first
-                        if module_name in self.ctx.available_modules:
-                            exports = self.ctx.available_modules[module_name]
-                            if expr.method in exports.functions:
-                                func_info = exports.functions[expr.method]
-                                return self._analyze_user_module_function_call(expr, func_info, module_name)
-                            raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
-
+                        # Check unified registry for both user and builtin modules
                         module_info = self.ctx.registry.get_module(module_name)
-                        if module_info and expr.method in module_info.functions:
+                        if module_info and module_info.functions and expr.method in module_info.functions:
                             overloads = module_info.functions[expr.method]
-                            temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                            return self._analyze_builtin_function_overloads(temp_call, overloads)
+                            if module_info.is_builtin:
+                                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                                return self._analyze_builtin_function_overloads(temp_call, overloads)
+                            else:
+                                # User module: single overload
+                                func_info = overloads[0]
+                                return self._analyze_user_module_function_call(expr, func_info, module_name)
                         raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
 
         obj_type = self.expr.analyze_expr(expr.obj)

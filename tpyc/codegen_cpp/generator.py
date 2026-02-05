@@ -53,7 +53,8 @@ class CodeGenerator:
 
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
-                 all_imported_modules: list[str] | None = None) -> tuple[str, str]:
+                 all_imported_modules: list[str] | None = None,
+                 actual_user_modules: set[str] | None = None) -> tuple[str, str]:
         """Generate C++ header and source files.
 
         Args:
@@ -61,10 +62,16 @@ class CodeGenerator:
             module_name: Name for the generated files (used in #include).
             is_entry_point: True if this is the entry point module (generates main()).
             all_imported_modules: For entry point, list of ALL modules to initialize (in order).
+            actual_user_modules: Set of module names that are actually user modules (have .tp.py files).
+                                 If None, uses module.user_module_imports (legacy behavior).
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
-        self.ctx.user_module_imports = module.user_module_imports
+        # Filter user_module_imports to only include actual user modules (not builtins without user files)
+        if actual_user_modules is not None:
+            self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}
+        else:
+            self.ctx.user_module_imports = module.user_module_imports
         self.ctx.user_imported_functions = dict(self.analyzer.ctx.user_imported_functions)
         self.ctx.user_imported_records = dict(self.analyzer.ctx.user_imported_records)
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
@@ -125,7 +132,7 @@ class CodeGenerator:
         # Only entry point module initializes imported modules (to avoid duplicate init)
         # Use all_imported_modules if provided (in dependency order), otherwise fall back to direct imports
         if is_entry_point:
-            imported_modules = all_imported_modules if all_imported_modules else sorted(module.user_module_imports)
+            imported_modules = all_imported_modules if all_imported_modules is not None else sorted(self.ctx.user_module_imports)
         else:
             imported_modules = None
         self.functions.gen_module_init(cpp, module.top_level_stmts, seen_globals,

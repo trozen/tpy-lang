@@ -224,10 +224,13 @@ def main() -> int:
 
                 # Code generation
                 codegen = CodeGenerator(compiled.analyzer, options)
+                # Pass actual user modules (those that were compiled, not builtins without user files)
+                actual_user_modules = {m.name for m in compiled_modules}
                 hpp_code, cpp_code = codegen.generate(
                     compiled.ast, mod_name,
                     is_entry_point=compiled.is_entry_point,
-                    all_imported_modules=all_imported if compiled.is_entry_point else None
+                    all_imported_modules=all_imported if compiled.is_entry_point else None,
+                    actual_user_modules=actual_user_modules
                 )
 
                 hpp_path = mod_dir / f"{mod_name}.hpp"

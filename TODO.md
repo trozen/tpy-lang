@@ -19,19 +19,18 @@
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
 - Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
+- differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently.
 
 ## Module System Refactoring
 Future improvements to the module system architecture:
 
-1. **Unify builtin and user module handling**: Currently builtin modules use `ctx.registry.get_module()` → `ModuleInfo` while user modules use `ctx.available_modules` → `ModuleExports`. Should register user modules in the registry with the same interface, perhaps with a `source` field distinguishing builtin vs user.
-
-2. **RecordType vs ProtocolType resolution**: During parsing, we don't know if a name refers to a record or protocol (especially for imports), so we create `RecordType` and later convert to `ProtocolType` via `resolve_type()`. Consider either:
+1. **RecordType vs ProtocolType resolution**: During parsing, we don't know if a name refers to a record or protocol (especially for imports), so we create `RecordType` and later convert to `ProtocolType` via `resolve_type()`. Consider either:
    - Unified `NamedType` with `is_protocol` flag resolved after registration
    - `UnresolvedType` during parsing, resolved to `RecordType` or `ProtocolType` after all types are registered
 
-3. **Import initialization order**: Module `__tpy_init()` calls are made in dependency order (topological sort), which is semantically correct but may differ from Python's source order for independent imports. This only matters for side effects in unrelated modules.
+2. **Import initialization order**: Module `__tpy_init()` calls are made in dependency order (topological sort), which is semantically correct but may differ from Python's source order for independent imports. This only matters for side effects in unrelated modules.
 
-4. **Package support**: Add support for package directories with `__init__.tp.py` (or `__init__.py`):
+3. **Package support**: Add support for package directories with `__init__.tp.py` (or `__init__.py`):
    - Package directories recognized by presence of `__init__.tp.py`
    - Submodule imports: `from package.submodule import something`
    - Package-level exports via `__init__.tp.py`

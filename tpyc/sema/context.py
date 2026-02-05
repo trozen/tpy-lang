@@ -6,7 +6,6 @@ Contains the shared state that is passed to all semantic analysis components.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, TypeParamKind
@@ -14,9 +13,6 @@ from ..typesys import (
 from ..namespace import Namespace
 from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall
 from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
-
-if TYPE_CHECKING:
-    from ..compiler import ModuleExports
 
 
 @dataclass
@@ -55,8 +51,6 @@ class SemanticContext:
     imported_names: dict[str, tuple[str, str]] = field(default_factory=dict)
 
     # Cross-module support
-    # available_modules: exports from already-compiled modules (populated before analysis)
-    available_modules: dict[str, 'ModuleExports'] = field(default_factory=dict)
     # module_name: name of this module ("__main__" for entry point, "module_name" for imports)
     module_name: str = "__main__"
     # Track imported items from user modules for codegen qualification

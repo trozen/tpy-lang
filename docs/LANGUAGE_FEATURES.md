@@ -1882,6 +1882,11 @@ print(MAX)  # 100
 
 **Circular imports:** Detected at compile time with clear error messages.
 
+**Shadowing builtin modules:** User modules can shadow builtin modules (`math`, `time`, `sys`). If you create `math.tp.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
+```
+main.tp.py:1: warning: import 'math' shadows builtin module
+```
+
 **C++ mapping:** Each module gets its own namespace (`tpy_user::utils::Point`). Cross-module references use fully qualified names.
 
 ### Standard Library Modules

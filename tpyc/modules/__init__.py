@@ -200,6 +200,14 @@ def get_module(name: str) -> BuiltinModule | None:
     return _module_cache[name]
 
 
+def get_builtin_module_names() -> set[str]:
+    """Get the names of all builtin modules.
+
+    Used by the parser to distinguish user module imports from builtin imports.
+    """
+    return set(_MODULE_FACTORIES.keys())
+
+
 def get_builtins() -> BuiltinModule:
     """Get the builtins module."""
     result = get_module("builtins")
@@ -372,8 +380,11 @@ def builtin_module_to_info(module: BuiltinModule) -> "ModuleInfo":
 
     return ModuleInfo(
         name=module.name,
+        is_builtin=True,
         functions=functions,
         variables=variables,
+        records={},
+        protocols={},
     )
 
 

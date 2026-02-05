@@ -341,7 +341,7 @@ class TpyModule:
     #                  module_name -> None (for "import X")
     #                  module_name -> "*" (for "from X import *")
     imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
-    # User module imports (modules not in BUILTIN_MODULES): {module_name: line_number}
+    # User module imports (modules not in SPECIAL_MODULES, resolved as files): {module_name: line_number}
     user_module_imports: dict[str, int] = field(default_factory=dict)
 
 
@@ -354,8 +354,10 @@ class Parser:
         "lambda", "yield", "global", "nonlocal",
     }
 
-    # Built-in modules that are handled specially (not user modules)
-    BUILTIN_MODULES = {"tpy", "time", "sys", "math", "typing", "__future__"}
+    # Modules with special parser handling (not resolved as user files)
+    # tpy: type imports, __future__: ignored, typing: type hints, builtins: always available
+    # Note: math, time, sys can be shadowed by user files and are NOT in this set
+    SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins"}
 
     def __init__(self):
         self.registry = TypeRegistry()
@@ -423,7 +425,7 @@ class Parser:
             if alias.asname is not None:
                 raise ParseError(f"Import aliases not supported: 'import {module_name} as {alias.asname}'", node)
             # Check if it's a user module (not builtin)
-            if module_name not in self.BUILTIN_MODULES:
+            if module_name not in self.SPECIAL_MODULES:
                 # User module import - track line number
                 user_module_imports[module_name] = node.lineno
                 imports[module_name] = None
@@ -440,7 +442,7 @@ class Parser:
         if module_name is None:
             raise ParseError("Relative imports not supported", node)
         # Check if it's a user module (not builtin)
-        if module_name not in self.BUILTIN_MODULES:
+        if module_name not in self.SPECIAL_MODULES:
             # User module import: from utils import add, Point - track line number
             user_module_imports[module_name] = node.lineno
             if module_name not in imports:

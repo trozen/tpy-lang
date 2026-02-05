@@ -982,17 +982,21 @@ class ModuleVarInfo:
 class ModuleInfo:
     """Information about a module (builtin or user-defined)."""
     name: str
+    is_builtin: bool = True  # True for builtin modules (time/sys/math), False for user modules
     functions: dict[str, list[FunctionInfo]] = None  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = None  # var_name -> ModuleVarInfo
-    types: dict[str, RecordInfo] = None  # type_name -> RecordInfo (exported types)
+    records: dict[str, RecordInfo] = None  # type_name -> RecordInfo (exported types)
+    protocols: dict[str, ProtocolInfo] = None  # protocol_name -> ProtocolInfo
 
     def __post_init__(self):
         if self.functions is None:
             self.functions = {}
         if self.variables is None:
             self.variables = {}
-        if self.types is None:
-            self.types = {}
+        if self.records is None:
+            self.records = {}
+        if self.protocols is None:
+            self.protocols = {}
 
 
 class TypeRegistry:

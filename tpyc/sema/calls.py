@@ -104,11 +104,11 @@ class CallAnalyzer:
                     # Check for type constructor (e.g., Int32 from tpy)
                     if record_info := self.ctx.registry.get_builtin_record_by_name(func_name):
                         return self._check_builtin_constructor(expr, record_info)
-                    raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'")
+                    raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
                 elif binding.kind == BindingKind.MODULE:
-                    raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()")
+                    raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()", expr.loc)
                 elif binding.kind == BindingKind.BUILTIN:
-                    raise SemanticError(f"'{expr.func}' is not callable")
+                    raise SemanticError(f"'{expr.func}' is not callable", expr.loc)
 
         # Fallback to old lookup for compatibility (when current_ns not set)
         # Check if it's an imported function (from X import Y)
