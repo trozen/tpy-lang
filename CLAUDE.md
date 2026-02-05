@@ -141,7 +141,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
 | `system.hpp` | `Global<T>`, `time_*`, `sys_argv` |
 
-`runtime/tpy_runtime.hpp` is a compatibility shim that includes `tpy.hpp`. Generated code requires C++23 (for `std::ranges` concepts).
+Generated code requires C++23 (for `std::ranges` concepts).
 
 ## Performance Profiles (Planned)
 

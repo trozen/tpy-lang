@@ -1959,11 +1959,23 @@ from .. import config            # → import mypackage.config as config
 - `from ..module import item` - import item from parent package module
 - Multiple levels: `from ...pkg import X` (three dots = grandparent)
 
+**Import ordering:** Relative imports execute at their source location, matching Python semantics. Multiple imports can be interleaved with top-level code:
+```python
+# pkg/consumer.py
+print("before")
+from . import first      # first.__tpy_init() runs here
+print("middle")
+from . import second     # second.__tpy_init() runs here
+print("after")
+```
+
 **Error handling:**
 ```python
 # pkg/mod.py
 from ...outside import X  # ERROR: Relative import beyond top-level package
 ```
+
+**TurboPython extension:** Unlike CPython, TurboPython allows relative imports that reach root level when the compiler has full visibility of the module structure. For example, `from .. import utils` in `pkg/mod.py` can import a root-level `utils.py` module. This may not work when running the same file with CPython directly.
 
 ### Re-exports in `__init__.py` (Working)
 
@@ -1992,14 +2004,21 @@ print(VERSION)         # Package variable
 - Protocols
 - Variables
 
-**C++ implementation:** Re-exported functions and records use `using` declarations:
+**C++ implementation:** Re-exported items use `using` declarations and reference aliases:
 ```cpp
 // mypackage.hpp (generated)
 namespace tpy_user::mypackage {
   using tpy_user::mypackage::utils::add;    // Re-exported function
   using tpy_user::mypackage::utils::Point;  // Re-exported record
-  extern tpy::Global<int32_t> VERSION;      // Package variable
+  inline auto& counter = tpy_user::mypackage::utils::counter;  // Re-exported variable
+  extern tpy::Global<int32_t> VERSION;      // Package's own variable
 }
+```
+
+**Aliased re-exports:** When using import aliases (`from .utils import func as f`), different C++ constructs are used:
+```cpp
+inline auto& f = tpy_user::mypackage::utils::func;    // Function alias
+using Pt = tpy_user::mypackage::utils::Point;         // Record alias
 ```
 
 ### Standard Library Modules

@@ -140,7 +140,7 @@ int32_t process(const T& items) {
 The implementation uses **Option A (C++20 Concepts)** with a **free function dispatch** pattern to bridge Python's dunder methods with C++ standard library types:
 
 ```cpp
-// In tpy_runtime.hpp - free functions for __len__
+// In tpy/protocols.hpp - free functions for __len__
 
 // Overloads for std types (which don't have __len__ method)
 template<typename T>
