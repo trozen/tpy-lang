@@ -82,6 +82,12 @@ class CodeGenContext:
     top_level_decls: dict[str, int] = field(default_factory=dict)
     # Current statement line during top-level codegen (0 = in function, use local if declared)
     current_stmt_line: int = 0
+    # Re-exported functions from __init__.py: {local_name: (source_module, original_name)}
+    reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
+    # Re-exported records from __init__.py: {local_name: (source_module, original_name)}
+    reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
+    # Re-exported variables from __init__.py: {local_name: (source_module, original_name)}
+    reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
 
     def indent(self) -> str:
         """Get current indentation string."""

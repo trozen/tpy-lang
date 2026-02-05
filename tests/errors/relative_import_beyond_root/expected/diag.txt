@@ -1,0 +1,1 @@
+mod.py:2: error: Relative import beyond top-level package

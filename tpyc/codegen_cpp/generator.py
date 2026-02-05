@@ -53,7 +53,10 @@ class CodeGenerator:
 
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
-                 actual_user_modules: set[str] | None = None) -> tuple[str, str]:
+                 actual_user_modules: set[str] | None = None,
+                 reexported_functions: dict[str, tuple[str, str]] | None = None,
+                 reexported_records: dict[str, tuple[str, str]] | None = None,
+                 reexported_variables: dict[str, tuple[str, str]] | None = None) -> tuple[str, str]:
         """Generate C++ header and source files.
 
         Args:
@@ -62,6 +65,9 @@ class CodeGenerator:
             is_entry_point: True if this is the entry point module (generates main()).
             actual_user_modules: Set of module names that are actually user modules (have .tp.py files).
                                  If None, uses module.user_module_imports (legacy behavior).
+            reexported_functions: Dict of {local_name: (source_module, original_name)} for re-exports.
+            reexported_records: Dict of {local_name: (source_module, original_name)} for re-exports.
+            reexported_variables: Dict of {local_name: (source_module, original_name)} for re-exports.
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
@@ -77,6 +83,9 @@ class CodeGenerator:
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
         self.ctx.user_imported_variables = dict(self.analyzer.ctx.user_imported_variables)
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
+        self.ctx.reexported_functions = reexported_functions or {}
+        self.ctx.reexported_records = reexported_records or {}
+        self.ctx.reexported_variables = reexported_variables or {}
         hpp = io.StringIO()
         cpp = io.StringIO()
 
@@ -365,6 +374,36 @@ class CodeGenerator:
         for func in module.functions:
             self.functions.gen_function_decl(hpp, func)
         hpp.write("\n")
+
+        # Generate using declarations for re-exported functions
+        if self.ctx.reexported_functions:
+            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_functions.items()):
+                cpp_ns = source_module.replace('.', '::')
+                if local_name == original_name:
+                    hpp.write(f"using tpy_user::{cpp_ns}::{original_name};\n")
+                else:
+                    # Alias: from .mod import func as alias
+                    hpp.write(f"inline auto& {local_name} = tpy_user::{cpp_ns}::{original_name};\n")
+            hpp.write("\n")
+
+        # Generate using declarations for re-exported records
+        if self.ctx.reexported_records:
+            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_records.items()):
+                cpp_ns = source_module.replace('.', '::')
+                if local_name == original_name:
+                    hpp.write(f"using tpy_user::{cpp_ns}::{original_name};\n")
+                else:
+                    # Alias: from .mod import Record as Alias
+                    hpp.write(f"using {local_name} = tpy_user::{cpp_ns}::{original_name};\n")
+            hpp.write("\n")
+
+        # Generate reference aliases for re-exported variables
+        if self.ctx.reexported_variables:
+            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_variables.items()):
+                cpp_ns = source_module.replace('.', '::')
+                # Variables need inline auto& for aliasing (not constexpr - tpy::Global is non-constexpr)
+                hpp.write(f"inline auto& {local_name} = tpy_user::{cpp_ns}::{original_name};\n")
+            hpp.write("\n")
 
     def _module_to_namespace(self, module_name: str) -> str:
         """Convert dotted module name to C++ nested namespace.

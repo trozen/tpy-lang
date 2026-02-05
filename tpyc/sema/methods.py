@@ -132,7 +132,8 @@ class MethodAnalyzer:
                 binding = self.ctx.current_ns.lookup(expr.obj.name)
                 if binding and binding.kind == BindingKind.MODULE:
                     # It's a module call: module.function()
-                    module_name = expr.obj.name
+                    # Get actual module name (may differ from local name for aliased imports)
+                    module_name = binding.import_source[0] if binding.import_source else expr.obj.name
 
                     # Check unified registry for both user and builtin modules
                     module_info = self.ctx.registry.get_module(module_name)

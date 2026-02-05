@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule
+from .parse import Parser, ParseError, TpyModule, TpyImport, SourceLocation
 from .sema import SemanticAnalyzer, SemanticError
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
@@ -32,11 +32,17 @@ class ModuleExports:
     - records: dict of record name -> RecordInfo
     - protocols: dict of protocol name -> ProtocolInfo
     - variables: dict of variable name -> TpyType
+    - reexported_functions: dict of local name -> (source_module, original_name) for re-exports
+    - reexported_records: dict of local name -> (source_module, original_name) for re-exports
+    - reexported_variables: dict of local name -> (source_module, original_name) for re-exports
     """
     functions: dict[str, FunctionInfo] = field(default_factory=dict)
     records: dict[str, RecordInfo] = field(default_factory=dict)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)
     variables: dict[str, TpyType] = field(default_factory=dict)
+    reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
+    reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
+    reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -47,6 +53,7 @@ class CompiledModule:
     ast: TpyModule
     exports: ModuleExports
     is_entry_point: bool
+    is_package_init: bool = False
     analyzer: SemanticAnalyzer | None = None
 
 
@@ -118,7 +125,8 @@ class Compiler:
         return [self.modules[name] for name in self.compile_order]
 
     def _discover_modules(self, module_name: str, path: Path, import_chain: list[str],
-                          import_lineno: int | None = None, is_entry_point: bool = False) -> None:
+                          import_lineno: int | None = None, is_entry_point: bool = False,
+                          is_package_init: bool = False) -> None:
         """Recursively discover modules starting from the given module.
 
         Args:
@@ -127,6 +135,7 @@ class Compiler:
             import_chain: Current import chain for cycle detection.
             import_lineno: Line number of the import statement that triggered this discovery.
             is_entry_point: True if this is the entry point module.
+            is_package_init: True if this is a package __init__ file.
 
         Raises:
             CompileError: If circular import detected or module not found.
@@ -159,12 +168,104 @@ class Compiler:
             ast=ast,
             exports=ModuleExports(),
             is_entry_point=is_entry_point,
+            is_package_init=is_package_init,
         )
 
         # Recursively discover imported user modules
         new_chain = import_chain + [module_name]
         builtin_names = get_builtin_module_names()
-        for imported_name, import_lineno in ast.user_module_imports.items():
+        # Use a queue since relative imports may add new modules during processing
+        import_queue = list(ast.user_module_imports.items())
+        processed = set()
+        while import_queue:
+            imported_name, import_lineno = import_queue.pop(0)
+            if imported_name in processed:
+                continue
+            processed.add(imported_name)
+            # Handle relative import placeholders
+            if imported_name.startswith("__rel__"):
+                # Use maxsplit=4 to handle module names containing "__"
+                parts = imported_name.split("__", 4)
+                # Format: __rel__{level}__{lineno}__{partial} -> ["", "rel", level, lineno, partial]
+                level = int(parts[2])
+                # parts[3] is line number (not used here, just for uniqueness)
+                partial = parts[4] if len(parts) > 4 and parts[4] else None
+
+                resolved_name = self.resolver.resolve_relative(
+                    module_name, level, partial, is_package_init
+                )
+                if resolved_name is None:
+                    raise CompileError(
+                        "Relative import beyond top-level package",
+                        module_name, path, lineno=import_lineno
+                    )
+
+                # Handle "from . import submod" case: each imported name might be a submodule
+                # When partial is None, check if imported names are submodules
+                all_converted_to_modules = False
+                submod_imports: list[TpyImport] = []  # Collect submodule imports for ordering
+                if partial is None and imported_name in ast.imports:
+                    import_items = ast.imports[imported_name]
+                    if isinstance(import_items, set):
+                        for orig_name, local_name in list(import_items):
+                            submod_name = f"{resolved_name}.{orig_name}" if resolved_name else orig_name
+                            submod_resolved = self.resolver.resolve(submod_name)
+                            if submod_resolved:
+                                # It's a submodule - treat as aliased module import
+                                import_items.discard((orig_name, local_name))
+                                # Mark as module import (None = whole module)
+                                ast.imports[submod_name] = None
+                                ast.user_module_imports[submod_name] = import_lineno
+                                # Track the alias: import mypackage.utils as utils
+                                ast.module_aliases[submod_name] = local_name
+                                # Collect TpyImport for later insertion at correct position
+                                submod_imports.append(TpyImport(
+                                    module_name=submod_name,
+                                    loc=SourceLocation(import_lineno, 0)
+                                ))
+                                # Add to queue for discovery
+                                import_queue.append((submod_name, import_lineno))
+                            elif not resolved_name:
+                                # Can't import non-module symbol from root level
+                                raise CompileError(
+                                    f"Cannot import '{orig_name}' from root level",
+                                    module_name, path, lineno=import_lineno
+                                )
+                        # Check if all items were converted to module imports
+                        all_converted_to_modules = len(import_items) == 0
+
+                # Skip updating if all items were converted to module imports (no target module)
+                if all_converted_to_modules:
+                    # Find and replace the placeholder TpyImport with submodule imports
+                    # This preserves import ordering for correct __tpy_init() sequencing
+                    for i, stmt in enumerate(ast.top_level_stmts):
+                        if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
+                            ast.top_level_stmts[i:i+1] = submod_imports
+                            break
+                    ast.imports.pop(imported_name, None)
+                    ast.user_module_imports.pop(imported_name, None)
+                    continue
+                elif submod_imports:
+                    # Some items are submodules, some are symbols - insert submodule imports
+                    # after the placeholder (which will be updated to the resolved module)
+                    for i, stmt in enumerate(ast.top_level_stmts):
+                        if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
+                            ast.top_level_stmts[i+1:i+1] = submod_imports
+                            break
+
+                # Update TpyImport node with resolved name
+                for stmt in ast.top_level_stmts:
+                    if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
+                        stmt.module_name = resolved_name
+                        break
+
+                # Update imports dict key
+                if imported_name in ast.imports:
+                    ast.imports[resolved_name] = ast.imports.pop(imported_name)
+                ast.user_module_imports[resolved_name] = ast.user_module_imports.pop(imported_name)
+
+                imported_name = resolved_name
+
             resolved = self.resolver.resolve(imported_name)
             if resolved is None:
                 # No user file found - check if it's a builtin module
@@ -184,7 +285,8 @@ class Compiler:
             # Discover parent package __init__ files first (if any)
             self._discover_package_inits(imported_name, new_chain, import_lineno)
             # Use canonical name from resolution (handles __init__ correctly)
-            self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno)
+            self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno,
+                                   is_package_init=resolved.is_package_init)
 
     def _discover_package_inits(self, dotted_name: str, import_chain: list[str],
                                  import_lineno: int | None) -> None:
@@ -204,7 +306,8 @@ class Compiler:
             if package not in self.modules:
                 resolved = self.resolver.resolve(package)
                 if resolved and resolved.is_package_init:
-                    self._discover_modules(package, resolved.path, import_chain, import_lineno)
+                    self._discover_modules(package, resolved.path, import_chain, import_lineno,
+                                           is_package_init=True)
 
     def _compute_compile_order(self) -> None:
         """Compute topological sort of modules (dependencies first).
@@ -308,11 +411,35 @@ class Compiler:
             if func_info:
                 exports.functions[func.name] = func_info
 
+        # For __init__.py, also re-export imported functions from user modules
+        if compiled.is_package_init:
+            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_functions.items():
+                if local_name not in exports.functions:
+                    # Get the function info from the source module
+                    module_info = analyzer.registry.get_module(source_module)
+                    if module_info and original_name in module_info.functions:
+                        func_infos = module_info.functions[original_name]
+                        if func_infos:
+                            exports.functions[local_name] = func_infos[0]
+                            # Track re-export source for codegen
+                            exports.reexported_functions[local_name] = (source_module, original_name)
+
         # Export all user-defined records
         for record in compiled.ast.records:
             record_info = analyzer.registry.get_record(record.name)
             if record_info:
                 exports.records[record.name] = record_info
+
+        # For __init__.py, also re-export imported records from user modules
+        if compiled.is_package_init:
+            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_records.items():
+                if local_name not in exports.records:
+                    # Get the record info from the source module
+                    module_info = analyzer.registry.get_module(source_module)
+                    if module_info and original_name in module_info.records:
+                        exports.records[local_name] = module_info.records[original_name]
+                        # Track re-export source for codegen
+                        exports.reexported_records[local_name] = (source_module, original_name)
 
         # Export all user-defined protocols
         for protocol in compiled.ast.protocols:
@@ -320,17 +447,33 @@ class Compiler:
             if protocol_info:
                 exports.protocols[protocol.name] = protocol_info
 
+        # For __init__.py, also re-export imported protocols from user modules
+        if compiled.is_package_init:
+            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_protocols.items():
+                if local_name not in exports.protocols:
+                    # Get the protocol info from the source module
+                    module_info = analyzer.registry.get_module(source_module)
+                    if module_info and original_name in module_info.protocols:
+                        exports.protocols[local_name] = module_info.protocols[original_name]
+
         # Export global variables (from top-level statements)
         # These are tracked in the global scope, but we must exclude imported variables
         # UNLESS they were redefined at the top level (in top_level_decls)
+        # Exception: __init__.py files can re-export imports (Python package semantics)
         imported_var_names = set(analyzer.ctx.user_imported_variables.keys())
         top_level_decls = analyzer.ctx.top_level_decls
         for name, var_type in analyzer.global_scope.all().items():
             if name == "__name__":  # Don't export synthetic __name__
                 continue
             # Don't re-export imported variables unless redefined at top level
-            if name in imported_var_names and name not in top_level_decls:
-                continue
+            # Exception: __init__.py files can re-export for package-level access
+            is_reexport = name in imported_var_names and name not in top_level_decls
+            if is_reexport:
+                if not compiled.is_package_init:
+                    continue
+                # Track re-export source for codegen
+                source_module, original_name = analyzer.ctx.user_imported_variables[name]
+                exports.reexported_variables[name] = (source_module, original_name)
             exports.variables[name] = var_type
 
     def _exports_to_module_info(self, name: str, exports: ModuleExports) -> 'ModuleInfo':
@@ -352,10 +495,16 @@ class Compiler:
         cpp_ns = name.replace('.', '::')
 
         # Create ModuleVarInfo with generated cpp_expr
-        variables = {
-            k: ModuleVarInfo(k, v, f"tpy_user::{cpp_ns}::{k}")
-            for k, v in exports.variables.items()
-        }
+        # For re-exported variables, use the source module's namespace
+        variables = {}
+        for k, v in exports.variables.items():
+            if k in exports.reexported_variables:
+                source_module, original_name = exports.reexported_variables[k]
+                source_cpp_ns = source_module.replace('.', '::')
+                cpp_expr = f"tpy_user::{source_cpp_ns}::{original_name}"
+            else:
+                cpp_expr = f"tpy_user::{cpp_ns}::{k}"
+            variables[k] = ModuleVarInfo(k, v, cpp_expr)
 
         return ModuleInfo(
             name=name,
@@ -419,7 +568,10 @@ class Compiler:
         hpp_code, cpp_code = codegen.generate(
             compiled.ast, mod_name,
             is_entry_point=compiled.is_entry_point,
-            actual_user_modules=actual_user_modules
+            actual_user_modules=actual_user_modules,
+            reexported_functions=compiled.exports.reexported_functions,
+            reexported_records=compiled.exports.reexported_records,
+            reexported_variables=compiled.exports.reexported_variables
         )
 
         hpp_path.write_text(hpp_code)

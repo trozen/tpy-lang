@@ -75,9 +75,19 @@ class Namespace:
         """Convenience method to bind a user-defined record."""
         self.bind(NameBinding(kind=BindingKind.RECORD, name=info.name, record_info=info))
 
-    def bind_module(self, module_name: str) -> None:
-        """Convenience method to bind an imported module (import X)."""
-        self.bind(NameBinding(kind=BindingKind.MODULE, name=module_name))
+    def bind_module(self, module_name: str, alias: str | None = None) -> None:
+        """Convenience method to bind an imported module.
+
+        Args:
+            module_name: The canonical module name (e.g., "mypackage.utils").
+            alias: Optional local name (e.g., "utils"). If None, uses module_name.
+        """
+        local_name = alias or module_name
+        self.bind(NameBinding(
+            kind=BindingKind.MODULE,
+            name=local_name,
+            import_source=(module_name, local_name) if alias else None
+        ))
 
     def bind_imported_name(self, name: str, module: str, original_name: str) -> None:
         """Convenience method to bind an imported name (from X import Y)."""

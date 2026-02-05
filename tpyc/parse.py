@@ -269,8 +269,15 @@ class TpyImport(TpyStmt):
 
     Only user module imports (not builtins like tpy, typing) become TpyImport nodes.
     These are emitted as __tpy_init() calls in codegen.
+
+    For relative imports:
+    - level: Number of dots (0=absolute, 1=".", 2="..", etc.)
+    - relative_name: Original module name after dots (None for "from . import X")
+    - module_name: Initially a placeholder "__rel__{level}__{name}", resolved during discovery
     """
     module_name: str
+    level: int = 0
+    relative_name: str | None = None
 
 
 @dataclass
@@ -353,6 +360,8 @@ class TpyModule:
     imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
     # User module imports (modules not in SPECIAL_MODULES, resolved as files): {module_name: line_number}
     user_module_imports: dict[str, int] = field(default_factory=dict)
+    # Module aliases from "from . import submod" -> {canonical_name: local_name}
+    module_aliases: dict[str, str] = field(default_factory=dict)
 
 
 class Parser:
@@ -452,8 +461,38 @@ class Parser:
     def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt]) -> None:
         """Check and track 'from X import Y' statement."""
         module_name = node.module
+        level = node.level
+
+        # Handle relative imports (level > 0)
+        if level > 0:
+            # Create placeholder name that will be resolved during discovery
+            # Format: __rel__{level}__{lineno}_{col}__{partial_name}
+            # Include line:col to keep each import statement unique (handles same-line imports)
+            partial = module_name or ""
+            placeholder = f"__rel__{level}__{node.lineno}_{node.col_offset}__{partial}"
+
+            # Track as user module import
+            user_module_imports[placeholder] = node.lineno
+
+            imports[placeholder] = set()
+            for alias in node.names:
+                if alias.name == "*":
+                    raise ParseError("'from ... import *' not supported for relative imports", node)
+                local_name = alias.asname or alias.name
+                imports[placeholder].add((alias.name, local_name))
+
+            # Each relative import statement gets its own TpyImport
+            top_level_stmts.append(TpyImport(
+                module_name=placeholder,
+                level=level,
+                relative_name=module_name,
+                loc=SourceLocation(node.lineno, node.col_offset)
+            ))
+            return
+
         if module_name is None:
-            raise ParseError("Relative imports not supported", node)
+            raise ParseError("Invalid import: no module name", node)
+
         # Check if it's a user module (not builtin)
         if module_name not in self.SPECIAL_MODULES:
             # User module import: from utils import add, Point - track line number

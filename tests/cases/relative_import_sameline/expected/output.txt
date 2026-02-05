@@ -1,0 +1,4 @@
+init: amod
+init: bmod
+consumer done
+done

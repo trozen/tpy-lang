@@ -1,0 +1,4 @@
+TurboPython allows relative imports from nested packages to root-level modules
+when the entry point provides a complete view of the module hierarchy.
+CPython rejects this as "attempted relative import beyond top-level package"
+when running scripts directly.

@@ -104,6 +104,45 @@ class ModuleResolver:
                 return init
         return None
 
+    def resolve_relative(self, current_module: str, level: int,
+                         partial_name: str | None,
+                         is_package_init: bool = False) -> str | None:
+        """Resolve relative import to absolute module path.
+
+        Args:
+            current_module: Importing module's canonical name (e.g., "pkg.submod").
+            level: Number of dots (1=".", 2="..", etc.).
+            partial_name: Module path after dots (None for "from . import X").
+            is_package_init: True if current_module is a package __init__.
+
+        Returns:
+            Absolute module path, or None if would go above root.
+
+        Examples:
+            ("pkg.mod", 1, "sibling", False) -> "pkg.sibling"
+            ("pkg.mod", 2, "other", False)   -> "other"
+            ("pkg", 1, "utils", True)        -> "pkg.utils"  # __init__.py
+            ("pkg", 1, None, True)           -> "pkg"        # from . import X
+        """
+        parts = current_module.split('.')
+
+        # For __init__.py, package = module; for regular, package = parent
+        package_parts = parts if is_package_init else parts[:-1]
+
+        # level=1 is current package, level=2 is parent, etc.
+        levels_up = level - 1
+
+        if levels_up > len(package_parts):
+            return None  # Beyond root
+
+        base = package_parts[:len(package_parts) - levels_up]
+
+        if partial_name:
+            return '.'.join(base + partial_name.split('.'))
+        # Return "" for top-level (base is empty) - this is valid for "from .. import X"
+        # where X will be looked up as a top-level module
+        return '.'.join(base)
+
     @staticmethod
     def get_module_name(path: Path) -> str:
         """Extract module name from path.

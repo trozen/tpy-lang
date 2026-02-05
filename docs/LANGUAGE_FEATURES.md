@@ -1832,8 +1832,9 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Working**: User-defined modules (multi-file projects)
 - **Working**: Package support (dotted imports, `__init__.tp.py`, namespace packages)
+- **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
+- **Working**: Re-exports in `__init__.py` (functions, records, protocols, variables)
 - **Planned**: Module-level aliases: `import time as _time`
-- **Planned**: Relative imports (`from . import sibling`, `from .. import parent`)
 - **Open**: Importing additional Python stdlib subsets that can be statically compiled
 
 ### User-Defined Modules (Working)
@@ -1937,9 +1938,69 @@ from mypackage.inner.core import helper
 - `mypackage/utils.tp.py` → `namespace tpy_user::mypackage::utils`
 - Output structure: `__tpyc__/mypackage/utils.d/utils.{hpp,cpp}`
 
-**Not yet supported:**
-- Relative imports (`from . import sibling`)
-- Re-exports in `__init__` (e.g., `from .submod import X` at package level)
+### Relative Imports (Working)
+
+TurboPython supports Python-style relative imports within packages:
+
+```python
+# mypackage/consumer.py - import from sibling module
+from .utils import add           # → mypackage.utils.add
+from . import utils              # → import mypackage.utils as utils
+
+# mypackage/inner/deep.py - import from parent package
+from ..utils import helper       # → mypackage.utils.helper
+from .. import config            # → import mypackage.config as config
+```
+
+**Supported patterns:**
+- `from . import module` - import sibling module
+- `from .module import item` - import item from sibling module
+- `from .. import module` - import from parent package
+- `from ..module import item` - import item from parent package module
+- Multiple levels: `from ...pkg import X` (three dots = grandparent)
+
+**Error handling:**
+```python
+# pkg/mod.py
+from ...outside import X  # ERROR: Relative import beyond top-level package
+```
+
+### Re-exports in `__init__.py` (Working)
+
+Package `__init__.py` files can re-export items from submodules, making them available at the package level:
+
+```python
+# mypackage/__init__.py
+from tpy import Int32
+from .utils import add, Point    # Re-export from submodule
+
+VERSION: Int32 = Int32(42)       # Package-level variable
+```
+
+```python
+# main.tp.py - import from package level
+from mypackage import add, Point, VERSION
+
+result = add(1, 2)     # Uses mypackage.utils.add via re-export
+p = Point(10, 20)      # Uses mypackage.utils.Point via re-export
+print(VERSION)         # Package variable
+```
+
+**What can be re-exported:**
+- Functions
+- Records (classes)
+- Protocols
+- Variables
+
+**C++ implementation:** Re-exported functions and records use `using` declarations:
+```cpp
+// mypackage.hpp (generated)
+namespace tpy_user::mypackage {
+  using tpy_user::mypackage::utils::add;    // Re-exported function
+  using tpy_user::mypackage::utils::Point;  // Re-exported record
+  extern tpy::Global<int32_t> VERSION;      // Package variable
+}
+```
 
 ### Standard Library Modules
 

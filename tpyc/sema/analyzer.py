@@ -166,7 +166,9 @@ class SemanticAnalyzer:
                         self._register_user_module_import(import_module_name, original_name, local_name)
             else:
                 # "import X" - register module name
-                self.ctx.global_ns.bind_module(import_module_name)
+                # Check if there's an alias from "from . import submod"
+                alias = module.module_aliases.get(import_module_name)
+                self.ctx.global_ns.bind_module(import_module_name, alias)
 
         # First pass: register all records
         for record in module.records:
