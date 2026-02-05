@@ -133,6 +133,16 @@ class MethodAnalyzer:
                 if binding and binding.kind == BindingKind.MODULE:
                     # It's a module call: module.function()
                     module_name = expr.obj.name
+
+                    # Check for user module first
+                    if module_name in self.ctx.available_modules:
+                        exports = self.ctx.available_modules[module_name]
+                        if expr.method in exports.functions:
+                            func_info = exports.functions[expr.method]
+                            return self._analyze_user_module_function_call(expr, func_info, module_name)
+                        raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+
+                    # Builtin module
                     module_info = self.ctx.registry.get_module(module_name)
                     if module_info and expr.method in module_info.functions:
                         overloads = module_info.functions[expr.method]
@@ -150,6 +160,14 @@ class MethodAnalyzer:
                     self.ctx.registry.get_record(module_name) is None):
                     # Module was imported with 'import X' (not 'from X import ...')
                     if self.ctx.imports[module_name] is None:
+                        # Check for user module first
+                        if module_name in self.ctx.available_modules:
+                            exports = self.ctx.available_modules[module_name]
+                            if expr.method in exports.functions:
+                                func_info = exports.functions[expr.method]
+                                return self._analyze_user_module_function_call(expr, func_info, module_name)
+                            raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+
                         module_info = self.ctx.registry.get_module(module_name)
                         if module_info and expr.method in module_info.functions:
                             overloads = module_info.functions[expr.method]
@@ -537,6 +555,37 @@ class MethodAnalyzer:
         if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
             return True
         return False
+
+    def _analyze_user_module_function_call(
+        self, expr: TpyMethodCall, func_info: FunctionInfo, module_name: str
+    ) -> TpyType:
+        """Analyze a call to a user module function (module.func() pattern).
+
+        Args:
+            expr: The method call expression (module.func(args))
+            func_info: The FunctionInfo for the function
+            module_name: Name of the user module
+
+        Returns:
+            The return type of the function
+        """
+        # Check argument count
+        if len(expr.args) != len(func_info.params):
+            raise SemanticError(
+                f"Function '{func_info.name}' expects {len(func_info.params)} arguments, "
+                f"got {len(expr.args)}"
+            )
+
+        # Type-check and coerce arguments
+        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, func_info.params)):
+            arg_type = self.expr.analyze_expr(arg)
+            expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                    coercion_ctx=CoercionContext.ARG)
+
+        # Mark as user module call for codegen
+        expr.user_module_call = module_name
+
+        return func_info.return_type
 
     @staticmethod
     def stmt_contains_super_init(stmt: TpyStmt, super_init: TpyMethodCall) -> bool:

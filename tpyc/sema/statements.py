@@ -280,6 +280,14 @@ class StatementAnalyzer:
         self.ctx.current_scope.define(stmt.name, var_type)
         if self.ctx.current_ns:
             self.ctx.current_ns.bind_variable(stmt.name, var_type)
+        # Track top-level declarations with line number for order-aware codegen
+        # Use earliest declaration line (min) so uses between redeclarations work
+        if self.ctx.is_top_level:
+            decl_line = stmt.loc.line if stmt.loc else 0
+            if stmt.name not in self.ctx.top_level_decls:
+                self.ctx.top_level_decls[stmt.name] = decl_line
+            else:
+                self.ctx.top_level_decls[stmt.name] = min(self.ctx.top_level_decls[stmt.name], decl_line)
         # Track var_decl for later type updates
         if isinstance(var_type, IntLiteralType):
             self.ctx.var_decl_by_name[stmt.name] = stmt

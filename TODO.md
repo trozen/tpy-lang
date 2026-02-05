@@ -3,7 +3,6 @@
 ## Next
 - make a doc with TPy vs Python differences
 - require importing tpy items, not autoimport (preferred `from tpy import *`)
-- import user defined modules (properly set `__name__` in module) (hardcoded now: `ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing"}`)
 - require imports at the top of file, don't allow inline imports
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
@@ -20,6 +19,23 @@
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
 - Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
+
+## Module System Refactoring
+Future improvements to the module system architecture:
+
+1. **Unify builtin and user module handling**: Currently builtin modules use `ctx.registry.get_module()` → `ModuleInfo` while user modules use `ctx.available_modules` → `ModuleExports`. Should register user modules in the registry with the same interface, perhaps with a `source` field distinguishing builtin vs user.
+
+2. **RecordType vs ProtocolType resolution**: During parsing, we don't know if a name refers to a record or protocol (especially for imports), so we create `RecordType` and later convert to `ProtocolType` via `resolve_type()`. Consider either:
+   - Unified `NamedType` with `is_protocol` flag resolved after registration
+   - `UnresolvedType` during parsing, resolved to `RecordType` or `ProtocolType` after all types are registered
+
+3. **Import initialization order**: Module `__tpy_init()` calls are made in dependency order (topological sort), which is semantically correct but may differ from Python's source order for independent imports. This only matters for side effects in unrelated modules.
+
+4. **Package support**: Add support for package directories with `__init__.tp.py` (or `__init__.py`):
+   - Package directories recognized by presence of `__init__.tp.py`
+   - Submodule imports: `from package.submodule import something`
+   - Package-level exports via `__init__.tp.py`
+   - Relative imports: `from . import sibling`, `from .. import parent`
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
@@ -69,6 +85,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
+- import module alias `import X as Y`
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
@@ -85,6 +102,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
 - Import aliases don't work for type annotations: `from tpy import Int32 as I` allows `I(42)` but not `x: I`. Type parsing needs to consult imported aliases to support this.
 - Own[T] local variable optimization: allow `return local_var` without copy() since C++ uses NRVO (Named Return Value Optimization). Currently requires explicit copy() for all lvalues.
+- Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope.
 
 ## ShedSkin examples
 - score4

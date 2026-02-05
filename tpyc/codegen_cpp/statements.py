@@ -50,6 +50,11 @@ class StatementGenerator:
         """Generate a statement."""
         indent = self.ctx.indent()
 
+        # Track current line for order-aware import qualification in top-level context
+        # (current_stmt_line > 0 means we're in top-level, set by gen_module_init)
+        if self.ctx.current_stmt_line > 0 and hasattr(stmt, 'loc') and stmt.loc:
+            self.ctx.current_stmt_line = stmt.loc.line
+
         self.ctx.emit_source_comment(out, stmt.loc, indent)
 
         # Compound statements - delegate to handlers (they flush before their header)
@@ -140,12 +145,12 @@ class StatementGenerator:
             if self.ctx.contains_protocol_type(stmt.type):
                 cpp_type = "auto"
             else:
-                cpp_type = stmt.type.to_cpp()
+                cpp_type = self.types.type_to_cpp(stmt.type)
         elif stmt.init:
             # Check if analyzer resolved the type based on usage
             resolved_type = self.ctx.analyzer.var_types.get(id(stmt))
             if resolved_type:
-                cpp_type = resolved_type.to_cpp()
+                cpp_type = self.types.type_to_cpp(resolved_type)
             else:
                 # Use inferred type from expression
                 inferred_type = self.ctx.analyzer.get_expr_type(stmt.init)
@@ -168,7 +173,7 @@ class StatementGenerator:
                 if self.ctx.contains_protocol_type(inferred_type):
                     cpp_type = "auto"
                 else:
-                    cpp_type = inferred_type.to_cpp()
+                    cpp_type = self.types.type_to_cpp(inferred_type)
         else:
             raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
 

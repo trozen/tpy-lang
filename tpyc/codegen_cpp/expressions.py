@@ -107,6 +107,21 @@ class ExpressionGenerator:
             return f'"{escaped}"'
 
         elif isinstance(expr, TpyName):
+            # Check if this is an imported variable from a user module
+            if expr.name in self.ctx.user_imported_variables:
+                # Don't qualify if shadowed by a local variable
+                if expr.name in self.ctx.local_scope_names:
+                    return expr.name
+                # Check if redefined at top level
+                if expr.name in self.ctx.top_level_decls:
+                    decl_line = self.ctx.top_level_decls[expr.name]
+                    # In a function (current_stmt_line == 0): always use local
+                    # At top level: use local only if current line >= declaration line
+                    if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
+                        return expr.name
+                # Use qualified import reference
+                source_module, original_name = self.ctx.user_imported_variables[expr.name]
+                return f"tpy_user::{source_module}::{original_name}"
             return expr.name
 
         elif isinstance(expr, TpyBinOp):
@@ -344,12 +359,18 @@ class ExpressionGenerator:
                     gen_arg = self.gen_expr_deref(arg, resolved_ptype)
                     gen_args.append(gen_arg)
 
+            # Determine function name - use fully qualified for user module imports
+            func_cpp_name = expr.func
+            if expr.func in self.ctx.user_imported_functions:
+                source_module, original_name = self.ctx.user_imported_functions[expr.func]
+                func_cpp_name = f"tpy_user::{source_module}::{original_name}"
+
             # For generic functions, always emit explicit type args to avoid C++ deduction issues
             # with tpy::param_val_or_ref_t<T> parameters
             if func_info.is_generic() and expr.inferred_type_args:
                 type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
-                return f"{expr.func}<{type_args_str}>({', '.join(gen_args)})"
-            return f"{expr.func}({', '.join(gen_args)})"
+                return f"{func_cpp_name}<{type_args_str}>({', '.join(gen_args)})"
+            return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
         if expr.call_type is not None:
             # List repeat already generates the target type via from_range
@@ -378,13 +399,28 @@ class ExpressionGenerator:
                                     return self.builtins.apply_cpp_template(ctor.cpp, gen_args, type_params, expr.call_type)
             # Pass call_type as target for proper nested array brace generation
             args = ", ".join(self.gen_expr(a, expr.call_type) for a in expr.args)
-            return f"{expr.call_type.to_cpp()}({args})"
+            # Use qualified type name for imported records
+            type_cpp = self.types.type_to_cpp(expr.call_type)
+            return f"{type_cpp}({args})"
+        # Check for user-defined record constructor (e.g., Point(1, 2))
+        if record_info := self.ctx.analyzer.registry.get_record(expr.func):
+            args = ", ".join(self.gen_expr(a) for a in expr.args)
+            # Qualify imported records (use original name for aliases)
+            if expr.func in self.ctx.user_imported_records:
+                source_module, original_name = self.ctx.user_imported_records[expr.func]
+                return f"tpy_user::{source_module}::{original_name}({args})"
+            return f"{expr.func}({args})"
         args = ", ".join(self.gen_expr(a) for a in expr.args)
         return f"{expr.func}({args})"
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
         args = ", ".join(self.gen_expr(a) for a in expr.args)
+
+        # Handle user module function calls: module.func() -> tpy_user::module::func()
+        if expr.user_module_call is not None:
+            module_name = expr.user_module_call
+            return f"tpy_user::{module_name}::{expr.method}({args})"
 
         # Check for inherited builtin method with cpp_template first
         # This must be checked before the self.method() shortcut because

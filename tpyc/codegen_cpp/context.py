@@ -67,6 +67,20 @@ class CodeGenContext:
     # Synthetic __name__ tracking
     _has_synthetic_name: bool = False
 
+    # User module imports for cross-module reference generation
+    user_module_imports: set[str] = field(default_factory=set)
+    # Track imported items from user modules for qualified name generation
+    # Maps local_name -> (source_module, original_name) to support import aliases
+    user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
+    # Track top-level declarations: name -> line number where declared
+    # For order-aware codegen (imports used before redefinition should stay qualified)
+    top_level_decls: dict[str, int] = field(default_factory=dict)
+    # Current statement line during top-level codegen (0 = in function, use local if declared)
+    current_stmt_line: int = 0
+
     def indent(self) -> str:
         """Get current indentation string."""
         return "  " * self.indent_level

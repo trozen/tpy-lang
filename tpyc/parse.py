@@ -128,6 +128,7 @@ class TpyMethodCall(TpyExpr):
     args: list[TpyExpr]
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
+    user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
     # Note: sema sets resolved_function_info (FunctionInfo) for codegen
 
 
@@ -338,7 +339,10 @@ class TpyModule:
     source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
     # Import tracking: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
     #                  module_name -> None (for "import X")
-    imports: dict[str, set[tuple[str, str]] | None] = field(default_factory=dict)
+    #                  module_name -> "*" (for "from X import *")
+    imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
+    # User module imports (modules not in BUILTIN_MODULES): {module_name: line_number}
+    user_module_imports: dict[str, int] = field(default_factory=dict)
 
 
 class Parser:
@@ -350,7 +354,8 @@ class Parser:
         "lambda", "yield", "global", "nonlocal",
     }
 
-    ALLOWED_IMPORTS = {"tpy", "time", "sys", "math", "typing", "__future__"}
+    # Built-in modules that are handled specially (not user modules)
+    BUILTIN_MODULES = {"tpy", "time", "sys", "math", "typing", "__future__"}
 
     def __init__(self):
         self.registry = TypeRegistry()
@@ -376,13 +381,14 @@ class Parser:
         functions = []
         protocols = []
         top_level_stmts = []
-        imports: dict[str, set[tuple[str, str]] | None] = {}
+        imports: dict[str, set[tuple[str, str]] | None | str] = {}
+        user_module_imports: dict[str, int] = {}
 
         for node in tree.body:
             if isinstance(node, ast.ImportFrom):
-                self._check_import_from(node, imports)
+                self._check_import_from(node, imports, user_module_imports)
             elif isinstance(node, ast.Import):
-                self._check_import(node, imports)
+                self._check_import(node, imports, user_module_imports)
             elif isinstance(node, ast.ClassDef):
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):
@@ -408,48 +414,70 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports)
+        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports)
 
-    def _check_import(self, node: ast.Import, imports: dict[str, set[tuple[str, str]] | None]) -> None:
+    def _check_import(self, node: ast.Import, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int]) -> None:
         """Check and track 'import X' statement."""
         for alias in node.names:
             module_name = alias.name
             if alias.asname is not None:
                 raise ParseError(f"Import aliases not supported: 'import {module_name} as {alias.asname}'", node)
-            if module_name not in self.ALLOWED_IMPORTS:
-                raise ParseError(f"Import of '{module_name}' not allowed.", node)
+            # Check if it's a user module (not builtin)
+            if module_name not in self.BUILTIN_MODULES:
+                # User module import - track line number
+                user_module_imports[module_name] = node.lineno
+                imports[module_name] = None
+                continue
             # Skip tpy - it's handled differently (type imports)
             if module_name == "tpy":
                 continue
             # 'import X' -> module_name: None (whole module imported)
             imports[module_name] = None
 
-    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None]) -> None:
+    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int]) -> None:
         """Check and track 'from X import Y' statement."""
-        if node.module not in self.ALLOWED_IMPORTS:
-            raise ParseError(f"Import from '{node.module}' not allowed.", node)
+        module_name = node.module
+        if module_name is None:
+            raise ParseError("Relative imports not supported", node)
+        # Check if it's a user module (not builtin)
+        if module_name not in self.BUILTIN_MODULES:
+            # User module import: from utils import add, Point - track line number
+            user_module_imports[module_name] = node.lineno
+            if module_name not in imports:
+                imports[module_name] = set()
+            current = imports[module_name]
+            if current is not None and current != "*":
+                for alias in node.names:
+                    if alias.name == "*":
+                        raise ParseError(f"'from {module_name} import *' not supported for user modules", node)
+                    local_name = alias.asname if alias.asname else alias.name
+                    current.add((alias.name, local_name))
+            return
         # Skip __future__ imports - they affect CPython parsing but are no-op for TurboPython
-        if node.module == "__future__":
+        if module_name == "__future__":
             return
         # Track tpy imports like other modules - sema will determine if they're
         # types (Int32) or functions (copy) and handle accordingly
         # Store as (original_name, local_name) tuples to support aliases
-        if node.module == "tpy":
+        if module_name == "tpy":
+            # Handle "from tpy import *" specially
+            if any(alias.name == "*" for alias in node.names):
+                imports["tpy"] = "*"
+                return
             if "tpy" not in imports:
                 imports["tpy"] = set()
             current = imports["tpy"]
-            if current is not None:
+            if current is not None and current != "*":
                 for alias in node.names:
                     local_name = alias.asname if alias.asname else alias.name
                     current.add((alias.name, local_name))
             return
         # 'from X import Y, Z' -> module_name: {(original, local), ...}
         # Store as (original_name, local_name) tuples to support aliases
-        module_name = node.module
         if module_name not in imports:
             imports[module_name] = set()
         current = imports[module_name]
-        if current is not None:  # Not overridden by 'import X'
+        if current is not None and current != "*":  # Not overridden by 'import X' or '*'
             for alias in node.names:
                 local_name = alias.asname if alias.asname else alias.name
                 current.add((alias.name, local_name))

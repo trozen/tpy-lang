@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
-    PendingListType, ListType, ArrayType, TypeParamRef,
+    PendingListType, ListType, ArrayType, TypeParamRef, RecordType,
     INT32, BIGINT, FLOAT
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
@@ -167,3 +167,23 @@ class TypeResolver:
         if isinstance(expr_type, IntLiteralType):
             return self.involves_variables(expr)
         return False
+
+    def type_to_cpp(self, typ: TpyType) -> str:
+        """Convert a type to its C++ representation, qualifying imported types.
+
+        For imported record types from user modules, generates fully qualified names
+        like tpy_user::utils::Point.
+        """
+        if isinstance(typ, RecordType):
+            # Check if this record is imported from a user module
+            if typ.name in self.ctx.user_imported_records:
+                source_module, original_name = self.ctx.user_imported_records[typ.name]
+                if typ.type_args:
+                    args = ", ".join(
+                        self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
+                        for t in typ.type_args
+                    )
+                    return f"tpy_user::{source_module}::{original_name}<{args}>"
+                return f"tpy_user::{source_module}::{original_name}"
+        # Default: use the type's built-in to_cpp() method
+        return typ.to_cpp()

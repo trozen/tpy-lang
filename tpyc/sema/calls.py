@@ -91,6 +91,12 @@ class CallAnalyzer:
                     # Special handling for copy() from tpy - truly generic function
                     if module_name == "tpy" and func_name == "copy":
                         return self._analyze_tpy_copy(expr)
+                    # Check for user module function (registered via _register_user_module_import)
+                    if func_info := self.ctx.registry.get_function(expr.func):
+                        return self._analyze_user_function_call(expr, func_info)
+                    # Check for user module record (registered via _register_user_module_import)
+                    if record_info := self.ctx.registry.get_record(expr.func):
+                        return self._analyze_record_constructor(expr, record_info)
                     # Check for module function (e.g., math.sqrt)
                     from .registration import TypeRegistrar
                     if overloads := self._get_module_function_overloads(module_name, func_name):
@@ -513,7 +519,8 @@ class CallAnalyzer:
                                     expr
                                 )
                     type_args = tuple(inferred[p] for p in record.type_params)
-                    inferred_type = RecordType(record.name, type_args)
+                    # Use expr.func (local name) not record.name (original) for alias support
+                    inferred_type = RecordType(expr.func, type_args)
                     expr.call_type = inferred_type
                     # Coerce arguments with substitution
                     type_subst = inferred
@@ -545,7 +552,8 @@ class CallAnalyzer:
         else:
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
-        return RecordType(record.name)
+        # Use expr.func (local name) not record.name (original) for alias support
+        return RecordType(expr.func)
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""

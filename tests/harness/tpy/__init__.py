@@ -445,3 +445,40 @@ class NativeIterable(_Protocol[T]):
 class Comparable(_Protocol):
     """Protocol for types supporting comparison with <."""
     def __lt__(self, other: "Comparable") -> bool: ...
+
+
+# Import hook to find .tp.py files (with .py fallback)
+import sys
+import os
+from importlib.machinery import ModuleSpec
+from importlib.util import spec_from_file_location
+
+
+class TpyModuleFinder:
+    """Import hook to find .tp.py files (with .py fallback).
+
+    This allows TurboPython modules to be imported in CPython for testing.
+    The hook is registered at the start of sys.meta_path to intercept imports.
+    """
+
+    def find_spec(self, name, path, target=None):
+        # Don't intercept standard library or installed packages
+        if name in sys.modules:
+            return None
+
+        # Search in path (or sys.path if path is None)
+        search_paths = path if path else sys.path
+        for dir_path in search_paths:
+            if not isinstance(dir_path, str):
+                continue
+            # Prefer .tp.py, fallback to .py
+            for ext in [".tp.py", ".py"]:
+                file_path = os.path.join(dir_path, f"{name}{ext}")
+                if os.path.isfile(file_path):
+                    return spec_from_file_location(name, file_path,
+                        submodule_search_locations=[])
+        return None
+
+
+# Register the import hook
+sys.meta_path.insert(0, TpyModuleFinder())

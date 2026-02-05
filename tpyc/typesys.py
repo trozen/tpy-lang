@@ -1008,15 +1008,29 @@ class TypeRegistry:
         # Fundamental types not in module system (pointer wrappers)
         self._fundamental_types = {"Ptr", "ConstPtr", "Own"}
 
-    def register_record(self, info: RecordInfo) -> None:
-        self.records[info.name] = info
+    def register_record(self, info: RecordInfo, name: str | None = None) -> None:
+        """Register a record type.
+
+        Args:
+            info: The record info to register.
+            name: Optional name to register under (defaults to info.name).
+                  Used for imported records that may have a local alias.
+        """
+        self.records[name or info.name] = info
 
     def register_builtin_record(self, qname: str, info: RecordInfo) -> None:
         """Register a builtin type's RecordInfo by its qualified name."""
         self.builtin_records[qname] = info
 
-    def register_function(self, info: FunctionInfo) -> None:
-        self.functions[info.name] = info
+    def register_function(self, info: FunctionInfo, name: str | None = None) -> None:
+        """Register a function.
+
+        Args:
+            info: The function info to register.
+            name: Optional name to register under (defaults to info.name).
+                  Used for imported functions that may have a local alias.
+        """
+        self.functions[name or info.name] = info
 
     def register_builtin_function_overloads(self, name: str, overloads: list[FunctionInfo]) -> None:
         """Register builtin function overloads by name."""
@@ -1026,8 +1040,15 @@ class TypeRegistry:
         """Get builtin function overloads by name."""
         return self.builtin_function_overloads.get(name, [])
 
-    def register_protocol(self, info: ProtocolInfo) -> None:
-        self.protocols[info.name] = info
+    def register_protocol(self, info: ProtocolInfo, name: str | None = None) -> None:
+        """Register a protocol type.
+
+        Args:
+            info: The protocol info to register.
+            name: Optional name to register under (defaults to info.name).
+                  Used for imported protocols that may have a local alias.
+        """
+        self.protocols[name or info.name] = info
 
     def register_module(self, info: ModuleInfo) -> None:
         """Register a module by name."""

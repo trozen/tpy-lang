@@ -45,7 +45,9 @@ class FunctionGenerator:
         """Generate function parameter list, using template types for protocol params."""
         result = []
         for pname, ptype in params:
-            if isinstance(ptype, ProtocolType):
+            # Resolve type in case it's a RecordType that's actually a protocol
+            resolved = self.protocols.resolve_type_for_codegen(ptype)
+            if isinstance(resolved, ProtocolType):
                 # Protocol param: T_name& name (mutable ref, no const methods required)
                 result.append(f"T_{pname}& {pname}")
             else:
@@ -147,12 +149,26 @@ class FunctionGenerator:
         out.write("void __tpy_init();\n")
 
     def gen_module_init(self, out: TextIO, stmts: list, global_types: dict[str, TpyType | None] | None = None,
-                        has_user_main: bool = False) -> None:
-        """Generate module init function containing top-level statements."""
+                        has_user_main: bool = False, module_name: str = "__main__",
+                        imported_modules: list[str] | None = None) -> None:
+        """Generate module init function containing top-level statements.
+
+        Args:
+            out: Output stream.
+            stmts: Top-level statements.
+            global_types: Dict of global variable names to types.
+            has_user_main: If True, call main() at end.
+            module_name: Value for __name__ ("__main__" for entry point, module name otherwise).
+            imported_modules: List of imported user module names to initialize (in dependency order).
+        """
         out.write("void __tpy_init() {\n")
+        # Initialize imported modules first (before our code runs), in dependency order
+        if imported_modules:
+            for mod_name in imported_modules:
+                out.write(f"  tpy_user::{mod_name}::__tpy_init();\n")
         # Initialize synthetic __name__ if not user-defined
         if self.ctx._has_synthetic_name:
-            out.write('  __name__ = "__main__";\n')
+            out.write(f'  __name__ = "{module_name}";\n')
         # Pre-seed with global names and types so re-declarations become assignments
         if global_types:
             self.ctx.declared_vars = set(global_types.keys())
@@ -166,12 +182,19 @@ class FunctionGenerator:
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
         for stmt in stmts:
+            # Track current statement line for order-aware import qualification
+            self.ctx.current_stmt_line = stmt.loc.line if hasattr(stmt, 'loc') and stmt.loc else 0
             self.statements.gen_stmt(out, stmt)
+        self.ctx.current_stmt_line = 0  # Reset after top-level processing
         self.ctx.current_ns = None
         # Call user's main() if defined
         if has_user_main:
             out.write("  main();\n")
         out.write("}\n\n")
+
+    def gen_namespace_close(self, out: TextIO) -> None:
+        """Close the namespace in source file (for non-entry-point modules)."""
+        out.write(f"}} // namespace tpy_user::{self.ctx.module_name}\n")
 
     def gen_main(self, out: TextIO) -> None:
         """Generate C++ main() that calls module init.

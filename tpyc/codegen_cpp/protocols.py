@@ -23,9 +23,27 @@ class ProtocolGenerator:
     def __init__(self, ctx: CodeGenContext):
         self.ctx = ctx
 
+    def resolve_type_for_codegen(self, typ: TpyType) -> TpyType:
+        """Resolve a type, converting RecordType to ProtocolType if it's a protocol.
+
+        During parsing, some types may be classified as RecordType when they're
+        actually protocols (e.g., imported protocols). This method fixes that for codegen.
+        """
+        if isinstance(typ, RecordType):
+            # Check if this is actually a protocol
+            protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
+            if protocol_info is not None:
+                return ProtocolType(typ.name, typ.type_args)
+        return typ
+
     def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, ProtocolType]]:
         """Get list of protocol-typed parameters."""
-        return [(pname, ptype) for pname, ptype in params if isinstance(ptype, ProtocolType)]
+        result = []
+        for pname, ptype in params:
+            resolved = self.resolve_type_for_codegen(ptype)
+            if isinstance(resolved, ProtocolType):
+                result.append((pname, resolved))
+        return result
 
     def get_concept_name(self, protocol: ProtocolType) -> str:
         """Get the C++ concept name for a protocol type."""
@@ -33,6 +51,10 @@ class ProtocolGenerator:
         protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
         if protocol_info and protocol_info.cpp_concept:
             return protocol_info.cpp_concept
+        # Check if this is an imported protocol from another user module
+        if protocol.name in self.ctx.user_imported_protocols:
+            source_module, original_name = self.ctx.user_imported_protocols[protocol.name]
+            return f"tpy_user::{source_module}::{original_name}"
         # User-defined protocol - use the protocol name directly
         return protocol.name
 

@@ -26,6 +26,51 @@ class TypeOperations:
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
 
+    def resolve_type(self, typ: TpyType) -> TpyType:
+        """Resolve a type, converting RecordType to ProtocolType if needed.
+
+        During parsing, some types may be classified as RecordType when they're
+        actually protocols (e.g., imported protocols). This method fixes that.
+        """
+        if isinstance(typ, RecordType):
+            # Check if this is actually a protocol
+            protocol_info = self.ctx.registry.get_protocol(typ.name)
+            if protocol_info is not None:
+                # Convert RecordType to ProtocolType
+                return ProtocolType(typ.name, typ.type_args)
+            # Recursively resolve type arguments
+            if typ.type_args:
+                new_args = tuple(
+                    self.resolve_type(arg) if isinstance(arg, TpyType) else arg
+                    for arg in typ.type_args
+                )
+                if new_args != typ.type_args:
+                    return RecordType(typ.name, new_args)
+        elif isinstance(typ, (ListType, ArrayType, SpanType)):
+            elem = typ.get_element_type()
+            if elem:
+                resolved_elem = self.resolve_type(elem)
+                if resolved_elem != elem:
+                    return typ.with_inner_types((resolved_elem,))
+        elif isinstance(typ, (PtrType, ConstPtrType)):
+            resolved_pointee = self.resolve_type(typ.pointee)
+            if resolved_pointee != typ.pointee:
+                return type(typ)(resolved_pointee)
+        elif isinstance(typ, OwnType):
+            resolved_wrapped = self.resolve_type(typ.wrapped)
+            if resolved_wrapped != typ.wrapped:
+                return OwnType(resolved_wrapped)
+        elif isinstance(typ, ProtocolType):
+            # Recursively resolve type arguments for generic protocols
+            if typ.type_args:
+                new_args = tuple(
+                    self.resolve_type(arg) if isinstance(arg, TpyType) else arg
+                    for arg in typ.type_args
+                )
+                if new_args != typ.type_args:
+                    return ProtocolType(typ.name, new_args)
+        return typ
+
     def validate_type(self, typ: TpyType, allow_type_param_ref: bool = False) -> None:
         """Validate that a type is well-formed.
 

@@ -5,7 +5,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -18,6 +18,7 @@ from tpyc.cli import compile_file, get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic
+from tpyc.compiler import Compiler, CompileError
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
@@ -80,6 +81,8 @@ class CompileResult:
     diagnostics: str  # Full diagnostic output
     hpp_path: Path | None = None
     cpp_path: Path | None = None
+    # For multi-module compilation: list of all (module_name, hpp_path, cpp_path) tuples
+    all_modules: list[tuple[str, Path, Path]] = field(default_factory=list)
 
 
 def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
@@ -87,25 +90,43 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
 
     Returns CompileResult with success status, diagnostics, and output paths.
     Warnings are collected but don't cause failure. Errors cause failure.
+    Uses Compiler for multi-module support.
     """
     module_name = get_module_name(src_file)
-    source = src_file.read_text()
 
     try:
-        parser = Parser()
-        module = parser.parse(source)
+        # Use Compiler for multi-module support
+        compiler = Compiler(src_file)
+        compiled_modules = compiler.compile()
 
-        analyzer = SemanticAnalyzer()
-        analyzer.analyze(module)
+        # Collect warnings from all analyzers
+        all_diags = []
+        for mod in compiled_modules:
+            for d in mod.analyzer.diagnostics:
+                all_diags.append(d.format(mod.path.name))
+        diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
 
-        # Collect warnings from analyzer
-        diag_lines = [d.format(src_file.name) for d in analyzer.diagnostics]
-        diagnostics = "\n".join(diag_lines) + "\n" if diag_lines else ""
+        # Get all non-entry modules in dependency order for init calls
+        all_imported = [m.name for m in compiled_modules if not m.is_entry_point]
 
-        # If we get here, compilation succeeded (possibly with warnings)
-        hpp_path, cpp_path = compile_file(str(src_file), str(output_dir), TEST_CODEGEN_OPTIONS)
-        return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path)
+        # Generate code for all modules and track paths
+        all_modules = []
+        for mod in compiled_modules:
+            hpp_path, cpp_path = compiler.generate_code(
+                mod, output_dir, TEST_CODEGEN_OPTIONS,
+                all_imported_modules=all_imported if mod.is_entry_point else None
+            )
+            all_modules.append((mod.name, hpp_path, cpp_path))
 
+        # Return paths for the entry point module
+        entry_module = next(m for m in compiled_modules if m.is_entry_point)
+        module_dir = output_dir / f"{entry_module.name}.d"
+        hpp_path = module_dir / f"{entry_module.name}.hpp"
+        cpp_path = module_dir / f"{entry_module.name}.cpp"
+        return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path, all_modules=all_modules)
+
+    except CompileError as e:
+        return CompileResult(success=False, diagnostics=e.format() + "\n")
     except SemanticError as e:
         diag = e.format(src_file.name)
         return CompileResult(success=False, diagnostics=diag + "\n")
@@ -126,15 +147,29 @@ class RunResult:
     returncode: int
 
 
-def build_and_run(build_dir: Path, module_name: str) -> RunResult:
-    """Compile generated C++ and run, capturing all output (including panics)."""
-    module_dir = build_dir / f"{module_name}.d"
-    cpp_file = module_dir / f"{module_name}.cpp"
+def build_and_run(build_dir: Path, module_name: str,
+                  all_cpp_files: list[Path] | None = None) -> RunResult:
+    """Compile generated C++ and run, capturing all output (including panics).
+
+    Args:
+        build_dir: Directory containing generated C++ files.
+        module_name: Name of the entry point module.
+        all_cpp_files: List of all C++ files to compile (for multi-module).
+                       If None, compiles only the entry module.
+    """
     exe_file = build_dir / "program"
 
-    # Compile C++
+    # Determine C++ files to compile
+    if all_cpp_files is None:
+        module_dir = build_dir / f"{module_name}.d"
+        cpp_files = [module_dir / f"{module_name}.cpp"]
+    else:
+        cpp_files = all_cpp_files
+
+    # Compile C++ with include path for cross-module references
     result = subprocess.run(
-        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-o", str(exe_file), str(cpp_file), "-lgmp"],
+        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-I", str(build_dir),
+         "-o", str(exe_file)] + [str(f) for f in cpp_files] + ["-lgmp"],
         capture_output=True,
         text=True,
     )
@@ -272,8 +307,17 @@ def discover_cases():
             if not src_files:
                 continue
 
+            # Prefer main.tp.py as entry point, otherwise pick first alphabetically
+            main_src = None
+            for sf in src_files:
+                if sf.name == "main.tp.py":
+                    main_src = sf
+                    break
+            if main_src is None:
+                main_src = sorted(src_files, key=lambda p: p.name)[0]
+
             rel_path = case_dir.relative_to(base_dir)
             name = f"{prefix}_{rel_path}".replace("/", "_").replace("\\", "_")
-            cases.append((name, case_dir, src_files[0]))
+            cases.append((name, case_dir, main_src))
 
     return cases

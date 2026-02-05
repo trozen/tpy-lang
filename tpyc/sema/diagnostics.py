@@ -64,6 +64,10 @@ class Scope:
     def define(self, name: str, typ: TpyType) -> None:
         self.bindings[name] = typ
 
+    def all(self) -> dict[str, TpyType]:
+        """Return all bindings in this scope (not including parent)."""
+        return dict(self.bindings)
+
 
 class TypedExpr:
     """Expression annotated with its type."""

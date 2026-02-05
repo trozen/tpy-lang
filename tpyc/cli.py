@@ -22,6 +22,7 @@ from pathlib import Path
 from .parse import Parser, ParseError
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenerator, CodeGenOptions, CodeGenError
+from .compiler import Compiler, CompileError
 
 
 def get_runtime_dir() -> Path:
@@ -158,53 +159,90 @@ def main() -> int:
     module_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Read source (already read if from stdin)
-        if not reading_from_stdin:
-            source = input_path.read_text()
-
-        source_name = "<stdin>" if reading_from_stdin else str(input_path)
-        if args.verbose:
-            print(f"Compiling {source_name}...")
-
-        # Parse
-        p = Parser()
-        module = p.parse(source)
-
-        if args.verbose:
-            print(f"  Parsed {len(module.records)} records, {len(module.functions)} functions")
-
-        # Semantic analysis
-        analyzer = SemanticAnalyzer()
-        analyzer.analyze(module)
-
-        # Print any warnings from semantic analysis
-        for diag in analyzer.diagnostics:
-            if diag.level == DiagnosticLevel.WARNING:
-                print(diag.format(source_name), file=sys.stderr)
-
-        if args.verbose:
-            print("  Semantic analysis passed")
-
-        # Code generation
         options = CodeGenOptions(emit_source_comments=args.emit_source)
-        codegen = CodeGenerator(analyzer, options)
-        hpp_code, cpp_code = codegen.generate(module, module_name)
+        all_cpp_paths = []
 
-        # Write output files with module name in per-module directory
-        hpp_path = module_dir / f"{module_name}.hpp"
-        cpp_path = module_dir / f"{module_name}.cpp"
+        if reading_from_stdin:
+            # Stdin mode: single-file compilation only
+            source_name = "<stdin>"
+            if args.verbose:
+                print(f"Compiling {source_name}...")
 
-        hpp_path.write_text(hpp_code)
-        cpp_path.write_text(cpp_code)
+            p = Parser()
+            module = p.parse(source)
 
-        if args.verbose or not (args.build or args.exec):
-            print(f"Generated: {hpp_path}")
-            print(f"Generated: {cpp_path}")
+            if args.verbose:
+                print(f"  Parsed {len(module.records)} records, {len(module.functions)} functions")
+
+            analyzer = SemanticAnalyzer()
+            analyzer.analyze(module)
+
+            for diag in analyzer.diagnostics:
+                if diag.level == DiagnosticLevel.WARNING:
+                    print(diag.format(source_name), file=sys.stderr)
+
+            if args.verbose:
+                print("  Semantic analysis passed")
+
+            codegen = CodeGenerator(analyzer, options)
+            hpp_code, cpp_code = codegen.generate(module, module_name)
+
+            hpp_path = module_dir / f"{module_name}.hpp"
+            cpp_path = module_dir / f"{module_name}.cpp"
+            hpp_path.write_text(hpp_code)
+            cpp_path.write_text(cpp_code)
+            all_cpp_paths.append(cpp_path)
+
+            if args.verbose or not (args.build or args.exec):
+                print(f"Generated: {hpp_path}")
+                print(f"Generated: {cpp_path}")
+        else:
+            # File mode: use multi-module compiler
+            compiler = Compiler(input_path)
+            compiled_modules = compiler.compile()
+
+            # Get all non-entry modules in dependency order for init calls
+            all_imported = [m.name for m in compiled_modules if not m.is_entry_point]
+
+            for compiled in compiled_modules:
+                mod_name = compiled.name
+                mod_dir = output_dir / f"{mod_name}.d"
+                mod_dir.mkdir(parents=True, exist_ok=True)
+
+                if args.verbose:
+                    print(f"Compiling {compiled.path}...")
+                    print(f"  Parsed {len(compiled.ast.records)} records, {len(compiled.ast.functions)} functions")
+
+                # Print warnings
+                if compiled.analyzer:
+                    for diag in compiled.analyzer.diagnostics:
+                        if diag.level == DiagnosticLevel.WARNING:
+                            print(diag.format(str(compiled.path)), file=sys.stderr)
+
+                if args.verbose:
+                    print("  Semantic analysis passed")
+
+                # Code generation
+                codegen = CodeGenerator(compiled.analyzer, options)
+                hpp_code, cpp_code = codegen.generate(
+                    compiled.ast, mod_name,
+                    is_entry_point=compiled.is_entry_point,
+                    all_imported_modules=all_imported if compiled.is_entry_point else None
+                )
+
+                hpp_path = mod_dir / f"{mod_name}.hpp"
+                cpp_path = mod_dir / f"{mod_name}.cpp"
+                hpp_path.write_text(hpp_code)
+                cpp_path.write_text(cpp_code)
+                all_cpp_paths.append(cpp_path)
+
+                if args.verbose or not (args.build or args.exec):
+                    print(f"Generated: {hpp_path}")
+                    print(f"Generated: {cpp_path}")
 
         # Build if requested
         if args.build or args.exec:
             runtime_dir = get_runtime_dir()
-            # Binary goes at output root (no conflict with .d dir)
             binary_path = output_dir / module_name
 
             if args.verbose:
@@ -215,12 +253,14 @@ def main() -> int:
             else:
                 opt_flags = ["-g", "-O0"]
 
+            # Include output_dir for cross-module includes
             compile_cmd = [
                 "g++", "-std=c++23",
                 *opt_flags,
                 "-I", str(runtime_dir / "cpp" / "include"),
+                "-I", str(output_dir),
                 "-o", str(binary_path),
-                str(cpp_path),
+                *[str(p) for p in all_cpp_paths],
                 "-lgmp"
             ]
 
@@ -247,6 +287,9 @@ def main() -> int:
 
         return 0
 
+    except CompileError as e:
+        print(e.format(), file=sys.stderr)
+        return 1
     except ParseError as e:
         print(f"Parse error: {e}", file=sys.stderr)
         return 1

@@ -16,7 +16,7 @@ from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMet
 from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 
 if TYPE_CHECKING:
-    pass
+    from ..compiler import ModuleExports
 
 
 @dataclass
@@ -49,9 +49,25 @@ class SemanticContext:
     # Import tracking
     # imports: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
     #          module_name -> None (for "import X")
-    imports: dict[str, set[tuple[str, str]] | None] = field(default_factory=dict)
+    #          module_name -> "*" (for "from X import *")
+    imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
     # imported_names: name -> (module_name, function_name) for direct function access
     imported_names: dict[str, tuple[str, str]] = field(default_factory=dict)
+
+    # Cross-module support
+    # available_modules: exports from already-compiled modules (populated before analysis)
+    available_modules: dict[str, 'ModuleExports'] = field(default_factory=dict)
+    # module_name: name of this module ("__main__" for entry point, "module_name" for imports)
+    module_name: str = "__main__"
+    # Track imported items from user modules for codegen qualification
+    # Maps local_name -> (source_module, original_name) to support import aliases
+    user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
+    # Track top-level declarations: name -> line number where declared
+    # Used for export filtering and order-aware codegen (imports used before redefinition)
+    top_level_decls: dict[str, int] = field(default_factory=dict)
 
     # Built-in names (reserved for future builtins if needed)
     builtin_names: dict[str, TpyType] = field(default_factory=dict)

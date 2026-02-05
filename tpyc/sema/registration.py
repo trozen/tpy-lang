@@ -64,6 +64,31 @@ class TypeRegistrar:
             info = builtin_modules.builtin_module_to_info(module)
             self.ctx.registry.register_module(info)
 
+    def register_tpy_star_import(self) -> None:
+        """Register all tpy exports for 'from tpy import *'.
+
+        Registers all exported types and functions from the tpy module
+        into the global namespace and imported_names tracking.
+        """
+        tpy_module = builtin_modules.get_tpy()
+
+        # Register all tpy types (Int32, Array, StaticList, Span, etc.)
+        for qname, type_def in tpy_module.types.items():
+            # Extract simple name from qualified name (tpy.Int32 -> Int32)
+            simple_name = qname.split(".")[-1]
+            self.ctx.imported_names[simple_name] = ("tpy", simple_name)
+            self.ctx.global_ns.bind_imported_name(simple_name, "tpy", simple_name)
+
+        # Register all tpy functions (copy, etc.)
+        for name, fn_def in tpy_module.functions.items():
+            self.ctx.imported_names[name] = ("tpy", name)
+            self.ctx.global_ns.bind_imported_name(name, "tpy", name)
+
+        # Register protocols (Comparable, NativeIterable, etc.)
+        for name in tpy_module.protocols:
+            self.ctx.imported_names[name] = ("tpy", name)
+            self.ctx.global_ns.bind_imported_name(name, "tpy", name)
+
     def get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
         module_info = self.ctx.registry.get_module(module_name)
@@ -414,19 +439,26 @@ class TypeRegistrar:
         from ..typesys import SelfType
         # Allow TypeParamRef in params/return for generic functions
         is_generic = bool(func.type_params)
+
+        # Resolve types (converts RecordType to ProtocolType for imported protocols)
+        resolved_params = []
         for pname, ptype in func.params:
-            self.type_ops.validate_type(ptype, allow_type_param_ref=is_generic)
+            resolved_ptype = self.type_ops.resolve_type(ptype)
+            self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
             # Self type can only be used in protocol method signatures
-            if isinstance(ptype, SelfType):
+            if isinstance(resolved_ptype, SelfType):
                 raise SemanticError(
                     f"Self type cannot be used in function parameter '{pname}'. "
                     f"Self is only valid in protocol method signatures",
                     func.loc
                 )
-        self.type_ops.validate_type(func.return_type, allow_type_param_ref=is_generic)
+            resolved_params.append((pname, resolved_ptype))
+
+        resolved_return = self.type_ops.resolve_type(func.return_type)
+        self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic)
 
         # Self type can only be used in protocol method signatures
-        if isinstance(func.return_type, SelfType):
+        if isinstance(resolved_return, SelfType):
             raise SemanticError(
                 f"Self type cannot be used as a return type. "
                 f"Self is only valid in protocol method signatures",
@@ -434,9 +466,9 @@ class TypeRegistrar:
             )
 
         # Protocol types cannot be used as return types (but TypeParamRef is OK)
-        if isinstance(func.return_type, ProtocolType):
+        if isinstance(resolved_return, ProtocolType):
             raise SemanticError(
-                f"Protocol type '{func.return_type.name}' cannot be used as a return type. "
+                f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
                 f"Protocols are only valid for function parameters",
                 func.loc
             )
@@ -444,17 +476,18 @@ class TypeRegistrar:
         # Convert parsed bounds to ProtocolType (validate they are protocols)
         type_param_bounds: dict[str, ProtocolType] = {}
         for param_name, bound_type in func.type_param_bounds.items():
-            if not isinstance(bound_type, ProtocolType):
+            resolved_bound = self.type_ops.resolve_type(bound_type)
+            if not isinstance(resolved_bound, ProtocolType):
                 raise SemanticError(
-                    f"Type parameter bound must be a protocol, got {bound_type}",
+                    f"Type parameter bound must be a protocol, got {resolved_bound}",
                     func.loc
                 )
-            type_param_bounds[param_name] = bound_type
+            type_param_bounds[param_name] = resolved_bound
 
         info = FunctionInfo(
             name=func.name,
-            params=func.params,
-            return_type=func.return_type,
+            params=resolved_params,
+            return_type=resolved_return,
             is_noalloc=func.is_noalloc,
             type_params=func.type_params,
             type_param_bounds=type_param_bounds
@@ -473,3 +506,9 @@ class TypeRegistrar:
             if isinstance(stmt, TpyVarDecl) and stmt.type:
                 self.ctx.global_scope.define(stmt.name, stmt.type)
                 self.ctx.global_ns.bind_variable(stmt.name, stmt.type)
+                # Track with line number for order-aware codegen (earliest line wins)
+                decl_line = stmt.loc.line if stmt.loc else 0
+                if stmt.name not in self.ctx.top_level_decls:
+                    self.ctx.top_level_decls[stmt.name] = decl_line
+                else:
+                    self.ctx.top_level_decls[stmt.name] = min(self.ctx.top_level_decls[stmt.name], decl_line)

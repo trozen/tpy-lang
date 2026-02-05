@@ -125,8 +125,19 @@ class SemanticAnalyzer:
         """Record a warning diagnostic."""
         self.ctx.warning(message, node)
 
-    def analyze(self, module: TpyModule) -> None:
-        """Analyze a module for semantic correctness."""
+    def analyze(self, module: TpyModule, module_name: str = "__main__",
+                available_modules: dict | None = None) -> None:
+        """Analyze a module for semantic correctness.
+
+        Args:
+            module: The parsed module AST.
+            module_name: Name of this module ("__main__" for entry point).
+            available_modules: Dict of module name -> ModuleExports for imported user modules.
+        """
+        # Set module context
+        self.ctx.module_name = module_name
+        self.ctx.available_modules = available_modules or {}
+
         # Register all builtin protocols into the unified registry
         for protocol_def in builtin_modules.get_all_protocols():
             info = builtin_modules.protocol_def_to_info(protocol_def)
@@ -143,16 +154,23 @@ class SemanticAnalyzer:
 
         # Process imports
         self.ctx.imports = module.imports
-        for module_name, names in self.ctx.imports.items():
-            if names is not None:
+        for import_module_name, names in self.ctx.imports.items():
+            if names == "*":
+                # "from tpy import *" - register all tpy exports
+                self.registrar.register_tpy_star_import()
+            elif names is not None:
                 # "from X import Y" or "from X import Y as Z"
                 # Stored as (original_name, local_name) tuples to support aliases
                 for original_name, local_name in names:
-                    self.ctx.imported_names[local_name] = (module_name, original_name)
-                    self.ctx.global_ns.bind_imported_name(local_name, module_name, original_name)
+                    self.ctx.imported_names[local_name] = (import_module_name, original_name)
+                    self.ctx.global_ns.bind_imported_name(local_name, import_module_name, original_name)
+
+                    # For user module imports, also register the items for type checking
+                    if import_module_name in module.user_module_imports:
+                        self._register_user_module_import(import_module_name, original_name, local_name)
             else:
                 # "import X" - register module name
-                self.ctx.global_ns.bind_module(module_name)
+                self.ctx.global_ns.bind_module(import_module_name)
 
         # First pass: register all records
         for record in module.records:
@@ -198,14 +216,16 @@ class SemanticAnalyzer:
         self.ctx.current_function = func
         self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
 
-        # Add parameters to scope
+        # Add parameters to scope (resolve types to handle imported protocols)
         for pname, ptype in func.params:
-            self.ctx.current_scope.define(pname, ptype)
+            resolved_ptype = self.type_ops.resolve_type(ptype)
+            self.ctx.current_scope.define(pname, resolved_ptype)
 
         # Set up local namespace
         local_ns = Namespace(parent=self.ctx.global_ns)
         for pname, ptype in func.params:
-            local_ns.bind_variable(pname, ptype)
+            resolved_ptype = self.type_ops.resolve_type(ptype)
+            local_ns.bind_variable(pname, resolved_ptype)
         self.ctx.current_ns = local_ns
 
         # Analyze body
@@ -307,3 +327,50 @@ class SemanticAnalyzer:
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""
         return self.ctx.get_expr_type(expr)
+
+    def _register_user_module_import(self, module_name: str, original_name: str, local_name: str) -> None:
+        """Register an imported item from a user module.
+
+        Looks up the item in available_modules and registers it in the appropriate
+        namespace (function, record, or protocol).
+        """
+        if module_name not in self.ctx.available_modules:
+            raise self._error(f"Module '{module_name}' not available")
+
+        exports = self.ctx.available_modules[module_name]
+
+        # Check for function
+        if original_name in exports.functions:
+            func_info = exports.functions[original_name]
+            # Register with local name for lookup
+            self.ctx.registry.register_function(func_info, local_name)
+            self.ctx.user_imported_functions[local_name] = (module_name, original_name)
+            return
+
+        # Check for record
+        if original_name in exports.records:
+            record_info = exports.records[original_name]
+            # Register with local name for lookup
+            self.ctx.registry.register_record(record_info, local_name)
+            self.ctx.user_imported_records[local_name] = (module_name, original_name)
+            return
+
+        # Check for protocol
+        if original_name in exports.protocols:
+            protocol_info = exports.protocols[original_name]
+            # Register with local name for lookup (supports aliases)
+            self.ctx.registry.register_protocol(protocol_info, local_name)
+            # Also bind in namespace so it can be resolved as a type
+            self.ctx.global_ns.bind_imported_name(local_name, module_name, original_name)
+            self.ctx.user_imported_protocols[local_name] = (module_name, original_name)
+            return
+
+        # Check for variable
+        if original_name in exports.variables:
+            var_type = exports.variables[original_name]
+            self.ctx.global_scope.define(local_name, var_type)
+            self.ctx.global_ns.bind_variable(local_name, var_type)
+            self.ctx.user_imported_variables[local_name] = (module_name, original_name)
+            return
+
+        raise self._error(f"'{original_name}' not found in module '{module_name}'")

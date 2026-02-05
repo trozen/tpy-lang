@@ -32,8 +32,9 @@ def make_exec_test(case_dir, main_src):
         if not result.success:
             pytest.skip("Compilation failed")
 
-        # Build and run C++
-        run_result = build_and_run(tmp_path, module_name)
+        # Build and run C++ (pass all cpp files for multi-module support)
+        all_cpp_files = [cpp_path for _, _, cpp_path in result.all_modules] if result.all_modules else None
+        run_result = build_and_run(tmp_path, module_name, all_cpp_files=all_cpp_files)
 
         if run_result.success:
             # Check for no_cpython.txt marker (TurboPython-only features)

@@ -44,6 +44,10 @@ def make_comp_test(case_dir, main_src):
                 # Error test: remove any stale generated files
                 for ext in [".hpp", ".cpp"]:
                     remove_if_exists(expected_dir / f"{module_name}{ext}")
+                # Also clean up any other module files
+                for mod_name, _, _ in result.all_modules:
+                    for ext in [".hpp", ".cpp"]:
+                        remove_if_exists(expected_dir / f"{mod_name}{ext}")
             else:
                 # Verify compilation was expected to fail (no .hpp in expected/)
                 expects_success = any(expected_dir.glob("*.hpp"))
@@ -57,14 +61,13 @@ def make_comp_test(case_dir, main_src):
             if not expects_success:
                 pytest.fail(f"Compilation succeeded unexpectedly:\n{result.diagnostics}")
 
-        # Check/update generated code
-        module_dir = tmp_path / f"{module_name}.d"
-        for ext in [".hpp", ".cpp"]:
-            generated_file = module_dir / f"{module_name}{ext}"
-            expected_file = expected_dir / f"{module_name}{ext}"
-            if not generated_file.exists():
-                pytest.fail(f"{generated_file} not generated")
-            check_or_update(generated_file.read_text(), expected_file, f"{module_name}{ext}")
+        # Check/update generated code for all modules
+        for mod_name, hpp_path, cpp_path in result.all_modules:
+            for ext, gen_path in [(".hpp", hpp_path), (".cpp", cpp_path)]:
+                expected_file = expected_dir / f"{mod_name}{ext}"
+                if not gen_path.exists():
+                    pytest.fail(f"{gen_path} not generated")
+                check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}")
 
     return test_func
 
