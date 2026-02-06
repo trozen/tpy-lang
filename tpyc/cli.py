@@ -19,9 +19,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .parse import Parser, ParseError
-from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
-from .codegen_cpp import CodeGenerator, CodeGenOptions, CodeGenError
+from .parse import ParseError
+from .sema import SemanticError, DiagnosticLevel
+from .codegen_cpp import CodeGenOptions, CodeGenError
 from .compiler import Compiler, CompileError
 
 
@@ -41,50 +41,6 @@ def get_module_name(input_path: Path) -> str:
     elif name.endswith(".py"):
         return name[:-3]
     return name
-
-
-def compile_file(input_path: str, output_dir: str, options: CodeGenOptions | None = None) -> tuple[Path, Path]:
-    """Compile a TurboPython file to C++.
-
-    Args:
-        input_path: Path to the input .tp.py file
-        output_dir: Root output directory (e.g., __tpyc__/)
-        options: Code generation options (optional)
-
-    Returns:
-        Tuple of (hpp_path, cpp_path) for the generated files.
-        Files are placed in {output_dir}/{module}.d/{module}.{hpp,cpp}
-    """
-    input_path = Path(input_path)
-    output_dir = Path(output_dir)
-    module_name = get_module_name(input_path)
-
-    # Create per-module subdirectory with .d suffix
-    module_dir = output_dir / f"{module_name}.d"
-    module_dir.mkdir(parents=True, exist_ok=True)
-
-    source = input_path.read_text()
-
-    # Parse
-    p = Parser()
-    module = p.parse(source)
-
-    # Semantic analysis
-    analyzer = SemanticAnalyzer()
-    analyzer.analyze(module)
-
-    # Code generation
-    codegen = CodeGenerator(analyzer, options)
-    hpp_code, cpp_code = codegen.generate(module, module_name)
-
-    # Write output files with module name
-    hpp_path = module_dir / f"{module_name}.hpp"
-    cpp_path = module_dir / f"{module_name}.cpp"
-
-    hpp_path.write_text(hpp_code)
-    cpp_path.write_text(cpp_code)
-
-    return hpp_path, cpp_path
 
 
 def main() -> int:
@@ -154,74 +110,38 @@ def main() -> int:
         # Get module name for output paths
         module_name = get_module_name(input_path)
 
-    # Create per-module subdirectory with .d suffix for C++ sources
-    module_dir = output_dir / f"{module_name}.d"
-    module_dir.mkdir(parents=True, exist_ok=True)
-
     try:
         options = CodeGenOptions(emit_source_comments=args.emit_source)
         all_cpp_paths = []
 
+        # Create compiler (unified for both stdin and file input)
         if reading_from_stdin:
-            # Stdin mode: single-file compilation only
-            source_name = "<stdin>"
+            compiler = Compiler.from_source(source, module_name)
+        else:
+            compiler = Compiler(input_path)
+
+        compiled_modules = compiler.compile()
+
+        for compiled in compiled_modules:
+            source_name = "<stdin>" if reading_from_stdin else str(compiled.path)
             if args.verbose:
                 print(f"Compiling {source_name}...")
+                print(f"  Parsed {len(compiled.ast.records)} records, {len(compiled.ast.functions)} functions")
 
-            p = Parser()
-            module = p.parse(source)
-
-            if args.verbose:
-                print(f"  Parsed {len(module.records)} records, {len(module.functions)} functions")
-
-            analyzer = SemanticAnalyzer()
-            analyzer.analyze(module)
-
-            for diag in analyzer.diagnostics:
-                if diag.level == DiagnosticLevel.WARNING:
-                    print(diag.format(source_name), file=sys.stderr)
+            if compiled.analyzer:
+                for diag in compiled.analyzer.diagnostics:
+                    if diag.level == DiagnosticLevel.WARNING:
+                        print(diag.format(source_name), file=sys.stderr)
 
             if args.verbose:
                 print("  Semantic analysis passed")
 
-            codegen = CodeGenerator(analyzer, options)
-            hpp_code, cpp_code = codegen.generate(module, module_name)
-
-            hpp_path = module_dir / f"{module_name}.hpp"
-            cpp_path = module_dir / f"{module_name}.cpp"
-            hpp_path.write_text(hpp_code)
-            cpp_path.write_text(cpp_code)
+            hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
             all_cpp_paths.append(cpp_path)
 
             if args.verbose or not (args.build or args.exec):
                 print(f"Generated: {hpp_path}")
                 print(f"Generated: {cpp_path}")
-        else:
-            # File mode: use multi-module compiler
-            compiler = Compiler(input_path)
-            compiled_modules = compiler.compile()
-
-            for compiled in compiled_modules:
-                if args.verbose:
-                    print(f"Compiling {compiled.path}...")
-                    print(f"  Parsed {len(compiled.ast.records)} records, {len(compiled.ast.functions)} functions")
-
-                # Print warnings
-                if compiled.analyzer:
-                    for diag in compiled.analyzer.diagnostics:
-                        if diag.level == DiagnosticLevel.WARNING:
-                            print(diag.format(str(compiled.path)), file=sys.stderr)
-
-                if args.verbose:
-                    print("  Semantic analysis passed")
-
-                # Code generation (uses compiler's generate_code for proper path handling)
-                hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
-                all_cpp_paths.append(cpp_path)
-
-                if args.verbose or not (args.build or args.exec):
-                    print(f"Generated: {hpp_path}")
-                    print(f"Generated: {cpp_path}")
 
         # Build if requested
         if args.build or args.exec:

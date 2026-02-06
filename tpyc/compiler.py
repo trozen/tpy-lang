@@ -96,6 +96,19 @@ class Compiler:
         self.compile_order: list[str] = []
         # Track which modules shadow builtins: {module_name: set of (importing_module, line_no)}
         self.shadowed_builtins: dict[str, set[tuple[str, int]]] = {}
+        self._source_input: tuple[str, str] | None = None
+
+    @classmethod
+    def from_source(cls, source: str, module_name: str = "main") -> "Compiler":
+        """Create a compiler for a single module from source code (e.g., stdin)."""
+        compiler = object.__new__(cls)
+        compiler.entry_point = Path("<stdin>")
+        compiler.resolver = None
+        compiler.modules = {}
+        compiler.compile_order = []
+        compiler.shadowed_builtins = {}
+        compiler._source_input = (source, module_name)
+        return compiler
 
     def compile(self) -> list[CompiledModule]:
         """Compile entry point and all imported modules.
@@ -108,6 +121,21 @@ class Compiler:
             ParseError: If parsing fails.
             SemanticError: If semantic analysis fails.
         """
+        if self._source_input is not None:
+            source, entry_name = self._source_input
+            parser = Parser()
+            ast = parser.parse(source)
+            self.modules[entry_name] = CompiledModule(
+                name=entry_name,
+                path=Path("<stdin>"),
+                ast=ast,
+                exports=ModuleExports(),
+                is_entry_point=True,
+            )
+            self.compile_order = [entry_name]
+            self._analyze_module(self.modules[entry_name])
+            return [self.modules[entry_name]]
+
         # 1. Discover all modules (starting from entry point)
         # Entry point uses simple name (not dotted) since it's the root
         entry_name = ModuleResolver.get_module_name(self.entry_point)

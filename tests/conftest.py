@@ -14,7 +14,7 @@ UPDATE_EXPECTED = os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")
 
 # Import the compiler
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from tpyc.cli import compile_file, get_module_name
+from tpyc.cli import get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic

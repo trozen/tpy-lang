@@ -2,11 +2,9 @@
 
 ## Critical Architectural Issues
 
-### 1. Two divergent compilation paths (cli.py vs compiler.py)
+### ~~1. Two divergent compilation paths (cli.py vs compiler.py)~~ ✅ Resolved
 
-The CLI has two completely separate code paths for single-file and multi-file compilation. The single-file path (`cli.py:165-194`) directly chains `Parser → SemanticAnalyzer → CodeGenerator`, while the multi-file path (`cli.py:200-224`) delegates to `Compiler`. They have different semantics — the `Compiler` pre-registers dependencies before analysis, the CLI path doesn't. Any change to the compilation pipeline must be made in both places.
-
-**Fix:** Extract a unified `compile_module()` interface that both paths use.
+Unified via `Compiler.from_source()` — both stdin and file mode now use `Compiler`. The dead `compile_file()` function was removed.
 
 ### 2. Parser has too many responsibilities (parse.py — 1413 lines)
 
