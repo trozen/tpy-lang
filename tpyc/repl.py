@@ -135,6 +135,11 @@ class REPLSession:
             if not self._preload_file(filepath):
                 return 1
 
+        # Auto-import tpy types if no files were preloaded
+        if not self.preload_files:
+            self.accumulated_lines.append("from tpy import *")
+            print("(imported tpy types: Int32, Char, Array, StaticList, Span, Ptr, ...)")
+
         # Setup readline
         self._setup_readline()
 

@@ -436,8 +436,13 @@ class CodeGenerator:
         out.write("#pragma once\n\n")
         out.write('#include <tpy/tpy.hpp>\n')
         # Include user module headers (including parent packages for dotted imports)
+        # Skip builtin modules - they don't have separate header files
         included = set()
         for user_mod in sorted(self.ctx.user_module_imports):
+            # Skip builtin modules (math, time, sys) - they're part of the runtime
+            module_info = self.analyzer.registry.get_module(user_mod)
+            if module_info and module_info.is_builtin:
+                continue
             # For dotted imports, include parent package headers first
             parts = user_mod.split('.')
             for i in range(1, len(parts)):

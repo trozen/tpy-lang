@@ -102,7 +102,11 @@ class StatementGenerator:
             return ""  # No-op - emit nothing
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for actual user modules (not builtins)
-            if stmt.module_name in self.ctx.user_module_imports:
+            # Check is_builtin flag to handle single-file/REPL mode where builtins
+            # are still in user_module_imports
+            module_info = self.ctx.analyzer.registry.get_module(stmt.module_name)
+            is_builtin = module_info and module_info.is_builtin
+            if stmt.module_name in self.ctx.user_module_imports and not is_builtin:
                 result = ""
                 # For dotted imports, emit parent package inits first (Python semantics)
                 # e.g., "mypackage.utils" -> init mypackage first, then mypackage.utils
