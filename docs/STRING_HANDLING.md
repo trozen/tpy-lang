@@ -7,15 +7,26 @@
 - Allow implicit widening from `str` to owning strings in normal code, but forbid it in `@noalloc` contexts.
 - Keep the model predictable and explicit where allocations can happen.
 
+## Relationship to Ownership Model
+
+Both `str` and `DynStr` are **value types** in the ownership model (see `docs/OWNERSHIP_DESIGN.md`). They are not pointer variables — they are stored directly in local variables, fields, and containers. Assignment copies the value, no warnings needed.
+
+This is correct because Python strings are immutable — copy-vs-share is unobservable. The compiler optimizes to a move when the source is dead.
+
+Key consequence: `s += gen_str(...)` in a loop is plain in-place `std::string::operator+=`. No aliasing concerns, no dead slot accumulation, no special optimization needed.
+
 ## Types
 
 - `str`
   - C++: `std::string_view`
   - Non-owning view. Safe only when the referenced storage outlives the view.
+  - Value type — 16 bytes, copies trivially.
 
 - `DynStr` (owning)
   - C++: `std::string`
   - Owns its storage, safe to store, return, and concatenate.
+  - Value type — ~32 bytes (SSO), copies on assignment, move when source is dead.
+  - For hot paths where DynStr copies are too expensive, use `str` (zero-copy view) or `FixStr[N]` (stack-allocated, bounded).
 
 ## Conversions
 
@@ -76,40 +87,24 @@ Examples:
 
 ## Return Types
 
-- `-> str` accepts only view-safe expressions (literals, params, globals, `str(DynStr)` views).
-- `-> DynStr` accepts any string expression (concat, `str(int)`, etc.).
+- `-> str` returns a view — must reference data that outlives the function (literals, parameters, globals). This follows the same pattern as returning `T` (by reference) in the ownership model.
+- `-> DynStr` returns owned data. This follows the same pattern as returning `Own[T]` (by value) in the ownership model.
 
 ## Class Members and Lifetime Safety
 
-Storing `str` in class members is risky because `str` is a non-owning view. Without explicit lifetime
-tracking, a `str` returned from a function cannot be assumed safe to store in a field.
+The ownership model specifies that record fields store values inline.
 
-### Options
+- **`DynStr` fields**: Safe — owns its storage inline. No lifetime concerns.
+- **`str` fields**: Risky — stores a `string_view` inline, which is a non-owning view referencing external data. This is analogous to `Ptr[T]` fields in the ownership model: the view itself is stored inline, but it doesn't own what it points to.
 
-1) Conservative rule (simple, safe)
-   - Allow storing into `str` fields only from known long-lived sources.
-   - Disallow storing `str` returned from functions unless proven long-lived.
+### Rules for `str` fields
 
-2) Lifetime qualifiers (more expressive)
-   - Add `str` lifetimes (e.g., `str@static`, `str@borrowed(param)`).
-   - Allow storing only `str@static` in fields.
-
-3) Split types
-   - Introduce `StaticStr` type for guaranteed static storage.
-   - Use `StaticStr` for fields when safe, otherwise use `DynStr`.
-
-4) Require owning fields
-   - Disallow `str` fields entirely (or restrict to explicit static cases).
-   - Use `DynStr` for all member storage.
-
-### Draft Rule Table (Option 1)
-
-Target: `self.field: str`
+`str` fields follow conservative lifetime rules. Only known long-lived sources are allowed:
 
 Allowed sources:
  - String literals
  - Global/static `str`
- - `self.owned_field: DynStr` (store view of owned storage)
+ - `self.owned_field: DynStr` (view of owned storage)
  - `self.field: str` (self-assignment)
 
 Disallowed sources:
@@ -117,6 +112,8 @@ Disallowed sources:
  - Concatenation results (`str + str`, `str + DynStr`, etc.)
  - `str(int/float/BigInt)` and any other converting constructor
  - Local `str` variables (unless proven static)
+
+For fields that need to store arbitrary string data, use `DynStr`.
 
 ## `@noalloc` Behavior
 
@@ -126,7 +123,7 @@ Disallowed sources:
 
 ## Future: Fixed-Storage Strings
 
-We can add fixed-capacity owning strings for no-alloc or bounded-alloc contexts.
+Fixed-capacity owning strings for `@noalloc` or bounded-alloc contexts.
 
 Potential options:
 

@@ -43,6 +43,10 @@ a: Int32 = 42
 b = a                   # copies, no warning — semantically invisible
 ```
 
+**Immutable types are value types.** Types where copy-vs-share is unobservable (because the type is immutable in Python) are treated as value types. This includes `str` (string_view) and `DynStr` (std::string). Since Python strings are immutable, `t = s` is semantically identical whether it copies or shares — no warning, no pointer indirection. The compiler optimizes to a move when the source is dead.
+
+This keeps string handling simple — `s += gen_str(...)` in a loop is plain in-place `std::string::operator+=`, with no aliasing concerns. For hot paths where even DynStr copies are too expensive, lighter types are available: `str` (zero-copy view), `FixStr[N]` (stack-allocated, bounded).
+
 ### 4. `copy()` for explicit value duplication
 
 The `copy()` function (already in the language) creates an independent value from a pointer. It silences the copy warning and makes the programmer's intent explicit.
@@ -224,6 +228,16 @@ The ownership model is fully compatible with `@noalloc`:
 - Value copies are plain struct assignments
 
 No special mode or alternate model is needed for performance-critical code. The same ownership rules apply in `@noalloc` and unrestricted contexts.
+
+## Design Notes for Future Type Integration
+
+The ownership model must accommodate types that will be added later without requiring retroactive changes. Key considerations:
+
+1. **Value type classification must be extensible.** Not hardcoded to built-in primitives — any type that is small, immutable, or where copy-vs-share is unobservable should be declarable as a value type. Strings (`str`, `DynStr`) use this. User-defined frozen records will too.
+
+2. **View types in fields need lifetime care.** `str` (string_view) and `Span[T]` store inline in fields but reference external data — like `Ptr[T]`, they don't own what they point to. The ownership model's "fields store values inline" rule is correct (the view itself is inline), but additional safety rules are needed for view-type fields (restrict sources to long-lived data: literals, globals, owned fields). See `docs/STRING_HANDLING.md` for the string-specific rules.
+
+3. **Liveness analysis should track sole ownership.** Beyond "is this pointer dangling?" the analysis should answer "is this the only reference?" This enables in-place optimizations and is needed generally for move optimization, not just strings.
 
 ## Implementation Phases
 
