@@ -73,6 +73,7 @@ class SemanticAnalyzer:
         self.expr.methods = self.methods
         self.calls.expr = self.expr
         self.methods.expr = self.expr
+        self.methods.calls = self.calls
         self.stmts.expr = self.expr
 
         # Convenience aliases for public API
@@ -89,6 +90,10 @@ class SemanticAnalyzer:
         self.registrar.register_builtin_types()
         self.registrar.register_builtin_functions()
         self.registrar.register_builtin_modules()
+
+        # Populate builtins_ns with Python builtins (always available without import)
+        # These are like CPython's builtins module - int, str, list, len, print, etc.
+        self._register_python_builtins()
 
     # Public API compatibility properties
     @property
@@ -135,6 +140,27 @@ class SemanticAnalyzer:
         """Record a warning diagnostic."""
         self.ctx.warning(message, node)
 
+    def _register_python_builtins(self) -> None:
+        """Register Python builtins in builtins_ns (always available without import).
+
+        This mirrors CPython's builtins module. Names like int, str, len, print
+        are available in every scope without explicit import.
+        """
+        # Python builtin types (as constructors)
+        # These are registered as IMPORTED_NAME from "builtins" module
+        # Generic types (list) are also registered - they're handled by generic type
+        # inference code but need namespace entry to distinguish from tpy types
+        python_builtin_types = ["int", "str", "bool", "float", "list"]
+        for name in python_builtin_types:
+            self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
+
+        # Python builtin functions
+        # All go through namespace; special handling is in IMPORTED_NAME handler
+        python_builtin_functions = ["len", "chr", "abs", "min", "max", "ord",
+                                    "print", "range", "enumerate", "zip"]
+        for name in python_builtin_functions:
+            self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
+
     def analyze(self, module: TpyModule, module_name: str = "__main__") -> None:
         """Analyze a module for semantic correctness.
 
@@ -147,6 +173,10 @@ class SemanticAnalyzer:
         """
         # Set module context
         self.ctx.module_name = module_name
+
+        # Convert parse warnings to diagnostics
+        for warning in module.parse_warnings:
+            self.ctx.warning_from_loc(warning.message, warning.loc)
 
         # Process imports
         self.ctx.imports = module.imports

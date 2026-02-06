@@ -129,6 +129,7 @@ class TpyMethodCall(TpyExpr):
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
+    builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
     # Note: sema sets resolved_function_info (FunctionInfo) for codegen
 
 
@@ -274,10 +275,14 @@ class TpyImport(TpyStmt):
     - level: Number of dots (0=absolute, 1=".", 2="..", etc.)
     - relative_name: Original module name after dots (None for "from . import X")
     - module_name: Initially a placeholder "__rel__{level}__{name}", resolved during discovery
+
+    For aliased imports (import X as Y):
+    - alias: The local name (Y) if different from module_name
     """
     module_name: str
     level: int = 0
     relative_name: str | None = None
+    alias: str | None = None
 
 
 @dataclass
@@ -347,6 +352,13 @@ class TpyProtocol:
 
 
 @dataclass
+class ParseWarning:
+    """A warning generated during parsing."""
+    message: str
+    loc: SourceLocation | None
+
+
+@dataclass
 class TpyModule:
     """Top-level module."""
     records: list[TpyRecord]
@@ -362,6 +374,8 @@ class TpyModule:
     user_module_imports: dict[str, int] = field(default_factory=dict)
     # Module aliases from "from . import submod" -> {canonical_name: local_name}
     module_aliases: dict[str, str] = field(default_factory=dict)
+    # Parser warnings (e.g., imports after non-import code)
+    parse_warnings: list[ParseWarning] = field(default_factory=list)
 
 
 class Parser:
@@ -378,10 +392,22 @@ class Parser:
     # Note: math, time, sys can be shadowed by user files and are NOT in this set
     SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins"}
 
+    # Types from tpy that require explicit import (not auto-available like Python builtins)
+    # Python builtins (int, str, bool, list, float, None) remain auto-available
+    TPY_TYPES = {
+        "Int32", "Char", "Bool",  # Basic tpy types
+        "Span", "Array", "StaticList",  # Container types
+        "Ptr", "ConstPtr", "Own",  # Pointer types
+    }
+
     def __init__(self):
         self.registry = TypeRegistry()
         self.source_lines: list[str] = []
         self._type_param_scope: dict[str, TypeParamKind] | None = None  # Current type parameter scope for generic classes
+        self._warnings: list[ParseWarning] = []  # Warnings accumulated during parsing
+        self._tpy_import_aliases: dict[str, str] = {}  # local_name -> original_name for tpy imports
+        self._tpy_imported_names: set[str] = set()  # local names imported from tpy
+        self._tpy_star_import: bool = False  # True if "from tpy import *" was used
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -390,9 +416,51 @@ class Parser:
             return SourceLocation(line=node.lineno, column=col)
         return None
 
+    def _warn(self, message: str, node: ast.AST | None = None) -> None:
+        """Record a parser warning."""
+        loc = self._loc(node) if node else None
+        self._warnings.append(ParseWarning(message, loc))
+
+    def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
+        """Check if a statement should be ignored for import ordering.
+
+        Module docstrings and pass statements don't count as "code"
+        for the purpose of detecting late imports.
+        """
+        if isinstance(node, ast.Pass):
+            return True
+        # Module docstring (expression statement with a string literal)
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            return True
+        return False
+
+    def _check_tpy_type_imported(self, name: str, resolved_name: str, node: ast.AST) -> None:
+        """Check that a tpy type was explicitly imported before use.
+
+        Args:
+            name: The name as used in the code (may be an alias)
+            resolved_name: The original tpy type name (e.g., "Int32")
+            node: AST node for error location
+        """
+        if resolved_name not in self.TPY_TYPES:
+            return  # Not a tpy type requiring explicit import
+        if self._tpy_star_import:
+            return  # "from tpy import *" makes all tpy types available
+        if name in self._tpy_imported_names:
+            return  # Explicitly imported
+        # Not imported - emit helpful error
+        raise ParseError(
+            f"'{name}' is not defined. Did you mean: from tpy import {resolved_name}",
+            node
+        )
+
     def parse(self, source: str) -> TpyModule:
         """Parse TurboPython source code into a TpyModule."""
         self.source_lines = source.splitlines()
+        self._warnings = []  # Reset warnings for each parse
+        self._tpy_import_aliases = {}  # Reset tpy import aliases
+        self._tpy_imported_names = set()  # Reset imported names tracking
+        self._tpy_star_import = False  # Reset star import flag
         tree = ast.parse(source)
         return self._parse_module(tree)
 
@@ -404,13 +472,22 @@ class Parser:
         top_level_stmts = []
         imports: dict[str, set[tuple[str, str]] | None | str] = {}
         user_module_imports: dict[str, int] = {}
+        module_aliases: dict[str, str] = {}
+        seen_non_import = False
 
         for node in tree.body:
+            is_import = isinstance(node, (ast.Import, ast.ImportFrom))
+
+            # Check for late imports (imports after non-import code)
+            if is_import and seen_non_import:
+                self._warn("Import statement should be at the top of the file", node)
+
             if isinstance(node, ast.ImportFrom):
-                self._check_import_from(node, imports, user_module_imports, top_level_stmts)
+                self._check_import_from(node, imports, user_module_imports, top_level_stmts, module_aliases)
             elif isinstance(node, ast.Import):
-                self._check_import(node, imports, user_module_imports, top_level_stmts)
+                self._check_import(node, imports, user_module_imports, top_level_stmts, module_aliases)
             elif isinstance(node, ast.ClassDef):
+                seen_non_import = True
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):
                     protocols.append(result)
@@ -429,36 +506,42 @@ class Parser:
                         has_init=result.init_method is not None
                     ))
             elif isinstance(node, ast.FunctionDef):
+                seen_non_import = True
                 func = self._parse_function(node)
                 functions.append(func)
             else:
+                # Skip docstrings and pass statements for late import detection
+                if not self._is_ignorable_for_import_order(node):
+                    seen_non_import = True
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports)
+        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, parse_warnings=self._warnings)
 
-    def _check_import(self, node: ast.Import, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt]) -> None:
-        """Check and track 'import X' statement."""
+    def _check_import(self, node: ast.Import, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt], module_aliases: dict[str, str]) -> None:
+        """Check and track 'import X' or 'import X as Y' statement."""
         for alias in node.names:
             module_name = alias.name
-            if alias.asname is not None:
-                raise ParseError(f"Import aliases not supported: 'import {module_name} as {alias.asname}'", node)
+            local_name = alias.asname or module_name
             # Check if it's a user module (not builtin)
             if module_name not in self.SPECIAL_MODULES:
                 # User module import - track line number and add to statements
                 user_module_imports[module_name] = node.lineno
                 imports[module_name] = None
+                # Track alias if different from module name
+                if local_name != module_name:
+                    module_aliases[module_name] = local_name
                 # Add TpyImport statement (only first time we see this module)
                 if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
-                    top_level_stmts.append(TpyImport(module_name=module_name, loc=SourceLocation(node.lineno, node.col_offset)))
+                    import_alias = local_name if local_name != module_name else None
+                    top_level_stmts.append(TpyImport(module_name=module_name, alias=import_alias, loc=SourceLocation(node.lineno, node.col_offset)))
                 continue
-            # Skip tpy - it's handled differently (type imports)
-            if module_name == "tpy":
-                continue
-            # 'import X' -> module_name: None (whole module imported)
+            # 'import X' or 'import X as Y' -> module_name: None (whole module imported)
             imports[module_name] = None
+            if local_name != module_name:
+                module_aliases[module_name] = local_name
 
-    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt]) -> None:
+    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt], module_aliases: dict[str, str]) -> None:
         """Check and track 'from X import Y' statement."""
         module_name = node.module
         level = node.level
@@ -520,14 +603,20 @@ class Parser:
             # Handle "from tpy import *" specially
             if any(alias.name == "*" for alias in node.names):
                 imports["tpy"] = "*"
+                self._tpy_star_import = True
                 return
             if "tpy" not in imports:
                 imports["tpy"] = set()
             current = imports["tpy"]
             if current is not None and current != "*":
                 for alias in node.names:
+                    original_name = alias.name
                     local_name = alias.asname if alias.asname else alias.name
-                    current.add((alias.name, local_name))
+                    current.add((original_name, local_name))
+                    # Track alias for type annotation resolution
+                    self._tpy_import_aliases[local_name] = original_name
+                    # Track imported name for explicit import checking
+                    self._tpy_imported_names.add(local_name)
             return
         # 'from X import Y, Z' -> module_name: {(original, local), ...}
         # Store as (original_name, local_name) tuples to support aliases
@@ -826,83 +915,91 @@ class Parser:
             if type_param_scope and name in type_param_scope:
                 kind = type_param_scope[name]
                 return TypeParamRef(name, kind=kind)
-            if name == "Self":
+            # Resolve tpy import aliases (e.g., "from tpy import Int32 as I" allows using "I")
+            resolved_name = self._tpy_import_aliases.get(name, name)
+            # Check if tpy type was explicitly imported
+            self._check_tpy_type_imported(name, resolved_name, node)
+            if resolved_name == "Self":
                 return SELF
-            elif name == "Int32":
+            elif resolved_name == "Int32":
                 return INT32
-            elif name == "int":
+            elif resolved_name == "int":
                 return BIGINT
-            elif name == "float":
+            elif resolved_name == "float":
                 return FLOAT
-            elif name == "Bool":
+            elif resolved_name == "Bool":
                 return BOOL
-            elif name == "None":
+            elif resolved_name == "None":
                 return VOID
-            elif name == "str":
+            elif resolved_name == "str":
                 return STR
-            elif name == "Char":
+            elif resolved_name == "Char":
                 return CHAR
-            elif (user_protocol := self.registry.get_protocol(name)) is not None:
+            elif (user_protocol := self.registry.get_protocol(resolved_name)) is not None:
                 # User-defined protocol type
                 # Check if generic protocol requires type arguments
                 if user_protocol.type_params:
                     raise ParseError(
-                        f"Generic protocol '{name}' requires type arguments: "
-                        f"{name}[{', '.join(user_protocol.type_params)}]",
+                        f"Generic protocol '{resolved_name}' requires type arguments: "
+                        f"{resolved_name}[{', '.join(user_protocol.type_params)}]",
                         node
                     )
-                return NamedType(name, is_protocol=True)
-            elif (protocol_def := lookup_builtin_protocol(name)) is not None:
+                return NamedType(resolved_name, is_protocol=True)
+            elif (protocol_def := lookup_builtin_protocol(resolved_name)) is not None:
                 # Built-in protocol type (e.g., Sized)
                 # Check if generic protocol requires type arguments
                 if protocol_def.type_params:
                     raise ParseError(
-                        f"Generic protocol '{name}' requires type arguments: "
-                        f"{name}[{', '.join(protocol_def.type_params)}]",
+                        f"Generic protocol '{resolved_name}' requires type arguments: "
+                        f"{resolved_name}[{', '.join(protocol_def.type_params)}]",
                         node
                     )
-                return NamedType(name, is_protocol=True)
-            elif self.registry.is_known_type(name) or name[0].isupper():
+                return NamedType(resolved_name, is_protocol=True)
+            elif self.registry.is_known_type(resolved_name) or resolved_name[0].isupper():
                 # Assume it's a record type (will be validated later)
-                return NamedType(name)
+                return NamedType(resolved_name)
             else:
                 raise ParseError(f"Unknown type: {name}", node)
 
         elif isinstance(node, ast.Subscript):
             if isinstance(node.value, ast.Name):
                 container = node.value.id
+                # Resolve tpy import aliases for container names
+                resolved_container = self._tpy_import_aliases.get(container, container)
+                # Check if tpy type was explicitly imported
+                self._check_tpy_type_imported(container, resolved_container, node)
                 # Pointer types are fundamental, not module-defined
-                if container == "Ptr":
+                if resolved_container == "Ptr":
                     inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return PtrType(inner)
-                elif container == "ConstPtr":
+                elif resolved_container == "ConstPtr":
                     inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return ConstPtrType(inner)
-                elif container == "Own":
+                elif resolved_container == "Own":
                     inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return OwnType(inner)
 
                 # Generic protocols (e.g., Sequence[Int32])
-                if protocol_def := lookup_builtin_protocol(container):
+                if protocol_def := lookup_builtin_protocol(resolved_container):
                     if protocol_def.type_params:
-                        type_args = self._parse_protocol_type_args(node, container, protocol_def.type_params, type_param_scope)
-                        return NamedType(container, type_args, is_protocol=True)
+                        type_args = self._parse_protocol_type_args(node, resolved_container, protocol_def.type_params, type_param_scope)
+                        return NamedType(resolved_container, type_args, is_protocol=True)
 
                 # Module-defined generic types (list, Array, Span, etc.)
-                if lookup := lookup_generic_type(container):
-                    return self._parse_generic_type(node, container, lookup.type_def, type_param_scope)
+                if lookup := lookup_generic_type(resolved_container):
+                    return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
 
                 # User-defined generic protocols (e.g., Container[Int32])
-                if user_protocol := self.registry.get_protocol(container):
+                if user_protocol := self.registry.get_protocol(resolved_container):
                     if user_protocol.type_params:
-                        type_args = self._parse_protocol_type_args(node, container, user_protocol.type_params, type_param_scope)
-                        return NamedType(container, type_args, is_protocol=True)
+                        type_args = self._parse_protocol_type_args(node, resolved_container, user_protocol.type_params, type_param_scope)
+                        return NamedType(resolved_container, type_args, is_protocol=True)
 
                 # User-defined generic records (e.g., Stack[Int32])
                 # Check if it's a known record or looks like a record name (capitalized)
-                if self.registry.get_record(container) is not None or container[0].isupper():
-                    type_args = self._parse_record_type_args(node, container, type_param_scope)
-                    return NamedType(container, type_args)
+                if self.registry.get_record(resolved_container) is not None or resolved_container[0].isupper():
+                    type_args = self._parse_record_type_args(node, resolved_container, type_param_scope)
+                    return NamedType(resolved_container, type_args)
 
                 raise ParseError(f"Unknown generic type: {container}", node)
 

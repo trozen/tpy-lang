@@ -1,0 +1,2 @@
+consumer.py:2: warning: Import statement should be at the top of the file
+consumer.py:4: warning: Import statement should be at the top of the file

@@ -76,6 +76,10 @@ class CallAnalyzer:
             if not overloads[0].special_handling:
                 return self._analyze_builtin_function_overloads(expr, overloads)
 
+        # Track if we found an imported generic type (allows fallthrough to generic handling)
+        # Stores the original name (not alias) for lookup_generic_type
+        imported_generic_name: str | None = None
+
         # Use namespace for unified lookup - handles shadowing automatically
         if self.ctx.current_ns:
             binding = self.ctx.current_ns.lookup(expr.func)
@@ -91,6 +95,19 @@ class CallAnalyzer:
                     # Special handling for copy() from tpy - truly generic function
                     if module_name == "tpy" and func_name == "copy":
                         return self._analyze_tpy_copy(expr)
+                    # Special handling for builtins with custom sema
+                    if module_name == "builtins":
+                        if func_name == "print":
+                            for arg in expr.args:
+                                self.expr.analyze_expr(arg)
+                            return VOID
+                        elif func_name == "range":
+                            raise SemanticError(
+                                "range() can only be used in 'for i in range(...)' loops",
+                                expr.loc
+                            )
+                        elif func_name in ("enumerate", "zip"):
+                            raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
                     # Check for user module function (registered via _register_user_module_import)
                     if func_info := self.ctx.registry.get_function(expr.func):
                         return self._analyze_user_function_call(expr, func_info)
@@ -101,10 +118,16 @@ class CallAnalyzer:
                     from .registration import TypeRegistrar
                     if overloads := self._get_module_function_overloads(module_name, func_name):
                         return self._analyze_builtin_function_overloads(expr, overloads)
-                    # Check for type constructor (e.g., Int32 from tpy)
-                    if record_info := self.ctx.registry.get_builtin_record_by_name(func_name):
-                        return self._check_builtin_constructor(expr, record_info)
-                    raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
+                    # Check for type constructor (e.g., Int32 from tpy, int from builtins)
+                    qname = f"{module_name}.{func_name}"
+                    if record_info := self.ctx.registry.get_builtin_record(qname):
+                        if record_info.constructors and not record_info.type_params:
+                            return self._check_builtin_constructor(expr, record_info)
+                    # Generic types (StaticList, Array, list) - mark as found and fall through
+                    if builtin_modules.lookup_generic_type(func_name):
+                        imported_generic_name = func_name
+                    else:
+                        raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
                 elif binding.kind == BindingKind.MODULE:
                     raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()", expr.loc)
                 elif binding.kind == BindingKind.BUILTIN:
@@ -125,19 +148,30 @@ class CallAnalyzer:
                 # Check for module function
                 if overloads := self._get_module_function_overloads(module_name, func_name):
                     return self._analyze_builtin_function_overloads(expr, overloads)
-                # Check for type constructor (e.g., Int32 from tpy)
-                if record_info := self.ctx.registry.get_builtin_record_by_name(func_name):
-                    return self._check_builtin_constructor(expr, record_info)
+                # Check for type constructor (e.g., Int32 from tpy, int from builtins)
+                qname = f"{module_name}.{func_name}"
+                if record_info := self.ctx.registry.get_builtin_record(qname):
+                    if record_info.constructors and not record_info.type_params:
+                        return self._check_builtin_constructor(expr, record_info)
 
-        # Built-in print()
-        if expr.func == "print":
-            for arg in expr.args:
-                self.expr.analyze_expr(arg)
-            return VOID
-
-        # Check if it's a builtin type constructor (e.g., Int32, int)
-        if record_info := self.ctx.registry.get_builtin_record_by_name(expr.func):
-            return self._check_builtin_constructor(expr, record_info)
+        # Check if it's a tpy type that requires explicit import
+        # Only check if we didn't find it in namespace (i.e., not imported)
+        # Python builtins (int, str, list) are in builtins_ns and would be found above
+        if imported_generic_name is None:
+            tpy_qname = f"tpy.{expr.func}"
+            if record_info := self.ctx.registry.get_builtin_record(tpy_qname):
+                if record_info.constructors and not record_info.type_params:
+                    raise self.ctx.error(
+                        f"'{expr.func}' is not defined. Did you mean: from tpy import {expr.func}",
+                        expr
+                    )
+            # Also check generic tpy types (StaticList, Array, Span)
+            if lookup := builtin_modules.lookup_generic_type(expr.func):
+                if lookup.qualified_name.startswith("tpy."):
+                    raise self.ctx.error(
+                        f"'{expr.func}' is not defined. Did you mean: from tpy import {expr.func}",
+                        expr
+                    )
 
         # Fallback: Check if it's a record constructor
         record = self.ctx.registry.get_record(expr.func)
@@ -153,7 +187,8 @@ class CallAnalyzer:
             return self._analyze_legacy_function_call(expr, func)
 
         # Generic type constructor without context for type inference
-        if lookup := builtin_modules.lookup_generic_type(expr.func):
+        # Only proceed if we found an imported generic type in namespace
+        if imported_generic_name and (lookup := builtin_modules.lookup_generic_type(imported_generic_name)):
             type_def = lookup.type_def
             params = ", ".join(type_def.type_params)
 

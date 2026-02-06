@@ -94,6 +94,10 @@ class SemanticContext:
         loc = getattr(node, 'loc', None) if node else None
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
 
+    def warning_from_loc(self, message: str, loc: 'SourceLocation | None') -> None:
+        """Record a warning diagnostic from a SourceLocation."""
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
+
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the cached type of an expression."""
         return self.expr_types.get(id(expr))

@@ -305,9 +305,12 @@ class ExpressionGenerator:
 
     def _gen_call(self, expr: TpyCall) -> str:
         """Generate function call code."""
-        # Check if it's a builtin type constructor (e.g., Int32, int)
-        if record_info := self.ctx.analyzer.registry.get_builtin_record_by_name(expr.func):
-            return self.builtins.gen_builtin_constructor(expr, record_info)
+        # Check if it's a builtin type constructor (e.g., int from builtins, Int32 from tpy)
+        for module_name in ["builtins", "tpy"]:
+            qname = f"{module_name}.{expr.func}"
+            if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
+                if record_info.constructors and not record_info.type_params:
+                    return self.builtins.gen_builtin_constructor(expr, record_info)
         # print() maps to std::printf
         if expr.func == "print":
             return self.builtins.gen_print(expr.args, expr.kwargs)
@@ -331,9 +334,11 @@ class ExpressionGenerator:
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
                     return self.builtins.gen_builtin_function_overloads(expr, module_info.functions[func_name])
-                # Check for type constructor (e.g., Int32 from tpy)
-                if record_info := self.ctx.analyzer.registry.get_builtin_record_by_name(func_name):
-                    return self.builtins.gen_builtin_constructor(expr, record_info)
+                # Check for type constructor (e.g., Int32 from tpy, int from builtins)
+                qname = f"{module_name}.{func_name}"
+                if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
+                    if record_info.constructors and not record_info.type_params:
+                        return self.builtins.gen_builtin_constructor(expr, record_info)
         # Check if this is a function call that needs argument conversion
         func_info = self.ctx.analyzer.registry.get_function(expr.func)
         if func_info:
@@ -425,6 +430,22 @@ class ExpressionGenerator:
             module_name = expr.user_module_call
             cpp_ns = module_name.replace('.', '::')
             return f"tpy_user::{cpp_ns}::{expr.method}({args})"
+
+        # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
+        if expr.builtin_module_call is not None:
+            module_name = expr.builtin_module_call
+            module_info = self.ctx.analyzer.registry.get_module(module_name)
+            if module_info and expr.method in module_info.functions:
+                from ..parse import TpyCall
+                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
+            # Check for type constructor (e.g., tpy.Int32)
+            qname = f"{module_name}.{expr.method}"
+            if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
+                if record_info.constructors and not record_info.type_params:
+                    from ..parse import TpyCall
+                    temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                    return self.builtins.gen_builtin_constructor(temp_call, record_info)
 
         # Check for inherited builtin method with cpp_template first
         # This must be checked before the self.method() shortcut because

@@ -1060,20 +1060,6 @@ class TypeRegistry:
         """Get a builtin record by qualified name."""
         return self.builtin_records.get(qname)
 
-    def get_builtin_record_by_name(self, name: str) -> Optional[RecordInfo]:
-        """Get a builtin record by simple name (e.g., 'Int32' -> tpy.Int32 RecordInfo).
-
-        Only returns non-generic types with constructors.
-        """
-        from tpyc.modules import get_builtins, get_tpy
-        for module in [get_builtins(), get_tpy()]:
-            qname = f"{module.name}.{name}"
-            if info := self.builtin_records.get(qname):
-                # Only return non-generic types with constructors
-                if info.constructors and not info.type_params:
-                    return info
-        return None
-
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.
 

@@ -1824,9 +1824,11 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 ## Modules & Imports
 
 - **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `StaticList`)
+  - **Note**: tpy types require explicit import - using `Int32` without `from tpy import Int32` produces an error with a helpful suggestion
 - **Working**: `import time` and `from time import time`
 - **Working**: Import aliases: `from time import time as get_time`, `from tpy import Int32 as I32`
-  - **Note**: Aliases work for function calls but not yet for type annotations (`x: I32` won't resolve)
+  - Aliases work for both type annotations (`x: I32`) and constructor calls (`I32(42)`)
+- **Working**: Module-level aliases: `import time as t`, `import tpy as t` (then use `t.time()`, `t.Int32()`)
 - **Working**: `import sys` - system module with `sys.argv`
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
@@ -1834,7 +1836,6 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 - **Working**: Package support (dotted imports, `__init__.tp.py`, namespace packages)
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
 - **Working**: Re-exports in `__init__.py` (functions, records, protocols, variables)
-- **Planned**: Module-level aliases: `import time as _time`
 - **Open**: Importing additional Python stdlib subsets that can be statically compiled
 
 ### User-Defined Modules (Working)

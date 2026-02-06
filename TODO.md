@@ -1,16 +1,12 @@
 # TODO
 
 ## Next
-- make a doc with TPy vs Python differences
-- require importing tpy items, not autoimport (preferred `from tpy import *`)
-- require imports at the top of file, don't allow inline imports
 - compare cpython as separate test executor
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - `type()` function
 - extract c++ compiler interface
-- `Int32` should be imported from tpy, so it matches CPython (maybe use `from typ import *`?)
 - `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function
 - how to handle const methods like `__len__` or `__getitem__`; how to handle constness in TPy?
 - template function implementation should be in some specific header file
@@ -21,6 +17,7 @@
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
 - Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
 - differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently.
+- make a doc with TPy vs Python differences
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
@@ -42,7 +39,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - make `range` a generator function
 - language restriction documentation
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
-- consider removing Bool type and just keeping bool (or an alias, but not sure if it's needed)
+- Char/Bool type location: currently in `builtins` module but feel like tpy types. Python has `bool` (so `Bool` may not be needed), but doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.
 - ultimate goal: make tpyc compile with tpyc
 - BigInt: use second bit for int 63-126 bits long; do not allocate mzp_t, use low level GMP functions
 - game of life benchmark TPy vs CPy (two version: idiomatic python, optimized TPy types)
@@ -70,7 +67,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
-- import module alias `import X as Y`
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
@@ -85,7 +81,6 @@ Random items that may or may not be implemented in the future, but putting them 
 
 ## Known Limitations
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
-- Import aliases don't work for type annotations: `from tpy import Int32 as I` allows `I(42)` but not `x: I`. Type parsing needs to consult imported aliases to support this.
 - Own[T] local variable optimization: allow `return local_var` without copy() since C++ uses NRVO (Named Return Value Optimization). Currently requires explicit copy() for all lvalues.
 - Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope.
 

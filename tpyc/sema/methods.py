@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
     from .compatibility import TypeCompatibility
     from .expressions import ExpressionAnalyzer
+    from .calls import CallAnalyzer
 
 from tpyc import modules as builtin_modules
 
@@ -44,6 +45,7 @@ class MethodAnalyzer:
         self.compat = compat
         # Set later to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
+        self.calls: "CallAnalyzer | None" = None
 
     @staticmethod
     def _analyze_super_call_static(ctx: SemanticContext, expr: TpyCall) -> TpyType:
@@ -140,12 +142,21 @@ class MethodAnalyzer:
                     if module_info and module_info.functions and expr.method in module_info.functions:
                         overloads = module_info.functions[expr.method]
                         if module_info.is_builtin:
+                            # Mark for codegen with canonical module name
+                            expr.builtin_module_call = module_name
                             temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
                             return self._analyze_builtin_function_overloads(temp_call, overloads)
                         else:
                             # User module: single overload
                             func_info = overloads[0]
                             return self._analyze_user_module_function_call(expr, func_info, module_name)
+                    # Check for type constructor (e.g., tpy.Int32)
+                    qname = f"{module_name}.{expr.method}"
+                    if record_info := self.ctx.registry.get_builtin_record(qname):
+                        if record_info.constructors and not record_info.type_params:
+                            expr.builtin_module_call = module_name
+                            temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                            return self.calls._check_builtin_constructor(temp_call, record_info)
                     raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
             # Fallback for when namespace isn't set
             elif expr.obj.name in self.ctx.imports:
@@ -161,12 +172,21 @@ class MethodAnalyzer:
                         if module_info and module_info.functions and expr.method in module_info.functions:
                             overloads = module_info.functions[expr.method]
                             if module_info.is_builtin:
+                                # Mark for codegen with canonical module name
+                                expr.builtin_module_call = module_name
                                 temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
                                 return self._analyze_builtin_function_overloads(temp_call, overloads)
                             else:
                                 # User module: single overload
                                 func_info = overloads[0]
                                 return self._analyze_user_module_function_call(expr, func_info, module_name)
+                        # Check for type constructor (e.g., tpy.Int32)
+                        qname = f"{module_name}.{expr.method}"
+                        if record_info := self.ctx.registry.get_builtin_record(qname):
+                            if record_info.constructors and not record_info.type_params:
+                                expr.builtin_module_call = module_name
+                                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                                return self.calls._check_builtin_constructor(temp_call, record_info)
                         raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
 
         obj_type = self.expr.analyze_expr(expr.obj)
