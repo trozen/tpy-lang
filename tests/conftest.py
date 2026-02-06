@@ -286,14 +286,14 @@ def remove_if_exists(path: Path) -> None:
         path.unlink()
 
 
-def discover_cases():
-    """Discover all test cases from cases/, errors/, and panics/ directories.
+def _discover_from_dirs(base_dirs: list[Path]):
+    """Discover test cases from the given directories.
 
     Returns list of (name, case_dir, main_src) tuples.
     """
     cases = []
 
-    for base_dir in [CASES_DIR, ERRORS_DIR, PANICS_DIR]:
+    for base_dir in base_dirs:
         if not base_dir.exists():
             continue
 
@@ -321,3 +321,19 @@ def discover_cases():
             cases.append((name, case_dir, main_src))
 
     return cases
+
+
+def discover_cases():
+    """Discover all test cases from cases/, errors/, and panics/ directories.
+
+    Returns list of (name, case_dir, main_src) tuples.
+    """
+    return _discover_from_dirs([CASES_DIR, ERRORS_DIR, PANICS_DIR])
+
+
+def discover_cases_only():
+    """Discover test cases from cases/ directory only (no errors/ or panics/).
+
+    Returns list of (name, case_dir, main_src) tuples.
+    """
+    return _discover_from_dirs([CASES_DIR])

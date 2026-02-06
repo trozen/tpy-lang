@@ -1,7 +1,8 @@
 # TODO
 
 ## Next
-- compare cpython as separate test executor
+- all expected warnings/errors should be in `# tpyc` annotation
+- handling local objects, lifetime, pointer vs reference
 - investigate other backends than c++
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)

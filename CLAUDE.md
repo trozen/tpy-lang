@@ -45,8 +45,11 @@ uv run pytest -n auto
 # Run fast compilation tests only (diagnostics, codegen)
 uv run pytest tests/test_comp.py -n auto
 
-# Run slow execution tests only (C++ build, run, CPython comparison)
+# Run execution tests only (C++ build, run)
 uv run pytest tests/test_exec.py -n auto
+
+# Run CPython compatibility tests only
+uv run pytest tests/test_cpy.py -n auto
 
 # Run tests for one case (pattern matching)
 uv run pytest -k hello -n auto
@@ -56,6 +59,7 @@ uv run python tests/update_snapshots.py              # all cases
 uv run python tests/update_snapshots.py hello        # specific case
 uv run python tests/update_snapshots.py --comp       # compilation tests only
 uv run python tests/update_snapshots.py --exec       # execution tests only
+uv run python tests/update_snapshots.py --cpy        # CPython compatibility checks (read-only)
 uv run python tests/update_snapshots.py --comp hello # specific case, comp only
 ```
 
@@ -79,7 +83,8 @@ tests/
 ├── harness/tpy/              # CPython simulation module
 ├── conftest.py               # Pytest fixtures and shared utilities
 ├── test_comp.py              # Fast compilation tests (diagnostics, codegen)
-├── test_exec.py              # Slow execution tests (C++ build, run)
+├── test_exec.py              # Execution tests (C++ build, run, compare to output.txt)
+├── test_cpy.py               # CPython compatibility tests (run with CPython, compare to output.txt)
 └── update_snapshots.py       # Snapshot update utility
 ```
 
