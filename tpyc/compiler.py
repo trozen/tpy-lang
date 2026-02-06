@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, SourceLocation
+from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation
 from .sema import SemanticAnalyzer, SemanticError
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
@@ -211,13 +211,10 @@ class Compiler:
                 continue
             processed.add(imported_name)
             # Handle relative import placeholders
-            if imported_name.startswith("__rel__"):
-                # Use maxsplit=4 to handle module names containing "__"
-                parts = imported_name.split("__", 4)
-                # Format: __rel__{level}__{lineno}__{partial} -> ["", "rel", level, lineno, partial]
-                level = int(parts[2])
-                # parts[3] is line number (not used here, just for uniqueness)
-                partial = parts[4] if len(parts) > 4 and parts[4] else None
+            if RelativeImportKey.is_placeholder(imported_name):
+                rel_key = RelativeImportKey.decode(imported_name)
+                level = rel_key.level
+                partial = rel_key.partial or None
 
                 resolved_name = self.resolver.resolve_relative(
                     module_name, level, partial, is_package_init

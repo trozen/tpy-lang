@@ -264,6 +264,39 @@ class TpyPassStmt(TpyStmt):
     pass
 
 
+@dataclass(frozen=True)
+class RelativeImportKey:
+    """Structured key for relative import placeholders in import dicts.
+
+    Used as a temporary dict key before relative imports are resolved to
+    canonical module names during discovery.
+    """
+    level: int
+    line: int
+    col: int
+    partial: str  # Module name after dots ("" for bare "from . import X")
+
+    def encode(self) -> str:
+        """Encode as a unique string key for use in dicts."""
+        return f"__rel__{self.level}__{self.line}_{self.col}__{self.partial}"
+
+    @staticmethod
+    def decode(key: str) -> 'RelativeImportKey':
+        """Decode a placeholder string back into structured fields."""
+        # Format: __rel__{level}__{line}_{col}__{partial}
+        parts = key.split("__", 4)
+        level = int(parts[2])
+        line_col = parts[3]
+        line_str, col_str = line_col.split("_", 1)
+        partial = parts[4] if len(parts) > 4 else ""
+        return RelativeImportKey(level=level, line=int(line_str), col=int(col_str), partial=partial)
+
+    @staticmethod
+    def is_placeholder(key: str) -> bool:
+        """Check if a string key is a relative import placeholder."""
+        return key.startswith("__rel__")
+
+
 @dataclass
 class TpyImport(TpyStmt):
     """Import statement for user modules.
@@ -274,7 +307,7 @@ class TpyImport(TpyStmt):
     For relative imports:
     - level: Number of dots (0=absolute, 1=".", 2="..", etc.)
     - relative_name: Original module name after dots (None for "from . import X")
-    - module_name: Initially a placeholder "__rel__{level}__{name}", resolved during discovery
+    - module_name: Initially a RelativeImportKey.encode() placeholder, resolved during discovery
 
     For aliased imports (import X as Y):
     - alias: The local name (Y) if different from module_name
@@ -410,6 +443,16 @@ _CMPOP_TO_STR: dict[type, str] = {
 _UNARYOP_TO_STR: dict[type, str] = {
     ast.USub: "-", ast.Not: "!", ast.Invert: "~",
 }
+
+
+def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
+    """Extract individual type argument nodes from a subscript slice.
+
+    Handles both single-arg (X[T]) and multi-arg (X[T, U]) forms.
+    """
+    if isinstance(node.slice, ast.Tuple):
+        return node.slice.elts
+    return [node.slice]
 
 
 def check_tpy_type_imported(
@@ -564,11 +607,8 @@ class Parser:
 
         # Handle relative imports (level > 0)
         if level > 0:
-            # Create placeholder name that will be resolved during discovery
-            # Format: __rel__{level}__{lineno}_{col}__{partial_name}
-            # Include line:col to keep each import statement unique (handles same-line imports)
-            partial = module_name or ""
-            placeholder = f"__rel__{level}__{node.lineno}_{node.col_offset}__{partial}"
+            key = RelativeImportKey(level=level, line=node.lineno, col=node.col_offset, partial=module_name or "")
+            placeholder = key.encode()
 
             # Track as user module import
             user_module_imports[placeholder] = node.lineno
@@ -1026,19 +1066,11 @@ class Parser:
                                     type_params: list[str], type_param_scope: dict[str, TypeParamKind] | None = None) -> tuple[TpyType, ...]:
         """Parse type arguments for a generic protocol like Sequence[Int32]."""
         expected_count = len(type_params)
-
-        # Extract slice elements
-        if expected_count == 1:
-            slices = [node.slice]
-        elif isinstance(node.slice, ast.Tuple):
-            slices = node.slice.elts
-        else:
-            raise ParseError(f"{name} requires {expected_count} type parameters", node)
+        slices = _extract_subscript_slices(node)
 
         if len(slices) != expected_count:
             raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
 
-        # Parse each type argument
         type_args = tuple(self._parse_type_annotation(s, type_param_scope) for s in slices)
         return type_args
 
@@ -1049,11 +1081,7 @@ class Parser:
         The validation of which positions accept integers is done in sema (since the record info
         may not be registered yet during parsing).
         """
-        # Extract slice elements
-        if isinstance(node.slice, ast.Tuple):
-            slices = node.slice.elts
-        else:
-            slices = [node.slice]
+        slices = _extract_subscript_slices(node)
 
         # Parse each type argument (allowing integer literals)
         type_args: list[TpyType | int] = []
@@ -1075,11 +1103,7 @@ class Parser:
         Raises ParseError if any element is not a valid type. The caller should catch
         this for cases where non-type arguments are valid (e.g., StaticList[Int32, 8]).
         """
-        # Extract slice elements
-        if isinstance(node.slice, ast.Tuple):
-            slices = node.slice.elts
-        else:
-            slices = [node.slice]
+        slices = _extract_subscript_slices(node)
 
         # Parse each type argument - raise error if any fails
         type_args = []
@@ -1097,14 +1121,7 @@ class Parser:
         """Parse a module-defined generic type using its metadata."""
         param_kinds = type_def.param_kinds
         expected_count = len(param_kinds)
-
-        # Extract slice elements
-        if expected_count == 1:
-            slices = [node.slice]
-        elif isinstance(node.slice, ast.Tuple):
-            slices = node.slice.elts
-        else:
-            raise ParseError(f"{name} requires {expected_count} type parameters", node)
+        slices = _extract_subscript_slices(node)
 
         if len(slices) != expected_count:
             raise ParseError(f"{name} requires exactly {expected_count} type parameters", node)
@@ -1358,15 +1375,24 @@ class Parser:
 
     def _binop_to_str(self, op: ast.operator) -> str:
         """Convert binary operator to string."""
-        return _BINOP_TO_STR.get(type(op), "?")
+        result = _BINOP_TO_STR.get(type(op))
+        if result is None:
+            raise ParseError(f"Unsupported binary operator: {type(op).__name__}")
+        return result
 
     def _cmpop_to_str(self, op: ast.cmpop) -> str:
         """Convert comparison operator to string."""
-        return _CMPOP_TO_STR.get(type(op), "?")
+        result = _CMPOP_TO_STR.get(type(op))
+        if result is None:
+            raise ParseError(f"Unsupported comparison operator: {type(op).__name__}")
+        return result
 
     def _unaryop_to_str(self, op: ast.unaryop) -> str:
         """Convert unary operator to string."""
-        return _UNARYOP_TO_STR.get(type(op), "?")
+        result = _UNARYOP_TO_STR.get(type(op))
+        if result is None:
+            raise ParseError(f"Unsupported unary operator: {type(op).__name__}")
+        return result
 
     def _get_default_value(self, node: ast.expr) -> str:
         """Get string representation of a default value for C++."""

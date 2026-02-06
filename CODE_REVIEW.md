@@ -50,16 +50,9 @@ These should be decomposed into focused sub-contexts.
 
 `operators.py:binop_type_matches`, `methods.py:_builtin_type_matches`, and `calls.py:_builtin_type_matches` all implement nearly identical type compatibility checks for IntLiteralType coercion. Should be a single shared `TypeMatcher`.
 
-### 6. Type argument slice extraction duplicated 3x in parse.py
+### ~~6. Type argument slice extraction duplicated 3x in parse.py~~ ✅ Resolved
 
-`_parse_protocol_type_args`, `_parse_record_type_args`, and `_parse_generic_type` all contain the same pattern:
-
-```python
-if isinstance(node.slice, ast.Tuple):
-    slices = node.slice.elts
-else:
-    slices = [node.slice]
-```
+Extracted shared `_extract_subscript_slices()` module-level helper used by all four type argument parsing methods.
 
 ### 7. Binary operator definitions massively duplicated across modules
 
@@ -88,9 +81,9 @@ Character/string escaping (`.replace('\\', '\\\\').replace('"', '\\"').replace('
 
 ## Hard-Coded Values and Magic
 
-### 12. Relative import placeholder is a magic string
+### ~~12. Relative import placeholder is a magic string~~ ✅ Resolved
 
-`parse.py:555` creates `__rel__{level}__{lineno}_{col}__{partial}`, and `compiler.py:188` parses it back with `split("__", 4)`. This is fragile (what if a module name contains `__`?), undocumented, and lacks type safety. Should be a dataclass.
+Replaced with `RelativeImportKey` frozen dataclass providing `encode()`/`decode()`/`is_placeholder()` methods. Format construction and parsing are now co-located.
 
 ### 13. C++ compiler and flags are hard-coded
 
@@ -154,9 +147,9 @@ Call sites must know which to use and when, with no uniform interface.
 
 ## Anti-Patterns
 
-### 23. Silent `"?"` fallback in operator parsing
+### ~~23. Silent `"?"` fallback in operator parsing~~ ✅ Resolved
 
-`parse.py:1354`: `ops.get(type(op), "?")` returns `"?"` for unknown operators instead of raising an error. This could silently generate invalid C++ code.
+Operator conversion methods now raise `ParseError` for unknown operators instead of silently returning `"?"`.
 
 ### ~~24. Operator dicts recreated on every call~~ ✅ Resolved
 
