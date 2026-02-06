@@ -6,13 +6,15 @@
 
 Unified via `Compiler.from_source()` — both stdin and file mode now use `Compiler`. The dead `compile_file()` function was removed.
 
-### 2. Parser has too many responsibilities (parse.py — 1413 lines)
+### 2. Parser has too many responsibilities (parse.py) — partially addressed
 
 The parser does far more than parsing:
 - **Import validation** (`_check_import`, `_check_import_from`) — semantic concern
-- **TPY type import enforcement** (`_check_tpy_type_imported`) — policy enforcement
+- ~~**TPY type import enforcement** (`_check_tpy_type_imported`) — policy enforcement~~ ✅ Extracted as standalone module-level function with explicit parameters; redundant `_tpy_imported_names` state removed
 - **Import tracking** (`imports`, `user_module_imports`, `module_aliases`) — compiler-level concern
 - **Type parameter scope management** (`_type_param_scope`) — semantic concern
+
+Additionally: `SPECIAL_MODULES`, `TPY_TYPES`, and operator mapping dicts promoted to module-level constants, reducing Parser instance state. See also #24 (resolved).
 
 This makes it difficult to test parsing in isolation and creates coupling between syntax handling and semantic validation.
 
@@ -156,9 +158,9 @@ Call sites must know which to use and when, with no uniform interface.
 
 `parse.py:1354`: `ops.get(type(op), "?")` returns `"?"` for unknown operators instead of raising an error. This could silently generate invalid C++ code.
 
-### 24. Operator dicts recreated on every call
+### ~~24. Operator dicts recreated on every call~~ ✅ Resolved
 
-`parse.py:1345-1369`: `_binop_to_str`, `_cmpop_to_str`, `_unaryop_to_str` each rebuild their mapping dict on every call. Should be class-level constants.
+Operator mappings (`_BINOP_TO_STR`, `_CMPOP_TO_STR`, `_UNARYOP_TO_STR`) promoted to module-level constants. Methods now do simple lookups.
 
 ### 25. Post-hoc type annotation updates
 

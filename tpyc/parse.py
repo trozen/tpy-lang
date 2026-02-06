@@ -378,6 +378,57 @@ class TpyModule:
     parse_warnings: list[ParseWarning] = field(default_factory=list)
 
 
+# Modules with special parser handling (not resolved as user files)
+# tpy: type imports, __future__: ignored, typing: type hints, builtins: always available
+# Note: math, time, sys can be shadowed by user files and are NOT in this set
+SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins"}
+
+# Types from tpy that require explicit import (not auto-available like Python builtins)
+# Python builtins (int, str, bool, list, float, None) remain auto-available
+TPY_TYPES = {
+    "Int32", "Char", "Bool",  # Basic tpy types
+    "Span", "Array", "StaticList",  # Container types
+    "Ptr", "ConstPtr", "Own",  # Pointer types
+}
+
+# Operator-to-string mappings for AST binary, comparison, and unary operators
+_BINOP_TO_STR: dict[type, str] = {
+    ast.Add: "+", ast.Sub: "-", ast.Mult: "*",
+    ast.Div: "div", ast.Mod: "%", ast.FloorDiv: "//",
+    ast.BitAnd: "&", ast.BitOr: "|", ast.BitXor: "^",
+    ast.LShift: "<<", ast.RShift: ">>",
+    ast.Pow: "**",
+}
+
+_CMPOP_TO_STR: dict[type, str] = {
+    ast.Eq: "==", ast.NotEq: "!=",
+    ast.Lt: "<", ast.LtE: "<=",
+    ast.Gt: ">", ast.GtE: ">=",
+    ast.In: "in", ast.NotIn: "not in",
+}
+
+_UNARYOP_TO_STR: dict[type, str] = {
+    ast.USub: "-", ast.Not: "!", ast.Invert: "~",
+}
+
+
+def check_tpy_type_imported(
+    name: str, resolved_name: str, node: ast.AST,
+    tpy_star_import: bool, tpy_import_aliases: dict[str, str],
+) -> None:
+    """Check that a tpy type was explicitly imported before use."""
+    if resolved_name not in TPY_TYPES:
+        return
+    if tpy_star_import:
+        return
+    if name in tpy_import_aliases:
+        return
+    raise ParseError(
+        f"'{name}' is not defined. Did you mean: from tpy import {resolved_name}",
+        node
+    )
+
+
 class Parser:
     """Parser for TurboPython source code."""
 
@@ -387,26 +438,12 @@ class Parser:
         "lambda", "yield", "global", "nonlocal",
     }
 
-    # Modules with special parser handling (not resolved as user files)
-    # tpy: type imports, __future__: ignored, typing: type hints, builtins: always available
-    # Note: math, time, sys can be shadowed by user files and are NOT in this set
-    SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins"}
-
-    # Types from tpy that require explicit import (not auto-available like Python builtins)
-    # Python builtins (int, str, bool, list, float, None) remain auto-available
-    TPY_TYPES = {
-        "Int32", "Char", "Bool",  # Basic tpy types
-        "Span", "Array", "StaticList",  # Container types
-        "Ptr", "ConstPtr", "Own",  # Pointer types
-    }
-
     def __init__(self):
         self.registry = TypeRegistry()
         self.source_lines: list[str] = []
         self._type_param_scope: dict[str, TypeParamKind] | None = None  # Current type parameter scope for generic classes
         self._warnings: list[ParseWarning] = []  # Warnings accumulated during parsing
         self._tpy_import_aliases: dict[str, str] = {}  # local_name -> original_name for tpy imports
-        self._tpy_imported_names: set[str] = set()  # local names imported from tpy
         self._tpy_star_import: bool = False  # True if "from tpy import *" was used
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
@@ -434,32 +471,11 @@ class Parser:
             return True
         return False
 
-    def _check_tpy_type_imported(self, name: str, resolved_name: str, node: ast.AST) -> None:
-        """Check that a tpy type was explicitly imported before use.
-
-        Args:
-            name: The name as used in the code (may be an alias)
-            resolved_name: The original tpy type name (e.g., "Int32")
-            node: AST node for error location
-        """
-        if resolved_name not in self.TPY_TYPES:
-            return  # Not a tpy type requiring explicit import
-        if self._tpy_star_import:
-            return  # "from tpy import *" makes all tpy types available
-        if name in self._tpy_imported_names:
-            return  # Explicitly imported
-        # Not imported - emit helpful error
-        raise ParseError(
-            f"'{name}' is not defined. Did you mean: from tpy import {resolved_name}",
-            node
-        )
-
     def parse(self, source: str) -> TpyModule:
         """Parse TurboPython source code into a TpyModule."""
         self.source_lines = source.splitlines()
         self._warnings = []  # Reset warnings for each parse
         self._tpy_import_aliases = {}  # Reset tpy import aliases
-        self._tpy_imported_names = set()  # Reset imported names tracking
         self._tpy_star_import = False  # Reset star import flag
         tree = ast.parse(source)
         return self._parse_module(tree)
@@ -524,7 +540,7 @@ class Parser:
             module_name = alias.name
             local_name = alias.asname or module_name
             # Check if it's a user module (not builtin)
-            if module_name not in self.SPECIAL_MODULES:
+            if module_name not in SPECIAL_MODULES:
                 # User module import - track line number and add to statements
                 user_module_imports[module_name] = node.lineno
                 imports[module_name] = None
@@ -577,7 +593,7 @@ class Parser:
             raise ParseError("Invalid import: no module name", node)
 
         # Check if it's a user module (not builtin)
-        if module_name not in self.SPECIAL_MODULES:
+        if module_name not in SPECIAL_MODULES:
             # User module import: from utils import add, Point - track line number
             user_module_imports[module_name] = node.lineno
             if module_name not in imports:
@@ -615,8 +631,6 @@ class Parser:
                     current.add((original_name, local_name))
                     # Track alias for type annotation resolution
                     self._tpy_import_aliases[local_name] = original_name
-                    # Track imported name for explicit import checking
-                    self._tpy_imported_names.add(local_name)
             return
         # 'from X import Y, Z' -> module_name: {(original, local), ...}
         # Store as (original_name, local_name) tuples to support aliases
@@ -918,7 +932,7 @@ class Parser:
             # Resolve tpy import aliases (e.g., "from tpy import Int32 as I" allows using "I")
             resolved_name = self._tpy_import_aliases.get(name, name)
             # Check if tpy type was explicitly imported
-            self._check_tpy_type_imported(name, resolved_name, node)
+            check_tpy_type_imported(name, resolved_name, node, self._tpy_star_import, self._tpy_import_aliases)
             if resolved_name == "Self":
                 return SELF
             elif resolved_name == "Int32":
@@ -967,7 +981,7 @@ class Parser:
                 # Resolve tpy import aliases for container names
                 resolved_container = self._tpy_import_aliases.get(container, container)
                 # Check if tpy type was explicitly imported
-                self._check_tpy_type_imported(container, resolved_container, node)
+                check_tpy_type_imported(container, resolved_container, node, self._tpy_star_import, self._tpy_import_aliases)
                 # Pointer types are fundamental, not module-defined
                 if resolved_container == "Ptr":
                     inner = self._parse_type_annotation(node.slice, type_param_scope)
@@ -1344,29 +1358,15 @@ class Parser:
 
     def _binop_to_str(self, op: ast.operator) -> str:
         """Convert binary operator to string."""
-        ops = {
-            ast.Add: "+", ast.Sub: "-", ast.Mult: "*",
-            ast.Div: "div", ast.Mod: "%", ast.FloorDiv: "//",
-            ast.BitAnd: "&", ast.BitOr: "|", ast.BitXor: "^",
-            ast.LShift: "<<", ast.RShift: ">>",
-            ast.Pow: "**",
-        }
-        return ops.get(type(op), "?")
+        return _BINOP_TO_STR.get(type(op), "?")
 
     def _cmpop_to_str(self, op: ast.cmpop) -> str:
         """Convert comparison operator to string."""
-        ops = {
-            ast.Eq: "==", ast.NotEq: "!=",
-            ast.Lt: "<", ast.LtE: "<=",
-            ast.Gt: ">", ast.GtE: ">=",
-            ast.In: "in", ast.NotIn: "not in",
-        }
-        return ops.get(type(op), "?")
+        return _CMPOP_TO_STR.get(type(op), "?")
 
     def _unaryop_to_str(self, op: ast.unaryop) -> str:
         """Convert unary operator to string."""
-        ops = {ast.USub: "-", ast.Not: "!", ast.Invert: "~"}
-        return ops.get(type(op), "?")
+        return _UNARYOP_TO_STR.get(type(op), "?")
 
     def _get_default_value(self, node: ast.expr) -> str:
         """Get string representation of a default value for C++."""
