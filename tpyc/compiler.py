@@ -184,21 +184,22 @@ class Compiler:
         """
         self.entry_point = entry_point.resolve()
         self.resolver = ModuleResolver(self.entry_point.parent)
+        self._init_shared()
+
+    def _init_shared(self) -> None:
+        """Initialize state shared by both file and stdin compilation paths."""
         self.modules: dict[str, CompiledModule] = {}
         self.compile_order: list[str] = []
-        # Track which modules shadow builtins: {module_name: set of (importing_module, line_no)}
         self.shadowed_builtins: dict[str, set[tuple[str, int]]] = {}
         self._source_input: tuple[str, str] | None = None
 
     @classmethod
     def from_source(cls, source: str, module_name: str = "main") -> "Compiler":
         """Create a compiler for a single module from source code (e.g., stdin)."""
-        compiler = object.__new__(cls)
+        compiler = cls.__new__(cls)
         compiler.entry_point = Path("<stdin>")
         compiler.resolver = None
-        compiler.modules = {}
-        compiler.compile_order = []
-        compiler.shadowed_builtins = {}
+        compiler._init_shared()
         compiler._source_input = (source, module_name)
         return compiler
 

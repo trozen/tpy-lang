@@ -877,17 +877,11 @@ class FunctionInfo:
     is_noalloc: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
-    type_params: list[str] = None
-    type_param_bounds: dict[str, 'NamedType'] = None  # {"T": Comparable} (must be protocols)
+    type_params: list[str] = field(default_factory=list)
+    type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
-
-    def __post_init__(self):
-        if self.type_params is None:
-            self.type_params = []
-        if self.type_param_bounds is None:
-            self.type_param_bounds = {}
 
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""
@@ -937,19 +931,11 @@ class ProtocolInfo:
     """
     name: str
     methods: list[MethodSignature]
-    fields: list[tuple[str, TpyType]] = None  # (field_name, field_type)
-    type_params: list[str] = None
-    parent_protocols: list[str] = None  # Names of parent protocols
+    fields: list[tuple[str, TpyType]] = field(default_factory=list)
+    type_params: list[str] = field(default_factory=list)
+    parent_protocols: list[str] = field(default_factory=list)
     cpp_concept: str | None = None  # C++ concept name for builtin protocols
     is_marker: bool = False  # Marker protocols require explicit extends
-
-    def __post_init__(self):
-        if self.fields is None:
-            self.fields = []
-        if self.type_params is None:
-            self.type_params = []
-        if self.parent_protocols is None:
-            self.parent_protocols = []
 
 
 @dataclass
@@ -965,20 +951,10 @@ class ModuleInfo:
     """Information about a module (builtin or user-defined)."""
     name: str
     is_builtin: bool = True  # True for builtin modules (time/sys/math), False for user modules
-    functions: dict[str, list[FunctionInfo]] = None  # func_name -> overloads
-    variables: dict[str, ModuleVarInfo] = None  # var_name -> ModuleVarInfo
-    records: dict[str, RecordInfo] = None  # type_name -> RecordInfo (exported types)
-    protocols: dict[str, ProtocolInfo] = None  # protocol_name -> ProtocolInfo
-
-    def __post_init__(self):
-        if self.functions is None:
-            self.functions = {}
-        if self.variables is None:
-            self.variables = {}
-        if self.records is None:
-            self.records = {}
-        if self.protocols is None:
-            self.protocols = {}
+    functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
+    variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
+    records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
+    protocols: dict[str, ProtocolInfo] = field(default_factory=dict)  # protocol_name -> ProtocolInfo
 
 
 class TypeRegistry:

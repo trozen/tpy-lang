@@ -143,7 +143,7 @@ All 4 `assert` statements in `codegen_cpp/` replaced with explicit `CodeGenError
 
 ### ~~28. Dataclass `__post_init__` boilerplate instead of `field(default_factory=...)`~~ ✅ Resolved
 
-`RecordInfo` now uses `field(default_factory=...)` for all collection fields, eliminating the `__post_init__` method.
+`RecordInfo`, `FunctionInfo`, `ProtocolInfo`, and `ModuleInfo` now use `field(default_factory=...)` for all collection fields, eliminating their `__post_init__` methods.
 
 ---
 
