@@ -135,7 +135,7 @@ The `var_decl_by_name` pattern is a correct mechanism for retroactive `IntLitera
 
 ### ~~26. String-based C++ template substitution with no validation~~ ✅ Resolved
 
-Extracted `expand_cpp_template(template, self_val, *args)` in `codegen_cpp/context.py`. Replaced 9 chained `.replace()` call sites across `expressions.py`, `statements.py`, and `builtins.py` with the unified helper.
+Extracted `expand_cpp_template(template, self_val, *args)` in `codegen_cpp/context.py`. Replaced 9 chained `.replace()` call sites across `expressions.py`, `statements.py`, and `builtins.py` with the unified helper. The helper now validates that no `{self}` or `{N}` placeholders remain after expansion, raising `CodeGenError` on mismatch.
 
 ### ~~27. Assertions used for input validation~~ ✅ Resolved
 

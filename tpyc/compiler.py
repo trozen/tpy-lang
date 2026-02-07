@@ -67,16 +67,14 @@ class BuildLayout:
         parts = module_name.split('.')
         if len(parts) == 1:
             return self.include_dir / f"{parts[0]}.hpp"
-        rel_dir = '/'.join(parts[:-1])
-        return self.include_dir / rel_dir / f"{parts[-1]}.hpp"
+        return self.include_dir / Path(*parts[:-1]) / f"{parts[-1]}.hpp"
 
     def cpp_path(self, module_name: str) -> Path:
         """Path to the generated source for a module."""
         parts = module_name.split('.')
         if len(parts) == 1:
             return self.src_dir / f"{parts[0]}.cpp"
-        rel_dir = '/'.join(parts[:-1])
-        return self.src_dir / rel_dir / f"{parts[-1]}.cpp"
+        return self.src_dir / Path(*parts[:-1]) / f"{parts[-1]}.cpp"
 
     def binary_path(self) -> Path:
         """Path to the output binary."""

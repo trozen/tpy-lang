@@ -5,6 +5,7 @@ Shared state and utilities for C++ code generation.
 """
 
 from __future__ import annotations
+import re
 from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 
@@ -23,11 +24,19 @@ if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
 
 
+_TEMPLATE_PLACEHOLDER = re.compile(r"\{(self|\d+)\}")
+
+
 def expand_cpp_template(template: str, self_val: str, *args: str) -> str:
     """Expand a C++ template, substituting {self} and positional {0}, {1}, etc."""
     result = template.replace("{self}", self_val)
     for i, arg in enumerate(args):
         result = result.replace(f"{{{i}}}", arg)
+    remaining = _TEMPLATE_PLACEHOLDER.search(result)
+    if remaining:
+        raise CodeGenError(
+            f"Unreplaced placeholder {remaining.group()} in C++ template: {template}"
+        )
     return result
 
 
