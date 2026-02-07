@@ -293,7 +293,7 @@ def _discover_from_dirs(base_dirs: list[Path]):
                 main_src = sorted(src_files, key=lambda p: p.name)[0]
 
             rel_path = case_dir.relative_to(base_dir)
-            name = f"{prefix}_{rel_path}".replace("/", "_").replace("\\", "_")
+            name = f"{prefix}/{rel_path}".replace("\\", "/")
             cases.append((name, case_dir, main_src))
 
     return cases
