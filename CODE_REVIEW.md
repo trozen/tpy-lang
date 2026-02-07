@@ -168,21 +168,21 @@ All 4 `assert` statements in `codegen_cpp/` replaced with explicit `CodeGenError
 
 ## Complexity Hotspots
 
-### 29. `_discover_modules()` — 164 lines, deeply nested (compiler.py:127-290)
+### ~~29. `_discover_modules()` — 164 lines, deeply nested (compiler.py)~~ ✅ Resolved
 
-Handles circular import checking, relative import resolution, submodule detection, and builtin shadowing all in one method. Should be decomposed.
+Extracted `_resolve_relative_import()` and `_process_user_import()` helpers. Main method is now a short loop delegating to focused helpers.
 
-### 30. `analyze_method_call()` — 262 lines (sema/methods.py:89-351)
+### ~~30. `analyze_method_call()` — 262 lines (sema/methods.py)~~ ✅ Resolved
 
-Handles 7 different call patterns (super, static, module, builtin, user record, protocol, bounded type param) in one method with deep nesting.
+Extracted `_analyze_static_method_call()`, `_analyze_module_method_call()`, `_analyze_builtin_type_method()`, `_analyze_user_record_method()`, and `_analyze_protocol_or_bound_method()`. Main method is now a short dispatch chain. Also extracted `_resolve_module_name()` to unify the namespace/fallback module lookup.
 
-### 31. `match_type_with_inference()` — 152 lines (sema/type_ops.py:287-439)
+### ~~31. `match_type_with_inference()` — 152 lines (sema/type_ops.py)~~ ✅ Resolved
 
-7 nested cases with 8+ levels of nesting for ArrayType. Each case should be its own method.
+Extracted `_match_protocol_type_args_with_inference()`, `_match_array_with_inference()`, and `_match_record_with_inference()`. Main method is now a concise dispatch.
 
-### 32. `_generate_protocol_ordering()` — 164 lines (codegen_cpp/generator.py:156-320)
+### ~~32. `_generate_protocol_ordering()` — 164 lines (codegen_cpp/generator.py)~~ ✅ Resolved
 
-Complex ordering logic for protocol declarations, forward declarations, and re-exports all interleaved.
+Added `_ProtocolDeps` dataclass for dependency sets. Extracted `_collect_protocol_deps()`, `_generate_forward_decls_and_concepts()`, and `_generate_definitions_and_reexports()`. Main method is now 3 lines.
 
 ---
 
@@ -216,6 +216,6 @@ Now uses `os.pathsep` instead of hardcoded `:`.
 | **Medium** | ~~#9~~, ~~#10~~, ~~#17~~ | ~~Consolidate duplicated code (compilation commands, escaping, dunder maps)~~ ✅ All resolved |
 | **Medium** | #18, ~~#19~~, #20, ~~#21~~, #22 | Standardize lookup/resolution patterns; ~~fix sentinel misuse~~ |
 | **Medium** | ~~#23~~, #26, ~~#27~~ | ~~Fail fast instead of silently~~; validate templates; ~~use proper checks~~ |
-| **Medium** | #29, #30, #31, #32 | Decompose complex methods into focused helpers |
+| **Medium** | ~~#29~~, ~~#30~~, ~~#31~~, ~~#32~~ | ~~Decompose complex methods into focused helpers~~ ✅ All resolved |
 | **Low** | ~~#14~~, ~~#15~~, ~~#16~~, ~~#24~~, #25, ~~#28~~ | ~~Centralize constants; use `field(default_factory=...)`; class-level dicts~~ — mostly resolved |
 | **Low** | ~~#33~~, #34, #35, ~~#36~~ | ~~Clean up dead code~~; fix test infrastructure fragility |

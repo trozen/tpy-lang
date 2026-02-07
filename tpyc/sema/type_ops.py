@@ -293,22 +293,11 @@ class TypeOperations:
         """Match param_type against arg_type, collecting type param inferences.
 
         Returns True if types match (with inference), False otherwise.
-        Supports:
-        - TypeParamRef for type parameters
-        - NamedType (protocol) with TypeParamRef in type_args
-        - ListType with nested TypeParamRef
-        - NamedType (record) with type args (nested generics)
-        - PtrType, ConstPtrType, OwnType wrappers
-        - Concrete types (compatibility check)
         """
-        # Import here to avoid circular dependency
-        from tpyc import modules as builtin_modules
-
-        # Case 1: TypeParamRef (type parameters)
+        # TypeParamRef — infer or check consistency
         if isinstance(param_type, TypeParamRef):
             if param_type.name in inferred:
                 existing = inferred[param_type.name]
-                # Upgrade IntLiteralType to concrete int type if available
                 if isinstance(existing, IntLiteralType) and isinstance(arg_type, (Int32Type, BigIntType)):
                     inferred[param_type.name] = arg_type
                     return True
@@ -316,31 +305,13 @@ class TypeOperations:
             inferred[param_type.name] = arg_type
             return True
 
-        # Case 2: NamedType (protocol) with TypeParamRef in type_args (e.g., NativeIterable[T])
+        # Protocol with TypeParamRef in type_args (e.g., NativeIterable[T])
         if is_protocol_type(param_type) and param_type.type_args:
-            # Check if any type_arg is a TypeParamRef that needs inference
             has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
             if has_type_param:
-                # Get element type from the argument (protocol conformance)
-                elem_type = self._get_iterable_element_type_or_none(arg_type)
-                if elem_type is None:
-                    return False
-                # Check conformance with the inferred element type
-                expected_protocol = NamedType(param_type.name, (elem_type,), is_protocol=True)
-                # Need protocols checker - defer to context-level conformance check
-                if not builtin_modules.type_extends_any(arg_type, "NativeIterable"):
-                    return False
-                # Infer type params from the protocol's type_args
-                for ta in param_type.type_args:
-                    if isinstance(ta, TypeParamRef):
-                        if ta.name in inferred:
-                            if not self.types_match_for_inference(inferred[ta.name], elem_type):
-                                return False
-                        else:
-                            inferred[ta.name] = elem_type
-                return True
+                return self._match_protocol_type_args_with_inference(param_type, arg_type, inferred)
 
-        # Case 3: ListType with nested TypeParamRef (e.g., list[T])
+        # ListType with nested TypeParamRef (e.g., list[T])
         if isinstance(param_type, ListType):
             if isinstance(arg_type, (ListType, PendingListType)):
                 return self.match_type_with_inference(
@@ -348,66 +319,15 @@ class TypeOperations:
                 )
             return False
 
-        # Case 3b: ArrayType with TypeParamRef element or size (e.g., Array[T, N])
+        # ArrayType with TypeParamRef element or size (e.g., Array[T, N])
         if isinstance(param_type, ArrayType):
-            if isinstance(arg_type, ArrayType):
-                # Match element types
-                if not self.match_type_with_inference(
-                    param_type.element_type, arg_type.element_type, inferred
-                ):
-                    return False
-                # Match sizes
-                if isinstance(param_type.size, TypeParamRef):
-                    # Infer size from arg
-                    if isinstance(arg_type.size, int):
-                        param_name = param_type.size.name
-                        if param_name in inferred:
-                            # Already inferred - check consistency
-                            if inferred[param_name] != arg_type.size:
-                                return False
-                        else:
-                            inferred[param_name] = arg_type.size
-                        return True
-                    elif isinstance(arg_type.size, TypeParamRef):
-                        # Both are TypeParamRef - must have same name
-                        return param_type.size.name == arg_type.size.name
-                else:
-                    # param_type.size is int - must match exactly
-                    return param_type.size == arg_type.size
-            return False
+            return self._match_array_with_inference(param_type, arg_type, inferred)
 
-        # Case 4: NamedType (record) with type args (e.g., Box[T] nested)
+        # NamedType (record) with type args (e.g., Box[T] nested)
         if isinstance(param_type, NamedType) and param_type.is_record and param_type.type_args:
-            if isinstance(arg_type, NamedType) and arg_type.is_record and arg_type.name == param_type.name:
-                if len(param_type.type_args) != len(arg_type.type_args):
-                    return False
-                for pt, at in zip(param_type.type_args, arg_type.type_args):
-                    if isinstance(pt, TpyType) and isinstance(at, TpyType):
-                        # Both are types - recurse
-                        if not self.match_type_with_inference(pt, at, inferred):
-                            return False
-                    elif isinstance(pt, TypeParamRef) and pt.kind == TypeParamKind.INT and isinstance(at, int):
-                        # INT type param vs concrete int - infer
-                        if pt.name in inferred:
-                            if inferred[pt.name] != at:
-                                return False
-                        else:
-                            inferred[pt.name] = at
-                    elif isinstance(pt, int) and isinstance(at, int):
-                        # Both concrete ints - must match exactly
-                        if pt != at:
-                            return False
-                    elif isinstance(pt, TypeParamRef) and isinstance(at, TypeParamRef):
-                        # Both TypeParamRef - names must match
-                        if pt.name != at.name:
-                            return False
-                    else:
-                        # Mismatched arg kinds (e.g., int vs TpyType)
-                        return False
-                return True
-            return False
+            return self._match_record_with_inference(param_type, arg_type, inferred)
 
-        # Case 5: Pointer types (Ptr[T], ConstPtr[T])
+        # Pointer types (Ptr[T], ConstPtr[T])
         if isinstance(param_type, PtrType):
             if isinstance(arg_type, PtrType):
                 return self.match_type_with_inference(
@@ -416,18 +336,13 @@ class TypeOperations:
             return False
 
         if isinstance(param_type, ConstPtrType):
-            # ConstPtr[T] accepts both ConstPtr[X] and Ptr[X] (Ptr coerces to ConstPtr)
-            if isinstance(arg_type, ConstPtrType):
-                return self.match_type_with_inference(
-                    param_type.pointee, arg_type.pointee, inferred
-                )
-            if isinstance(arg_type, PtrType):
+            if isinstance(arg_type, (ConstPtrType, PtrType)):
                 return self.match_type_with_inference(
                     param_type.pointee, arg_type.pointee, inferred
                 )
             return False
 
-        # Case 6: Own[T] wrapper
+        # Own[T] wrapper
         if isinstance(param_type, OwnType):
             if isinstance(arg_type, OwnType):
                 return self.match_type_with_inference(
@@ -435,8 +350,90 @@ class TypeOperations:
                 )
             return False
 
-        # Case 7: Concrete type - check compatibility
+        # Concrete type — check compatibility
         return self.types_match_for_inference(param_type, arg_type)
+
+    def _match_protocol_type_args_with_inference(
+        self,
+        param_type: TpyType,
+        arg_type: TpyType,
+        inferred: dict[str, TpyType],
+    ) -> bool:
+        """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T])."""
+        from tpyc import modules as builtin_modules
+
+        elem_type = self._get_iterable_element_type_or_none(arg_type)
+        if elem_type is None:
+            return False
+        if not builtin_modules.type_extends_any(arg_type, "NativeIterable"):
+            return False
+        for ta in param_type.type_args:
+            if isinstance(ta, TypeParamRef):
+                if ta.name in inferred:
+                    if not self.types_match_for_inference(inferred[ta.name], elem_type):
+                        return False
+                else:
+                    inferred[ta.name] = elem_type
+        return True
+
+    def _match_array_with_inference(
+        self,
+        param_type: ArrayType,
+        arg_type: TpyType,
+        inferred: dict[str, TpyType],
+    ) -> bool:
+        """Match ArrayType with TypeParamRef element or size (e.g., Array[T, N])."""
+        if not isinstance(arg_type, ArrayType):
+            return False
+        if not self.match_type_with_inference(
+            param_type.element_type, arg_type.element_type, inferred
+        ):
+            return False
+        # Match sizes
+        if isinstance(param_type.size, TypeParamRef):
+            if isinstance(arg_type.size, int):
+                param_name = param_type.size.name
+                if param_name in inferred:
+                    if inferred[param_name] != arg_type.size:
+                        return False
+                else:
+                    inferred[param_name] = arg_type.size
+                return True
+            elif isinstance(arg_type.size, TypeParamRef):
+                return param_type.size.name == arg_type.size.name
+        else:
+            return param_type.size == arg_type.size
+
+    def _match_record_with_inference(
+        self,
+        param_type: NamedType,
+        arg_type: TpyType,
+        inferred: dict[str, TpyType],
+    ) -> bool:
+        """Match a generic record NamedType against arg_type (e.g., Box[T])."""
+        if not (isinstance(arg_type, NamedType) and arg_type.is_record and arg_type.name == param_type.name):
+            return False
+        if len(param_type.type_args) != len(arg_type.type_args):
+            return False
+        for pt, at in zip(param_type.type_args, arg_type.type_args):
+            if isinstance(pt, TpyType) and isinstance(at, TpyType):
+                if not self.match_type_with_inference(pt, at, inferred):
+                    return False
+            elif isinstance(pt, TypeParamRef) and pt.kind == TypeParamKind.INT and isinstance(at, int):
+                if pt.name in inferred:
+                    if inferred[pt.name] != at:
+                        return False
+                else:
+                    inferred[pt.name] = at
+            elif isinstance(pt, int) and isinstance(at, int):
+                if pt != at:
+                    return False
+            elif isinstance(pt, TypeParamRef) and isinstance(at, TypeParamRef):
+                if pt.name != at.name:
+                    return False
+            else:
+                return False
+        return True
 
     def types_match_for_inference(self, type_a: TpyType, type_b: TpyType) -> bool:
         """Check if two types match for inference consistency.

@@ -263,13 +263,11 @@ class Compiler:
         # Check for circular imports
         if module_name in import_chain:
             cycle = " -> ".join(import_chain + [module_name])
-            # Report error on the importing module (last in chain) at the import line
             importing_module = import_chain[-1] if import_chain else module_name
             importing_path = self.modules[importing_module].path if importing_module in self.modules else path
             raise CompileError(f"Circular import detected: {cycle}", importing_module, importing_path,
                                lineno=import_lineno)
 
-        # Already discovered
         if module_name in self.modules:
             return
 
@@ -281,7 +279,6 @@ class Compiler:
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
 
-        # Create module entry (exports filled during analysis)
         self.modules[module_name] = CompiledModule(
             name=module_name,
             path=path,
@@ -294,7 +291,6 @@ class Compiler:
         # Recursively discover imported user modules
         new_chain = import_chain + [module_name]
         builtin_names = get_builtin_module_names()
-        # Use a queue since relative imports may add new modules during processing
         import_queue = list(ast.user_module_imports.items())
         processed = set()
         while import_queue:
@@ -302,108 +298,123 @@ class Compiler:
             if imported_name in processed:
                 continue
             processed.add(imported_name)
-            # Handle relative import placeholders
-            if RelativeImportKey.is_placeholder(imported_name):
-                rel_key = RelativeImportKey.decode(imported_name)
-                level = rel_key.level
-                partial = rel_key.partial or None
 
-                resolved_name = self.resolver.resolve_relative(
-                    module_name, level, partial, is_package_init
+            if RelativeImportKey.is_placeholder(imported_name):
+                resolved_name = self._resolve_relative_import(
+                    imported_name, import_lineno, module_name, path, ast, import_queue, is_package_init
                 )
                 if resolved_name is None:
-                    raise CompileError(
-                        "Relative import beyond top-level package",
-                        module_name, path, lineno=import_lineno
-                    )
-
-                # Handle "from . import submod" case: each imported name might be a submodule
-                # When partial is None, check if imported names are submodules
-                all_converted_to_modules = False
-                submod_imports: list[TpyImport] = []  # Collect submodule imports for ordering
-                if partial is None and imported_name in ast.imports:
-                    import_items = ast.imports[imported_name]
-                    if isinstance(import_items, set):
-                        for orig_name, local_name in list(import_items):
-                            submod_name = f"{resolved_name}.{orig_name}" if resolved_name else orig_name
-                            submod_resolved = self.resolver.resolve(submod_name)
-                            if submod_resolved:
-                                # It's a submodule - treat as aliased module import
-                                import_items.discard((orig_name, local_name))
-                                # Mark as module import (None = whole module)
-                                ast.imports[submod_name] = None
-                                ast.user_module_imports[submod_name] = import_lineno
-                                # Track the alias: import mypackage.utils as utils
-                                ast.module_aliases[submod_name] = local_name
-                                # Collect TpyImport for later insertion at correct position
-                                submod_imports.append(TpyImport(
-                                    module_name=submod_name,
-                                    loc=SourceLocation(import_lineno, 0)
-                                ))
-                                # Add to queue for discovery
-                                import_queue.append((submod_name, import_lineno))
-                            elif not resolved_name:
-                                # Can't import non-module symbol from root level
-                                raise CompileError(
-                                    f"Cannot import '{orig_name}' from root level",
-                                    module_name, path, lineno=import_lineno
-                                )
-                        # Check if all items were converted to module imports
-                        all_converted_to_modules = len(import_items) == 0
-
-                # Skip updating if all items were converted to module imports (no target module)
-                if all_converted_to_modules:
-                    # Find and replace the placeholder TpyImport with submodule imports
-                    # This preserves import ordering for correct __tpy_init() sequencing
-                    for i, stmt in enumerate(ast.top_level_stmts):
-                        if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
-                            ast.top_level_stmts[i:i+1] = submod_imports
-                            break
-                    ast.imports.pop(imported_name, None)
-                    ast.user_module_imports.pop(imported_name, None)
                     continue
-                elif submod_imports:
-                    # Some items are submodules, some are symbols - insert submodule imports
-                    # after the placeholder (which will be updated to the resolved module)
-                    for i, stmt in enumerate(ast.top_level_stmts):
-                        if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
-                            ast.top_level_stmts[i+1:i+1] = submod_imports
-                            break
-
-                # Update TpyImport node with resolved name
-                for stmt in ast.top_level_stmts:
-                    if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
-                        stmt.module_name = resolved_name
-                        break
-
-                # Update imports dict key
-                if imported_name in ast.imports:
-                    ast.imports[resolved_name] = ast.imports.pop(imported_name)
-                ast.user_module_imports[resolved_name] = ast.user_module_imports.pop(imported_name)
-
                 imported_name = resolved_name
 
-            resolved = self.resolver.resolve(imported_name)
-            if resolved is None:
-                # No user file found - check if it's a builtin module
-                if imported_name in builtin_names:
-                    # Builtin module, no user file - skip (handled by builtin system)
-                    continue
-                raise CompileError(
-                    f"Module '{imported_name}' not found",
-                    module_name, path, lineno=import_lineno
-                )
-            # User file found - check if it shadows a builtin
+            self._process_user_import(imported_name, import_lineno, module_name, path, builtin_names, new_chain)
+
+    def _resolve_relative_import(
+        self,
+        imported_name: str,
+        import_lineno: int,
+        module_name: str,
+        path: Path,
+        ast: TpyModule,
+        import_queue: list[tuple[str, int]],
+        is_package_init: bool,
+    ) -> str | None:
+        """Resolve a relative import placeholder, updating AST nodes and import dicts.
+
+        Returns the resolved module name, or None if the import was fully converted
+        to submodule imports (and should be skipped by the caller).
+        """
+        rel_key = RelativeImportKey.decode(imported_name)
+        level = rel_key.level
+        partial = rel_key.partial or None
+
+        resolved_name = self.resolver.resolve_relative(
+            module_name, level, partial, is_package_init
+        )
+        if resolved_name is None:
+            raise CompileError(
+                "Relative import beyond top-level package",
+                module_name, path, lineno=import_lineno
+            )
+
+        # Handle "from . import submod" case: each imported name might be a submodule
+        all_converted_to_modules = False
+        submod_imports: list[TpyImport] = []
+        if partial is None and imported_name in ast.imports:
+            import_items = ast.imports[imported_name]
+            if isinstance(import_items, set):
+                for orig_name, local_name in list(import_items):
+                    submod_name = f"{resolved_name}.{orig_name}" if resolved_name else orig_name
+                    submod_resolved = self.resolver.resolve(submod_name)
+                    if submod_resolved:
+                        import_items.discard((orig_name, local_name))
+                        ast.imports[submod_name] = None
+                        ast.user_module_imports[submod_name] = import_lineno
+                        ast.module_aliases[submod_name] = local_name
+                        submod_imports.append(TpyImport(
+                            module_name=submod_name,
+                            loc=SourceLocation(import_lineno, 0)
+                        ))
+                        import_queue.append((submod_name, import_lineno))
+                    elif not resolved_name:
+                        raise CompileError(
+                            f"Cannot import '{orig_name}' from root level",
+                            module_name, path, lineno=import_lineno
+                        )
+                all_converted_to_modules = len(import_items) == 0
+
+        if all_converted_to_modules:
+            for i, stmt in enumerate(ast.top_level_stmts):
+                if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
+                    ast.top_level_stmts[i:i+1] = submod_imports
+                    break
+            ast.imports.pop(imported_name, None)
+            ast.user_module_imports.pop(imported_name, None)
+            return None
+        elif submod_imports:
+            for i, stmt in enumerate(ast.top_level_stmts):
+                if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
+                    ast.top_level_stmts[i+1:i+1] = submod_imports
+                    break
+
+        # Update TpyImport node with resolved name
+        for stmt in ast.top_level_stmts:
+            if isinstance(stmt, TpyImport) and stmt.module_name == imported_name:
+                stmt.module_name = resolved_name
+                break
+
+        # Update imports dict key
+        if imported_name in ast.imports:
+            ast.imports[resolved_name] = ast.imports.pop(imported_name)
+        ast.user_module_imports[resolved_name] = ast.user_module_imports.pop(imported_name)
+
+        return resolved_name
+
+    def _process_user_import(
+        self,
+        imported_name: str,
+        import_lineno: int,
+        module_name: str,
+        path: Path,
+        builtin_names: set[str],
+        new_chain: list[str],
+    ) -> None:
+        """Resolve a user module import, checking for not-found and builtin shadowing."""
+        resolved = self.resolver.resolve(imported_name)
+        if resolved is None:
             if imported_name in builtin_names:
-                # Track for warning emission during analysis
-                if imported_name not in self.shadowed_builtins:
-                    self.shadowed_builtins[imported_name] = set()
-                self.shadowed_builtins[imported_name].add((module_name, import_lineno))
-            # Discover parent package __init__ files first (if any)
-            self._discover_package_inits(imported_name, new_chain, import_lineno)
-            # Use canonical name from resolution (handles __init__ correctly)
-            self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno,
-                                   is_package_init=resolved.is_package_init)
+                return
+            raise CompileError(
+                f"Module '{imported_name}' not found",
+                module_name, path, lineno=import_lineno
+            )
+        if imported_name in builtin_names:
+            if imported_name not in self.shadowed_builtins:
+                self.shadowed_builtins[imported_name] = set()
+            self.shadowed_builtins[imported_name].add((module_name, import_lineno))
+        self._discover_package_inits(imported_name, new_chain, import_lineno)
+        self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno,
+                               is_package_init=resolved.is_package_init)
 
     def _discover_package_inits(self, dotted_name: str, import_chain: list[str],
                                  import_lineno: int | None) -> None:

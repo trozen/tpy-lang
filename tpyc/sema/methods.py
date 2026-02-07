@@ -90,264 +90,267 @@ class MethodAnalyzer:
 
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
-        # Handle super().method() calls
+        # super().method() calls
         if isinstance(expr.obj, TpyCall) and expr.obj.func == "super":
             return self._analyze_super_method_call(expr)
 
-        # Check for ClassName.staticmethod() pattern
-        # Use namespace to verify the name refers to a record and isn't shadowed by a variable
         if isinstance(expr.obj, TpyName):
-            is_record_name = False
-            if self.ctx.current_ns:
-                binding = self.ctx.current_ns.lookup(expr.obj.name)
-                if binding and binding.kind == BindingKind.RECORD:
-                    is_record_name = True
-            else:
-                # Fallback: check if it's a record and not shadowed by a variable
-                if (self.ctx.registry.get_record(expr.obj.name) is not None and
-                    self.ctx.current_scope.lookup(expr.obj.name) is None):
-                    is_record_name = True
+            # ClassName.staticmethod() pattern
+            result = self._analyze_static_method_call(expr)
+            if result is not None:
+                return result
 
-            if is_record_name:
-                record_info = self.ctx.registry.get_record(expr.obj.name)
-                method_info = self.protocols.lookup_record_method(record_info, expr.method)
-                if method_info and method_info.is_staticmethod:
-                    # It's a static method call via class name
-                    if len(expr.args) != len(method_info.params):
-                        raise SemanticError(
-                            f"Static method '{expr.method}' expects {len(method_info.params)} arguments, "
-                            f"got {len(expr.args)}"
-                        )
-                    # Type-check arguments
-                    for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
-                        arg_type = self.expr.analyze_expr(arg)
-                        expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                                coercion_ctx=CoercionContext.ARG)
-                    # Mark as static call for codegen
-                    expr.is_static_call = True
-                    return method_info.return_type
-                elif method_info and not method_info.is_staticmethod:
-                    raise SemanticError(f"Method '{expr.method}' requires an instance (not a static method)")
-
-        # Check for module.function() pattern (import X -> X.func())
-        # Use namespace to check if module binding exists and isn't shadowed
-        if isinstance(expr.obj, TpyName):
-            if self.ctx.current_ns:
-                binding = self.ctx.current_ns.lookup(expr.obj.name)
-                if binding and binding.kind == BindingKind.MODULE:
-                    # It's a module call: module.function()
-                    # Get actual module name (may differ from local name for aliased imports)
-                    module_name = binding.import_source[0] if binding.import_source else expr.obj.name
-
-                    # Check unified registry for both user and builtin modules
-                    module_info = self.ctx.registry.get_module(module_name)
-                    if module_info and module_info.functions and expr.method in module_info.functions:
-                        overloads = module_info.functions[expr.method]
-                        if module_info.is_builtin:
-                            # Mark for codegen with canonical module name
-                            expr.builtin_module_call = module_name
-                            temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                            return self._analyze_builtin_function_overloads(temp_call, overloads)
-                        else:
-                            # User module: single overload
-                            func_info = overloads[0]
-                            return self._analyze_user_module_function_call(expr, func_info, module_name)
-                    # Check for type constructor (e.g., tpy.Int32)
-                    qname = f"{module_name}.{expr.method}"
-                    if record_info := self.ctx.registry.get_builtin_record(qname):
-                        if record_info.constructors and not record_info.type_params:
-                            expr.builtin_module_call = module_name
-                            temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                            return self.calls._check_builtin_constructor(temp_call, record_info)
-                    raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
-            # Fallback for when namespace isn't set
-            elif expr.obj.name in self.ctx.imports:
-                module_name = expr.obj.name
-                # Check if shadowed by variable, user-defined function, or record
-                if (self.ctx.current_scope.lookup(module_name) is None and
-                    self.ctx.registry.get_function(module_name) is None and
-                    self.ctx.registry.get_record(module_name) is None):
-                    # Module was imported with 'import X' (not 'from X import ...')
-                    if self.ctx.imports[module_name] is None:
-                        # Check unified registry for both user and builtin modules
-                        module_info = self.ctx.registry.get_module(module_name)
-                        if module_info and module_info.functions and expr.method in module_info.functions:
-                            overloads = module_info.functions[expr.method]
-                            if module_info.is_builtin:
-                                # Mark for codegen with canonical module name
-                                expr.builtin_module_call = module_name
-                                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                                return self._analyze_builtin_function_overloads(temp_call, overloads)
-                            else:
-                                # User module: single overload
-                                func_info = overloads[0]
-                                return self._analyze_user_module_function_call(expr, func_info, module_name)
-                        # Check for type constructor (e.g., tpy.Int32)
-                        qname = f"{module_name}.{expr.method}"
-                        if record_info := self.ctx.registry.get_builtin_record(qname):
-                            if record_info.constructors and not record_info.type_params:
-                                expr.builtin_module_call = module_name
-                                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                                return self.calls._check_builtin_constructor(temp_call, record_info)
-                        raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+            # module.function() pattern (import X -> X.func())
+            result = self._analyze_module_method_call(expr)
+            if result is not None:
+                return result
 
         obj_type = self.expr.analyze_expr(expr.obj)
 
-        # Unwrap OwnType for method lookup - Own[T] behaves as T for method calls
         if isinstance(obj_type, OwnType):
             obj_type = obj_type.wrapped
 
-        # List mutation methods - mark literal as mutated before module lookup
+        # List mutation tracking
         if isinstance(obj_type, (PendingListType, ListType)):
             if expr.method in LIST_MUTATION_METHODS:
                 from .list_literals import ListLiteralTracker
                 tracker = ListLiteralTracker(self.ctx)
                 tracker.mark_list_mutated(expr.obj)
 
-        # Built-in type methods - use registry lookup
-        # (Skip for NamedType records - those are handled in the user record path below)
-        if not (isinstance(obj_type, NamedType) and obj_type.is_record):
-            record_info = self.ctx.registry.get_record_for_type(obj_type)
-            if record_info:
-                overloads = record_info.get_method_overloads(expr.method)
-                if overloads:
-                    type_subst = builtin_modules.extract_type_params(obj_type)
+        # Built-in type methods
+        result = self._analyze_builtin_type_method(expr, obj_type)
+        if result is not None:
+            return result
 
-                    if len(overloads) == 1:
-                        # Single overload - go directly to arg checking for better error messages
-                        resolved = self.type_ops.substitute_method_type_params(overloads[0], type_subst) if type_subst else overloads[0]
-                        if len(expr.args) != len(resolved.params):
-                            raise SemanticError(
-                                f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                                f"got {len(expr.args)}"
-                            )
-                        expr.resolved_function_info = resolved
-                        # Type-check and coerce arguments (gives detailed error messages)
-                        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                            arg_type = self.expr.analyze_expr(arg)
-                            expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"{pname} argument",
-                                                                    coercion_ctx=CoercionContext.ARG)
-                        return resolved.return_type
-                    else:
-                        # Multiple overloads - find matching one
-                        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                        resolved = self._resolve_method_overload(overloads, arg_types, type_subst)
-                        if resolved is None:
-                            arg_type_strs = ", ".join(str(t) for t in arg_types)
-                            raise SemanticError(f"No matching overload for {expr.method}({arg_type_strs})")
+        # User-defined record methods
+        result = self._analyze_user_record_method(expr, obj_type)
+        if result is not None:
+            return result
 
-                        expr.resolved_function_info = resolved
-                        # Type-check and coerce arguments
-                        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                            expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
-                                                                    coercion_ctx=CoercionContext.ARG)
-                        return resolved.return_type
+        # Protocol-typed values and bounded type parameters
+        result = self._analyze_protocol_or_bound_method(expr, obj_type)
+        if result is not None:
+            return result
 
-        # User-defined record methods (including inherited methods from builtins)
+        raise self.ctx.error(f"Cannot call method '{expr.method}' on type {obj_type}", expr)
+
+    def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
+        """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""
+        assert isinstance(expr.obj, TpyName)
+        is_record_name = False
+        if self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(expr.obj.name)
+            if binding and binding.kind == BindingKind.RECORD:
+                is_record_name = True
+        else:
+            if (self.ctx.registry.get_record(expr.obj.name) is not None and
+                self.ctx.current_scope.lookup(expr.obj.name) is None):
+                is_record_name = True
+
+        if not is_record_name:
+            return None
+
+        record_info = self.ctx.registry.get_record(expr.obj.name)
+        method_info = self.protocols.lookup_record_method(record_info, expr.method)
+        if method_info and method_info.is_staticmethod:
+            if len(expr.args) != len(method_info.params):
+                raise SemanticError(
+                    f"Static method '{expr.method}' expects {len(method_info.params)} arguments, "
+                    f"got {len(expr.args)}"
+                )
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
+                arg_type = self.expr.analyze_expr(arg)
+                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                        coercion_ctx=CoercionContext.ARG)
+            expr.is_static_call = True
+            return method_info.return_type
+        elif method_info and not method_info.is_staticmethod:
+            raise SemanticError(f"Method '{expr.method}' requires an instance (not a static method)")
+        return None
+
+    def _analyze_module_method_call(self, expr: TpyMethodCall) -> TpyType | None:
+        """Check for module.function() pattern. Returns type or None if not a module call."""
+        assert isinstance(expr.obj, TpyName)
+
+        module_name = self._resolve_module_name(expr.obj.name)
+        if module_name is None:
+            return None
+
+        module_info = self.ctx.registry.get_module(module_name)
+        if module_info and module_info.functions and expr.method in module_info.functions:
+            overloads = module_info.functions[expr.method]
+            if module_info.is_builtin:
+                expr.builtin_module_call = module_name
+                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                return self._analyze_builtin_function_overloads(temp_call, overloads)
+            else:
+                func_info = overloads[0]
+                return self._analyze_user_module_function_call(expr, func_info, module_name)
+
+        qname = f"{module_name}.{expr.method}"
+        if record_info := self.ctx.registry.get_builtin_record(qname):
+            if record_info.constructors and not record_info.type_params:
+                expr.builtin_module_call = module_name
+                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                return self.calls._check_builtin_constructor(temp_call, record_info)
+
+        raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+
+    def _resolve_module_name(self, name: str) -> str | None:
+        """Resolve a name to a module name if it refers to a module. Returns None otherwise."""
+        if self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(name)
+            if binding and binding.kind == BindingKind.MODULE:
+                return binding.import_source[0] if binding.import_source else name
+        elif name in self.ctx.imports:
+            if (self.ctx.current_scope.lookup(name) is None and
+                self.ctx.registry.get_function(name) is None and
+                self.ctx.registry.get_record(name) is None):
+                if self.ctx.imports[name] is None:
+                    return name
+        return None
+
+    def _analyze_builtin_type_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+        """Analyze a builtin type method call. Returns type or None if no matching builtin."""
         if isinstance(obj_type, NamedType) and obj_type.is_record:
-            record_info = self.ctx.registry.get_record(obj_type.name)
-            if record_info:
-                overloads, inherited_subst = self.protocols.lookup_record_method_overloads(record_info, expr.method)
-                if overloads:
-                    # Build type substitution for generic records
-                    # Resolve any TypeParamRefs in inherited_subst using instance's type args
-                    instance_subst = self.type_ops.build_type_substitution(obj_type)
-                    if inherited_subst and instance_subst:
-                        # Resolve TypeParamRefs in inherited values
-                        type_subst = {
-                            k: self.type_ops.substitute_type_params(v, instance_subst)
-                            for k, v in inherited_subst.items()
-                        }
-                    elif inherited_subst:
-                        type_subst = inherited_subst
-                    else:
-                        type_subst = instance_subst
+            return None
 
-                    if len(overloads) == 1:
-                        # Single overload - check args directly for better error messages
-                        method_info = overloads[0]
-                        resolved = self.type_ops.substitute_method_type_params(method_info, type_subst) if type_subst else method_info
-                        if len(expr.args) != len(resolved.params):
-                            raise SemanticError(
-                                f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                                f"got {len(expr.args)}"
-                            )
-                        expr.resolved_function_info = resolved
-                        # Type-check and coerce arguments
-                        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                            arg_type = self.expr.analyze_expr(arg)
-                            expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                                    coercion_ctx=CoercionContext.ARG)
-                        return resolved.return_type
-                    else:
-                        # Multiple overloads - do overload resolution
-                        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                        resolved_overloads = [
-                            self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
-                            for m in overloads
-                        ]
-                        resolved = resolve_overload(
-                            resolved_overloads, arg_types,
-                            protocol_checker=self.protocols.type_conforms_to_protocol,
-                        )
-                        if resolved is not None:
-                            expr.resolved_function_info = resolved
-                            # Coerce arguments
-                            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
-                                                                        coercion_ctx=CoercionContext.ARG)
-                            return resolved.return_type
-                        # No matching overload found
-                        param_types_str = ", ".join(str(t) for t in arg_types)
-                        raise SemanticError(
-                            f"No matching overload for '{expr.method}' with argument types ({param_types_str})"
-                        )
+        record_info = self.ctx.registry.get_record_for_type(obj_type)
+        if not record_info:
+            return None
 
-        # Protocol-typed values - use protocol method signatures
+        overloads = record_info.get_method_overloads(expr.method)
+        if not overloads:
+            return None
+
+        type_subst = builtin_modules.extract_type_params(obj_type)
+
+        if len(overloads) == 1:
+            resolved = self.type_ops.substitute_method_type_params(overloads[0], type_subst) if type_subst else overloads[0]
+            if len(expr.args) != len(resolved.params):
+                raise SemanticError(
+                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
+                    f"got {len(expr.args)}"
+                )
+            expr.resolved_function_info = resolved
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                arg_type = self.expr.analyze_expr(arg)
+                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"{pname} argument",
+                                                        coercion_ctx=CoercionContext.ARG)
+            return resolved.return_type
+        else:
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            resolved = self._resolve_method_overload(overloads, arg_types, type_subst)
+            if resolved is None:
+                arg_type_strs = ", ".join(str(t) for t in arg_types)
+                raise SemanticError(f"No matching overload for {expr.method}({arg_type_strs})")
+
+            expr.resolved_function_info = resolved
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
+                                                        coercion_ctx=CoercionContext.ARG)
+            return resolved.return_type
+
+    def _analyze_user_record_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+        """Analyze a user-defined record method call. Returns type or None if not applicable."""
+        if not (isinstance(obj_type, NamedType) and obj_type.is_record):
+            return None
+
+        record_info = self.ctx.registry.get_record(obj_type.name)
+        if not record_info:
+            return None
+
+        overloads, inherited_subst = self.protocols.lookup_record_method_overloads(record_info, expr.method)
+        if not overloads:
+            return None
+
+        # Build type substitution, resolving inherited TypeParamRefs with instance type args
+        instance_subst = self.type_ops.build_type_substitution(obj_type)
+        if inherited_subst and instance_subst:
+            type_subst = {
+                k: self.type_ops.substitute_type_params(v, instance_subst)
+                for k, v in inherited_subst.items()
+            }
+        elif inherited_subst:
+            type_subst = inherited_subst
+        else:
+            type_subst = instance_subst
+
+        if len(overloads) == 1:
+            method_info = overloads[0]
+            resolved = self.type_ops.substitute_method_type_params(method_info, type_subst) if type_subst else method_info
+            if len(expr.args) != len(resolved.params):
+                raise SemanticError(
+                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
+                    f"got {len(expr.args)}"
+                )
+            expr.resolved_function_info = resolved
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                arg_type = self.expr.analyze_expr(arg)
+                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
+                                                        coercion_ctx=CoercionContext.ARG)
+            return resolved.return_type
+        else:
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            resolved_overloads = [
+                self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
+                for m in overloads
+            ]
+            resolved = resolve_overload(
+                resolved_overloads, arg_types,
+                protocol_checker=self.protocols.type_conforms_to_protocol,
+            )
+            if resolved is not None:
+                expr.resolved_function_info = resolved
+                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                    expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
+                                                            coercion_ctx=CoercionContext.ARG)
+                return resolved.return_type
+            param_types_str = ", ".join(str(t) for t in arg_types)
+            raise SemanticError(
+                f"No matching overload for '{expr.method}' with argument types ({param_types_str})"
+            )
+
+    def _analyze_protocol_or_bound_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+        """Analyze method calls on protocol-typed values or bounded type parameters."""
         if is_protocol_type(obj_type):
             method_sig = self.protocols.get_protocol_method_signature(obj_type, expr.method)
             if method_sig is None:
                 raise SemanticError(f"Protocol '{obj_type.name}' has no method '{expr.method}'")
 
             params, return_type = method_sig
-            # Check argument count
             if len(expr.args) != len(params):
                 raise SemanticError(
                     f"Method '{expr.method}' expects {len(params)} arguments, "
                     f"got {len(expr.args)}"
                 )
-            # Type-check and coerce arguments
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
                 arg_type = self.expr.analyze_expr(arg)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
             return return_type
 
-        # Bounded type parameter - treat method calls as if on the bound protocol
         if isinstance(obj_type, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(obj_type.name)
             if bound is not None and is_protocol_type(bound):
-                # Pass obj_type as self_type so Self in signatures resolves to T, not the protocol
                 method_sig = self.protocols.get_protocol_method_signature(bound, expr.method, self_type=obj_type)
                 if method_sig is None:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
 
                 params, return_type = method_sig
-                # Check argument count
                 if len(expr.args) != len(params):
                     raise self.ctx.error(
                         f"Method '{expr.method}' expects {len(params)} arguments, "
                         f"got {len(expr.args)}",
                         expr
                     )
-                # Type-check and coerce arguments
                 for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
                     arg_type = self.expr.analyze_expr(arg)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                             coercion_ctx=CoercionContext.ARG)
                 return return_type
 
-        raise self.ctx.error(f"Cannot call method '{expr.method}' on type {obj_type}", expr)
+        return None
 
     def _analyze_super_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a super().method() call.
