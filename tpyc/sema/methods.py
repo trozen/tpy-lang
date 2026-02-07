@@ -142,6 +142,8 @@ class MethodAnalyzer:
     def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""
         assert isinstance(expr.obj, TpyName)
+        if self.ctx.current_ns is None:
+            return None
         is_record_name = False
         binding = self.ctx.current_ns.lookup(expr.obj.name)
         if binding and binding.kind == BindingKind.RECORD:
@@ -198,6 +200,8 @@ class MethodAnalyzer:
 
     def _resolve_module_name(self, name: str) -> str | None:
         """Resolve a name to a module name if it refers to a module. Returns None otherwise."""
+        if self.ctx.current_ns is None:
+            return None
         binding = self.ctx.current_ns.lookup(name)
         if binding and binding.kind == BindingKind.MODULE:
             return binding.import_source[0] if binding.import_source else name

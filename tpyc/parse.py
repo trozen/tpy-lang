@@ -271,6 +271,10 @@ class RelativeImportKey:
     Used as a temporary dict key before relative imports are resolved to
     canonical module names during discovery.
     """
+    # Prefix uses \x00 which cannot appear in a Python identifier,
+    # making collision with real module names structurally impossible.
+    _PREFIX = "\x00rel:"
+
     level: int
     line: int
     col: int
@@ -278,23 +282,21 @@ class RelativeImportKey:
 
     def encode(self) -> str:
         """Encode as a unique string key for use in dicts."""
-        return f"__rel__{self.level}__{self.line}_{self.col}__{self.partial}"
+        return f"{self._PREFIX}{self.level}:{self.line}_{self.col}:{self.partial}"
 
     @staticmethod
     def decode(key: str) -> 'RelativeImportKey':
         """Decode a placeholder string back into structured fields."""
-        # Format: __rel__{level}__{line}_{col}__{partial}
-        parts = key.split("__", 4)
-        level = int(parts[2])
-        line_col = parts[3]
-        line_str, col_str = line_col.split("_", 1)
-        partial = parts[4] if len(parts) > 4 else ""
-        return RelativeImportKey(level=level, line=int(line_str), col=int(col_str), partial=partial)
+        # Format: \x00rel:{level}:{line}_{col}:{partial}
+        body = key[len(RelativeImportKey._PREFIX):]
+        level_str, loc, partial = body.split(":", 2)
+        line_str, col_str = loc.split("_", 1)
+        return RelativeImportKey(level=int(level_str), line=int(line_str), col=int(col_str), partial=partial)
 
     @staticmethod
     def is_placeholder(key: str) -> bool:
         """Check if a string key is a relative import placeholder."""
-        return key.startswith("__rel__")
+        return key.startswith(RelativeImportKey._PREFIX)
 
 
 @dataclass
