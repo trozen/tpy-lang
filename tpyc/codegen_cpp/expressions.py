@@ -20,7 +20,7 @@ from ..parse import (
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
-from .context import escape_cpp_string, escape_cpp_char, module_to_cpp_namespace
+from .context import escape_cpp_string, escape_cpp_char, module_to_cpp_namespace, expand_cpp_template
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -206,8 +206,7 @@ class ExpressionGenerator:
             if method_name:
                 cpp_template = self.builtins.get_type_method_template(INT32, method_name)
                 if cpp_template:
-                    result = cpp_template.replace("{self}", left).replace("{0}", right)
-                    return result
+                    return expand_cpp_template(cpp_template, left, right)
             # Fallback for operators not in module system (bitwise operators)
             return f"({left} {expr.op} {right})"
 
@@ -292,7 +291,7 @@ class ExpressionGenerator:
 
         # Use resolved unary op from sema
         if unaryop_result := expr.resolved_unaryop:
-            return unaryop_result.method.cpp_template.replace("{self}", operand)
+            return expand_cpp_template(unaryop_result.method.cpp_template, operand)
 
         # Fallback for IntLiteralType (not in module system)
         if isinstance(operand_type, IntLiteralType):
@@ -622,7 +621,7 @@ class ExpressionGenerator:
         # Use registry lookup for __getitem__
         cpp_template = self.builtins.get_type_method_template(obj_type, "__getitem__")
         if cpp_template:
-            return cpp_template.replace("{self}", subscript_obj).replace("{0}", index_expr)
+            return expand_cpp_template(cpp_template, subscript_obj, index_expr)
         # Fallback for types without __getitem__ (e.g., str)
         return f"{subscript_obj}[{index_expr}]"
 
@@ -660,9 +659,9 @@ class ExpressionGenerator:
         wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
         cpp_template = binop_result.method.cpp_template
         if binop_result.is_reverse:
-            return cpp_template.replace("{self}", wrapped_right).replace("{0}", wrapped_left)
+            return expand_cpp_template(cpp_template, wrapped_right, wrapped_left)
         else:
-            return cpp_template.replace("{self}", wrapped_left).replace("{0}", wrapped_right)
+            return expand_cpp_template(cpp_template, wrapped_left, wrapped_right)
 
     def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
         """Generate std::span conversion for supported container types."""

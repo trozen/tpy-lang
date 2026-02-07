@@ -134,27 +134,6 @@ class CallAnalyzer:
                 elif binding.kind == BindingKind.BUILTIN:
                     raise SemanticError(f"'{expr.func}' is not callable", expr.loc)
 
-        # Fallback to old lookup for compatibility (when current_ns not set)
-        # Check if it's an imported function (from X import Y)
-        # Only if not shadowed by a variable, user-defined function, or record
-        if expr.func in self.ctx.imported_names:
-            is_shadowed = (self.ctx.current_scope.lookup(expr.func) is not None or
-                           self.ctx.registry.get_function(expr.func) is not None or
-                           self.ctx.registry.get_record(expr.func) is not None)
-            if not is_shadowed:
-                module_name, func_name = self.ctx.imported_names[expr.func]
-                # Special handling for copy() from tpy - truly generic function
-                if module_name == "tpy" and func_name == "copy":
-                    return self._analyze_tpy_copy(expr)
-                # Check for module function
-                if overloads := self._get_module_function_overloads(module_name, func_name):
-                    return self._analyze_builtin_function_overloads(expr, overloads)
-                # Check for type constructor (e.g., Int32 from tpy, int from builtins)
-                qname = f"{module_name}.{func_name}"
-                if record_info := self.ctx.registry.get_builtin_record(qname):
-                    if record_info.constructors and not record_info.type_params:
-                        return self._check_builtin_constructor(expr, record_info)
-
         # Check if it's a tpy type that requires explicit import
         # Only check if we didn't find it in namespace (i.e., not imported)
         # Python builtins (int, str, list) are in builtins_ns and would be found above

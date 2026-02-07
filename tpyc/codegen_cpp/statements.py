@@ -18,7 +18,7 @@ from ..parse import (
     TpyImport, TpySubscript, TpyStrLiteral, TpyName
 )
 from ..namespace import Namespace
-from .context import CodeGenError, module_to_cpp_namespace
+from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -217,7 +217,7 @@ class StatementGenerator:
             # Use registry lookup for __setitem__
             cpp_template = self.builtins.get_type_method_template(obj_type, "__setitem__")
             if cpp_template:
-                code = cpp_template.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", value)
+                code = expand_cpp_template(cpp_template, subscript_obj, index_expr, value)
                 return f"{indent}{code};\n"
             else:
                 return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
@@ -286,7 +286,7 @@ class StatementGenerator:
         # Generate read expression using registry lookup for __getitem__
         get_template = self.builtins.get_type_method_template(obj_type, "__getitem__")
         if get_template:
-            read_expr = get_template.replace("{self}", subscript_obj).replace("{0}", index_expr)
+            read_expr = expand_cpp_template(get_template, subscript_obj, index_expr)
         else:
             read_expr = f"{subscript_obj}[{index_expr}]"
 
@@ -311,7 +311,7 @@ class StatementGenerator:
         # Generate write using registry lookup for __setitem__
         set_template = self.builtins.get_type_method_template(obj_type, "__setitem__")
         if set_template:
-            code = set_template.replace("{self}", subscript_obj).replace("{0}", index_expr).replace("{1}", result_expr)
+            code = expand_cpp_template(set_template, subscript_obj, index_expr, result_expr)
             return f"{indent}{code};\n"
         else:
             return f"{indent}{subscript_obj}[{index_expr}] = {result_expr};\n"

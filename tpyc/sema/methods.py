@@ -138,14 +138,9 @@ class MethodAnalyzer:
         """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""
         assert isinstance(expr.obj, TpyName)
         is_record_name = False
-        if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(expr.obj.name)
-            if binding and binding.kind == BindingKind.RECORD:
-                is_record_name = True
-        else:
-            if (self.ctx.registry.get_record(expr.obj.name) is not None and
-                self.ctx.current_scope.lookup(expr.obj.name) is None):
-                is_record_name = True
+        binding = self.ctx.current_ns.lookup(expr.obj.name)
+        if binding and binding.kind == BindingKind.RECORD:
+            is_record_name = True
 
         if not is_record_name:
             return None
@@ -198,16 +193,9 @@ class MethodAnalyzer:
 
     def _resolve_module_name(self, name: str) -> str | None:
         """Resolve a name to a module name if it refers to a module. Returns None otherwise."""
-        if self.ctx.current_ns:
-            binding = self.ctx.current_ns.lookup(name)
-            if binding and binding.kind == BindingKind.MODULE:
-                return binding.import_source[0] if binding.import_source else name
-        elif name in self.ctx.imports:
-            if (self.ctx.current_scope.lookup(name) is None and
-                self.ctx.registry.get_function(name) is None and
-                self.ctx.registry.get_record(name) is None):
-                if self.ctx.imports[name] is None:
-                    return name
+        binding = self.ctx.current_ns.lookup(name)
+        if binding and binding.kind == BindingKind.MODULE:
+            return binding.import_source[0] if binding.import_source else name
         return None
 
     def _analyze_builtin_type_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:

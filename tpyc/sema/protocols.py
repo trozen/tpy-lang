@@ -428,29 +428,13 @@ class ProtocolChecker:
         looking up `get` on IntContainer returns FunctionInfo with return type Int32.
 
         Supports inheritance from both user-defined classes and builtin types.
+        Delegates to lookup_record_method_overloads and returns the first overload.
         """
-        # Check this record's own methods first
-        method = record_info.get_method(method_name)
-        if method is not None:
-            return method
-
-        # Check parent (user-defined or builtin)
-        if record_info.parent:
-            parent_info = self._get_parent_record_info(record_info.parent)
-            if parent_info:
-                # For user-defined parents, recurse; for builtins, just check directly
-                if isinstance(record_info.parent, NamedType) and record_info.parent.is_record:
-                    inherited = self.lookup_record_method(parent_info, method_name)
-                else:
-                    inherited = parent_info.get_method(method_name)
-                if inherited:
-                    # Substitute parent's type params with concrete type args
-                    type_subst = self._get_parent_type_subst(record_info.parent, parent_info)
-                    if type_subst:
-                        return self.type_ops.substitute_method_type_params(inherited, type_subst)
-                    return inherited
-
-        return None
+        overloads, type_subst = self.lookup_record_method_overloads(record_info, method_name)
+        if not overloads:
+            return None
+        method = overloads[0]
+        return self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
 
     def lookup_record_method_overloads(
         self, record_info: RecordInfo, method_name: str

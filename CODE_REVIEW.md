@@ -106,35 +106,25 @@ Shared `DUNDER_TO_BINARY_OP` constant in `codegen_cpp/context.py`, imported by b
 
 ## Design Inconsistencies
 
-### 18. Mixed lookup strategies in sema/
+### ~~18. Mixed lookup strategies in sema/~~ ✅ Resolved
 
-Three different lookup strategies coexist:
-1. Namespace lookup: `self.ctx.current_ns.lookup(name)`
-2. Scope fallback: `self.ctx.current_scope.lookup(name)`
-3. Direct registry: `self.ctx.registry.get_record(name)`
-
-`expressions.py:175-194` uses namespace first, then falls back to scope "for compatibility" — suggesting an incomplete refactoring.
+Dead `else:` fallback branches removed from `methods.py` (`_analyze_static_method_call`, `_resolve_module_name`) and `calls.py` (`_analyze_call`). The remaining scope fallback in `expressions.py:_analyze_name` is a migration bridge (documented) for names not yet registered in Namespace.
 
 ### ~~19. Sentinel value misuse~~ ✅ Resolved
 
 Replaced `True` sentinel with a proper `MODULE_INIT_CONTEXT` instance of `_ModuleInitSentinel` class. Type annotation updated to `TpyFunction | _ModuleInitSentinel | None`.
 
-### 20. Inconsistent method resolution interfaces
+### ~~20. Inconsistent method resolution interfaces~~ ✅ Resolved
 
-The sema package offers three different method lookup patterns:
-- `lookup_record_method()` → single method
-- `lookup_record_method_overloads()` → list with substitution
-- `RecordInfo.get_method_overloads()` → list without substitution
-
-Call sites must know which to use and when, with no uniform interface.
+`lookup_record_method()` now delegates to `lookup_record_method_overloads()`, eliminating ~25 lines of duplicated inheritance traversal. Three interfaces remain for distinct purposes: `RecordInfo.get_method_overloads()` (direct, no inheritance), `lookup_record_method_overloads()` (all overloads with inheritance), `lookup_record_method()` (single method convenience wrapper).
 
 ### ~~21. `is_protocol` checks scattered as raw isinstance chains~~ ✅ Resolved
 
 `is_protocol_type()` function in `typesys.py` replaces ~35 scattered `isinstance(x, NamedType) and x.is_protocol` patterns across `sema/` and `codegen_cpp/`.
 
-### 22. Inconsistent module registration API
+### ~~22. Inconsistent module registration API~~ ✅ By design
 
-`builtins.py` uses both `.type()` (for parameterized types like `list`) and `.register_type()` (for non-parameterized types like `str`, `int`). No documentation explains when to use which.
+`.register_type(type_obj)` registers singleton types with pre-instantiated TpyType (e.g., `STR`, `INT32`). `.type(name)` registers parameterized type templates with a factory (e.g., `"list"`, `"Array"`). These serve fundamentally different purposes — singletons don't need factories, parameterized types can't be pre-instantiated.
 
 ---
 
@@ -148,13 +138,13 @@ Operator conversion methods now raise `ParseError` for unknown operators instead
 
 Operator mappings (`_BINOP_TO_STR`, `_CMPOP_TO_STR`, `_UNARYOP_TO_STR`) promoted to module-level constants. Methods now do simple lookups.
 
-### 25. Post-hoc type annotation updates
+### ~~25. Post-hoc type annotation updates~~ ✅ By design
 
-`sema/statements.py:292-293` tracks `var_decl_by_name` for later retroactive type updates (`statements.py:328-331`). This mutable-cache-based type resolution is fragile if variables are reassigned.
+The `var_decl_by_name` pattern is a correct mechanism for retroactive `IntLiteralType` resolution (e.g., `x = 5` later used as `x + Int32(10)` resolves `x` as Int32). Keyed by AST node identity (`id(stmt)`), only tracks `IntLiteralType` variables, and performs a single irreversible update — not fragile.
 
-### 26. String-based C++ template substitution with no validation
+### ~~26. String-based C++ template substitution with no validation~~ ✅ Resolved
 
-Codegen uses chained `.replace("{self}", ...).replace("{0}", ...).replace("{1}", ...)` throughout. No verification that all placeholders were substituted. No check that `{2}` isn't used when only 1 parameter exists.
+Extracted `expand_cpp_template(template, self_val, *args)` in `codegen_cpp/context.py`. Replaced 9 chained `.replace()` call sites across `expressions.py`, `statements.py`, and `builtins.py` with the unified helper.
 
 ### ~~27. Assertions used for input validation~~ ✅ Resolved
 

@@ -16,7 +16,7 @@ from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyCoerce
 )
 
-from .context import escape_cpp_string, CodeGenError
+from .context import escape_cpp_string, CodeGenError, expand_cpp_template
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -68,10 +68,8 @@ class BuiltinGenerator:
         """
         if method.cpp_template is None:
             raise CodeGenError(f"Method '{method.name}' has no C++ template")
-        result = method.cpp_template.replace("{self}", obj)
-        for i, arg in enumerate(args):
-            result = result.replace(f"{{{i}}}", self._gen_expr(arg))
-        return result
+        gen_args = [self._gen_expr(arg) for arg in args]
+        return expand_cpp_template(method.cpp_template, obj, *gen_args)
 
     def gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:
         """Generate C++ code for a builtin type constructor using unified RecordInfo.constructors."""

@@ -184,7 +184,9 @@ class ExpressionAnalyzer:
                 # the name exists but isn't usable as a variable
                 raise SemanticError(f"'{expr.name}' is not a variable")
 
-        # Fallback to old scope lookup for compatibility
+        # Migration bridge: scope may contain names not yet in namespace
+        # (e.g., during incremental namespace adoption). Remove once all
+        # name registration flows go through Namespace.
         typ = self.ctx.current_scope.lookup(expr.name)
         if typ is None:
             # Check built-in names (like __name__)

@@ -23,6 +23,14 @@ if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
 
 
+def expand_cpp_template(template: str, self_val: str, *args: str) -> str:
+    """Expand a C++ template, substituting {self} and positional {0}, {1}, etc."""
+    result = template.replace("{self}", self_val)
+    for i, arg in enumerate(args):
+        result = result.replace(f"{{{i}}}", arg)
+    return result
+
+
 def escape_cpp_string(value: str) -> str:
     """Escape a Python string for use in a C++ string literal (double-quoted)."""
     return value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
