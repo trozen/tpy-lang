@@ -8,10 +8,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, TypeParamRef,
+    TpyType, IntLiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
     INT32, BIGINT
 )
+from .overloads import type_matches_numeric
 from tpyc import modules as builtin_modules
 
 if TYPE_CHECKING:
@@ -70,24 +71,12 @@ class OperatorResolver:
             return INT32
         return tpy_type
 
-    def binop_type_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
-        """Check if an argument type matches a parameter type for binop resolution."""
-        if arg_type == param_type:
-            return True
-        # IntLiteralType can match Int32 or BigInt
-        if isinstance(arg_type, IntLiteralType):
-            return isinstance(param_type, (Int32Type, BigIntType, IntLiteralType))
-        # INT TypeParamRef can match Int32 or BigInt
-        if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
-            return isinstance(param_type, (Int32Type, BigIntType))
-        return False
-
     def find_binop_overload(self, overloads: list[FunctionInfo], arg_type: TpyType) -> FunctionInfo | None:
         """Find an overload that accepts the given argument type."""
         for method in overloads:
             if len(method.params) == 1:
                 _, param_type = method.params[0]
-                if self.binop_type_matches(arg_type, param_type):
+                if type_matches_numeric(arg_type, param_type):
                     return method
         return None
 

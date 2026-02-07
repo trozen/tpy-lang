@@ -17,6 +17,7 @@ from ..parse import (
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import SemanticError
+from .overloads import resolve_overload
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -281,23 +282,21 @@ class MethodAnalyzer:
                     else:
                         # Multiple overloads - do overload resolution
                         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                        for method_info in overloads:
-                            resolved = self.type_ops.substitute_method_type_params(method_info, type_subst) if type_subst else method_info
-                            if len(resolved.params) != len(arg_types):
-                                continue
-                            # Check if all args match params
-                            match = True
-                            for arg_type, (pname, ptype) in zip(arg_types, resolved.params):
-                                if not builtin_modules._type_matches_param(arg_type, ptype):
-                                    match = False
-                                    break
-                            if match:
-                                expr.resolved_function_info = resolved
-                                # Coerce arguments
-                                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                                    expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
-                                                                            coercion_ctx=CoercionContext.ARG)
-                                return resolved.return_type
+                        resolved_overloads = [
+                            self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
+                            for m in overloads
+                        ]
+                        resolved = resolve_overload(
+                            resolved_overloads, arg_types,
+                            protocol_checker=self.protocols.type_conforms_to_protocol,
+                        )
+                        if resolved is not None:
+                            expr.resolved_function_info = resolved
+                            # Coerce arguments
+                            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
+                                                                        coercion_ctx=CoercionContext.ARG)
+                            return resolved.return_type
                         # No matching overload found
                         param_types_str = ", ".join(str(t) for t in arg_types)
                         raise SemanticError(
@@ -440,24 +439,22 @@ class MethodAnalyzer:
 
         # Multiple overloads - find matching one
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-        for method_info in overloads:
-            resolved = self.type_ops.substitute_method_type_params(method_info, type_subst) if type_subst else method_info
-            if len(resolved.params) != len(arg_types):
-                continue
-            # Check if all args match params
-            match = True
-            for arg_type, (pname, ptype) in zip(arg_types, resolved.params):
-                if not builtin_modules._type_matches_param(arg_type, ptype):
-                    match = False
-                    break
-            if match:
-                # Coerce arguments
-                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                    expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
-                                                            coercion_ctx=CoercionContext.ARG)
-                # Store parent type for codegen
-                expr.super_parent_type = parent_type
-                return resolved.return_type
+        resolved_overloads = [
+            self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
+            for m in overloads
+        ]
+        resolved = resolve_overload(
+            resolved_overloads, arg_types,
+            protocol_checker=self.protocols.type_conforms_to_protocol,
+        )
+        if resolved is not None:
+            # Coerce arguments
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
+                                                        coercion_ctx=CoercionContext.ARG)
+            # Store parent type for codegen
+            expr.super_parent_type = parent_type
+            return resolved.return_type
 
         # No matching overload found
         param_types_str = ", ".join(str(t) for t in arg_types)
@@ -482,93 +479,33 @@ class MethodAnalyzer:
         Returns:
             The matching FunctionInfo with type params substituted, or None
         """
-        from ..coercions import resolve_coercion
-        for method in overloads:
-            # Substitute type params in method signature
-            resolved = self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
-
-            # Check param count
-            if len(resolved.params) != len(arg_types):
-                continue
-
-            # Check param types
-            params_match = True
-            for arg_t, (_, param_t) in zip(arg_types, resolved.params):
-                if arg_t == param_t:
-                    continue
-                # IntLiteralType matches any IntLiteralType
-                from ..typesys import IntLiteralType
-                if isinstance(arg_t, IntLiteralType) and isinstance(param_t, IntLiteralType):
-                    continue
-                # Protocol parameter: check conformance
-                if is_protocol_type(param_t):
-                    if self.protocols.type_conforms_to_protocol(arg_t, param_t):
-                        continue
-                # Check if there's a coercion
-                if resolve_coercion(arg_t, param_t, CoercionContext.ARG) is not None:
-                    continue
-                params_match = False
-                break
-
-            if params_match:
-                return resolved
-
-        return None
+        resolved_overloads = [
+            self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
+            for m in overloads
+        ]
+        return resolve_overload(
+            resolved_overloads, arg_types,
+            protocol_checker=self.protocols.type_conforms_to_protocol,
+        )
 
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads."""
-        from ..coercions import resolve_coercion
-        from ..typesys import IntLiteralType
-
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        protocol_checker = self.protocols.type_conforms_to_protocol
 
-        # First pass: look for exact match
-        for overload in overloads:
-            if len(overload.params) != len(arg_types):
-                continue
-            if all(self._builtin_type_matches_exact(arg_t, ptype)
-                   for arg_t, (_, ptype) in zip(arg_types, overload.params)):
-                return overload.return_type
-
-        # Second pass: allow coercions
-        for overload in overloads:
-            if len(overload.params) != len(arg_types):
-                continue
-            if all(self._builtin_type_matches(arg_t, ptype)
-                   for arg_t, (_, ptype) in zip(arg_types, overload.params)):
-                # Apply coercions to arguments where needed
-                for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, overload.params)):
-                    if arg_t != ptype:
-                        expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
-                                                                f"argument '{pname}'",
-                                                                coercion_ctx=CoercionContext.ARG)
-                return overload.return_type
+        matched = resolve_overload(overloads, arg_types, protocol_checker)
+        if matched is not None:
+            # Apply coercions to arguments where needed
+            for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
+                if arg_t != ptype:
+                    expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
+                                                            f"argument '{pname}'",
+                                                            coercion_ctx=CoercionContext.ARG)
+            return matched.return_type
 
         # No matching overload found
         arg_type_strs = ", ".join(str(t) for t in arg_types)
         raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
-
-    def _builtin_type_matches_exact(self, arg_type: TpyType, param_type: TpyType) -> bool:
-        """Check if argument type exactly matches parameter type."""
-        if arg_type == param_type:
-            return True
-        if is_protocol_type(param_type):
-            return self.protocols.type_conforms_to_protocol(arg_type, param_type)
-        return False
-
-    def _builtin_type_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
-        """Check if argument type is compatible with parameter type (allows coercions)."""
-        from ..coercions import resolve_coercion
-        from ..typesys import IntLiteralType
-        if arg_type == param_type:
-            return True
-        if isinstance(arg_type, IntLiteralType) and isinstance(param_type, IntLiteralType):
-            return True
-        if is_protocol_type(param_type):
-            return self.protocols.type_conforms_to_protocol(arg_type, param_type)
-        if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
-            return True
-        return False
 
     def _analyze_user_module_function_call(
         self, expr: TpyMethodCall, func_info: FunctionInfo, module_name: str

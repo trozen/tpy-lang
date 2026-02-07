@@ -5,6 +5,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
+from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, NamedType, OwnType
 
 # Shorthand for type parameter T
@@ -23,42 +24,22 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", INT32)], returns=INT32, cpp="{0}"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=INT32, cpp="{0}.to_int32()"),
     ], methods={
-        # Conversion to BigInt (for promotion)
         "__int__": [MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt({self})")],
-
-        # Binary arithmetic operators (Int32 only - mixed operations promote via __int__)
-        "__add__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({self}, {0})")],
-        "__sub__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({self}, {0})")],
-        "__mul__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({self}, {0})")],
-        "__floordiv__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({self}, {0})")],
-        "__mod__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({self}, {0})")],
-        "__pow__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({self}, {0})")],
-
-        # Shift operators
-        "__lshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_lshift({self}, {0})")],
-        "__rshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_rshift({self}, {0})")],
-
-        # Bitwise operators
-        "__and__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) & ({0})")],
-        "__or__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) | ({0})")],
-        "__xor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({self}) ^ ({0})")],
-
-        # Unary operators
+        **make_binop_methods({
+            "__add__": ("tpy::int32_add({self}, {0})", INT32),
+            "__sub__": ("tpy::int32_sub({self}, {0})", INT32),
+            "__mul__": ("tpy::int32_mul({self}, {0})", INT32),
+            "__floordiv__": ("tpy::int32_div({self}, {0})", INT32),
+            "__mod__": ("tpy::int32_mod({self}, {0})", INT32),
+            "__pow__": ("tpy::int32_pow({self}, {0})", INT32),
+            "__lshift__": ("tpy::int32_lshift({self}, {0})", INT32),
+            "__rshift__": ("tpy::int32_rshift({self}, {0})", INT32),
+            "__and__": ("({self}) & ({0})", INT32),
+            "__or__": ("({self}) | ({0})", INT32),
+            "__xor__": ("({self}) ^ ({0})", INT32),
+        }, self_type=INT32),
         "__neg__": [MethodDef(params=[], returns=INT32, cpp="tpy::int32_neg({self})")],
         "__invert__": [MethodDef(params=[], returns=INT32, cpp="~({self})")],
-
-        # Reverse operators (for IntLiteral + Int32)
-        "__radd__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_add({0}, {self})")],
-        "__rsub__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_sub({0}, {self})")],
-        "__rmul__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mul({0}, {self})")],
-        "__rfloordiv__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_div({0}, {self})")],
-        "__rmod__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_mod({0}, {self})")],
-        "__rpow__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_pow({0}, {self})")],
-        "__rlshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_lshift({0}, {self})")],
-        "__rrshift__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="tpy::int32_rshift({0}, {self})")],
-        "__rand__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) & ({self})")],
-        "__ror__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) | ({self})")],
-        "__rxor__": [MethodDef(params=[ParamDef("other", INT32)], returns=INT32, cpp="({0}) ^ ({self})")],
     }, extends=["Comparable"])
 
     # Array[T, N]: Fixed-size array

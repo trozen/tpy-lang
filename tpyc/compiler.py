@@ -9,6 +9,7 @@ Orchestrates compilation of multiple modules, handling:
 """
 
 from __future__ import annotations
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -22,6 +23,21 @@ from .codegen_cpp.context import module_to_cpp_namespace
 
 if TYPE_CHECKING:
     from .typesys import TpyType, FunctionInfo, RecordInfo, ProtocolInfo, ModuleInfo, ModuleVarInfo
+
+
+@dataclass
+class CppCompilerConfig:
+    """Configuration for the C++ compiler used to build generated code."""
+    compiler: str = "g++"
+    std: str = "c++23"
+    extra_flags: list[str] = field(default_factory=list)
+    link_flags: list[str] = field(default_factory=lambda: ["-lgmp"])
+
+    @classmethod
+    def from_env(cls) -> CppCompilerConfig:
+        """Create config from environment variables. Respects CXX for compiler selection."""
+        compiler = os.environ.get("CXX", "g++")
+        return cls(compiler=compiler)
 
 
 class BuildLayout:
@@ -72,25 +88,30 @@ class BuildLayout:
         cpp_files: list[Path],
         output: Path | None = None,
         opt_flags: list[str] | None = None,
+        config: CppCompilerConfig | None = None,
     ) -> list[str]:
-        """Build the g++ compilation command.
+        """Build the C++ compilation command.
 
         Args:
             runtime_include_dir: Path to the tpy runtime include directory.
             cpp_files: List of C++ source files to compile.
             output: Output binary path. Defaults to self.binary_path().
             opt_flags: Optimization flags (e.g., ["-O3", "-DNDEBUG"]).
+            config: Compiler configuration. Defaults to CppCompilerConfig().
         """
+        if config is None:
+            config = CppCompilerConfig()
         if output is None:
             output = self.binary_path()
         return [
-            "g++", "-std=c++23",
+            config.compiler, f"-std={config.std}",
             *(opt_flags or []),
+            *config.extra_flags,
             "-I", str(runtime_include_dir),
             "-I", str(self.include_dir),
             "-o", str(output),
             *[str(p) for p in cpp_files],
-            "-lgmp",
+            *config.link_flags,
         ]
 
 

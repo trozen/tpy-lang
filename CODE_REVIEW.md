@@ -46,17 +46,17 @@ These should be decomposed into focused sub-contexts.
 
 ## Significant Code Duplication
 
-### 5. Type matching logic duplicated 3x across sema/
+### ~~5. Type matching logic duplicated 3x across sema/~~ ✅ Resolved
 
-`operators.py:binop_type_matches`, `methods.py:_builtin_type_matches`, and `calls.py:_builtin_type_matches` all implement nearly identical type compatibility checks for IntLiteralType coercion. Should be a single shared `TypeMatcher`.
+Extracted shared `type_matches_strict`, `type_matches_numeric`, and `type_matches_with_coercion` functions into `sema/overloads.py`. All three call sites (`operators.py`, `calls.py`, `methods.py`) now delegate to these shared functions.
 
 ### ~~6. Type argument slice extraction duplicated 3x in parse.py~~ ✅ Resolved
 
 Extracted shared `_extract_subscript_slices()` module-level helper used by all four type argument parsing methods.
 
-### 7. Binary operator definitions massively duplicated across modules
+### ~~7. Binary operator definitions massively duplicated across modules~~ ✅ Resolved
 
-`builtins.py:220-254` (BigInt) and `tpy.py:30-61` (Int32) each define 17+ nearly identical operator methods. Forward and reverse operators differ only in operand order. A helper like `create_binop_methods(ops, type, template)` would eliminate ~60 lines of repetitive definitions.
+`make_binop_methods()` helper in `modules/helpers.py` generates forward and reverse operator methods from a compact definition dict. Both BigInt (`builtins.py`) and Int32 (`tpy.py`) now use it, eliminating ~60 lines of repetitive definitions.
 
 ### ~~8. Module-to-C++ namespace conversion duplicated 6+ times~~ ✅ Resolved
 
@@ -70,9 +70,9 @@ Extracted `module_to_cpp_namespace()` function in `codegen_cpp/context.py`, repl
 
 Extracted `escape_cpp_string()` and `escape_cpp_char()` helpers in `codegen_cpp/context.py`, used by `expressions.py` and `builtins.py`.
 
-### 11. Overload resolution patterns duplicated
+### ~~11. Overload resolution patterns duplicated~~ ✅ Resolved
 
-`methods.py:469-516` and `calls.py:278-309` both implement two-pass overload resolution (exact match, then coercions) with duplicated matching and argument coercion loops.
+Extracted shared `resolve_overload()` function in `sema/overloads.py` implementing two-pass overload resolution (strict match, then coercions). Used by `calls.py`, `methods.py` (both builtin function overloads and method overloads), and super method call resolution.
 
 ---
 
@@ -82,9 +82,9 @@ Extracted `escape_cpp_string()` and `escape_cpp_char()` helpers in `codegen_cpp/
 
 Replaced with `RelativeImportKey` frozen dataclass providing `encode()`/`decode()`/`is_placeholder()` methods. Format construction and parsing are now co-located.
 
-### 13. C++ compiler and flags are hard-coded
+### ~~13. C++ compiler and flags are hard-coded~~ ✅ Resolved
 
-`cli.py:237-249`: `g++` is hard-coded with no way to use `clang++`. `-std=c++23`, `-lgmp`, optimization flags — all embedded in CLI code. Should be a `CompilerConfig` object.
+`CppCompilerConfig` dataclass in `compiler.py` holds compiler, standard, extra flags, and link flags. `CppCompilerConfig.from_env()` reads the `CXX` environment variable. Used by `cli.py` and `repl.py`. `BuildLayout.build_cpp_command()` accepts a `config` parameter.
 
 ### ~~14. Mutation method set is a magic literal~~ ✅ Resolved
 
@@ -211,8 +211,8 @@ Now uses `os.pathsep` instead of hardcoded `:`.
 | Priority | Issues | Key Action |
 |----------|--------|------------|
 | **High** | ~~#1~~, #2, #3, #4 | ~~Unify compilation paths~~; decompose Parser, SemanticContext, CodeGenContext |
-| **High** | #5, ~~#6~~, #7, ~~#8~~, #11 | Extract shared utilities for type matching, ~~slice extraction~~, operators, ~~namespaces~~ |
-| **High** | ~~#12~~, #13 | ~~Replace magic strings with typed data~~; create CompilerConfig |
+| **High** | ~~#5~~, ~~#6~~, ~~#7~~, ~~#8~~, ~~#11~~ | ~~Extract shared utilities for type matching, slice extraction, operators, namespaces~~ ✅ All resolved |
+| **High** | ~~#12~~, ~~#13~~ | ~~Replace magic strings with typed data; create CompilerConfig~~ ✅ All resolved |
 | **Medium** | ~~#9~~, ~~#10~~, ~~#17~~ | ~~Consolidate duplicated code (compilation commands, escaping, dunder maps)~~ ✅ All resolved |
 | **Medium** | #18, ~~#19~~, #20, ~~#21~~, #22 | Standardize lookup/resolution patterns; ~~fix sentinel misuse~~ |
 | **Medium** | ~~#23~~, #26, ~~#27~~ | ~~Fail fast instead of silently~~; validate templates; ~~use proper checks~~ |

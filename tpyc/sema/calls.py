@@ -16,6 +16,7 @@ from ..parse import TpyCall, TpyStrLiteral, TpyName
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import SemanticError
+from .overloads import type_matches_numeric, resolve_overload
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -256,13 +257,8 @@ class CallAnalyzer:
         for ctor in record_info.constructors:
             if len(ctor.params) != len(arg_types):
                 continue
-            # Check if all arguments match
-            match = True
-            for (pname, ptype), arg_type in zip(ctor.params, arg_types):
-                if not builtin_modules._type_matches_param(arg_type, ptype):
-                    match = False
-                    break
-            if match:
+            if all(type_matches_numeric(arg_type, ptype)
+                   for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
                 return ctor.return_type
 
         # No matching overload found
@@ -281,57 +277,21 @@ class CallAnalyzer:
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
         """
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        protocol_checker = self.protocols.type_conforms_to_protocol
 
-        # First pass: look for exact match (no coercions needed)
-        for overload in overloads:
-            if len(overload.params) != len(arg_types):
-                continue
-            if all(self._builtin_type_matches_exact(arg_t, ptype)
-                   for arg_t, (_, ptype) in zip(arg_types, overload.params)):
-                return overload.return_type
-
-        # Second pass: allow coercions
-        for overload in overloads:
-            if len(overload.params) != len(arg_types):
-                continue
-            if all(self._builtin_type_matches(arg_t, ptype)
-                   for arg_t, (_, ptype) in zip(arg_types, overload.params)):
-                # Apply coercions to arguments where needed
-                for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, overload.params)):
-                    if arg_t != ptype:
-                        expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
-                                                                f"argument '{pname}'",
-                                                                coercion_ctx=CoercionContext.ARG)
-                return overload.return_type
+        matched = resolve_overload(overloads, arg_types, protocol_checker)
+        if matched is not None:
+            # Apply coercions to arguments where needed
+            for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
+                if arg_t != ptype:
+                    expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
+                                                            f"argument '{pname}'",
+                                                            coercion_ctx=CoercionContext.ARG)
+            return matched.return_type
 
         # No matching overload found - build error message
         arg_type_strs = ", ".join(str(t) for t in arg_types)
         raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
-
-    def _builtin_type_matches_exact(self, arg_type: TpyType, param_type: TpyType) -> bool:
-        """Check if an argument type exactly matches a builtin parameter type (no coercions)."""
-        if arg_type == param_type:
-            return True
-        # Protocol parameter: check if arg_type conforms to the protocol
-        if is_protocol_type(param_type):
-            return self.protocols.type_conforms_to_protocol(arg_type, param_type)
-        return False
-
-    def _builtin_type_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
-        """Check if an argument type is compatible with a builtin parameter type (allows coercions)."""
-        from ..coercions import resolve_coercion
-        if arg_type == param_type:
-            return True
-        # IntLiteralType matches any IntLiteralType (regardless of value field)
-        if isinstance(arg_type, IntLiteralType) and isinstance(param_type, IntLiteralType):
-            return True
-        # Protocol parameter: check if arg_type conforms to the protocol
-        if is_protocol_type(param_type):
-            return self.protocols.type_conforms_to_protocol(arg_type, param_type)
-        # Check if there's a coercion from arg_type to param_type
-        if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
-            return True
-        return False
 
     def _analyze_user_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a call to a user-defined function."""

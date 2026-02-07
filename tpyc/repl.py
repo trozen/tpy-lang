@@ -24,6 +24,7 @@ from .parse import Parser, ParseError, TpyExprStmt
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenerator
 from .typesys import VoidType, StrType, CharType
+from .compiler import CppCompilerConfig
 
 
 def get_runtime_dir() -> Path:
@@ -419,13 +420,15 @@ class REPLSession:
 
         # Compile
         runtime_dir = get_runtime_dir()
+        config = CppCompilerConfig.from_env()
         compile_cmd = [
-            "g++", "-std=c++23",
+            config.compiler, f"-std={config.std}",
+            *config.extra_flags,
             "-I", str(runtime_dir / "cpp" / "include"),
-            "-I", str(self.temp_dir),  # For generated header
+            "-I", str(self.temp_dir),
             "-o", str(binary_path),
             str(cpp_path),
-            "-lgmp"
+            *config.link_flags,
         ]
 
         result = subprocess.run(compile_cmd, capture_output=True, text=True)

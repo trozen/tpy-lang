@@ -5,6 +5,7 @@ Defines functions like chr, print, len, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
+from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, NamedType, TypeParamRef
 
 # Shorthand for type parameter T
@@ -221,41 +222,22 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", FLOAT)], returns=BIGINT, cpp="tpy::BigInt::from_float({0})"),
         MethodDef(params=[ParamDef("x", STR)], returns=BIGINT, cpp="tpy::BigInt::from_str({0})"),
     ], methods={
-        # Binary arithmetic operators
-        "__add__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) + ({0})")],
-        "__sub__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) - ({0})")],
-        "__mul__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) * ({0})")],
-        "__truediv__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="static_cast<double>({self}) / static_cast<double>({0})")],
-        "__floordiv__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) / ({0})")],
-        "__mod__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) % ({0})")],
-        "__pow__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}).pow({0})")],
-
-        # Shift operators
-        "__lshift__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) << ({0})")],
-        "__rshift__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) >> ({0})")],
-
-        # Bitwise operators
-        "__and__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) & ({0})")],
-        "__or__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) | ({0})")],
-        "__xor__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({self}) ^ ({0})")],
-
-        # Unary operators
+        **make_binop_methods({
+            "__add__": ("({self}) + ({0})", BIGINT),
+            "__sub__": ("({self}) - ({0})", BIGINT),
+            "__mul__": ("({self}) * ({0})", BIGINT),
+            "__truediv__": ("static_cast<double>({self}) / static_cast<double>({0})", FLOAT),
+            "__floordiv__": ("({self}) / ({0})", BIGINT),
+            "__mod__": ("({self}) % ({0})", BIGINT),
+            "__pow__": ("({self}).pow({0})", BIGINT),
+            "__lshift__": ("({self}) << ({0})", BIGINT),
+            "__rshift__": ("({self}) >> ({0})", BIGINT),
+            "__and__": ("({self}) & ({0})", BIGINT),
+            "__or__": ("({self}) | ({0})", BIGINT),
+            "__xor__": ("({self}) ^ ({0})", BIGINT),
+        }, self_type=BIGINT),
         "__neg__": [MethodDef(params=[], returns=BIGINT, cpp="-({self})")],
         "__invert__": [MethodDef(params=[], returns=BIGINT, cpp="~({self})")],
-
-        # Reverse operators (same as forward since BigInt is the "widest" integer type)
-        "__radd__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) + ({self})")],
-        "__rsub__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) - ({self})")],
-        "__rmul__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) * ({self})")],
-        "__rtruediv__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="static_cast<double>({0}) / static_cast<double>({self})")],
-        "__rfloordiv__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) / ({self})")],
-        "__rmod__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) % ({self})")],
-        "__rpow__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}).pow({self})")],
-        "__rlshift__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) << ({self})")],
-        "__rrshift__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) >> ({self})")],
-        "__rand__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) & ({self})")],
-        "__ror__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) | ({self})")],
-        "__rxor__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BIGINT, cpp="({0}) ^ ({self})")],
     }, extends=["Comparable"])
 
     # float: 64-bit IEEE 754 double precision floating point

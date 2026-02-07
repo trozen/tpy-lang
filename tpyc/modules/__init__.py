@@ -608,16 +608,9 @@ UNARYOP_TO_METHOD = {
 
 
 def _type_matches_param(arg_type: "TpyType", param_type: "TpyType") -> bool:
-    """Check if an argument type matches a parameter type."""
-    # Import here to avoid circular imports
-    from tpyc.typesys import IntLiteralType, Int32Type, BigIntType
+    """Check if an argument type matches a parameter type.
 
-    if arg_type == param_type:
-        return True
-    # IntLiteralType can match Int32 or BigInt
-    if isinstance(arg_type, IntLiteralType):
-        return isinstance(param_type, (Int32Type, BigIntType))
-    # INT TypeParamRef can match Int32 or BigInt (compile-time constant)
-    if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
-        return isinstance(param_type, (Int32Type, BigIntType))
-    return False
+    Delegates to the shared overload resolution module.
+    """
+    from tpyc.sema.overloads import type_matches_numeric
+    return type_matches_numeric(arg_type, param_type)

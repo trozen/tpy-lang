@@ -22,7 +22,7 @@ from pathlib import Path
 from .parse import ParseError
 from .sema import SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenOptions, CodeGenError
-from .compiler import Compiler, CompileError, BuildLayout
+from .compiler import Compiler, CompileError, BuildLayout, CppCompilerConfig
 
 
 def get_runtime_dir() -> Path:
@@ -153,10 +153,12 @@ def main() -> int:
                 print(f"Building {binary_path}...")
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
+            cpp_config = CppCompilerConfig.from_env()
             compile_cmd = layout.build_cpp_command(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
                 cpp_files=all_cpp_paths,
                 opt_flags=opt_flags,
+                config=cpp_config,
             )
 
             if args.verbose >= 2:
