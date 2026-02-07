@@ -16,6 +16,8 @@ from ..parse import (
 )
 from ..namespace import Namespace
 
+from .context import DUNDER_TO_BINARY_OP
+
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
@@ -38,18 +40,6 @@ class RecordGenerator:
                      # Unary operators
                      "__neg__", "__pos__", "__invert__"}
 
-    # Mapping from Python dunder methods to C++ binary operators
-    # Note: Both __truediv__ and __floordiv__ map to / in C++. For integer types,
-    # C++ / is truncating division (like Python //). For user types, they should
-    # implement the appropriate semantics in their __truediv__/__floordiv__ methods.
-    DUNDER_TO_BINARY_OP = {
-        "__add__": "+", "__sub__": "-", "__mul__": "*",
-        "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
-        "__and__": "&", "__or__": "|", "__xor__": "^",
-        "__lshift__": "<<", "__rshift__": ">>",
-        "__lt__": "<", "__le__": "<=", "__gt__": ">", "__ge__": ">=",
-        "__eq__": "==", "__ne__": "!=",
-    }
 
     def __init__(
         self,
@@ -432,12 +422,12 @@ class RecordGenerator:
         (e.g., `t + other`, `t < other`) rather than method calls (e.g., `t.__add__(other)`).
         """
         for method in record.methods:
-            if method.name not in self.DUNDER_TO_BINARY_OP:
+            if method.name not in DUNDER_TO_BINARY_OP:
                 continue
             if not method.params:
                 continue  # Binary operators need at least one parameter
 
-            cpp_op = self.DUNDER_TO_BINARY_OP[method.name]
+            cpp_op = DUNDER_TO_BINARY_OP[method.name]
             param_name, param_type = method.params[0]
             param_cpp = param_type.to_cpp_const_param(param_name)
 

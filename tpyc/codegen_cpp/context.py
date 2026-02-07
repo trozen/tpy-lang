@@ -23,6 +23,30 @@ if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
 
 
+def escape_cpp_string(value: str) -> str:
+    """Escape a Python string for use in a C++ string literal (double-quoted)."""
+    return value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+
+
+def escape_cpp_char(value: str) -> str:
+    """Escape a Python char for use in a C++ char literal (single-quoted)."""
+    return value.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+
+
+# Mapping from Python dunder methods to C++ binary operators.
+# Both __truediv__ and __floordiv__ map to / in C++: for integer types, C++ /
+# is truncating division (like Python //); user types should implement the
+# appropriate semantics in their __truediv__/__floordiv__ methods.
+DUNDER_TO_BINARY_OP: dict[str, str] = {
+    "__add__": "+", "__sub__": "-", "__mul__": "*",
+    "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
+    "__eq__": "==", "__ne__": "!=",
+    "__lt__": "<", "__le__": "<=", "__gt__": ">", "__ge__": ">=",
+    "__and__": "&", "__or__": "|", "__xor__": "^",
+    "__lshift__": "<<", "__rshift__": ">>",
+}
+
+
 class CodeGenError(Exception):
     """Error during C++ code generation."""
     def __init__(self, message: str, loc: SourceLocation | None = None):

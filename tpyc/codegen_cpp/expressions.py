@@ -20,6 +20,7 @@ from ..parse import (
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
+from .context import escape_cpp_string, escape_cpp_char
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -100,11 +101,8 @@ class ExpressionGenerator:
         elif isinstance(expr, TpyStrLiteral):
             # If target type is Char and single char, output as char literal
             if isinstance(target_type, CharType) and len(expr.value) == 1:
-                escaped = expr.value.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n')
-                return f"'{escaped}'"
-            # Otherwise output as string literal
-            escaped = expr.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-            return f'"{escaped}"'
+                return f"'{escape_cpp_char(expr.value)}'"
+            return f'"{escape_cpp_string(expr.value)}"'
 
         elif isinstance(expr, TpyName):
             # Check if this is an imported variable from a user module

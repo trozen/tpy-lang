@@ -16,6 +16,8 @@ from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyCoerce
 )
 
+from .context import escape_cpp_string
+
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
@@ -171,7 +173,7 @@ class BuiltinGenerator:
         if "end" in kwargs:
             end_expr = kwargs["end"]
             if isinstance(end_expr, TpyStrLiteral):
-                end_str = end_expr.value.replace('\\', '\\\\').replace('"', '\\"')
+                end_str = escape_cpp_string(end_expr.value)
 
         if not args:
             if end_str:
@@ -186,8 +188,7 @@ class BuiltinGenerator:
             arg_type = self.types.get_resolved_type(arg)
 
             if isinstance(arg, TpyStrLiteral):
-                escaped = arg.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
-                parts.append(f'"{escaped}"')
+                parts.append(f'"{escape_cpp_string(arg.value)}"')
             elif self.types.is_runtime_bigint(arg, arg_type):
                 # BigInt has operator<< for std::ostream, no .to_string() needed
                 parts.append(self._gen_expr_deref(arg))

@@ -11,7 +11,7 @@ Defines the core types available in TurboPython:
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Optional
 
@@ -786,6 +786,10 @@ BOOL = BoolType()
 FLOAT = FloatType()
 BIGINT = BigIntType()
 
+# Int32 range limits
+INT32_MIN = -(2**31)
+INT32_MAX = 2**31 - 1
+
 
 @dataclass
 class FieldInfo:
@@ -822,34 +826,16 @@ class RecordInfo:
     name: str
     fields: list[FieldInfo]
     has_init: bool = False
-    init_params: list[tuple[str, TpyType, Optional[str]]] = None  # (name, type, default)
-    methods: dict[str, list['FunctionInfo']] = None  # method_name -> list of overloads
-    constructors: list['FunctionInfo'] = None  # Constructor overloads (for unified handling)
-    type_params: list[str] = None  # ["T", "U"] for class Stack[T, U]
-    type_param_kinds: list[TypeParamKind] = None  # [TYPE, INT] for class Matrix[T, N: int]
-    type_param_bounds: dict[str, 'NamedType'] = None  # {"T": Comparable} (must be protocols)
+    init_params: list[tuple[str, TpyType, Optional[str]]] = field(default_factory=list)  # (name, type, default)
+    methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
+    constructors: list['FunctionInfo'] = field(default_factory=list)  # Constructor overloads (for unified handling)
+    type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
+    type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
+    type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)
     parent: Optional['TpyType'] = None  # Parent type (NamedType or builtin TpyType)
-    implemented_protocols: list['NamedType'] = None  # Explicit protocol implementations
-    extends_protocols: list[str] = None  # Protocol extensions: ["NativeIterable[T]"]
+    implemented_protocols: list['NamedType'] = field(default_factory=list)  # Explicit protocol implementations
+    extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     cpp_type: Optional[str] = None  # C++ type template for builtins
-
-    def __post_init__(self):
-        if self.init_params is None:
-            self.init_params = []
-        if self.methods is None:
-            self.methods = {}
-        if self.constructors is None:
-            self.constructors = []
-        if self.type_params is None:
-            self.type_params = []
-        if self.type_param_kinds is None:
-            self.type_param_kinds = []
-        if self.type_param_bounds is None:
-            self.type_param_bounds = {}
-        if self.implemented_protocols is None:
-            self.implemented_protocols = []
-        if self.extends_protocols is None:
-            self.extends_protocols = []
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, VoidType, PtrType, ConstPtrType,
-    NamedType
+    NamedType, INT32_MIN, INT32_MAX
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -121,8 +121,6 @@ class TypeCompatibility:
                 info.passed_to_span_param = True
 
         if coercion.check_range and not coercion.check_range(actual, expected):
-            INT32_MIN = -(2**31)
-            INT32_MAX = 2**31 - 1
             raise SemanticError(
                 f"Integer literal {actual.value} is outside Int32 range "
                 f"[{INT32_MIN}, {INT32_MAX}] in {context}",

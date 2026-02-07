@@ -12,7 +12,7 @@ from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
 
 from .diagnostics import Scope, Diagnostic, SemanticError
-from .context import SemanticContext
+from .context import SemanticContext, MODULE_INIT_CONTEXT
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
@@ -332,8 +332,7 @@ class SemanticAnalyzer:
         constructs go through the same analysis path.
         """
         self.ctx.reset_function_tracking()
-        # Use a sentinel to indicate we're in "module init" context (not None, but not a real function)
-        self.ctx.current_function = True  # type: ignore
+        self.ctx.current_function = MODULE_INIT_CONTEXT
         self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
         self.ctx.is_top_level = True
 

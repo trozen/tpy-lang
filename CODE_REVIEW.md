@@ -69,9 +69,9 @@ The `g++ -std=c++23 ... -lgmp` invocation appears in:
 - `conftest.py:56-77` (`compile_and_run_cpp` — dead code)
 - `conftest.py:150-176` (`build_and_run`)
 
-### 10. String escaping logic duplicated
+### ~~10. String escaping logic duplicated~~ ✅ Resolved
 
-Character/string escaping (`.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')`) appears in both `expressions.py` and `builtins.py`.
+Extracted `escape_cpp_string()` and `escape_cpp_char()` helpers in `codegen_cpp/context.py`, used by `expressions.py` and `builtins.py`.
 
 ### 11. Overload resolution patterns duplicated
 
@@ -97,17 +97,17 @@ mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "rev
 ```
 If new mutation methods are added, this set must be found and updated. Should live alongside list type definitions.
 
-### 15. INT32 range constants duplicated
+### ~~15. INT32 range constants duplicated~~ ✅ Resolved
 
-`sema/compatibility.py:124-125` defines `INT32_MIN = -(2**31)` and `INT32_MAX = 2**31 - 1` locally. These should be in `typesys.py` and imported.
+`INT32_MIN` and `INT32_MAX` now defined in `typesys.py` alongside other type constants, imported where needed.
 
 ### 16. `.d` directory suffix convention undocumented and scattered
 
 The `.d` suffix for module output directories appears in `cli.py:63`, `cli.py:230-231`, `compiler.py:545`, `compiler.py:558-560` with no central definition.
 
-### 17. Dunder-to-operator mappings duplicated
+### ~~17. Dunder-to-operator mappings duplicated~~ ✅ Resolved
 
-Both `codegen_cpp/protocols.py:227-235` and `codegen_cpp/records.py:41-52` define identical `DUNDER_TO_OPERATOR` dictionaries.
+Shared `DUNDER_TO_BINARY_OP` constant in `codegen_cpp/context.py`, imported by both `protocols.py` and `records.py`.
 
 ---
 
@@ -122,9 +122,9 @@ Three different lookup strategies coexist:
 
 `expressions.py:175-194` uses namespace first, then falls back to scope "for compatibility" — suggesting an incomplete refactoring.
 
-### 19. Sentinel value misuse
+### ~~19. Sentinel value misuse~~ ✅ Resolved
 
-`sema/analyzer.py:336` sets `self.ctx.current_function = True` as a sentinel for "module init context" when the field expects `TpyFunction | None`. This breaks `isinstance` checks and violates the type contract.
+Replaced `True` sentinel with a proper `MODULE_INIT_CONTEXT` instance of `_ModuleInitSentinel` class. Type annotation updated to `TpyFunction | _ModuleInitSentinel | None`.
 
 ### 20. Inconsistent method resolution interfaces
 
@@ -167,13 +167,9 @@ Codegen uses chained `.replace("{self}", ...).replace("{0}", ...).replace("{1}",
 
 `codegen_cpp/builtins.py:67`: `assert method.cpp_template is not None` — assertions can be stripped with `-O`. Should be explicit checks with `CodeGenError`.
 
-### 28. Dataclass `__post_init__` boilerplate instead of `field(default_factory=...)`
+### ~~28. Dataclass `__post_init__` boilerplate instead of `field(default_factory=...)`~~ ✅ Resolved
 
-`typesys.py:836-852`:
-```python
-init_params: list[...] = None  # then in __post_init__: if self.init_params is None: self.init_params = []
-```
-Modern Python has `field(default_factory=list)` for this.
+`RecordInfo` now uses `field(default_factory=...)` for all collection fields, eliminating the `__post_init__` method.
 
 ---
 
@@ -199,9 +195,9 @@ Complex ordering logic for protocol declarations, forward declarations, and re-e
 
 ## Test Infrastructure Issues
 
-### 33. Dead code: `compile_and_run_cpp()` (conftest.py:56-77)
+### ~~33. Dead code: `compile_and_run_cpp()` (conftest.py:56-77)~~ ✅ Resolved
 
-This function is defined but never called. `build_and_run()` (line 150) supersedes it with multi-module support.
+Removed unused function.
 
 ### 34. Test discovery can produce name collisions
 
@@ -211,9 +207,9 @@ This function is defined but never called. `build_and_run()` (line 150) supersed
 
 All three test files (`test_comp.py`, `test_exec.py`, `test_cpy.py`) use `globals()[f"test_{name}"]` to dynamically create test functions. IDE integration struggles with these, and stack traces point to generated code rather than test cases. `pytest.mark.parametrize` would be cleaner.
 
-### 36. Platform-specific path separator
+### ~~36. Platform-specific path separator~~ ✅ Resolved
 
-`conftest.py:41`: `env["PYTHONPATH"] = f"{HARNESS_DIR}:{src_dir}"` — Unix-specific. Would break on Windows (`os.pathsep` should be used).
+Now uses `os.pathsep` instead of hardcoded `:`.
 
 ---
 

@@ -38,7 +38,7 @@ def run_cpython(src_file: Path) -> str:
     env = os.environ.copy()
     # Include both harness dir and source dir for multi-module imports
     src_dir = src_file.parent
-    env["PYTHONPATH"] = f"{HARNESS_DIR}:{src_dir}"
+    env["PYTHONPATH"] = f"{HARNESS_DIR}{os.pathsep}{src_dir}"
 
     result = subprocess.run(
         [sys.executable, str(src_file)],
@@ -49,30 +49,6 @@ def run_cpython(src_file: Path) -> str:
 
     if result.returncode != 0:
         pytest.fail(f"CPython execution failed:\n{result.stderr}")
-
-    return result.stdout
-
-
-def compile_and_run_cpp(build_dir: Path, module_name: str) -> str:
-    """Compile generated C++ and run the executable."""
-    root_dir = build_dir / f"{module_name}.d"
-    cpp_file = root_dir / "src" / f"{module_name}.cpp"
-    exe_file = build_dir / "program"
-
-    result = subprocess.run(
-        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-I", str(root_dir / "include"),
-         "-o", str(exe_file), str(cpp_file), "-lgmp"],
-        capture_output=True,
-        text=True,
-    )
-
-    if result.returncode != 0:
-        pytest.fail(f"C++ compilation failed:\n{result.stderr}")
-
-    result = subprocess.run([str(exe_file)], capture_output=True, text=True)
-
-    if result.returncode != 0:
-        pytest.fail(f"C++ execution failed:\n{result.stderr}")
 
     return result.stdout
 

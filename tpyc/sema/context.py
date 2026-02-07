@@ -15,6 +15,22 @@ from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMet
 from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 
 
+class _ModuleInitSentinel:
+    """Sentinel for module-level init context (not a real function, but not None either).
+
+    Truthy so that `if ctx.current_function:` passes, but fails
+    `isinstance(ctx.current_function, TpyFunction)` checks.
+    """
+    __slots__ = ()
+    def __bool__(self) -> bool:
+        return True
+    def __repr__(self) -> str:
+        return "<MODULE_INIT>"
+
+
+MODULE_INIT_CONTEXT = _ModuleInitSentinel()
+
+
 @dataclass
 class SemanticContext:
     """Shared state for all semantic analysis components."""
@@ -23,7 +39,7 @@ class SemanticContext:
 
     # Current scope during analysis
     current_scope: Scope | None = None
-    current_function: TpyFunction | None = None
+    current_function: TpyFunction | _ModuleInitSentinel | None = None
 
     # Expression/variable type cache
     expr_types: dict[int, TpyType] = field(default_factory=dict)

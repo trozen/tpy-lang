@@ -12,6 +12,7 @@ from ..typesys import (
     MethodSignature
 )
 from ..parse import TpyProtocol, TpyRecord
+from .context import DUNDER_TO_BINARY_OP
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -224,15 +225,6 @@ class ProtocolGenerator:
         out.write(f"template<{', '.join(template_params)}>\n")
         out.write(f"concept {protocol.name} = requires(T& t) {{\n")
 
-        # Mapping from Python dunder methods to C++ operators
-        DUNDER_TO_OPERATOR = {
-            "__add__": "+", "__sub__": "-", "__mul__": "*",
-            "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
-            "__eq__": "==", "__ne__": "!=",
-            "__lt__": "<", "__le__": "<=", "__gt__": ">", "__ge__": ">=",
-            "__and__": "&", "__or__": "|", "__xor__": "^",
-            "__lshift__": "<<", "__rshift__": ">>",
-        }
 
         def subst_type(typ: TpyType) -> TpyType:
             """Substitute protocol type params recursively in a type."""
@@ -257,10 +249,10 @@ class ProtocolGenerator:
             # This allows std types (vector, string, etc.) to satisfy the protocol
             if method_sig.name == "__len__":
                 out.write(f"    {{ tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
-            elif method_sig.name in DUNDER_TO_OPERATOR and len(method_sig.params) == 1:
+            elif method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
                 # Binary operators - use C++ operator syntax
                 # e.g., __add__(Self) -> Self becomes { t + std::declval<T>() } -> convertible_to<T>
-                cpp_op = DUNDER_TO_OPERATOR[method_sig.name]
+                cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
                 _, ptype = method_sig.params[0]
                 param_cpp = subst_to_cpp(ptype)
                 out.write(f"    {{ t {cpp_op} std::declval<{param_cpp}>() }} -> std::convertible_to<{ret_cpp}>;\n")
