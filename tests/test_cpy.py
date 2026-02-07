@@ -10,13 +10,13 @@ import pytest
 
 from conftest import (
     run_cpython,
-    discover_cases_only,
+    discover_success_cases,
 )
 
 
 @pytest.mark.parametrize("case_dir, main_src", [
     pytest.param(case_dir, main_src, id=name)
-    for name, case_dir, main_src in discover_cases_only()
+    for name, case_dir, main_src in discover_success_cases()
 ])
 def test_cpy(case_dir, main_src):
     if (case_dir / "no_cpython.txt").exists():

@@ -86,17 +86,34 @@ tpyc/
 
 ```
 tests/
-├── cases/                    # Normal tests (compile + run)
-├── errors/                   # Compilation error tests (compile only)
-├── panics/                   # Runtime panic tests (compile + run, expect failure)
-│   └── {name}/
-│       ├── src/
-│       │   └── main.tp.py
-│       └── expected/
-│           ├── diag.txt      # Compiler diagnostics
-│           ├── main.hpp      # Generated header (if compiles)
-│           ├── main.cpp      # Generated source (if compiles)
-│           └── output.txt    # Runtime output (or panic.txt)
+├── cases/                    # All tests, grouped by feature
+│   ├── imports/              # Imports, relative imports, packages, shadowing
+│   ├── generics/             # Generic types, functions, inference, bounds
+│   ├── protocols/            # Protocol definition and implementation
+│   ├── inheritance/          # Class inheritance, super calls
+│   ├── int/                  # int, Int32, BigInt
+│   ├── float/                # Float operations
+│   ├── bool/                 # Bool type and conversion
+│   ├── str/                  # str, Char, string operations
+│   ├── list/                 # List, container methods
+│   ├── array_span/           # Array, Span, StaticList
+│   ├── pointers/             # Ptr, ConstPtr, Own, dangling references
+│   ├── records/              # Class/record methods, dunder, staticmethod
+│   ├── control_flow/         # if/else, for loops, break/continue, iterables
+│   ├── operators/            # Operators, coercion, assignment, subscript
+│   ├── globals/              # Global variables, name binding
+│   ├── builtins/             # Built-in functions, stdlib modules
+│   └── returns/              # Return value semantics
+│       ├── {name}/           # Success test
+│       ├── error_{name}/     # Compilation error test
+│       └── panic_{name}/     # Runtime panic test
+│           ├── src/
+│           │   └── main.tp.py
+│           └── expected/
+│               ├── diag.txt      # Compiler diagnostics
+│               ├── main.hpp      # Generated header (if compiles)
+│               ├── main.cpp      # Generated source (if compiles)
+│               └── output.txt    # Runtime output (or panic.txt)
 ├── harness/tpy/              # CPython simulation module
 ├── conftest.py               # Pytest fixtures and shared utilities
 ├── test_comp.py              # Fast compilation tests (diagnostics, codegen)
@@ -107,10 +124,10 @@ tests/
 
 ### Adding a New Test Case
 
-1. Create test in the appropriate directory:
-   - `tests/cases/{name}/` - normal tests that compile and run
-   - `tests/errors/{name}/` - tests for compilation errors
-   - `tests/panics/{name}/` - tests for runtime panics
+1. Create test in the appropriate feature group under `tests/cases/<group>/`:
+   - `{name}/` - normal tests that compile and run
+   - `error_{name}/` - tests for compilation errors
+   - `panic_{name}/` - tests for runtime panics
 2. Add source file: `src/main.tp.py`
 3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
    - `# tpyc: ok` - line should compile without error

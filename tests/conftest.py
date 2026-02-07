@@ -25,9 +25,7 @@ TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
 
 # Paths
 TESTS_DIR = Path(__file__).parent
-CASES_DIR = TESTS_DIR / "cases"    # Normal tests (compile + run)
-ERRORS_DIR = TESTS_DIR / "errors"  # Compilation error tests
-PANICS_DIR = TESTS_DIR / "panics"  # Runtime panic tests
+CASES_DIR = TESTS_DIR / "cases"    # All tests (grouped by feature)
 HARNESS_DIR = TESTS_DIR / "harness"
 PROJECT_ROOT = TESTS_DIR.parent
 RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
@@ -273,7 +271,7 @@ def _discover_from_dirs(base_dirs: list[Path]):
         if not base_dir.exists():
             continue
 
-        prefix = base_dir.name  # "cases", "errors", or "panics"
+        prefix = base_dir.name
 
         for src_dir in base_dir.rglob("src"):
             if not src_dir.is_dir():
@@ -300,16 +298,20 @@ def _discover_from_dirs(base_dirs: list[Path]):
 
 
 def discover_cases():
-    """Discover all test cases from cases/, errors/, and panics/ directories.
-
-    Returns list of (name, case_dir, main_src) tuples.
-    """
-    return _discover_from_dirs([CASES_DIR, ERRORS_DIR, PANICS_DIR])
-
-
-def discover_cases_only():
-    """Discover test cases from cases/ directory only (no errors/ or panics/).
+    """Discover all test cases from cases/ directory.
 
     Returns list of (name, case_dir, main_src) tuples.
     """
     return _discover_from_dirs([CASES_DIR])
+
+
+def discover_success_cases():
+    """Discover success test cases only (excludes error_ and panic_ prefixed tests).
+
+    Returns list of (name, case_dir, main_src) tuples.
+    """
+    return [
+        (name, case_dir, main_src)
+        for name, case_dir, main_src in _discover_from_dirs([CASES_DIR])
+        if not case_dir.name.startswith(("error_", "panic_"))
+    ]
