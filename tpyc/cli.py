@@ -22,7 +22,7 @@ from pathlib import Path
 from .parse import ParseError
 from .sema import SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenOptions, CodeGenError
-from .compiler import Compiler, CompileError
+from .compiler import Compiler, CompileError, BuildLayout
 
 
 def get_runtime_dir() -> Path:
@@ -146,28 +146,18 @@ def main() -> int:
         # Build if requested
         if args.build or args.exec:
             runtime_dir = get_runtime_dir()
-            # Binary goes in {module_name}.d/ alongside include/ and src/
-            root_dir = output_dir / f"{module_name}.d"
-            binary_path = root_dir / module_name
+            layout = BuildLayout(output_dir, module_name)
+            binary_path = layout.binary_path()
 
             if args.verbose:
                 print(f"Building {binary_path}...")
 
-            if args.release:
-                opt_flags = ["-O3", "-DNDEBUG"]
-            else:
-                opt_flags = ["-g", "-O0"]
-
-            # Include root_dir/include/ for cross-module includes
-            compile_cmd = [
-                "g++", "-std=c++23",
-                *opt_flags,
-                "-I", str(runtime_dir / "cpp" / "include"),
-                "-I", str(root_dir / "include"),
-                "-o", str(binary_path),
-                *[str(p) for p in all_cpp_paths],
-                "-lgmp"
-            ]
+            opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
+            compile_cmd = layout.build_cpp_command(
+                runtime_include_dir=runtime_dir / "cpp" / "include",
+                cpp_files=all_cpp_paths,
+                opt_flags=opt_flags,
+            )
 
             if args.verbose >= 2:
                 print(f"  $ {' '.join(compile_cmd)}")

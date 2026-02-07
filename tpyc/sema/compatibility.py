@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, VoidType, PtrType, ConstPtrType,
-    NamedType, INT32_MIN, INT32_MAX
+    NamedType, INT32_MIN, INT32_MAX, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -54,7 +54,7 @@ class TypeCompatibility:
             return None
 
         # Protocol matching (structural subtyping)
-        if isinstance(expected, NamedType) and expected.is_protocol:
+        if is_protocol_type(expected):
             if self.protocols and self.protocols.type_conforms_to_protocol(actual, expected):
                 return None  # No coercion needed, structural match
             raise SemanticError(

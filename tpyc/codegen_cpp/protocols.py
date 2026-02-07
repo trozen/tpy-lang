@@ -9,10 +9,10 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, TypeParamKind,
-    MethodSignature
+    MethodSignature, is_protocol_type,
 )
 from ..parse import TpyProtocol, TpyRecord
-from .context import DUNDER_TO_BINARY_OP
+from .context import DUNDER_TO_BINARY_OP, module_to_cpp_namespace
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -42,7 +42,7 @@ class ProtocolGenerator:
         result = []
         for pname, ptype in params:
             resolved = self.resolve_type_for_codegen(ptype)
-            if isinstance(resolved, NamedType) and resolved.is_protocol:
+            if is_protocol_type(resolved):
                 result.append((pname, resolved))
         return result
 
@@ -55,8 +55,7 @@ class ProtocolGenerator:
         # Check if this is an imported protocol from another user module
         if protocol.name in self.ctx.user_imported_protocols:
             source_module, original_name = self.ctx.user_imported_protocols[protocol.name]
-            cpp_ns = source_module.replace('.', '::')
-            return f"tpy_user::{cpp_ns}::{original_name}"
+            return f"{module_to_cpp_namespace(source_module)}::{original_name}"
         # User-defined protocol - use the protocol name directly
         return protocol.name
 

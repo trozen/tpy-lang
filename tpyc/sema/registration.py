@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo,
-    TypeParamKind
+    TypeParamKind, is_protocol_type,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl
 from .diagnostics import SemanticError
@@ -111,7 +111,7 @@ class TypeRegistrar:
                 )
             self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic)
             # Protocol types cannot be used as field types
-            if isinstance(fld.type, NamedType) and fld.type.is_protocol:
+            if is_protocol_type(fld.type):
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
                     f"Protocols are only valid for function parameters",
@@ -122,7 +122,7 @@ class TypeRegistrar:
         if record.init_method:
             for pname, ptype in record.init_method.params:
                 # Protocol types cannot be used in __init__ parameters
-                if isinstance(ptype, NamedType) and ptype.is_protocol:
+                if is_protocol_type(ptype):
                     raise SemanticError(
                         f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.__init__'. "
                         f"Protocols are only valid for free function parameters"
@@ -136,7 +136,7 @@ class TypeRegistrar:
                 if not self.type_ops.is_type_param_ref(ptype):
                     self.type_ops.validate_type(ptype, allow_type_param_ref=is_generic)
                 # Protocol types cannot be used in method parameters
-                if isinstance(ptype, NamedType) and ptype.is_protocol:
+                if is_protocol_type(ptype):
                     raise SemanticError(
                         f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.{method.name}'. "
                         f"Protocols are only valid for free function parameters"
@@ -144,7 +144,7 @@ class TypeRegistrar:
             if not self.type_ops.is_type_param_ref(method.return_type):
                 self.type_ops.validate_type(method.return_type, allow_type_param_ref=is_generic)
             # Protocol types cannot be used as method return types
-            if isinstance(method.return_type, NamedType) and method.return_type.is_protocol:
+            if is_protocol_type(method.return_type):
                 raise SemanticError(
                     f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                     f"Protocols are only valid for free function parameters"
@@ -161,7 +161,7 @@ class TypeRegistrar:
         # Convert parsed bounds to NamedType (validate they are protocols)
         type_param_bounds: dict[str, NamedType] = {}
         for param_name, bound_type in record.type_param_bounds.items():
-            if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
+            if not is_protocol_type(bound_type):
                 raise SemanticError(
                     f"Type parameter bound must be a protocol, got {bound_type}",
                     None
@@ -457,7 +457,7 @@ class TypeRegistrar:
             )
 
         # Protocol types cannot be used as return types (but TypeParamRef is OK)
-        if isinstance(resolved_return, NamedType) and resolved_return.is_protocol:
+        if is_protocol_type(resolved_return):
             raise SemanticError(
                 f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
                 f"Protocols are only valid for function parameters",
@@ -468,7 +468,7 @@ class TypeRegistrar:
         type_param_bounds: dict[str, NamedType] = {}
         for param_name, bound_type in func.type_param_bounds.items():
             resolved_bound = self.type_ops.resolve_type(bound_type)
-            if not isinstance(resolved_bound, NamedType) or not resolved_bound.is_protocol:
+            if not is_protocol_type(resolved_bound):
                 raise SemanticError(
                     f"Type parameter bound must be a protocol, got {resolved_bound}",
                     func.loc

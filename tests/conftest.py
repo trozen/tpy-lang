@@ -18,7 +18,7 @@ from tpyc.cli import get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic
-from tpyc.compiler import Compiler, CompileError
+from tpyc.compiler import Compiler, CompileError, BuildLayout
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
@@ -96,9 +96,9 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
             all_modules.append((mod.name, hpp_path, cpp_path))
 
         # Return paths for the entry point module
-        root_dir = output_dir / f"{entry_module.name}.d"
-        hpp_path = root_dir / "include" / f"{entry_module.name}.hpp"
-        cpp_path = root_dir / "src" / f"{entry_module.name}.cpp"
+        layout = BuildLayout(output_dir, entry_module.name)
+        hpp_path = layout.hpp_path(entry_module.name)
+        cpp_path = layout.cpp_path(entry_module.name)
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path, all_modules=all_modules)
 
     except CompileError as e:
@@ -133,22 +133,22 @@ def build_and_run(build_dir: Path, module_name: str,
         all_cpp_files: List of all C++ files to compile (for multi-module).
                        If None, compiles only the entry module.
     """
-    root_dir = build_dir / f"{module_name}.d"
+    layout = BuildLayout(build_dir, module_name)
     exe_file = build_dir / "program"
 
     # Determine C++ files to compile
     if all_cpp_files is None:
-        cpp_files = [root_dir / "src" / f"{module_name}.cpp"]
+        cpp_files = [layout.cpp_path(module_name)]
     else:
         cpp_files = all_cpp_files
 
     # Compile C++ with include path for cross-module references
-    result = subprocess.run(
-        ["g++", "-std=c++23", "-I", str(RUNTIME_DIR), "-I", str(root_dir / "include"),
-         "-o", str(exe_file)] + [str(f) for f in cpp_files] + ["-lgmp"],
-        capture_output=True,
-        text=True,
+    compile_cmd = layout.build_cpp_command(
+        runtime_include_dir=RUNTIME_DIR,
+        cpp_files=cpp_files,
+        output=exe_file,
     )
+    result = subprocess.run(compile_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         pytest.fail(f"C++ compilation failed:\n{result.stderr}")
 

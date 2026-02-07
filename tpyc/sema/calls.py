@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo,
-    VOID, BIGINT
+    VOID, BIGINT, is_protocol_type,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName
 from ..namespace import BindingKind
@@ -313,7 +313,7 @@ class CallAnalyzer:
         if arg_type == param_type:
             return True
         # Protocol parameter: check if arg_type conforms to the protocol
-        if isinstance(param_type, NamedType) and param_type.is_protocol:
+        if is_protocol_type(param_type):
             return self.protocols.type_conforms_to_protocol(arg_type, param_type)
         return False
 
@@ -326,7 +326,7 @@ class CallAnalyzer:
         if isinstance(arg_type, IntLiteralType) and isinstance(param_type, IntLiteralType):
             return True
         # Protocol parameter: check if arg_type conforms to the protocol
-        if isinstance(param_type, NamedType) and param_type.is_protocol:
+        if is_protocol_type(param_type):
             return self.protocols.type_conforms_to_protocol(arg_type, param_type)
         # Check if there's a coercion from arg_type to param_type
         if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
@@ -403,7 +403,7 @@ class CallAnalyzer:
             # Validate each explicit type argument
             for i, type_arg in enumerate(expr.type_args):
                 # Protocol types cannot be used as type arguments
-                if isinstance(type_arg, NamedType) and type_arg.is_protocol:
+                if is_protocol_type(type_arg):
                     raise self.ctx.error(
                         f"Protocol type '{type_arg.name}' cannot be used as a type argument. "
                         f"Protocols are only valid for function parameters",

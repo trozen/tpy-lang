@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
     ListType, PendingListType, NamedType, CharType, StrType,
-    ListLiteralInfo, ConstPtrType, INT32, VOID, BIGINT
+    ListLiteralInfo, ConstPtrType, INT32, VOID, BIGINT, is_protocol_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -153,7 +153,7 @@ class StatementAnalyzer:
             )
 
         # Protocol types can only be used for function parameters, not variables
-        if stmt.type and isinstance(stmt.type, NamedType) and stmt.type.is_protocol:
+        if stmt.type and is_protocol_type(stmt.type):
             raise self.ctx.error(
                 f"Protocol type '{stmt.type.name}' cannot be used as a variable type. "
                 f"Protocols are only valid for function parameters",

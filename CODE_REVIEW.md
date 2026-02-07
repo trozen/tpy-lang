@@ -58,16 +58,13 @@ Extracted shared `_extract_subscript_slices()` module-level helper used by all f
 
 `builtins.py:220-254` (BigInt) and `tpy.py:30-61` (Int32) each define 17+ nearly identical operator methods. Forward and reverse operators differ only in operand order. A helper like `create_binop_methods(ops, type, template)` would eliminate ~60 lines of repetitive definitions.
 
-### 8. Module-to-C++ namespace conversion duplicated 6+ times
+### ~~8. Module-to-C++ namespace conversion duplicated 6+ times~~ ✅ Resolved
 
-`source_module.replace('.', '::')` and `tpy_user::{ns}::{name}` patterns appear in `generator.py`, `functions.py`, `expressions.py`, `statements.py`, `protocols.py`, and `types.py`. Should be a single utility.
+Extracted `module_to_cpp_namespace()` function in `codegen_cpp/context.py`, replacing 13+ inline `.replace('.', '::')` and `tpy_user::` constructions across `generator.py`, `functions.py`, `expressions.py`, `statements.py`, `protocols.py`, `types.py`, and `compiler.py`. Two duplicate `_module_to_namespace()` methods removed.
 
-### 9. C++ compilation command duplicated across cli.py and conftest.py
+### ~~9. C++ compilation command duplicated across cli.py and conftest.py~~ ✅ Resolved
 
-The `g++ -std=c++23 ... -lgmp` invocation appears in:
-- `cli.py:237-249`
-- `conftest.py:56-77` (`compile_and_run_cpp` — dead code)
-- `conftest.py:150-176` (`build_and_run`)
+`BuildLayout.build_cpp_command()` centralizes the g++ command construction. Both `cli.py` and `conftest.py:build_and_run` now use it.
 
 ### ~~10. String escaping logic duplicated~~ ✅ Resolved
 
@@ -89,21 +86,17 @@ Replaced with `RelativeImportKey` frozen dataclass providing `encode()`/`decode(
 
 `cli.py:237-249`: `g++` is hard-coded with no way to use `clang++`. `-std=c++23`, `-lgmp`, optimization flags — all embedded in CLI code. Should be a `CompilerConfig` object.
 
-### 14. Mutation method set is a magic literal
+### ~~14. Mutation method set is a magic literal~~ ✅ Resolved
 
-`sema/methods.py:200-201`:
-```python
-mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}
-```
-If new mutation methods are added, this set must be found and updated. Should live alongside list type definitions.
+`LIST_MUTATION_METHODS` frozenset now defined in `modules/builtins.py` alongside list type definitions, imported by `sema/methods.py`.
 
 ### ~~15. INT32 range constants duplicated~~ ✅ Resolved
 
 `INT32_MIN` and `INT32_MAX` now defined in `typesys.py` alongside other type constants, imported where needed.
 
-### 16. `.d` directory suffix convention undocumented and scattered
+### ~~16. `.d` directory suffix convention undocumented and scattered~~ ✅ Resolved
 
-The `.d` suffix for module output directories appears in `cli.py:63`, `cli.py:230-231`, `compiler.py:545`, `compiler.py:558-560` with no central definition.
+`BuildLayout` class in `compiler.py` centralizes the build directory structure (`.d` suffix, `include/`/`src/` subdirs, binary path). Used by `compiler.py`, `cli.py`, and `conftest.py`.
 
 ### ~~17. Dunder-to-operator mappings duplicated~~ ✅ Resolved
 
@@ -135,9 +128,9 @@ The sema package offers three different method lookup patterns:
 
 Call sites must know which to use and when, with no uniform interface.
 
-### 21. `is_protocol` checks scattered as raw isinstance chains
+### ~~21. `is_protocol` checks scattered as raw isinstance chains~~ ✅ Resolved
 
-`isinstance(type, NamedType) and type.is_protocol` appears ~10 times across `registration.py`, `statements.py`, `calls.py`. Should be `type_ops.is_protocol_type(typ)`.
+`is_protocol_type()` function in `typesys.py` replaces ~35 scattered `isinstance(x, NamedType) and x.is_protocol` patterns across `sema/` and `codegen_cpp/`.
 
 ### 22. Inconsistent module registration API
 
@@ -163,9 +156,9 @@ Operator mappings (`_BINOP_TO_STR`, `_CMPOP_TO_STR`, `_UNARYOP_TO_STR`) promoted
 
 Codegen uses chained `.replace("{self}", ...).replace("{0}", ...).replace("{1}", ...)` throughout. No verification that all placeholders were substituted. No check that `{2}` isn't used when only 1 parameter exists.
 
-### 27. Assertions used for input validation
+### ~~27. Assertions used for input validation~~ ✅ Resolved
 
-`codegen_cpp/builtins.py:67`: `assert method.cpp_template is not None` — assertions can be stripped with `-O`. Should be explicit checks with `CodeGenError`.
+All 4 `assert` statements in `codegen_cpp/` replaced with explicit `CodeGenError` checks in `builtins.py`, `statements.py`, and `records.py`.
 
 ### ~~28. Dataclass `__post_init__` boilerplate instead of `field(default_factory=...)`~~ ✅ Resolved
 
@@ -217,12 +210,12 @@ Now uses `os.pathsep` instead of hardcoded `:`.
 
 | Priority | Issues | Key Action |
 |----------|--------|------------|
-| **High** | #1, #2, #3, #4 | Unify compilation paths; decompose Parser, SemanticContext, CodeGenContext |
-| **High** | #5, #6, #7, #8, #11 | Extract shared utilities for type matching, slice extraction, operators, namespaces |
-| **High** | #12, #13 | Replace magic strings with typed data; create CompilerConfig |
-| **Medium** | #9, #10, #17 | Consolidate duplicated code (compilation commands, escaping, dunder maps) |
-| **Medium** | #18, #19, #20, #21, #22 | Standardize lookup/resolution patterns; fix sentinel misuse |
-| **Medium** | #23, #26, #27 | Fail fast instead of silently; validate templates; use proper checks |
+| **High** | ~~#1~~, #2, #3, #4 | ~~Unify compilation paths~~; decompose Parser, SemanticContext, CodeGenContext |
+| **High** | #5, ~~#6~~, #7, ~~#8~~, #11 | Extract shared utilities for type matching, ~~slice extraction~~, operators, ~~namespaces~~ |
+| **High** | ~~#12~~, #13 | ~~Replace magic strings with typed data~~; create CompilerConfig |
+| **Medium** | ~~#9~~, ~~#10~~, ~~#17~~ | ~~Consolidate duplicated code (compilation commands, escaping, dunder maps)~~ ✅ All resolved |
+| **Medium** | #18, ~~#19~~, #20, ~~#21~~, #22 | Standardize lookup/resolution patterns; ~~fix sentinel misuse~~ |
+| **Medium** | ~~#23~~, #26, ~~#27~~ | ~~Fail fast instead of silently~~; validate templates; ~~use proper checks~~ |
 | **Medium** | #29, #30, #31, #32 | Decompose complex methods into focused helpers |
-| **Low** | #14, #15, #16, #24, #25, #28 | Centralize constants; use `field(default_factory=...)`; class-level dicts |
-| **Low** | #33, #34, #35, #36 | Clean up dead code; fix test infrastructure fragility |
+| **Low** | ~~#14~~, ~~#15~~, ~~#16~~, ~~#24~~, #25, ~~#28~~ | ~~Centralize constants; use `field(default_factory=...)`; class-level dicts~~ — mostly resolved |
+| **Low** | ~~#33~~, #34, #35, ~~#36~~ | ~~Clean up dead code~~; fix test infrastructure fragility |

@@ -15,6 +15,11 @@ SIZED = NamedType("Sized", is_protocol=True)
 
 NAME = "builtins"
 
+# Methods that mutate the list (used by sema to track list literal mutation)
+LIST_MUTATION_METHODS = frozenset({
+    "append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__",
+})
+
 
 def init_module() -> BuiltinModule:
     """Initialize and return the builtins module."""

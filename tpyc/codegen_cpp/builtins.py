@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    CHAR
+    CHAR, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyCoerce
 )
 
-from .context import escape_cpp_string
+from .context import escape_cpp_string, CodeGenError
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -66,7 +66,8 @@ class BuiltinGenerator:
 
         Substitutes {self} with obj and {0}, {1}, etc. with generated args.
         """
-        assert method.cpp_template is not None
+        if method.cpp_template is None:
+            raise CodeGenError(f"Method '{method.name}' has no C++ template")
         result = method.cpp_template.replace("{self}", obj)
         for i, arg in enumerate(args):
             result = result.replace(f"{{{i}}}", self._gen_expr(arg))
@@ -90,7 +91,7 @@ class BuiltinGenerator:
     def ctor_param_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
         # Check for protocol type with TypeParamRef (e.g., NativeIterable[T])
-        if isinstance(param_type, NamedType) and param_type.is_protocol and param_type.type_args:
+        if is_protocol_type(param_type) and param_type.type_args:
             has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
             if has_type_param:
                 protocol_name = param_type.name
@@ -148,7 +149,7 @@ class BuiltinGenerator:
         if isinstance(arg_type, type(param_type)) and arg_type == param_type:
             return True
         # Protocol parameter: sema already verified conformance, accept any arg
-        if isinstance(param_type, NamedType) and param_type.is_protocol:
+        if is_protocol_type(param_type):
             return True
         # IntLiteral can match Int32 (if compile-time) or BigInt (if runtime)
         if isinstance(arg_type, IntLiteralType):

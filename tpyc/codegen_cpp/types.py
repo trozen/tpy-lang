@@ -13,6 +13,7 @@ from ..typesys import (
     INT32, BIGINT, FLOAT
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
+from .context import module_to_cpp_namespace
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -178,13 +179,13 @@ class TypeResolver:
             # Check if this record is imported from a user module
             if typ.name in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[typ.name]
-                cpp_ns = source_module.replace('.', '::')
+                qualified = f"{module_to_cpp_namespace(source_module)}::{original_name}"
                 if typ.type_args:
                     args = ", ".join(
                         self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
                         for t in typ.type_args
                     )
-                    return f"tpy_user::{cpp_ns}::{original_name}<{args}>"
-                return f"tpy_user::{cpp_ns}::{original_name}"
+                    return f"{qualified}<{args}>"
+                return qualified
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()

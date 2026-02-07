@@ -16,7 +16,7 @@ from ..parse import (
 )
 from ..namespace import Namespace
 
-from .context import DUNDER_TO_BINARY_OP
+from .context import DUNDER_TO_BINARY_OP, CodeGenError
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -283,9 +283,11 @@ class RecordGenerator:
         """
         for stmt in init_method.body:
             if self._is_super_init_call(stmt):
-                assert isinstance(stmt, TpyExprStmt)
+                if not isinstance(stmt, TpyExprStmt):
+                    raise CodeGenError("Expected expression statement for super().__init__()", stmt.loc)
                 expr = stmt.expr
-                assert isinstance(expr, TpyMethodCall)
+                if not isinstance(expr, TpyMethodCall):
+                    raise CodeGenError("Expected method call for super().__init__()", stmt.loc)
                 parent_type = expr.super_parent_type
                 args = ", ".join(self.expressions.gen_expr(a) for a in expr.args)
                 return f"{parent_type.to_cpp()}({args})"

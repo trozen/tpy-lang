@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, ConstPtrType, OwnType, NamedType, SelfType,
-    BigIntType, IntLiteralType, TypeParamRef,
+    BigIntType, IntLiteralType, TypeParamRef, is_protocol_type,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -37,6 +37,14 @@ def escape_cpp_char(value: str) -> str:
 # Both __truediv__ and __floordiv__ map to / in C++: for integer types, C++ /
 # is truncating division (like Python //); user types should implement the
 # appropriate semantics in their __truediv__/__floordiv__ methods.
+def module_to_cpp_namespace(module_name: str) -> str:
+    """Convert a dotted module name to a fully-qualified C++ namespace.
+
+    Example: "mypackage.submod" -> "tpy_user::mypackage::submod"
+    """
+    return f"tpy_user::{module_name.replace('.', '::')}"
+
+
 DUNDER_TO_BINARY_OP: dict[str, str] = {
     "__add__": "+", "__sub__": "-", "__mul__": "*",
     "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
@@ -221,7 +229,7 @@ class CodeGenContext:
         """
         if isinstance(typ, SelfType):
             return True
-        if isinstance(typ, NamedType) and typ.is_protocol:
+        if is_protocol_type(typ):
             return True
         elif isinstance(typ, OwnType):
             return self.contains_protocol_type(typ.wrapped)
@@ -239,7 +247,7 @@ class CodeGenContext:
         self._temp_counter += 1
         temp_name = f"__tmp_{self._temp_counter}"
         # Protocol and TypeParamRef use 'auto' since actual type is determined by expression
-        is_protocol = isinstance(param_type, NamedType) and param_type.is_protocol
+        is_protocol = is_protocol_type(param_type)
         type_cpp = "auto" if is_protocol or isinstance(param_type, TypeParamRef) else param_type.to_cpp()
         self._pending_temps.append((temp_name, type_cpp, init_expr))
         return temp_name

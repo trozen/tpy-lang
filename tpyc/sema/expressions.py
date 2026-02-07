@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     VoidType, NamedType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef, TypeParamKind, ListLiteralInfo,
-    INT32, FLOAT, STR, CHAR, BOOL, BIGINT
+    INT32, FLOAT, STR, CHAR, BOOL, BIGINT, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
@@ -241,7 +241,7 @@ class ExpressionAnalyzer:
 
         # Protocol-typed operands - look up the dunder method in the protocol
         # For Self in protocols, Self binds to the protocol itself when used as a value type
-        if isinstance(left_type, NamedType) and left_type.is_protocol:
+        if is_protocol_type(left_type):
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
                 return_type = self.protocols.lookup_protocol_method_return(left_type, method_name, [right_type])
@@ -349,7 +349,7 @@ class ExpressionAnalyzer:
         # Bounded type parameter - access field from protocol bound
         if isinstance(actual_type, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(actual_type.name)
-            if bound is not None and isinstance(bound, NamedType) and bound.is_protocol:
+            if bound is not None and is_protocol_type(bound):
                 protocol_info = self.ctx.registry.get_protocol(bound.name)
                 if protocol_info:
                     for field_name, field_type in protocol_info.fields or []:
@@ -476,7 +476,7 @@ class ExpressionAnalyzer:
             return elem_type
 
         # Protocol types - lookup __getitem__ return type
-        if isinstance(obj_type, NamedType) and obj_type.is_protocol:
+        if is_protocol_type(obj_type):
             return self._get_protocol_getitem_type(obj_type)
 
         # User records with __getitem__ method

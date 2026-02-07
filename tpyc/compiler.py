@@ -18,9 +18,80 @@ from .sema import SemanticAnalyzer, SemanticError
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .codegen_cpp import CodeGenerator, CodeGenOptions
+from .codegen_cpp.context import module_to_cpp_namespace
 
 if TYPE_CHECKING:
     from .typesys import TpyType, FunctionInfo, RecordInfo, ProtocolInfo, ModuleInfo, ModuleVarInfo
+
+
+class BuildLayout:
+    """Manages the build directory structure for compiled modules.
+
+    Layout:
+        output_dir/
+          {entry_module}.d/        # root_dir
+            include/               # headers
+              {module}.hpp         # flat module
+              {pkg}/{mod}.hpp      # nested package
+            src/                   # sources
+              {module}.cpp
+              {pkg}/{mod}.cpp
+            {entry_module}         # binary (when built)
+    """
+
+    def __init__(self, output_dir: Path, entry_module_name: str):
+        self.output_dir = output_dir
+        self.entry_module_name = entry_module_name
+        self.root_dir = output_dir / f"{entry_module_name}.d"
+        self.include_dir = self.root_dir / "include"
+        self.src_dir = self.root_dir / "src"
+
+    def hpp_path(self, module_name: str) -> Path:
+        """Path to the generated header for a module."""
+        parts = module_name.split('.')
+        if len(parts) == 1:
+            return self.include_dir / f"{parts[0]}.hpp"
+        rel_dir = '/'.join(parts[:-1])
+        return self.include_dir / rel_dir / f"{parts[-1]}.hpp"
+
+    def cpp_path(self, module_name: str) -> Path:
+        """Path to the generated source for a module."""
+        parts = module_name.split('.')
+        if len(parts) == 1:
+            return self.src_dir / f"{parts[0]}.cpp"
+        rel_dir = '/'.join(parts[:-1])
+        return self.src_dir / rel_dir / f"{parts[-1]}.cpp"
+
+    def binary_path(self) -> Path:
+        """Path to the output binary."""
+        return self.root_dir / self.entry_module_name
+
+    def build_cpp_command(
+        self,
+        runtime_include_dir: Path,
+        cpp_files: list[Path],
+        output: Path | None = None,
+        opt_flags: list[str] | None = None,
+    ) -> list[str]:
+        """Build the g++ compilation command.
+
+        Args:
+            runtime_include_dir: Path to the tpy runtime include directory.
+            cpp_files: List of C++ source files to compile.
+            output: Output binary path. Defaults to self.binary_path().
+            opt_flags: Optimization flags (e.g., ["-O3", "-DNDEBUG"]).
+        """
+        if output is None:
+            output = self.binary_path()
+        return [
+            "g++", "-std=c++23",
+            *(opt_flags or []),
+            "-I", str(runtime_include_dir),
+            "-I", str(self.include_dir),
+            "-o", str(output),
+            *[str(p) for p in cpp_files],
+            "-lgmp",
+        ]
 
 
 @dataclass
@@ -516,19 +587,16 @@ class Compiler:
         # Wrap single functions in lists for uniform overload handling
         functions = {k: [v] for k, v in exports.functions.items()}
 
-        # Convert dotted name to C++ nested namespace (e.g., "pkg.mod" -> "pkg::mod")
-        cpp_ns = name.replace('.', '::')
-
         # Create ModuleVarInfo with generated cpp_expr
         # For re-exported variables, use the source module's namespace
+        ns = module_to_cpp_namespace(name)
         variables = {}
         for k, v in exports.variables.items():
             if k in exports.reexported_variables:
                 source_module, original_name = exports.reexported_variables[k]
-                source_cpp_ns = source_module.replace('.', '::')
-                cpp_expr = f"tpy_user::{source_cpp_ns}::{original_name}"
+                cpp_expr = f"{module_to_cpp_namespace(source_module)}::{original_name}"
             else:
-                cpp_expr = f"tpy_user::{cpp_ns}::{k}"
+                cpp_expr = f"{ns}::{k}"
             variables[k] = ModuleVarInfo(k, v, cpp_expr)
 
         return ModuleInfo(
@@ -558,7 +626,6 @@ class Compiler:
 
         # Determine root directory name from entry module
         if entry_module_name is None:
-            # Find entry module name from compiled modules
             for m in self.modules.values():
                 if m.is_entry_point:
                     entry_module_name = m.name
@@ -566,23 +633,9 @@ class Compiler:
             else:
                 entry_module_name = mod_name
 
-        # Root is {entry}.d/ containing include/ and src/
-        root_dir = output_dir / f"{entry_module_name}.d"
-        include_dir = root_dir / "include"
-        src_dir = root_dir / "src"
-
-        # Compute header/source paths based on module name
-        # mypackage → include/mypackage.hpp, src/mypackage.cpp
-        # mypackage.sub → include/mypackage/sub.hpp, src/mypackage/sub.cpp
-        parts = mod_name.split('.')
-        if len(parts) == 1:
-            hpp_path = include_dir / f"{parts[0]}.hpp"
-            cpp_path = src_dir / f"{parts[0]}.cpp"
-        else:
-            # pkg.sub.mod → include/pkg/sub/mod.hpp, src/pkg/sub/mod.cpp
-            rel_dir = '/'.join(parts[:-1])
-            hpp_path = include_dir / rel_dir / f"{parts[-1]}.hpp"
-            cpp_path = src_dir / rel_dir / f"{parts[-1]}.cpp"
+        layout = BuildLayout(output_dir, entry_module_name)
+        hpp_path = layout.hpp_path(mod_name)
+        cpp_path = layout.cpp_path(mod_name)
 
         hpp_path.parent.mkdir(parents=True, exist_ok=True)
         cpp_path.parent.mkdir(parents=True, exist_ok=True)

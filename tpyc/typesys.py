@@ -791,6 +791,11 @@ INT32_MIN = -(2**31)
 INT32_MAX = 2**31 - 1
 
 
+def is_protocol_type(typ: TpyType) -> bool:
+    """Check if a type is a protocol type."""
+    return isinstance(typ, NamedType) and typ.is_protocol
+
+
 @dataclass
 class FieldInfo:
     """Information about a record field."""

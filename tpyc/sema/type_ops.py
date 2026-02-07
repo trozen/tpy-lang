@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType,
     ArrayType, SpanType, ListType, PendingListType, SelfType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
-    RecordInfo, FunctionInfo
+    RecordInfo, FunctionInfo, is_protocol_type,
 )
 from .diagnostics import SemanticError
 
@@ -99,13 +99,13 @@ class TypeOperations:
                 )
         elif isinstance(typ, (PtrType, ConstPtrType)):
             self.validate_type(typ.pointee, allow_type_param_ref)
-            if isinstance(typ.pointee, NamedType) and typ.pointee.is_protocol:
+            if is_protocol_type(typ.pointee):
                 raise SemanticError(
                     f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type"
                 )
         elif (elem_type := typ.get_element_type()) is not None:
             self.validate_type(elem_type, allow_type_param_ref)
-            if isinstance(elem_type, NamedType) and elem_type.is_protocol:
+            if is_protocol_type(elem_type):
                 raise SemanticError(
                     f"Protocol type '{elem_type.name}' cannot be used as a container element type"
                 )
@@ -317,7 +317,7 @@ class TypeOperations:
             return True
 
         # Case 2: NamedType (protocol) with TypeParamRef in type_args (e.g., NativeIterable[T])
-        if isinstance(param_type, NamedType) and param_type.is_protocol and param_type.type_args:
+        if is_protocol_type(param_type) and param_type.type_args:
             # Check if any type_arg is a TypeParamRef that needs inference
             has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
             if has_type_param:
@@ -595,7 +595,7 @@ class TypeOperations:
         from ..typesys import StrType, CharType, CHAR
 
         # Handle NativeIterable[T] protocol type
-        if isinstance(iterable_type, NamedType) and iterable_type.is_protocol and iterable_type.name == "NativeIterable":
+        if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterable":
             if iterable_type.type_args:
                 first_arg = iterable_type.type_args[0]
                 return first_arg if isinstance(first_arg, TpyType) else None

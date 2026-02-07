@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType,
-    MethodSignature, FunctionInfo, FieldInfo, RecordInfo
+    MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -50,7 +50,7 @@ class ProtocolChecker:
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(actual.name)
-            if bound is not None and isinstance(bound, NamedType) and bound.is_protocol:
+            if bound is not None and is_protocol_type(bound):
                 return self.type_conforms_to_protocol(bound, protocol)
 
         # Unified lookup - all protocols (builtin and user) are in the registry
@@ -59,7 +59,7 @@ class ProtocolChecker:
             return False
 
         # Protocol-to-protocol: check if actual inherits from protocol (or is same protocol)
-        if isinstance(actual, NamedType) and actual.is_protocol:
+        if is_protocol_type(actual):
             if actual.name == protocol.name:
                 return actual.type_args == protocol.type_args
             # Check if actual protocol inherits from the required protocol
@@ -120,7 +120,7 @@ class ProtocolChecker:
         This is fine for Phase 1 protocols (only Sized with __len__() -> Int32), but would
         need type parameter resolution for generic protocols like Iterable[T].
         """
-        if isinstance(actual, NamedType) and actual.is_protocol:
+        if is_protocol_type(actual):
             # Protocol type - check methods in protocol definition via unified registry
             protocol_info = self.ctx.registry.get_protocol(actual.name)
             if protocol_info is None:

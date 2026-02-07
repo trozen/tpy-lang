@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef,
-    INT32, BIGINT, FLOAT, CHAR, VOID,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
     ResolvedBinop
 )
 from ..parse import (
@@ -20,7 +20,7 @@ from ..parse import (
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
-from .context import escape_cpp_string, escape_cpp_char
+from .context import escape_cpp_string, escape_cpp_char, module_to_cpp_namespace
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -119,8 +119,7 @@ class ExpressionGenerator:
                         return expr.name
                 # Use qualified import reference (convert dotted name to C++ namespace)
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
-                cpp_ns = source_module.replace('.', '::')
-                return f"tpy_user::{cpp_ns}::{original_name}"
+                return f"{module_to_cpp_namespace(source_module)}::{original_name}"
             return expr.name
 
         elif isinstance(expr, TpyBinOp):
@@ -257,7 +256,7 @@ class ExpressionGenerator:
 
         # Protocol-typed operands - use C++ operator syntax
         # The protocol constraint guarantees the operator exists
-        if isinstance(left_type, NamedType) and left_type.is_protocol:
+        if is_protocol_type(left_type):
             left = self.gen_expr(expr.left, left_type)
             right = self.gen_expr(expr.right, right_type)
             # Map Python operators to C++ operators
@@ -367,8 +366,7 @@ class ExpressionGenerator:
             func_cpp_name = expr.func
             if expr.func in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func]
-                cpp_ns = source_module.replace('.', '::')
-                func_cpp_name = f"tpy_user::{cpp_ns}::{original_name}"
+                func_cpp_name = f"{module_to_cpp_namespace(source_module)}::{original_name}"
 
             # For generic functions, always emit explicit type args to avoid C++ deduction issues
             # with tpy::param_val_or_ref_t<T> parameters
@@ -413,8 +411,7 @@ class ExpressionGenerator:
             # Qualify imported records (use original name for aliases)
             if expr.func in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[expr.func]
-                cpp_ns = source_module.replace('.', '::')
-                return f"tpy_user::{cpp_ns}::{original_name}({args})"
+                return f"{module_to_cpp_namespace(source_module)}::{original_name}({args})"
             return f"{expr.func}({args})"
         args = ", ".join(self.gen_expr(a) for a in expr.args)
         return f"{expr.func}({args})"
@@ -425,9 +422,7 @@ class ExpressionGenerator:
 
         # Handle user module function calls: module.func() -> tpy_user::module::func()
         if expr.user_module_call is not None:
-            module_name = expr.user_module_call
-            cpp_ns = module_name.replace('.', '::')
-            return f"tpy_user::{cpp_ns}::{expr.method}({args})"
+            return f"{module_to_cpp_namespace(expr.user_module_call)}::{expr.method}({args})"
 
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:

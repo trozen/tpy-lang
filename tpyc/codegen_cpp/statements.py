@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     ArrayType, ListType, PendingListType, OwnType, NamedType, StrType,
-    INT32, BIGINT
+    INT32, BIGINT, is_protocol_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -18,7 +18,7 @@ from ..parse import (
     TpyImport, TpySubscript, TpyStrLiteral, TpyName
 )
 from ..namespace import Namespace
-from .context import CodeGenError
+from .context import CodeGenError, module_to_cpp_namespace
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -114,11 +114,9 @@ class StatementGenerator:
                 for i in range(1, len(parts)):
                     parent_pkg = '.'.join(parts[:i])
                     if parent_pkg in self.ctx.all_user_modules:
-                        cpp_ns = parent_pkg.replace('.', '::')
-                        result += f"{indent}tpy_user::{cpp_ns}::__tpy_init();\n"
+                        result += f"{indent}{module_to_cpp_namespace(parent_pkg)}::__tpy_init();\n"
                 # Then init the submodule itself
-                cpp_ns = stmt.module_name.replace('.', '::')
-                result += f"{indent}tpy_user::{cpp_ns}::__tpy_init();\n"
+                result += f"{indent}{module_to_cpp_namespace(stmt.module_name)}::__tpy_init();\n"
                 return result
             return ""  # Builtin module - no init needed
         return None
@@ -265,7 +263,8 @@ class StatementGenerator:
         Uses set_value(container, index, get_value(container, index) op value) pattern
         for range-checked read and write. Only supported for value type elements.
         """
-        assert isinstance(stmt.target, TpySubscript)
+        if not isinstance(stmt.target, TpySubscript):
+            raise CodeGenError("Expected subscript target for augmented assignment", stmt.loc)
         subscript = stmt.target
         obj = self.expressions.gen_expr(subscript.obj)
         obj_type = self.types.get_resolved_type(subscript.obj)
@@ -388,7 +387,7 @@ class StatementGenerator:
 
         # Determine element type for the loop variable
         # Handle protocol types (e.g., NativeIterable[T])
-        if isinstance(iterable_type, NamedType) and iterable_type.is_protocol:
+        if is_protocol_type(iterable_type):
             if iterable_type.name == "NativeIterable" and iterable_type.type_args:
                 elem_type = iterable_type.type_args[0]
             else:
