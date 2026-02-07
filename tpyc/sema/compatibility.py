@@ -31,9 +31,14 @@ class TypeCompatibility:
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
-        # These are set later to break circular dependencies
+        # Set via set_deps() to break circular dependencies
         self.type_ops: TypeOperations | None = None
         self.protocols: ProtocolChecker | None = None
+
+    def set_deps(self, type_ops: TypeOperations, protocols: ProtocolChecker) -> None:
+        """Wire deferred dependencies (must be called before use)."""
+        self.type_ops = type_ops
+        self.protocols = protocols
 
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,

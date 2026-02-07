@@ -279,9 +279,9 @@ class TypeOperations:
                 and type_param_name in self.ctx.current_function.type_param_bounds):
             return self.ctx.current_function.type_param_bounds[type_param_name]
         # Check current record's type param bounds (for methods in generic classes)
-        if (self.ctx.current_record_type_param_bounds
-                and type_param_name in self.ctx.current_record_type_param_bounds):
-            return self.ctx.current_record_type_param_bounds[type_param_name]
+        if (self.ctx.record_ctx.type_param_bounds
+                and type_param_name in self.ctx.record_ctx.type_param_bounds):
+            return self.ctx.record_ctx.type_param_bounds[type_param_name]
         return None
 
     def match_type_with_inference(

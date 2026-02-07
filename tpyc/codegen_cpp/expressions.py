@@ -353,7 +353,7 @@ class ExpressionGenerator:
                 # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
                 if (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self.ctx.is_temporary_expr(arg):
                     init_expr = self.gen_expr(arg, resolved_ptype)
-                    temp_name = self.ctx.create_temp_for_literal(resolved_ptype, init_expr)
+                    temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
                     gen_args.append(temp_name)
                 else:
                     # Pass param type for BigInt promotion
@@ -515,7 +515,7 @@ class ExpressionGenerator:
                             # Only need temp for object types (T&), not value types (const T&)
                             if not resolved_type.is_value_type():
                                 init_expr = self.gen_expr(arg, resolved_type)
-                                temp_name = self.ctx.create_temp_for_literal(resolved_type, init_expr)
+                                temp_name = self.ctx.temps.create(resolved_type, init_expr)
                                 gen_args.append(temp_name)
                             else:
                                 gen_args.append(self.gen_expr(arg))

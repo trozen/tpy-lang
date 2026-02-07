@@ -63,6 +63,29 @@ DUNDER_TO_BINARY_OP: dict[str, str] = {
 }
 
 
+class TempState:
+    """Manages temporary variables for array literals passed to mutable reference params."""
+
+    def __init__(self):
+        self._pending: list[tuple[str, str, str]] = []
+        self._counter: int = 0
+
+    def create(self, param_type: TpyType, init_expr: str) -> str:
+        """Create a temp variable and return its name for use in the call."""
+        self._counter += 1
+        temp_name = f"__tmp_{self._counter}"
+        is_protocol = is_protocol_type(param_type)
+        type_cpp = "auto" if is_protocol or isinstance(param_type, TypeParamRef) else param_type.to_cpp()
+        self._pending.append((temp_name, type_cpp, init_expr))
+        return temp_name
+
+    def flush(self, out: TextIO, indent: str) -> None:
+        """Emit any pending temp variable declarations."""
+        for temp_name, type_cpp, init_expr in self._pending:
+            out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
+        self._pending.clear()
+
+
 class CodeGenError(Exception):
     """Error during C++ code generation."""
     def __init__(self, message: str, loc: SourceLocation | None = None):
@@ -86,10 +109,14 @@ class CodeGenOptions:
 @dataclass
 class CodeGenContext:
     """Shared state for C++ code generation."""
+
+    # --- Core ---
     analyzer: SemanticAnalyzer
     options: CodeGenOptions
     module_name: str = "generated"
     source_lines: list[str] = field(default_factory=list)
+
+    # --- Scope tracking ---
     indent_level: int = 0
     declared_vars: set[str] = field(default_factory=set)
     var_types: dict[str, TpyType] = field(default_factory=dict)
@@ -100,33 +127,26 @@ class CodeGenContext:
     current_return_type: TpyType | None = None
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
 
-    # Pending temporaries for array literals passed to mutable Array params
-    _pending_temps: list[tuple[str, str, str]] = field(default_factory=list)
-    _temp_counter: int = 0
+    # --- Temporary variable management ---
+    temps: TempState = field(default_factory=TempState)
 
-    # Synthetic __name__ tracking
+    # --- Module-level flags ---
     _has_synthetic_name: bool = False
 
-    # User module imports for cross-module reference generation
+    # --- Cross-module import tracking ---
     user_module_imports: set[str] = field(default_factory=set)
-    # All discovered user modules (including parent packages) for __tpy_init generation
     all_user_modules: set[str] = field(default_factory=set)
-    # Track imported items from user modules for qualified name generation
     # Maps local_name -> (source_module, original_name) to support import aliases
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
-    # Track top-level declarations: name -> line number where declared
-    # For order-aware codegen (imports used before redefinition should stay qualified)
     top_level_decls: dict[str, int] = field(default_factory=dict)
-    # Current statement line during top-level codegen (0 = in function, use local if declared)
     current_stmt_line: int = 0
-    # Re-exported functions from __init__.py: {local_name: (source_module, original_name)}
+
+    # --- Re-exports (from __init__.py) ---
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
-    # Re-exported records from __init__.py: {local_name: (source_module, original_name)}
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
-    # Re-exported variables from __init__.py: {local_name: (source_module, original_name)}
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
 
     def indent(self) -> str:
@@ -246,25 +266,6 @@ class CodeGenContext:
         elif (elem_type := typ.get_element_type()) is not None:
             return self.contains_protocol_type(elem_type)
         return False
-
-    def create_temp_for_literal(self, param_type: TpyType, init_expr: str) -> str:
-        """Create a temp variable for a literal passed to a mutable reference param.
-
-        Returns the temp variable name to use in the call.
-        """
-        self._temp_counter += 1
-        temp_name = f"__tmp_{self._temp_counter}"
-        # Protocol and TypeParamRef use 'auto' since actual type is determined by expression
-        is_protocol = is_protocol_type(param_type)
-        type_cpp = "auto" if is_protocol or isinstance(param_type, TypeParamRef) else param_type.to_cpp()
-        self._pending_temps.append((temp_name, type_cpp, init_expr))
-        return temp_name
-
-    def flush_pending_temps(self, out: TextIO, indent: str) -> None:
-        """Emit any pending temp variable declarations."""
-        for temp_name, type_cpp, init_expr in self._pending_temps:
-            out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
-        self._pending_temps.clear()
 
     def reset_for_scope(self, *, params: list[tuple[str, TpyType]] | None = None,
                         global_types: dict[str, TpyType | None] | None = None) -> None:

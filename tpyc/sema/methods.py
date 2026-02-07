@@ -45,9 +45,14 @@ class MethodAnalyzer:
         self.type_ops = type_ops
         self.protocols = protocols
         self.compat = compat
-        # Set later to break circular dependency
+        # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
-        self.calls: "CallAnalyzer | None" = None
+        self.calls: CallAnalyzer | None = None
+
+    def set_cross_deps(self, expr: ExpressionAnalyzer, calls: CallAnalyzer) -> None:
+        """Wire circular dependencies (must be called before analyze_method_call)."""
+        self.expr = expr
+        self.calls = calls
 
     @staticmethod
     def _analyze_super_call_static(ctx: SemanticContext, expr: TpyCall) -> TpyType:
@@ -71,14 +76,14 @@ class MethodAnalyzer:
             raise ctx.error("super() cannot be used in a static method", expr)
 
         # Validate context: must have a current record
-        if ctx.current_record is None:
+        if ctx.record_ctx.record is None:
             raise ctx.error("super() can only be used inside a class method", expr)
 
         # Validate: class must have a parent
-        record_info = ctx.registry.get_record(ctx.current_record.name)
+        record_info = ctx.registry.get_record(ctx.record_ctx.record.name)
         if record_info is None or record_info.parent is None:
             raise ctx.error(
-                f"super() requires a parent class, but '{ctx.current_record.name}' has no parent",
+                f"super() requires a parent class, but '{ctx.record_ctx.record.name}' has no parent",
                 expr
             )
 
@@ -86,7 +91,7 @@ class MethodAnalyzer:
         if expr.args:
             raise ctx.error("super() takes no arguments (Python 3 style)", expr)
 
-        return SuperType(record_info.parent, ctx.current_record.name)
+        return SuperType(record_info.parent, ctx.record_ctx.record.name)
 
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""

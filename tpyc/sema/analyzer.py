@@ -12,7 +12,7 @@ from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
 
 from .diagnostics import Scope, Diagnostic, SemanticError
-from .context import SemanticContext, MODULE_INIT_CONTEXT
+from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
@@ -50,9 +50,8 @@ class SemanticAnalyzer:
         self.protocols = ProtocolChecker(self.ctx, self.type_ops)
         self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols)
 
-        # Wire up compatibility's dependencies
-        self.compat.type_ops = self.type_ops
-        self.compat.protocols = self.protocols
+        # Wire up compatibility's deferred dependencies
+        self.compat.set_deps(self.type_ops, self.protocols)
 
         # Layer 3: Analyzers with circular deps - create first
         self.expr = ExpressionAnalyzer(
@@ -68,13 +67,11 @@ class SemanticAnalyzer:
             self.ctx, self.type_ops, self.compat, self.list_tracker, self.protocols
         )
 
-        # Layer 4: Wire circular refs
-        self.expr.calls = self.calls
-        self.expr.methods = self.methods
-        self.calls.expr = self.expr
-        self.methods.expr = self.expr
-        self.methods.calls = self.calls
-        self.stmts.expr = self.expr
+        # Layer 4: Wire circular refs via explicit setters
+        self.expr.set_cross_deps(self.calls, self.methods)
+        self.calls.set_cross_deps(self.expr)
+        self.methods.set_cross_deps(self.expr, self.calls)
+        self.stmts.set_cross_deps(self.expr)
 
         # Convenience aliases for public API
         self.registry = self.ctx.registry
@@ -269,12 +266,11 @@ class SemanticAnalyzer:
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
-        # Track current record for super() support
-        self.ctx.current_record = record
-        # Track type parameters for generic records (allows TypeParamRef in method locals)
-        self.ctx.current_record_type_params = record.type_params if record.type_params else None
-        self.ctx.current_record_type_param_kinds = record.type_param_kinds if record.type_param_kinds else None
-        self.ctx.current_record_type_param_bounds = record.type_param_bounds if record.type_param_bounds else None
+        # Set up record context for super() support and generic type params
+        self.ctx.record_ctx.record = record
+        self.ctx.record_ctx.type_params = record.type_params if record.type_params else None
+        self.ctx.record_ctx.type_param_kinds = record.type_param_kinds if record.type_param_kinds else None
+        self.ctx.record_ctx.type_param_bounds = record.type_param_bounds if record.type_param_bounds else None
 
         for method in record.methods:
             self.ctx.reset_function_tracking()
@@ -320,10 +316,7 @@ class SemanticAnalyzer:
             self.ctx.current_function = None
             self.ctx.current_ns = None
 
-        self.ctx.current_record = None
-        self.ctx.current_record_type_params = None
-        self.ctx.current_record_type_param_kinds = None
-        self.ctx.current_record_type_param_bounds = None
+        self.ctx.record_ctx = RecordContext()
 
     def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:
         """Analyze top-level statements (for generated main()).

@@ -6,41 +6,32 @@
 
 Unified via `Compiler.from_source()` — both stdin and file mode now use `Compiler`. The dead `compile_file()` function was removed.
 
-### 2. Parser has too many responsibilities (parse.py) — partially addressed
+### ~~2. Parser has too many responsibilities (parse.py)~~ ✅ Resolved
 
-The parser does far more than parsing:
-- **Import validation** (`_check_import`, `_check_import_from`) — semantic concern
-- ~~**TPY type import enforcement** (`_check_tpy_type_imported`) — policy enforcement~~ ✅ Extracted as standalone module-level function with explicit parameters; redundant `_tpy_imported_names` state removed
-- **Import tracking** (`imports`, `user_module_imports`, `module_aliases`) — compiler-level concern
-- **Type parameter scope management** (`_type_param_scope`) — semantic concern
+Import validation and tracking extracted into dedicated `ImportProcessor` class:
+- ~~**Import validation** (`_check_import`, `_check_import_from`) — semantic concern~~ ✅ Moved to `ImportProcessor.process_import()` / `process_import_from()`
+- ~~**TPY type import enforcement** (`_check_tpy_type_imported`) — policy enforcement~~ ✅ Extracted as standalone module-level function with explicit parameters
+- ~~**Import tracking** (`_tpy_import_aliases`, `_tpy_star_import`) — compiler-level concern~~ ✅ State now lives on `ImportProcessor`
+- **Type parameter scope management** (`_type_param_scope`) — needed during parsing for type annotation resolution (not a semantic concern)
 
-Additionally: `SPECIAL_MODULES`, `TPY_TYPES`, and operator mapping dicts promoted to module-level constants, reducing Parser instance state. See also #24 (resolved).
+Additionally: `SPECIAL_MODULES`, `TPY_TYPES`, and operator mapping dicts promoted to module-level constants, reducing Parser instance state.
 
-This makes it difficult to test parsing in isolation and creates coupling between syntax handling and semantic validation.
+### ~~3. Circular dependency management via manual wiring (sema/ and codegen_cpp/)~~ ✅ Resolved
 
-### 3. Circular dependency management via manual wiring (sema/ and codegen_cpp/)
+Both packages now use explicit setter methods for circular dependency wiring:
+- `sema/`: `set_cross_deps()` on `ExpressionAnalyzer`, `CallAnalyzer`, `MethodAnalyzer`, `StatementAnalyzer`; `set_deps()` on `TypeCompatibility`
+- `codegen_cpp/`: already used `set_expressions()`, `set_dependencies()`, `set_statements()` (unchanged)
 
-Both `sema/analyzer.py:43-78` and `codegen_cpp/generator.py:49-52` use fragile manual setter injection:
+The sema package now matches the codegen pattern. Wiring is done via named methods instead of direct attribute assignment.
 
-```python
-# sema/analyzer.py
-self.expr.calls = self.calls
-self.expr.methods = self.methods
-self.calls.expr = self.expr
-self.methods.expr = self.expr
-self.methods.calls = self.calls
-self.stmts.expr = self.expr
-```
+### ~~4. God Objects: SemanticContext (24 fields) and CodeGenContext (22+ fields)~~ ✅ Partially resolved
 
-If a new component is added but wiring is forgotten, it silently fails. No compile-time or runtime check ensures completeness.
+Extracted focused sub-components from both contexts:
+- **`RecordContext`** dataclass extracted from `SemanticContext`: groups `record`, `type_params`, `type_param_kinds`, `type_param_bounds`
+- **`TempState`** class extracted from `CodeGenContext`: groups temp variable management (`create()`, `flush()`) with its state
+- Both contexts reorganized with clear section headers (Core, Scope tracking, Type cache, Import tracking, etc.)
 
-### 4. God Objects: SemanticContext (24 fields) and CodeGenContext (22+ fields)
-
-Both context classes accumulate unrelated responsibilities:
-- **SemanticContext** (`sema/context.py`): scope state, type caches, list literal tracking, import tracking, cross-module support, namespace hierarchy, diagnostics
-- **CodeGenContext** (`codegen_cpp/context.py`): indentation, variable tracking, module imports, temp variables, scope management, import tracking
-
-These should be decomposed into focused sub-contexts.
+Remaining fields (import tracking, list literal tracking, namespace hierarchy) are left flat — they're accessed from many files and the sub-component benefit doesn't justify the churn.
 
 ---
 
@@ -200,7 +191,7 @@ Now uses `os.pathsep` instead of hardcoded `:`.
 
 | Priority | Issues | Key Action |
 |----------|--------|------------|
-| **High** | ~~#1~~, #2, #3, #4 | ~~Unify compilation paths~~; decompose Parser, SemanticContext, CodeGenContext |
+| **High** | ~~#1~~, ~~#2~~, ~~#3~~, ~~#4~~ | ~~Unify compilation paths; decompose Parser, SemanticContext, CodeGenContext~~ ✅ All resolved |
 | **High** | ~~#5~~, ~~#6~~, ~~#7~~, ~~#8~~, ~~#11~~ | ~~Extract shared utilities for type matching, slice extraction, operators, namespaces~~ ✅ All resolved |
 | **High** | ~~#12~~, ~~#13~~ | ~~Replace magic strings with typed data; create CompilerConfig~~ ✅ All resolved |
 | **Medium** | ~~#9~~, ~~#10~~, ~~#17~~ | ~~Consolidate duplicated code (compilation commands, escaping, dunder maps)~~ ✅ All resolved |

@@ -45,8 +45,12 @@ class CallAnalyzer:
         self.protocols = protocols
         self.compat = compat
         self.list_tracker = list_tracker
-        # Set later to break circular dependency
+        # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
+
+    def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
+        """Wire circular dependencies (must be called before analyze_call)."""
+        self.expr = expr
 
     def analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""

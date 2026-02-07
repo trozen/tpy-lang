@@ -48,8 +48,12 @@ class StatementAnalyzer:
         self.compat = compat
         self.list_tracker = list_tracker
         self.protocols = protocols
-        # Set later to break circular dependency
+        # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
+
+    def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
+        """Wire circular dependencies (must be called before analyze_stmt)."""
+        self.expr = expr
 
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
@@ -140,7 +144,7 @@ class StatementAnalyzer:
         # Allow TypeParamRef when inside a generic record's methods
         if stmt.type:
             try:
-                self.type_ops.validate_type(stmt.type, allow_type_param_ref=bool(self.ctx.current_record_type_params))
+                self.type_ops.validate_type(stmt.type, allow_type_param_ref=bool(self.ctx.record_ctx.type_params))
             except SemanticError as e:
                 raise self.ctx.error(str(e), stmt)
 

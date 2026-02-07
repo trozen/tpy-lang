@@ -70,7 +70,7 @@ class StatementGenerator:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
             if code is not None:
-                self.ctx.flush_pending_temps(out, indent)
+                self.ctx.temps.flush(out, indent)
                 out.write(code)
 
     def _gen_simple_stmt(self, stmt: TpyStmt, indent: str) -> str | None:
@@ -319,7 +319,7 @@ class StatementGenerator:
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
         cond = self.expressions.gen_expr(stmt.condition)
-        self.ctx.flush_pending_temps(out, indent)
+        self.ctx.temps.flush(out, indent)
         out.write(f"{indent}if ({cond}) {{\n")
 
         self.ctx.indent_level += 1
@@ -339,7 +339,7 @@ class StatementGenerator:
     def _gen_while(self, out: TextIO, stmt: TpyWhile, indent: str) -> None:
         """Generate a while loop."""
         cond = self.expressions.gen_expr(stmt.condition)
-        self.ctx.flush_pending_temps(out, indent)
+        self.ctx.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
 
         self.ctx.indent_level += 1
@@ -360,7 +360,7 @@ class StatementGenerator:
             start = f"{start}.to_int32()"
         if isinstance(end_type, BigIntType):
             end = f"{end}.to_int32()"
-        self.ctx.flush_pending_temps(out, indent)
+        self.ctx.temps.flush(out, indent)
         out.write(f"{indent}for (int32_t {stmt.var} = {start}; {stmt.var} < {end}; ++{stmt.var}) {{\n")
 
         # Track loop variable as local to prevent false global deref if it shadows a global
@@ -404,7 +404,7 @@ class StatementGenerator:
             iterable = f"std::string_view({iterable})"
 
         # Flush any pending temps before for loop header
-        self.ctx.flush_pending_temps(out, indent)
+        self.ctx.temps.flush(out, indent)
 
         # Generate C++ range-based for loop
         if elem_type:

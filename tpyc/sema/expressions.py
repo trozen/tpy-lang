@@ -49,9 +49,14 @@ class ExpressionAnalyzer:
         self.operators = operators
         self.protocols = protocols
         self.compat = compat
-        # Set later to break circular dependency
+        # Set via set_cross_deps() to break circular dependency
         self.calls: CallAnalyzer | None = None
         self.methods: MethodAnalyzer | None = None
+
+    def set_cross_deps(self, calls: CallAnalyzer, methods: MethodAnalyzer) -> None:
+        """Wire circular dependencies (must be called before analyze_expr)."""
+        self.calls = calls
+        self.methods = methods
 
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
@@ -162,10 +167,10 @@ class ExpressionAnalyzer:
         """Analyze a name reference."""
         # Check for INT type parameter references in generic class context
         # INT type params can be used as values in expressions (e.g., Int32(N))
-        if self.ctx.current_record_type_params and self.ctx.current_record_type_param_kinds:
+        if self.ctx.record_ctx.type_params and self.ctx.record_ctx.type_param_kinds:
             try:
-                idx = self.ctx.current_record_type_params.index(expr.name)
-                if self.ctx.current_record_type_param_kinds[idx] == TypeParamKind.INT:
+                idx = self.ctx.record_ctx.type_params.index(expr.name)
+                if self.ctx.record_ctx.type_param_kinds[idx] == TypeParamKind.INT:
                     # INT type param - return TypeParamRef with INT kind
                     # This represents a compile-time constant, treated as Int32-compatible
                     return TypeParamRef(expr.name, kind=TypeParamKind.INT)

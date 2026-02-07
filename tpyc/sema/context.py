@@ -32,33 +32,39 @@ MODULE_INIT_CONTEXT = _ModuleInitSentinel()
 
 
 @dataclass
+class RecordContext:
+    """State for the record currently being analyzed (type params, bounds)."""
+    record: TpyRecord | None = None
+    type_params: list[str] | None = None
+    type_param_kinds: list[TypeParamKind] | None = None
+    type_param_bounds: dict[str, TpyType] | None = None
+
+
+@dataclass
 class SemanticContext:
     """Shared state for all semantic analysis components."""
+
+    # --- Core ---
     registry: TypeRegistry
     global_scope: Scope
 
-    # Current scope during analysis
+    # --- Analysis state ---
     current_scope: Scope | None = None
     current_function: TpyFunction | _ModuleInitSentinel | None = None
+    record_ctx: RecordContext = field(default_factory=RecordContext)
 
-    # Expression/variable type cache
+    # --- Type cache ---
     expr_types: dict[int, TpyType] = field(default_factory=dict)
     var_types: dict[int, TpyType] = field(default_factory=dict)
 
-    # Current record context (for generic type params)
-    current_record: TpyRecord | None = None
-    current_record_type_params: list[str] | None = None
-    current_record_type_param_kinds: list[TypeParamKind] | None = None
-    current_record_type_param_bounds: dict[str, TpyType] | None = None
-
-    # List literal tracking
+    # --- List literal tracking ---
     literal_counter: int = 0
     list_literals: dict[int, ListLiteralInfo] = field(default_factory=dict)
     variable_to_literal: dict[str, int] = field(default_factory=dict)
     pending_resolutions: list[int] = field(default_factory=list)
     var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
 
-    # Import tracking
+    # --- Import tracking ---
     # imports: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
     #          module_name -> None (for "import X")
     #          module_name -> "*" (for "from X import *")
@@ -66,38 +72,29 @@ class SemanticContext:
     # imported_names: name -> (module_name, function_name) for direct function access
     imported_names: dict[str, tuple[str, str]] = field(default_factory=dict)
 
-    # Cross-module support
-    # module_name: name of this module ("__main__" for entry point, "module_name" for imports)
+    # --- Cross-module support ---
     module_name: str = "__main__"
-    # Track imported items from user modules for codegen qualification
     # Maps local_name -> (source_module, original_name) to support import aliases
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
-    # Track top-level declarations: name -> line number where declared
-    # Used for export filtering and order-aware codegen (imports used before redefinition)
     top_level_decls: dict[str, int] = field(default_factory=dict)
 
-    # Built-in names (reserved for future builtins if needed)
+    # --- Builtins ---
     builtin_names: dict[str, TpyType] = field(default_factory=dict)
 
-    # Unified namespace system
-    # builtins_ns: root namespace containing built-in names
-    # global_ns: module-level namespace (records, functions, imports, global vars)
-    # current_ns: current scope during analysis (local_ns -> global_ns -> builtins_ns)
+    # --- Namespace hierarchy ---
     builtins_ns: Namespace | None = None
     global_ns: Namespace | None = None
     current_ns: Namespace | None = None
 
-    # Control flow
+    # --- Control flow ---
     loop_depth: int = 0
     is_top_level: bool = False
-
-    # Track super().__init__() calls in current __init__ method for validation
     super_init_call: TpyMethodCall | None = None
 
-    # Diagnostics
+    # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
     def error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:

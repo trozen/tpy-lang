@@ -472,113 +472,21 @@ def check_tpy_type_imported(
     )
 
 
-class Parser:
-    """Parser for TurboPython source code."""
+class ImportProcessor:
+    """Processes and tracks import statements during parsing.
 
-    FORBIDDEN_CONSTRUCTS = {
-        "dict", "set", "tuple",
-        "try", "raise", "with", "async", "await",
-        "lambda", "yield", "global", "nonlocal",
-    }
+    Separates import validation and tracking (semantic concerns)
+    from pure syntax parsing.
+    """
 
-    def __init__(self):
-        self.registry = TypeRegistry()
-        self.source_lines: list[str] = []
-        self._type_param_scope: dict[str, TypeParamKind] | None = None  # Current type parameter scope for generic classes
-        self._warnings: list[ParseWarning] = []  # Warnings accumulated during parsing
-        self._tpy_import_aliases: dict[str, str] = {}  # local_name -> original_name for tpy imports
-        self._tpy_star_import: bool = False  # True if "from tpy import *" was used
+    def __init__(self, warn_fn):
+        self._warn = warn_fn
+        self.tpy_import_aliases: dict[str, str] = {}
+        self.tpy_star_import: bool = False
 
-    def _loc(self, node: ast.AST) -> SourceLocation | None:
-        """Create a SourceLocation from an AST node."""
-        if hasattr(node, 'lineno'):
-            col = getattr(node, 'col_offset', 0)
-            return SourceLocation(line=node.lineno, column=col)
-        return None
-
-    def _warn(self, message: str, node: ast.AST | None = None) -> None:
-        """Record a parser warning."""
-        loc = self._loc(node) if node else None
-        self._warnings.append(ParseWarning(message, loc))
-
-    def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
-        """Check if a statement should be ignored for import ordering.
-
-        Module docstrings and pass statements don't count as "code"
-        for the purpose of detecting late imports.
-        """
-        if isinstance(node, ast.Pass):
-            return True
-        # Module docstring (expression statement with a string literal)
-        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-            return True
-        return False
-
-    def parse(self, source: str) -> TpyModule:
-        """Parse TurboPython source code into a TpyModule."""
-        self.source_lines = source.splitlines()
-        self._warnings = []  # Reset warnings for each parse
-        self._tpy_import_aliases = {}  # Reset tpy import aliases
-        self._tpy_star_import = False  # Reset star import flag
-        tree = ast.parse(source)
-        return self._parse_module(tree)
-
-    def _parse_module(self, tree: ast.Module) -> TpyModule:
-        """Parse a module."""
-        records = []
-        functions = []
-        protocols = []
-        top_level_stmts = []
-        imports: dict[str, set[tuple[str, str]] | None | str] = {}
-        user_module_imports: dict[str, int] = {}
-        module_aliases: dict[str, str] = {}
-        seen_non_import = False
-
-        for node in tree.body:
-            is_import = isinstance(node, (ast.Import, ast.ImportFrom))
-
-            # Check for late imports (imports after non-import code)
-            if is_import and seen_non_import:
-                self._warn("Import statement should be at the top of the file", node)
-
-            if isinstance(node, ast.ImportFrom):
-                self._check_import_from(node, imports, user_module_imports, top_level_stmts, module_aliases)
-            elif isinstance(node, ast.Import):
-                self._check_import(node, imports, user_module_imports, top_level_stmts, module_aliases)
-            elif isinstance(node, ast.ClassDef):
-                seen_non_import = True
-                result = self._parse_class(node)
-                if isinstance(result, TpyProtocol):
-                    protocols.append(result)
-                    # Register the protocol type
-                    self.registry.register_protocol(ProtocolInfo(
-                        name=result.name,
-                        methods=result.methods,
-                        type_params=result.type_params
-                    ))
-                else:
-                    records.append(result)
-                    # Register the record type
-                    self.registry.register_record(RecordInfo(
-                        name=result.name,
-                        fields=result.fields,
-                        has_init=result.init_method is not None
-                    ))
-            elif isinstance(node, ast.FunctionDef):
-                seen_non_import = True
-                func = self._parse_function(node)
-                functions.append(func)
-            else:
-                # Skip docstrings and pass statements for late import detection
-                if not self._is_ignorable_for_import_order(node):
-                    seen_non_import = True
-                # All other statements go through _parse_stmt (same as function bodies)
-                top_level_stmts.append(self._parse_stmt(node))
-
-        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, parse_warnings=self._warnings)
-
-    def _check_import(self, node: ast.Import, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt], module_aliases: dict[str, str]) -> None:
-        """Check and track 'import X' or 'import X as Y' statement."""
+    def process_import(self, node: ast.Import, imports: dict, user_module_imports: dict,
+                       top_level_stmts: list, module_aliases: dict) -> None:
+        """Process 'import X' or 'import X as Y' statement."""
         for alias in node.names:
             module_name = alias.name
             local_name = alias.asname or module_name
@@ -600,8 +508,9 @@ class Parser:
             if local_name != module_name:
                 module_aliases[module_name] = local_name
 
-    def _check_import_from(self, node: ast.ImportFrom, imports: dict[str, set[tuple[str, str]] | None | str], user_module_imports: dict[str, int], top_level_stmts: list[TpyStmt], module_aliases: dict[str, str]) -> None:
-        """Check and track 'from X import Y' statement."""
+    def process_import_from(self, node: ast.ImportFrom, imports: dict, user_module_imports: dict,
+                            top_level_stmts: list, module_aliases: dict) -> None:
+        """Process 'from X import Y' statement."""
         module_name = node.module
         level = node.level
 
@@ -659,7 +568,7 @@ class Parser:
             # Handle "from tpy import *" specially
             if any(alias.name == "*" for alias in node.names):
                 imports["tpy"] = "*"
-                self._tpy_star_import = True
+                self.tpy_star_import = True
                 return
             if "tpy" not in imports:
                 imports["tpy"] = set()
@@ -670,7 +579,7 @@ class Parser:
                     local_name = alias.asname if alias.asname else alias.name
                     current.add((original_name, local_name))
                     # Track alias for type annotation resolution
-                    self._tpy_import_aliases[local_name] = original_name
+                    self.tpy_import_aliases[local_name] = original_name
             return
         # 'from X import Y, Z' -> module_name: {(original, local), ...}
         # Store as (original_name, local_name) tuples to support aliases
@@ -681,6 +590,110 @@ class Parser:
             for alias in node.names:
                 local_name = alias.asname if alias.asname else alias.name
                 current.add((alias.name, local_name))
+
+
+class Parser:
+    """Parser for TurboPython source code."""
+
+    FORBIDDEN_CONSTRUCTS = {
+        "dict", "set", "tuple",
+        "try", "raise", "with", "async", "await",
+        "lambda", "yield", "global", "nonlocal",
+    }
+
+    def __init__(self):
+        self.registry = TypeRegistry()
+        self.source_lines: list[str] = []
+        self._type_param_scope: dict[str, TypeParamKind] | None = None
+        self._warnings: list[ParseWarning] = []
+        self._imports = ImportProcessor(self._warn)
+
+    def _loc(self, node: ast.AST) -> SourceLocation | None:
+        """Create a SourceLocation from an AST node."""
+        if hasattr(node, 'lineno'):
+            col = getattr(node, 'col_offset', 0)
+            return SourceLocation(line=node.lineno, column=col)
+        return None
+
+    def _warn(self, message: str, node: ast.AST | None = None) -> None:
+        """Record a parser warning."""
+        loc = self._loc(node) if node else None
+        self._warnings.append(ParseWarning(message, loc))
+
+    def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
+        """Check if a statement should be ignored for import ordering.
+
+        Module docstrings and pass statements don't count as "code"
+        for the purpose of detecting late imports.
+        """
+        if isinstance(node, ast.Pass):
+            return True
+        # Module docstring (expression statement with a string literal)
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+            return True
+        return False
+
+    def parse(self, source: str) -> TpyModule:
+        """Parse TurboPython source code into a TpyModule."""
+        self.source_lines = source.splitlines()
+        self._warnings = []
+        self._imports = ImportProcessor(self._warn)
+        tree = ast.parse(source)
+        return self._parse_module(tree)
+
+    def _parse_module(self, tree: ast.Module) -> TpyModule:
+        """Parse a module."""
+        records = []
+        functions = []
+        protocols = []
+        top_level_stmts = []
+        imports: dict[str, set[tuple[str, str]] | None | str] = {}
+        user_module_imports: dict[str, int] = {}
+        module_aliases: dict[str, str] = {}
+        seen_non_import = False
+
+        for node in tree.body:
+            is_import = isinstance(node, (ast.Import, ast.ImportFrom))
+
+            # Check for late imports (imports after non-import code)
+            if is_import and seen_non_import:
+                self._warn("Import statement should be at the top of the file", node)
+
+            if isinstance(node, ast.ImportFrom):
+                self._imports.process_import_from(node, imports, user_module_imports, top_level_stmts, module_aliases)
+            elif isinstance(node, ast.Import):
+                self._imports.process_import(node, imports, user_module_imports, top_level_stmts, module_aliases)
+            elif isinstance(node, ast.ClassDef):
+                seen_non_import = True
+                result = self._parse_class(node)
+                if isinstance(result, TpyProtocol):
+                    protocols.append(result)
+                    # Register the protocol type
+                    self.registry.register_protocol(ProtocolInfo(
+                        name=result.name,
+                        methods=result.methods,
+                        type_params=result.type_params
+                    ))
+                else:
+                    records.append(result)
+                    # Register the record type
+                    self.registry.register_record(RecordInfo(
+                        name=result.name,
+                        fields=result.fields,
+                        has_init=result.init_method is not None
+                    ))
+            elif isinstance(node, ast.FunctionDef):
+                seen_non_import = True
+                func = self._parse_function(node)
+                functions.append(func)
+            else:
+                # Skip docstrings and pass statements for late import detection
+                if not self._is_ignorable_for_import_order(node):
+                    seen_non_import = True
+                # All other statements go through _parse_stmt (same as function bodies)
+                top_level_stmts.append(self._parse_stmt(node))
+
+        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, parse_warnings=self._warnings)
 
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""
@@ -970,9 +983,9 @@ class Parser:
                 kind = type_param_scope[name]
                 return TypeParamRef(name, kind=kind)
             # Resolve tpy import aliases (e.g., "from tpy import Int32 as I" allows using "I")
-            resolved_name = self._tpy_import_aliases.get(name, name)
+            resolved_name = self._imports.tpy_import_aliases.get(name, name)
             # Check if tpy type was explicitly imported
-            check_tpy_type_imported(name, resolved_name, node, self._tpy_star_import, self._tpy_import_aliases)
+            check_tpy_type_imported(name, resolved_name, node, self._imports.tpy_star_import, self._imports.tpy_import_aliases)
             if resolved_name == "Self":
                 return SELF
             elif resolved_name == "Int32":
@@ -1019,9 +1032,9 @@ class Parser:
             if isinstance(node.value, ast.Name):
                 container = node.value.id
                 # Resolve tpy import aliases for container names
-                resolved_container = self._tpy_import_aliases.get(container, container)
+                resolved_container = self._imports.tpy_import_aliases.get(container, container)
                 # Check if tpy type was explicitly imported
-                check_tpy_type_imported(container, resolved_container, node, self._tpy_star_import, self._tpy_import_aliases)
+                check_tpy_type_imported(container, resolved_container, node, self._imports.tpy_star_import, self._imports.tpy_import_aliases)
                 # Pointer types are fundamental, not module-defined
                 if resolved_container == "Ptr":
                     inner = self._parse_type_annotation(node.slice, type_param_scope)
