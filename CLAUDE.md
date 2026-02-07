@@ -51,6 +51,9 @@ uv run pytest tests/test_exec.py -n auto
 # Run CPython compatibility tests only
 uv run pytest tests/test_cpy.py -n auto
 
+# Run unit tests only (no C++ toolchain needed)
+uv run pytest tpyc/ -n auto
+
 # Run tests for one case (pattern matching)
 uv run pytest -k hello -n auto
 
@@ -66,6 +69,20 @@ uv run python tests/update_snapshots.py --comp hello # specific case, comp only
 **Important**: If a change would modify expected output for *existing* tests (not new tests you're adding), consult with the user before running `update_snapshots.py`. Explain what generated code will change and confirm the change is desired.
 
 ### Test Structure
+
+There are two kinds of tests:
+
+**Unit tests** live alongside the compiler source in `tpyc/` (no C++ toolchain needed):
+
+```
+tpyc/
+├── test_compiler.py              # Compiler.from_source, BuildLayout paths
+├── test_parse.py                 # RelativeImportKey encode/decode
+└── codegen_cpp/
+    └── test_context.py           # expand_cpp_template validation
+```
+
+**Snippet tests** (integration) live in `tests/` with snapshot-based expected output:
 
 ```
 tests/
