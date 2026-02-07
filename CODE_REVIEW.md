@@ -24,14 +24,14 @@ Both packages now use explicit setter methods for circular dependency wiring:
 
 The sema package now matches the codegen pattern. Wiring is done via named methods instead of direct attribute assignment.
 
-### ~~4. God Objects: SemanticContext (24 fields) and CodeGenContext (22+ fields)~~ ✅ Partially resolved
+### ~~4. God Objects: SemanticContext (24 fields) and CodeGenContext (22+ fields)~~ ✅ Resolved
 
 Extracted focused sub-components from both contexts:
 - **`RecordContext`** dataclass extracted from `SemanticContext`: groups `record`, `type_params`, `type_param_kinds`, `type_param_bounds`
 - **`TempState`** class extracted from `CodeGenContext`: groups temp variable management (`create()`, `flush()`) with its state
 - Both contexts reorganized with clear section headers (Core, Scope tracking, Type cache, Import tracking, etc.)
 
-Remaining fields (import tracking, list literal tracking, namespace hierarchy) are left flat — they're accessed from many files and the sub-component benefit doesn't justify the churn.
+Remaining fields (import tracking, list literal tracking, namespace hierarchy) are left flat — they're accessed broadly across the codebase and further extraction would add indirection without proportional benefit.
 
 ---
 
