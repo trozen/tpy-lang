@@ -1,0 +1,2 @@
+main.tp.py:13: warning: copies list[Int32] into field; use copy() to make this explicit
+main.tp.py:23: warning: may copy V into field if not a value type; use copy() to make this explicit

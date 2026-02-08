@@ -1,10 +1,11 @@
 # TODO
 
 ## Next
+- warn when pointer to local variable may escape context, i.e. assigned to global variable etc
+- `list.append()` change arg to `Own[T]`
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - all expected warnings/errors should be in `# tpyc` annotation
 - handling local objects, lifetime, pointer vs reference
-- `list.append()` change arg to `Own[T]`
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - investigate other backends than c++
 - type containing an allocated object (e.g. `Box[T]`)
@@ -17,12 +18,13 @@
 - template function implementation should be in some specific header file
 - `DeRef` protocol?
 - allow type annotation to use "" (forward decl)
-- warning for semantic differences: `self.field = var` copies in C++ but creates shared reference in Python (only for object types, not value types or literals)
+- `ValueType` protocol bound — `T: ValueType` would suppress copy warnings for generic fields, since value types copy silently
 - propert string handling (STRING_HANDLING.md)
 - `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
 - Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
 - differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently.
 - make a doc with TPy vs Python differences
+- keyword arguments
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)

@@ -231,6 +231,20 @@ class TypeCompatibility:
             return module_name == "tpy" and func_name == "copy"
         return False
 
+    def needs_copy_warning(self, expr: TpyExpr, target_type: TpyType) -> bool:
+        """Check if assigning expr to inline storage (field) needs a copy warning.
+
+        Returns True when the assignment silently copies in C++ but would share
+        in CPython, and the programmer hasn't made intent explicit with copy().
+        """
+        if target_type.is_value_type():
+            return False
+        if self.is_copy_call(expr):
+            return False
+        if not self.is_lvalue(expr):
+            return False
+        return True
+
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an expression is a mutable lvalue (can get a mutable Ptr).
 

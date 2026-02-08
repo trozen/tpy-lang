@@ -478,6 +478,25 @@ Key points:
 - Returning an rvalue (constructor, function call) is OK without `copy()`
 - `Own[T]` coerces to `T` when receiving the value
 
+#### Copy Warnings for Field Assignment (Working)
+
+Assigning a non-value-type lvalue to a record field creates a value copy in C++, but would create a shared reference in CPython. The compiler warns to make the semantic difference explicit:
+
+```python
+class Rect:
+    corner: Point
+
+    def set_corner(self, p: Point) -> None:
+        self.corner = p           # WARNING: copies Point into field
+        self.corner = copy(p)     # OK: explicit copy
+        self.corner = Point(1, 2) # OK: rvalue, no existing owner
+```
+
+No warning is emitted for:
+- **Value types** (Int32, Bool, str, etc.) — copy-vs-share is unobservable
+- **Rvalues** (constructor calls, function results) — no existing owner
+- **`copy()` wrapped** — intent already explicit
+
 #### Owned Parameters (Working)
 
 `Own[T]` can also be used for parameter types to receive values by-value:
@@ -1778,7 +1797,7 @@ b = bool(Int32(1))  # → True
 
 **`copy()` (Working)**:
 
-Used for explicit ownership transfer when returning lvalues (variables, field accesses) as `Own[T]`:
+Used to make value copies explicit — both for returning lvalues as `Own[T]` and for acknowledging implicit copies when assigning to record fields:
 
 ```python
 from tpy import Int32, Own, copy
@@ -1797,6 +1816,7 @@ The `copy()` function:
 - Takes exactly one argument of any type `T`
 - Returns `Own[T]` (owned value)
 - Required when returning lvalues (variables, field accesses, subscript) as `Own[T]`
+- Silences copy warnings when assigning lvalues to record fields (`self.field = copy(x)`)
 - Not required when returning rvalues (constructor calls, function calls)
 - In generated C++, `copy(x)` simply evaluates to `x` (the `Own[T]` return type handles the by-value semantics)
 - In CPython tests, uses `deepcopy` to match C++ by-value semantics (containers copy all elements)

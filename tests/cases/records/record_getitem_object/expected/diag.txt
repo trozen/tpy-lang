@@ -1,0 +1,1 @@
+main.tp.py:15: warning: copies list[Point] into field; use copy() to make this explicit

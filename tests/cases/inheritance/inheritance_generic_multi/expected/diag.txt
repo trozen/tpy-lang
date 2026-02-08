@@ -1,0 +1,5 @@
+main.tp.py:17: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.tp.py:18: warning: may copy U into field if not a value type; use copy() to make this explicit
+main.tp.py:21: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.tp.py:32: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.tp.py:40: warning: may copy T into field if not a value type; use copy() to make this explicit

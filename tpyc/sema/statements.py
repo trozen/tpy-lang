@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
-    ListType, PendingListType, NamedType, CharType, StrType,
+    ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, ConstPtrType, INT32, VOID, BIGINT, is_protocol_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName,
-    TpyFunction,
+    TpyFieldAccess, TpyFunction,
 )
 from ..namespace import Namespace
 from ..coercions import CoercionContext
@@ -355,7 +355,6 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyName):
             pass  # TpyName targets are fine
         else:
-            from ..parse import TpyFieldAccess
             if isinstance(stmt.target, TpyFieldAccess):
                 obj_type = self.ctx.get_expr_type(stmt.target.obj)
                 if isinstance(obj_type, ConstPtrType):
@@ -377,6 +376,14 @@ class StatementAnalyzer:
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
+
+        if isinstance(stmt.target, TpyFieldAccess):
+            if self.compat.needs_copy_warning(stmt.value, target_type):
+                if isinstance(target_type, TypeParamRef):
+                    msg = f"may copy {target_type} into field if not a value type; use copy() to make this explicit"
+                else:
+                    msg = f"copies {value_type} into field; use copy() to make this explicit"
+                self.ctx.warning(msg, stmt)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
