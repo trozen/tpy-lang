@@ -2,6 +2,12 @@
 
 A proof-of-concept compiler that translates Python to C++.
 
+**Goals:**
+
+1. **Performance** — Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`).
+2. **Idiomatic Python** — Standard Python should work out of the box, with minimal restrictions (e.g. type annotations on functions).
+3. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
+
 ## Dependencies
 
 Install GMP (GNU Multiple Precision Arithmetic Library):

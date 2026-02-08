@@ -9,9 +9,11 @@ Status legend:
 
 ## Design Philosophy
 
-**Python-first**: Idiomatic Python should work out of the box. The everyday constructs used 99% of the time (`int`, `str`, `list`, `dict`, functions, classes) should just work without special annotations or restrictions.
+**Performance**: Low-latency compiled output. Most code uses standard Python constructs freely, while hot paths can opt into stricter constraints (e.g. `@noalloc`). No garbage collection, no interpreter overhead.
 
-**Opt-in performance constraints**: Performance restrictions are applied selectively, not globally. The 80/20 rule applies - most code doesn't need ultra-low-latency guarantees, only hot paths do. Write convenient Python everywhere, then tighten constraints where it matters.
+**Idiomatic Python**: Standard Python should work out of the box. The everyday constructs (`int`, `str`, `list`, `dict`, functions, classes) should just work with minimal restrictions — type annotations on function signatures are the main requirement.
+
+**Tooling-friendly**: Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins or language server protocols. Development uses the same tools as regular Python.
 
 **Pluggable backends**: The mapping from TurboPython to C++ should be configurable. Different projects have different needs:
 - `Span[T]` → `std::span<const T>` or a custom span type

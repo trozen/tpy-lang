@@ -1,62 +1,20 @@
 /**
  * TurboPython Runtime - System Utilities
  *
- * Global variable wrapper, time functions, and sys.argv.
+ * Time functions and sys.argv.
  */
 
 #pragma once
 
 #include <chrono>
 #include <cstddef>
-#include <optional>
 #include <string_view>
 #include <thread>
-#include <utility>
 #include <vector>
 
 #include "core.hpp"
 
 namespace tpy {
-
-/**
- * Global<T> - Wrapper for module-level global variables.
- *
- * Defers construction of the wrapped value until assignment in the module
- * init function, ensuring proper Python-like execution order.
- */
-template<typename T>
-class Global {
-    std::optional<T> value_;
-public:
-    Global() = default;
-
-    // Disable copy/move to avoid ambiguity with T assignment
-    Global(const Global&) = delete;
-    Global(Global&&) = delete;
-    Global& operator=(const Global&) = delete;
-    Global& operator=(Global&&) = delete;
-
-    Global& operator=(T v) {
-        value_ = std::move(v);
-        return *this;
-    }
-
-    operator T&() { check_init(); return *value_; }
-    operator const T&() const { check_init(); return *value_; }
-
-    T* operator->() { check_init(); return &*value_; }
-    const T* operator->() const { check_init(); return &*value_; }
-
-    T& operator*() { check_init(); return *value_; }
-    const T& operator*() const { check_init(); return *value_; }
-
-private:
-    void check_init() const {
-        if (!value_.has_value()) {
-            tpy_panic("use of uninitialized global variable");
-        }
-    }
-};
 
 /**
  * time_time - Return seconds since epoch as double.

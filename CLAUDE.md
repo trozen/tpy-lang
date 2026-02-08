@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TurboPython (tpyc) is a proof-of-concept compiler that translates Python to C++. The goal is **Python-first**: idiomatic Python should work out of the box, with opt-in performance constraints for hot paths. Most code uses standard Python constructs (`int`, `str`, `list`), while critical sections can enforce allocation restrictions via performance profiles (`@noalloc`).
+TurboPython (tpyc) is a proof-of-concept compiler that translates Python to C++.
+
+**Goals:**
+
+1. **Performance** — Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`).
+2. **Idiomatic Python** — Standard Python should work out of the box, with minimal restrictions (e.g. type annotations on functions).
+3. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
 
 ## Commands
 
@@ -33,6 +39,16 @@ tpyc -i
 # Install for development (uses uv package manager)
 uv sync
 ```
+
+## Agent Workflow
+
+Always use `uv run` to invoke Python/tpyc (never bare `python` or `tpyc`). Use `tmp/scratchpad/` (repo-local, gitignored) for scratch files. To inspect generated C++, compile there and use the Read tool:
+
+```bash
+uv run tpyc file.tp.py -o tmp/scratchpad/
+```
+
+Use the Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
 
 ## Testing
 
