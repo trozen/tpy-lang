@@ -6,7 +6,7 @@ Defines functions like chr, print, len, etc.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
-from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, NamedType, TypeParamRef
+from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, ListType, NamedType, TypeParamRef, OwnType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -114,7 +114,7 @@ def init_module() -> BuiltinModule:
             cpp="static_cast<int32_t>({self}.size())",
         )],
         "append": [MethodDef(
-            params=[ParamDef("value", T)],
+            params=[ParamDef("value", OwnType(T))],
             returns=VOID,
             cpp="{self}.push_back({0})",
         )],
@@ -141,12 +141,12 @@ def init_module() -> BuiltinModule:
             cpp="tpy::get_item({self}, {0})",
         )],
         "__setitem__": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
             cpp="tpy::set_item({self}, {0}, {1})",
         )],
         "insert": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
             cpp="tpy::list_insert({self}, {0}, {1})",
         )],

@@ -385,6 +385,14 @@ class StatementAnalyzer:
                     msg = f"copies {value_type} into field; use copy() to make this explicit"
                 self.ctx.warning(msg, stmt)
 
+        if isinstance(stmt.target, TpySubscript):
+            if self.compat.needs_copy_warning(stmt.value, target_type):
+                if isinstance(target_type, TypeParamRef):
+                    msg = f"may copy {target_type} into container if not a value type; use copy() to make this explicit"
+                else:
+                    msg = f"copies {value_type} into container; use copy() to make this explicit"
+                self.ctx.warning(msg, stmt)
+
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         from .operators import OperatorResolver

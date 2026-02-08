@@ -478,9 +478,9 @@ Key points:
 - Returning an rvalue (constructor, function call) is OK without `copy()`
 - `Own[T]` coerces to `T` when receiving the value
 
-#### Copy Warnings for Field Assignment (Working)
+#### Copy Warnings for Inline Storage (Working)
 
-Assigning a non-value-type lvalue to a record field creates a value copy in C++, but would create a shared reference in CPython. The compiler warns to make the semantic difference explicit:
+Assigning a non-value-type lvalue to inline storage (record fields, container elements) creates a value copy in C++, but would create a shared reference in CPython. The compiler warns to make the semantic difference explicit:
 
 ```python
 class Rect:
@@ -490,6 +490,18 @@ class Rect:
         self.corner = p           # WARNING: copies Point into field
         self.corner = copy(p)     # OK: explicit copy
         self.corner = Point(1, 2) # OK: rvalue, no existing owner
+```
+
+Container storage methods (`append`, `insert`, `__setitem__`) use `Own[T]` parameters to trigger the same warning:
+
+```python
+items: list[Point] = []
+p: Point = Point()
+items.append(p)           # WARNING: copies Point into owned storage
+items.append(copy(p))     # OK: explicit copy
+items.append(Point())     # OK: rvalue, no existing owner
+items[0] = p              # WARNING: copies Point into container
+items.insert(0, p)        # WARNING: copies Point into owned storage
 ```
 
 No warning is emitted for:
@@ -1816,7 +1828,7 @@ The `copy()` function:
 - Takes exactly one argument of any type `T`
 - Returns `Own[T]` (owned value)
 - Required when returning lvalues (variables, field accesses, subscript) as `Own[T]`
-- Silences copy warnings when assigning lvalues to record fields (`self.field = copy(x)`)
+- Silences copy warnings when assigning lvalues to inline storage (`self.field = copy(x)`, `items.append(copy(x))`)
 - Not required when returning rvalues (constructor calls, function calls)
 - In generated C++, `copy(x)` simply evaluates to `x` (the `Own[T]` return type handles the by-value semantics)
 - In CPython tests, uses `deepcopy` to match C++ by-value semantics (containers copy all elements)

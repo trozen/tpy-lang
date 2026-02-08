@@ -64,7 +64,7 @@ def init_module() -> BuiltinModule:
             cpp="{self}[{0}]",
         )],
         "__setitem__": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
             cpp="{self}[{0}] = {1}",
         )],
@@ -111,7 +111,7 @@ def init_module() -> BuiltinModule:
             cpp="{self}.size()",
         )],
         "append": [MethodDef(
-            params=[ParamDef("value", T)],
+            params=[ParamDef("value", OwnType(T))],
             returns=VOID,
             cpp="{self}.push_back({0})",
         )],
@@ -148,7 +148,7 @@ def init_module() -> BuiltinModule:
             cpp="tpy::get_item({self}, {0})",
         )],
         "__setitem__": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
             cpp="tpy::set_item({self}, {0}, {1})",
         )],
@@ -158,7 +158,7 @@ def init_module() -> BuiltinModule:
             cpp="tpy::staticlist_extend({self}, {0})",
         )],
         "insert": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", T)],
+            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
             cpp="tpy::staticlist_insert({self}, {0}, {1})",
         )],

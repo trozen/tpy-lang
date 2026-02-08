@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, VoidType, PtrType, ConstPtrType,
-    NamedType, INT32_MIN, INT32_MAX, is_protocol_type,
+    NamedType, TypeParamRef, INT32_MIN, INT32_MAX, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -67,8 +67,25 @@ class TypeCompatibility:
                 loc
             )
 
-        # Allow T -> Own[T] coercion (ownership transfer for return values)
+        # Allow T -> Own[T] coercion (ownership transfer)
         if isinstance(expected, OwnType):
+            # Warn when lvalue is implicitly copied into owned storage
+            # (returns are handled separately as errors in statements.py)
+            if (not is_return and source_expr is not None
+                    and not expected.wrapped.is_value_type()
+                    and self.is_lvalue(source_expr)
+                    and not self.is_copy_call(source_expr)):
+                value_type = self.ctx.get_expr_type(source_expr)
+                if isinstance(expected.wrapped, TypeParamRef):
+                    self.ctx.warning(
+                        f"may copy {value_type} into owned storage if not a value type; use copy() to make this explicit",
+                        source_expr
+                    )
+                else:
+                    self.ctx.warning(
+                        f"copies {value_type} into owned storage; use copy() to make this explicit",
+                        source_expr
+                    )
             return self.check_type_compatible(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx)
 
         # Allow Own[T] -> T coercion (receiving an owned value)

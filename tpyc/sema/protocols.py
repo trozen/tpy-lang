@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType,
+    TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -226,6 +226,10 @@ class ProtocolChecker:
         PendingList[IntLiteral] to match NativeIterable[Int32].
         """
         if actual_return == expected_return:
+            return True
+        # Own[T] in implementation is compatible with T in protocol
+        # (implementation takes ownership, protocol only requires the value)
+        if isinstance(actual_return, OwnType) and actual_return.wrapped == expected_return:
             return True
         # Allow IntLiteralType to match any integer type it can coerce to
         if resolve_coercion(actual_return, expected_return, CoercionContext.RETURN) is not None:

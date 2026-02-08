@@ -2,8 +2,8 @@
 
 ## Next
 - warn when pointer to local variable may escape context, i.e. assigned to global variable etc
-- `list.append()` change arg to `Own[T]`
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
+- class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - all expected warnings/errors should be in `# tpyc` annotation
 - handling local objects, lifetime, pointer vs reference
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
