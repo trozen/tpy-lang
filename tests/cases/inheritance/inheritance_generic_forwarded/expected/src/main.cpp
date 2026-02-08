@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 24: w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
-tpy::Global<Wrapper<std::string_view>> w;
+Wrapper<std::string_view>* w{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -14,7 +14,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 24: w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
-  w = Wrapper<std::string_view>("hello", 42);
+  static Wrapper<std::string_view> __global_slot_1 = Wrapper<std::string_view>("hello", 42);
+  w = &__global_slot_1;
   // 25: print(w.get_value())
   std::cout << w->get_value() << "\n";
   // 26: print(w.get_extra())

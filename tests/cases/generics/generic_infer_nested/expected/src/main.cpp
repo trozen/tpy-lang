@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 19: inner = Inner[int](42)
-tpy::Global<Inner<tpy::BigInt>> inner;
+Inner<tpy::BigInt>* inner{};
 // 20: outer = Outer(inner)
-tpy::Global<Outer<Inner<tpy::BigInt>>> outer;
+Outer<Inner<tpy::BigInt>>* outer{};
 // 24: outer2 = Outer(Inner(42))
-tpy::Global<Outer<Inner<tpy::BigInt>>> outer2;
+Outer<Inner<tpy::BigInt>>* outer2{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -19,13 +19,16 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test type inference with nested generic classes."""
   // 19: inner = Inner[int](42)
-  inner = Inner<tpy::BigInt>(42);
+  static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(42);
+  inner = &__global_slot_1;
   // 20: outer = Outer(inner)
-  outer = Outer<Inner<tpy::BigInt>>((*inner));
+  static Outer<Inner<tpy::BigInt>> __global_slot_2 = Outer<Inner<tpy::BigInt>>((*inner));
+  outer = &__global_slot_2;
   // 21: print(outer.inner.value)
   std::cout << outer->inner.value << "\n";
   // 24: outer2 = Outer(Inner(42))
-  outer2 = Outer<Inner<tpy::BigInt>>(Inner<tpy::BigInt>(42));
+  static Outer<Inner<tpy::BigInt>> __global_slot_3 = Outer<Inner<tpy::BigInt>>(Inner<tpy::BigInt>(42));
+  outer2 = &__global_slot_3;
   // 25: print(outer2.inner.value)
   std::cout << outer2->inner.value << "\n";
 }

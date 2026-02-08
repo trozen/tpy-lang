@@ -5,11 +5,11 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<StaticList<int32_t, 8>> sl;
-extern tpy::Global<std::vector<int32_t>> nums;
-extern tpy::Global<std::vector<int32_t>> empty;
-extern tpy::Global<std::vector<int32_t>> neg;
+extern std::string_view __name__;
+extern StaticList<int32_t, 8>* sl;
+extern std::vector<int32_t>* nums;
+extern std::vector<int32_t>* empty;
+extern std::vector<int32_t>* neg;
 
 
 void __tpy_init();

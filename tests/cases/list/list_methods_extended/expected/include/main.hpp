@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Item;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct Item {
   int32_t value;

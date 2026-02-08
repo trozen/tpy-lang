@@ -5,11 +5,11 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<int32_t>> nums32;
-extern tpy::Global<int32_t> result;
-extern tpy::Global<std::vector<tpy::BigInt>> nums;
-extern tpy::Global<tpy::BigInt> result2;
+extern std::string_view __name__;
+extern std::vector<int32_t>* nums32;
+extern int32_t result;
+extern std::vector<tpy::BigInt>* nums;
+extern tpy::BigInt result2;
 
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items);

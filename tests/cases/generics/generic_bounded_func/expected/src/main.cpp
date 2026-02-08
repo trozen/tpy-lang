@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 5: def identity[T: Sized](item: T) -> T:
 template<tpy::Sized T>

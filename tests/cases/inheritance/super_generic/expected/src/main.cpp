@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 25: lc = LabeledContainer("count", 42)
-tpy::Global<LabeledContainer> lc;
+LabeledContainer* lc{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -14,7 +14,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 25: lc = LabeledContainer("count", 42)
-  lc = LabeledContainer("count", 42);
+  static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);
+  lc = &__global_slot_1;
   // 26: print(lc.label)
   std::cout << lc->label << "\n";
   // 27: print(lc.get())

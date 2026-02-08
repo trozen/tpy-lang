@@ -5,8 +5,8 @@
 
 namespace tpy_user::math {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> MAGIC;
+extern std::string_view __name__;
+extern int32_t MAGIC;
 
 int32_t custom_add(int32_t x, int32_t y);
 

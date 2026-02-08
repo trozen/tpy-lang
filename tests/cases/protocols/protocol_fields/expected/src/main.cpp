@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 78: def get_value[T: HasValue](item: T) -> Int32:
 template<HasValue T>

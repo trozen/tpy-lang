@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 11: def modify_point(p: Ptr[Point]) -> None:
 void modify_point(Point* p) {

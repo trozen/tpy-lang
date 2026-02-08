@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 6: def test_list_negative_indexing() -> None:
 void test_list_negative_indexing() {

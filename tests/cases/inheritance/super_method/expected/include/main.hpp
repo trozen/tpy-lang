@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct Animal;
 struct Dog;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Dog> d;
+extern std::string_view __name__;
+extern Dog* d;
 
 struct Animal {
   std::string_view name;

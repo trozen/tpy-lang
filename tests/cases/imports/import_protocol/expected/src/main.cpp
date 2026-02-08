@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 13: def show(p: Printable) -> None:
 template<tpy_user::traits::Printable T_p>

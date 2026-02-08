@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 14: same = Same(1, 2)
-tpy::Global<Same<tpy::BigInt>> same;
+Same<tpy::BigInt>* same{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -15,7 +15,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test type inference with same type param used twice."""
   // 14: same = Same(1, 2)
-  same = Same<tpy::BigInt>(1, 2);
+  static Same<tpy::BigInt> __global_slot_1 = Same<tpy::BigInt>(1, 2);
+  same = &__global_slot_1;
   // 15: print(same.a)
   std::cout << same->a << "\n";
   // 16: print(same.b)

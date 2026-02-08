@@ -116,8 +116,8 @@ class StatementGenerator:
             if stmt.value:
                 ret_type = self.ctx.current_return_type
                 ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
-                # Dereference pointer-locals on return (T* → T&)
-                if self.ctx.is_pointer_local(stmt.value):
+                # Dereference pointer-locals/pointer-globals on return (T* → T&)
+                if self.ctx.is_indirect_name(stmt.value):
                     ret_expr = f"(*{ret_expr})"
                 return f"{indent}return {ret_expr};\n"
             return f"{indent}return;\n"
@@ -158,8 +158,6 @@ class StatementGenerator:
         if target_type is None:
             return False
         if target_type.is_value_type():
-            return False
-        if self.ctx.current_ns is self.ctx.analyzer.global_ns:
             return False
         if name in self.ctx.reassigned_vars:
             return True
@@ -225,14 +223,17 @@ class StatementGenerator:
         from ..parse import TpyName as _TpyName
         init_expr = self.expressions.gen_expr(init, target_type)
 
+        static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         if self.ctx.is_rvalue_source(init):
             slot = self.ctx.slots.next_slot()
-            return (f"{indent}{cpp_type} {slot} = {init_expr};\n"
+            return (f"{indent}{static_kw}{cpp_type} {slot} = {init_expr};\n"
                     f"{indent}{cpp_type}* {name} = &{slot};\n")
         elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
             return f"{indent}{cpp_type}* {name} = {init_expr};\n"
+        elif self.ctx._is_pointer_global(init):
+            return f"{indent}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx.is_global_name(init):
-            return f"{indent}{cpp_type}* {name} = &(*{init_expr});\n"
+            return f"{indent}{cpp_type}* {name} = &({init_expr});\n"
         else:
             # lvalue ref: param, subscript, field → take address
             return f"{indent}{cpp_type}* {name} = &({init_expr});\n"
@@ -243,14 +244,17 @@ class StatementGenerator:
         from ..parse import TpyName as _TpyName
         init_expr = self.expressions.gen_expr(init, target_type)
 
+        static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         if self.ctx.is_rvalue_source(init):
             slot = self.ctx.slots.next_slot()
-            return (f"{indent}{cpp_type} {slot} = {init_expr};\n"
+            return (f"{indent}{static_kw}{cpp_type} {slot} = {init_expr};\n"
                     f"{indent}{name} = &{slot};\n")
         elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
             return f"{indent}{name} = {init_expr};\n"
+        elif self.ctx._is_pointer_global(init):
+            return f"{indent}{name} = {init_expr};\n"
         elif self.ctx.is_global_name(init):
-            return f"{indent}{name} = &(*{init_expr});\n"
+            return f"{indent}{name} = &({init_expr});\n"
         else:
             return f"{indent}{name} = &({init_expr});\n"
 

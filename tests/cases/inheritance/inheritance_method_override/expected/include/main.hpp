@@ -9,10 +9,10 @@ struct Shape;
 struct Square;
 struct Rectangle;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Square> s;
-extern tpy::Global<Rectangle> r;
-extern tpy::Global<Shape> base;
+extern std::string_view __name__;
+extern Square* s;
+extern Rectangle* r;
+extern Shape* base;
 
 struct Shape {
   std::string_view name;

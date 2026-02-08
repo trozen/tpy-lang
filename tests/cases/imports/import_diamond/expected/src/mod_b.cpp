@@ -3,7 +3,7 @@
 
 namespace tpy_user::mod_b {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def b_value() -> Int32:
 int32_t b_value() {

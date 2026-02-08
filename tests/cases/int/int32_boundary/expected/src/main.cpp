@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: x: Int32 = 2147483647
-tpy::Global<int32_t> x;
+int32_t x{};
 // 11: y: Int32 = -2147483648
-tpy::Global<int32_t> y;
+int32_t y{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -19,19 +19,19 @@ void __tpy_init() {
   // 5: x: Int32 = 2147483647
   x = 2147483647;
   // 6: print(x)
-  std::cout << (*x) << "\n";
+  std::cout << x << "\n";
   // 7: print(x - 1)
-  std::cout << (tpy::int32_sub((*x), 1)) << "\n";
+  std::cout << (tpy::int32_sub(x, 1)) << "\n";
   // 8: print(x // 2)
-  std::cout << (tpy::int32_div((*x), 2)) << "\n";
+  std::cout << (tpy::int32_div(x, 2)) << "\n";
   // 11: y: Int32 = -2147483648
   y = -(2147483648);
   // 12: print(y)
-  std::cout << (*y) << "\n";
+  std::cout << y << "\n";
   // 13: print(y + 1)
-  std::cout << (tpy::int32_add((*y), 1)) << "\n";
+  std::cout << (tpy::int32_add(y, 1)) << "\n";
   // 14: print(y // 2)
-  std::cout << (tpy::int32_div((*y), 2)) << "\n";
+  std::cout << (tpy::int32_div(y, 2)) << "\n";
 }
 
 } // namespace tpy_user::main

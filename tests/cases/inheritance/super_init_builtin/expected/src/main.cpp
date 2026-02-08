@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 10: nums: list[Int32] = [1, 2, 3]
-tpy::Global<std::vector<int32_t>> nums;
+std::vector<int32_t>* nums{};
 // 11: m = MyList("test", nums)
-tpy::Global<MyList> m;
+MyList* m{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -16,9 +16,11 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 10: nums: list[Int32] = [1, 2, 3]
-  nums = {1, 2, 3};
+  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
+  nums = &__global_slot_1;
   // 11: m = MyList("test", nums)
-  m = MyList("test", tpy::as_span((*nums)));
+  static MyList __global_slot_2 = MyList("test", tpy::as_span((*nums)));
+  m = &__global_slot_2;
   // 12: print(m[0])
   std::cout << (*m)[0] << "\n";
   // 13: print(m[1])

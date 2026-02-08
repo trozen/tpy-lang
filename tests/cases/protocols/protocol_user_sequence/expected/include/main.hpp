@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct IntWrapper;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct IntWrapper {
   std::vector<int32_t> data;

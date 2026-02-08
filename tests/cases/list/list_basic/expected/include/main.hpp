@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<int32_t>> mem;
-extern tpy::Global<std::vector<tpy::BigInt>> data;
-extern tpy::Global<std::vector<tpy::BigInt>> chars;
+extern std::string_view __name__;
+extern std::vector<int32_t>* mem;
+extern std::vector<tpy::BigInt>* data;
+extern std::vector<tpy::BigInt>* chars;
 
 int32_t sum_list(std::vector<int32_t>& nums);
 

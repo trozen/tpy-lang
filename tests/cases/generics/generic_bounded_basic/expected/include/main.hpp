@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 template<tpy::Sized T> struct Container;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<tpy::Sized T>
 struct Container {

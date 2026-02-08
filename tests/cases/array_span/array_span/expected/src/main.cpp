@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 15: nums: Array[Int32, 3] = [10, 20, 30]
-tpy::Global<std::array<int32_t, 3>> nums;
+std::array<int32_t, 3>* nums{};
 // 19: arr: Array[Int32, 3] = [100, 200, 300]
-tpy::Global<std::array<int32_t, 3>> arr;
+std::array<int32_t, 3>* arr{};
 // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-tpy::Global<StaticList<int32_t, 4>> items;
+StaticList<int32_t, 4>* items{};
 
 // 3: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {
@@ -37,15 +37,18 @@ void __tpy_init() {
   // 12: print(sum_span([1, 2, 3, 4, 5]))
   std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
   // 15: nums: Array[Int32, 3] = [10, 20, 30]
-  nums = {10, 20, 30};
+  static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
+  nums = &__global_slot_1;
   // 16: print(sum_span(nums))
   std::cout << sum_span(tpy::as_span((*nums))) << "\n";
   // 19: arr: Array[Int32, 3] = [100, 200, 300]
-  arr = {100, 200, 300};
+  static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
+  arr = &__global_slot_2;
   // 20: print(sum_span(arr))
   std::cout << sum_span(tpy::as_span((*arr))) << "\n";
   // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-  items = StaticList<int32_t, 4>();
+  static StaticList<int32_t, 4> __global_slot_3 = StaticList<int32_t, 4>();
+  items = &__global_slot_3;
   // 24: items.append(1000)
   (*items).push_back(1000);
   // 25: items.append(2000)

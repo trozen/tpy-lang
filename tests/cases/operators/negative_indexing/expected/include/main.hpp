@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 void test_list_negative_indexing();
 void test_array_negative_indexing();

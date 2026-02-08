@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: x: Int32 = 2147483647  # INT32_MAX
-tpy::Global<int32_t> x;
+int32_t x{};
 // 5: y: Int32 = x * 2       # Should panic
-tpy::Global<int32_t> y;
+int32_t y{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -19,9 +19,9 @@ void __tpy_init() {
   // 4: x: Int32 = 2147483647  # INT32_MAX
   x = 2147483647;
   // 5: y: Int32 = x * 2       # Should panic
-  y = (tpy::int32_mul((*x), 2));
+  y = (tpy::int32_mul(x, 2));
   // 6: print(y)
-  std::cout << (*y) << "\n";
+  std::cout << y << "\n";
 }
 
 } // namespace tpy_user::main

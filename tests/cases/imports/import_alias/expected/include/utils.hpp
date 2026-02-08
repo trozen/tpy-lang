@@ -7,8 +7,8 @@ namespace tpy_user::utils {
 
 struct Point;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> MAX_VALUE;
+extern std::string_view __name__;
+extern int32_t MAX_VALUE;
 
 struct Point {
   int32_t x;

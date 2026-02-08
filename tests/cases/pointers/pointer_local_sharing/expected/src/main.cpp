@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 130: g: Point = Point(0, 0)
-tpy::Global<Point> g;
+Point* g{};
 // 134: pt: Point = Point(0, 0)
-tpy::Global<Point> pt;
+Point* pt{};
 
 // 11: def test_local_sharing() -> None:
 void test_local_sharing() {
@@ -147,7 +147,7 @@ void test_rebind_to_global() {
   // 87:     x = a
   Point* x = &(a);
   // 88:     x = g
-  x = &(*g);
+  x = g;
   // 89:     x.x = 600
   x->x = 600;
   // 90:     print(g.x)  # 600 — x now points to global
@@ -216,13 +216,15 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 130: g: Point = Point(0, 0)
-  g = Point(0, 0);
+  static Point __global_slot_1 = Point(0, 0);
+  g = &__global_slot_1;
   // 132: test_local_sharing()
   test_local_sharing();
   // 133: test_copy_independence()
   test_copy_independence();
   // 134: pt: Point = Point(0, 0)
-  pt = Point(0, 0);
+  static Point __global_slot_2 = Point(0, 0);
+  pt = &__global_slot_2;
   // 135: test_init_from_param(pt)
   test_init_from_param((*pt));
   // 136: test_init_from_element()

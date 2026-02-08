@@ -5,7 +5,7 @@
 
 namespace tpy_user::mypackage::utils {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 void helper();
 

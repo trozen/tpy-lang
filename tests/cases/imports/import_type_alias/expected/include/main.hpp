@@ -5,9 +5,9 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> x;
-extern tpy::Global<char> ch;
+extern std::string_view __name__;
+extern int32_t x;
+extern char ch;
 
 void greet(int32_t n, char c);
 

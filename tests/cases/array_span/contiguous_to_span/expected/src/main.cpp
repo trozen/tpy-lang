@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {

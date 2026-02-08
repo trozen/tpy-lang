@@ -9,7 +9,7 @@ template<typename T, std::size_t N> struct Base;
 template<typename T, std::size_t N> struct Child;
 template<typename T, std::size_t N> struct GrandChild;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<typename T, std::size_t N>
 struct Base {

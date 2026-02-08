@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 15: c: Char = "A"
-tpy::Global<char> c;
+char c{};
 // 29: x: float = 3.14
-tpy::Global<double> x;
+double x{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -26,7 +26,7 @@ void __tpy_init() {
   // 15: c: Char = "A"
   c = 'A';
   // 16: print(str(c))  # A
-  std::cout << tpy::char_to_str((*c)) << "\n";
+  std::cout << tpy::char_to_str(c) << "\n";
   // 19: print(str(Int32(42)))    # 42
   std::cout << tpy::int32_to_str(42) << "\n";
   // 20: print(str(Int32(-123)))  # -123
@@ -40,7 +40,7 @@ void __tpy_init() {
   // 29: x: float = 3.14
   x = 3.14;
   // 30: print(str(x))  # 3.140000
-  std::cout << tpy::float_to_str((*x)) << "\n";
+  std::cout << tpy::float_to_str(x) << "\n";
 }
 
 } // namespace tpy_user::main

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def sum_iter(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>

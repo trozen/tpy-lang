@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 41: s = Square(5)
-tpy::Global<Square> s;
+Square* s{};
 // 45: r = Rectangle(4, 6)
-tpy::Global<Rectangle> r;
+Rectangle* r{};
 // 50: base = Shape("Base")
-tpy::Global<Shape> base;
+Shape* base{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -18,19 +18,22 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 41: s = Square(5)
-  s = Square(5);
+  static Square __global_slot_1 = Square(5);
+  s = &__global_slot_1;
   // 42: print(s.describe())
   std::cout << s->describe() << "\n";
   // 43: print(s.area())
   std::cout << s->area() << "\n";
   // 45: r = Rectangle(4, 6)
-  r = Rectangle(4, 6);
+  static Rectangle __global_slot_2 = Rectangle(4, 6);
+  r = &__global_slot_2;
   // 46: print(r.describe())
   std::cout << r->describe() << "\n";
   // 47: print(r.area())
   std::cout << r->area() << "\n";
   // 50: base = Shape("Base")
-  base = Shape("Base");
+  static Shape __global_slot_3 = Shape("Base");
+  base = &__global_slot_3;
   // 51: print(base.describe())
   std::cout << base->describe() << "\n";
   // 52: print(base.area())

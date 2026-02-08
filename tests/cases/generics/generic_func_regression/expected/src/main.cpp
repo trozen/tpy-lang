@@ -3,25 +3,25 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 20: nums = [10, 20, 30]
-tpy::Global<std::vector<tpy::BigInt>> nums;
+std::vector<tpy::BigInt>* nums{};
 // 24: sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
-tpy::Global<StaticList<int32_t, 3>> sl;
+StaticList<int32_t, 3>* sl{};
 // 28: items = list[Int32]()
-tpy::Global<std::vector<int32_t>> items;
+std::vector<int32_t>* items{};
 // 33: strs = ["hello", "world"]
-tpy::Global<std::vector<std::string_view>> strs;
+std::vector<std::string_view>* strs{};
 // 37: points = [Point(1, 2), Point(3, 4)]
-tpy::Global<std::vector<Point>> points;
+std::vector<Point>* points{};
 // 38: p = get_item(points, Int32(0))
-tpy::Global<Point> p;
+Point* p{};
 // 42: first_num = First([10, 20, 30])
-tpy::Global<tpy::BigInt> first_num;
+tpy::BigInt first_num;
 // 43: second_num = First([first_num, 40, 50])
-tpy::Global<tpy::BigInt> second_num;
+tpy::BigInt second_num;
 // 47: result = First([5, 6, 7]) + 10
-tpy::Global<tpy::BigInt> result;
+tpy::BigInt result;
 
 // 5: def First[T](items: list[T]) -> T:
 template<typename T>
@@ -45,42 +45,47 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Regression tests for generic functions with various edge cases."""
   // 20: nums = [10, 20, 30]
-  nums = {10, 20, 30};
+  static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
+  nums = &__global_slot_1;
   // 21: print(First(nums))
   std::cout << First<tpy::BigInt>((*nums)) << "\n";
   // 24: sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
-  sl = StaticList<int32_t, 3>({1, 2, 3});
+  static StaticList<int32_t, 3> __global_slot_2 = StaticList<int32_t, 3>({1, 2, 3});
+  sl = &__global_slot_2;
   // 25: print(len(sl))
   std::cout << tpy::__len__((*sl)) << "\n";
   // 28: items = list[Int32]()
-  items = std::vector<int32_t>();
+  static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>();
+  items = &__global_slot_3;
   // 29: items.append(100)
   (*items).push_back(100);
   // 30: print(len(items))
   std::cout << tpy::__len__((*items)) << "\n";
   // 33: strs = ["hello", "world"]
-  strs = {"hello", "world"};
+  static std::vector<std::string_view> __global_slot_4 = {"hello", "world"};
+  strs = &__global_slot_4;
   // 34: print(First(strs))
   std::cout << First<std::string_view>((*strs)) << "\n";
   // 37: points = [Point(1, 2), Point(3, 4)]
-  points = {Point(1, 2), Point(3, 4)};
+  static std::vector<Point> __global_slot_5 = {Point(1, 2), Point(3, 4)};
+  points = &__global_slot_5;
   // 38: p = get_item(points, Int32(0))
-  p = get_item<Point>((*points), 0);
+  p = &(get_item<Point>((*points), 0));
   // 39: print(p.x)
   std::cout << p->x << "\n";
   // 42: first_num = First([10, 20, 30])
   std::vector<tpy::BigInt> __tmp_1 = {10, 20, 30};
   first_num = First<tpy::BigInt>(__tmp_1);
   // 43: second_num = First([first_num, 40, 50])
-  std::vector<tpy::BigInt> __tmp_2 = {(*first_num), 40, 50};
+  std::vector<tpy::BigInt> __tmp_2 = {first_num, 40, 50};
   second_num = First<tpy::BigInt>(__tmp_2);
   // 44: print(second_num)
-  std::cout << (*second_num) << "\n";
+  std::cout << second_num << "\n";
   // 47: result = First([5, 6, 7]) + 10
   std::vector<tpy::BigInt> __tmp_3 = {5, 6, 7};
   result = ((First<tpy::BigInt>(__tmp_3)) + (tpy::BigInt(10)));
   // 48: print(result)
-  std::cout << (*result) << "\n";
+  std::cout << result << "\n";
 }
 
 } // namespace tpy_user::main

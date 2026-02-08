@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def count_char(text: str, target: Char) -> Int32:
 int32_t count_char(std::string_view text, char target) {

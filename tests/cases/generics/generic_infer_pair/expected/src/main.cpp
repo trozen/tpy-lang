@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 14: pair = Pair(1, "hello")
-tpy::Global<Pair<tpy::BigInt, std::string_view>> pair;
+Pair<tpy::BigInt, std::string_view>* pair{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -15,7 +15,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test type inference with multiple type parameters."""
   // 14: pair = Pair(1, "hello")
-  pair = Pair<tpy::BigInt, std::string_view>(1, "hello");
+  static Pair<tpy::BigInt, std::string_view> __global_slot_1 = Pair<tpy::BigInt, std::string_view>(1, "hello");
+  pair = &__global_slot_1;
   // 15: print(pair.first)
   std::cout << pair->first << "\n";
   // 16: print(pair.second)

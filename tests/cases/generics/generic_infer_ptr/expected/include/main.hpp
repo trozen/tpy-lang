@@ -9,13 +9,13 @@ template<typename T> struct PtrHolder;
 template<typename T> struct ConstPtrHolder;
 struct Point;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Point> pt;
-extern tpy::Global<Point*> ptr;
-extern tpy::Global<const Point*> cptr;
-extern tpy::Global<PtrHolder<Point>> holder;
-extern tpy::Global<ConstPtrHolder<Point>> const_holder;
-extern tpy::Global<ConstPtrHolder<Point>> const_holder2;
+extern std::string_view __name__;
+extern Point* pt;
+extern Point* ptr;
+extern const Point* cptr;
+extern PtrHolder<Point>* holder;
+extern ConstPtrHolder<Point>* const_holder;
+extern ConstPtrHolder<Point>* const_holder2;
 
 template<typename T>
 struct PtrHolder {

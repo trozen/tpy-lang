@@ -3,15 +3,15 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
-tpy::Global<StaticList<int32_t, 8>> sl;
+StaticList<int32_t, 8>* sl{};
 // 10: nums: list[Int32] = [10, 20] * 2
-tpy::Global<std::vector<int32_t>> nums;
+std::vector<int32_t>* nums{};
 // 16: empty: list[Int32] = [] * 100
-tpy::Global<std::vector<int32_t>> empty;
+std::vector<int32_t>* empty{};
 // 20: neg: list[Int32] = [1, 2, 3] * -5
-tpy::Global<std::vector<int32_t>> neg;
+std::vector<int32_t>* neg{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -20,7 +20,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
-  sl = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(3, {1, 2}));
+  static StaticList<int32_t, 8> __global_slot_1 = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(3, {1, 2}));
+  sl = &__global_slot_1;
   // 5: print(len(sl))
   std::cout << tpy::__len__((*sl)) << "\n";
   // 6: for i in range(len(sl)):
@@ -29,7 +30,8 @@ void __tpy_init() {
     std::cout << tpy::get_item((*sl), i) << "\n";
   }
   // 10: nums: list[Int32] = [10, 20] * 2
-  nums = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(2, {10, 20}));
+  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(2, {10, 20}));
+  nums = &__global_slot_2;
   // 11: print(len(nums))
   std::cout << tpy::__len__((*nums)) << "\n";
   // 12: for i in range(len(nums)):
@@ -38,11 +40,13 @@ void __tpy_init() {
     std::cout << tpy::get_item((*nums), i) << "\n";
   }
   // 16: empty: list[Int32] = [] * 100
-  empty = std::vector<int32_t>{};
+  static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>{};
+  empty = &__global_slot_3;
   // 17: print(len(empty))
   std::cout << tpy::__len__((*empty)) << "\n";
   // 20: neg: list[Int32] = [1, 2, 3] * -5
-  neg = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(-(5), {1, 2, 3}));
+  static std::vector<int32_t> __global_slot_4 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(-(5), {1, 2, 3}));
+  neg = &__global_slot_4;
   // 21: print(len(neg))
   std::cout << tpy::__len__((*neg)) << "\n";
 }

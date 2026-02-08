@@ -3,19 +3,19 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 24: pt: Point = Point()
-tpy::Global<Point> pt;
+Point* pt{};
 // 29: ptr: Ptr[Point] = pt
-tpy::Global<Point*> ptr;
+Point* ptr{};
 // 30: cptr: ConstPtr[Point] = pt
-tpy::Global<const Point*> cptr;
+const Point* cptr{};
 // 33: holder = PtrHolder(ptr)
-tpy::Global<PtrHolder<Point>> holder;
+PtrHolder<Point>* holder{};
 // 38: const_holder = ConstPtrHolder(cptr)
-tpy::Global<ConstPtrHolder<Point>> const_holder;
+ConstPtrHolder<Point>* const_holder{};
 // 42: const_holder2 = ConstPtrHolder(ptr)
-tpy::Global<ConstPtrHolder<Point>> const_holder2;
+ConstPtrHolder<Point>* const_holder2{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -25,7 +25,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test type inference with Ptr[T] and ConstPtr[T] parameters."""
   // 24: pt: Point = Point()
-  pt = Point();
+  static Point __global_slot_1 = Point();
+  pt = &__global_slot_1;
   // 25: pt.x = 10
   pt->x = 10;
   // 26: pt.y = 20
@@ -35,17 +36,20 @@ void __tpy_init() {
   // 30: cptr: ConstPtr[Point] = pt
   cptr = &(*pt);
   // 33: holder = PtrHolder(ptr)
-  holder = PtrHolder<Point>((*ptr));
+  static PtrHolder<Point> __global_slot_2 = PtrHolder<Point>(ptr);
+  holder = &__global_slot_2;
   // 34: holder.ptr.x = 100
   holder->ptr->x = 100;
   // 35: print(pt.x)
   std::cout << pt->x << "\n";
   // 38: const_holder = ConstPtrHolder(cptr)
-  const_holder = ConstPtrHolder<Point>((*cptr));
+  static ConstPtrHolder<Point> __global_slot_3 = ConstPtrHolder<Point>(cptr);
+  const_holder = &__global_slot_3;
   // 39: print(const_holder.ptr.y)
   std::cout << const_holder->ptr->y << "\n";
   // 42: const_holder2 = ConstPtrHolder(ptr)
-  const_holder2 = ConstPtrHolder<Point>(ptr);
+  static ConstPtrHolder<Point> __global_slot_4 = ConstPtrHolder<Point>(ptr);
+  const_holder2 = &__global_slot_4;
   // 43: print(const_holder2.ptr.x)
   std::cout << const_holder2->ptr->x << "\n";
 }

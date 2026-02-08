@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct Parent;
 struct Child;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Child> c;
+extern std::string_view __name__;
+extern Child* c;
 
 struct Parent {
   tpy::BigInt value;

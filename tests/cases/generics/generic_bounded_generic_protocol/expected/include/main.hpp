@@ -13,7 +13,7 @@ concept Container = requires(T& t) {
 struct IntBox;
 template<Container<int32_t> V> struct Holder;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct IntBox {
   int32_t value;

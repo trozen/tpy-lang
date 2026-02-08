@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 10: items: list[Int32] = []
-tpy::Global<std::vector<int32_t>> items;
+std::vector<int32_t>* items{};
 // 28: sl = StaticList[Int32, 10]()
-tpy::Global<StaticList<int32_t, 10>> sl;
+StaticList<int32_t, 10>* sl{};
 // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
-tpy::Global<std::array<int32_t, 3>> arr;
+std::array<int32_t, 3>* arr{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -19,7 +19,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test explicit dunder method calls on container types.
   // 10: items: list[Int32] = []
-  items = std::vector<int32_t>{};
+  static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
+  items = &__global_slot_1;
   // 11: items.append(Int32(10))
   (*items).push_back(10);
   // 12: items.append(Int32(20))
@@ -37,7 +38,8 @@ void __tpy_init() {
   // 24: print(items.__getitem__(Int32(1)))  # 99
   std::cout << tpy::get_item((*items), 1) << "\n";
   // 28: sl = StaticList[Int32, 10]()
-  sl = StaticList<int32_t, 10>();
+  static StaticList<int32_t, 10> __global_slot_2 = StaticList<int32_t, 10>();
+  sl = &__global_slot_2;
   // 29: sl.append(Int32(100))
   (*sl).push_back(100);
   // 30: sl.append(Int32(200))
@@ -51,7 +53,8 @@ void __tpy_init() {
   // 40: print(sl.__getitem__(Int32(0)))  # 111
   std::cout << tpy::get_item((*sl), 0) << "\n";
   // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
-  arr = {1, 2, 3};
+  static std::array<int32_t, 3> __global_slot_3 = {1, 2, 3};
+  arr = &__global_slot_3;
   // 47: print(arr.__len__())  # 3
   std::cout << static_cast<int32_t>((*arr).size()) << "\n";
   // 50: print(arr.__getitem__(Int32(0)))  # 1

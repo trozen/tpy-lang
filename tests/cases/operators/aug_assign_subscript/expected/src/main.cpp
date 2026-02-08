@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def test_list_aug_assign() -> None:
 void test_list_aug_assign() {

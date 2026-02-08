@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Point> ORIGIN;
+extern std::string_view __name__;
+extern Point* ORIGIN;
 
 struct Point {
   int32_t x;

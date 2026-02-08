@@ -9,8 +9,8 @@ template<typename T, typename U> struct Base;
 template<typename T> struct Middle;
 template<typename T> struct Leaf;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Leaf<std::string_view>> leaf;
+extern std::string_view __name__;
+extern Leaf<std::string_view>* leaf;
 
 template<typename T, typename U>
 struct Base {

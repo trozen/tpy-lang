@@ -7,10 +7,10 @@ namespace tpy_user::main {
 
 struct Item;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<StaticList<Item, 16>> items;
-extern tpy::Global<StaticList<int32_t, 8>> nums;
-extern tpy::Global<StaticList<int32_t, 8>> filled;
+extern std::string_view __name__;
+extern StaticList<Item, 16>* items;
+extern StaticList<int32_t, 8>* nums;
+extern StaticList<int32_t, 8>* filled;
 
 struct Item {
   int32_t value;

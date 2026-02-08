@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 17: def take_items(c: Container) -> Own[list[Point]]:
 std::vector<Point> take_items(Container& c) {

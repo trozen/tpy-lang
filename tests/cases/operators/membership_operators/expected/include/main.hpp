@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 void test_list_membership();
 void test_array_membership();

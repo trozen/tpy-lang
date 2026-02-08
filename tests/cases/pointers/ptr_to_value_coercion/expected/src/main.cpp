@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 11: def print_point(p: Point) -> None:
 void print_point(Point& p) {

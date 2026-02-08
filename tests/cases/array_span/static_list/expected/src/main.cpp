@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 29: items = StaticList[Item, 16]()
-tpy::Global<StaticList<Item, 16>> items;
+StaticList<Item, 16>* items{};
 // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
-tpy::Global<StaticList<int32_t, 8>> nums;
+StaticList<int32_t, 8>* nums{};
 // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
-tpy::Global<StaticList<int32_t, 8>> filled;
+StaticList<int32_t, 8>* filled{};
 
 // 10: def process_list(items: StaticList[Item, 16]) -> None:
 void process_list(StaticList<Item, 16>& items) {
@@ -45,7 +45,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 29: items = StaticList[Item, 16]()
-  items = StaticList<Item, 16>();
+  static StaticList<Item, 16> __global_slot_1 = StaticList<Item, 16>();
+  items = &__global_slot_1;
   // 30: process_list(items)
   process_list((*items));
   // 31: print(len(items))
@@ -53,7 +54,8 @@ void __tpy_init() {
   // 32: print_list(items)
   print_list((*items));
   // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
-  nums = StaticList<int32_t, 8>({100, 200, 300});
+  static StaticList<int32_t, 8> __global_slot_2 = StaticList<int32_t, 8>({100, 200, 300});
+  nums = &__global_slot_2;
   // 36: print(len(nums))
   std::cout << tpy::__len__((*nums)) << "\n";
   // 37: print(nums[0])
@@ -61,7 +63,8 @@ void __tpy_init() {
   // 38: print(nums[2])
   std::cout << tpy::get_item((*nums), 2) << "\n";
   // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
-  filled = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(8, {0}));
+  static StaticList<int32_t, 8> __global_slot_3 = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(8, {0}));
+  filled = &__global_slot_3;
   // 42: filled[0] = 42
   tpy::set_item((*filled), 0, 42);
   // 43: print(len(filled))

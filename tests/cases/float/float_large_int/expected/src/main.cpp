@@ -3,17 +3,17 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 2: a = int(1e18)  # Within int64 range
-tpy::Global<tpy::BigInt> a;
+tpy::BigInt a;
 // 3: b = int(1e50)  # Way beyond int64 range
-tpy::Global<tpy::BigInt> b;
+tpy::BigInt b;
 // 4: c = int(-1e50)  # Negative large value
-tpy::Global<tpy::BigInt> c;
+tpy::BigInt c;
 // 11: d = int(1.9e20)
-tpy::Global<tpy::BigInt> d;
+tpy::BigInt d;
 // 12: e = int(-1.9e20)
-tpy::Global<tpy::BigInt> e;
+tpy::BigInt e;
 
 void __tpy_init() {
   static bool initialized = false;
@@ -28,19 +28,19 @@ void __tpy_init() {
   // 4: c = int(-1e50)  # Negative large value
   c = tpy::BigInt::from_float(-(1e+50));
   // 6: print(a)
-  std::cout << (*a) << "\n";
+  std::cout << a << "\n";
   // 7: print(b)
-  std::cout << (*b) << "\n";
+  std::cout << b << "\n";
   // 8: print(c)
-  std::cout << (*c) << "\n";
+  std::cout << c << "\n";
   // 11: d = int(1.9e20)
   d = tpy::BigInt::from_float(1.9e+20);
   // 12: e = int(-1.9e20)
   e = tpy::BigInt::from_float(-(1.9e+20));
   // 13: print(d)
-  std::cout << (*d) << "\n";
+  std::cout << d << "\n";
   // 14: print(e)
-  std::cout << (*e) << "\n";
+  std::cout << e << "\n";
 }
 
 } // namespace tpy_user::main

@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 15: x: Int32 = 10
-tpy::Global<int32_t> x;
+int32_t x{};
 // 16: same1 = Same(1, x)
-tpy::Global<Same<int32_t>> same1;
+Same<int32_t>* same1{};
 // 21: same2 = Same(x, 2)
-tpy::Global<Same<int32_t>> same2;
+Same<int32_t>* same2{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -21,13 +21,15 @@ void __tpy_init() {
   // 15: x: Int32 = 10
   x = 10;
   // 16: same1 = Same(1, x)
-  same1 = Same<int32_t>(1, (*x));
+  static Same<int32_t> __global_slot_1 = Same<int32_t>(1, x);
+  same1 = &__global_slot_1;
   // 17: print(same1.a)
   std::cout << same1->a << "\n";
   // 18: print(same1.b)
   std::cout << same1->b << "\n";
   // 21: same2 = Same(x, 2)
-  same2 = Same<int32_t>((*x), 2);
+  static Same<int32_t> __global_slot_2 = Same<int32_t>(x, 2);
+  same2 = &__global_slot_2;
   // 22: print(same2.a)
   std::cout << same2->a << "\n";
   // 23: print(same2.b)

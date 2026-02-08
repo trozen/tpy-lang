@@ -23,8 +23,8 @@ concept Describable = requires(T& t) {
 struct Vehicle;
 struct Car;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Car> c;
+extern std::string_view __name__;
+extern Car* c;
 
 struct Vehicle {
   std::string_view brand;

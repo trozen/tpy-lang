@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 12: box = Box([1, 2, 3])
-tpy::Global<Box<std::vector<tpy::BigInt>>> box;
+Box<std::vector<tpy::BigInt>>* box{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -15,7 +15,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test type inference with list argument."""
   // 12: box = Box([1, 2, 3])
-  box = Box<std::vector<tpy::BigInt>>({1, 2, 3});
+  static Box<std::vector<tpy::BigInt>> __global_slot_1 = Box<std::vector<tpy::BigInt>>({1, 2, 3});
+  box = &__global_slot_1;
   // 13: print(box.value[0])
   std::cout << tpy::get_item(box->value, 0) << "\n";
   // 14: print(len(box.value))

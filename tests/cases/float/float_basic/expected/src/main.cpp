@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 2: x = 3.5
-tpy::Global<double> x;
+double x{};
 // 3: y = 2.0
-tpy::Global<double> y;
+double y{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -20,15 +20,15 @@ void __tpy_init() {
   // 3: y = 2.0
   y = 2.0;
   // 4: print(x + y)
-  std::cout << tpy::print_float((((*x)) + ((*y)))) << "\n";
+  std::cout << tpy::print_float(((x) + (y))) << "\n";
   // 5: print(x - y)
-  std::cout << tpy::print_float((((*x)) - ((*y)))) << "\n";
+  std::cout << tpy::print_float(((x) - (y))) << "\n";
   // 6: print(x * y)
-  std::cout << tpy::print_float((((*x)) * ((*y)))) << "\n";
+  std::cout << tpy::print_float(((x) * (y))) << "\n";
   // 7: print(x / y)
-  std::cout << tpy::print_float((((*x)) / ((*y)))) << "\n";
+  std::cout << tpy::print_float(((x) / (y))) << "\n";
   // 8: print(-x)
-  std::cout << tpy::print_float(-((*x))) << "\n";
+  std::cout << tpy::print_float(-(x)) << "\n";
 }
 
 } // namespace tpy_user::main

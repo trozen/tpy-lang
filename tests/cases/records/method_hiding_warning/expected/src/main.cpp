@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 12: d = Dog()
-tpy::Global<Dog> d;
+Dog* d{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -14,7 +14,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 12: d = Dog()
-  d = Dog();
+  static Dog __global_slot_1 = Dog();
+  d = &__global_slot_1;
   // 13: d.make_noise()
   d->make_noise();
 }

@@ -10,7 +10,7 @@ concept Measurable = requires(T& t) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<Measurable T_items>
 int32_t count(T_items& items);

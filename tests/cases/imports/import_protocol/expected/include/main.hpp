@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 struct Message;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct Message {
   std::string_view text;

@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 50: neg = -42
-tpy::Global<tpy::BigInt> neg;
+tpy::BigInt neg;
 
 // 4: def factorial(n: int) -> int:
 tpy::BigInt factorial(const tpy::BigInt& n) {
@@ -85,7 +85,7 @@ void __tpy_init() {
   // 50: neg = -42
   neg = -(tpy::BigInt(42));
   // 51: print(neg)
-  std::cout << (*neg) << "\n";
+  std::cout << neg << "\n";
 }
 
 } // namespace tpy_user::main

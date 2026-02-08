@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 26: h = Helper(42)
-tpy::Global<Helper> h;
+Helper* h{};
 
 // 17: def use_helper(Helper: Helper) -> Int32:
 int32_t use_helper(Helper& Helper) {
@@ -23,7 +23,8 @@ void __tpy_init() {
   // 23: print(Helper.add(10, 20))
   std::cout << Helper::add(10, 20) << "\n";
   // 26: h = Helper(42)
-  h = Helper(42);
+  static Helper __global_slot_1 = Helper(42);
+  h = &__global_slot_1;
   // 27: print(use_helper(h))
   std::cout << use_helper((*h)) << "\n";
 }

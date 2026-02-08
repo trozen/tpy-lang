@@ -3,7 +3,7 @@
 
 namespace tpy_user::pkg::consumer {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def compute() -> Int32:
 int32_t compute() {

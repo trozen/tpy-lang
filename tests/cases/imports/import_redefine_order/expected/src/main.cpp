@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 9: MAX: Int32 = Int32(42)
-tpy::Global<int32_t> MAX;
+int32_t MAX{};
 // 12: MIN: int = 99
-tpy::Global<tpy::BigInt> MIN;
+tpy::BigInt MIN;
 
 void __tpy_init() {
   static bool initialized = false;
@@ -18,17 +18,17 @@ void __tpy_init() {
   // 2: from utils import MAX, MIN
   tpy_user::utils::__tpy_init();
   // 5: print(MAX)  # 100
-  std::cout << (*tpy_user::utils::MAX) << "\n";
+  std::cout << tpy_user::utils::MAX << "\n";
   // 6: print(MIN)  # 1
-  std::cout << (*tpy_user::utils::MIN) << "\n";
+  std::cout << tpy_user::utils::MIN << "\n";
   // 9: MAX: Int32 = Int32(42)
   MAX = 42;
   // 12: MIN: int = 99
   MIN = tpy::BigInt(99);
   // 15: print(MAX)  # 42
-  std::cout << (*MAX) << "\n";
+  std::cout << MAX << "\n";
   // 16: print(MIN)  # 99
-  std::cout << (*MIN) << "\n";
+  std::cout << MIN << "\n";
 }
 
 } // namespace tpy_user::main

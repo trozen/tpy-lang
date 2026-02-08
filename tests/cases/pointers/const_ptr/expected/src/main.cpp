@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 13: def read_point(p: ConstPtr[Point]) -> Int32:
 int32_t read_point(const Point* p) {

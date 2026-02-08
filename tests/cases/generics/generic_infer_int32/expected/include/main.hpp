@@ -7,10 +7,10 @@ namespace tpy_user::main {
 
 template<typename T> struct Same;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> x;
-extern tpy::Global<Same<int32_t>> same1;
-extern tpy::Global<Same<int32_t>> same2;
+extern std::string_view __name__;
+extern int32_t x;
+extern Same<int32_t>* same1;
+extern Same<int32_t>* same2;
 
 template<typename T>
 struct Same {

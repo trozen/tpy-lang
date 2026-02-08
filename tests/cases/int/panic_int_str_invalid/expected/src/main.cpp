@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: x: int = int("abc")
-tpy::Global<tpy::BigInt> x;
+tpy::BigInt x;
 
 void __tpy_init() {
   static bool initialized = false;
@@ -16,7 +16,7 @@ void __tpy_init() {
   // 4: x: int = int("abc")
   x = tpy::BigInt::from_str("abc");
   // 5: print(x)  # Should not reach here
-  std::cout << (*x) << "\n";
+  std::cout << x << "\n";
 }
 
 } // namespace tpy_user::main

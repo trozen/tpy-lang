@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType
+from ..typesys import TpyType, NamedType, OwnType
 from ..parse import TpyModule, TpyRecord, TpyVarDecl
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace
@@ -119,10 +119,22 @@ class CodeGenerator:
                     var_type = stmt.type
                     if var_type is None and stmt.init:
                         var_type = self.types.get_resolved_type(stmt.init)
+                    if isinstance(var_type, OwnType):
+                        var_type = var_type.wrapped
                     seen_globals[stmt.name] = var_type
 
         # Store global names for use in expression generation (method/field access)
         self.ctx.global_names = set(seen_globals.keys())
+        # Classify globals: non-value-type → pointer globals (T*)
+        self.ctx.pointer_globals = {
+            name for name, typ in seen_globals.items()
+            if typ and not typ.is_value_type()
+        }
+        # Also include imported non-value-type globals
+        for name in self.ctx.user_imported_variables:
+            binding = self.ctx.analyzer.global_ns.lookup_local(name)
+            if binding and binding.type and not binding.type.is_value_type():
+                self.ctx.pointer_globals.add(name)
         # Track if we need synthetic __name__ (add to global_names for proper deref)
         self.ctx._has_synthetic_name = "__name__" not in seen_globals
         if self.ctx._has_synthetic_name:
@@ -134,7 +146,7 @@ class CodeGenerator:
         # Generate global definitions in source (before functions)
         # __name__ is always present (synthetic if not user-defined)
         if "__name__" not in seen_globals:
-            cpp.write('tpy::Global<std::string_view> __name__;\n')
+            cpp.write('std::string_view __name__;\n')
         for stmt in global_decls:
             self.functions.gen_global_decl(cpp, stmt)
         cpp.write("\n")
@@ -369,7 +381,7 @@ class CodeGenerator:
 
         # Global extern declarations
         if "__name__" not in seen_globals:
-            hpp.write("extern tpy::Global<std::string_view> __name__;\n")
+            hpp.write("extern std::string_view __name__;\n")
         for stmt in global_decls:
             self.functions.gen_global_extern(hpp, stmt)
         hpp.write("\n")

@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 13: box = Box(42)
-tpy::Global<Box<tpy::BigInt>> box;
+Box<tpy::BigInt>* box{};
 // 17: x: Int32 = 10
-tpy::Global<int32_t> x;
+int32_t x{};
 // 18: box32 = Box(x)
-tpy::Global<Box<int32_t>> box32;
+Box<int32_t>* box32{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -19,13 +19,15 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test basic type inference for user-defined generic classes."""
   // 13: box = Box(42)
-  box = Box<tpy::BigInt>(42);
+  static Box<tpy::BigInt> __global_slot_1 = Box<tpy::BigInt>(42);
+  box = &__global_slot_1;
   // 14: print(box.value)
   std::cout << box->value << "\n";
   // 17: x: Int32 = 10
   x = 10;
   // 18: box32 = Box(x)
-  box32 = Box<int32_t>((*x));
+  static Box<int32_t> __global_slot_2 = Box<int32_t>(x);
+  box32 = &__global_slot_2;
   // 19: print(box32.value)
   std::cout << box32->value << "\n";
 }

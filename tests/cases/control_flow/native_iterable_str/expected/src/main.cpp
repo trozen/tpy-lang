@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def count_chars(text: NativeIterable[Char]) -> Int32:
 template<tpy::NativeIterable<char> T_text>

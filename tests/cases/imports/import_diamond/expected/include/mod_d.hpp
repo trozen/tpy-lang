@@ -5,7 +5,7 @@
 
 namespace tpy_user::mod_d {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 int32_t d_value();
 

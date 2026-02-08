@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 32: b = Box[Int32]("mybox", 42)
-tpy::Global<Box<int32_t>> b;
+Box<int32_t>* b{};
 // 37: w = Wrapper[str](100, "hello")
-tpy::Global<Wrapper<std::string_view>> w;
+Wrapper<std::string_view>* w{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -16,13 +16,15 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 32: b = Box[Int32]("mybox", 42)
-  b = Box<int32_t>("mybox", 42);
+  static Box<int32_t> __global_slot_1 = Box<int32_t>("mybox", 42);
+  b = &__global_slot_1;
   // 33: print(b.name)   # inherited from Animal
   std::cout << b->name << "\n";
   // 34: print(b.get())  # own method returning T=Int32
   std::cout << b->get() << "\n";
   // 37: w = Wrapper[str](100, "hello")
-  w = Wrapper<std::string_view>(100, "hello");
+  static Wrapper<std::string_view> __global_slot_2 = Wrapper<std::string_view>(100, "hello");
+  w = &__global_slot_2;
   // 38: print(w.get())  # inherited, returns Int32 (not U)
   std::cout << w->get() << "\n";
   // 39: print(w.extra)  # own field of type U=str

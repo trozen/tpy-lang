@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 19: def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
 template<PointFactory T>

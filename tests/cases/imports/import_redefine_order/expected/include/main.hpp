@@ -6,9 +6,9 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> MAX;
-extern tpy::Global<tpy::BigInt> MIN;
+extern std::string_view __name__;
+extern int32_t MAX;
+extern tpy::BigInt MIN;
 
 
 void __tpy_init();

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 7: def identity_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* identity_ptr(Point* p) {

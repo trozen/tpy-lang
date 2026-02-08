@@ -2012,7 +2012,7 @@ namespace tpy_user::mypackage {
   using tpy_user::mypackage::utils::add;    // Re-exported function
   using tpy_user::mypackage::utils::Point;  // Re-exported record
   inline auto& counter = tpy_user::mypackage::utils::counter;  // Re-exported variable
-  extern tpy::Global<int32_t> VERSION;      // Package's own variable
+  extern int32_t VERSION;                    // Package's own variable
 }
 ```
 

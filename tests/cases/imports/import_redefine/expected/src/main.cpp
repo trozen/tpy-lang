@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: MAX: Int32 = Int32(42)
-tpy::Global<int32_t> MAX;
+int32_t MAX{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -18,7 +18,7 @@ void __tpy_init() {
   // 5: MAX: Int32 = Int32(42)
   MAX = 42;
   // 8: print(MAX)  # Should print 42
-  std::cout << (*MAX) << "\n";
+  std::cout << MAX << "\n";
 }
 
 } // namespace tpy_user::main

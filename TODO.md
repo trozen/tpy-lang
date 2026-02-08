@@ -4,6 +4,8 @@
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - all expected warnings/errors should be in `# tpyc` annotation
 - handling local objects, lifetime, pointer vs reference
+- `list.append()` change arg to `Own[T]`
+- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - investigate other backends than c++
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)

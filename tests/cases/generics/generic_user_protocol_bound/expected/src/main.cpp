@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 41: def extract[C: Container[Int32]](c: C) -> Int32:
 template<Container<int32_t> C>

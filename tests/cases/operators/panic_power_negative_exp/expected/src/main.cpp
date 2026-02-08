@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 2: x = 2
-tpy::Global<tpy::BigInt> x;
+tpy::BigInt x;
 // 3: y = -1
-tpy::Global<tpy::BigInt> y;
+tpy::BigInt y;
 // 4: z = x ** y  # Should panic
-tpy::Global<tpy::BigInt> z;
+tpy::BigInt z;
 
 void __tpy_init() {
   static bool initialized = false;
@@ -22,7 +22,7 @@ void __tpy_init() {
   // 3: y = -1
   y = -(tpy::BigInt(1));
   // 4: z = x ** y  # Should panic
-  z = (((*x)).pow((*y)));
+  z = ((x).pow(y));
 }
 
 } // namespace tpy_user::main

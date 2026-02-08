@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 11: mem: list[Int32] = [0] * 10
-tpy::Global<std::vector<int32_t>> mem;
+std::vector<int32_t>* mem{};
 // 18: data = [0] * 5
-tpy::Global<std::vector<tpy::BigInt>> data;
+std::vector<tpy::BigInt>* data{};
 // 23: chars = [72, 73]  # 'H', 'I'
-tpy::Global<std::vector<tpy::BigInt>> chars;
+std::vector<tpy::BigInt>* chars{};
 
 // 3: def sum_list(nums: list[Int32]) -> Int32:
 int32_t sum_list(std::vector<int32_t>& nums) {
@@ -35,7 +35,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 11: mem: list[Int32] = [0] * 10
-  mem = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(10, {0}));
+  static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(10, {0}));
+  mem = &__global_slot_1;
   // 12: mem[0] = 42
   tpy::set_item((*mem), 0, 42);
   // 13: mem[1] = 8
@@ -45,13 +46,15 @@ void __tpy_init() {
   // 15: print(len(mem))
   std::cout << tpy::__len__((*mem)) << "\n";
   // 18: data = [0] * 5
-  data = tpy::from_range<std::vector<tpy::BigInt>>(tpy::repeat_range<tpy::BigInt>(5, {tpy::BigInt(0)}));
+  static std::vector<tpy::BigInt> __global_slot_2 = tpy::from_range<std::vector<tpy::BigInt>>(tpy::repeat_range<tpy::BigInt>(5, {tpy::BigInt(0)}));
+  data = &__global_slot_2;
   // 19: data[0] = 100
   tpy::set_item((*data), 0, 100);
   // 20: print(data[0])
   std::cout << tpy::get_item((*data), 0) << "\n";
   // 23: chars = [72, 73]  # 'H', 'I'
-  chars = {72, 73};
+  static std::vector<tpy::BigInt> __global_slot_3 = {72, 73};
+  chars = &__global_slot_3;
   // 24: print(chr(chars[0]), end='')
   std::cout << static_cast<char>((tpy::get_item((*chars), 0)).to_int32());
   // 25: print(chr(chars[1]))

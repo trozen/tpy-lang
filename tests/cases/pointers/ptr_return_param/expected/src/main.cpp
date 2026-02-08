@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 11: global_pt: Point = Point(1, 2)
-tpy::Global<Point> global_pt;
+Point* global_pt{};
 
 // 13: def addr_param(p: Point) -> Ptr[Point]:
 Point* addr_param(Point& p) {
@@ -40,7 +40,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 11: global_pt: Point = Point(1, 2)
-  global_pt = Point(1, 2);
+  static Point __global_slot_1 = Point(1, 2);
+  global_pt = &__global_slot_1;
   // 28: main()
   main();
 }

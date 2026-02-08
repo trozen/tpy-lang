@@ -3,25 +3,25 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 19: nums = list[Int32]()
-tpy::Global<std::vector<int32_t>> nums;
+std::vector<int32_t>* nums{};
 // 25: other: list[Int32] = list[Int32]()
-tpy::Global<std::vector<int32_t>> other;
+std::vector<int32_t>* other{};
 // 30: points = list[Point]()
-tpy::Global<std::vector<Point>> points;
+std::vector<Point>* points{};
 // 36: nested = list[list[Point]]()
-tpy::Global<std::vector<std::vector<Point>>> nested;
+std::vector<std::vector<Point>>* nested{};
 // 37: inner = list[Point]()
-tpy::Global<std::vector<Point>> inner;
+std::vector<Point>* inner{};
 // 53: src = [100, 200, 300]
-tpy::Global<std::vector<tpy::BigInt>> src;
+std::vector<tpy::BigInt>* src{};
 // 54: copy = list(src)
-tpy::Global<std::vector<tpy::BigInt>> copy;
+std::vector<tpy::BigInt>* copy{};
 // 61: arr: Array[Int32, 3] = [5, 6, 7]
-tpy::Global<std::array<int32_t, 3>> arr;
+std::array<int32_t, 3>* arr{};
 // 62: from_arr = list(arr)
-tpy::Global<std::vector<int32_t>> from_arr;
+std::vector<int32_t>* from_arr{};
 
 // 4: def test_local_list() -> None:
 void test_local_list() {
@@ -43,7 +43,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Tests list[T]() constructor syntax."""
   // 19: nums = list[Int32]()
-  nums = std::vector<int32_t>();
+  static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>();
+  nums = &__global_slot_1;
   // 20: nums.append(1)
   (*nums).push_back(1);
   // 21: nums.append(2)
@@ -51,13 +52,15 @@ void __tpy_init() {
   // 22: print(len(nums))
   std::cout << tpy::__len__((*nums)) << "\n";
   // 25: other: list[Int32] = list[Int32]()
-  other = std::vector<int32_t>();
+  static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
+  other = &__global_slot_2;
   // 26: other.append(3)
   (*other).push_back(3);
   // 27: print(len(other))
   std::cout << tpy::__len__((*other)) << "\n";
   // 30: points = list[Point]()
-  points = std::vector<Point>();
+  static std::vector<Point> __global_slot_3 = std::vector<Point>();
+  points = &__global_slot_3;
   // 31: points.append(Point(10, 20))
   (*points).push_back(Point(10, 20));
   // 32: print(len(points))
@@ -65,9 +68,11 @@ void __tpy_init() {
   // 33: print(points[0].x)
   std::cout << tpy::get_item((*points), 0).x << "\n";
   // 36: nested = list[list[Point]]()
-  nested = std::vector<std::vector<Point>>();
+  static std::vector<std::vector<Point>> __global_slot_4 = std::vector<std::vector<Point>>();
+  nested = &__global_slot_4;
   // 37: inner = list[Point]()
-  inner = std::vector<Point>();
+  static std::vector<Point> __global_slot_5 = std::vector<Point>();
+  inner = &__global_slot_5;
   // 38: inner.append(Point(99, 88))
   (*inner).push_back(Point(99, 88));
   // 39: nested.append(inner)
@@ -87,9 +92,11 @@ void __tpy_init() {
   // 52: print(list([Int32(10), Int32(20)]))
   std::cout << tpy::ListPrinter(std::vector<int32_t>({10, 20})) << "\n";
   // 53: src = [100, 200, 300]
-  src = {100, 200, 300};
+  static std::vector<tpy::BigInt> __global_slot_6 = {100, 200, 300};
+  src = &__global_slot_6;
   // 54: copy = list(src)
-  copy = std::vector<tpy::BigInt>((*src).begin(), (*src).end());
+  static std::vector<tpy::BigInt> __global_slot_7 = std::vector<tpy::BigInt>((*src).begin(), (*src).end());
+  copy = &__global_slot_7;
   // 55: print(copy)
   std::cout << tpy::ListPrinter((*copy)) << "\n";
   // 56: copy.append(400)
@@ -99,9 +106,11 @@ void __tpy_init() {
   // 58: print(len(copy))
   std::cout << tpy::__len__((*copy)) << "\n";
   // 61: arr: Array[Int32, 3] = [5, 6, 7]
-  arr = {5, 6, 7};
+  static std::array<int32_t, 3> __global_slot_8 = {5, 6, 7};
+  arr = &__global_slot_8;
   // 62: from_arr = list(arr)
-  from_arr = std::vector<int32_t>((*arr).begin(), (*arr).end());
+  static std::vector<int32_t> __global_slot_9 = std::vector<int32_t>((*arr).begin(), (*arr).end());
+  from_arr = &__global_slot_9;
   // 63: print(from_arr)
   std::cout << tpy::ListPrinter((*from_arr)) << "\n";
 }

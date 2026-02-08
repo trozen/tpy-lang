@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def takes_list(x: list[int]) -> None:
 void takes_list(std::vector<tpy::BigInt>& x) {

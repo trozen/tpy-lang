@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 5: def test_not_with_bool_literals() -> None:
 void test_not_with_bool_literals() {

@@ -7,11 +7,11 @@ namespace tpy_user::main {
 
 struct MyList;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<MyList> ml;
-extern tpy::Global<int32_t> last;
-extern tpy::Global<int32_t> first;
-extern tpy::Global<std::vector<int32_t>> items;
+extern std::string_view __name__;
+extern MyList* ml;
+extern int32_t last;
+extern int32_t first;
+extern std::vector<int32_t>* items;
 
 struct MyList : StaticList<int32_t, 10> {
   std::string_view name;

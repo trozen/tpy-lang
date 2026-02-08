@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def classify(x: Int32) -> Int32:
 int32_t classify(int32_t x) {

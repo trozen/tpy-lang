@@ -3,12 +3,12 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     print(MAX_VALUE)
-  std::cout << (*tpy_user::config::MAX_VALUE) << "\n";
+  std::cout << tpy_user::config::MAX_VALUE << "\n";
   // 6:     print(get_max())
   std::cout << tpy_user::config::get_max() << "\n";
   // 7:     return Int32(0)

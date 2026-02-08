@@ -13,7 +13,7 @@ concept Calculator = requires(T& t) {
 
 struct SimpleCalc;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct SimpleCalc {
   int32_t base;

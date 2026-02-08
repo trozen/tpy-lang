@@ -3,9 +3,9 @@
 
 namespace tpy_user::mypackage {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: VERSION: Int32 = Int32(42)
-tpy::Global<int32_t> VERSION;
+int32_t VERSION{};
 
 void __tpy_init() {
   static bool initialized = false;

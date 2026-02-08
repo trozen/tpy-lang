@@ -3,7 +3,7 @@
 
 namespace tpy_user::utils {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def root_func() -> Int32:
 int32_t root_func() {

@@ -3,49 +3,49 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: start = 0
-tpy::Global<tpy::BigInt> start;
+tpy::BigInt start;
 // 5: end = 3
-tpy::Global<tpy::BigInt> end;
+tpy::BigInt end;
 // 10: items: list[Int32] = [10, 20, 30]
-tpy::Global<std::vector<int32_t>> items;
+std::vector<int32_t>* items{};
 // 11: idx = 1
-tpy::Global<tpy::BigInt> idx;
+tpy::BigInt idx;
 // 15: count = 3
-tpy::Global<tpy::BigInt> count;
+tpy::BigInt count;
 // 16: repeated: list[Int32] = [0] * count
-tpy::Global<std::vector<int32_t>> repeated;
+std::vector<int32_t>* repeated{};
 // 20: z = 0
-tpy::Global<tpy::BigInt> z;
+tpy::BigInt z;
 // 26: global_list: list[Int32] = [1, 2, 3]
-tpy::Global<std::vector<int32_t>> global_list;
+std::vector<int32_t>* global_list{};
 // 37: i = 100
-tpy::Global<tpy::BigInt> i;
+tpy::BigInt i;
 // 43: x = 999
-tpy::Global<tpy::BigInt> x;
+tpy::BigInt x;
 // 45: nums: list[Int32] = [7, 8]
-tpy::Global<std::vector<int32_t>> nums;
+std::vector<int32_t>* nums{};
 // 58: local_pt: Point = Point(42, 99)
-tpy::Global<Point> local_pt;
+Point* local_pt{};
 // 59: global_ptr: Ptr[Point] = local_pt
-tpy::Global<Point*> global_ptr;
+Point* global_ptr{};
 // 64: counter: Int32 = 10
-tpy::Global<int32_t> counter;
+int32_t counter{};
 // 65: increment = 5
-tpy::Global<tpy::BigInt> increment;
+tpy::BigInt increment;
 // 70: a = 10
-tpy::Global<tpy::BigInt> a;
+tpy::BigInt a;
 // 71: b = 3
-tpy::Global<tpy::BigInt> b;
+tpy::BigInt b;
 // 89: val = 999  # Global that's shadowed by __init__ param
-tpy::Global<tpy::BigInt> val;
+tpy::BigInt val;
 // 90: c: Counter = Counter(50)
-tpy::Global<Counter> c;
+Counter* c{};
 // 95: arr: list[Int32] = [100, 200, 300]
-tpy::Global<std::vector<int32_t>> arr;
+std::vector<int32_t>* arr{};
 // 96: delta = 5
-tpy::Global<tpy::BigInt> delta;
+tpy::BigInt delta;
 
 void __tpy_init() {
   static bool initialized = false;
@@ -58,32 +58,35 @@ void __tpy_init() {
   // 5: end = 3
   end = tpy::BigInt(3);
   // 6: for i in range(start, end):
-  for (int32_t i = (*start).to_int32(); i < (*end).to_int32(); ++i) {
+  for (int32_t i = start.to_int32(); i < end.to_int32(); ++i) {
     // 7:     print(i)
     std::cout << i << "\n";
   }
   // 10: items: list[Int32] = [10, 20, 30]
-  items = {10, 20, 30};
+  static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
+  items = &__global_slot_1;
   // 11: idx = 1
   idx = tpy::BigInt(1);
   // 12: print(items[idx])
-  std::cout << tpy::get_item((*items), (*idx).to_int32()) << "\n";
+  std::cout << tpy::get_item((*items), idx.to_int32()) << "\n";
   // 15: count = 3
   count = tpy::BigInt(3);
   // 16: repeated: list[Int32] = [0] * count
-  repeated = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>((*count).to_int32(), {0}));
+  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count.to_int32(), {0}));
+  repeated = &__global_slot_2;
   // 17: print(len(repeated))
   std::cout << tpy::__len__((*repeated)) << "\n";
   // 20: z = 0
   z = tpy::BigInt(0);
   // 21: print(z)
-  std::cout << (*z) << "\n";
+  std::cout << z << "\n";
   // 22: z = 5
   z = tpy::BigInt(5);
   // 23: print(z)
-  std::cout << (*z) << "\n";
+  std::cout << z << "\n";
   // 26: global_list: list[Int32] = [1, 2, 3]
-  global_list = {1, 2, 3};
+  static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
+  global_list = &__global_slot_3;
   // 27: if 2 in global_list:
   if ((std::find((*global_list).begin(), (*global_list).end(), 2) != (*global_list).end())) {
     // 28:     print(1)
@@ -103,7 +106,7 @@ void __tpy_init() {
   // 37: i = 100
   i = tpy::BigInt(100);
   // 38: print(i)
-  std::cout << (*i) << "\n";
+  std::cout << i << "\n";
   // 39: for i in range(0, 2):
   for (int32_t i = 0; i < 2; ++i) {
     // 40:     print(i)
@@ -112,56 +115,60 @@ void __tpy_init() {
   // 43: x = 999
   x = tpy::BigInt(999);
   // 44: print(x)
-  std::cout << (*x) << "\n";
+  std::cout << x << "\n";
   // 45: nums: list[Int32] = [7, 8]
-  nums = {7, 8};
+  static std::vector<int32_t> __global_slot_4 = {7, 8};
+  nums = &__global_slot_4;
   // 46: for x in nums:
   for (int32_t x : (*nums)) {
     // 47:     print(x)
     std::cout << x << "\n";
   }
   // 58: local_pt: Point = Point(42, 99)
-  local_pt = Point(42, 99);
+  static Point __global_slot_5 = Point(42, 99);
+  local_pt = &__global_slot_5;
   // 59: global_ptr: Ptr[Point] = local_pt
   global_ptr = &(*local_pt);
   // 60: print(global_ptr.a)
-  std::cout << (*global_ptr)->a << "\n";
+  std::cout << global_ptr->a << "\n";
   // 61: print(global_ptr.b)
-  std::cout << (*global_ptr)->b << "\n";
+  std::cout << global_ptr->b << "\n";
   // 64: counter: Int32 = 10
   counter = 10;
   // 65: increment = 5
   increment = tpy::BigInt(5);
   // 66: counter += increment
-  counter = tpy::int32_add(counter, ((*increment)).to_int32());
+  counter = tpy::int32_add(counter, (increment).to_int32());
   // 67: print(counter)
-  std::cout << (*counter) << "\n";
+  std::cout << counter << "\n";
   // 70: a = 10
   a = tpy::BigInt(10);
   // 71: b = 3
   b = tpy::BigInt(3);
   // 72: print(a + b)
-  std::cout << (((*a)) + ((*b))) << "\n";
+  std::cout << ((a) + (b)) << "\n";
   // 73: print(a - b)
-  std::cout << (((*a)) - ((*b))) << "\n";
+  std::cout << ((a) - (b)) << "\n";
   // 74: print(a * b)
-  std::cout << (((*a)) * ((*b))) << "\n";
+  std::cout << ((a) * (b)) << "\n";
   // 75: print(a // b)
-  std::cout << (((*a)) / ((*b))) << "\n";
+  std::cout << ((a) / (b)) << "\n";
   // 89: val = 999  # Global that's shadowed by __init__ param
   val = tpy::BigInt(999);
   // 90: c: Counter = Counter(50)
-  c = Counter(50);
+  static Counter __global_slot_6 = Counter(50);
+  c = &__global_slot_6;
   // 91: print(c.val)
   std::cout << c->val << "\n";
   // 92: print(c.add(7))
   std::cout << c->add(7) << "\n";
   // 95: arr: list[Int32] = [100, 200, 300]
-  arr = {100, 200, 300};
+  static std::vector<int32_t> __global_slot_7 = {100, 200, 300};
+  arr = &__global_slot_7;
   // 96: delta = 5
   delta = tpy::BigInt(5);
   // 97: arr[0] += delta  # global BigInt on RHS needs deref before .to_int32()
-  tpy::set_item((*arr), 0, tpy::int32_add(tpy::get_item((*arr), 0), ((*delta)).to_int32()));
+  tpy::set_item((*arr), 0, tpy::int32_add(tpy::get_item((*arr), 0), (delta).to_int32()));
   // 98: print(arr[0])
   std::cout << tpy::get_item((*arr), 0) << "\n";
 }

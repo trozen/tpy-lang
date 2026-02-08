@@ -5,8 +5,8 @@
 
 namespace tpy_user::mypackage {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> CONST;
+extern std::string_view __name__;
+extern int32_t CONST;
 
 void func();
 

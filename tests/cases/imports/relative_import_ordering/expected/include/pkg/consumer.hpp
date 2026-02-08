@@ -8,7 +8,7 @@
 
 namespace tpy_user::pkg::consumer {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 
 void __tpy_init();

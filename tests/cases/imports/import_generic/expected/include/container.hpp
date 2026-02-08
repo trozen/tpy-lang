@@ -7,7 +7,7 @@ namespace tpy_user::container {
 
 template<typename T> struct Box;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<typename T>
 struct Box {

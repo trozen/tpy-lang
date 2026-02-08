@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 7: time: Timer = Timer()
-tpy::Global<Timer> time;
+Timer* time{};
 
 // 10: def f():
 void f() {
@@ -21,7 +21,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: import time
   // 7: time: Timer = Timer()
-  time = Timer();
+  static Timer __global_slot_1 = Timer();
+  time = &__global_slot_1;
   // 8: time.x = 99
   time->x = 99;
   // 13: f()

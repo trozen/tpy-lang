@@ -3,23 +3,23 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: a: Int32 = 10
-tpy::Global<int32_t> a;
+int32_t a{};
 // 6: b: Int32 = 20
-tpy::Global<int32_t> b;
+int32_t b{};
 // 13: x = 100
-tpy::Global<tpy::BigInt> x;
+tpy::BigInt x;
 // 14: y = -50
-tpy::Global<tpy::BigInt> y;
+tpy::BigInt y;
 // 18: big1 = int(-1000000)
-tpy::Global<tpy::BigInt> big1;
+tpy::BigInt big1;
 // 19: big2 = int(1000000)
-tpy::Global<tpy::BigInt> big2;
+tpy::BigInt big2;
 // 24: f1: float = 3.14
-tpy::Global<double> f1;
+double f1{};
 // 25: f2: float = 2.71
-tpy::Global<double> f2;
+double f2{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -33,37 +33,37 @@ void __tpy_init() {
   // 6: b: Int32 = 20
   b = 20;
   // 7: print(min(a, b))
-  std::cout << std::min((*a), (*b)) << "\n";
+  std::cout << std::min(a, b) << "\n";
   // 8: print(max(a, b))
-  std::cout << std::max((*a), (*b)) << "\n";
+  std::cout << std::max(a, b) << "\n";
   // 9: print(min(b, a))
-  std::cout << std::min((*b), (*a)) << "\n";
+  std::cout << std::min(b, a) << "\n";
   // 10: print(max(b, a))
-  std::cout << std::max((*b), (*a)) << "\n";
+  std::cout << std::max(b, a) << "\n";
   // 13: x = 100
   x = tpy::BigInt(100);
   // 14: y = -50
   y = -(tpy::BigInt(50));
   // 15: print(min(x, y))
-  std::cout << (((*x)) < ((*y)) ? ((*x)) : ((*y))) << "\n";
+  std::cout << ((x) < (y) ? (x) : (y)) << "\n";
   // 16: print(max(x, y))
-  std::cout << (((*x)) > ((*y)) ? ((*x)) : ((*y))) << "\n";
+  std::cout << ((x) > (y) ? (x) : (y)) << "\n";
   // 18: big1 = int(-1000000)
   big1 = tpy::BigInt(-(1000000));
   // 19: big2 = int(1000000)
   big2 = tpy::BigInt(1000000);
   // 20: print(min(big1, big2))
-  std::cout << (((*big1)) < ((*big2)) ? ((*big1)) : ((*big2))) << "\n";
+  std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
   // 21: print(max(big1, big2))
-  std::cout << (((*big1)) > ((*big2)) ? ((*big1)) : ((*big2))) << "\n";
+  std::cout << ((big1) > (big2) ? (big1) : (big2)) << "\n";
   // 24: f1: float = 3.14
   f1 = 3.14;
   // 25: f2: float = 2.71
   f2 = 2.71;
   // 26: print(min(f1, f2))
-  std::cout << tpy::print_float(std::fmin((*f1), (*f2))) << "\n";
+  std::cout << tpy::print_float(std::fmin(f1, f2)) << "\n";
   // 27: print(max(f1, f2))
-  std::cout << tpy::print_float(std::fmax((*f1), (*f2))) << "\n";
+  std::cout << tpy::print_float(std::fmax(f1, f2)) << "\n";
 }
 
 } // namespace tpy_user::main

@@ -5,14 +5,14 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<tpy::BigInt>> pure_literals;
-extern tpy::Global<std::vector<int32_t>> mixed_int32;
-extern tpy::Global<std::vector<int32_t>> mixed_int32_rev;
-extern tpy::Global<std::vector<int32_t>> annotated_int32;
-extern tpy::Global<std::vector<tpy::BigInt>> annotated_bigint;
-extern tpy::Global<std::vector<int32_t>> global_for_span;
-extern tpy::Global<std::vector<tpy::BigInt>> bigint_list;
+extern std::string_view __name__;
+extern std::vector<tpy::BigInt>* pure_literals;
+extern std::vector<int32_t>* mixed_int32;
+extern std::vector<int32_t>* mixed_int32_rev;
+extern std::vector<int32_t>* annotated_int32;
+extern std::vector<tpy::BigInt>* annotated_bigint;
+extern std::vector<int32_t>* global_for_span;
+extern std::vector<tpy::BigInt>* bigint_list;
 
 int32_t local_mixed();
 int32_t sum_span(std::span<const int32_t> nums);

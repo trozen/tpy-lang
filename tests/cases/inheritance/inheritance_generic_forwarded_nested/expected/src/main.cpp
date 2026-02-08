@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 24: items: list[str] = ["hello", "world"]
-tpy::Global<std::vector<std::string_view>> items;
+std::vector<std::string_view>* items{};
 // 25: c: Child[str] = Child[str](items, Int32(42))
-tpy::Global<Child<std::string_view>> c;
+Child<std::string_view>* c{};
 // 26: val: list[str] = c.get_value()
-tpy::Global<std::vector<std::string_view>> val;
+std::vector<std::string_view>* val{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -18,11 +18,14 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 24: items: list[str] = ["hello", "world"]
-  items = {"hello", "world"};
+  static std::vector<std::string_view> __global_slot_1 = {"hello", "world"};
+  items = &__global_slot_1;
   // 25: c: Child[str] = Child[str](items, Int32(42))
-  c = Child<std::string_view>((*items), 42);
+  static Child<std::string_view> __global_slot_2 = Child<std::string_view>((*items), 42);
+  c = &__global_slot_2;
   // 26: val: list[str] = c.get_value()
-  val = c->get_value();
+  static std::vector<std::string_view> __global_slot_3 = c->get_value();
+  val = &__global_slot_3;
   // 27: print(val[0])
   std::cout << tpy::get_item((*val), 0) << "\n";
   // 28: print(val[1])

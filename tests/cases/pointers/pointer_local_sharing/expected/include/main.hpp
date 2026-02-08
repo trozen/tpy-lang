@@ -8,9 +8,9 @@ namespace tpy_user::main {
 struct Point;
 struct Counter;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Point> g;
-extern tpy::Global<Point> pt;
+extern std::string_view __name__;
+extern Point* g;
+extern Point* pt;
 
 struct Point {
   int32_t x;

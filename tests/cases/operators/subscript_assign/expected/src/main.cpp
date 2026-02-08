@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: arr: Array[Int32, 3] = [1, 2, 3]
-tpy::Global<std::array<int32_t, 3>> arr;
+std::array<int32_t, 3>* arr{};
 // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-tpy::Global<StaticList<int32_t, 4>> items;
+StaticList<int32_t, 4>* items{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -16,7 +16,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 4: arr: Array[Int32, 3] = [1, 2, 3]
-  arr = {1, 2, 3};
+  static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
+  arr = &__global_slot_1;
   // 5: arr[0] = 100
   (*arr)[0] = 100;
   // 6: arr[1] = 200
@@ -30,7 +31,8 @@ void __tpy_init() {
   // 10: print(arr[2])
   std::cout << (*arr)[2] << "\n";
   // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-  items = StaticList<int32_t, 4>();
+  static StaticList<int32_t, 4> __global_slot_2 = StaticList<int32_t, 4>();
+  items = &__global_slot_2;
   // 14: items.append(10)
   (*items).push_back(10);
   // 15: items.append(20)

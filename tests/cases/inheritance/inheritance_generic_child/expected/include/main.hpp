@@ -10,9 +10,9 @@ template<typename T> struct Box;
 template<typename T> struct Container;
 template<typename U> struct Wrapper;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Box<int32_t>> b;
-extern tpy::Global<Wrapper<std::string_view>> w;
+extern std::string_view __name__;
+extern Box<int32_t>* b;
+extern Wrapper<std::string_view>* w;
 
 struct Animal {
   std::string_view name;

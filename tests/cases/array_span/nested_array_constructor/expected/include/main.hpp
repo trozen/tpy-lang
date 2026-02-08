@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s);
 void main();

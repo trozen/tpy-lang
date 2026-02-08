@@ -3,9 +3,9 @@
 
 namespace tpy_user::math {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 7: MAGIC: Int32 = 42
-tpy::Global<int32_t> MAGIC;
+int32_t MAGIC{};
 
 // 4: def custom_add(x: Int32, y: Int32) -> Int32:
 int32_t custom_add(int32_t x, int32_t y) {

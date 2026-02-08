@@ -13,8 +13,8 @@ concept Printable = requires(T& t) {
 struct Entity;
 struct Person;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Person> p;
+extern std::string_view __name__;
+extern Person* p;
 
 struct Entity {
   std::string_view name;

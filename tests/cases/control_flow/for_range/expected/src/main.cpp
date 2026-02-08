@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def print_range(start: Int32, end: Int32) -> None:
 void print_range(int32_t start, int32_t end) {

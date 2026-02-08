@@ -3,23 +3,23 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: a: int = int("42")
-tpy::Global<tpy::BigInt> a;
+tpy::BigInt a;
 // 8: b: int = int("-123")
-tpy::Global<tpy::BigInt> b;
+tpy::BigInt b;
 // 11: c: int = int("+456")
-tpy::Global<tpy::BigInt> c;
+tpy::BigInt c;
 // 15: d: int = int("0")
-tpy::Global<tpy::BigInt> d;
+tpy::BigInt d;
 // 19: e: int = int("  789  ")
-tpy::Global<tpy::BigInt> e;
+tpy::BigInt e;
 // 22: f: int = int("  -99  ")
-tpy::Global<tpy::BigInt> f;
+tpy::BigInt f;
 // 26: g: int = int("12345678901234567890")
-tpy::Global<tpy::BigInt> g;
+tpy::BigInt g;
 // 29: h: int = int("-12345678901234567890")
-tpy::Global<tpy::BigInt> h;
+tpy::BigInt h;
 
 void __tpy_init() {
   static bool initialized = false;
@@ -30,35 +30,35 @@ void __tpy_init() {
   // 5: a: int = int("42")
   a = tpy::BigInt::from_str("42");
   // 6: print(a)  # 42
-  std::cout << (*a) << "\n";
+  std::cout << a << "\n";
   // 8: b: int = int("-123")
   b = tpy::BigInt::from_str("-123");
   // 9: print(b)  # -123
-  std::cout << (*b) << "\n";
+  std::cout << b << "\n";
   // 11: c: int = int("+456")
   c = tpy::BigInt::from_str("+456");
   // 12: print(c)  # 456
-  std::cout << (*c) << "\n";
+  std::cout << c << "\n";
   // 15: d: int = int("0")
   d = tpy::BigInt::from_str("0");
   // 16: print(d)  # 0
-  std::cout << (*d) << "\n";
+  std::cout << d << "\n";
   // 19: e: int = int("  789  ")
   e = tpy::BigInt::from_str("  789  ");
   // 20: print(e)  # 789
-  std::cout << (*e) << "\n";
+  std::cout << e << "\n";
   // 22: f: int = int("  -99  ")
   f = tpy::BigInt::from_str("  -99  ");
   // 23: print(f)  # -99
-  std::cout << (*f) << "\n";
+  std::cout << f << "\n";
   // 26: g: int = int("12345678901234567890")
   g = tpy::BigInt::from_str("12345678901234567890");
   // 27: print(g)  # 12345678901234567890
-  std::cout << (*g) << "\n";
+  std::cout << g << "\n";
   // 29: h: int = int("-12345678901234567890")
   h = tpy::BigInt::from_str("-12345678901234567890");
   // 30: print(h)  # -12345678901234567890
-  std::cout << (*h) << "\n";
+  std::cout << h << "\n";
 }
 
 } // namespace tpy_user::main

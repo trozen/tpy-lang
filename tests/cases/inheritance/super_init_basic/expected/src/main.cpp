@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 30: d = Dog("Buddy", 3, "Golden Retriever")
-tpy::Global<Dog> d;
+Dog* d{};
 // 46: a = Animal("Generic", 5)
-tpy::Global<Animal> a;
+Animal* a{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -16,7 +16,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 30: d = Dog("Buddy", 3, "Golden Retriever")
-  d = Dog("Buddy", 3, "Golden Retriever");
+  static Dog __global_slot_1 = Dog("Buddy", 3, "Golden Retriever");
+  d = &__global_slot_1;
   // 33: print(d.breed)
   std::cout << d->breed << "\n";
   // 36: print(d.name)
@@ -28,7 +29,8 @@ void __tpy_init() {
   // 43: print(d.describe())
   std::cout << d->describe() << "\n";
   // 46: a = Animal("Generic", 5)
-  a = Animal("Generic", 5);
+  static Animal __global_slot_2 = Animal("Generic", 5);
+  a = &__global_slot_2;
   // 47: print(a.speak())
   std::cout << a->speak() << "\n";
   // 48: print(a.describe())

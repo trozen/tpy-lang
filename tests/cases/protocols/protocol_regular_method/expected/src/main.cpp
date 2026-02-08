@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 17: def double_it(d: Duplicable) -> None:
 template<Duplicable T_d>

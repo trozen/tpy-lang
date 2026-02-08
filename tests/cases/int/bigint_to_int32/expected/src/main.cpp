@@ -3,31 +3,31 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 42: a: Int32 = 1 + 2           # addition
-tpy::Global<int32_t> a;
+int32_t a{};
 // 43: b: Int32 = 10 - 3          # subtraction
-tpy::Global<int32_t> b;
+int32_t b{};
 // 44: c: Int32 = 4 * 5           # multiplication
-tpy::Global<int32_t> c;
+int32_t c{};
 // 45: d: Int32 = 17 // 3         # division
-tpy::Global<int32_t> d;
+int32_t d{};
 // 46: e: Int32 = 2 ** 10         # power
-tpy::Global<int32_t> e;
+int32_t e{};
 // 56: n = 5
-tpy::Global<tpy::BigInt> n;
+tpy::BigInt n;
 // 59: result1 = takes_int32(n)
-tpy::Global<int32_t> result1;
+int32_t result1{};
 // 63: result2 = return_as_int32(10)
-tpy::Global<int32_t> result2;
+int32_t result2{};
 // 67: result3 = var_decl_test(15)
-tpy::Global<int32_t> result3;
+int32_t result3{};
 // 71: result4 = assign_test(20)
-tpy::Global<int32_t> result4;
+int32_t result4{};
 // 75: result5 = loop_test(3)
-tpy::Global<int32_t> result5;
+int32_t result5{};
 // 79: result6 = constructor_test(25)
-tpy::Global<int32_t> result6;
+int32_t result6{};
 
 // 6: def takes_int32(x: Int32) -> Int32:
 int32_t takes_int32(int32_t x) {
@@ -107,39 +107,39 @@ void __tpy_init() {
   // 56: n = 5
   n = tpy::BigInt(5);
   // 59: result1 = takes_int32(n)
-  result1 = takes_int32(((*n)).to_int32());
+  result1 = takes_int32((n).to_int32());
   // 60: print(result1)
-  std::cout << (*result1) << "\n";
+  std::cout << result1 << "\n";
   // 63: result2 = return_as_int32(10)
   result2 = return_as_int32(tpy::BigInt(10));
   // 64: print(result2)
-  std::cout << (*result2) << "\n";
+  std::cout << result2 << "\n";
   // 67: result3 = var_decl_test(15)
   result3 = var_decl_test(tpy::BigInt(15));
   // 68: print(result3)
-  std::cout << (*result3) << "\n";
+  std::cout << result3 << "\n";
   // 71: result4 = assign_test(20)
   result4 = assign_test(tpy::BigInt(20));
   // 72: print(result4)
-  std::cout << (*result4) << "\n";
+  std::cout << result4 << "\n";
   // 75: result5 = loop_test(3)
   result5 = loop_test(tpy::BigInt(3));
   // 76: print(result5)
-  std::cout << (*result5) << "\n";
+  std::cout << result5 << "\n";
   // 79: result6 = constructor_test(25)
   result6 = constructor_test(tpy::BigInt(25));
   // 80: print(result6)
-  std::cout << (*result6) << "\n";
+  std::cout << result6 << "\n";
   // 83: print(a)  # 3
-  std::cout << (*a) << "\n";
+  std::cout << a << "\n";
   // 84: print(b)  # 7
-  std::cout << (*b) << "\n";
+  std::cout << b << "\n";
   // 85: print(c)  # 20
-  std::cout << (*c) << "\n";
+  std::cout << c << "\n";
   // 86: print(d)  # 5
-  std::cout << (*d) << "\n";
+  std::cout << d << "\n";
   // 87: print(e)  # 1024
-  std::cout << (*e) << "\n";
+  std::cout << e << "\n";
   // 90: print(literal_ops_local())  # 300
   std::cout << literal_ops_local() << "\n";
 }

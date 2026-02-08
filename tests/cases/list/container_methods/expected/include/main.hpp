@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<StaticList<int32_t, 8>> sl;
-extern tpy::Global<std::array<int32_t, 3>> arr;
-extern tpy::Global<std::vector<int32_t>> nums;
+extern std::string_view __name__;
+extern StaticList<int32_t, 8>* sl;
+extern std::array<int32_t, 3>* arr;
+extern std::vector<int32_t>* nums;
 
 void span_ops(std::span<const int32_t> sp);
 

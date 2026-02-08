@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct MyContainer;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct MyContainer {
   int32_t size;

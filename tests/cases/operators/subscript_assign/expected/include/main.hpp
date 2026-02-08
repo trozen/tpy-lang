@@ -5,9 +5,9 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::array<int32_t, 3>> arr;
-extern tpy::Global<StaticList<int32_t, 4>> items;
+extern std::string_view __name__;
+extern std::array<int32_t, 3>* arr;
+extern StaticList<int32_t, 4>* items;
 
 
 void __tpy_init();

@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 23: x = 5
-tpy::Global<tpy::BigInt> x;
+tpy::BigInt x;
 // 24: y = 3
-tpy::Global<tpy::BigInt> y;
+tpy::BigInt y;
 
 void __tpy_init() {
   static bool initialized = false;
@@ -42,7 +42,7 @@ void __tpy_init() {
   // 24: y = 3
   y = tpy::BigInt(3);
   // 25: print(x ** y)  # 125
-  std::cout << (((*x)).pow((*y))) << "\n";
+  std::cout << ((x).pow(y)) << "\n";
 }
 
 } // namespace tpy_user::main

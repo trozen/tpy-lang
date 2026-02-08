@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 13: def count(items: Sized) -> Int32:
 template<tpy::Sized T_items>

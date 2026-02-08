@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<tpy::BigInt>> nums;
-extern tpy::Global<std::vector<std::string_view>> words;
-extern tpy::Global<std::vector<int32_t>> vals;
+extern std::string_view __name__;
+extern std::vector<tpy::BigInt>* nums;
+extern std::vector<std::string_view>* words;
+extern std::vector<int32_t>* vals;
 
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items);

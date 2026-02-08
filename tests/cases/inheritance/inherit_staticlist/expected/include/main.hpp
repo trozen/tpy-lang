@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct IntStack;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct IntStack : StaticList<int32_t, 100> {
   std::string_view name;

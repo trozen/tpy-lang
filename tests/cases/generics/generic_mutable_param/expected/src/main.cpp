@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 17: def modify_list(items: list[Int32]) -> None:
 void modify_list(std::vector<int32_t>& items) {

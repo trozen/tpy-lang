@@ -5,8 +5,8 @@
 
 namespace tpy_user::utils {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> MAX;
+extern std::string_view __name__;
+extern int32_t MAX;
 
 int32_t get_max();
 

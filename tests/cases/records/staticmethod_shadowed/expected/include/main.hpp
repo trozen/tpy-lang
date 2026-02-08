@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Helper;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Helper> h;
+extern std::string_view __name__;
+extern Helper* h;
 
 struct Helper {
   int32_t value;

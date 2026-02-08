@@ -13,7 +13,7 @@ concept Addable = requires(T& t) {
 struct MyNumber;
 template<Addable T> struct Holder;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct MyNumber {
   int32_t value;

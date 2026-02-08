@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 7: def add_values(x: Addable, y: Addable) -> None:
 template<Addable T_x, Addable T_y>

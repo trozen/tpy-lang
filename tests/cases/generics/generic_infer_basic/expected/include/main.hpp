@@ -7,10 +7,10 @@ namespace tpy_user::main {
 
 template<typename T> struct Box;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Box<tpy::BigInt>> box;
-extern tpy::Global<int32_t> x;
-extern tpy::Global<Box<int32_t>> box32;
+extern std::string_view __name__;
+extern Box<tpy::BigInt>* box;
+extern int32_t x;
+extern Box<int32_t>* box32;
 
 template<typename T>
 struct Box {

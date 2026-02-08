@@ -3,7 +3,7 @@
 
 namespace tpy_user::helper {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def get_value() -> Int32:
 int32_t get_value() {

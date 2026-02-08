@@ -27,7 +27,7 @@ struct Point;
 struct Widget;
 struct Box;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<Stringable T>
 struct Printer {

@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 22: c = Counter(100)
-tpy::Global<Counter> c;
+Counter* c{};
 // 36: a: Int32 = 42
-tpy::Global<int32_t> a;
+int32_t a{};
 // 37: b: Int32 = 99
-tpy::Global<int32_t> b;
+int32_t b{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -18,7 +18,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 22: c = Counter(100)
-  c = Counter(100);
+  static Counter __global_slot_1 = Counter(100);
+  c = &__global_slot_1;
   // 23: print(c.get())
   std::cout << c->get() << "\n";
   // 26: c.increment()
@@ -38,7 +39,7 @@ void __tpy_init() {
   // 37: b: Int32 = 99
   b = 99;
   // 38: print(a, b)
-  std::cout << (*a) << " " << (*b) << "\n";
+  std::cout << a << " " << b << "\n";
   // 41: print("done")
   std::cout << "done" << "\n";
 }

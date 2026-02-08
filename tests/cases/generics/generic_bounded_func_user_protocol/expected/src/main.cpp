@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 20: def print_item[T: Printable](item: T) -> None:
 template<Printable T>

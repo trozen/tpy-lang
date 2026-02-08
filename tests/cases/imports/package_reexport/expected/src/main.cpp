@@ -3,12 +3,12 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     print(VERSION)
-  std::cout << (*tpy_user::mypackage::VERSION) << "\n";
+  std::cout << tpy_user::mypackage::VERSION << "\n";
   // 6:     result: Int32 = add(Int32(5), Int32(7))
   int32_t result = tpy_user::mypackage::add(5, 7);
   // 7:     print(result)

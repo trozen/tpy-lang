@@ -50,7 +50,7 @@ concept BarUser = requires(T& t) {
 };
 
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<FooMaker T>
 struct Bar {

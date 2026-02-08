@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 template<typename T> struct Same;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Same<tpy::BigInt>> same;
+extern std::string_view __name__;
+extern Same<tpy::BigInt>* same;
 
 template<typename T>
 struct Same {

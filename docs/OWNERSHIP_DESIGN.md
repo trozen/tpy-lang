@@ -5,6 +5,7 @@
 | Feature | Status |
 |---------|--------|
 | Pointer-local model (non-value locals are `T*`) | Done |
+| Global pointer model (non-value globals are `T*` with static backing) | Done |
 | Rvalue direct move, `copy()`, init from param/element, for-each mutation, rebinding | Done |
 | Param/loop-var reassignment error (non-value types) | Done |
 | `Own[T]` return by value, basic dangling detection (return-local) | Done |

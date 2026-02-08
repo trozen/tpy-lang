@@ -5,11 +5,11 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<tpy::BigInt>> items;
-extern tpy::Global<int32_t> total;
-extern tpy::Global<std::array<int32_t, 3>> arr;
-extern tpy::Global<std::string_view> text;
+extern std::string_view __name__;
+extern std::vector<tpy::BigInt>* items;
+extern int32_t total;
+extern std::array<int32_t, 3>* arr;
+extern std::string_view text;
 
 int32_t sum_array();
 void print_span(std::span<const int32_t> data);

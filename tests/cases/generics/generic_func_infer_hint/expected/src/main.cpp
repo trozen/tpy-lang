@@ -3,15 +3,15 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-tpy::Global<std::vector<int32_t>> nums32;
+std::vector<int32_t>* nums32{};
 // 11: result: Int32 = first(nums32)
-tpy::Global<int32_t> result;
+int32_t result{};
 // 15: nums: list[int] = [10, 20, 30]
-tpy::Global<std::vector<tpy::BigInt>> nums;
+std::vector<tpy::BigInt>* nums{};
 // 16: result2: int = first(nums)
-tpy::Global<tpy::BigInt> result2;
+tpy::BigInt result2;
 
 // 5: def first[T](items: list[T]) -> T:
 template<typename T>
@@ -28,17 +28,19 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test generic functions with type annotation hints."""
   // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-  nums32 = {1, 2, 3};
+  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
+  nums32 = &__global_slot_1;
   // 11: result: Int32 = first(nums32)
   result = first<int32_t>((*nums32));
   // 12: print(result)
-  std::cout << (*result) << "\n";
+  std::cout << result << "\n";
   // 15: nums: list[int] = [10, 20, 30]
-  nums = {10, 20, 30};
+  static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
+  nums = &__global_slot_2;
   // 16: result2: int = first(nums)
   result2 = first<tpy::BigInt>((*nums));
   // 17: print(result2)
-  std::cout << (*result2) << "\n";
+  std::cout << result2 << "\n";
 }
 
 } // namespace tpy_user::main

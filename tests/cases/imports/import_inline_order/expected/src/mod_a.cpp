@@ -3,7 +3,7 @@
 
 namespace tpy_user::mod_a {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 6: def func_a() -> None:
 void func_a() {

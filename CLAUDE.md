@@ -178,7 +178,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |
 | `protocols.hpp` | `__len__`, `Sized`, `Sequence` concepts |
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
-| `system.hpp` | `Global<T>`, `time_*`, `sys_argv` |
+| `system.hpp` | `time_*`, `sys_argv` |
 
 Generated code requires C++23 (for `std::ranges` concepts).
 

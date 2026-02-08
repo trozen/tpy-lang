@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: x: Int32 = 2
-tpy::Global<int32_t> x;
+int32_t x{};
 // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
-tpy::Global<int32_t> y;
+int32_t y{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -19,9 +19,9 @@ void __tpy_init() {
   // 4: x: Int32 = 2
   x = 2;
   // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
-  y = (tpy::int32_pow((*x), 31));
+  y = (tpy::int32_pow(x, 31));
   // 6: print(y)
-  std::cout << (*y) << "\n";
+  std::cout << y << "\n";
 }
 
 } // namespace tpy_user::main

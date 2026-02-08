@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 int32_t sum_span(std::span<const int32_t> values);
 tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> values);

@@ -5,9 +5,9 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<tpy::BigInt>> nums;
-extern tpy::Global<std::vector<std::vector<tpy::BigInt>>> nested;
+extern std::string_view __name__;
+extern std::vector<tpy::BigInt>* nums;
+extern std::vector<std::vector<tpy::BigInt>>* nested;
 
 
 void __tpy_init();

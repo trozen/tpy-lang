@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 7: def get_length[T: Sized](item: T) -> Int32:
 template<tpy::Sized T>

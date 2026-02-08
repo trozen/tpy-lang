@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 14: nums = [10, 20, 30]
-tpy::Global<std::vector<tpy::BigInt>> nums;
+std::vector<tpy::BigInt>* nums{};
 // 19: words = ["hello", "world"]
-tpy::Global<std::vector<std::string_view>> words;
+std::vector<std::string_view>* words{};
 // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-tpy::Global<std::vector<int32_t>> vals;
+std::vector<int32_t>* vals{};
 
 // 5: def first[T](items: list[T]) -> T:
 template<typename T>
@@ -33,19 +33,22 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test basic generic functions with type inference."""
   // 14: nums = [10, 20, 30]
-  nums = {10, 20, 30};
+  static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
+  nums = &__global_slot_1;
   // 15: print(first(nums))
   std::cout << first<tpy::BigInt>((*nums)) << "\n";
   // 16: print(last(nums))
   std::cout << last<tpy::BigInt>((*nums)) << "\n";
   // 19: words = ["hello", "world"]
-  words = {"hello", "world"};
+  static std::vector<std::string_view> __global_slot_2 = {"hello", "world"};
+  words = &__global_slot_2;
   // 20: print(first(words))
   std::cout << first<std::string_view>((*words)) << "\n";
   // 21: print(last(words))
   std::cout << last<std::string_view>((*words)) << "\n";
   // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-  vals = {1, 2, 3};
+  static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
+  vals = &__global_slot_3;
   // 25: print(first(vals))
   std::cout << first<int32_t>((*vals)) << "\n";
   // 26: print(last(vals))

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 13: def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {

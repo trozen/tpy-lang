@@ -33,7 +33,7 @@ struct Box;
 struct IntHolder;
 template<HasValue T> struct Wrapper;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct Point {
   int32_t value;

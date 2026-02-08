@@ -3,9 +3,9 @@
 
 namespace tpy_user::utils {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 3: MAX: Int32 = Int32(100)
-tpy::Global<int32_t> MAX;
+int32_t MAX{};
 
 // 5: def get_max() -> Int32:
 int32_t get_max() {

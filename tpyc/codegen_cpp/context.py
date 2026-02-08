@@ -73,18 +73,20 @@ DUNDER_TO_BINARY_OP: dict[str, str] = {
 
 
 class SlotState:
-    """Manages unique slot names for pointer-local stack storage."""
+    """Manages unique slot names for pointer-local backing storage."""
 
     def __init__(self):
         self._counter: int = 0
+        self._prefix: str = "__slot"
 
     def next_slot(self) -> str:
-        """Return a fresh __slot_N name."""
+        """Return a fresh slot name (__slot_N or __global_slot_N)."""
         self._counter += 1
-        return f"__slot_{self._counter}"
+        return f"{self._prefix}_{self._counter}"
 
-    def reset(self) -> None:
+    def reset(self, *, global_scope: bool = False) -> None:
         self._counter = 0
+        self._prefix = "__global_slot" if global_scope else "__slot"
 
 
 class TempState:
@@ -156,6 +158,7 @@ class CodeGenContext:
 
     # --- Pointer-local tracking ---
     pointer_locals: set[str] = field(default_factory=set)
+    pointer_globals: set[str] = field(default_factory=set)
     slots: SlotState = field(default_factory=SlotState)
     reassigned_vars: set[str] = field(default_factory=set)
 
@@ -229,13 +232,19 @@ class CodeGenContext:
             return False
         return expr.name in self.pointer_locals
 
+    def _is_pointer_global(self, expr: TpyExpr) -> bool:
+        """Check if expression is a reference to a non-value-type global (T*)."""
+        if not isinstance(expr, TpyName):
+            return False
+        return expr.name in self.pointer_globals and self.is_global_name(expr)
+
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
 
-        Unifies globals (Global<T>) and pointer-locals (T*) — both use
+        Unifies pointer-globals (T*) and pointer-locals (T*) — both use
         -> for field/method access and (*x) for value dereference.
         """
-        return self.is_global_name(expr) or self.is_pointer_local(expr)
+        return self._is_pointer_global(expr) or self.is_pointer_local(expr)
 
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces an rvalue (needs a stack slot).

@@ -14,7 +14,7 @@ concept Container = requires(T& t) {
 struct IntBox;
 struct StrBox;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct IntBox {
   int32_t value;

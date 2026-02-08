@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<tpy::NativeIterable<int32_t> T_items>
 int32_t sum_iter(T_items& items);

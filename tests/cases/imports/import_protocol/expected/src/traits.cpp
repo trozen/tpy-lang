@@ -3,7 +3,7 @@
 
 namespace tpy_user::traits {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 void __tpy_init() {
   static bool initialized = false;

@@ -3,17 +3,17 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: zeros: list[Int32] = [0] * 5
-tpy::Global<std::vector<int32_t>> zeros;
+std::vector<int32_t>* zeros{};
 // 11: filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
-tpy::Global<StaticList<int32_t, 10>> filled;
+StaticList<int32_t, 10>* filled{};
 // 17: empty: list[Int32] = [99] * 0
-tpy::Global<std::vector<int32_t>> empty;
+std::vector<int32_t>* empty{};
 // 21: n: Int32 = 3
-tpy::Global<int32_t> n;
+int32_t n{};
 // 22: dynamic: list[Int32] = [7] * n
-tpy::Global<std::vector<int32_t>> dynamic;
+std::vector<int32_t>* dynamic{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -23,7 +23,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Tests single-element list repeat with repeat_range codegen."""
   // 5: zeros: list[Int32] = [0] * 5
-  zeros = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(5, {0}));
+  static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(5, {0}));
+  zeros = &__global_slot_1;
   // 6: print(len(zeros))
   std::cout << tpy::__len__((*zeros)) << "\n";
   // 7: print(zeros[0])
@@ -31,7 +32,8 @@ void __tpy_init() {
   // 8: print(zeros[4])
   std::cout << tpy::get_item((*zeros), 4) << "\n";
   // 11: filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
-  filled = tpy::from_range<StaticList<int32_t, 10>>(tpy::repeat_range<int32_t>(10, {42}));
+  static StaticList<int32_t, 10> __global_slot_2 = tpy::from_range<StaticList<int32_t, 10>>(tpy::repeat_range<int32_t>(10, {42}));
+  filled = &__global_slot_2;
   // 12: print(len(filled))
   std::cout << tpy::__len__((*filled)) << "\n";
   // 13: print(filled[0])
@@ -39,13 +41,15 @@ void __tpy_init() {
   // 14: print(filled[9])
   std::cout << tpy::get_item((*filled), 9) << "\n";
   // 17: empty: list[Int32] = [99] * 0
-  empty = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(0, {99}));
+  static std::vector<int32_t> __global_slot_3 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(0, {99}));
+  empty = &__global_slot_3;
   // 18: print(len(empty))
   std::cout << tpy::__len__((*empty)) << "\n";
   // 21: n: Int32 = 3
   n = 3;
   // 22: dynamic: list[Int32] = [7] * n
-  dynamic = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>((*n), {7}));
+  static std::vector<int32_t> __global_slot_4 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(n, {7}));
+  dynamic = &__global_slot_4;
   // 23: print(len(dynamic))
   std::cout << tpy::__len__((*dynamic)) << "\n";
   // 24: print(dynamic[0])

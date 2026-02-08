@@ -3,12 +3,12 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     print(__name__)
-  std::cout << (*__name__) << "\n";
+  std::cout << __name__ << "\n";
   // 6:     print(get_name())
   std::cout << tpy_user::utils::get_name() << "\n";
   // 7:     return Int32(0)

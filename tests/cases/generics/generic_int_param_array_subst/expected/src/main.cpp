@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 24: arr_global: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
-tpy::Global<std::array<int32_t, 3>> arr_global;
+std::array<int32_t, 3>* arr_global{};
 
 // 17: def use_array(arr: Array[Int32, 3]) -> None:
 void use_array(std::array<int32_t, 3>& arr) {
@@ -22,7 +22,7 @@ void use_array(std::array<int32_t, 3>& arr) {
 std::array<int32_t, 3>& get_global_array() {
   // 27:     """Function returning concrete Array[Int32, 3]."""
   // 28:     return arr_global
-  return arr_global;
+  return (*arr_global);
 }
 
 // 31: def main() -> None:
@@ -50,7 +50,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 24: arr_global: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
-  arr_global = {10, 20, 30};
+  static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
+  arr_global = &__global_slot_1;
   // 47: main()
   main();
 }

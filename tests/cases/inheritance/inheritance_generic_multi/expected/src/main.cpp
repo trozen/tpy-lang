@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
-tpy::Global<Leaf<std::string_view>> leaf;
+Leaf<std::string_view>* leaf{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -15,7 +15,8 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test comprehensive generic inheritance edge cases.
   // 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
-  leaf = Leaf<std::string_view>("hello", 42, "bonus");
+  static Leaf<std::string_view> __global_slot_1 = Leaf<std::string_view>("hello", 42, "bonus");
+  leaf = &__global_slot_1;
   // 52: leaf.set_first("world")
   leaf->set_first("world");
   // 55: print(leaf.get_first())

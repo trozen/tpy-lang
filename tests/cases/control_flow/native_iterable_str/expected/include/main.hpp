@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<tpy::NativeIterable<char> T_text>
 int32_t count_chars(T_text& text);

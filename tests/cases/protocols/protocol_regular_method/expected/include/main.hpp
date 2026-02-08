@@ -12,7 +12,7 @@ concept Duplicable = requires(T& t) {
 
 struct Value;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct Value {
   int32_t x;

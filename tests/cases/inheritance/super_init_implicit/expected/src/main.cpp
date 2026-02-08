@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 15: c = Child(42)
-tpy::Global<Child> c;
+Child* c{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -14,7 +14,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 15: c = Child(42)
-  c = Child(42);
+  static Child __global_slot_1 = Child(42);
+  c = &__global_slot_1;
   // 16: print(c.value)
   std::cout << c->value << "\n";
 }

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
@@ -12,7 +12,7 @@ int32_t main() {
   // 6:     print(p.x)
   std::cout << p.x << "\n";
   // 7:     print(MAX)
-  std::cout << (*tpy_user::utils::MAX_VALUE) << "\n";
+  std::cout << tpy_user::utils::MAX_VALUE << "\n";
   // 8:     print(sum_nums(Int32(10), Int32(20)))
   std::cout << tpy_user::utils::add(10, 20) << "\n";
   // 9:     return Int32(0)

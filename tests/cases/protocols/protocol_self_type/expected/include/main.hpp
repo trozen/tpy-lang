@@ -10,7 +10,7 @@ concept Addable = requires(T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
 };
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<Addable T_x, Addable T_y>
 void add_values(T_x& x, T_y& y);

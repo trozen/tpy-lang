@@ -3,9 +3,9 @@
 
 namespace tpy_user::mod_c {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: shared_value: Int32 = Int32(42)
-tpy::Global<int32_t> shared_value;
+int32_t shared_value{};
 
 void __tpy_init() {
   static bool initialized = false;

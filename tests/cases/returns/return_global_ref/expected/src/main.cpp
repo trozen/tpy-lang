@@ -3,14 +3,14 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 8: ORIGIN: Point = Point()
-tpy::Global<Point> ORIGIN;
+Point* ORIGIN{};
 
 // 10: def get_origin() -> Point:
 Point& get_origin() {
   // 11:     return ORIGIN  # tpyc: ok (global lives forever)
-  return ORIGIN;
+  return (*ORIGIN);
 }
 
 // 13: def main():
@@ -34,7 +34,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 8: ORIGIN: Point = Point()
-  ORIGIN = Point();
+  static Point __global_slot_1 = Point();
+  ORIGIN = &__global_slot_1;
   // 21: main()
   main();
 }

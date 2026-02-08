@@ -6,7 +6,7 @@
 
 namespace tpy_user::mod_c {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 int32_t c_value();
 

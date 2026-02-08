@@ -13,7 +13,7 @@ concept ItemsProvider = requires(T& t) {
 struct IntListHolder;
 template<ItemsProvider<int32_t> V> struct Wrapper;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct IntListHolder {
   std::vector<int32_t> data;

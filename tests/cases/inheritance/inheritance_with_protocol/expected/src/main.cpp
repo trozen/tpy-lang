@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 37: p = Person("Alice", 42, 30)
-tpy::Global<Person> p;
+Person* p{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -14,7 +14,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 37: p = Person("Alice", 42, 30)
-  p = Person("Alice", 42, 30);
+  static Person __global_slot_1 = Person("Alice", 42, 30);
+  p = &__global_slot_1;
   // 40: print(p.name)
   std::cout << p->name << "\n";
   // 41: print(p.id)

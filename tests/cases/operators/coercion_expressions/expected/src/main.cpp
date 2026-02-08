@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 49: def return_expr_as_int32(a: int, b: int) -> Int32:
 int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b) {

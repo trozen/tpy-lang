@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 3: x: SL[int, 3] = SL[int, 3]()
-tpy::Global<StaticList<tpy::BigInt, 3>> x;
+StaticList<tpy::BigInt, 3>* x{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -14,7 +14,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: x: SL[int, 3] = SL[int, 3]()
-  x = StaticList<tpy::BigInt, 3>();
+  static StaticList<tpy::BigInt, 3> __global_slot_1 = StaticList<tpy::BigInt, 3>();
+  x = &__global_slot_1;
   // 4: x.append(1)
   (*x).push_back(1);
   // 5: x.append(2)

@@ -22,8 +22,8 @@ concept Measurable = requires(T& t) {
 
 struct Box;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<Box> b;
+extern std::string_view __name__;
+extern Box* b;
 
 struct Box {
   int32_t width;

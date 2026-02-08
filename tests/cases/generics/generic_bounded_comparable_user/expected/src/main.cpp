@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 19: def is_less[T: Comparable](a: T, b: T) -> Bool:
 template<tpy::Comparable T>

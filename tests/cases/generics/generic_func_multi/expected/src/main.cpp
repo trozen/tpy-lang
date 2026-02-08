@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 23: p1 = create_pair(10, "hello")
-tpy::Global<Pair<tpy::BigInt, std::string_view>> p1;
+Pair<tpy::BigInt, std::string_view>* p1{};
 // 28: p2 = swap_pair(p1)
-tpy::Global<Pair<std::string_view, tpy::BigInt>> p2;
+Pair<std::string_view, tpy::BigInt>* p2{};
 
 // 14: def swap_pair[A, B](p: Pair[A, B]) -> Own[Pair[B, A]]:
 template<typename A, typename B>
@@ -33,13 +33,15 @@ void __tpy_init() {
   // 23: p1 = create_pair(10, "hello")
   tpy::BigInt __tmp_1 = tpy::BigInt(10);
   std::string_view __tmp_2 = "hello";
-  p1 = create_pair<tpy::BigInt, std::string_view>(__tmp_1, __tmp_2);
+  static Pair<tpy::BigInt, std::string_view> __global_slot_1 = create_pair<tpy::BigInt, std::string_view>(__tmp_1, __tmp_2);
+  p1 = &__global_slot_1;
   // 24: print(p1.first)
   std::cout << p1->first << "\n";
   // 25: print(p1.second)
   std::cout << p1->second << "\n";
   // 28: p2 = swap_pair(p1)
-  p2 = swap_pair<tpy::BigInt, std::string_view>((*p1));
+  static Pair<std::string_view, tpy::BigInt> __global_slot_2 = swap_pair<tpy::BigInt, std::string_view>((*p1));
+  p2 = &__global_slot_2;
   // 29: print(p2.first)
   std::cout << p2->first << "\n";
   // 30: print(p2.second)

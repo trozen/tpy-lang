@@ -3,7 +3,7 @@
 
 namespace tpy_user::mypackage::utils {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 1: def helper() -> None:
 void helper() {

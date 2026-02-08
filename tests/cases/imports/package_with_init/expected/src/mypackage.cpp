@@ -3,9 +3,9 @@
 
 namespace tpy_user::mypackage {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 3: CONST: Int32 = Int32(42)
-tpy::Global<int32_t> CONST;
+int32_t CONST{};
 
 // 5: def func() -> None:
 void func() {

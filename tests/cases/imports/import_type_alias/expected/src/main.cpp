@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 8: x: I = I(42)
-tpy::Global<int32_t> x;
+int32_t x{};
 // 9: ch: C = "x"  # Char from string literal, not constructor
-tpy::Global<char> ch;
+char ch{};
 
 // 4: def greet(n: I, c: C) -> None:
 void greet(int32_t n, char c) {
@@ -28,7 +28,7 @@ void __tpy_init() {
   // 9: ch: C = "x"  # Char from string literal, not constructor
   ch = 'x';
   // 10: greet(x, ch)
-  greet((*x), (*ch));
+  greet(x, ch);
 }
 
 } // namespace tpy_user::main

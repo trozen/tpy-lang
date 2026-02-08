@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: x: Int32 = -2147483648  # INT32_MIN
-tpy::Global<int32_t> x;
+int32_t x{};
 // 5: y: Int32 = -1
-tpy::Global<int32_t> y;
+int32_t y{};
 // 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
-tpy::Global<int32_t> z;
+int32_t z{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -23,9 +23,9 @@ void __tpy_init() {
   // 5: y: Int32 = -1
   y = -(1);
   // 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
-  z = (tpy::int32_div((*x), (*y)));
+  z = (tpy::int32_div(x, y));
   // 7: print(z)
-  std::cout << (*z) << "\n";
+  std::cout << z << "\n";
 }
 
 } // namespace tpy_user::main

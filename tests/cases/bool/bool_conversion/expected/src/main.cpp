@@ -3,25 +3,25 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: b0: Bool = bool()
-tpy::Global<bool> b0;
+bool b0{};
 // 9: b1: Bool = bool(True)
-tpy::Global<bool> b1;
+bool b1{};
 // 11: b2: Bool = bool(False)
-tpy::Global<bool> b2;
+bool b2{};
 // 15: b3: Bool = bool(Int32(0))
-tpy::Global<bool> b3;
+bool b3{};
 // 17: b4: Bool = bool(Int32(1))
-tpy::Global<bool> b4;
+bool b4{};
 // 19: b5: Bool = bool(Int32(-5))
-tpy::Global<bool> b5;
+bool b5{};
 // 23: b6: Bool = bool(0)
-tpy::Global<bool> b6;
+bool b6{};
 // 25: b7: Bool = bool(42)
-tpy::Global<bool> b7;
+bool b7{};
 // 27: b8: Bool = bool(-100)
-tpy::Global<bool> b8;
+bool b8{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -32,39 +32,39 @@ void __tpy_init() {
   // 5: b0: Bool = bool()
   b0 = false;
   // 6: print(b0)  # False
-  std::cout << tpy::print_bool((*b0)) << "\n";
+  std::cout << tpy::print_bool(b0) << "\n";
   // 9: b1: Bool = bool(True)
   b1 = true;
   // 10: print(b1)  # True
-  std::cout << tpy::print_bool((*b1)) << "\n";
+  std::cout << tpy::print_bool(b1) << "\n";
   // 11: b2: Bool = bool(False)
   b2 = false;
   // 12: print(b2)  # False
-  std::cout << tpy::print_bool((*b2)) << "\n";
+  std::cout << tpy::print_bool(b2) << "\n";
   // 15: b3: Bool = bool(Int32(0))
   b3 = (0 != 0);
   // 16: print(b3)  # False
-  std::cout << tpy::print_bool((*b3)) << "\n";
+  std::cout << tpy::print_bool(b3) << "\n";
   // 17: b4: Bool = bool(Int32(1))
   b4 = (1 != 0);
   // 18: print(b4)  # True
-  std::cout << tpy::print_bool((*b4)) << "\n";
+  std::cout << tpy::print_bool(b4) << "\n";
   // 19: b5: Bool = bool(Int32(-5))
   b5 = (-(5) != 0);
   // 20: print(b5)  # True
-  std::cout << tpy::print_bool((*b5)) << "\n";
+  std::cout << tpy::print_bool(b5) << "\n";
   // 23: b6: Bool = bool(0)
   b6 = (0 != 0);
   // 24: print(b6)  # False
-  std::cout << tpy::print_bool((*b6)) << "\n";
+  std::cout << tpy::print_bool(b6) << "\n";
   // 25: b7: Bool = bool(42)
   b7 = (42 != 0);
   // 26: print(b7)  # True
-  std::cout << tpy::print_bool((*b7)) << "\n";
+  std::cout << tpy::print_bool(b7) << "\n";
   // 27: b8: Bool = bool(-100)
   b8 = (-(100) != 0);
   // 28: print(b8)  # True
-  std::cout << tpy::print_bool((*b8)) << "\n";
+  std::cout << tpy::print_bool(b8) << "\n";
 }
 
 } // namespace tpy_user::main

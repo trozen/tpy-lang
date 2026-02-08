@@ -3,15 +3,15 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 5: x: Int32 = -42
-tpy::Global<int32_t> x;
+int32_t x{};
 // 11: y = -100
-tpy::Global<tpy::BigInt> y;
+tpy::BigInt y;
 // 15: big = int(-1000000)
-tpy::Global<tpy::BigInt> big;
+tpy::BigInt big;
 // 19: z: float = -3.14
-tpy::Global<double> z;
+double z{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -23,7 +23,7 @@ void __tpy_init() {
   // 5: x: Int32 = -42
   x = -(42);
   // 6: print(abs(x))
-  std::cout << std::abs((*x)) << "\n";
+  std::cout << std::abs(x) << "\n";
   // 7: print(abs(Int32(10)))
   std::cout << std::abs(10) << "\n";
   // 8: print(abs(Int32(0)))
@@ -31,17 +31,17 @@ void __tpy_init() {
   // 11: y = -100
   y = -(tpy::BigInt(100));
   // 12: print(abs(y))
-  std::cout << tpy::BigInt::abs((*y)) << "\n";
+  std::cout << tpy::BigInt::abs(y) << "\n";
   // 13: print(abs(99))
   std::cout << std::abs(99) << "\n";
   // 15: big = int(-1000000)
   big = tpy::BigInt(-(1000000));
   // 16: print(abs(big))
-  std::cout << tpy::BigInt::abs((*big)) << "\n";
+  std::cout << tpy::BigInt::abs(big) << "\n";
   // 19: z: float = -3.14
   z = -(3.14);
   // 20: print(abs(z))
-  std::cout << tpy::print_float(std::fabs((*z))) << "\n";
+  std::cout << tpy::print_float(std::fabs(z)) << "\n";
   // 21: print(abs(2.5))
   std::cout << tpy::print_float(std::fabs(2.5)) << "\n";
   // 22: print(abs(-0.0))

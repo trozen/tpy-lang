@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 21: def use_calc(c: Calculator) -> None:
 template<Calculator T_c>

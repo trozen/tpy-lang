@@ -5,19 +5,19 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> a;
-extern tpy::Global<int32_t> b;
-extern tpy::Global<int32_t> c;
-extern tpy::Global<int32_t> d;
-extern tpy::Global<int32_t> e;
-extern tpy::Global<tpy::BigInt> n;
-extern tpy::Global<int32_t> result1;
-extern tpy::Global<int32_t> result2;
-extern tpy::Global<int32_t> result3;
-extern tpy::Global<int32_t> result4;
-extern tpy::Global<int32_t> result5;
-extern tpy::Global<int32_t> result6;
+extern std::string_view __name__;
+extern int32_t a;
+extern int32_t b;
+extern int32_t c;
+extern int32_t d;
+extern int32_t e;
+extern tpy::BigInt n;
+extern int32_t result1;
+extern int32_t result2;
+extern int32_t result3;
+extern int32_t result4;
+extern int32_t result5;
+extern int32_t result6;
 
 int32_t takes_int32(int32_t x);
 int32_t return_as_int32(const tpy::BigInt& x);

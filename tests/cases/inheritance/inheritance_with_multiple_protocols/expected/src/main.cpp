@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 55: c = Car("Toyota", 2023, "Camry", 1500)
-tpy::Global<Car> c;
+Car* c{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -14,7 +14,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 55: c = Car("Toyota", 2023, "Camry", 1500)
-  c = Car("Toyota", 2023, "Camry", 1500);
+  static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);
+  c = &__global_slot_1;
   // 58: print(c.brand)
   std::cout << c->brand << "\n";
   // 59: print(c.year)

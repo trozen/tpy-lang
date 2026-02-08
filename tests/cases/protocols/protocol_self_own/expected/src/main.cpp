@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 19: def add_points(a: Addable, b: Addable) -> None:
 template<Addable T_a, Addable T_b>

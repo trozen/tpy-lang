@@ -3,7 +3,7 @@
 
 namespace tpy_user::utils {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 1: def get_name() -> str:
 std::string_view get_name() {

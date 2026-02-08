@@ -5,9 +5,9 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<int32_t>> global_list;
-extern tpy::Global<std::vector<tpy::BigInt>> global_inferred;
+extern std::string_view __name__;
+extern std::vector<int32_t>* global_list;
+extern std::vector<tpy::BigInt>* global_inferred;
 
 int32_t test_no_mutation();
 int32_t test_mutation();

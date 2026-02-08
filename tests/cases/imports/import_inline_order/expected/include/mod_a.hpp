@@ -6,7 +6,7 @@
 
 namespace tpy_user::mod_a {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 void func_a();
 

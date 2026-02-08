@@ -14,7 +14,7 @@ concept PairFactory = requires(T& t) {
 
 struct DefaultPairFactory;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<tpy::Comparable T>
 struct SortedPair {

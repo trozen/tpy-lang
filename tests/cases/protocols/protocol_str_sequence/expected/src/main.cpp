@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def first_char(s: Sequence[Char]) -> Char:
 template<tpy::Sequence<char> T_s>

@@ -8,10 +8,10 @@ namespace tpy_user::main {
 template<typename T> struct Container;
 template<typename T> struct Child;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<std::string_view>> items;
-extern tpy::Global<Child<std::string_view>> c;
-extern tpy::Global<std::vector<std::string_view>> val;
+extern std::string_view __name__;
+extern std::vector<std::string_view>* items;
+extern Child<std::string_view>* c;
+extern std::vector<std::string_view>* val;
 
 template<typename T>
 struct Container {

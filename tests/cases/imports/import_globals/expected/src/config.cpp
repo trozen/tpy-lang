@@ -3,9 +3,9 @@
 
 namespace tpy_user::config {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 3: MAX_VALUE: Int32 = Int32(100)
-tpy::Global<int32_t> MAX_VALUE;
+int32_t MAX_VALUE{};
 
 // 5: def get_max() -> Int32:
 int32_t get_max() {

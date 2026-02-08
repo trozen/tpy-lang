@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 template<typename A, typename B> struct Pair;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<typename A, typename B>
 struct Pair {

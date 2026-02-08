@@ -5,7 +5,7 @@
 
 namespace tpy_user::outer::utils {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 int32_t add(int32_t a, int32_t b);
 

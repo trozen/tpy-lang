@@ -7,16 +7,16 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<int32_t>> nums;
-extern tpy::Global<std::vector<int32_t>> other;
-extern tpy::Global<std::vector<Point>> points;
-extern tpy::Global<std::vector<std::vector<Point>>> nested;
-extern tpy::Global<std::vector<Point>> inner;
-extern tpy::Global<std::vector<tpy::BigInt>> src;
-extern tpy::Global<std::vector<tpy::BigInt>> copy;
-extern tpy::Global<std::array<int32_t, 3>> arr;
-extern tpy::Global<std::vector<int32_t>> from_arr;
+extern std::string_view __name__;
+extern std::vector<int32_t>* nums;
+extern std::vector<int32_t>* other;
+extern std::vector<Point>* points;
+extern std::vector<std::vector<Point>>* nested;
+extern std::vector<Point>* inner;
+extern std::vector<tpy::BigInt>* src;
+extern std::vector<tpy::BigInt>* copy;
+extern std::array<int32_t, 3>* arr;
+extern std::vector<int32_t>* from_arr;
 
 struct Point {
   int32_t x;

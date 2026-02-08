@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 2: a = 1 + 2.0
-tpy::Global<double> a;
+double a{};
 // 3: b = 3.14 * 2
-tpy::Global<double> b;
+double b{};
 // 4: c = 10 - 1.5
-tpy::Global<double> c;
+double c{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -24,11 +24,11 @@ void __tpy_init() {
   // 4: c = 10 - 1.5
   c = (static_cast<double>(tpy::BigInt(10)) - (1.5));
   // 5: print(a)
-  std::cout << tpy::print_float((*a)) << "\n";
+  std::cout << tpy::print_float(a) << "\n";
   // 6: print(b)
-  std::cout << tpy::print_float((*b)) << "\n";
+  std::cout << tpy::print_float(b) << "\n";
   // 7: print(c)
-  std::cout << tpy::print_float((*c)) << "\n";
+  std::cout << tpy::print_float(c) << "\n";
 }
 
 } // namespace tpy_user::main

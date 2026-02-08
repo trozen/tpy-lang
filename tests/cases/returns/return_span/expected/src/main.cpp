@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def get_span(arr: Array[Int32, 4]) -> Span[Int32]:
 std::span<const int32_t> get_span(std::array<int32_t, 4>& arr) {

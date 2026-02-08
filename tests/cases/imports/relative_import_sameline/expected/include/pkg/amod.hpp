@@ -5,7 +5,7 @@
 
 namespace tpy_user::pkg::amod {
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 
 void __tpy_init();

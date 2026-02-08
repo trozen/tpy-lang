@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 4: global_list: list[Int32] = [1, 2, 3]
-tpy::Global<std::vector<int32_t>> global_list;
+std::vector<int32_t>* global_list{};
 // 7: global_inferred = [10, 20, 30]
-tpy::Global<std::vector<tpy::BigInt>> global_inferred;
+std::vector<tpy::BigInt>* global_inferred{};
 
 // 10: def test_no_mutation() -> Int32:
 int32_t test_no_mutation() {
@@ -62,9 +62,11 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 4: global_list: list[Int32] = [1, 2, 3]
-  global_list = {1, 2, 3};
+  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
+  global_list = &__global_slot_1;
   // 7: global_inferred = [10, 20, 30]
-  global_inferred = {10, 20, 30};
+  static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
+  global_inferred = &__global_slot_2;
   // 37: print(global_list[0])  # 1
   std::cout << tpy::get_item((*global_list), 0) << "\n";
   // 40: print(global_inferred[1])  # 20

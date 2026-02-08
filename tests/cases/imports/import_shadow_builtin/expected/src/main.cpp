@@ -3,12 +3,12 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 3: def main():
 void main() {
   // 4:     result = custom_add(MAGIC, 8)
-  int32_t result = tpy_user::math::custom_add((*tpy_user::math::MAGIC), 8);
+  int32_t result = tpy_user::math::custom_add(tpy_user::math::MAGIC, 8);
   // 5:     print(result)
   std::cout << result << "\n";
 }

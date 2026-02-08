@@ -7,16 +7,16 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<tpy::BigInt>> nums;
-extern tpy::Global<StaticList<int32_t, 3>> sl;
-extern tpy::Global<std::vector<int32_t>> items;
-extern tpy::Global<std::vector<std::string_view>> strs;
-extern tpy::Global<std::vector<Point>> points;
-extern tpy::Global<Point> p;
-extern tpy::Global<tpy::BigInt> first_num;
-extern tpy::Global<tpy::BigInt> second_num;
-extern tpy::Global<tpy::BigInt> result;
+extern std::string_view __name__;
+extern std::vector<tpy::BigInt>* nums;
+extern StaticList<int32_t, 3>* sl;
+extern std::vector<int32_t>* items;
+extern std::vector<std::string_view>* strs;
+extern std::vector<Point>* points;
+extern Point* p;
+extern tpy::BigInt first_num;
+extern tpy::BigInt second_num;
+extern tpy::BigInt result;
 
 struct Point {
   int32_t x;

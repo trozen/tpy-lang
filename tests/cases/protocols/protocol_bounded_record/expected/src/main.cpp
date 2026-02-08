@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 25: def create_pair[T: PairFactory](factory: T, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
 template<PairFactory T>

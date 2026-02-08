@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 4: def first(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>

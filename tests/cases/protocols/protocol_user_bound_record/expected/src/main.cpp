@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 38: def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>

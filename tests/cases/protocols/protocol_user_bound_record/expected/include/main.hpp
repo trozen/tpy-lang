@@ -38,7 +38,7 @@ concept ContainerFactory = requires(T& t) {
 
 struct DefaultFactory;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<Printable T>
 struct Container {

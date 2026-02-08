@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 
 // 24: def take_int32(n: Int32) -> Int32:
 int32_t take_int32(int32_t n) {

@@ -39,7 +39,7 @@ concept WrapperMaker = requires(T& t) {
 struct DefaultWrapperMaker;
 template<WrapperMaker T> struct Container;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 template<Printable T>
 struct Wrapper {

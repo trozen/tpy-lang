@@ -5,16 +5,16 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<bool> b0;
-extern tpy::Global<bool> b1;
-extern tpy::Global<bool> b2;
-extern tpy::Global<bool> b3;
-extern tpy::Global<bool> b4;
-extern tpy::Global<bool> b5;
-extern tpy::Global<bool> b6;
-extern tpy::Global<bool> b7;
-extern tpy::Global<bool> b8;
+extern std::string_view __name__;
+extern bool b0;
+extern bool b1;
+extern bool b2;
+extern bool b3;
+extern bool b4;
+extern bool b5;
+extern bool b6;
+extern bool b7;
+extern bool b8;
 
 
 void __tpy_init();

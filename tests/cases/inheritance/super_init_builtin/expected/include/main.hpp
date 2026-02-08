@@ -7,9 +7,9 @@ namespace tpy_user::main {
 
 struct MyList;
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<std::vector<int32_t>> nums;
-extern tpy::Global<MyList> m;
+extern std::string_view __name__;
+extern std::vector<int32_t>* nums;
+extern MyList* m;
 
 struct MyList : StaticList<int32_t, 10> {
   std::string_view label;

@@ -3,11 +3,11 @@
 
 namespace tpy_user::utils {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 3: MAX: Int32 = Int32(100)
-tpy::Global<int32_t> MAX;
+int32_t MAX{};
 // 4: MIN: Int32 = Int32(1)
-tpy::Global<int32_t> MIN;
+int32_t MIN{};
 
 void __tpy_init() {
   static bool initialized = false;

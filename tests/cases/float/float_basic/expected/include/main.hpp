@@ -5,9 +5,9 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<double> x;
-extern tpy::Global<double> y;
+extern std::string_view __name__;
+extern double x;
+extern double y;
 
 
 void __tpy_init();

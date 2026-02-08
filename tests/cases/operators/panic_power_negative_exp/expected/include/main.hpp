@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<tpy::BigInt> x;
-extern tpy::Global<tpy::BigInt> y;
-extern tpy::Global<tpy::BigInt> z;
+extern std::string_view __name__;
+extern tpy::BigInt x;
+extern tpy::BigInt y;
+extern tpy::BigInt z;
 
 
 void __tpy_init();

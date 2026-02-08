@@ -14,7 +14,7 @@ concept PointFactory = requires(T& t) {
 
 struct DefaultFactory;
 
-extern tpy::Global<std::string_view> __name__;
+extern std::string_view __name__;
 
 struct Point {
   int32_t x;

@@ -7,7 +7,10 @@ Generates C++ function declarations, definitions, and global variables.
 from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
-from ..typesys import TpyType, NamedType, is_protocol_type
+from ..typesys import (
+    TpyType, NamedType, OwnType, is_protocol_type,
+    Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
+)
 from ..parse import TpyFunction, TpyVarDecl
 from ..namespace import Namespace
 from .context import module_to_cpp_namespace
@@ -119,34 +122,42 @@ class FunctionGenerator:
 
         out.write("}\n")
 
+    def _resolve_global_type(self, stmt: TpyVarDecl) -> TpyType:
+        """Resolve the type of a global variable, unwrapping Own[T] to T."""
+        if stmt.type:
+            var_type = stmt.type
+        elif stmt.init:
+            var_type = self.types.get_resolved_type(stmt.init)
+        else:
+            raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
+        if isinstance(var_type, OwnType):
+            var_type = var_type.wrapped
+        return var_type
+
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a global variable definition in source file.
 
-        Globals are wrapped in tpy::Global<T> and declared without initializers.
-        Initialization happens in __tpy_init_X() to ensure proper execution order.
+        Value-type globals are plain T, non-value-type globals are T* (nullptr).
+        Initialization happens in __tpy_init() to ensure proper execution order.
         """
         self.ctx.emit_source_comment(out, stmt.loc)
-        # Use explicit type if provided, otherwise infer from initializer
-        if stmt.type:
-            var_type = stmt.type
-        elif stmt.init:
-            var_type = self.types.get_resolved_type(stmt.init)
-        else:
-            raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
+        var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()
-        out.write(f"tpy::Global<{cpp_type}> {stmt.name};\n")
+        if var_type.is_value_type():
+            # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
+            init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType)) else ""
+            out.write(f"{cpp_type} {stmt.name}{init};\n")
+        else:
+            out.write(f"{cpp_type}* {stmt.name}{{}};\n")
 
     def gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate an extern declaration for a global variable in header file."""
-        # Use explicit type if provided, otherwise infer from initializer
-        if stmt.type:
-            var_type = stmt.type
-        elif stmt.init:
-            var_type = self.types.get_resolved_type(stmt.init)
-        else:
-            raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
+        var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()
-        out.write(f"extern tpy::Global<{cpp_type}> {stmt.name};\n")
+        if var_type.is_value_type():
+            out.write(f"extern {cpp_type} {stmt.name};\n")
+        else:
+            out.write(f"extern {cpp_type}* {stmt.name};\n")
 
     def gen_module_init_decl(self, out: TextIO) -> None:
         """Generate module init function declaration in header."""
@@ -180,9 +191,16 @@ class FunctionGenerator:
             self.ctx.var_types = {}
         # In module init, there are no local shadowing variables
         self.ctx.local_scope_names = set()
-        self.ctx.pointer_locals = set()
-        self.ctx.slots.reset()
-        self.ctx.reassigned_vars = set()
+        # Non-value-type globals use pointer model (T*) inside __tpy_init
+        if global_types:
+            self.ctx.pointer_locals = {
+                name for name, typ in global_types.items()
+                if typ and not typ.is_value_type()
+            }
+        else:
+            self.ctx.pointer_locals = set()
+        self.ctx.slots.reset(global_scope=True)
+        self.ctx.reassigned_vars = self.statements.scan_reassigned_vars(stmts)
         # Use global namespace for module init (globals are directly accessible)
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1

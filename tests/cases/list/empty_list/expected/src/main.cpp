@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 33: global_list: list[int] = []
-tpy::Global<std::vector<tpy::BigInt>> global_list;
+std::vector<tpy::BigInt>* global_list{};
 // 36: global_list2: list[Int32] = list()
-tpy::Global<std::vector<int32_t>> global_list2;
+std::vector<int32_t>* global_list2{};
 
 // 4: def test_empty_list() -> int:
 tpy::BigInt test_empty_list() {
@@ -64,9 +64,11 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 33: global_list: list[int] = []
-  global_list = std::vector<tpy::BigInt>{};
+  static std::vector<tpy::BigInt> __global_slot_1 = std::vector<tpy::BigInt>{};
+  global_list = &__global_slot_1;
   // 36: global_list2: list[Int32] = list()
-  global_list2 = std::vector<int32_t>();
+  static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
+  global_list2 = &__global_slot_2;
   // 38: print(test_empty_list())
   std::cout << test_empty_list() << "\n";
   // 39: print(test_empty_list_int32())

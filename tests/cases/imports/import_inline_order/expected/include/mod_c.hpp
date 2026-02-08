@@ -5,8 +5,8 @@
 
 namespace tpy_user::mod_c {
 
-extern tpy::Global<std::string_view> __name__;
-extern tpy::Global<int32_t> shared_value;
+extern std::string_view __name__;
+extern int32_t shared_value;
 
 
 void __tpy_init();

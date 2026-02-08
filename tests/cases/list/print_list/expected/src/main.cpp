@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-tpy::Global<std::string_view> __name__;
+std::string_view __name__;
 // 1: nums = [1, 2, 3]
-tpy::Global<std::vector<tpy::BigInt>> nums;
+std::vector<tpy::BigInt>* nums{};
 // 4: nested = [[1, 2], [3, 4]]
-tpy::Global<std::vector<std::vector<tpy::BigInt>>> nested;
+std::vector<std::vector<tpy::BigInt>>* nested{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -16,13 +16,15 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: nums = [1, 2, 3]
-  nums = {1, 2, 3};
+  static std::vector<tpy::BigInt> __global_slot_1 = {1, 2, 3};
+  nums = &__global_slot_1;
   // 2: print(nums)
   std::cout << tpy::ListPrinter((*nums)) << "\n";
   // 3: print([10, 20, 30])
   std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>{10, 20, 30}) << "\n";
   // 4: nested = [[1, 2], [3, 4]]
-  nested = {{1, 2}, {3, 4}};
+  static std::vector<std::vector<tpy::BigInt>> __global_slot_2 = {{1, 2}, {3, 4}};
+  nested = &__global_slot_2;
   // 5: print(nested)
   std::cout << tpy::ListPrinter((*nested)) << "\n";
 }
