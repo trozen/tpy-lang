@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - all expected warnings/errors should be in `# tpyc` annotation
 - handling local objects, lifetime, pointer vs reference
 - investigate other backends than c++

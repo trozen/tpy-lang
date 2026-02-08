@@ -56,7 +56,7 @@ void test_ptr_to_value_assign() {
   // 41:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 44:     p2: Point = ptr
-  Point p2 = tpy::deref_ptr(ptr);
+  Point& p2 = tpy::deref_ptr(ptr);
   // 45:     print(p2.x)
   std::cout << p2.x << "\n";
   // 46:     print(p2.y)
@@ -70,7 +70,7 @@ void test_ptr_to_value_return() {
   // 50:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 53:     p2: Point = deref_and_return(ptr)
-  Point p2 = deref_and_return(ptr);
+  Point& p2 = deref_and_return(ptr);
   // 54:     print(p2.x)
   std::cout << p2.x << "\n";
 }

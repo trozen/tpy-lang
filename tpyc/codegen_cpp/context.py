@@ -16,7 +16,7 @@ from ..typesys import (
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat, TpyCoerce, TpyBinOp,
-    TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName
+    TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess
 )
 from ..namespace import Namespace, BindingKind
 
@@ -70,6 +70,21 @@ DUNDER_TO_BINARY_OP: dict[str, str] = {
     "__and__": "&", "__or__": "|", "__xor__": "^",
     "__lshift__": "<<", "__rshift__": ">>",
 }
+
+
+class SlotState:
+    """Manages unique slot names for pointer-local stack storage."""
+
+    def __init__(self):
+        self._counter: int = 0
+
+    def next_slot(self) -> str:
+        """Return a fresh __slot_N name."""
+        self._counter += 1
+        return f"__slot_{self._counter}"
+
+    def reset(self) -> None:
+        self._counter = 0
 
 
 class TempState:
@@ -139,6 +154,11 @@ class CodeGenContext:
     # --- Temporary variable management ---
     temps: TempState = field(default_factory=TempState)
 
+    # --- Pointer-local tracking ---
+    pointer_locals: set[str] = field(default_factory=set)
+    slots: SlotState = field(default_factory=SlotState)
+    reassigned_vars: set[str] = field(default_factory=set)
+
     # --- Module-level flags ---
     _has_synthetic_name: bool = False
 
@@ -202,6 +222,72 @@ class CodeGenContext:
         # Fallback: use old tracking
         # local_scope_names contains function params and locally-declared variables
         return expr.name in self.global_names and expr.name not in self.local_scope_names
+
+    def is_pointer_local(self, expr: TpyExpr) -> bool:
+        """Check if expression is a reference to a pointer-local variable."""
+        if not isinstance(expr, TpyName):
+            return False
+        return expr.name in self.pointer_locals
+
+    def is_indirect_name(self, expr: TpyExpr) -> bool:
+        """Check if expression needs indirect access (-> / deref).
+
+        Unifies globals (Global<T>) and pointer-locals (T*) — both use
+        -> for field/method access and (*x) for value dereference.
+        """
+        return self.is_global_name(expr) or self.is_pointer_local(expr)
+
+    def is_rvalue_source(self, expr: TpyExpr) -> bool:
+        """Check if an expression produces an rvalue (needs a stack slot).
+
+        Rvalues: constructor calls, Own[T] returns, literals, binop/unop results.
+        Lvalues: variable names, field access, subscript, function returning T&.
+
+        For pointer-local init: rvalue → new slot, lvalue → take address.
+        """
+        # Names are lvalues (either pointer-locals, params, or globals)
+        if isinstance(expr, TpyName):
+            return False
+        # Field access is an lvalue
+        if isinstance(expr, TpyFieldAccess):
+            return False
+        # Subscript into containers is an lvalue (returns T&).
+        # NOTE: user-record __getitem__ currently returns const T&, so
+        # &(obj[i]) would give const T* (won't assign to T*). This will
+        # be fixed when non-const __getitem__ overloads are added.
+        if isinstance(expr, TpySubscript):
+            return False
+        # Constructor calls, literals, ops are rvalues
+        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+                             TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat,
+                             TpyBinOp, TpyUnaryOp, TpyMethodCall)):
+            return True
+        # Coercions: depends on inner expr
+        if isinstance(expr, TpyCoerce):
+            return self.is_rvalue_source(expr.expr)
+        # Function calls
+        if isinstance(expr, TpyCall):
+            # Record constructors → rvalue
+            if self.analyzer.registry.get_record(expr.func):
+                return True
+            # Generic type constructors → rvalue
+            if expr.call_type is not None:
+                return True
+            # Functions returning Own[T] → rvalue (ownership transfer)
+            if func_info := self.analyzer.registry.get_function(expr.func):
+                if isinstance(func_info.return_type, OwnType):
+                    return True
+                return False
+            # Builtin functions → rvalue
+            if self.analyzer.registry.get_builtin_function_overloads(expr.func):
+                return True
+            # copy() → rvalue
+            if expr.func in self.analyzer.imported_names:
+                module_name, func_name = self.analyzer.imported_names[expr.func]
+                if module_name == "tpy" and func_name == "copy":
+                    return True
+            return True  # Default: treat unknown calls as rvalue
+        return True  # Default: rvalue
 
     def is_temporary_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression produces a temporary (rvalue).
@@ -292,3 +378,7 @@ class CodeGenContext:
             self.local_scope_names = {pname for pname, _ in params}
         else:
             self.local_scope_names = set()
+
+        self.pointer_locals = set()
+        self.slots.reset()
+        self.reassigned_vars = set()

@@ -15,7 +15,7 @@ from ..typesys import (
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
-    TpyImport, TpySubscript, TpyStrLiteral, TpyName
+    TpyImport, TpySubscript, TpyStrLiteral, TpyName, TpyExpr
 )
 from ..namespace import Namespace
 from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
@@ -45,6 +45,29 @@ class StatementGenerator:
     def set_expressions(self, expressions: ExpressionGenerator):
         """Set expressions generator (to break circular dependency)."""
         self.expressions = expressions
+
+    def scan_reassigned_vars(self, stmts: list[TpyStmt]) -> set[str]:
+        """Pre-scan a function body to find variables that are reassigned after first declaration."""
+        declared: set[str] = set()
+        reassigned: set[str] = set()
+        self._scan_stmts(stmts, declared, reassigned)
+        return reassigned
+
+    def _scan_stmts(self, stmts: list[TpyStmt], declared: set[str], reassigned: set[str]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, TpyVarDecl):
+                if stmt.name in declared:
+                    reassigned.add(stmt.name)
+                else:
+                    declared.add(stmt.name)
+            elif isinstance(stmt, TpyAssign):
+                if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
+                    reassigned.add(stmt.target.name)
+            if isinstance(stmt, TpyIf):
+                self._scan_stmts(stmt.then_body, declared, reassigned)
+                self._scan_stmts(stmt.else_body, declared, reassigned)
+            elif isinstance(stmt, (TpyWhile, TpyFor, TpyForEach)):
+                self._scan_stmts(stmt.body, declared, reassigned)
 
     def gen_stmt(self, out: TextIO, stmt: TpyStmt) -> None:
         """Generate a statement."""
@@ -92,7 +115,11 @@ class StatementGenerator:
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
                 ret_type = self.ctx.current_return_type
-                return f"{indent}return {self.expressions.gen_expr(stmt.value, ret_type)};\n"
+                ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
+                # Dereference pointer-locals on return (T* → T&)
+                if self.ctx.is_pointer_local(stmt.value):
+                    ret_expr = f"(*{ret_expr})"
+                return f"{indent}return {ret_expr};\n"
             return f"{indent}return;\n"
         elif isinstance(stmt, TpyBreak):
             return f"{indent}break;\n"
@@ -121,80 +148,149 @@ class StatementGenerator:
             return ""  # Builtin module - no init needed
         return None
 
-    def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
-        """Generate code for a variable declaration. Returns code to write or None."""
-        # Check if variable is already declared (reassignment)
-        if stmt.name in self.ctx.declared_vars:
-            if stmt.init:
-                # For reassignment, use the existing variable's type as target
-                var_type = self.ctx.var_types.get(stmt.name)
-                init_expr = self.expressions.gen_expr(stmt.init, var_type)
-                return f"{indent}{stmt.name} = {init_expr};\n"
-            return None
+    def _needs_indirection(self, target_type: TpyType | None, name: str,
+                            init: TpyExpr | None) -> bool:
+        """Check if a variable needs indirection (T* pointer-local or T& reference).
 
-        # Determine target type for first declaration
+        Returns True when the variable is reassigned later or initialized from
+        a non-rvalue (sharing/aliasing). The caller distinguishes T* vs T&.
+        """
+        if target_type is None:
+            return False
+        if target_type.is_value_type():
+            return False
+        if self.ctx.current_ns is self.ctx.analyzer.global_ns:
+            return False
+        if name in self.ctx.reassigned_vars:
+            return True
+        if init is not None and not self.ctx.is_rvalue_source(init):
+            return True
+        return False
+
+    def _resolve_target_type(self, stmt: TpyVarDecl) -> TpyType | None:
+        """Resolve the target type for a variable declaration."""
         target_type = stmt.type
         if target_type is None and stmt.init:
-            # Check if analyzer resolved the type based on usage
             resolved_type = self.ctx.analyzer.var_types.get(id(stmt))
             if resolved_type:
                 target_type = resolved_type
             else:
                 target_type = self.ctx.analyzer.get_expr_type(stmt.init)
-                # Unwrap OwnType - it indicates ownership transfer, not variable type
                 if isinstance(target_type, OwnType):
                     target_type = target_type.wrapped
-                # Resolve IntLiteralType to BigInt for standalone variable declarations
                 if isinstance(target_type, IntLiteralType):
                     target_type = BIGINT
-                # Resolve Array[IntLiteralType] to Array[BigInt]
                 elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
                     target_type = ArrayType(BIGINT, target_type.size)
+        return target_type
+
+    def _resolve_cpp_type(self, stmt: TpyVarDecl) -> str:
+        """Resolve the C++ type string for a variable declaration."""
+        if stmt.type:
+            if self.ctx.contains_protocol_type(stmt.type):
+                return "auto"
+            return self.types.type_to_cpp(stmt.type)
+        elif stmt.init:
+            resolved_type = self.ctx.analyzer.var_types.get(id(stmt))
+            if resolved_type:
+                return self.types.type_to_cpp(resolved_type)
+            inferred_type = self.ctx.analyzer.get_expr_type(stmt.init)
+            if inferred_type is None:
+                raise CodeGenError(
+                    f"Could not infer type for variable '{stmt.name}'", loc=stmt.loc
+                )
+            if isinstance(inferred_type, IntLiteralType):
+                inferred_type = BIGINT
+            elif isinstance(inferred_type, (ArrayType, ListType, PendingListType)):
+                elem = getattr(inferred_type, 'element_type', None)
+                if isinstance(elem, IntLiteralType):
+                    if isinstance(inferred_type, ArrayType):
+                        inferred_type = ArrayType(BIGINT, inferred_type.size)
+                    else:
+                        inferred_type = ListType(BIGINT)
+            if self.ctx.contains_protocol_type(inferred_type):
+                return "auto"
+            return self.types.type_to_cpp(inferred_type)
+        raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
+
+    def _gen_pointer_local_init(self, name: str, cpp_type: str, init: 'TpyExpr',
+                                target_type: TpyType | None, indent: str) -> str:
+        """Generate pointer-local initialization code.
+
+        Classifies the source expression:
+        - rvalue → new slot + take address
+        - pointer-local name → pointer copy
+        - lvalue ref (param, subscript, field) → take address
+        """
+        from ..parse import TpyName as _TpyName
+        init_expr = self.expressions.gen_expr(init, target_type)
+
+        if self.ctx.is_rvalue_source(init):
+            slot = self.ctx.slots.next_slot()
+            return (f"{indent}{cpp_type} {slot} = {init_expr};\n"
+                    f"{indent}{cpp_type}* {name} = &{slot};\n")
+        elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
+            return f"{indent}{cpp_type}* {name} = {init_expr};\n"
+        elif self.ctx.is_global_name(init):
+            return f"{indent}{cpp_type}* {name} = &(*{init_expr});\n"
+        else:
+            # lvalue ref: param, subscript, field → take address
+            return f"{indent}{cpp_type}* {name} = &({init_expr});\n"
+
+    def _gen_pointer_local_rebind(self, name: str, cpp_type: str, init: 'TpyExpr',
+                                   target_type: TpyType | None, indent: str) -> str:
+        """Generate pointer-local rebinding code (reassignment)."""
+        from ..parse import TpyName as _TpyName
+        init_expr = self.expressions.gen_expr(init, target_type)
+
+        if self.ctx.is_rvalue_source(init):
+            slot = self.ctx.slots.next_slot()
+            return (f"{indent}{cpp_type} {slot} = {init_expr};\n"
+                    f"{indent}{name} = &{slot};\n")
+        elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
+            return f"{indent}{name} = {init_expr};\n"
+        elif self.ctx.is_global_name(init):
+            return f"{indent}{name} = &(*{init_expr});\n"
+        else:
+            return f"{indent}{name} = &({init_expr});\n"
+
+    def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
+        """Generate code for a variable declaration. Returns code to write or None."""
+        # Check if variable is already declared (reassignment)
+        if stmt.name in self.ctx.declared_vars:
+            if stmt.init:
+                var_type = self.ctx.var_types.get(stmt.name)
+                # Pointer-local reassignment
+                if stmt.name in self.ctx.pointer_locals:
+                    cpp_type = self.types.type_to_cpp(var_type) if var_type else "auto"
+                    return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
+                init_expr = self.expressions.gen_expr(stmt.init, var_type)
+                return f"{indent}{stmt.name} = {init_expr};\n"
+            return None
+
+        # Determine target type for first declaration
+        target_type = self._resolve_target_type(stmt)
 
         # First declaration - track the type and mark as local (shadows globals)
         self.ctx.declared_vars.add(stmt.name)
         self.ctx.local_scope_names.add(stmt.name)
         self.ctx.var_types[stmt.name] = target_type
-        # Bind to namespace for global tracking
         if self.ctx.current_ns and target_type:
             self.ctx.current_ns.bind_variable(stmt.name, target_type)
 
-        if stmt.type:
-            # Protocol types use auto in generated code (the actual type is the template param)
-            if self.ctx.contains_protocol_type(stmt.type):
-                cpp_type = "auto"
+        cpp_type = self._resolve_cpp_type(stmt)
+
+        # Indirection for non-value types in function/method scope
+        if self._needs_indirection(target_type, stmt.name, stmt.init):
+            assert stmt.init, f"indirect local '{stmt.name}' missing initializer"
+            if stmt.name in self.ctx.reassigned_vars:
+                # T* pointer-local — needs rebinding support
+                self.ctx.pointer_locals.add(stmt.name)
+                return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
             else:
-                cpp_type = self.types.type_to_cpp(stmt.type)
-        elif stmt.init:
-            # Check if analyzer resolved the type based on usage
-            resolved_type = self.ctx.analyzer.var_types.get(id(stmt))
-            if resolved_type:
-                cpp_type = self.types.type_to_cpp(resolved_type)
-            else:
-                # Use inferred type from expression
-                inferred_type = self.ctx.analyzer.get_expr_type(stmt.init)
-                if inferred_type is None:
-                    raise CodeGenError(
-                        f"Could not infer type for variable '{stmt.name}'", loc=stmt.loc
-                    )
-                # Resolve IntLiteralType to BigInt (Python semantics)
-                if isinstance(inferred_type, IntLiteralType):
-                    inferred_type = BIGINT
-                # Resolve container[IntLiteralType] to container[BigInt]
-                elif isinstance(inferred_type, (ArrayType, ListType, PendingListType)):
-                    elem = getattr(inferred_type, 'element_type', None)
-                    if isinstance(elem, IntLiteralType):
-                        if isinstance(inferred_type, ArrayType):
-                            inferred_type = ArrayType(BIGINT, inferred_type.size)
-                        else:
-                            inferred_type = ListType(BIGINT)
-                # Protocol types use auto (the actual type is the template param)
-                if self.ctx.contains_protocol_type(inferred_type):
-                    cpp_type = "auto"
-                else:
-                    cpp_type = self.types.type_to_cpp(inferred_type)
-        else:
-            raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
+                # T& reference — alias without rebinding
+                init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
+                return f"{indent}{cpp_type}& {stmt.name} = {init_expr};\n"
 
         if stmt.init:
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
@@ -211,7 +307,7 @@ class StatementGenerator:
             obj_type = self.ctx.analyzer.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
-            subscript_obj = f"(*{obj})" if self.ctx.is_global_name(stmt.target.obj) else obj
+            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
             index_expr = self.expressions.gen_index_expr(subscript_obj, stmt.target.index, index_type)
 
             # Use registry lookup for __setitem__
@@ -221,6 +317,12 @@ class StatementGenerator:
                 return f"{indent}{code};\n"
             else:
                 return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
+
+        # Pointer-local rebinding (e.g., x.field = ... where x is pointer-local handled by field access)
+        if isinstance(stmt.target, TpyName) and stmt.target.name in self.ctx.pointer_locals:
+            target_type = self.ctx.var_types.get(stmt.target.name)
+            cpp_type = self.types.type_to_cpp(target_type) if target_type else "auto"
+            return self._gen_pointer_local_rebind(stmt.target.name, cpp_type, stmt.value, target_type, indent)
 
         # Default: simple assignment
         target = self.expressions.gen_expr(stmt.target)
@@ -243,7 +345,7 @@ class StatementGenerator:
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
         if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
             # Dereference globals before .to_int32() conversion
-            if self.ctx.is_global_name(stmt.value):
+            if self.ctx.is_indirect_name(stmt.value):
                 value = f"(*{value})"
             value = f"({value}).to_int32()"
             value_type = INT32
@@ -270,7 +372,7 @@ class StatementGenerator:
         obj_type = self.types.get_resolved_type(subscript.obj)
         index_type = self.ctx.analyzer.get_expr_type(subscript.index)
         # Dereference globals for subscript access
-        subscript_obj = f"(*{obj})" if self.ctx.is_global_name(subscript.obj) else obj
+        subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(subscript.obj) else obj
         index_expr = self.expressions.gen_index_expr(subscript_obj, subscript.index, index_type or INT32)
 
         # Get element type
@@ -296,7 +398,7 @@ class StatementGenerator:
         # Special case: Int32 += BigInt should convert BigInt to Int32
         if isinstance(elem_type, Int32Type) and isinstance(value_type, BigIntType):
             # Dereference globals before .to_int32() conversion
-            if self.ctx.is_global_name(stmt.value):
+            if self.ctx.is_indirect_name(stmt.value):
                 value = f"(*{value})"
             value = f"({value}).to_int32()"
             value_type = INT32
@@ -407,9 +509,13 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
 
         # Generate C++ range-based for loop
+        # Non-value element types use auto& (reference into container, not pointer-local)
         if elem_type:
-            cpp_type = elem_type.to_cpp()
-            out.write(f"{indent}for ({cpp_type} {stmt.var} : {iterable}) {{\n")
+            if not elem_type.is_value_type():
+                out.write(f"{indent}for (auto& {stmt.var} : {iterable}) {{\n")
+            else:
+                cpp_type = elem_type.to_cpp()
+                out.write(f"{indent}for ({cpp_type} {stmt.var} : {iterable}) {{\n")
             # Track the loop variable's type for use in body expressions
             self.ctx.var_types[stmt.var] = elem_type
         else:

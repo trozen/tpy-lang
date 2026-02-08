@@ -1,0 +1,1 @@
+main.tp.py:11: error: Cannot reassign parameter 'p' of type 'Point'; assign to a new local variable instead

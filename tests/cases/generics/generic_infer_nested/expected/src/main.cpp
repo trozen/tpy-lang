@@ -21,7 +21,7 @@ void __tpy_init() {
   // 19: inner = Inner[int](42)
   inner = Inner<tpy::BigInt>(42);
   // 20: outer = Outer(inner)
-  outer = Outer<Inner<tpy::BigInt>>(inner);
+  outer = Outer<Inner<tpy::BigInt>>((*inner));
   // 21: print(outer.inner.value)
   std::cout << outer->inner.value << "\n";
   // 24: outer2 = Outer(Inner(42))

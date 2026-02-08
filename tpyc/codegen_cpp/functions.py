@@ -98,6 +98,9 @@ class FunctionGenerator:
         self.ctx.var_types = {pname: ptype for pname, ptype in func.params}
         # Track local scope names (params + local vars) that shadow globals
         self.ctx.local_scope_names = {pname for pname, _ in func.params}
+        self.ctx.pointer_locals = set()
+        self.ctx.slots.reset()
+        self.ctx.reassigned_vars = self.statements.scan_reassigned_vars(func.body)
 
         # Set up local namespace for this function
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -177,6 +180,9 @@ class FunctionGenerator:
             self.ctx.var_types = {}
         # In module init, there are no local shadowing variables
         self.ctx.local_scope_names = set()
+        self.ctx.pointer_locals = set()
+        self.ctx.slots.reset()
+        self.ctx.reassigned_vars = set()
         # Use global namespace for module init (globals are directly accessible)
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1

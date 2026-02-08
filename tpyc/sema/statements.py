@@ -15,7 +15,8 @@ from ..typesys import (
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
-    TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName
+    TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName,
+    TpyFunction,
 )
 from ..namespace import Namespace
 from ..coercions import CoercionContext
@@ -125,10 +126,13 @@ class StatementAnalyzer:
                 inner_ns = Namespace(parent=self.ctx.current_ns)
                 inner_ns.bind_variable(stmt.var, elem_type)
                 self.ctx.current_ns = inner_ns
+            # Track loop variable for reassignment checks
+            self.ctx.loop_vars.add(stmt.var)
             self.ctx.loop_depth += 1
             for s in stmt.body:
                 self.analyze_stmt(s)
             self.ctx.loop_depth -= 1
+            self.ctx.loop_vars.discard(stmt.var)
             self.ctx.current_scope = old_scope
             self.ctx.current_ns = old_ns
         elif isinstance(stmt, TpyBreak):
@@ -137,6 +141,29 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyContinue):
             if self.ctx.loop_depth == 0:
                 raise SemanticError("'continue' outside loop")
+
+    def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
+        """Error if reassigning a non-value-type param or loop variable."""
+        existing_type = self.ctx.current_scope.lookup(name)
+        if existing_type is None or existing_type.is_value_type():
+            return
+        # Check function parameters
+        func = self.ctx.current_function
+        if isinstance(func, TpyFunction):
+            for pname, ptype in func.params:
+                if pname == name and not ptype.is_value_type():
+                    raise self.ctx.error(
+                        f"Cannot reassign parameter '{name}' of type '{ptype}'; "
+                        f"assign to a new local variable instead",
+                        node
+                    )
+        # Check for-each loop variables
+        if name in self.ctx.loop_vars:
+            raise self.ctx.error(
+                f"Cannot reassign loop variable '{name}' of type '{existing_type}'; "
+                f"assign to a new local variable instead",
+                node
+            )
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
@@ -166,6 +193,10 @@ class StatementAnalyzer:
 
         # Check if this is a reassignment (variable already exists in scope)
         existing_type = self.ctx.current_scope.lookup(stmt.name)
+
+        # Disallow reassignment of non-value-type params and loop vars
+        if existing_type is not None:
+            self._check_nonvalue_rebinding(stmt.name, stmt)
 
         if stmt.init:
             # Handle empty list literal or generic type constructor with explicit type annotation
@@ -277,6 +308,11 @@ class StatementAnalyzer:
                 else:
                     var_type = init_type
         elif stmt.type:
+            if not stmt.type.is_value_type():
+                raise self.ctx.error(
+                    f"Variable '{stmt.name}' of type '{stmt.type}' must have an initializer",
+                    stmt
+                )
             var_type = stmt.type
         else:
             raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
@@ -300,6 +336,10 @@ class StatementAnalyzer:
         """Analyze an assignment."""
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
+
+        # Disallow reassignment of non-value-type params and loop vars
+        if isinstance(stmt.target, TpyName):
+            self._check_nonvalue_rebinding(stmt.target.name, stmt)
 
         # Prevent assignment to read-only types via MutableSequence protocol check
         if isinstance(stmt.target, TpySubscript):

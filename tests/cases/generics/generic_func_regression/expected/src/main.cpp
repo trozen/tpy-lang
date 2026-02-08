@@ -72,7 +72,7 @@ void __tpy_init() {
   std::vector<tpy::BigInt> __tmp_1 = {10, 20, 30};
   first_num = First<tpy::BigInt>(__tmp_1);
   // 43: second_num = First([first_num, 40, 50])
-  std::vector<tpy::BigInt> __tmp_2 = {first_num, 40, 50};
+  std::vector<tpy::BigInt> __tmp_2 = {(*first_num), 40, 50};
   second_num = First<tpy::BigInt>(__tmp_2);
   // 44: print(second_num)
   std::cout << (*second_num) << "\n";

@@ -22,7 +22,7 @@ void process_list(StaticList<Item, 16>& items) {
   // 17:     p.value = 30
   p->value = 30;
   // 20:     first: Item = items[0]
-  Item first = tpy::get_item(items, 0);
+  Item& first = tpy::get_item(items, 0);
   // 21:     items[1] = Item(first.value + 5)
   tpy::set_item(items, 1, Item((tpy::int32_add(first.value, 5))));
 }
@@ -32,7 +32,7 @@ void print_list(StaticList<Item, 16>& items) {
   // 25:     for i in range(len(items)):
   for (int32_t i = 0; i < tpy::__len__(items); ++i) {
     // 26:         item: Item = items[i]
-    Item item = tpy::get_item(items, i);
+    Item& item = tpy::get_item(items, i);
     // 27:         print(item.value)
     std::cout << item.value << "\n";
   }

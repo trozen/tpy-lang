@@ -25,7 +25,7 @@ void __tpy_init() {
   // 17: x: Int32 = 10
   x = 10;
   // 18: box32 = Box(x)
-  box32 = Box<int32_t>(x);
+  box32 = Box<int32_t>((*x));
   // 19: print(box32.value)
   std::cout << box32->value << "\n";
 }

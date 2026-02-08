@@ -35,13 +35,13 @@ void __tpy_init() {
   // 30: cptr: ConstPtr[Point] = pt
   cptr = &(*pt);
   // 33: holder = PtrHolder(ptr)
-  holder = PtrHolder<Point>(ptr);
+  holder = PtrHolder<Point>((*ptr));
   // 34: holder.ptr.x = 100
   holder->ptr->x = 100;
   // 35: print(pt.x)
   std::cout << pt->x << "\n";
   // 38: const_holder = ConstPtrHolder(cptr)
-  const_holder = ConstPtrHolder<Point>(cptr);
+  const_holder = ConstPtrHolder<Point>((*cptr));
   // 39: print(const_holder.ptr.y)
   std::cout << const_holder->ptr->y << "\n";
   // 42: const_holder2 = ConstPtrHolder(ptr)

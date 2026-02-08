@@ -55,7 +55,7 @@ class ExpressionGenerator:
         operators, function arguments). For assignment targets, use gen_expr.
         """
         result = self.gen_expr(expr, target_type)
-        if self.ctx.is_global_name(expr):
+        if self.ctx.is_indirect_name(expr):
             result = f"(*{result})"
         return result
 
@@ -94,7 +94,7 @@ class ExpressionGenerator:
                 return gen_inner
             # Coercions that call methods on the inner expression need dereferencing for globals
             if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr", "bigint_to_int32"):
-                if self.ctx.is_global_name(expr.expr):
+                if self.ctx.is_indirect_name(expr.expr):
                     gen_inner = f"(*{gen_inner})"
             return expr.coercion.codegen(gen_inner, expr.actual_type, expr.expected_type, expr.context_kind)
 
@@ -165,7 +165,7 @@ class ExpressionGenerator:
             left = self.gen_expr(expr.left)
             right = self.gen_expr(expr.right)
             # Dereference globals for .begin()/.end() calls
-            if self.ctx.is_global_name(expr.right):
+            if self.ctx.is_indirect_name(expr.right):
                 right = f"(*{right})"
             right_resolved = self.types.get_resolved_type(expr.right)
             if isinstance(right_resolved, StrType):
@@ -223,9 +223,9 @@ class ExpressionGenerator:
                 left = self.gen_expr(expr.left, param_type)
                 right = self.gen_expr(expr.right, receiver_type)
                 # Dereference globals BEFORE conversion (tpy::Global<T> needs explicit deref)
-                if self.ctx.is_global_name(expr.left):
+                if self.ctx.is_indirect_name(expr.left):
                     left = f"(*{left})"
-                if self.ctx.is_global_name(expr.right):
+                if self.ctx.is_indirect_name(expr.right):
                     right = f"(*{right})"
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                 left = self._convert_to_int32_arg(left, left_type, param_type, expr.left)
@@ -234,9 +234,9 @@ class ExpressionGenerator:
                 left = self.gen_expr(expr.left, receiver_type)
                 right = self.gen_expr(expr.right, param_type)
                 # Dereference globals BEFORE conversion (tpy::Global<T> needs explicit deref)
-                if self.ctx.is_global_name(expr.left):
+                if self.ctx.is_indirect_name(expr.left):
                     left = f"(*{left})"
-                if self.ctx.is_global_name(expr.right):
+                if self.ctx.is_indirect_name(expr.right):
                     right = f"(*{right})"
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                 right = self._convert_to_int32_arg(right, right_type, param_type, expr.right)
@@ -286,7 +286,7 @@ class ExpressionGenerator:
             return f"(!{operand})"
 
         # Dereference globals for unary operations
-        if self.ctx.is_global_name(expr.operand):
+        if self.ctx.is_indirect_name(expr.operand):
             operand = f"(*{operand})"
 
         # Use resolved unary op from sema
@@ -323,9 +323,9 @@ class ExpressionGenerator:
                            self.ctx.analyzer.registry.get_record(expr.func) is not None)
             if not is_shadowed:
                 module_name, func_name = self.ctx.analyzer.imported_names[expr.func]
-                # copy(x) from tpy - just returns x (Own[T] return type handles by-value)
+                # copy(x) from tpy - dereference pointer-locals to get the value
                 if module_name == "tpy" and func_name == "copy":
-                    return self.gen_expr(expr.args[0])
+                    return self.gen_expr_deref(expr.args[0])
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -395,18 +395,18 @@ class ExpressionGenerator:
                                     gen_args = []
                                     for a in expr.args:
                                         gen = self.gen_expr(a, expr.call_type)
-                                        if self.ctx.is_global_name(a):
+                                        if self.ctx.is_indirect_name(a):
                                             gen = f"(*{gen})"
                                         gen_args.append(gen)
                                     return self.builtins.apply_cpp_template(ctor.cpp, gen_args, type_params, expr.call_type)
             # Pass call_type as target for proper nested array brace generation
-            args = ", ".join(self.gen_expr(a, expr.call_type) for a in expr.args)
+            args = ", ".join(self.gen_expr_deref(a, expr.call_type) for a in expr.args)
             # Use qualified type name for imported records
             type_cpp = self.types.type_to_cpp(expr.call_type)
             return f"{type_cpp}({args})"
         # Check for user-defined record constructor (e.g., Point(1, 2))
         if record_info := self.ctx.analyzer.registry.get_record(expr.func):
-            args = ", ".join(self.gen_expr(a) for a in expr.args)
+            args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
             # Qualify imported records (use original name for aliases)
             if expr.func in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[expr.func]
@@ -417,7 +417,7 @@ class ExpressionGenerator:
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
-        args = ", ".join(self.gen_expr(a) for a in expr.args)
+        args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
 
         # Handle user module function calls: module.func() -> tpy_user::module::func()
         if expr.user_module_call is not None:
@@ -449,7 +449,7 @@ class ExpressionGenerator:
                 if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                     return self.builtins.gen_method_from_function_info("(*this)", expr.args, method_info)
                 obj = self.gen_expr(expr.obj)
-                method_obj = f"(*{obj})" if self.ctx.is_global_name(expr.obj) else obj
+                method_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # Handle self.method() -> just method() (inside method, implicit this)
@@ -491,7 +491,7 @@ class ExpressionGenerator:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
                 # Globals need dereferencing for method template access
-                method_obj = f"(*{obj})" if self.ctx.is_global_name(expr.obj) else obj
+                method_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # User-defined record methods may need temp handling for TypeParamRef params
@@ -518,13 +518,13 @@ class ExpressionGenerator:
                                 temp_name = self.ctx.temps.create(resolved_type, init_expr)
                                 gen_args.append(temp_name)
                             else:
-                                gen_args.append(self.gen_expr(arg))
+                                gen_args.append(self.gen_expr_deref(arg))
                         else:
-                            gen_args.append(self.gen_expr(arg))
+                            gen_args.append(self.gen_expr_deref(arg))
                     args = ", ".join(gen_args)
 
         # Use -> for globals (wrapped in tpy::Global<T>)
-        accessor = "->" if self.ctx.is_global_name(expr.obj) else "."
+        accessor = "->" if self.ctx.is_indirect_name(expr.obj) else "."
         return f"{obj}{accessor}{expr.method}({args})"
 
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
@@ -548,7 +548,7 @@ class ExpressionGenerator:
         obj = self.gen_expr(expr.obj)
         # Check if obj is a pointer type or global - use -> instead of .
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
-        is_global = self.ctx.is_global_name(expr.obj)
+        is_global = self.ctx.is_indirect_name(expr.obj)
         if obj_type and obj_type.is_pointer():
             # Global pointer needs deref first: Global<Ptr<T>> -> (*global)->field
             if is_global:
@@ -565,7 +565,7 @@ class ExpressionGenerator:
         elem_target = None
         if target_type and target_type.needs_explicit_element_target():
             elem_target = target_type.get_element_type()
-        elements = ", ".join(self.gen_expr(e, elem_target) for e in expr.elements)
+        elements = ", ".join(self.gen_expr_deref(e, elem_target) for e in expr.elements)
         literal = f"{{{elements}}}"
         # std::array of std::array needs an extra brace level
         if isinstance(elem_target, ArrayType):
@@ -601,7 +601,7 @@ class ExpressionGenerator:
                 result_type = ListType(BIGINT)
 
         # Use repeat_range for all list repeats (handles negative counts internally)
-        elements = ", ".join(self.gen_expr(e, elem_type) for e in expr.elements)
+        elements = ", ".join(self.gen_expr_deref(e, elem_type) for e in expr.elements)
         cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
         range_expr = f"tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
 
@@ -615,7 +615,7 @@ class ExpressionGenerator:
         obj_type = self.types.get_resolved_type(expr.obj)
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access
-        subscript_obj = f"(*{obj})" if self.ctx.is_global_name(expr.obj) else obj
+        subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
         index_expr = self.gen_index_expr(subscript_obj, expr.index, index_type)
 
         # Use registry lookup for __getitem__
@@ -670,7 +670,7 @@ class ExpressionGenerator:
             array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"
             return f"tpy::as_span({array_expr})"
         # gen_inner already generated, need to check if source was global
-        if self.ctx.is_global_name(expr):
+        if self.ctx.is_indirect_name(expr):
             gen_inner = f"(*{gen_inner})"
         return f"tpy::as_span({gen_inner})"
 

@@ -20,7 +20,7 @@ void __tpy_init() {
   // 24: items: list[str] = ["hello", "world"]
   items = {"hello", "world"};
   // 25: c: Child[str] = Child[str](items, Int32(42))
-  c = Child<std::string_view>(items, 42);
+  c = Child<std::string_view>((*items), 42);
   // 26: val: list[str] = c.get_value()
   val = c->get_value();
   // 27: print(val[0])

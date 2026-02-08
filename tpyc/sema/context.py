@@ -93,6 +93,7 @@ class SemanticContext:
     loop_depth: int = 0
     is_top_level: bool = False
     super_init_call: TpyMethodCall | None = None
+    loop_vars: set[str] = field(default_factory=set)
 
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
@@ -124,3 +125,4 @@ class SemanticContext:
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
         self.super_init_call = None
+        self.loop_vars.clear()

@@ -141,21 +141,21 @@ void test_ptr_to_record() {
   // 127:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 130:     copy: Point = ptr
-  Point copy = tpy::deref_ptr(ptr);
+  Point* copy = &(tpy::deref_ptr(ptr));
   // 131:     print(copy.x)  # 7
-  std::cout << copy.x << "\n";
+  std::cout << copy->x << "\n";
   // 134:     pt2: Point = Point(9, 10)
   Point pt2 = Point(9, 10);
   // 135:     ptr2: Ptr[Point] = pt2
   Point* ptr2 = &pt2;
   // 136:     copy = ptr2
-  copy = tpy::deref_ptr(ptr2);
+  copy = &(tpy::deref_ptr(ptr2));
   // 137:     print(copy.x)  # 9
-  std::cout << copy.x << "\n";
+  std::cout << copy->x << "\n";
   // 140:     pt3: Point = Point(11, 12)
   Point pt3 = Point(11, 12);
   // 141:     returned: Point = return_record_from_ptr(pt3)
-  Point returned = return_record_from_ptr(&pt3);
+  Point& returned = return_record_from_ptr(&pt3);
   // 142:     print(returned.x)  # 11
   std::cout << returned.x << "\n";
   // 145:     pt4: Point = Point(13, 14)

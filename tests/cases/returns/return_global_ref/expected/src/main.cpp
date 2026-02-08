@@ -20,7 +20,7 @@ void main() {
   // 15:     ORIGIN.y = 200
   ORIGIN->y = 200;
   // 17:     ref: Point = get_origin()
-  Point ref = get_origin();
+  Point& ref = get_origin();
   // 18:     print(ref.x)
   std::cout << ref.x << "\n";
   // 19:     print(ref.y)

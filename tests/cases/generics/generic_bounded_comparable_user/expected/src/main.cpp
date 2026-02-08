@@ -37,7 +37,7 @@ void main() {
   // 36:     print(is_less(y, x))  # False
   std::cout << tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
   // 39:     result = find_min(x, y)
-  MyInt result = find_min<MyInt>(x, y);
+  MyInt& result = find_min<MyInt>(x, y);
   // 40:     print(result.value)  # 10
   std::cout << result.value << "\n";
   // 43:     print(x == z)  # True

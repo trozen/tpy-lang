@@ -21,13 +21,13 @@ void __tpy_init() {
   // 15: x: Int32 = 10
   x = 10;
   // 16: same1 = Same(1, x)
-  same1 = Same<int32_t>(1, x);
+  same1 = Same<int32_t>(1, (*x));
   // 17: print(same1.a)
   std::cout << same1->a << "\n";
   // 18: print(same1.b)
   std::cout << same1->b << "\n";
   // 21: same2 = Same(x, 2)
-  same2 = Same<int32_t>(x, 2);
+  same2 = Same<int32_t>((*x), 2);
   // 22: print(same2.a)
   std::cout << same2->a << "\n";
   // 23: print(same2.b)

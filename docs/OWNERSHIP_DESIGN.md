@@ -1,5 +1,35 @@
 # Ownership and Lifetime Model — Design Decision
 
+## Implementation Status
+
+| Feature | Status |
+|---------|--------|
+| Pointer-local model (non-value locals are `T*`) | Done |
+| Rvalue direct move, `copy()`, init from param/element, for-each mutation, rebinding | Done |
+| Param/loop-var reassignment error (non-value types) | Done |
+| `Own[T]` return by value, basic dangling detection (return-local) | Done |
+| Copy warnings (`self.field = x`, `append(x)`, `global = x`) | TODO |
+| Move optimization (liveness analysis -> `std::move`) | TODO |
+| Loop-local escape detection | TODO |
+| Pointer provenance (`return best` from param container) | TODO |
+| `None`/nullptr for nullable pointer-locals | TODO |
+| `Ptr[T]` escape analysis (cross-function provenance) | TODO |
+| Iterator invalidation detection | TODO |
+| `Box[T]`, `Rc[T]`, user-defined value types | TODO |
+
+### Blocked test cases
+
+Tests for patterns described in this doc that can't pass yet:
+
+| Pattern | Blocked by |
+|---------|------------|
+| `find_max`: iterate list, rebind `best`, return reference | Pointer provenance — dangling check rejects `return best` |
+| `self.field = x` copy warning | Copy warnings not implemented |
+| `results.append(x)` copy warning | Copy warnings not implemented |
+| `global_var = x` copy warning | Copy warnings not implemented |
+| Loop-local escape: `saved = x` where `x` is loop-scoped | Loop-local escape detection not implemented |
+| `find() -> Point | None` returning nullable | `None`/nullable pointer-locals not implemented |
+
 ## Summary
 
 TurboPython uses a **pointer-variable model with value-storage** for ownership. Local variables are pointers to stack-allocated values, enabling shared references that match CPython's binding semantics. Persistent storage (record fields, global variables, container elements) owns values inline, eliminating lifetime tracking for stored data. No garbage collection, no reference counting, no per-access runtime overhead.
