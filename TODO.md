@@ -28,7 +28,6 @@
 - make a doc with TPy vs Python differences
 - keyword arguments
 - analysis: when an object is passed to a function by references but then copied, should we suggest passing as Own[]?
-- move escape analysis to separate module?
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)

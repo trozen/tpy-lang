@@ -5,8 +5,7 @@ Statement analysis including variable declarations, assignments, and control flo
 """
 
 from __future__ import annotations
-from contextlib import contextmanager
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
@@ -17,11 +16,11 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName,
-    TpyFieldAccess, TpyFunction, TpyCoerce, TpyExpr,
+    TpyFieldAccess, TpyFunction,
 )
-from ..namespace import Namespace
 from ..coercions import CoercionContext
-from .diagnostics import SemanticError, Scope
+from .diagnostics import SemanticError
+from .scope_tracker import ScopeTracker
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -50,50 +49,13 @@ class StatementAnalyzer:
         self.compat = compat
         self.list_tracker = list_tracker
         self.protocols = protocols
+        self.scopes = ScopeTracker(ctx, compat)
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
 
     def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
-
-    @contextmanager
-    def _loop_scope(self) -> Iterator[Scope]:
-        """Create an inner scope for a loop body and bump loop_depth."""
-        inner_scope = Scope(self.ctx.current_scope)
-        old_scope = self.ctx.current_scope
-        self.ctx.current_scope = inner_scope
-        self.ctx.loop_depth += 1
-        try:
-            yield inner_scope
-        finally:
-            self.ctx.loop_depth -= 1
-            self.ctx.current_scope = old_scope
-
-    @contextmanager
-    def _loop_var(self, scope: Scope, name: str, var_type: TpyType,
-                  depth: int, is_foreach: bool = False) -> Iterator[None]:
-        """Bind a loop variable in scope/namespace and track its depth."""
-        scope.define(name, var_type)
-        old_depth = self.ctx.var_scope_depth.get(name)
-        self.ctx.var_scope_depth[name] = depth
-        old_ns = self.ctx.current_ns
-        if self.ctx.current_ns:
-            inner_ns = Namespace(parent=self.ctx.current_ns)
-            inner_ns.bind_variable(name, var_type)
-            self.ctx.current_ns = inner_ns
-        if is_foreach:
-            self.ctx.loop_vars.add(name)
-        try:
-            yield
-        finally:
-            if is_foreach:
-                self.ctx.loop_vars.discard(name)
-            self.ctx.current_ns = old_ns
-            if old_depth is not None:
-                self.ctx.var_scope_depth[name] = old_depth
-            else:
-                self.ctx.var_scope_depth.pop(name, None)
 
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
@@ -129,29 +91,29 @@ class StatementAnalyzer:
                 self.analyze_stmt(s)
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
-            with self._loop_scope():
+            with self.scopes.loop_scope():
                 for s in stmt.body:
                     self.analyze_stmt(s)
         elif isinstance(stmt, TpyFor):
             self.expr.analyze_expr(stmt.start)
             self.expr.analyze_expr(stmt.end)
-            with self._loop_scope() as inner_scope:
-                with self._loop_var(inner_scope, stmt.var, INT32, inner_scope.depth):
+            with self.scopes.loop_scope() as inner_scope:
+                with self.scopes.loop_var(inner_scope, stmt.var, INT32, inner_scope.depth):
                     for s in stmt.body:
                         self.analyze_stmt(s)
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
             elem_type = self.list_tracker.get_iterable_element_type(iterable_type)
-            with self._loop_scope() as inner_scope:
+            with self.scopes.loop_scope() as inner_scope:
                 # For-each var references container's storage — use container's depth.
                 # For rvalue iterables (calls), C++ extends the temporary's lifetime
                 # to the for statement, but it dies when the loop ends. Use body depth
                 # so that escaping to any outer-scoped variable is caught.
                 if self.compat.is_lvalue(stmt.iterable):
-                    iter_depth = self._get_expr_scope_depth(stmt.iterable)
+                    iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                 else:
                     iter_depth = inner_scope.depth
-                with self._loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
+                with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                     for s in stmt.body:
                         self.analyze_stmt(s)
         elif isinstance(stmt, TpyBreak):
@@ -350,13 +312,7 @@ class StatementAnalyzer:
 
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
-            if self._is_scope_escape(stmt.name, stmt.init):
-                source_name = self._get_escape_source_name(stmt.init)
-                raise self.ctx.error(
-                    f"reference to '{source_name}' may outlive its storage; "
-                    f"use copy({source_name}) for a safe copy",
-                    stmt
-                )
+            self.scopes.check_escape(stmt.name, stmt.init, stmt)
         if self.ctx.current_ns:
             self.ctx.current_ns.bind_variable(stmt.name, var_type)
         # Track top-level declarations with line number for order-aware codegen
@@ -434,13 +390,7 @@ class StatementAnalyzer:
 
         # Scope escape check for assignments to named variables
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
-            if self._is_scope_escape(stmt.target.name, stmt.value):
-                source_name = self._get_escape_source_name(stmt.value)
-                raise self.ctx.error(
-                    f"reference to '{source_name}' may outlive its storage; "
-                    f"use copy({source_name}) for a safe copy",
-                    stmt
-                )
+            self.scopes.check_escape(stmt.target.name, stmt.value, stmt)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -462,39 +412,3 @@ class StatementAnalyzer:
         if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):
             stmt.resolved_binop = result
 
-    # --- Scope escape detection ---
-
-    def _get_expr_scope_depth(self, expr: TpyExpr) -> int:
-        """Get the storage scope depth for an expression's root variable."""
-        if isinstance(expr, TpyCoerce):
-            return self._get_expr_scope_depth(expr.expr)
-        if isinstance(expr, TpyName):
-            return self.ctx.var_scope_depth.get(expr.name, 0)
-        if isinstance(expr, TpyFieldAccess):
-            return self._get_expr_scope_depth(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self._get_expr_scope_depth(expr.obj)
-        # Calls, literals etc. — fresh storage, no escape
-        return 0
-
-    def _is_scope_escape(self, target_name: str, source_expr: TpyExpr) -> bool:
-        """Check if source expression references storage that may not outlive target."""
-        if self.compat.is_copy_call(source_expr):
-            return False
-        if not self.compat.is_lvalue(source_expr):
-            return False
-        target_depth = self.ctx.var_scope_depth.get(target_name, 0)
-        source_depth = self._get_expr_scope_depth(source_expr)
-        return source_depth > target_depth
-
-    def _get_escape_source_name(self, expr: TpyExpr) -> str:
-        """Extract the root variable name from an expression for error messages."""
-        if isinstance(expr, TpyCoerce):
-            return self._get_escape_source_name(expr.expr)
-        if isinstance(expr, TpyName):
-            return expr.name
-        if isinstance(expr, TpyFieldAccess):
-            return self._get_escape_source_name(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self._get_escape_source_name(expr.obj)
-        return "?"
