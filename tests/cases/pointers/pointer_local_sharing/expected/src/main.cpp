@@ -9,6 +9,7 @@ Point* g{};
 // 134: pt: Point = Point(0, 0)
 Point* pt{};
 
+// # Test 1: Local sharing — y = x makes both point to same object
 // 11: def test_local_sharing() -> None:
 void test_local_sharing() {
   // 12:     x: Point = Point(1, 2)
@@ -23,6 +24,7 @@ void test_local_sharing() {
   std::cout << y.x << "\n";
 }
 
+// # Test 2: copy() creates independent value
 // 19: def test_copy_independence() -> None:
 void test_copy_independence() {
   // 20:     x: Point = Point(10, 20)
@@ -37,6 +39,7 @@ void test_copy_independence() {
   std::cout << y.x << "\n";
 }
 
+// # Test 3: Init from param — local points to param's object
 // 27: def test_init_from_param(p: Point) -> None:
 void test_init_from_param(Point& p) {
   // 28:     local = p
@@ -47,6 +50,7 @@ void test_init_from_param(Point& p) {
   std::cout << p.x << "\n";
 }
 
+// # Test 4: Init from container element — pointer into container
 // 33: def test_init_from_element() -> None:
 void test_init_from_element() {
   // 34:     points: list[Point] = [Point(1, 1), Point(2, 2), Point(3, 3)]
@@ -59,6 +63,7 @@ void test_init_from_element() {
   std::cout << tpy::get_item(points, 0).x << "\n";
 }
 
+// # Test 5: For-each over records — loop var is auto& reference
 // 40: def test_foreach_mutation() -> None:
 void test_foreach_mutation() {
   // 41:     points: list[Point] = [Point(1, 10), Point(2, 20), Point(3, 30)]
@@ -76,6 +81,7 @@ void test_foreach_mutation() {
   std::cout << tpy::get_item(points, 2).x << "\n";
 }
 
+// # Test 6: Rebinding pointer-local to different source
 // 49: def test_rebinding() -> None:
 void test_rebinding() {
   // 50:     a: Point = Point(1, 1)
@@ -96,6 +102,7 @@ void test_rebinding() {
   std::cout << b.x << "\n";
 }
 
+// # Test 7: Rvalue append — no copy needed
 // 60: def test_rvalue_append() -> None:
 void test_rvalue_append() {
   // 61:     results: list[Point] = []
@@ -110,6 +117,7 @@ void test_rvalue_append() {
   std::cout << tpy::get_item(results, 1).x << "\n";
 }
 
+// # Test 8: Build list with copy
 // 68: def test_build_with_copy() -> None:
 void test_build_with_copy() {
   // 69:     results: list[Point] = []
@@ -130,6 +138,7 @@ void test_build_with_copy() {
   std::cout << tpy::get_item(results, 1).x << "\n";
 }
 
+// # Test 9: Init from global — local points to global's object
 // 79: def test_init_from_global() -> None:
 void test_init_from_global() {
   // 80:     local = g
@@ -140,6 +149,7 @@ void test_init_from_global() {
   std::cout << g->x << "\n";
 }
 
+// # Test 10: Rebind pointer-local to global
 // 85: def test_rebind_to_global() -> None:
 void test_rebind_to_global() {
   // 86:     a: Point = Point(1, 1)
@@ -154,6 +164,7 @@ void test_rebind_to_global() {
   std::cout << g->x << "\n";
 }
 
+// # Test 11: List sharing — lists are non-value, assignment shares
 // 93: def test_list_sharing() -> None:
 void test_list_sharing() {
   // 94:     a: list[Int32] = [1, 2, 3]
@@ -168,6 +179,7 @@ void test_list_sharing() {
   std::cout << tpy::get_item(a, 3) << "\n";
 }
 
+// # Test 12: Pointer copy chain — a→b→c, mutation through c visible in a
 // 101: def test_pointer_chain() -> None:
 void test_pointer_chain() {
   // 102:     a: Point = Point(1, 1)
@@ -194,6 +206,7 @@ void test_method_on_pointer_local() {
   std::cout << c.val << "\n";
 }
 
+// # Test 14: For-each value elements from pointer-local list
 // 123: def test_foreach_value_from_pointer_local() -> None:
 void test_foreach_value_from_pointer_local() {
   // 124:     nums: list[Int32] = [10, 20, 30]

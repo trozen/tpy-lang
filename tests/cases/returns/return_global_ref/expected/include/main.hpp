@@ -10,8 +10,11 @@ struct Point;
 extern std::string_view __name__;
 extern Point* ORIGIN;
 
+// 3: class Point:
 struct Point {
+  // 4:     x: Int32
   int32_t x;
+  // 5:     y: Int32
   int32_t y;
 
   Point() = default;

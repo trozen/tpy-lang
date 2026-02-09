@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+// # Protocol that accepts various types
+// 11: class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
     { t.get() } -> std::convertible_to<int32_t>;
@@ -15,12 +17,16 @@ struct BoxContainer;
 
 extern std::string_view __name__;
 
+// 14: class IntBox:
 struct IntBox {
+  // 15:     v: Int32
   int32_t v;
 
+  // 16:     def __init__(self, v: Int32) -> None:
   IntBox() = default;
   explicit IntBox(int32_t v) : v(v) {}
 
+  // 18:     def get(self) -> Int32:
   int32_t get() {
     // 19:         return self.v
     return this->v;
@@ -34,11 +40,16 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
   return os;
 }
 
+// # Container of boxes for subscript test
+// 22: class BoxContainer:
 struct BoxContainer {
+  // 23:     items: list[IntBox]
   std::vector<IntBox> items;
 
+  // 24:     def __init__(self) -> None:
   BoxContainer() : items({IntBox(10), IntBox(20), IntBox(30)}) {}
 
+  // 26:     def __getitem__(self, i: Int32) -> IntBox:
   const IntBox& __getitem__(int32_t i) const {
     // 27:         return self.items[i]
     return tpy::get_item(this->items, i);

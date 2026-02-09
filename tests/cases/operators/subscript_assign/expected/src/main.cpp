@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Array subscript assignment
 // 4: arr: Array[Int32, 3] = [1, 2, 3]
 std::array<int32_t, 3>* arr{};
+// # StaticList subscript assignment
 // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
 StaticList<int32_t, 4>* items{};
 

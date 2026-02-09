@@ -4,12 +4,16 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Multi-element list repetition with StaticList
 // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
 StaticList<int32_t, 8>* sl{};
+// # Multi-element with std::vector (list)
 // 10: nums: list[Int32] = [10, 20] * 2
 std::vector<int32_t>* nums{};
+// # Empty list repetition (always produces empty list)
 // 16: empty: list[Int32] = [] * 100
 std::vector<int32_t>* empty{};
+// # Negative repeat count (Python semantics: produces empty list)
 // 20: neg: list[Int32] = [1, 2, 3] * -5
 std::vector<int32_t>* neg{};
 

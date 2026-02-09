@@ -91,6 +91,11 @@ class RecordGenerator:
         # Get record info for inheritance information
         record_info = self.ctx.analyzer.registry.get_record(record.name)
 
+        # Emit class header as source comments (preceding comments + class line)
+        if record.loc:
+            self.ctx.emit_preceding_comments(out, record.loc)
+            self.ctx.emit_source_comment(out, record.loc)
+
         # Generate template prefix for generic records
         if record.type_params:
             template_header = self.protocols.gen_record_template_header(
@@ -106,6 +111,8 @@ class RecordGenerator:
 
         # Fields
         for fld in record.fields:
+            self.ctx.emit_preceding_comments(out, fld.loc, indent="  ")
+            self.ctx.emit_source_comment(out, fld.loc, indent="  ")
             cpp_type = fld.type.to_cpp()
             default = ""
             if fld.default_value is not None:
@@ -121,6 +128,8 @@ class RecordGenerator:
             inits = self._extract_field_inits(record.init_method, record)
             non_init_stmts = self._get_non_init_stmts(record.init_method, record)
 
+            self.ctx.emit_preceding_comments(out, record.init_method.loc, indent="  ")
+            self.ctx.emit_source_comment(out, record.init_method.loc, indent="  ")
             if has_params:
                 # Generate default constructor for C++ compatibility
                 out.write(f"  {record.name}() = default;\n")

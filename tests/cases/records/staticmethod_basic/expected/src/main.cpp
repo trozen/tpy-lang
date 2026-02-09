@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Call static method via instance (also valid)
 // 26: c = Counter(100)
 Counter* c{};
 

@@ -12,18 +12,24 @@ extern std::string_view __name__;
 extern Dog* d;
 extern Animal* a;
 
+// 3: class Animal:
 struct Animal {
+  // 4:     name: str
   std::string_view name;
+  // 5:     age: Int32
   int32_t age;
 
+  // 7:     def __init__(self, name: str, age: Int32) -> None:
   Animal() = default;
   explicit Animal(std::string_view name, int32_t age) : name(name), age(age) {}
 
+  // 11:     def speak(self) -> str:
   std::string_view speak() {
     // 12:         return "..."
     return "...";
   }
 
+  // 14:     def describe(self) -> str:
   std::string_view describe() {
     // 15:         return self.name
     return this->name;
@@ -39,9 +45,12 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
   return os;
 }
 
+// 18: class Dog(Animal):
 struct Dog : Animal {
+  // 19:     breed: str
   std::string_view breed;
 
+  // 21:     def __init__(self, name: str, age: Int32, breed: str) -> None:
   Dog() = default;
   explicit Dog(std::string_view name, int32_t age, std::string_view breed) : breed(breed) {
     // 22:         self.name = name
@@ -50,6 +59,7 @@ struct Dog : Animal {
     this->age = age;
   }
 
+  // 26:     def speak(self) -> str:
   std::string_view speak() {
     // 27:         return "Woof!"
     return "Woof!";

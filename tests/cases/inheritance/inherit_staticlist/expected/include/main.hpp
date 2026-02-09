@@ -9,12 +9,16 @@ struct IntStack;
 
 extern std::string_view __name__;
 
+// 4: class IntStack(StaticList[Int32, 100]):
 struct IntStack : StaticList<int32_t, 100> {
+  // 5:     name: str
   std::string_view name;
 
+  // 7:     def __init__(self, name: str) -> None:
   IntStack() = default;
   explicit IntStack(std::string_view name) : name(name) {}
 
+  // 10:     def push(self, value: Int32) -> None:
   void push(int32_t value) {
     // 11:         self.append(value)
     (*this).push_back(value);

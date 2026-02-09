@@ -208,6 +208,45 @@ class CodeGenContext:
             source_line = self.source_lines[line_idx].rstrip()
             out.write(f"{indent}// {loc.line}: {source_line}\n")
 
+    def emit_preceding_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
+        """Emit comments and decorators preceding a definition as C++ comments.
+
+        Walks backwards from the line before loc, skipping blank lines,
+        collecting decorator lines (@...) and comment lines (#...).
+        Emits them in source order.
+        """
+        if not self.options.emit_source_comments:
+            return
+        if loc is None:
+            return
+        collected: list[str] = []
+        idx = loc.line - 2  # 0-indexed line before definition
+        # Skip blank lines between definition and block above
+        while idx >= 0 and not self.source_lines[idx].strip():
+            idx -= 1
+        # Collect decorator lines
+        while idx >= 0:
+            stripped = self.source_lines[idx].strip()
+            if stripped.startswith("@"):
+                collected.append(self.source_lines[idx].rstrip())
+                idx -= 1
+            else:
+                break
+        # Skip blank lines between decorators and comments
+        while idx >= 0 and not self.source_lines[idx].strip():
+            idx -= 1
+        # Collect comment lines
+        while idx >= 0:
+            stripped = self.source_lines[idx].strip()
+            if stripped.startswith("#"):
+                collected.append(self.source_lines[idx].rstrip())
+                idx -= 1
+            else:
+                break
+        # Emit in source order (collected is reversed)
+        for line in reversed(collected):
+            out.write(f"{indent}// {line}\n")
+
     def is_global_name(self, expr: TpyExpr) -> bool:
         """Check if expression is a reference to a global variable.
 

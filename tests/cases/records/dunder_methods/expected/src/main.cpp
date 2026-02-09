@@ -4,10 +4,13 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test list dunders
 // 10: items: list[Int32] = []
 std::vector<int32_t>* items{};
+// # Test StaticList dunders
 // 28: sl = StaticList[Int32, 10]()
 StaticList<int32_t, 10>* sl{};
+// # Test Array dunders
 // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
 std::array<int32_t, 3>* arr{};
 

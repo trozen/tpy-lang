@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test 1: Builtin protocol (Sized) method call inside generic function
 // 7: def get_length[T: Sized](item: T) -> Int32:
 template<tpy::Sized T>
 int32_t get_length(tpy::param_val_or_ref_t<T> item) {
@@ -12,6 +13,7 @@ int32_t get_length(tpy::param_val_or_ref_t<T> item) {
   return tpy::__len__(item);
 }
 
+// # Test 3: Generic function with user protocol bound
 // 15: def stringify[T: Stringable](item: T) -> str:
 template<Stringable T>
 std::string_view stringify(tpy::param_val_or_ref_t<T> item) {
@@ -19,6 +21,7 @@ std::string_view stringify(tpy::param_val_or_ref_t<T> item) {
   return item.to_str();
 }
 
+// # Test 6: Multiple type params with different bounds
 // 38: def process_both[T: Sized, U: Stringable](a: T, b: U) -> Int32:
 template<tpy::Sized T, Stringable U>
 int32_t process_both(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b) {
@@ -37,6 +40,7 @@ void use_multi(tpy::param_val_or_ref_t<T> item) {
   std::cout << item.get_value() << "\n";
 }
 
+// # Test 8: Nested bounded calls (passing bounded param to another bounded function)
 // 52: def inner_len[T: Sized](x: T) -> Int32:
 template<tpy::Sized T>
 int32_t inner_len(tpy::param_val_or_ref_t<T> x) {
@@ -58,6 +62,7 @@ T clone_it(tpy::param_val_or_ref_t<T> item) {
   return item.clone();
 }
 
+// # Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> Bool)
 // 66: def is_less[T: Comparable](a: T, b: T) -> Bool:
 template<tpy::Comparable T>
 bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {

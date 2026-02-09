@@ -18,10 +18,14 @@ extern std::vector<tpy::BigInt>* copy;
 extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* from_arr;
 
+// 11: class Point:
 struct Point {
+  // 12:     x: Int32
   int32_t x;
+  // 13:     y: Int32
   int32_t y;
 
+  // 14:     def __init__(self, x: Int32 = 0, y: Int32 = 0):
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

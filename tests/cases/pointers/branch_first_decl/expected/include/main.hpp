@@ -10,10 +10,14 @@ struct Point;
 extern std::string_view __name__;
 extern std::vector<Point>* pts;
 
+// 4: class Point:
 struct Point {
+  // 5:     x: Int32
   int32_t x;
+  // 6:     y: Int32
   int32_t y;
 
+  // 7:     def __init__(self, x: Int32, y: Int32):
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

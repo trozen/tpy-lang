@@ -11,13 +11,17 @@ struct LabeledContainer;
 extern std::string_view __name__;
 extern LabeledContainer* lc;
 
+// 3: class Container[T]:
 template<typename T>
 struct Container {
+  // 4:     value: T
   T value;
 
+  // 6:     def __init__(self, value: T) -> None:
   Container() = default;
   explicit Container(const T& value) : value(value) {}
 
+  // 9:     def get(self) -> T:
   tpy::return_val_or_ref_t<T> get() {
     // 10:         return self.value
     return this->value;
@@ -32,12 +36,16 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
   return os;
 }
 
+// 13: class LabeledContainer(Container[Int32]):
 struct LabeledContainer : Container<int32_t> {
+  // 14:     label: str
   std::string_view label;
 
+  // 16:     def __init__(self, label: str, value: Int32) -> None:
   LabeledContainer() = default;
   explicit LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
 
+  // 20:     def describe(self) -> str:
   std::string_view describe() {
     // 21:         return self.label
     return this->label;

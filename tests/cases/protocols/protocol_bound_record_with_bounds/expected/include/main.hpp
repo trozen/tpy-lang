@@ -5,17 +5,24 @@
 
 namespace tpy_user::main {
 
+// # User-defined protocol that will be a bound on Wrapper
+// 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
+// # Record that implements Printable
+// 9: class Message:
 struct Message {
+  // 10:     text: str
   std::string_view text;
 
+  // 12:     def __init__(self, text: str) -> None:
   Message() = default;
   explicit Message(std::string_view text) : text(text) {}
 
+  // 15:     def to_str(self) -> str:
   std::string_view to_str() {
     // 16:         return self.text
     return this->text;
@@ -31,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 
 template<Printable T> struct Wrapper;
 
+// # Bound protocol that references Wrapper[Message]
+// 29: class WrapperMaker(Protocol):
 template<typename T>
 concept WrapperMaker = requires(T& t) {
     { t.make(std::declval<std::string_view>()) } -> std::convertible_to<Wrapper<Message>>;
@@ -41,13 +50,18 @@ template<WrapperMaker T> struct Container;
 
 extern std::string_view __name__;
 
+// # Record with user-defined bound, referenced by a bound protocol
+// 19: class Wrapper[T: Printable]:
 template<Printable T>
 struct Wrapper {
+  // 20:     value: T
   T value;
 
+  // 22:     def __init__(self, value: T) -> None:
   Wrapper() = default;
   explicit Wrapper(const T& value) : value(value) {}
 
+  // 25:     def print_wrapped(self) -> None:
   void print_wrapped() {
     // 26:         print(self.value.to_str())
     std::cout << this->value.to_str() << "\n";
@@ -62,10 +76,13 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
   return os;
 }
 
+// # Implementation of WrapperMaker
+// 33: class DefaultWrapperMaker:
 struct DefaultWrapperMaker {
 
   DefaultWrapperMaker() = default;
 
+  // 34:     def make(self, text: str) -> Own[Wrapper[Message]]:
   Wrapper<Message> make(std::string_view text) {
     // 35:         return Wrapper(Message(text))
     return Wrapper<Message>(Message(text));
@@ -78,13 +95,18 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj
   return os;
 }
 
+// # Record that uses WrapperMaker as a bound
+// 38: class Container[T: WrapperMaker]:
 template<WrapperMaker T>
 struct Container {
+  // 39:     factory: T
   T factory;
 
+  // 41:     def __init__(self, factory: T) -> None:
   Container() = default;
   explicit Container(const T& factory) : factory(factory) {}
 
+  // 44:     def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
   Wrapper<Message> create_wrapper(std::string_view text) {
     // 45:         return self.factory.make(text)
     return this->factory.make(text);

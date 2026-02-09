@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Redefine MAX with same type (explicit annotation)
 // 9: MAX: Int32 = Int32(42)
 int32_t MAX{};
+// # Redefine MIN with different type (int/BigInt)
 // 12: MIN: int = 99
 tpy::BigInt MIN;
 

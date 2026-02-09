@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Create instance and call function
 // 26: h = Helper(42)
 Helper* h{};
 

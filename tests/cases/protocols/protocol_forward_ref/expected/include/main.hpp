@@ -5,11 +5,16 @@
 
 namespace tpy_user::main {
 
+// # Protocol defined first (required for CPython compatibility)
+// # Note: TurboPython also supports forward references where the protocol
+// # is defined after the class, but CPython doesn't allow this.
+// 7: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.__str__() } -> std::convertible_to<std::string_view>;
 };
 
+// 12: class Describable(Protocol):
 template<typename T>
 concept Describable = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string_view>;
@@ -20,18 +25,25 @@ struct Person;
 extern std::string_view __name__;
 extern Person* p;
 
+// # Class implementing protocols defined in same file
+// 18: class Person(Printable, Describable):
 struct Person {
+  // 19:     name: str
   std::string_view name;
+  // 20:     age: Int32
   int32_t age;
 
+  // 22:     def __init__(self, name: str, age: Int32) -> None:
   Person() = default;
   explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
+  // 26:     def __str__(self) -> str:
   std::string_view __str__() const {
     // 27:         return self.name
     return this->name;
   }
 
+  // 29:     def describe(self) -> str:
   std::string_view describe() {
     // 30:         return "A person"
     return "A person";

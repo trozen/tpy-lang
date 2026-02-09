@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test the 'not' logical operator
 // 5: def test_not_with_bool_literals() -> None:
 void test_not_with_bool_literals() {
   // 6:     """Test 'not' with Bool literals."""

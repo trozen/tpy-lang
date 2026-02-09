@@ -9,9 +9,12 @@ struct Box;
 
 extern std::string_view __name__;
 
+// 3: class Box:
 struct Box {
+  // 4:     items: Array[Int32, 3]
   std::array<int32_t, 3> items;
 
+  // 6:     def __init__(self, items: Array[Int32, 3]) -> None:
   Box() = default;
   explicit Box(const std::array<int32_t, 3>& items) : items(items) {}
 };

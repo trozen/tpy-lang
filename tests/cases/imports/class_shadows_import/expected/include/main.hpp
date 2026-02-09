@@ -9,9 +9,12 @@ struct time;
 
 extern std::string_view __name__;
 
+// 3: class time:
 struct time {
+  // 4:     value: int
   tpy::BigInt value;
 
+  // 6:     def __init__(self, v: int):
   time() = default;
   explicit time(const tpy::BigInt& v) : value(v) {}
 };

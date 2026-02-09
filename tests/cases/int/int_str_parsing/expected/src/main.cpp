@@ -4,18 +4,22 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Basic parsing
 // 5: a: int = int("42")
 tpy::BigInt a;
 // 8: b: int = int("-123")
 tpy::BigInt b;
 // 11: c: int = int("+456")
 tpy::BigInt c;
+// # Zero
 // 15: d: int = int("0")
 tpy::BigInt d;
+// # Leading/trailing whitespace
 // 19: e: int = int("  789  ")
 tpy::BigInt e;
 // 22: f: int = int("  -99  ")
 tpy::BigInt f;
+// # Large numbers
 // 26: g: int = int("12345678901234567890")
 tpy::BigInt g;
 // 29: h: int = int("-12345678901234567890")

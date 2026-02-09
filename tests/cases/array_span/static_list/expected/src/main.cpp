@@ -6,11 +6,14 @@ namespace tpy_user::main {
 std::string_view __name__;
 // 29: items = StaticList[Item, 16]()
 StaticList<Item, 16>* items{};
+// # Test initializer list constructor
 // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
 StaticList<int32_t, 8>* nums{};
+// # Test fill constructor via list repetition
 // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
 StaticList<int32_t, 8>* filled{};
 
+// @noalloc
 // 10: def process_list(items: StaticList[Item, 16]) -> None:
 void process_list(StaticList<Item, 16>& items) {
   // 12:     items.append(Item(10))
@@ -27,6 +30,7 @@ void process_list(StaticList<Item, 16>& items) {
   tpy::set_item(items, 1, Item((tpy::int32_add(first.value, 5))));
 }
 
+// @noalloc
 // 24: def print_list(items: StaticList[Item, 16]) -> None:
 void print_list(StaticList<Item, 16>& items) {
   // 25:     for i in range(len(items)):

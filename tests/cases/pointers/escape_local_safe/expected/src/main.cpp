@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # copy() suppresses escape error
 // 11: def loop_escape_copy_ok() -> None:
 void loop_escape_copy_ok() {
   // 12:     saved: Point = Point(0, 0)
@@ -22,6 +23,7 @@ void loop_escape_copy_ok() {
   std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// # Rvalue in loop: no escape (fresh storage)
 // 19: def loop_rvalue_ok() -> None:
 void loop_rvalue_ok() {
   // 20:     saved: Point = Point(0, 0)
@@ -37,6 +39,7 @@ void loop_rvalue_ok() {
   std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// # For-each from outer-scoped container: safe
 // 26: def foreach_outer_container() -> None:
 void foreach_outer_container() {
   // 27:     items: list[Point] = [Point(1, 2), Point(3, 4)]
@@ -53,6 +56,7 @@ void foreach_outer_container() {
   std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// # Value type: no escape concern
 // 34: def value_type_ok() -> None:
 void value_type_ok() {
   // 35:     saved: Int32 = 0
@@ -68,6 +72,9 @@ void value_type_ok() {
   std::cout << saved << "\n";
 }
 
+// # For-each var name reused: p first declared inside a loop, then reused
+// # as for-each var over an outer container. Depth should be container's (1),
+// # not the stale depth (2) from the previous loop.
 // 44: def foreach_shadow_safe() -> None:
 void foreach_shadow_safe() {
   // 45:     items: list[Point] = [Point(7, 8)]
@@ -90,6 +97,8 @@ void foreach_shadow_safe() {
   std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// # Param name reused as for-each var: param depth should be restored
+// # after the loop, not stuck at the for-each depth.
 // 56: def param_reused_as_loop_var(p: Point) -> None:
 void param_reused_as_loop_var(Point& p) {
   // 57:     items: list[Point] = [Point(5, 6)]
@@ -108,6 +117,8 @@ void param_reused_as_loop_var(Point& p) {
   std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// # Sequential loops with same var name: first loop's depth must not
+// # leak into second loop.
 // 68: def sequential_loops_same_var() -> None:
 void sequential_loops_same_var() {
   // 69:     items1: list[Point] = [Point(10, 20)]
@@ -130,6 +141,7 @@ void sequential_loops_same_var() {
   std::cout << saved->x << " " << saved->y << "\n";
 }
 
+// # Same-scope assignment: both vars at same depth, no escape.
 // 79: def same_scope_ok() -> None:
 void same_scope_ok() {
   // 80:     a: Point = Point(1, 1)
@@ -140,6 +152,8 @@ void same_scope_ok() {
   std::cout << b.x << "\n";
 }
 
+// # Lvalue-init pointer-local with rvalue rebind in loop: rebind slot
+// # is pre-declared at function scope so it outlives the loop.
 // 86: def lvalue_init_rvalue_rebind() -> None:
 void lvalue_init_rvalue_rebind() {
   // 87:     items: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
@@ -159,6 +173,8 @@ void lvalue_init_rvalue_rebind() {
   std::cout << best->x << " " << best->y << "\n";
 }
 
+// # Rvalue-init pointer-local: alias preserves original value after rebind.
+// # Uses separate init/rebind slots so alias still sees the old object.
 // 96: def rvalue_alias_preserved() -> None:
 void rvalue_alias_preserved() {
   // 97:     p: Point = Point(1, 1)
@@ -175,6 +191,7 @@ void rvalue_alias_preserved() {
   std::cout << p->x << " " << p->y << "\n";
 }
 
+// # Rvalue rebind in one if-branch only.
 // 104: def if_branch_rvalue_rebind() -> None:
 void if_branch_rvalue_rebind() {
   // 105:     p: Point = Point(1, 1)
@@ -190,6 +207,7 @@ void if_branch_rvalue_rebind() {
   std::cout << p->x << " " << p->y << "\n";
 }
 
+// # Different rvalue rebinds in if vs else.
 // 111: def if_else_rvalue_rebinds() -> None:
 void if_else_rvalue_rebinds() {
   // 112:     p: Point = Point(1, 1)
@@ -208,6 +226,7 @@ void if_else_rvalue_rebinds() {
   std::cout << p->x << " " << p->y << "\n";
 }
 
+// # Alias preserved through if-branch rvalue rebind.
 // 120: def if_alias_preserved() -> None:
 void if_alias_preserved() {
   // 121:     p: Point = Point(1, 1)
@@ -227,6 +246,7 @@ void if_alias_preserved() {
   std::cout << p->x << " " << p->y << "\n";
 }
 
+// # Rvalue rebind inside while loop.
 // 129: def while_rvalue_rebind() -> None:
 void while_rvalue_rebind() {
   // 130:     p: Point = Point(0, 0)

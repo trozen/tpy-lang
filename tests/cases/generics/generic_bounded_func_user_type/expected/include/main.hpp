@@ -9,12 +9,16 @@ struct MyContainer;
 
 extern std::string_view __name__;
 
+// 6: class MyContainer:
 struct MyContainer {
+  // 7:     data: list[Int32]
   std::vector<int32_t> data;
 
+  // 9:     def __init__(self, items: list[Int32]) -> None:
   MyContainer() = default;
   explicit MyContainer(const std::vector<int32_t>& items) : data(items) {}
 
+  // 12:     def __len__(self) -> Int32:
   int32_t __len__() const {
     // 13:         return len(self.data)
     return tpy::__len__(this->data);

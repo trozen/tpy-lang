@@ -10,13 +10,17 @@ template<typename T> struct Container;
 
 extern std::string_view __name__;
 
+// 3: class Box[T]:
 template<typename T>
 struct Box {
+  // 4:     value: T
   T value;
 
+  // 6:     def __init__(self, value: T) -> None:
   Box() = default;
   explicit Box(const T& value) : value(value) {}
 
+  // 9:     def get(self) -> T:
   tpy::return_val_or_ref_t<T> get() {
     // 10:         return self.value
     return this->value;
@@ -31,18 +35,23 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
   return os;
 }
 
+// 13: class Container[T]:
 template<typename T>
 struct Container {
+  // 14:     inner: Box[T]
   Box<T> inner;
 
+  // 16:     def __init__(self, value: T) -> None:
   Container() = default;
   explicit Container(const T& value) : inner(Box<T>(value)) {}
 
+  // 19:     def get_inner(self) -> Box[T]:
   Box<T>& get_inner() {
     // 20:         return self.inner
     return this->inner;
   }
 
+  // 22:     def get_value(self) -> T:
   tpy::return_val_or_ref_t<T> get_value() {
     // 23:         return self.inner.get()
     return this->inner.get();

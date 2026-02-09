@@ -5,17 +5,23 @@
 
 namespace tpy_user::main {
 
+// # Test 2: User-defined protocol
+// 11: class Stringable(Protocol):
 template<typename T>
 concept Stringable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
+// # Test 7: Protocol with multiple methods
+// 43: class MultiMethod(Protocol):
 template<typename T>
 concept MultiMethod = requires(T& t) {
     { t.get_name() } -> std::convertible_to<std::string_view>;
     { t.get_value() } -> std::convertible_to<int32_t>;
 };
 
+// # Test 9: User protocol with Self in signature - Self should resolve to T, not the protocol
+// 59: class Clonable(Protocol):
 template<typename T>
 concept Clonable = requires(T& t) {
     { t.clone() } -> std::convertible_to<T>;
@@ -29,11 +35,14 @@ struct Box;
 
 extern std::string_view __name__;
 
+// # Test 4: Generic class with bounded type parameter
+// 19: class Printer[T: Stringable]:
 template<Stringable T>
 struct Printer {
 
   Printer() = default;
 
+  // 20:     def get_str(self, item: T) -> str:
   std::string_view get_str(tpy::param_val_or_ref_t<T> item) {
     // 22:         return item.to_str()
     return item.to_str();
@@ -47,17 +56,23 @@ inline std::ostream& operator<<(std::ostream& os, const Printer<T>& obj) {
   return os;
 }
 
+// # Test 5: Type satisfying multiple protocols (Stringable and Sized)
+// 25: class MyValue:
 struct MyValue {
+  // 26:     val: Int32
   int32_t val;
 
+  // 28:     def __init__(self, v: Int32) -> None:
   MyValue() = default;
   explicit MyValue(int32_t v) : val(v) {}
 
+  // 31:     def to_str(self) -> str:
   std::string_view to_str() {
     // 32:         return "value"
     return "value";
   }
 
+  // 34:     def __len__(self) -> Int32:
   int32_t __len__() const {
     // 35:         return self.val
     return this->val;
@@ -71,13 +86,19 @@ inline std::ostream& operator<<(std::ostream& os, const MyValue& obj) {
   return os;
 }
 
+// # Another type satisfying Stringable
+// 70: class Point:
 struct Point {
+  // 71:     x: Int32
   int32_t x;
+  // 72:     y: Int32
   int32_t y;
 
+  // 74:     def __init__(self, x: Int32, y: Int32) -> None:
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
+  // 78:     def to_str(self) -> str:
   std::string_view to_str() {
     // 79:         return "Point"
     return "Point";
@@ -93,18 +114,25 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// # Type satisfying MultiMethod protocol
+// 82: class Widget:
 struct Widget {
+  // 83:     name: str
   std::string_view name;
+  // 84:     val: Int32
   int32_t val;
 
+  // 86:     def __init__(self, name: str, val: Int32) -> None:
   Widget() = default;
   explicit Widget(std::string_view name, int32_t val) : name(name), val(val) {}
 
+  // 90:     def get_name(self) -> str:
   std::string_view get_name() {
     // 91:         return self.name
     return this->name;
   }
 
+  // 93:     def get_value(self) -> Int32:
   int32_t get_value() {
     // 94:         return self.val
     return this->val;
@@ -120,12 +148,17 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
   return os;
 }
 
+// # Type satisfying Clonable protocol
+// 97: class Box:
 struct Box {
+  // 98:     value: Int32
   int32_t value;
 
+  // 100:     def __init__(self, v: Int32) -> None:
   Box() = default;
   explicit Box(int32_t v) : value(v) {}
 
+  // 103:     def clone(self) -> Own[Box]:
   Box clone() {
     // 104:         return Box(self.value)
     return Box(this->value);

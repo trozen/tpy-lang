@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test explicit protocol implementation
 // 24: p = Person("Alice", 30)
 Person* p{};
 

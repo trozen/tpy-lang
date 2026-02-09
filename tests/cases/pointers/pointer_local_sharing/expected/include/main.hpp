@@ -12,10 +12,14 @@ extern std::string_view __name__;
 extern Point* g;
 extern Point* pt;
 
+// 3: class Point:
 struct Point {
+  // 4:     x: Int32
   int32_t x;
+  // 5:     y: Int32
   int32_t y;
 
+  // 6:     def __init__(self, x: Int32, y: Int32):
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -29,12 +33,17 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// # Test 13: User-defined method on pointer-local — uses ->
+// 109: class Counter:
 struct Counter {
+  // 110:     val: Int32
   int32_t val;
 
+  // 111:     def __init__(self, v: Int32):
   Counter() = default;
   explicit Counter(int32_t v) : val(v) {}
 
+  // 113:     def increment(self) -> None:
   void increment() {
     // 114:         self.val = self.val + 1
     this->val = (tpy::int32_add(this->val, 1));

@@ -7,6 +7,8 @@ namespace tpy_user::main {
 
 template<tpy::Comparable T> struct SortedPair;
 
+// # Protocol that references the bounded generic record
+// 18: class PairFactory(Protocol):
 template<typename T>
 concept PairFactory = requires(T& t) {
     { t.make_pair(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<SortedPair<int32_t>>;
@@ -16,11 +18,16 @@ struct DefaultPairFactory;
 
 extern std::string_view __name__;
 
+// # A generic record with a bounded type parameter
+// 5: class SortedPair[T: Comparable]:
 template<tpy::Comparable T>
 struct SortedPair {
+  // 6:     first: T
   T first;
+  // 7:     second: T
   T second;
 
+  // 9:     def __init__(self, a: T, b: T) -> None:
   SortedPair() = default;
   explicit SortedPair(const T& a, const T& b) {
     // 10:         if a < b:
@@ -48,10 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const SortedPair<T>& obj) {
   return os;
 }
 
+// 21: class DefaultPairFactory:
 struct DefaultPairFactory {
 
   DefaultPairFactory() = default;
 
+  // 22:     def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
   SortedPair<int32_t> make_pair(int32_t a, int32_t b) {
     // 23:         return SortedPair[Int32](a, b)
     return SortedPair<int32_t>(a, b);

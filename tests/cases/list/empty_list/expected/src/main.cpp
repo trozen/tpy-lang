@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Global empty list
 // 33: global_list: list[int] = []
 std::vector<tpy::BigInt>* global_list{};
+// # Global with list() constructor
 // 36: global_list2: list[Int32] = list()
 std::vector<int32_t>* global_list2{};
 

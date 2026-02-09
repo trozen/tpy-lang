@@ -5,16 +5,20 @@
 
 namespace tpy_user::main {
 
+// # Protocols
+// 18: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.__str__() } -> std::convertible_to<std::string_view>;
 };
 
+// 23: class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(T& t) {
     { t.weight() } -> std::convertible_to<int32_t>;
 };
 
+// 28: class Describable(Protocol):
 template<typename T>
 concept Describable = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string_view>;
@@ -26,13 +30,19 @@ struct Car;
 extern std::string_view __name__;
 extern Car* c;
 
+// # Base class
+// 5: class Vehicle:
 struct Vehicle {
+  // 6:     brand: str
   std::string_view brand;
+  // 7:     year: Int32
   int32_t year;
 
+  // 9:     def __init__(self, brand: str, year: Int32) -> None:
   Vehicle() = default;
   explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
+  // 13:     def get_brand(self) -> str:
   std::string_view get_brand() {
     // 14:         return self.brand
     return this->brand;
@@ -48,10 +58,15 @@ inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
   return os;
 }
 
+// # Inherit from class AND implement multiple protocols
+// 34: class Car(Vehicle, Printable, Measurable, Describable):
 struct Car : Vehicle {
+  // 35:     model: str
   std::string_view model;
+  // 36:     car_weight: Int32
   int32_t car_weight;
 
+  // 38:     def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
   Car() = default;
   explicit Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
     // 39:         self.brand = brand
@@ -60,16 +75,19 @@ struct Car : Vehicle {
     this->year = year;
   }
 
+  // 44:     def __str__(self) -> str:
   std::string_view __str__() const {
     // 45:         return self.model
     return this->model;
   }
 
+  // 47:     def weight(self) -> Int32:
   int32_t weight() {
     // 48:         return self.car_weight
     return this->car_weight;
   }
 
+  // 50:     def describe(self) -> str:
   std::string_view describe() {
     // 51:         return "A car"
     return "A car";

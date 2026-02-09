@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Inference from int literal -> Box[int]
 // 13: box = Box(42)
 Box<tpy::BigInt>* box{};
+// # Inference from Int32 -> Box[Int32]
 // 17: x: Int32 = 10
 int32_t x{};
 // 18: box32 = Box(x)

@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test that it works
 // 34: p = Person("Alice", 30)
 Person* p{};
 

@@ -5,6 +5,10 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Outer-scoped variable rebound to rvalue inside a loop.
+// # The escape detection doesn't flag this (variable depth stays at function
+// # scope), but the rebind-slot codegen makes it safe: rvalue rebinds reuse
+// # the function-scoped slot instead of creating loop-scoped storage.
 // 14: def rebind_gap() -> None:
 void rebind_gap() {
   // 15:     p: Point = Point(0, 0)

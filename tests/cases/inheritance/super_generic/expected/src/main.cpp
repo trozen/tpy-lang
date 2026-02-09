@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test with generic parent
 // 25: lc = LabeledContainer("count", 42)
 LabeledContainer* lc{};
 

@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test creating a Dog (child class)
 // 30: d = Dog("Buddy", 3, "Golden Retriever")
 Dog* d{};
+// # Test creating an Animal (parent class)
 // 46: a = Animal("Generic", 5)
 Animal* a{};
 

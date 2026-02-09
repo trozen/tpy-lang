@@ -13,10 +13,13 @@ extern Inner<tpy::BigInt>* inner;
 extern Outer<Inner<tpy::BigInt>>* outer;
 extern Outer<Inner<tpy::BigInt>>* outer2;
 
+// 4: class Inner[T]:
 template<typename T>
 struct Inner {
+  // 5:     value: T
   T value;
 
+  // 7:     def __init__(self, value: T) -> None:
   Inner() = default;
   explicit Inner(const T& value) : value(value) {}
 };
@@ -29,10 +32,13 @@ inline std::ostream& operator<<(std::ostream& os, const Inner<T>& obj) {
   return os;
 }
 
+// 11: class Outer[T]:
 template<typename T>
 struct Outer {
+  // 12:     inner: T
   T inner;
 
+  // 14:     def __init__(self, inner: T) -> None:
   Outer() = default;
   explicit Outer(const T& inner) : inner(inner) {}
 };

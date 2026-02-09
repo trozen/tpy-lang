@@ -7,6 +7,7 @@ std::string_view __name__;
 // 104: pts: list[Point] = [Point(5, 6), Point(7, 8)]
 std::vector<Point>* pts{};
 
+// # Value type first declared in both branches
 // 13: def value_type_branches(cond: Bool) -> Int32:
 int32_t value_type_branches(bool cond) {
   // 14:     if cond:
@@ -22,6 +23,7 @@ int32_t value_type_branches(bool cond) {
   return x;
 }
 
+// # One branch declares, other terminates
 // 22: def else_returns(cond: Bool) -> Int32:
 int32_t else_returns(bool cond) {
   // 23:     if cond:
@@ -37,6 +39,7 @@ int32_t else_returns(bool cond) {
   return x;
 }
 
+// # Multiple variables first declared in same if
 // 31: def multi_var(cond: Bool) -> Int32:
 int32_t multi_var(bool cond) {
   // 32:     if cond:
@@ -57,6 +60,7 @@ int32_t multi_var(bool cond) {
   return (tpy::int32_add(a, b));
 }
 
+// # Non-value type with rvalue init (needs rebind slot)
 // 42: def rvalue_branch(cond: Bool) -> None:
 void rvalue_branch(bool cond) {
   // 43:     if cond:
@@ -73,6 +77,7 @@ void rvalue_branch(bool cond) {
   std::cout << p->x << " " << p->y << "\n";
 }
 
+// # Branch-declared variable reassigned after the if
 // 51: def reassign_after(cond: Bool) -> None:
 void reassign_after(bool cond) {
   // 52:     if cond:
@@ -90,6 +95,7 @@ void reassign_after(bool cond) {
   std::cout << x << "\n";
 }
 
+// # Nested if — inner if has branch declarations
 // 61: def nested_if(a: Bool, b: Bool) -> Int32:
 int32_t nested_if(bool a, bool b) {
   // 62:     if a:
@@ -114,6 +120,7 @@ int32_t nested_if(bool a, bool b) {
   return y;
 }
 
+// # Non-value type from param in branches (pointer-local)
 // 74: def param_branch(points: list[Point], cond: Bool) -> None:
 void param_branch(std::vector<Point>& points, bool cond) {
   // 75:     if cond:
@@ -129,6 +136,7 @@ void param_branch(std::vector<Point>& points, bool cond) {
   std::cout << p->x << " " << p->y << "\n";
 }
 
+// # Branch-declared non-value type with rvalue in one branch, lvalue in other
 // 83: def mixed_init(points: list[Point], cond: Bool) -> None:
 void mixed_init(std::vector<Point>& points, bool cond) {
   // 84:     if cond:

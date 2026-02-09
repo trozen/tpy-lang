@@ -18,10 +18,15 @@ extern tpy::BigInt first_num;
 extern tpy::BigInt second_num;
 extern tpy::BigInt result;
 
+// # Generic function with record type
+// 9: class Point:
 struct Point {
+  // 10:     x: Int32
   int32_t x;
+  // 11:     y: Int32
   int32_t y;
 
+  // 12:     def __init__(self, x: Int32, y: Int32):
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

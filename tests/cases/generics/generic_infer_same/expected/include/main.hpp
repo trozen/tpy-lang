@@ -10,11 +10,15 @@ template<typename T> struct Same;
 extern std::string_view __name__;
 extern Same<tpy::BigInt>* same;
 
+// 4: class Same[T]:
 template<typename T>
 struct Same {
+  // 5:     a: T
   T a;
+  // 6:     b: T
   T b;
 
+  // 8:     def __init__(self, a: T, b: T) -> None:
   Same() = default;
   explicit Same(const T& a, const T& b) : a(a), b(b) {}
 };

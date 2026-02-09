@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Field access on loop-local: _get_expr_scope_depth follows the root
+// # object, so o.inner has the same depth as o (loop-scoped).
 // 15: def field_access_escape() -> None:
 void field_access_escape() {
   std::optional<Outer> __slot_2;

@@ -9,16 +9,21 @@ struct Counter;
 
 extern std::string_view __name__;
 
+// 35: class Counter:
 struct Counter {
+  // 36:     value: Int32
   int32_t value;
 
+  // 38:     def __init__(self, v: Int32) -> None:
   Counter() = default;
   explicit Counter(int32_t v) : value(v) {}
 
+  // 41:     def do_nothing(self) -> None:
   void do_nothing() {
     // 42:         pass
   }
 
+  // 44:     def maybe_increment(self, flag: Int32) -> None:
   void maybe_increment(int32_t flag) {
     // 45:         if flag > 0:
     if ((flag > 0)) {

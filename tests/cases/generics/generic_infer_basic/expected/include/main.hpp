@@ -12,10 +12,13 @@ extern Box<tpy::BigInt>* box;
 extern int32_t x;
 extern Box<int32_t>* box32;
 
+// 5: class Box[T]:
 template<typename T>
 struct Box {
+  // 6:     value: T
   T value;
 
+  // 8:     def __init__(self, value: T) -> None:
   Box() = default;
   explicit Box(const T& value) : value(value) {}
 };

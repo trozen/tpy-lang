@@ -4,21 +4,28 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Case 1: Pure literals (BigInt by default)
 // 4: pure_literals = [1, 2, 3]
 std::vector<tpy::BigInt>* pure_literals{};
+// # Case 2: Int32 constructor in list forces Int32 element type
 // 8: mixed_int32 = [Int32(1), 2, 3]
 std::vector<int32_t>* mixed_int32{};
+// # Case 3: Literal first, then Int32 - should infer Int32
 // 12: mixed_int32_rev = [1, Int32(2), 3]
 std::vector<int32_t>* mixed_int32_rev{};
+// # Case 4: Explicit list[Int32] annotation
 // 16: annotated_int32: list[Int32] = [10, 20, 30]
 std::vector<int32_t>* annotated_int32{};
+// # Case 5: Explicit list[int] annotation (BigInt)
 // 20: annotated_bigint: list[int] = [100, 200, 300]
 std::vector<tpy::BigInt>* annotated_bigint{};
+// # Must annotate or use Int32 constructor for Span[Int32] compatibility
 // 38: global_for_span: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* global_for_span{};
 // 55: bigint_list = [1000, 2000, 3000]
 std::vector<tpy::BigInt>* bigint_list{};
 
+// # Case 6: Local variable with Int32 element
 // 24: def local_mixed() -> Int32:
 int32_t local_mixed() {
   // 25:     data = [Int32(5), 6, 7]
@@ -27,6 +34,7 @@ int32_t local_mixed() {
   return data[2];
 }
 
+// # Case 7: Passing to Span[Int32] param requires Int32 elements
 // 31: def sum_span(nums: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> nums) {
   // 32:     total: Int32 = 0
@@ -40,6 +48,7 @@ int32_t sum_span(std::span<const int32_t> nums) {
   return total;
 }
 
+// # Case 8: Local list passed to Span[Int32] infers Int32
 // 42: def test_local_span() -> Int32:
 int32_t test_local_span() {
   // 43:     local_data = [4, 5, 6]  # Inferred as Int32 when passed to Span[Int32]
@@ -48,6 +57,7 @@ int32_t test_local_span() {
   return sum_span(tpy::as_span(local_data));
 }
 
+// # Case 9: Span[int] (BigInt span)
 // 49: def sum_span_bigint(nums: Span[int]) -> int:
 tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
   // 50:     total: int = 0

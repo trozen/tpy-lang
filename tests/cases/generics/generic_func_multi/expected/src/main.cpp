@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Inference from arguments
 // 23: p1 = create_pair(10, "hello")
 Pair<tpy::BigInt, std::string_view>* p1{};
+// # Swap pair
 // 28: p2 = swap_pair(p1)
 Pair<std::string_view, tpy::BigInt>* p2{};
 

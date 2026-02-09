@@ -4,10 +4,13 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Inference from list[int]
 // 14: nums = [10, 20, 30]
 std::vector<tpy::BigInt>* nums{};
+// # Inference from list[str]
 // 19: words = ["hello", "world"]
 std::vector<std::string_view>* words{};
+// # Inference from list[Int32]
 // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
 std::vector<int32_t>* vals{};
 

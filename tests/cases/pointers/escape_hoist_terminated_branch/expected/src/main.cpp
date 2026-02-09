@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # The lvalue branch terminates (continue), so only the rvalue path
+// # reaches the escape point. Hoisting is safe.
 // 12: def terminated_branch() -> None:
 void terminated_branch() {
   std::optional<Point> __slot_2;

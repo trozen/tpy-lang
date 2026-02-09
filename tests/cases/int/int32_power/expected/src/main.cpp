@@ -4,12 +4,16 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Basic power
 // 5: x: Int32 = 2
 int32_t x{};
+// # Power with literal exponent
 // 9: y: Int32 = 3
 int32_t y{};
+// # Power of 0
 // 13: z: Int32 = 5
 int32_t z{};
+// # Negative base
 // 20: n: Int32 = -2
 int32_t n{};
 

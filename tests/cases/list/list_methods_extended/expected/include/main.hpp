@@ -9,9 +9,12 @@ struct Item;
 
 extern std::string_view __name__;
 
+// 229: class Item:
 struct Item {
+  // 230:     value: Int32
   int32_t value;
 
+  // 232:     def __init__(self, v: Int32):
   Item() = default;
   explicit Item(int32_t v) : value(v) {}
 };

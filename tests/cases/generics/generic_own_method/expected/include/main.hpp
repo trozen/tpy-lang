@@ -9,13 +9,17 @@ template<typename T> struct Box;
 
 extern std::string_view __name__;
 
+// 4: class Box[T]:
 template<typename T>
 struct Box {
+  // 5:     value: T
   T value;
 
+  // 7:     def __init__(self, value: T) -> None:
   Box() = default;
   explicit Box(const T& value) : value(value) {}
 
+  // 10:     def take(self) -> Own[T]:
   T take() {
     // 11:         return copy(self.value)
     return this->value;

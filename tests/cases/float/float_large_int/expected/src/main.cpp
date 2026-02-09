@@ -4,12 +4,14 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test converting large floats to int (requires GMP, not int64)
 // 2: a = int(1e18)  # Within int64 range
 tpy::BigInt a;
 // 3: b = int(1e50)  # Way beyond int64 range
 tpy::BigInt b;
 // 4: c = int(-1e50)  # Negative large value
 tpy::BigInt c;
+// # Also test that truncation toward zero works
 // 11: d = int(1.9e20)
 tpy::BigInt d;
 // 12: e = int(-1.9e20)

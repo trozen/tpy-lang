@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test 'pass' statement in various contexts
 // 5: def empty_function() -> None:
 void empty_function() {
   // 6:     pass

@@ -4,10 +4,12 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Type inferred from list[Int32]
 // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
 std::vector<int32_t>* nums32{};
 // 11: result: Int32 = first(nums32)
 int32_t result{};
+// # Type inferred from list[int]
 // 15: nums: list[int] = [10, 20, 30]
 std::vector<tpy::BigInt>* nums{};
 // 16: result2: int = first(nums)

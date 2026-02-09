@@ -6,10 +6,14 @@ namespace tpy_user::main {
 std::string_view __name__;
 // 15: ml: MyList = MyList("test")
 MyList* ml{};
+// # Test pop() with no args - should remove and return last element
 // 22: last: Int32 = ml.pop()
 int32_t last{};
+// # Test pop(index) - should remove and return element at index
+// # This was failing before the fix: "expects 0 arguments, got 1"
 // 27: first: Int32 = ml.pop(0)
 int32_t first{};
+// # Also test that regular list pop overloads work (sanity check)
 // 36: items: list[Int32] = [1, 2, 3, 4, 5]
 std::vector<int32_t>* items{};
 

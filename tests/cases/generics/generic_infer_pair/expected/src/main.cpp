@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Inference from int, str -> Pair[int, str]
 // 14: pair = Pair(1, "hello")
 Pair<tpy::BigInt, std::string_view>* pair{};
 

@@ -5,6 +5,9 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Loop-body var that is both hoisted (escapes to outer scope) and
+// # reassigned within the loop. Tests the intersection of hoisted_vars
+// # and reassigned_vars.
 // 13: def hoist_and_reassign() -> None:
 void hoist_and_reassign() {
   std::optional<Point> __slot_2;

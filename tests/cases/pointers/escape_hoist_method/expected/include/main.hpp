@@ -11,10 +11,14 @@ struct Finder;
 extern std::string_view __name__;
 extern Finder* f;
 
+// 3: class Point:
 struct Point {
+  // 4:     x: Int32
   int32_t x;
+  // 5:     y: Int32
   int32_t y;
 
+  // 6:     def __init__(self, x: Int32, y: Int32):
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -28,11 +32,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// 10: class Finder:
 struct Finder {
+  // 11:     result: Point
   Point result;
 
+  // 12:     def __init__(self) -> None:
   Finder() : result(Point(0, 0)) {}
 
+  // 15:     def find_last(self, n: Int32) -> None:
   void find_last(int32_t n) {
     std::optional<Point> __slot_2;
     // 16:         saved: Point = Point(0, 0)

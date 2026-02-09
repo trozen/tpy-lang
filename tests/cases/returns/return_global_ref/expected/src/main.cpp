@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Global variable - lives for the duration of the program
 // 8: ORIGIN: Point = Point()
 Point* ORIGIN{};
 

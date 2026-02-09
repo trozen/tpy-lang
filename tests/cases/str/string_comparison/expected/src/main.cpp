@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test string comparison operators
 // 5: def test_equality() -> None:
 void test_equality() {
   // 6:     """Test == and != for strings."""

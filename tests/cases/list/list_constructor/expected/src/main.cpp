@@ -4,12 +4,16 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Constructor without LHS annotation - type inferred from constructor
 // 19: nums = list[Int32]()
 std::vector<int32_t>* nums{};
+// # Constructor with matching LHS annotation
 // 25: other: list[Int32] = list[Int32]()
 std::vector<int32_t>* other{};
+// # List of records without annotation (tests header ordering)
 // 30: points = list[Point]()
 std::vector<Point>* points{};
+// # Nested list of records (tests recursive record check)
 // 36: nested = list[list[Point]]()
 std::vector<std::vector<Point>>* nested{};
 // 37: inner = list[Point]()
@@ -18,6 +22,7 @@ std::vector<Point>* inner{};
 std::vector<tpy::BigInt>* src{};
 // 54: copy = list(src)
 std::vector<tpy::BigInt>* copy{};
+// # Array → list conversion
 // 61: arr: Array[Int32, 3] = [5, 6, 7]
 std::array<int32_t, 3>* arr{};
 // 62: from_arr = list(arr)

@@ -9,13 +9,17 @@ template<tpy::Sized T> struct Container;
 
 extern std::string_view __name__;
 
+// 5: class Container[T: Sized]:
 template<tpy::Sized T>
 struct Container {
+  // 6:     item: T
   T item;
 
+  // 8:     def __init__(self, item: T):
   Container() = default;
   explicit Container(const T& item) : item(item) {}
 
+  // 11:     def get_item(self) -> T:
   tpy::return_val_or_ref_t<T> get_item() {
     // 12:         return self.item
     return this->item;

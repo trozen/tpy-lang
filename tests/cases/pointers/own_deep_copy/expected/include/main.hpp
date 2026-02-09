@@ -10,7 +10,9 @@ struct Container;
 
 extern std::string_view __name__;
 
+// 9: class Point:
 struct Point {
+  // 10:     x: Int32
   int32_t x;
 
   Point() = default;
@@ -23,7 +25,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// 13: class Container:
 struct Container {
+  // 14:     items: list[Point]
   std::vector<Point> items;
 
   Container() = default;

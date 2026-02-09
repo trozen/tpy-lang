@@ -4,13 +4,17 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # StaticList methods (append, len, subscript)
 // 5: sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
 StaticList<int32_t, 8>* sl{};
+// # Array methods (subscript, len)
 // 14: arr: Array[Int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
+// # list methods
 // 30: nums: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* nums{};
 
+// # Span methods (via function parameter)
 // 22: def span_ops(sp: Span[Int32]) -> None:
 void span_ops(std::span<const int32_t> sp) {
   // 23:     print(len(sp))

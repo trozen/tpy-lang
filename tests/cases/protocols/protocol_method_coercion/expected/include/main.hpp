@@ -5,6 +5,7 @@
 
 namespace tpy_user::main {
 
+// 5: class Calculator(Protocol):
 template<typename T>
 concept Calculator = requires(T& t) {
     { t.add(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
@@ -15,17 +16,22 @@ struct SimpleCalc;
 
 extern std::string_view __name__;
 
+// 9: class SimpleCalc:
 struct SimpleCalc {
+  // 10:     base: Int32
   int32_t base;
 
+  // 12:     def __init__(self, b: Int32) -> None:
   SimpleCalc() = default;
   explicit SimpleCalc(int32_t b) : base(b) {}
 
+  // 15:     def add(self, x: Int32) -> Int32:
   int32_t add(int32_t x) {
     // 16:         return self.base + x
     return (tpy::int32_add(this->base, x));
   }
 
+  // 18:     def multiply(self, x: Int32, y: Int32) -> Int32:
   int32_t multiply(int32_t x, int32_t y) {
     // 19:         return x * y
     return (tpy::int32_mul(x, y));

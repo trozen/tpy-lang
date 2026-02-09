@@ -11,9 +11,12 @@ extern std::string_view __name__;
 extern std::vector<int32_t>* nums;
 extern MyList* m;
 
+// 3: class MyList(StaticList[Int32, 10]):
 struct MyList : StaticList<int32_t, 10> {
+  // 4:     label: str
   std::string_view label;
 
+  // 6:     def __init__(self, label: str, items: Span[Int32]) -> None:
   MyList() = default;
   explicit MyList(std::string_view label, std::span<const int32_t> items) : StaticList<int32_t, 10>(items), label(label) {}
 };

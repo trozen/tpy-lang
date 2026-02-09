@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Function using protocol field
 // 78: def get_value[T: HasValue](item: T) -> Int32:
 template<HasValue T>
 int32_t get_value(tpy::param_val_or_ref_t<T> item) {
@@ -12,6 +13,7 @@ int32_t get_value(tpy::param_val_or_ref_t<T> item) {
   return item.value;
 }
 
+// # Function using protocol with multiple fields
 // 83: def sum_xy[T: HasXY](item: T) -> Int32:
 template<HasXY T>
 int32_t sum_xy(tpy::param_val_or_ref_t<T> item) {
@@ -19,6 +21,7 @@ int32_t sum_xy(tpy::param_val_or_ref_t<T> item) {
   return (tpy::int32_add(item.x, item.y));
 }
 
+// # Function using protocol with field and method
 // 88: def describe[T: Container](item: T) -> Int32:
 template<Container T>
 int32_t describe(tpy::param_val_or_ref_t<T> item) {
@@ -31,6 +34,7 @@ int32_t describe(tpy::param_val_or_ref_t<T> item) {
   return item.count;
 }
 
+// # Function using generic protocol with field
 // 95: def get_item[T: Holder[Int32]](holder: T) -> Int32:
 template<Holder<int32_t> T>
 int32_t get_item(tpy::param_val_or_ref_t<T> holder) {

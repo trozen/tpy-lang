@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test that out-of-bounds access on StaticList panics at runtime
 // 5: def test_out_of_bounds() -> None:
 void test_out_of_bounds() {
   // 6:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()

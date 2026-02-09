@@ -9,12 +9,16 @@ struct Numbers;
 
 extern std::string_view __name__;
 
+// 3: class Numbers:
 struct Numbers {
+  // 4:     data: list[Int32]
   std::vector<int32_t> data;
 
+  // 6:     def __init__(self, items: list[Int32]) -> None:
   Numbers() = default;
   explicit Numbers(const std::vector<int32_t>& items) : data(items) {}
 
+  // 9:     def sum(self) -> Int32:
   int32_t sum() {
     // 10:         total: Int32 = 0
     int32_t total = 0;

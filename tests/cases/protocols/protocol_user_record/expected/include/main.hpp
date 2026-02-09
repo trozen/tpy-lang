@@ -9,12 +9,16 @@ struct MyContainer;
 
 extern std::string_view __name__;
 
+// 4: class MyContainer:
 struct MyContainer {
+  // 5:     size: Int32
   int32_t size;
 
+  // 7:     def __init__(self, size: Int32) -> None:
   MyContainer() = default;
   explicit MyContainer(int32_t size) : size(size) {}
 
+  // 10:     def __len__(self) -> Int32:
   int32_t __len__() const {
     // 11:         return self.size
     return this->size;

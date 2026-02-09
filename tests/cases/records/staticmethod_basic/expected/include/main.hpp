@@ -10,22 +10,30 @@ struct Counter;
 extern std::string_view __name__;
 extern Counter* c;
 
+// 4: class Counter:
 struct Counter {
+  // 5:     value: Int32
   int32_t value;
 
+  // 7:     def __init__(self, start: Int32):
   Counter() = default;
   explicit Counter(int32_t start) : value(start) {}
 
+  //     @staticmethod
+  // 11:     def zero() -> Int32:
   static int32_t zero() {
     // 12:         return 0
     return 0;
   }
 
+  //     @staticmethod
+  // 15:     def add(a: Int32, b: Int32) -> Int32:
   static int32_t add(int32_t a, int32_t b) {
     // 16:         return a + b
     return (tpy::int32_add(a, b));
   }
 
+  // 18:     def get(self) -> Int32:
   int32_t get() {
     // 19:         return self.value
     return this->value;

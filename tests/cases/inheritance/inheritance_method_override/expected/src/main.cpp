@@ -4,10 +4,12 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test method override
 // 41: s = Square(5)
 Square* s{};
 // 45: r = Rectangle(4, 6)
 Rectangle* r{};
+// # Test parent class still works
 // 50: base = Shape("Base")
 Shape* base{};
 

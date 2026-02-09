@@ -12,27 +12,34 @@ extern Counter* c;
 extern int32_t a;
 extern int32_t b;
 
+// 3: class Counter:
 struct Counter {
+  // 4:     value: Int32
   int32_t value;
 
+  // 6:     def __init__(self, start: Int32):
   Counter() = default;
   explicit Counter(int32_t start) : value(start) {}
 
+  // 9:     def increment(self) -> None:
   void increment() {
     // 10:         self.value = self.value + 1
     this->value = (tpy::int32_add(this->value, 1));
   }
 
+  // 12:     def add(self, n: Int32) -> None:
   void add(int32_t n) {
     // 13:         self.value = self.value + n
     this->value = (tpy::int32_add(this->value, n));
   }
 
+  // 15:     def get(self) -> Int32:
   int32_t get() {
     // 16:         return self.value
     return this->value;
   }
 
+  // 18:     def reset(self) -> None:
   void reset() {
     // 19:         self.value = 0
     this->value = 0;

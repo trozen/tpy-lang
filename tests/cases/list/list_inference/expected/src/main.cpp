@@ -4,11 +4,14 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Global with annotation -> vector (ListType)
 // 4: global_list: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* global_list{};
+// # Global without annotation -> also vector (ListType)
 // 7: global_inferred = [10, 20, 30]
 std::vector<tpy::BigInt>* global_inferred{};
 
+// # Local no mutation -> array (ArrayType)
 // 10: def test_no_mutation() -> Int32:
 int32_t test_no_mutation() {
   // 11:     local = [1, 2, 3]
@@ -17,6 +20,7 @@ int32_t test_no_mutation() {
   return (local[0]).to_int32();
 }
 
+// # Local with mutation -> vector (ListType)
 // 15: def test_mutation() -> Int32:
 int32_t test_mutation() {
   // 16:     items = [1, 2, 3]
@@ -27,6 +31,7 @@ int32_t test_mutation() {
   return tpy::__len__(items);
 }
 
+// # Passed to list param -> vector (ListType)
 // 21: def takes_list(x: list[Int32]) -> None:
 void takes_list(std::vector<int32_t>& x) {
   // 22:     x.append(42)
@@ -41,6 +46,7 @@ void test_list_param() {
   takes_list(data);
 }
 
+// # Passed to Span param -> array (ArrayType)
 // 29: def takes_span(x: Span[Int32]) -> Int32:
 int32_t takes_span(std::span<const int32_t> x) {
   // 30:     return x[0]

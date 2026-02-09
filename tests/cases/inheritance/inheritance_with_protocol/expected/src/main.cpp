@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test combined inheritance
 // 37: p = Person("Alice", 42, 30)
 Person* p{};
 

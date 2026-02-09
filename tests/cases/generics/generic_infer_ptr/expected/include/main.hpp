@@ -17,10 +17,13 @@ extern PtrHolder<Point>* holder;
 extern ConstPtrHolder<Point>* const_holder;
 extern ConstPtrHolder<Point>* const_holder2;
 
+// 5: class PtrHolder[T]:
 template<typename T>
 struct PtrHolder {
+  // 6:     ptr: Ptr[T]
   T* ptr;
 
+  // 8:     def __init__(self, ptr: Ptr[T]) -> None:
   PtrHolder() = default;
   explicit PtrHolder(T* ptr) : ptr(ptr) {}
 };
@@ -33,10 +36,13 @@ inline std::ostream& operator<<(std::ostream& os, const PtrHolder<T>& obj) {
   return os;
 }
 
+// 12: class ConstPtrHolder[T]:
 template<typename T>
 struct ConstPtrHolder {
+  // 13:     ptr: ConstPtr[T]
   const T* ptr;
 
+  // 15:     def __init__(self, ptr: ConstPtr[T]) -> None:
   ConstPtrHolder() = default;
   explicit ConstPtrHolder(const T* ptr) : ptr(ptr) {}
 };
@@ -49,8 +55,11 @@ inline std::ostream& operator<<(std::ostream& os, const ConstPtrHolder<T>& obj) 
   return os;
 }
 
+// 19: class Point:
 struct Point {
+  // 20:     x: Int32
   int32_t x;
+  // 21:     y: Int32
   int32_t y;
 
   Point() = default;

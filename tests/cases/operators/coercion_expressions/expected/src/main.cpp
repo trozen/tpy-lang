@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # --- BigInt expression -> Int32 ---
 // 49: def return_expr_as_int32(a: int, b: int) -> Int32:
 int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b) {
   // 50:     return a + b  # Expression result (BigInt) -> Int32
@@ -51,6 +52,7 @@ void test_bigint_expr_to_int32() {
   std::cout << val << "\n";
 }
 
+// # --- Field access -> Ptr ---
 // 89: def modify_via_ptr(p: Ptr[Point]) -> None:
 void modify_via_ptr(Point* p) {
   // 90:     p.x = p.x + 100

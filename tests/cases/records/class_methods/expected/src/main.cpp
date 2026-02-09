@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test __init__ with parameter
 // 22: c = Counter(100)
 Counter* c{};
+// # Test multiple print arguments
 // 36: a: Int32 = 42
 int32_t a{};
 // 37: b: Int32 = 99

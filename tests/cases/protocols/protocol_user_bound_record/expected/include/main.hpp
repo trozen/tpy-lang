@@ -5,17 +5,24 @@
 
 namespace tpy_user::main {
 
+// # User-defined protocol
+// 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
+// # Implementation of Printable
+// 9: class Message:
 struct Message {
+  // 10:     text: str
   std::string_view text;
 
+  // 12:     def __init__(self, text: str) -> None:
   Message() = default;
   explicit Message(std::string_view text) : text(text) {}
 
+  // 15:     def to_str(self) -> str:
   std::string_view to_str() {
     // 16:         return self.text
     return this->text;
@@ -31,6 +38,8 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 
 template<Printable T> struct Container;
 
+// # Protocol that references the bounded record - this is the key test
+// 29: class ContainerFactory(Protocol):
 template<typename T>
 concept ContainerFactory = requires(T& t) {
     { t.make(std::declval<std::string_view>()) } -> std::convertible_to<Container<Message>>;
@@ -40,13 +49,18 @@ struct DefaultFactory;
 
 extern std::string_view __name__;
 
+// # Record with user-defined protocol bound
+// 19: class Container[T: Printable]:
 template<Printable T>
 struct Container {
+  // 20:     value: T
   T value;
 
+  // 22:     def __init__(self, value: T) -> None:
   Container() = default;
   explicit Container(const T& value) : value(value) {}
 
+  // 25:     def print_value(self) -> None:
   void print_value() {
     // 26:         print(self.value.to_str())
     std::cout << this->value.to_str() << "\n";
@@ -61,10 +75,13 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
   return os;
 }
 
+// # Factory implementation
+// 33: class DefaultFactory:
 struct DefaultFactory {
 
   DefaultFactory() = default;
 
+  // 34:     def make(self, text: str) -> Own[Container[Message]]:
   Container<Message> make(std::string_view text) {
     // 35:         return Container(Message(text))
     return Container<Message>(Message(text));

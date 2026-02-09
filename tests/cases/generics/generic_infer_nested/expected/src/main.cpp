@@ -4,10 +4,12 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Separate lines: Inner[int] explicit, then Outer inferred
 // 19: inner = Inner[int](42)
 Inner<tpy::BigInt>* inner{};
 // 20: outer = Outer(inner)
 Outer<Inner<tpy::BigInt>>* outer{};
+// # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
 // 24: outer2 = Outer(Inner(42))
 Outer<Inner<tpy::BigInt>>* outer2{};
 

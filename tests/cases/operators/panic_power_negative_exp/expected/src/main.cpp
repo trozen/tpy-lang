@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test that negative exponent panics at runtime
 // 2: x = 2
 tpy::BigInt x;
 // 3: y = -1

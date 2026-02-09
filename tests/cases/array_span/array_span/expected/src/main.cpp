@@ -4,10 +4,13 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test 2: Array literal assigned to variable with explicit type, then passed
 // 15: nums: Array[Int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* nums{};
+// # Test 3: Array with explicit type annotation
 // 19: arr: Array[Int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
+// # Test 4: StaticList -> Span conversion
 // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
 StaticList<int32_t, 4>* items{};
 

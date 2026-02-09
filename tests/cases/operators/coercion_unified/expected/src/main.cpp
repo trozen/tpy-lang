@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # --- Helper functions that take specific types ---
 // 24: def take_int32(n: Int32) -> Int32:
 int32_t take_int32(int32_t n) {
   // 25:     return n
@@ -46,6 +47,7 @@ int32_t take_span(std::span<const int32_t> s) {
   return result;
 }
 
+// # --- BigInt -> Int32 coercion ---
 // 47: def return_bigint_as_int32() -> Int32:
 int32_t return_bigint_as_int32() {
   // 48:     big: int = 42
@@ -80,6 +82,7 @@ void test_bigint_to_int32() {
   std::cout << take_int32((big).to_int32()) << "\n";
 }
 
+// # --- Record -> Ptr coercion ---
 // 76: def test_record_to_ptr() -> None:
 void test_record_to_ptr() {
   // 77:     print("Record -> Ptr coercions:")
@@ -104,6 +107,7 @@ void test_record_to_ptr() {
   std::cout << pt3.x << "\n";
 }
 
+// # --- Record -> ConstPtr coercion ---
 // 98: def test_record_to_const_ptr() -> None:
 void test_record_to_const_ptr() {
   // 99:     print("Record -> ConstPtr coercions:")
@@ -126,6 +130,7 @@ void test_record_to_const_ptr() {
   std::cout << take_const_ptr(&pt3) << "\n";
 }
 
+// # --- Ptr -> Record coercion (dereference) ---
 // 119: def return_record_from_ptr(p: Ptr[Point]) -> Point:
 Point& return_record_from_ptr(Point* p) {
   // 120:     return p  # Ptr -> Record in return
@@ -166,6 +171,7 @@ void test_ptr_to_record() {
   std::cout << take_point(tpy::deref_ptr(ptr4)) << "\n";
 }
 
+// # --- Ptr -> ConstPtr coercion ---
 // 152: def take_const_ptr_val(p: ConstPtr[Point]) -> Int32:
 int32_t take_const_ptr_val(const Point* p) {
   // 153:     return p.x
@@ -200,6 +206,7 @@ void test_ptr_to_const_ptr() {
   std::cout << take_const_ptr_val(ptr3) << "\n";
 }
 
+// # --- StaticList -> Span coercion ---
 // 180: def test_staticlist_to_span() -> None:
 void test_staticlist_to_span() {
   // 181:     print("StaticList -> Span coercions:")
@@ -216,6 +223,7 @@ void test_staticlist_to_span() {
   std::cout << take_span(tpy::as_span(sl)) << "\n";
 }
 
+// # --- Array -> Span coercion ---
 // 194: def test_array_to_span() -> None:
 void test_array_to_span() {
   // 195:     print("Array -> Span coercions:")
@@ -226,6 +234,7 @@ void test_array_to_span() {
   std::cout << take_span(tpy::as_span(arr)) << "\n";
 }
 
+// # --- List -> Span coercion ---
 // 205: def test_list_to_span() -> None:
 void test_list_to_span() {
   // 206:     print("List -> Span coercions:")
@@ -236,6 +245,7 @@ void test_list_to_span() {
   std::cout << take_span(tpy::as_span(lst)) << "\n";
 }
 
+// # --- Chained coercions: subscript -> Ptr ---
 // 216: def test_subscript_to_ptr() -> None:
 void test_subscript_to_ptr() {
   // 217:     print("Subscript -> Ptr coercions:")

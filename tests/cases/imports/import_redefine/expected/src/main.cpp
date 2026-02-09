@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Redefine the imported MAX - this should work and be used
 // 5: MAX: Int32 = Int32(42)
 int32_t MAX{};
 

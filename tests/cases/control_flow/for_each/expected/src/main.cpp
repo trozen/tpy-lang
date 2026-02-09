@@ -4,15 +4,19 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test for-each over inferred list (no annotation needed)
 // 4: items = [1, 2, 3, 4, 5]
 std::vector<tpy::BigInt>* items{};
 // 5: total: Int32 = 0
 int32_t total{};
+// # Test for-each over Array
 // 11: arr: Array[Int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* arr{};
+// # Test for-each over string
 // 33: text = "AB"
 std::string_view text;
 
+// # Test for-each with local inferred array (no mutation -> std::array)
 // 16: def sum_array() -> Int32:
 int32_t sum_array() {
   // 17:     nums = [100, 200, 300]
@@ -28,6 +32,7 @@ int32_t sum_array() {
   return result;
 }
 
+// # Test for-each over Span parameter
 // 26: def print_span(data: Span[Int32]) -> None:
 void print_span(std::span<const int32_t> data) {
   // 27:     for x in data:
@@ -37,6 +42,7 @@ void print_span(std::span<const int32_t> data) {
   }
 }
 
+// # Test nested for-each
 // 38: def nested_sum() -> Int32:
 int32_t nested_sum() {
   // 39:     outer = [1, 2]

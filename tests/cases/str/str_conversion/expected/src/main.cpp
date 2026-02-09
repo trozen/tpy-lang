@@ -4,8 +4,11 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # From Char (static lookup - safe)
 // 15: c: Char = "A"
 char c{};
+// # From float (inline usage - safe)
+// # Note: exact output format may vary
 // 29: x: float = 3.14
 double x{};
 

@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test all list methods: pop(), insert(), remove(), clear(), extend()
 // 5: def print_list(nums: list[Int32]) -> None:
 void print_list(std::vector<int32_t>& nums) {
   // 6:     """Helper to print list contents."""

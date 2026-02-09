@@ -4,6 +4,8 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Top-level (module scope) escape: same detection should work
+// # outside of function bodies.
 // 12: saved: Point = Point(0, 0)
 Point* saved{};
 

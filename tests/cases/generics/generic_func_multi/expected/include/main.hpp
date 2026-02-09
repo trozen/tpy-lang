@@ -11,11 +11,15 @@ extern std::string_view __name__;
 extern Pair<tpy::BigInt, std::string_view>* p1;
 extern Pair<std::string_view, tpy::BigInt>* p2;
 
+// 5: class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
+  // 6:     first: A
   A first;
+  // 7:     second: B
   B second;
 
+  // 9:     def __init__(self, first: A, second: B) -> None:
   Pair() = default;
   explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 };

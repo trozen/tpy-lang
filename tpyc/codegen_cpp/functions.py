@@ -90,6 +90,7 @@ class FunctionGenerator:
 
     def gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
+        self.ctx.emit_preceding_comments(out, func.loc)
         self.ctx.emit_source_comment(out, func.loc)
 
         protocol_params = self.protocols.get_protocol_params(func.params)
@@ -127,7 +128,10 @@ class FunctionGenerator:
             params = self.gen_params(method.params)
         const_suffix = " const" if is_const and not is_static else ""
         static_prefix = "static " if is_static else ""
-        out.write(f"\n  {static_prefix}{ret_type} {method.name}({params}){const_suffix} {{\n")
+        out.write("\n")
+        self.ctx.emit_preceding_comments(out, method.loc, indent="  ")
+        self.ctx.emit_source_comment(out, method.loc, indent="  ")
+        out.write(f"  {static_prefix}{ret_type} {method.name}({params}){const_suffix} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not is_static:
@@ -161,6 +165,7 @@ class FunctionGenerator:
         Value-type globals are plain T, non-value-type globals are T* (nullptr).
         Initialization happens in __tpy_init() to ensure proper execution order.
         """
+        self.ctx.emit_preceding_comments(out, stmt.loc)
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()

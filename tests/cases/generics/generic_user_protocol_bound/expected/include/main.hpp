@@ -5,6 +5,7 @@
 
 namespace tpy_user::main {
 
+// 10: class Container[T](Protocol):
 template<typename T, typename _T0>
 concept Container = requires(T& t) {
     { t.get() } -> std::convertible_to<_T0>;
@@ -16,17 +17,22 @@ struct StrBox;
 
 extern std::string_view __name__;
 
+// 15: class IntBox:
 struct IntBox {
+  // 16:     value: Int32
   int32_t value;
 
+  // 18:     def __init__(self, v: Int32):
   IntBox() = default;
   explicit IntBox(int32_t v) : value(v) {}
 
+  // 21:     def get(self) -> Int32:
   int32_t get() {
     // 22:         return self.value
     return this->value;
   }
 
+  // 24:     def set(self, value: Int32) -> None:
   void set(int32_t value) {
     // 25:         self.value = value
     this->value = value;
@@ -40,17 +46,22 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
   return os;
 }
 
+// 28: class StrBox:
 struct StrBox {
+  // 29:     value: str
   std::string_view value;
 
+  // 31:     def __init__(self, v: str):
   StrBox() = default;
   explicit StrBox(std::string_view v) : value(v) {}
 
+  // 34:     def get(self) -> str:
   std::string_view get() {
     // 35:         return self.value
     return this->value;
   }
 
+  // 37:     def set(self, value: str) -> None:
   void set(std::string_view value) {
     // 38:         self.value = value
     this->value = value;

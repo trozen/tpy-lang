@@ -4,12 +4,16 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Single element repeat - list
 // 5: zeros: list[Int32] = [0] * 5
 std::vector<int32_t>* zeros{};
+// # Single element repeat - StaticList (via constructor)
 // 11: filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
 StaticList<int32_t, 10>* filled{};
+// # Zero count repeat - produces empty list
 // 17: empty: list[Int32] = [99] * 0
 std::vector<int32_t>* empty{};
+// # Variable count
 // 21: n: Int32 = 3
 int32_t n{};
 // 22: dynamic: list[Int32] = [7] * n

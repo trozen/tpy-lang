@@ -7,6 +7,7 @@ namespace tpy_user::main {
 
 struct Point;
 
+// 12: class PointFactory(Protocol):
 template<typename T>
 concept PointFactory = requires(T& t) {
     { t.create_point(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<Point>;
@@ -16,10 +17,14 @@ struct DefaultFactory;
 
 extern std::string_view __name__;
 
+// 4: class Point:
 struct Point {
+  // 5:     x: Int32
   int32_t x;
+  // 6:     y: Int32
   int32_t y;
 
+  // 8:     def __init__(self, x: Int32, y: Int32) -> None:
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -33,10 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// 15: class DefaultFactory:
 struct DefaultFactory {
 
   DefaultFactory() = default;
 
+  // 16:     def create_point(self, x: Int32, y: Int32) -> Own[Point]:
   Point create_point(int32_t x, int32_t y) {
     // 17:         return Point(x, y)
     return Point(x, y);

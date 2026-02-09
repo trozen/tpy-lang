@@ -9,17 +9,22 @@ struct MyInt;
 
 extern std::string_view __name__;
 
+// 6: class MyInt:
 struct MyInt {
+  // 7:     value: Int32
   int32_t value;
 
+  // 9:     def __init__(self, v: Int32):
   MyInt() = default;
   explicit MyInt(int32_t v) : value(v) {}
 
+  // 12:     def __lt__(self, other: MyInt) -> Bool:
   bool __lt__(const MyInt& other) const {
     // 13:         return self.value < other.value
     return (this->value < other.value);
   }
 
+  // 15:     def __eq__(self, other: MyInt) -> Bool:
   bool __eq__(const MyInt& other) const {
     // 16:         return self.value == other.value
     return (this->value == other.value);

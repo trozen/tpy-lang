@@ -5,6 +5,8 @@
 
 namespace tpy_user::main {
 
+// # Define a custom protocol
+// 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.__str__() } -> std::convertible_to<std::string_view>;
@@ -15,13 +17,19 @@ struct Person;
 extern std::string_view __name__;
 extern Person* p;
 
+// # Class that explicitly implements Printable
+// 11: class Person(Printable):
 struct Person {
+  // 12:     name: str
   std::string_view name;
+  // 13:     age: Int32
   int32_t age;
 
+  // 15:     def __init__(self, name: str, age: Int32) -> None:
   Person() = default;
   explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
+  // 19:     def __str__(self) -> str:
   std::string_view __str__() const {
     // 20:         return self.name
     return this->name;

@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Escape only happens in one branch of an if-statement inside a loop.
+// # The hoisted slot must still be at function scope.
 // 12: def conditional_hoist() -> None:
 void conditional_hoist() {
   std::optional<Point> __slot_2;

@@ -4,18 +4,22 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test min/max with Int32
 // 5: a: Int32 = 10
 int32_t a{};
 // 6: b: Int32 = 20
 int32_t b{};
+// # Test min/max with BigInt (default int)
 // 13: x = 100
 tpy::BigInt x;
 // 14: y = -50
 tpy::BigInt y;
+// # Use int() for large values to avoid literal issues
 // 18: big1 = int(-1000000)
 tpy::BigInt big1;
 // 19: big2 = int(1000000)
 tpy::BigInt big2;
+// # Test min/max with float
 // 24: f1: float = 3.14
 double f1{};
 // 25: f2: float = 2.71

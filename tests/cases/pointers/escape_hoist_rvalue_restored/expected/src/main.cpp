@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Variable goes rvalue → lvalue → rvalue. The final rvalue assignment
+// # re-enables hoisting because p now owns its storage again.
 // 12: def rvalue_restored() -> None:
 void rvalue_restored() {
   std::optional<Point> __slot_2;

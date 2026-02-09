@@ -213,6 +213,8 @@ class ProtocolGenerator:
 
         For protocol inheritance, includes requirements from all parent protocols.
         """
+        self.ctx.emit_preceding_comments(out, protocol.loc)
+        self.ctx.emit_source_comment(out, protocol.loc)
         # Build template params: T (checked type) + one for each protocol type param
         template_params = ["typename T"]
         type_param_map: dict[str, str] = {}  # Protocol type param -> C++ template param

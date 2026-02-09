@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test Case 1: Generic child of non-generic parent
 // 32: b = Box[Int32]("mybox", 42)
 Box<int32_t>* b{};
+// # Test Case 2: Generic child of concrete generic parent
 // 37: w = Wrapper[str](100, "hello")
 Wrapper<std::string_view>* w{};
 

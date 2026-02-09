@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test negative indexing for various container types
+// # Note: StaticList negative indexing is not yet implemented
 // 6: def test_list_negative_indexing() -> None:
 void test_list_negative_indexing() {
   // 7:     """Test negative indexing on list."""

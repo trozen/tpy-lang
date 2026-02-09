@@ -5,23 +5,31 @@
 
 namespace tpy_user::main {
 
+// # Protocol with a single field
+// 6: class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
     { t.value } -> std::convertible_to<int32_t>;
 };
 
+// # Protocol with multiple fields
+// 11: class HasXY(Protocol):
 template<typename T>
 concept HasXY = requires(T& t) {
     { t.x } -> std::convertible_to<int32_t>;
     { t.y } -> std::convertible_to<int32_t>;
 };
 
+// # Protocol with fields and methods combined
+// 17: class Container(Protocol):
 template<typename T>
 concept Container = requires(T& t) {
     { t.is_empty() } -> std::convertible_to<bool>;
     { t.count } -> std::convertible_to<int32_t>;
 };
 
+// # Generic protocol with field using type parameter
+// 25: class Holder[T](Protocol):
 template<typename T, typename _T0>
 concept Holder = requires(T& t) {
     { t.item } -> std::convertible_to<_T0>;
@@ -35,9 +43,13 @@ template<HasValue T> struct Wrapper;
 
 extern std::string_view __name__;
 
+// # Record conforming to HasValue
+// 30: class Point:
 struct Point {
+  // 31:     value: Int32
   int32_t value;
 
+  // 33:     def __init__(self, v: Int32):
   Point() = default;
   explicit Point(int32_t v) : value(v) {}
 };
@@ -49,10 +61,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// # Record conforming to HasXY
+// 38: class Vec2:
 struct Vec2 {
+  // 39:     x: Int32
   int32_t x;
+  // 40:     y: Int32
   int32_t y;
 
+  // 42:     def __init__(self, x: Int32, y: Int32):
   Vec2() = default;
   explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -66,12 +83,17 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
   return os;
 }
 
+// # Record conforming to Container
+// 48: class Box:
 struct Box {
+  // 49:     count: Int32
   int32_t count;
 
+  // 51:     def __init__(self, c: Int32):
   Box() = default;
   explicit Box(int32_t c) : count(c) {}
 
+  // 54:     def is_empty(self) -> Bool:
   bool is_empty() {
     // 55:         return self.count == 0
     return (this->count == 0);
@@ -85,9 +107,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
   return os;
 }
 
+// # Record conforming to Holder[Int32]
+// 59: class IntHolder:
 struct IntHolder {
+  // 60:     item: Int32
   int32_t item;
 
+  // 62:     def __init__(self, v: Int32):
   IntHolder() = default;
   explicit IntHolder(int32_t v) : item(v) {}
 };
@@ -99,13 +125,18 @@ inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
   return os;
 }
 
+// # Generic class with protocol field bound
+// 67: class Wrapper[T: HasValue]:
 template<HasValue T>
 struct Wrapper {
+  // 68:     inner: T
   T inner;
 
+  // 70:     def __init__(self, val: T):
   Wrapper() = default;
   explicit Wrapper(const T& val) : inner(val) {}
 
+  // 73:     def get_inner_value(self) -> Int32:
   int32_t get_inner_value() {
     // 74:         return self.inner.value
     return this->inner.value;

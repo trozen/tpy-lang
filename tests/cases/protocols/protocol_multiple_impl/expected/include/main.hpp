@@ -5,16 +5,20 @@
 
 namespace tpy_user::main {
 
+// # Define custom protocols
+// 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.__str__() } -> std::convertible_to<std::string_view>;
 };
 
+// 10: class Describable(Protocol):
 template<typename T>
 concept Describable = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string_view>;
 };
 
+// 15: class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(T& t) {
     { t.size() } -> std::convertible_to<int32_t>;
@@ -25,23 +29,31 @@ struct Box;
 extern std::string_view __name__;
 extern Box* b;
 
+// # Class that implements multiple protocols
+// 21: class Box(Printable, Describable, Measurable):
 struct Box {
+  // 22:     width: Int32
   int32_t width;
+  // 23:     height: Int32
   int32_t height;
 
+  // 25:     def __init__(self, width: Int32, height: Int32) -> None:
   Box() = default;
   explicit Box(int32_t width, int32_t height) : width(width), height(height) {}
 
+  // 29:     def __str__(self) -> str:
   std::string_view __str__() const {
     // 30:         return "Box"
     return "Box";
   }
 
+  // 32:     def describe(self) -> str:
   std::string_view describe() {
     // 33:         return "A rectangular box"
     return "A rectangular box";
   }
 
+  // 35:     def size(self) -> Int32:
   int32_t size() {
     // 36:         return self.width * self.height
     return (tpy::int32_mul(this->width, this->height));

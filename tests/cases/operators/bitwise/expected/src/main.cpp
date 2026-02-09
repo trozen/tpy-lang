@@ -8,14 +8,18 @@ std::string_view __name__;
 int32_t a{};
 // 4: b: Int32 = 10      # 0b1010
 int32_t b{};
+// # Bitwise NOT
 // 16: c: Int32 = 0
 int32_t c{};
+// # BigInt bitwise operators
 // 30: x = 12  # BigInt
 tpy::BigInt x;
 // 31: y = 10  # BigInt
 tpy::BigInt y;
+// # BigInt bitwise NOT (Python: ~x = -(x+1))
 // 37: z = 0
 tpy::BigInt z;
+// # Large BigInt bitwise
 // 43: big1 = (1 << 100) | (1 << 50)
 tpy::BigInt big1;
 // 44: big2 = (1 << 100) | (1 << 25)

@@ -4,25 +4,33 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test 1: Uppercase generic function (inferred) - critical for routing test
 // 20: nums = [10, 20, 30]
 std::vector<tpy::BigInt>* nums{};
+// # Test 2: Builtin type constructor in same file (tests routing still works)
 // 24: sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
 StaticList<int32_t, 3>* sl{};
+// # Test 3: list constructor in same file
 // 28: items = list[Int32]()
 std::vector<int32_t>* items{};
+// # Test 4: Same generic function with different types
 // 33: strs = ["hello", "world"]
 std::vector<std::string_view>* strs{};
+// # Test 5: Generic function with record type (inferred)
 // 37: points = [Point(1, 2), Point(3, 4)]
 std::vector<Point>* points{};
 // 38: p = get_item(points, Int32(0))
 Point* p{};
+// # Test 6: Chained generic calls
 // 42: first_num = First([10, 20, 30])
 tpy::BigInt first_num;
 // 43: second_num = First([first_num, 40, 50])
 tpy::BigInt second_num;
+// # Test 7: Generic function in expression context
 // 47: result = First([5, 6, 7]) + 10
 tpy::BigInt result;
 
+// # Uppercase generic function (tests routing: function vs type)
 // 5: def First[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> First(std::vector<T>& items) {

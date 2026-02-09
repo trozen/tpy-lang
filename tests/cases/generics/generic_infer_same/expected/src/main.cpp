@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Both args are int -> Same[int]
 // 14: same = Same(1, 2)
 Same<tpy::BigInt>* same{};
 

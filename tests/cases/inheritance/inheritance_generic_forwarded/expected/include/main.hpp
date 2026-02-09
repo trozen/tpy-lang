@@ -11,13 +11,17 @@ template<typename T> struct Wrapper;
 extern std::string_view __name__;
 extern Wrapper<std::string_view>* w;
 
+// 3: class Container[T]:
 template<typename T>
 struct Container {
+  // 4:     value: T
   T value;
 
+  // 6:     def __init__(self, value: T) -> None:
   Container() = default;
   explicit Container(const T& value) : value(value) {}
 
+  // 9:     def get_value(self) -> T:
   tpy::return_val_or_ref_t<T> get_value() {
     // 10:         return self.value
     return this->value;
@@ -32,16 +36,20 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
   return os;
 }
 
+// 13: class Wrapper[T](Container[T]):
 template<typename T>
 struct Wrapper : Container<T> {
+  // 14:     extra: Int32
   int32_t extra;
 
+  // 16:     def __init__(self, value: T, extra: Int32) -> None:
   Wrapper() = default;
   explicit Wrapper(const T& value, int32_t extra) : extra(extra) {
     // 17:         self.value = value
     this->value = value;
   }
 
+  // 20:     def get_extra(self) -> Int32:
   int32_t get_extra() {
     // 21:         return self.extra
     return this->extra;

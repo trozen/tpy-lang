@@ -9,10 +9,15 @@ struct Point;
 
 extern std::string_view __name__;
 
+// # --- Records for pointer coercion tests ---
+// 13: class Point:
 struct Point {
+  // 14:     x: Int32
   int32_t x;
+  // 15:     y: Int32
   int32_t y;
 
+  // 17:     def __init__(self, x: Int32, y: Int32) -> None:
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

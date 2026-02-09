@@ -4,8 +4,10 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # INT32_MAX operations that don't overflow
 // 5: x: Int32 = 2147483647
 int32_t x{};
+// # INT32_MIN operations that don't overflow
 // 11: y: Int32 = -2147483648
 int32_t y{};
 

@@ -11,13 +11,17 @@ struct IntContainer;
 extern std::string_view __name__;
 extern IntContainer* c;
 
+// 3: class Container[T]:
 template<typename T>
 struct Container {
+  // 4:     value: T
   T value;
 
+  // 6:     def __init__(self, value: T) -> None:
   Container() = default;
   explicit Container(const T& value) : value(value) {}
 
+  // 9:     def get(self) -> T:
   tpy::return_val_or_ref_t<T> get() {
     // 10:         return self.value
     return this->value;
@@ -32,9 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
   return os;
 }
 
+// 13: class IntContainer(Container[Int32]):
 struct IntContainer : Container<int32_t> {
+  // 14:     extra: Int32
   int32_t extra;
 
+  // 16:     def __init__(self, value: Int32, extra: Int32) -> None:
   IntContainer() = default;
   explicit IntContainer(int32_t value, int32_t extra) : extra(extra) {
     // 17:         self.value = value

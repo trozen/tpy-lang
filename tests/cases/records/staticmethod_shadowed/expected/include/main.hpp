@@ -10,17 +10,23 @@ struct Helper;
 extern std::string_view __name__;
 extern Helper* h;
 
+// 4: class Helper:
 struct Helper {
+  // 5:     value: Int32
   int32_t value;
 
+  // 7:     def __init__(self, v: Int32):
   Helper() = default;
   explicit Helper(int32_t v) : value(v) {}
 
+  //     @staticmethod
+  // 11:     def add(a: Int32, b: Int32) -> Int32:
   static int32_t add(int32_t a, int32_t b) {
     // 12:         return a + b
     return (tpy::int32_add(a, b));
   }
 
+  // 14:     def get(self) -> Int32:
   int32_t get() {
     // 15:         return self.value
     return this->value;

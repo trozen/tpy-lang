@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test Char type comprehensively
 // 5: def test_char_literals() -> None:
 void test_char_literals() {
   // 6:     """Test single-character string literals as Char."""

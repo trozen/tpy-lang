@@ -4,10 +4,12 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test order: literal first, Int32 second -> should infer Same[Int32]
 // 15: x: Int32 = 10
 int32_t x{};
 // 16: same1 = Same(1, x)
 Same<int32_t>* same1{};
+// # Test order: Int32 first, literal second -> should also infer Same[Int32]
 // 21: same2 = Same(x, 2)
 Same<int32_t>* same2{};
 

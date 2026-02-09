@@ -10,12 +10,16 @@ struct Message;
 
 extern std::string_view __name__;
 
+// 4: class Message:
 struct Message {
+  // 5:     text: str
   std::string_view text;
 
+  // 7:     def __init__(self, text: str):
   Message() = default;
   explicit Message(std::string_view text) : text(text) {}
 
+  // 10:     def to_string(self) -> str:
   std::string_view to_string() {
     // 11:         return self.text
     return this->text;

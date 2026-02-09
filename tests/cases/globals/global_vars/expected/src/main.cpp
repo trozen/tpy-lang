@@ -4,24 +4,31 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test 1: Global BigInt used in range bounds
 // 4: start = 0
 tpy::BigInt start;
 // 5: end = 3
 tpy::BigInt end;
+// # Test 2: Global BigInt used as list index
 // 10: items: list[Int32] = [10, 20, 30]
 std::vector<int32_t>* items{};
 // 11: idx = 1
 tpy::BigInt idx;
+// # Test 3: Global BigInt used in list repeat count
 // 15: count = 3
 tpy::BigInt count;
 // 16: repeated: list[Int32] = [0] * count
 std::vector<int32_t>* repeated{};
+// # Test 4: Global BigInt reassignment (z = 0; z = 5 pattern)
 // 20: z = 0
 tpy::BigInt z;
+// # Test 5: Membership operator on global list
 // 26: global_list: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* global_list{};
+// # Test 6: Loop variable shadows global
 // 37: i = 100
 tpy::BigInt i;
+// # Test 7: For-each loop variable shadows global
 // 43: x = 999
 tpy::BigInt x;
 // 45: nums: list[Int32] = [7, 8]
@@ -30,10 +37,12 @@ std::vector<int32_t>* nums{};
 Point* local_pt{};
 // 59: global_ptr: Ptr[Point] = local_pt
 Point* global_ptr{};
+// # Test 9: Int32 += BigInt with global BigInt value
 // 64: counter: Int32 = 10
 int32_t counter{};
 // 65: increment = 5
 tpy::BigInt increment;
+// # Test 10: Global in binop with method template (BigInt operations)
 // 70: a = 10
 tpy::BigInt a;
 // 71: b = 3
@@ -42,6 +51,7 @@ tpy::BigInt b;
 tpy::BigInt val;
 // 90: c: Counter = Counter(50)
 Counter* c{};
+// # Test 12: Augmented subscript assignment with global BigInt RHS
 // 95: arr: list[Int32] = [100, 200, 300]
 std::vector<int32_t>* arr{};
 // 96: delta = 5

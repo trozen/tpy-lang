@@ -4,18 +4,22 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Default value
 // 5: b0: Bool = bool()
 bool b0{};
+// # From bool
 // 9: b1: Bool = bool(True)
 bool b1{};
 // 11: b2: Bool = bool(False)
 bool b2{};
+// # From Int32
 // 15: b3: Bool = bool(Int32(0))
 bool b3{};
 // 17: b4: Bool = bool(Int32(1))
 bool b4{};
 // 19: b5: Bool = bool(Int32(-5))
 bool b5{};
+// # From int (BigInt)
 // 23: b6: Bool = bool(0)
 bool b6{};
 // 25: b7: Bool = bool(42)

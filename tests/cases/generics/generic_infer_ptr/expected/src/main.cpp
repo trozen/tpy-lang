@@ -6,14 +6,18 @@ namespace tpy_user::main {
 std::string_view __name__;
 // 24: pt: Point = Point()
 Point* pt{};
+// # Create explicitly-typed pointer variables
 // 29: ptr: Ptr[Point] = pt
 Point* ptr{};
 // 30: cptr: ConstPtr[Point] = pt
 const Point* cptr{};
+// # Inference from Ptr[Point] -> PtrHolder[Point]
 // 33: holder = PtrHolder(ptr)
 PtrHolder<Point>* holder{};
+// # Inference from ConstPtr[Point] -> ConstPtrHolder[Point]
 // 38: const_holder = ConstPtrHolder(cptr)
 ConstPtrHolder<Point>* const_holder{};
+// # Inference from Ptr[Point] -> ConstPtrHolder[Point] (Ptr coerces to ConstPtr)
 // 42: const_holder2 = ConstPtrHolder(ptr)
 ConstPtrHolder<Point>* const_holder2{};
 

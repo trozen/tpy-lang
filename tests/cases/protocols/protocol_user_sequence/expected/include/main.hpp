@@ -9,17 +9,22 @@ struct IntWrapper;
 
 extern std::string_view __name__;
 
+// 4: class IntWrapper:
 struct IntWrapper {
+  // 5:     data: list[Int32]
   std::vector<int32_t> data;
 
+  // 7:     def __init__(self, items: list[Int32]) -> None:
   IntWrapper() = default;
   explicit IntWrapper(const std::vector<int32_t>& items) : data(items) {}
 
+  // 10:     def __len__(self) -> Int32:
   int32_t __len__() const {
     // 11:         return len(self.data)
     return tpy::__len__(this->data);
   }
 
+  // 13:     def __getitem__(self, index: Int32) -> Int32:
   int32_t __getitem__(int32_t index) const {
     // 14:         return self.data[index]
     return tpy::get_item(this->data, index);

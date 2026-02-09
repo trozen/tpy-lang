@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # 7. Literal arithmetic: BigInt result assigned to Int32
 // 42: a: Int32 = 1 + 2           # addition
 int32_t a{};
 // 43: b: Int32 = 10 - 3          # subtraction
@@ -14,33 +15,43 @@ int32_t c{};
 int32_t d{};
 // 46: e: Int32 = 2 ** 10         # power
 int32_t e{};
+// # Test all conversions
 // 56: n = 5
 tpy::BigInt n;
+// # Function param
 // 59: result1 = takes_int32(n)
 int32_t result1{};
+// # Return as Int32
 // 63: result2 = return_as_int32(10)
 int32_t result2{};
+// # Variable declaration
 // 67: result3 = var_decl_test(15)
 int32_t result3{};
+// # Assignment
 // 71: result4 = assign_test(20)
 int32_t result4{};
+// # For loop
 // 75: result5 = loop_test(3)
 int32_t result5{};
+// # Int32() constructor
 // 79: result6 = constructor_test(25)
 int32_t result6{};
 
+// # 1. Function parameter: BigInt passed to Int32 param
 // 6: def takes_int32(x: Int32) -> Int32:
 int32_t takes_int32(int32_t x) {
   // 7:     return x
   return x;
 }
 
+// # 2. Return statement: BigInt returned as Int32
 // 11: def return_as_int32(x: int) -> Int32:
 int32_t return_as_int32(const tpy::BigInt& x) {
   // 12:     return x
   return (x).to_int32();
 }
 
+// # 3. Variable declaration: BigInt assigned to Int32 var
 // 16: def var_decl_test(x: int) -> Int32:
 int32_t var_decl_test(const tpy::BigInt& x) {
   // 17:     result: Int32 = x
@@ -49,6 +60,7 @@ int32_t var_decl_test(const tpy::BigInt& x) {
   return result;
 }
 
+// # 4. Assignment: BigInt assigned to Int32 var
 // 22: def assign_test(x: int) -> Int32:
 int32_t assign_test(const tpy::BigInt& x) {
   // 23:     result: Int32 = 0
@@ -59,6 +71,7 @@ int32_t assign_test(const tpy::BigInt& x) {
   return result;
 }
 
+// # 5. For loop with BigInt bound
 // 29: def loop_test(n: int) -> Int32:
 int32_t loop_test(const tpy::BigInt& n) {
   // 30:     total: Int32 = 0
@@ -72,6 +85,7 @@ int32_t loop_test(const tpy::BigInt& n) {
   return total;
 }
 
+// # 6. Int32() constructor from BigInt
 // 37: def constructor_test(x: int) -> Int32:
 int32_t constructor_test(const tpy::BigInt& x) {
   // 38:     return Int32(x)

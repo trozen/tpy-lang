@@ -12,8 +12,11 @@ template<typename T> struct Holder;
 
 extern std::string_view __name__;
 
+// 3: class Point:
 struct Point {
+  // 4:     x: Int32
   int32_t x;
+  // 5:     y: Int32
   int32_t y;
 
   Point() = default;
@@ -28,12 +31,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// 7: class Rect:
 struct Rect {
+  // 8:     corner: Point
   Point corner;
+  // 9:     width: Int32
   int32_t width;
 
   Rect() = default;
 
+  // 11:     def set_corner(self, p: Point) -> None:
   void set_corner(Point& p) {
     // 12:         self.corner = p           # tpyc: warning(/copies Point into field/)
     this->corner = p;
@@ -43,6 +50,7 @@ struct Rect {
     this->corner = Point();
   }
 
+  // 16:     def set_width(self, w: Int32) -> None:
   void set_width(int32_t w) {
     // 17:         self.width = w            # tpyc: ok
     this->width = w;
@@ -58,11 +66,14 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
   return os;
 }
 
+// 19: class Container:
 struct Container {
+  // 20:     items: list[Int32]
   std::vector<int32_t> items;
 
   Container() = default;
 
+  // 22:     def set_items(self, data: list[Int32]) -> None:
   void set_items(std::vector<int32_t>& data) {
     // 23:         self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
     this->items = data;
@@ -80,12 +91,15 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
   return os;
 }
 
+// 27: class Holder[T]:
 template<typename T>
 struct Holder {
+  // 28:     value: T
   T value;
 
   Holder() = default;
 
+  // 30:     def set_value(self, v: T) -> None:
   void set_value(tpy::param_val_or_ref_t<T> v) {
     // 31:         self.value = v            # tpyc: warning(/may copy T into field/)
     this->value = v;

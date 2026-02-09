@@ -10,13 +10,18 @@ struct Settings;
 extern std::string_view __name__;
 extern Settings* DEFAULT;
 
+// 5: class Settings:
 struct Settings {
+  // 6:     width: Int32
   int32_t width;
+  // 7:     height: Int32
   int32_t height;
 
+  // 9:     def __init__(self, width: Int32, height: Int32) -> None:
   Settings() = default;
   explicit Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
+  // 13:     def area(self) -> Int32:
   int32_t area() {
     // 14:         return self.width * self.height
     return (tpy::int32_mul(this->width, this->height));

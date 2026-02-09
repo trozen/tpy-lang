@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Direct assignment then use — OK
 // 11: def direct_assign() -> None:
 void direct_assign() {
   // 12:     x: Point = Point(7, 8)
@@ -13,12 +14,14 @@ void direct_assign() {
   std::cout << x.x << " " << x.y << "\n";
 }
 
+// # Param usage — OK
 // 16: def param_use(p: Point) -> None:
 void param_use(Point& p) {
   // 17:     print(p.x, p.y)  # tpyc: ok
   std::cout << p.x << " " << p.y << "\n";
 }
 
+// # Value type with init — OK
 // 20: def value_init() -> None:
 void value_init() {
   // 21:     x: Int32 = 42
@@ -27,6 +30,7 @@ void value_init() {
   std::cout << x << "\n";
 }
 
+// # Assign before if, use after — OK
 // 25: def assign_before_if(cond: Bool) -> None:
 void assign_before_if(bool cond) {
   // 26:     x: Point = Point(1, 2)
@@ -42,6 +46,7 @@ void assign_before_if(bool cond) {
   std::cout << x->x << " " << x->y << "\n";
 }
 
+// # Then-branch returns — code after if only reachable from else
 // 32: def then_returns(cond: Bool) -> None:
 void then_returns(bool cond) {
   // 33:     if cond:
@@ -55,6 +60,7 @@ void then_returns(bool cond) {
   std::cout << x.x << " " << x.y << "\n";
 }
 
+// # Both branches return — dead code after is fine
 // 39: def both_return(cond: Bool) -> Int32:
 int32_t both_return(bool cond) {
   // 40:     if cond:
@@ -69,6 +75,7 @@ int32_t both_return(bool cond) {
   }
 }
 
+// # Both branches assign (value type) — OK after if
 // 47: def both_branches_assign(cond: Bool) -> None:
 void both_branches_assign(bool cond) {
   // 48:     x: Int32
@@ -85,6 +92,7 @@ void both_branches_assign(bool cond) {
   std::cout << x << "\n";
 }
 
+// # Else-branch returns, then assigns — OK after if
 // 56: def else_returns(cond: Bool) -> None:
 void else_returns(bool cond) {
   // 57:     x: Int32
@@ -101,6 +109,7 @@ void else_returns(bool cond) {
   std::cout << x << "\n";
 }
 
+// # Bare decl then unconditional assign — OK
 // 65: def decl_then_assign() -> None:
 void decl_then_assign() {
   // 66:     x: Int32
@@ -111,6 +120,7 @@ void decl_then_assign() {
   std::cout << x << "\n";
 }
 
+// # Loop var shadows assigned outer var — outer stays assigned after loop
 // 71: def loop_shadow_outer() -> None:
 void loop_shadow_outer() {
   // 72:     items: list[Int32] = [10, 20, 30]

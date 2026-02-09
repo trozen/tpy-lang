@@ -5,6 +5,7 @@
 
 namespace tpy_user::main {
 
+// 5: class Duplicable(Protocol):
 template<typename T>
 concept Duplicable = requires(T& t) {
     { t.duplicate() } -> std::convertible_to<T>;
@@ -14,12 +15,16 @@ struct Value;
 
 extern std::string_view __name__;
 
+// 8: class Value:
 struct Value {
+  // 9:     x: Int32
   int32_t x;
 
+  // 11:     def __init__(self, x: Int32) -> None:
   Value() = default;
   explicit Value(int32_t x) : x(x) {}
 
+  // 14:     def duplicate(self) -> Own[Value]:
   Value duplicate() {
     // 15:         return Value(self.x * 2)
     return Value((tpy::int32_mul(this->x, 2)));

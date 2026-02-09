@@ -5,6 +5,7 @@
 
 namespace tpy_user::main {
 
+// 5: class Addable(Protocol):
 template<typename T>
 concept Addable = requires(T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
@@ -14,13 +15,18 @@ struct Point;
 
 extern std::string_view __name__;
 
+// 8: class Point:
 struct Point {
+  // 9:     x: Int32
   int32_t x;
+  // 10:     y: Int32
   int32_t y;
 
+  // 12:     def __init__(self, x: Int32, y: Int32) -> None:
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
+  // 16:     def __add__(self, other: Point) -> Own[Point]:
   Point __add__(const Point& other) const {
     // 17:         return Point(self.x + other.x, self.y + other.y)
     return Point((tpy::int32_add(this->x, other.x)), (tpy::int32_add(this->y, other.y)));

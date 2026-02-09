@@ -5,6 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Returning Span should return by value (std::span is a view type)
 // 4: def get_span(arr: Array[Int32, 4]) -> Span[Int32]:
 std::span<const int32_t> get_span(std::array<int32_t, 4>& arr) {
   // 5:     return arr  # tpyc: ok

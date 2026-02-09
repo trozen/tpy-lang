@@ -4,12 +4,16 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test abs with Int32
 // 5: x: Int32 = -42
 int32_t x{};
+// # Test abs with BigInt (default int)
 // 11: y = -100
 tpy::BigInt y;
+// # Large BigInt
 // 15: big = int(-1000000)
 tpy::BigInt big;
+// # Test abs with float
 // 19: z: float = -3.14
 double z{};
 

@@ -9,22 +9,28 @@ template<typename T> struct Stack;
 
 extern std::string_view __name__;
 
+// 3: class Stack[T]:
 template<typename T>
 struct Stack {
+  // 4:     items: list[T]
   std::vector<T> items;
 
+  // 6:     def __init__(self) -> None:
   Stack() : items(std::vector<T>()) {}
 
+  // 9:     def push(self, value: T) -> None:
   void push(tpy::param_val_or_ref_t<T> value) {
     // 10:         self.items.append(value)
     this->items.push_back(value);
   }
 
+  // 12:     def pop(self) -> T:
   tpy::return_val_or_ref_t<T> pop() {
     // 13:         return self.items.pop()
     return tpy::pop_back(this->items);
   }
 
+  // 15:     def is_empty(self) -> Bool:
   bool is_empty() {
     // 16:         return len(self.items) == 0
     return (tpy::__len__(this->items) == 0);

@@ -11,9 +11,13 @@ struct Child;
 extern std::string_view __name__;
 extern Child* c;
 
+// # Test: docstring before super().__init__() is allowed
+// 3: class Parent:
 struct Parent {
+  // 4:     value: int
   tpy::BigInt value;
 
+  // 6:     def __init__(self, value: int) -> None:
   Parent() = default;
   explicit Parent(const tpy::BigInt& value) : value(value) {}
 };
@@ -25,9 +29,12 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
   return os;
 }
 
+// 10: class Child(Parent):
 struct Child : Parent {
+  // 11:     extra: int
   tpy::BigInt extra;
 
+  // 13:     def __init__(self, value: int, extra: int) -> None:
   Child() = default;
   explicit Child(const tpy::BigInt& value, const tpy::BigInt& extra) : Parent(value), extra(extra) {
     // 14:         """Initialize Child with value and extra."""

@@ -7,14 +7,20 @@ namespace tpy_user::main {
 
 struct Foo;
 
+// # User-defined protocol that references Foo
+// 12: class FooMaker(Protocol):
 template<typename T>
 concept FooMaker = requires(T& t) {
     { t.make() } -> std::convertible_to<Foo>;
 };
 
+// # A record that will be referenced by a bound protocol
+// 5: class Foo:
 struct Foo {
+  // 6:     value: Int32
   int32_t value;
 
+  // 8:     def __init__(self, value: Int32) -> None:
   Foo() = default;
   explicit Foo(int32_t value) : value(value) {}
 };
@@ -26,10 +32,13 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
   return os;
 }
 
+// # Implementation of FooMaker
+// 16: class DefaultFooMaker:
 struct DefaultFooMaker {
 
   DefaultFooMaker() = default;
 
+  // 17:     def make(self) -> Own[Foo]:
   Foo make() {
     // 18:         return Foo(Int32(42))
     return Foo(42);
@@ -44,6 +53,8 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFooMaker& obj) {
 
 template<FooMaker T> struct Bar;
 
+// # Protocol that references the bounded record Bar
+// 31: class BarUser(Protocol):
 template<typename T>
 concept BarUser = requires(T& t) {
     { t.use_bar(std::declval<Bar<DefaultFooMaker>>()) } -> std::convertible_to<int32_t>;
@@ -52,13 +63,18 @@ concept BarUser = requires(T& t) {
 
 extern std::string_view __name__;
 
+// # Record with the bound protocol as a type parameter bound
+// 21: class Bar[T: FooMaker]:
 template<FooMaker T>
 struct Bar {
+  // 22:     factory: T
   T factory;
 
+  // 24:     def __init__(self, factory: T) -> None:
   Bar() = default;
   explicit Bar(const T& factory) : factory(factory) {}
 
+  // 27:     def create_foo(self) -> Own[Foo]:
   Foo create_foo() {
     // 28:         return self.factory.make()
     return this->factory.make();

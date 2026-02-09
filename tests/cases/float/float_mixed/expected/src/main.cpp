@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Mixed int/float operations (auto-promotion to float)
 // 2: a = 1 + 2.0
 double a{};
 // 3: b = 3.14 * 2

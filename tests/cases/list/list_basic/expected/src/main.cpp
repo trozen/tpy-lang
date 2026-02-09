@@ -6,8 +6,10 @@ namespace tpy_user::main {
 std::string_view __name__;
 // 11: mem: list[Int32] = [0] * 10
 std::vector<int32_t>* mem{};
+// # Unannotated list repetition (should infer BigInt)
 // 18: data = [0] * 5
 std::vector<tpy::BigInt>* data{};
+// # chr() with BigInt element from list
 // 23: chars = [72, 73]  # 'H', 'I'
 std::vector<tpy::BigInt>* chars{};
 

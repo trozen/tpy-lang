@@ -12,9 +12,12 @@ extern StaticList<Item, 16>* items;
 extern StaticList<int32_t, 8>* nums;
 extern StaticList<int32_t, 8>* filled;
 
+// 3: class Item:
 struct Item {
+  // 4:     value: Int32
   int32_t value;
 
+  // 6:     def __init__(self, v: Int32 = 0):
   Item() = default;
   explicit Item(int32_t v) : value(v) {}
 };

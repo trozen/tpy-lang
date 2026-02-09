@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Inference from list literal -> Box[list[int]]
 // 12: box = Box([1, 2, 3])
 Box<std::vector<tpy::BigInt>>* box{};
 

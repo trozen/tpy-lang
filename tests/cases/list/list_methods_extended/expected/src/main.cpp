@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test extended list methods: pop(index), index(), count(), reverse(), copy(), __setitem__
+// # Also test StaticList methods: extend, insert, remove, pop, clear, index, count, reverse, get_mut
 // 6: def print_list(nums: list[Int32]) -> None:
 void print_list(std::vector<int32_t>& nums) {
   // 7:     """Helper to print list contents."""
@@ -37,6 +39,7 @@ void print_staticlist(StaticList<int32_t, 16>& nums) {
   std::cout << "---" << "\n";
 }
 
+// # === list[T] methods ===
 // 24: def test_pop_at_index() -> None:
 void test_pop_at_index() {
   // 25:     """Test pop(index) - remove and return element at index."""
@@ -141,6 +144,7 @@ void test_setitem() {
   print_list(nums);
 }
 
+// # === StaticList[T, N] methods ===
 // 98: def test_staticlist_extend() -> None:
 void test_staticlist_extend() {
   // 99:     """Test StaticList.extend()."""

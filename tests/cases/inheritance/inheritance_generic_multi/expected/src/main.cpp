@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test with Leaf[str]
 // 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
 Leaf<std::string_view>* leaf{};
 

@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Power with variables
 // 23: x = 5
 tpy::BigInt x;
 // 24: y = 3

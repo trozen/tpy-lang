@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test that subscript out-of-bounds access on list panics at runtime
+// # (uses tpy::get_value() internally)
 // 6: def test_list_subscript_oob() -> None:
 void test_list_subscript_oob() {
   // 7:     nums: list[Int32] = [1, 2, 3]

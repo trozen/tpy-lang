@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Two different loop-body vars both escape to outer scope.
+// # Both slots must be hoisted to function scope.
 // 12: def multi_hoist() -> None:
 void multi_hoist() {
   std::optional<Point> __slot_3;

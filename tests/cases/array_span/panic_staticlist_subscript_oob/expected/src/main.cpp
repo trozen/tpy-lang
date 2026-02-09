@@ -5,6 +5,8 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
+// # Test that subscript out-of-bounds access on StaticList panics at runtime
+// # (uses get_value() internally)
 // 6: def test_subscript_oob() -> None:
 void test_subscript_oob() {
   // 7:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()

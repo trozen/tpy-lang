@@ -4,6 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// # Test multiple protocol implementation
 // 40: b = Box(5, 3)
 Box* b{};
 

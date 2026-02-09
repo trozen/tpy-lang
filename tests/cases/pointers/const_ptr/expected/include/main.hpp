@@ -9,10 +9,15 @@ struct Point;
 
 extern std::string_view __name__;
 
+// # Test ConstPtr[T] type for read-only pointers
+// 5: class Point:
 struct Point {
+  // 6:     x: Int32
   int32_t x;
+  // 7:     y: Int32
   int32_t y;
 
+  // 9:     def __init__(self, x: Int32, y: Int32) -> None:
   Point() = default;
   explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
