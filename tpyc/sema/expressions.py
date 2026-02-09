@@ -182,6 +182,7 @@ class ExpressionAnalyzer:
             binding = self.ctx.current_ns.lookup(expr.name)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
+                    self._check_definitely_assigned(expr)
                     return binding.type
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
@@ -198,7 +199,17 @@ class ExpressionAnalyzer:
             if expr.name in self.ctx.builtin_names:
                 return self.ctx.builtin_names[expr.name]
             raise SemanticError(f"Undefined variable: '{expr.name}'")
+        self._check_definitely_assigned(expr)
         return typ
+
+    def _check_definitely_assigned(self, expr: TpyName) -> None:
+        """Check that a local variable is definitely assigned before use."""
+        if (not self.ctx.init_terminated
+                and expr.name in self.ctx.var_scope_depth
+                and self.ctx.var_scope_depth[expr.name] >= 1
+                and expr.name not in self.ctx.definitely_assigned):
+            raise self.ctx.error(
+                f"variable '{expr.name}' may be used before assignment", expr)
 
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""

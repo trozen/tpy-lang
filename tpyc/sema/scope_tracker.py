@@ -55,11 +55,15 @@ class ScopeTracker:
             self.ctx.current_ns = inner_ns
         if is_foreach:
             self.ctx.loop_vars.add(name)
+        was_assigned = name in self.ctx.definitely_assigned
+        self.ctx.definitely_assigned.add(name)
         try:
             yield
         finally:
             if is_foreach:
                 self.ctx.loop_vars.discard(name)
+            if not was_assigned:
+                self.ctx.definitely_assigned.discard(name)
             self.ctx.current_ns = old_ns
             if old_depth is not None:
                 self.ctx.var_scope_depth[name] = old_depth

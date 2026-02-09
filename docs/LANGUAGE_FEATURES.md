@@ -529,6 +529,34 @@ Special handling for `for-each` variables: `for p in items` assigns `p` the cont
 
 Use `copy()` to fix escape errors — it creates an independent value that the outer variable can safely own.
 
+#### Definite-Assignment Analysis (Working)
+
+The compiler verifies that every local variable is definitely assigned before use — preventing undefined behavior from uninitialized C++ variables.
+
+```python
+def example(cond: Bool) -> None:
+    if cond:
+        x: Point = Point(1, 2)
+    print(x)  # ERROR: variable 'x' may be used before assignment
+
+    y: Int32          # bare annotation, no init
+    print(y)          # ERROR: variable 'y' may be used before assignment
+
+    z: Int32
+    for i in range(n):
+        z = i         # assignment inside loop doesn't count (loop may not execute)
+    print(z)          # ERROR
+```
+
+**Rules:**
+- Function parameters and `self` are assigned at entry
+- `x = expr` marks `x` as assigned
+- `x: Int32` (bare annotation) does NOT mark as assigned
+- **If/else merge**: intersection of both branches (a variable is assigned after `if/else` only if assigned in *both* branches)
+- **Terminated branch**: if one branch returns/breaks/continues, the other branch's state is used
+- **Loops**: conservative — assignments inside loop bodies don't persist after the loop (loop may execute 0 times)
+- **Top-level code**: skipped (globals have separate initialization semantics)
+
 #### Owned Parameters (Working)
 
 `Own[T]` can also be used for parameter types to receive values by-value:

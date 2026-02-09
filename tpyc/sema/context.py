@@ -98,6 +98,10 @@ class SemanticContext:
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)
 
+    # --- Definite-assignment tracking ---
+    definitely_assigned: set[str] = field(default_factory=set)
+    init_terminated: bool = False
+
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
@@ -130,3 +134,5 @@ class SemanticContext:
         self.super_init_call = None
         self.loop_vars.clear()
         self.var_scope_depth.clear()
+        self.definitely_assigned.clear()
+        self.init_terminated = False

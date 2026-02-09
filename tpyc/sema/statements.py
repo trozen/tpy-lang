@@ -21,6 +21,7 @@ from ..parse import (
 from ..coercions import CoercionContext
 from .diagnostics import SemanticError
 from .scope_tracker import ScopeTracker
+from .init_tracker import InitTracker
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -50,6 +51,7 @@ class StatementAnalyzer:
         self.list_tracker = list_tracker
         self.protocols = protocols
         self.scopes = ScopeTracker(ctx, compat)
+        self.init = InitTracker(ctx)
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
 
@@ -83,27 +85,38 @@ class StatementAnalyzer:
                         )
                 # Check for dangling reference (returning local/temporary as reference)
                 self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
+            self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
+            before = self.init.save()
             for s in stmt.then_body:
                 self.analyze_stmt(s)
+            then_state = self.init.save()
+            self.init.restore(before)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
+            else_state = self.init.save()
+            self.init.merge_branches(then_state, else_state)
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
+            before = self.init.save()
             with self.scopes.loop_scope():
                 for s in stmt.body:
                     self.analyze_stmt(s)
+            self.init.restore(before)
         elif isinstance(stmt, TpyFor):
             self.expr.analyze_expr(stmt.start)
             self.expr.analyze_expr(stmt.end)
+            before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
                 with self.scopes.loop_var(inner_scope, stmt.var, INT32, inner_scope.depth):
                     for s in stmt.body:
                         self.analyze_stmt(s)
+            self.init.restore(before)
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
             elem_type = self.list_tracker.get_iterable_element_type(iterable_type)
+            before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
                 # For-each var references container's storage — use container's depth.
                 # For rvalue iterables (calls), C++ extends the temporary's lifetime
@@ -116,12 +129,15 @@ class StatementAnalyzer:
                 with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                     for s in stmt.body:
                         self.analyze_stmt(s)
+            self.init.restore(before)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
                 raise SemanticError("'break' outside loop")
+            self.init.mark_terminated()
         elif isinstance(stmt, TpyContinue):
             if self.ctx.loop_depth == 0:
                 raise SemanticError("'continue' outside loop")
+            self.init.mark_terminated()
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param or loop variable."""
@@ -299,6 +315,8 @@ class StatementAnalyzer:
             raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
 
         self.ctx.current_scope.define(stmt.name, var_type)
+        if stmt.init:
+            self.init.mark_assigned(stmt.name)
         # Record scope depth for new variables (not reassignments of outer-scope
         # vars). Uses scope lookup rather than var_scope_depth existence, so that
         # stale entries from discarded inner scopes get overwritten correctly.
@@ -367,6 +385,7 @@ class StatementAnalyzer:
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
                     self.ctx.var_types[id(var_decl)] = value_type
+                self.init.mark_assigned(stmt.target.name)
                 return
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
@@ -391,6 +410,10 @@ class StatementAnalyzer:
         # Scope escape check for assignments to named variables
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
             self.scopes.check_escape(stmt.target.name, stmt.value, stmt)
+
+        # Mark as definitely assigned for plain name targets
+        if isinstance(stmt.target, TpyName):
+            self.init.mark_assigned(stmt.target.name)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""

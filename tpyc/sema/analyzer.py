@@ -246,6 +246,7 @@ class SemanticAnalyzer:
             resolved_ptype = self.type_ops.resolve_type(ptype)
             self.ctx.current_scope.define(pname, resolved_ptype)
             self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
+            self.ctx.definitely_assigned.add(pname)
 
         # Set up local namespace
         local_ns = Namespace(parent=self.ctx.global_ns)
@@ -282,11 +283,13 @@ class SemanticAnalyzer:
             if not method.is_staticmethod:
                 self.ctx.current_scope.define("self", NamedType(record.name))
                 self.ctx.var_scope_depth["self"] = self.ctx.current_scope.depth
+                self.ctx.definitely_assigned.add("self")
 
             # Add parameters
             for pname, ptype in method.params:
                 self.ctx.current_scope.define(pname, ptype)
                 self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
+                self.ctx.definitely_assigned.add(pname)
 
             # Set up local namespace
             local_ns = Namespace(parent=self.ctx.global_ns)
