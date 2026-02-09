@@ -2,11 +2,12 @@
 
 ## Next
 - local variable slots should be uninitialized by default (panic if accessed uninitialized? or only in debug mode?)
-- scope escape detection phase 2: hoist storage slots to function scope for intra-function escapes, downgrade to warning (definite-assignment analysis is now available)
+- refactor: extract shared body-generation logic from `functions.py:gen_function_def()`, `records.py:_gen_method()`, and `functions.py:gen_module_init()` — these duplicate the same setup (declared_vars, pointer_locals, slots, reassigned_vars, hoisted_vars, namespace, body buffering) and diverge silently when new features are added
 - rebind slot aliasing corner case (loop only): when a pointer-local is aliased inside a loop and then rvalue-rebound in the same loop, the alias may see the new value instead of the old one (non-loop aliasing is handled by separate init/rebind slots)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - all expected warnings/errors should be in `# tpyc` annotation
+- parser: extract to separate module
 - handling local objects, lifetime, pointer vs reference
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - investigate other backends than c++
@@ -78,6 +79,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
+- hoising variable slot -- instead of putting them in top-level, keep them at a lower level that would be enough to make the lifetime correct
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

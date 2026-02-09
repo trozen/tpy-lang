@@ -5,6 +5,7 @@ Generates C++ function declarations, definitions, and global variables.
 """
 
 from __future__ import annotations
+import io
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -104,6 +105,8 @@ class FunctionGenerator:
         self.ctx.pointer_locals = set()
         self.ctx.slots.reset()
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(func.body)
+        self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
+        self.ctx.pending_hoist_decls = []
 
         # Set up local namespace for this function
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -114,8 +117,16 @@ class FunctionGenerator:
         self.ctx.indent_level = 1
         self.ctx.current_return_type = func.return_type
         self.ctx.current_func_params = {pname: ptype for pname, ptype in func.params}
+
+        # Buffer body to collect hoist declarations
+        body_buf = io.StringIO()
         for stmt in func.body:
-            self.statements.gen_stmt(out, stmt)
+            self.statements.gen_stmt(body_buf, stmt)
+
+        # Write hoist declarations first, then body
+        for decl in self.ctx.pending_hoist_decls:
+            out.write(decl)
+        out.write(body_buf.getvalue())
 
         self.ctx.indent_level = 0
         self.ctx.current_ns = None
@@ -201,14 +212,25 @@ class FunctionGenerator:
             self.ctx.pointer_locals = set()
         self.ctx.slots.reset(global_scope=True)
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(stmts)
+        self.ctx.hoisted_vars = self.ctx.analyzer.top_level_hoisted_vars.copy()
+        self.ctx.pending_hoist_decls = []
         # Use global namespace for module init (globals are directly accessible)
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
+
+        # Buffer body to collect hoist declarations
+        body_buf = io.StringIO()
         for stmt in stmts:
             # Track current statement line for order-aware import qualification
             self.ctx.current_stmt_line = stmt.loc.line if hasattr(stmt, 'loc') and stmt.loc else 0
-            self.statements.gen_stmt(out, stmt)
+            self.statements.gen_stmt(body_buf, stmt)
         self.ctx.current_stmt_line = 0  # Reset after top-level processing
+
+        # Write hoist declarations first, then body
+        for decl in self.ctx.pending_hoist_decls:
+            out.write(decl)
+        out.write(body_buf.getvalue())
+
         self.ctx.current_ns = None
         # Call user's main() if defined
         if has_user_main:

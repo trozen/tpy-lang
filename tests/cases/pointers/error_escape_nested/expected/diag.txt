@@ -1,1 +1,0 @@
-main.tp.py:15: error: reference to 'inner' may outlive its storage; use copy(inner) for a safe copy

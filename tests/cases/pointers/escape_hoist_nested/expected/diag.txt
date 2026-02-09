@@ -1,0 +1,1 @@
+main.tp.py:15: warning: 'inner' is declared in a loop body; storage hoisted to function scope

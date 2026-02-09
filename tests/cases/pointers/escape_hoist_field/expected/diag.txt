@@ -1,0 +1,2 @@
+main.tp.py:11: warning: copies Inner into field; use copy() to make this explicit
+main.tp.py:19: warning: 'o' is declared in a loop body; storage hoisted to function scope

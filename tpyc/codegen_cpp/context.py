@@ -78,6 +78,11 @@ class SlotState:
     def __init__(self):
         self._counter: int = 0
         self._prefix: str = "__slot"
+        self._global_scope: bool = False
+
+    @property
+    def global_scope(self) -> bool:
+        return self._global_scope
 
     def next_slot(self) -> str:
         """Return a fresh slot name (__slot_N or __global_slot_N)."""
@@ -86,6 +91,7 @@ class SlotState:
 
     def reset(self, *, global_scope: bool = False) -> None:
         self._counter = 0
+        self._global_scope = global_scope
         self._prefix = "__global_slot" if global_scope else "__slot"
 
 
@@ -163,6 +169,10 @@ class CodeGenContext:
     rebind_slots: dict[str, str] = field(default_factory=dict)
     reassigned_vars: set[str] = field(default_factory=set)
     rvalue_reassigned_vars: set[str] = field(default_factory=set)
+
+    # --- Hoisted variable tracking (scope escape phase 2) ---
+    hoisted_vars: set[str] = field(default_factory=set)
+    pending_hoist_decls: list[str] = field(default_factory=list)
 
     # --- Module-level flags ---
     _has_synthetic_name: bool = False
@@ -395,3 +405,5 @@ class CodeGenContext:
         self.rebind_slots = {}
         self.reassigned_vars = set()
         self.rvalue_reassigned_vars = set()
+        self.hoisted_vars = set()
+        self.pending_hoist_decls = []

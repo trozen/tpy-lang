@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
+    Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, ConstPtrType, INT32, VOID, BIGINT, is_protocol_type,
 )
@@ -327,6 +327,12 @@ class StatementAnalyzer:
         # codegen uses a rebind slot at the declaration scope for rvalue rebinds.
         if existing_type is None:
             self.ctx.var_scope_depth[stmt.name] = self.ctx.current_scope.depth
+        # Update rvalue status for hoist eligibility (both new vars and reassignments)
+        if stmt.init:
+            if self.compat.is_lvalue(stmt.init):
+                self.ctx.rvalue_vars.discard(stmt.name)
+            else:
+                self.ctx.rvalue_vars.add(stmt.name)
 
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
@@ -353,6 +359,11 @@ class StatementAnalyzer:
         # Disallow reassignment of non-value-type params and loop vars
         if isinstance(stmt.target, TpyName):
             self._check_nonvalue_rebinding(stmt.target.name, stmt)
+            # Update rvalue status for hoist eligibility
+            if self.compat.is_lvalue(stmt.value):
+                self.ctx.rvalue_vars.discard(stmt.target.name)
+            else:
+                self.ctx.rvalue_vars.add(stmt.target.name)
 
         # Prevent assignment to read-only types via MutableSequence protocol check
         if isinstance(stmt.target, TpySubscript):

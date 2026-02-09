@@ -1,1 +1,0 @@
-main.tp.py:15: error: reference to 'p' may outlive its storage; use copy(p) for a safe copy

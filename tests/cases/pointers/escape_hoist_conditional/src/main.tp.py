@@ -1,0 +1,20 @@
+from tpy import Int32
+
+class Point:
+    x: Int32
+    y: Int32
+    def __init__(self, x: Int32, y: Int32):
+        self.x = x
+        self.y = y
+
+# Escape only happens in one branch of an if-statement inside a loop.
+# The hoisted slot must still be at function scope.
+def conditional_hoist() -> None:
+    saved: Point = Point(0, 0)
+    for i in range(5):
+        p: Point = Point(i, i * 3)
+        if i > 2:
+            saved = p  # tpyc: warning(/hoisted to function scope/)
+    print(saved.x, saved.y)
+
+conditional_hoist()

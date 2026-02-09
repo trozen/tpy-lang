@@ -191,6 +191,8 @@ class StatementGenerator:
             return False
         if name in self.ctx.reassigned_vars:
             return True
+        if name in self.ctx.hoisted_vars:
+            return True
         if init is not None and not self.ctx.is_rvalue_source(init):
             return True
         return False
@@ -256,9 +258,21 @@ class StatementGenerator:
         from ..parse import TpyName as _TpyName
         init_expr = self.expressions.gen_expr(init, target_type)
 
+        is_hoisted = name in self.ctx.hoisted_vars
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+        # Hoisted decls go to function scope — use global_scope flag from slot state
+        hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
         if self.ctx.is_rvalue_source(init):
             init_slot = self.ctx.slots.next_slot()
+            if is_hoisted:
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {init_slot};\n")
+                if name in self.ctx.rvalue_reassigned_vars:
+                    rebind_slot = self.ctx.slots.next_slot()
+                    self.ctx.rebind_slots[name] = rebind_slot
+                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {rebind_slot};\n")
+                else:
+                    self.ctx.rebind_slots[name] = init_slot
+                return f"{indent}{cpp_type}* {name} = &({init_slot} = {init_expr});\n"
             if name in self.ctx.rvalue_reassigned_vars:
                 # Separate rebind slot so aliases to init value aren't overwritten
                 rebind_slot = self.ctx.slots.next_slot()
@@ -275,7 +289,10 @@ class StatementGenerator:
         if name in self.ctx.rvalue_reassigned_vars:
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
-            rebind_decl = f"{indent}{static_kw}{cpp_type} {slot};\n"
+            if is_hoisted:
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {slot};\n")
+            else:
+                rebind_decl = f"{indent}{static_kw}{cpp_type} {slot};\n"
 
         if isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
             return f"{rebind_decl}{indent}{cpp_type}* {name} = {init_expr};\n"
@@ -297,7 +314,9 @@ class StatementGenerator:
         from ..parse import TpyName as _TpyName
         init_expr = self.expressions.gen_expr(init, target_type)
 
+        is_hoisted = name in self.ctx.hoisted_vars
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+        hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
         if self.ctx.is_rvalue_source(init):
             rebind_slot = self.ctx.rebind_slots.get(name)
             if rebind_slot:
@@ -305,6 +324,10 @@ class StatementGenerator:
             # First rvalue assignment (e.g. global init) — declare slot here
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
+            if is_hoisted:
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {slot};\n")
+                return (f"{indent}{slot} = {init_expr};\n"
+                        f"{indent}{name} = &{slot};\n")
             return (f"{indent}{static_kw}{cpp_type} {slot} = {init_expr};\n"
                     f"{indent}{name} = &{slot};\n")
         elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
@@ -345,8 +368,8 @@ class StatementGenerator:
         # Indirection for non-value types in function/method scope
         if self._needs_indirection(target_type, stmt.name, stmt.init):
             assert stmt.init, f"indirect local '{stmt.name}' missing initializer"
-            if stmt.name in self.ctx.reassigned_vars:
-                # T* pointer-local — needs rebinding support
+            if stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
+                # T* pointer-local — needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
                 return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
             else:
@@ -389,7 +412,7 @@ class StatementGenerator:
         # Default: simple assignment
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.analyzer.get_expr_type(stmt.target)
-        value = self.expressions.gen_expr(stmt.value, target_type)
+        value = self.expressions.gen_expr_deref(stmt.value, target_type)
         return f"{indent}{target} = {value};\n"
 
     def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:

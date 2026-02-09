@@ -97,14 +97,29 @@ class ScopeTracker:
 
     def check_escape(self, target_name: str, source_expr: TpyExpr,
                      node: object) -> None:
-        """Error if source may outlive target's storage."""
+        """Check if source may outlive target's storage.
+
+        Hoisting is only safe when the source variable owns its storage
+        (rvalue-initialized). For-each variables and lvalue-initialized
+        variables keep the hard error — they alias other storage that
+        hoisting can't fix.
+        """
         if self.is_scope_escape(target_name, source_expr):
             source_name = self._get_source_name(source_expr)
-            raise self.ctx.error(
-                f"reference to '{source_name}' may outlive its storage; "
-                f"use copy({source_name}) for a safe copy",
+            can_hoist = (source_name not in self.ctx.loop_vars
+                         and source_name in self.ctx.rvalue_vars)
+            if not can_hoist:
+                raise self.ctx.error(
+                    f"reference to '{source_name}' may outlive its storage; "
+                    f"use copy({source_name}) for a safe copy",
+                    node
+                )
+            self.ctx.warning(
+                f"'{source_name}' is declared in a loop body; "
+                f"storage hoisted to function scope",
                 node
             )
+            self.ctx.hoisted_vars.add(source_name)
 
     def _get_source_name(self, expr: TpyExpr) -> str:
         """Extract the root variable name from an expression for error messages."""

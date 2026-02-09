@@ -5,6 +5,7 @@ Generates C++ structs from TurboPython records.
 """
 
 from __future__ import annotations
+import io
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -370,6 +371,8 @@ class RecordGenerator:
         self.ctx.pointer_locals = set()
         self.ctx.slots.reset()
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(method.body)
+        self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(method), set())
+        self.ctx.pending_hoist_decls = []
 
         # Set up local namespace for this method (bind self and params, skip self for static)
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -383,8 +386,17 @@ class RecordGenerator:
         self.ctx.in_method = True
         self.ctx.current_return_type = method.return_type
         self.ctx.current_func_params = {pname: ptype for pname, ptype in method.params}
+
+        # Buffer body to collect hoist declarations
+        body_buf = io.StringIO()
         for stmt in method.body:
-            self.statements.gen_stmt(out, stmt)
+            self.statements.gen_stmt(body_buf, stmt)
+
+        # Write hoist declarations first, then body (add extra indent for method scope)
+        for decl in self.ctx.pending_hoist_decls:
+            out.write(f"  {decl}")
+        out.write(body_buf.getvalue())
+
         self.ctx.in_method = False
         self.ctx.local_scope_names = set()
         self.ctx.indent_level = 0

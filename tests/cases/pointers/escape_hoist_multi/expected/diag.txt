@@ -1,0 +1,2 @@
+main.tp.py:18: warning: 'a' is declared in a loop body; storage hoisted to function scope
+main.tp.py:19: warning: 'b' is declared in a loop body; storage hoisted to function scope

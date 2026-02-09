@@ -511,23 +511,34 @@ No warning is emitted for:
 
 #### Scope Escape Detection (Working)
 
-The compiler detects when a pointer to a local variable might outlive its storage. This happens when a variable declared in an inner scope (e.g., loop body) is assigned to a variable in an outer scope — the inner storage dies at the end of the inner scope, leaving the outer variable dangling.
+The compiler detects when a pointer to a local variable might outlive its storage. This happens when a variable declared in an inner scope (e.g., loop body) is assigned to a variable in an outer scope.
+
+For most cases, the compiler **hoists** the inner variable's storage slot to function scope and emits a warning. The generated code is safe — the hoisted slot lives as long as the function, so the outer variable never dangles:
+
+```python
+def example() -> None:
+    saved: Point = Point(0, 0)
+    for i in range(10):
+        p: Point = Point(i, i)
+        saved = p        # WARNING: hoisted to function scope (safe)
+        saved = copy(p)  # OK: copy() creates independent storage
+        saved = Point()  # OK: rvalue has fresh storage
+    print(saved.x)       # Works: p's storage was hoisted
+```
+
+For `for-each` variables, hoisting doesn't help because the variable is a reference into a container — the reference itself would dangle. These remain **hard errors**:
 
 ```python
 def bad() -> None:
     saved: Point = Point(0, 0)
-    for i in range(10):
-        p: Point = Point(i, i)
-        saved = p        # ERROR: pointer to 'p' may outlive its storage
+    for p in make_points():
+        saved = p        # ERROR: for-each var references container storage
         saved = copy(p)  # OK: copy() creates independent storage
-        saved = Point()  # OK: rvalue has fresh storage
 ```
 
-Detection uses scope depth comparison — each scope has a numeric depth, and variables track the depth where they were first declared. When assigning an lvalue to a shallower-depth target, the compiler errors.
+Detection uses scope depth comparison — each scope has a numeric depth, and variables track the depth where they were first declared. When assigning an lvalue to a shallower-depth target, the compiler checks whether hoisting is possible (regular loop variables) or not (for-each variables).
 
-Special handling for `for-each` variables: `for p in items` assigns `p` the container's depth (not the loop body depth), since `p` references the container's storage. This means `saved = p` is safe when `items` is in the outer scope. For rvalue iterables (`for p in get_items()`), `p` gets the loop body depth — the temporary dies when the loop ends, so assigning `p` to an outer variable is an error.
-
-Use `copy()` to fix escape errors — it creates an independent value that the outer variable can safely own.
+Use `copy()` to silence warnings or fix errors — it creates an independent value that the outer variable can safely own.
 
 #### Definite-Assignment Analysis (Working)
 

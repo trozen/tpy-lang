@@ -73,6 +73,10 @@ class SemanticAnalyzer:
         self.methods.set_cross_deps(self.expr, self.calls)
         self.stmts.set_cross_deps(self.expr)
 
+        # Per-function/method hoisted vars (scope escape phase 2)
+        self.function_hoisted_vars: dict[int, set[str]] = {}
+        self.top_level_hoisted_vars: set[str] = set()
+
         # Convenience aliases for public API
         self.registry = self.ctx.registry
         self.global_scope = self.ctx.global_scope
@@ -262,6 +266,9 @@ class SemanticAnalyzer:
         # Resolve pending list types after analyzing the full function
         self.list_tracker.resolve_pending_list_types()
 
+        if self.ctx.hoisted_vars:
+            self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
+
         self.ctx.current_function = None
         self.ctx.current_scope = None
         self.ctx.current_ns = None
@@ -318,6 +325,9 @@ class SemanticAnalyzer:
             # Resolve pending list types after analyzing the full method
             self.list_tracker.resolve_pending_list_types()
 
+            if self.ctx.hoisted_vars:
+                self.function_hoisted_vars[id(method)] = self.ctx.hoisted_vars.copy()
+
             self.ctx.current_scope = None
             self.ctx.current_function = None
             self.ctx.current_ns = None
@@ -344,6 +354,9 @@ class SemanticAnalyzer:
 
         # Resolve pending list types (same as function analysis)
         self.list_tracker.resolve_pending_list_types()
+
+        if self.ctx.hoisted_vars:
+            self.top_level_hoisted_vars = self.ctx.hoisted_vars.copy()
 
         self.ctx.current_function = None
         self.ctx.current_scope = None
