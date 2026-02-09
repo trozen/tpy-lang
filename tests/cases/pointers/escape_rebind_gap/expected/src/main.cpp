@@ -9,7 +9,7 @@ std::string_view __name__;
 void rebind_gap() {
   // 15:     p: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* p = &__slot_1;
   // 16:     saved: Point = Point(0, 0)
   Point __slot_3 = Point(0, 0);
@@ -17,7 +17,7 @@ void rebind_gap() {
   // 17:     for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 18:         p = Point(i, i)
-    p = &(__slot_2 = Point(i, i));
+    p = &*(__slot_2 = Point(i, i));
     // 19:         saved = p
     saved = p;
   }

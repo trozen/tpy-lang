@@ -7,8 +7,8 @@ std::string_view __name__;
 
 // 12: def rvalue_restored() -> None:
 void rvalue_restored() {
-  Point __slot_2;
-  Point __slot_3;
+  std::optional<Point> __slot_2;
+  std::optional<Point> __slot_3;
   // 13:     saved: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
@@ -17,11 +17,11 @@ void rvalue_restored() {
     // 15:         items: list[Point] = [Point(99, 99)]
     std::vector<Point> items = {Point(99, 99)};
     // 16:         p: Point = Point(0, 0)
-    Point* p = &(__slot_2 = Point(0, 0));
+    Point* p = &*(__slot_2 = Point(0, 0));
     // 17:         p = items[0]
     p = &(tpy::get_item(items, 0));
     // 18:         p = Point(i, i + 10)
-    p = &(__slot_3 = Point(i, (tpy::int32_add(i, 10))));
+    p = &*(__slot_3 = Point(i, (tpy::int32_add(i, 10))));
     // 19:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

@@ -7,14 +7,14 @@ std::string_view __name__;
 
 // 15: def field_access_escape() -> None:
 void field_access_escape() {
-  Outer __slot_2;
+  std::optional<Outer> __slot_2;
   // 16:     saved: Inner = Inner(0)
   Inner __slot_1 = Inner(0);
   Inner* saved = &__slot_1;
   // 17:     for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 18:         o: Outer = Outer(Inner(i))
-    Outer* o = &(__slot_2 = Outer(Inner(i)));
+    Outer* o = &*(__slot_2 = Outer(Inner(i)));
     // 19:         saved = o.inner  # tpyc: warning(/hoisted to function scope/)
     saved = &(o->inner);
   }

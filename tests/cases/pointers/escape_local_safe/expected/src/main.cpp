@@ -9,14 +9,14 @@ std::string_view __name__;
 void loop_escape_copy_ok() {
   // 12:     saved: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* saved = &__slot_1;
   // 13:     for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 14:         p: Point = Point(i, i)
     Point p = Point(i, i);
     // 15:         saved = copy(p)  # tpyc: ok
-    saved = &(__slot_2 = p);
+    saved = &*(__slot_2 = p);
   }
   // 16:     print(saved.x, saved.y)
   std::cout << saved->x << " " << saved->y << "\n";
@@ -26,12 +26,12 @@ void loop_escape_copy_ok() {
 void loop_rvalue_ok() {
   // 20:     saved: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* saved = &__slot_1;
   // 21:     for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 22:         saved = Point(i, i)  # tpyc: ok
-    saved = &(__slot_2 = Point(i, i));
+    saved = &*(__slot_2 = Point(i, i));
   }
   // 23:     print(saved.x, saved.y)
   std::cout << saved->x << " " << saved->y << "\n";
@@ -145,14 +145,14 @@ void lvalue_init_rvalue_rebind() {
   // 87:     items: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
   std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
   // 88:     best: Point = items[0]
-  Point __slot_1;
+  std::optional<Point> __slot_1;
   Point* best = &(tpy::get_item(items, 0));
   // 89:     for p in items:
   for (auto& p : items) {
     // 90:         if p.x > best.x:
     if ((p.x > best->x)) {
       // 91:             best = copy(p)  # tpyc: ok
-      best = &(__slot_1 = p);
+      best = &*(__slot_1 = p);
     }
   }
   // 92:     print(best.x, best.y)
@@ -163,12 +163,12 @@ void lvalue_init_rvalue_rebind() {
 void rvalue_alias_preserved() {
   // 97:     p: Point = Point(1, 1)
   Point __slot_1 = Point(1, 1);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* p = &__slot_1;
   // 98:     alias: Point = p  # tpyc: ok
   Point& alias = (*p);
   // 99:     p = Point(2, 2)
-  p = &(__slot_2 = Point(2, 2));
+  p = &*(__slot_2 = Point(2, 2));
   // 100:     print(alias.x, alias.y)
   std::cout << alias.x << " " << alias.y << "\n";
   // 101:     print(p.x, p.y)
@@ -179,12 +179,12 @@ void rvalue_alias_preserved() {
 void if_branch_rvalue_rebind() {
   // 105:     p: Point = Point(1, 1)
   Point __slot_1 = Point(1, 1);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* p = &__slot_1;
   // 106:     if p.x > 0:
   if ((p->x > 0)) {
     // 107:         p = Point(2, 2)
-    p = &(__slot_2 = Point(2, 2));
+    p = &*(__slot_2 = Point(2, 2));
   }
   // 108:     print(p.x, p.y)
   std::cout << p->x << " " << p->y << "\n";
@@ -194,15 +194,15 @@ void if_branch_rvalue_rebind() {
 void if_else_rvalue_rebinds() {
   // 112:     p: Point = Point(1, 1)
   Point __slot_1 = Point(1, 1);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* p = &__slot_1;
   // 113:     if p.x > 0:
   if ((p->x > 0)) {
     // 114:         p = Point(2, 2)
-    p = &(__slot_2 = Point(2, 2));
+    p = &*(__slot_2 = Point(2, 2));
   } else {
     // 116:         p = Point(3, 3)
-    p = &(__slot_2 = Point(3, 3));
+    p = &*(__slot_2 = Point(3, 3));
   }
   // 117:     print(p.x, p.y)
   std::cout << p->x << " " << p->y << "\n";
@@ -212,14 +212,14 @@ void if_else_rvalue_rebinds() {
 void if_alias_preserved() {
   // 121:     p: Point = Point(1, 1)
   Point __slot_1 = Point(1, 1);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* p = &__slot_1;
   // 122:     alias: Point = p  # tpyc: ok
   Point& alias = (*p);
   // 123:     if p.x > 0:
   if ((p->x > 0)) {
     // 124:         p = Point(2, 2)
-    p = &(__slot_2 = Point(2, 2));
+    p = &*(__slot_2 = Point(2, 2));
   }
   // 125:     print(alias.x, alias.y)
   std::cout << alias.x << " " << alias.y << "\n";
@@ -231,14 +231,14 @@ void if_alias_preserved() {
 void while_rvalue_rebind() {
   // 130:     p: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   Point* p = &__slot_1;
   // 131:     i: Int32 = 0
   int32_t i = 0;
   // 132:     while i < 3:
   while ((i < 3)) {
     // 133:         p = Point(i, i)
-    p = &(__slot_2 = Point(i, i));
+    p = &*(__slot_2 = Point(i, i));
     // 134:         i = i + 1
     i = (tpy::int32_add(i, 1));
   }

@@ -7,14 +7,14 @@ std::string_view __name__;
 
 // 10: def loop_escape() -> None:
 void loop_escape() {
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   // 11:     saved: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 12:     for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 13:         p: Point = Point(i, i)
-    Point* p = &(__slot_2 = Point(i, i));
+    Point* p = &*(__slot_2 = Point(i, i));
     // 14:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

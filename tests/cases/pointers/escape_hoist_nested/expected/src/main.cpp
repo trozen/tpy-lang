@@ -7,7 +7,7 @@ std::string_view __name__;
 
 // 10: def nested_loop_escape() -> None:
 void nested_loop_escape() {
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   // 11:     for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 12:         outer: Point = Point(i, 0)
@@ -16,7 +16,7 @@ void nested_loop_escape() {
     // 13:         for j in range(3):
     for (int32_t j = 0; j < 3; ++j) {
       // 14:             inner: Point = Point(j, j)
-      Point* inner = &(__slot_2 = Point(j, j));
+      Point* inner = &*(__slot_2 = Point(j, j));
       // 15:             outer = inner  # tpyc: warning(/hoisted to function scope/)
       outer = inner;
     }

@@ -34,14 +34,14 @@ struct Finder {
   Finder() : result(Point(0, 0)) {}
 
   void find_last(int32_t n) {
-    Point __slot_2;
+    std::optional<Point> __slot_2;
     // 16:         saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // 17:         for i in range(n):
     for (int32_t i = 0; i < n; ++i) {
       // 18:             p: Point = Point(i, i * 2)
-      Point* p = &(__slot_2 = Point(i, (tpy::int32_mul(i, 2))));
+      Point* p = &*(__slot_2 = Point(i, (tpy::int32_mul(i, 2))));
       // 19:             saved = p  # tpyc: warning(/hoisted to function scope/)
       saved = p;
     }

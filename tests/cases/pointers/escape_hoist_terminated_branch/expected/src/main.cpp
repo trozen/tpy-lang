@@ -7,7 +7,7 @@ std::string_view __name__;
 
 // 12: def terminated_branch() -> None:
 void terminated_branch() {
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   // 13:     saved: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
@@ -16,7 +16,7 @@ void terminated_branch() {
     // 15:         items: list[Point] = [Point(99, 99)]
     std::vector<Point> items = {Point(99, 99)};
     // 16:         p: Point = Point(i, i)
-    Point* p = &(__slot_2 = Point(i, i));
+    Point* p = &*(__slot_2 = Point(i, i));
     // 17:         if i == 0:
     if ((i == 0)) {
       // 18:             p = items[0]

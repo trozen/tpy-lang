@@ -7,8 +7,8 @@ std::string_view __name__;
 
 // 12: def multi_hoist() -> None:
 void multi_hoist() {
-  Point __slot_3;
-  Point __slot_4;
+  std::optional<Point> __slot_3;
+  std::optional<Point> __slot_4;
   // 13:     saved_a: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
   Point* saved_a = &__slot_1;
@@ -18,9 +18,9 @@ void multi_hoist() {
   // 15:     for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 16:         a: Point = Point(i, 10)
-    Point* a = &(__slot_3 = Point(i, 10));
+    Point* a = &*(__slot_3 = Point(i, 10));
     // 17:         b: Point = Point(20, i)
-    Point* b = &(__slot_4 = Point(20, i));
+    Point* b = &*(__slot_4 = Point(20, i));
     // 18:         saved_a = a  # tpyc: warning(/hoisted to function scope/)
     saved_a = a;
     // 19:         saved_b = b  # tpyc: warning(/hoisted to function scope/)

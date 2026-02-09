@@ -306,20 +306,20 @@ class StatementGenerator:
         if self.ctx.is_rvalue_source(init):
             init_slot = self.ctx.slots.next_slot()
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {init_slot};\n")
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {init_slot};\n")
                 if name in self.ctx.rvalue_reassigned_vars:
                     rebind_slot = self.ctx.slots.next_slot()
                     self.ctx.rebind_slots[name] = rebind_slot
-                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {rebind_slot};\n")
+                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {rebind_slot};\n")
                 else:
                     self.ctx.rebind_slots[name] = init_slot
-                return f"{indent}{cpp_type}* {name} = &({init_slot} = {init_expr});\n"
+                return f"{indent}{cpp_type}* {name} = &*({init_slot} = {init_expr});\n"
             if name in self.ctx.rvalue_reassigned_vars:
                 # Separate rebind slot so aliases to init value aren't overwritten
                 rebind_slot = self.ctx.slots.next_slot()
                 self.ctx.rebind_slots[name] = rebind_slot
                 return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
-                        f"{indent}{static_kw}{cpp_type} {rebind_slot};\n"
+                        f"{indent}{static_kw}std::optional<{cpp_type}> {rebind_slot};\n"
                         f"{indent}{cpp_type}* {name} = &{init_slot};\n")
             self.ctx.rebind_slots[name] = init_slot
             return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
@@ -331,9 +331,9 @@ class StatementGenerator:
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {slot};\n")
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {slot};\n")
             else:
-                rebind_decl = f"{indent}{static_kw}{cpp_type} {slot};\n"
+                rebind_decl = f"{indent}{static_kw}std::optional<{cpp_type}> {slot};\n"
 
         if isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
             return f"{rebind_decl}{indent}{cpp_type}* {name} = {init_expr};\n"
@@ -361,14 +361,13 @@ class StatementGenerator:
         if self.ctx.is_rvalue_source(init):
             rebind_slot = self.ctx.rebind_slots.get(name)
             if rebind_slot:
-                return f"{indent}{name} = &({rebind_slot} = {init_expr});\n"
+                return f"{indent}{name} = &*({rebind_slot} = {init_expr});\n"
             # First rvalue assignment (e.g. global init) — declare slot here
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{cpp_type} {slot};\n")
-                return (f"{indent}{slot} = {init_expr};\n"
-                        f"{indent}{name} = &{slot};\n")
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {slot};\n")
+                return f"{indent}{name} = &*({slot} = {init_expr});\n"
             return (f"{indent}{static_kw}{cpp_type} {slot} = {init_expr};\n"
                     f"{indent}{name} = &{slot};\n")
         elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:

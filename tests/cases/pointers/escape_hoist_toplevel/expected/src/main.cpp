@@ -13,14 +13,14 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  static Point __global_slot_2;
+  static std::optional<Point> __global_slot_2;
   // 12: saved: Point = Point(0, 0)
   static Point __global_slot_1 = Point(0, 0);
   saved = &__global_slot_1;
   // 13: for i in range(3):
   for (int32_t i = 0; i < 3; ++i) {
     // 14:     p: Point = Point(i, i)
-    Point* p = &(__global_slot_2 = Point(i, i));
+    Point* p = &*(__global_slot_2 = Point(i, i));
     // 15:     saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

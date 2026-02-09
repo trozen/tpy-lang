@@ -7,7 +7,7 @@ std::string_view __name__;
 
 // 10: def while_escape() -> None:
 void while_escape() {
-  Point __slot_2;
+  std::optional<Point> __slot_2;
   // 11:     saved: Point = Point(0, 0)
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
@@ -16,7 +16,7 @@ void while_escape() {
   // 13:     while i < 3:
   while ((i < 3)) {
     // 14:         p: Point = Point(i, i)
-    Point* p = &(__slot_2 = Point(i, i));
+    Point* p = &*(__slot_2 = Point(i, i));
     // 15:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
     // 16:         i = i + 1
