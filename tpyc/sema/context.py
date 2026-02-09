@@ -95,6 +95,9 @@ class SemanticContext:
     super_init_call: TpyMethodCall | None = None
     loop_vars: set[str] = field(default_factory=set)
 
+    # --- Scope escape tracking ---
+    var_scope_depth: dict[str, int] = field(default_factory=dict)
+
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
@@ -126,3 +129,4 @@ class SemanticContext:
         self.pending_resolutions.clear()
         self.super_init_call = None
         self.loop_vars.clear()
+        self.var_scope_depth.clear()

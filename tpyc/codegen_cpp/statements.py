@@ -46,28 +46,58 @@ class StatementGenerator:
         """Set expressions generator (to break circular dependency)."""
         self.expressions = expressions
 
-    def scan_reassigned_vars(self, stmts: list[TpyStmt]) -> set[str]:
-        """Pre-scan a function body to find variables that are reassigned after first declaration."""
+    def scan_reassigned_vars(self, stmts: list[TpyStmt]) -> tuple[set[str], set[str]]:
+        """Pre-scan a function body to find variables that are reassigned after first declaration.
+
+        Returns (reassigned, rvalue_reassigned) where rvalue_reassigned is the
+        subset that has at least one rvalue reassignment (call, constructor, etc.).
+        """
         declared: set[str] = set()
         reassigned: set[str] = set()
-        self._scan_stmts(stmts, declared, reassigned)
-        return reassigned
+        rvalue_reassigned: set[str] = set()
+        self._scan_stmts(stmts, declared, reassigned, rvalue_reassigned)
+        return reassigned, rvalue_reassigned
 
-    def _scan_stmts(self, stmts: list[TpyStmt], declared: set[str], reassigned: set[str]) -> None:
+    @staticmethod
+    def _is_scan_rvalue(expr: TpyExpr | None) -> bool:
+        """Conservative rvalue check for pre-scan (no type registry needed)."""
+        if expr is None:
+            return False
+        from ..parse import (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
+                             TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+                             TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat,
+                             TpyCoerce)
+        if isinstance(expr, TpyCoerce):
+            return StatementGenerator._is_scan_rvalue(expr.expr)
+        if isinstance(expr, (TpyName, TpySubscript)):
+            return False
+        from ..parse import TpyFieldAccess
+        if isinstance(expr, TpyFieldAccess):
+            return False
+        return isinstance(expr, (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
+                                 TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+                                 TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat))
+
+    def _scan_stmts(self, stmts: list[TpyStmt], declared: set[str],
+                    reassigned: set[str], rvalue_reassigned: set[str]) -> None:
         for stmt in stmts:
             if isinstance(stmt, TpyVarDecl):
                 if stmt.name in declared:
                     reassigned.add(stmt.name)
+                    if self._is_scan_rvalue(stmt.init):
+                        rvalue_reassigned.add(stmt.name)
                 else:
                     declared.add(stmt.name)
             elif isinstance(stmt, TpyAssign):
                 if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                     reassigned.add(stmt.target.name)
+                    if self._is_scan_rvalue(stmt.value):
+                        rvalue_reassigned.add(stmt.target.name)
             if isinstance(stmt, TpyIf):
-                self._scan_stmts(stmt.then_body, declared, reassigned)
-                self._scan_stmts(stmt.else_body, declared, reassigned)
+                self._scan_stmts(stmt.then_body, declared, reassigned, rvalue_reassigned)
+                self._scan_stmts(stmt.else_body, declared, reassigned, rvalue_reassigned)
             elif isinstance(stmt, (TpyWhile, TpyFor, TpyForEach)):
-                self._scan_stmts(stmt.body, declared, reassigned)
+                self._scan_stmts(stmt.body, declared, reassigned, rvalue_reassigned)
 
     def gen_stmt(self, out: TextIO, stmt: TpyStmt) -> None:
         """Generate a statement."""
@@ -219,34 +249,62 @@ class StatementGenerator:
         - rvalue → new slot + take address
         - pointer-local name → pointer copy
         - lvalue ref (param, subscript, field) → take address
+
+        For vars with future rvalue rebinds, a separate rebind slot is
+        pre-declared so aliases to the init value aren't overwritten.
         """
         from ..parse import TpyName as _TpyName
         init_expr = self.expressions.gen_expr(init, target_type)
 
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         if self.ctx.is_rvalue_source(init):
+            init_slot = self.ctx.slots.next_slot()
+            if name in self.ctx.rvalue_reassigned_vars:
+                # Separate rebind slot so aliases to init value aren't overwritten
+                rebind_slot = self.ctx.slots.next_slot()
+                self.ctx.rebind_slots[name] = rebind_slot
+                return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
+                        f"{indent}{static_kw}{cpp_type} {rebind_slot};\n"
+                        f"{indent}{cpp_type}* {name} = &{init_slot};\n")
+            self.ctx.rebind_slots[name] = init_slot
+            return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
+                    f"{indent}{cpp_type}* {name} = &{init_slot};\n")
+
+        # Pre-declare rebind slot for lvalue-init vars with future rvalue rebinds
+        rebind_decl = ""
+        if name in self.ctx.rvalue_reassigned_vars:
             slot = self.ctx.slots.next_slot()
-            return (f"{indent}{static_kw}{cpp_type} {slot} = {init_expr};\n"
-                    f"{indent}{cpp_type}* {name} = &{slot};\n")
-        elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
-            return f"{indent}{cpp_type}* {name} = {init_expr};\n"
+            self.ctx.rebind_slots[name] = slot
+            rebind_decl = f"{indent}{static_kw}{cpp_type} {slot};\n"
+
+        if isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
+            return f"{rebind_decl}{indent}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx._is_pointer_global(init):
-            return f"{indent}{cpp_type}* {name} = {init_expr};\n"
+            return f"{rebind_decl}{indent}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx.is_global_name(init):
-            return f"{indent}{cpp_type}* {name} = &({init_expr});\n"
+            return f"{rebind_decl}{indent}{cpp_type}* {name} = &({init_expr});\n"
         else:
             # lvalue ref: param, subscript, field → take address
-            return f"{indent}{cpp_type}* {name} = &({init_expr});\n"
+            return f"{rebind_decl}{indent}{cpp_type}* {name} = &({init_expr});\n"
 
     def _gen_pointer_local_rebind(self, name: str, cpp_type: str, init: 'TpyExpr',
                                    target_type: TpyType | None, indent: str) -> str:
-        """Generate pointer-local rebinding code (reassignment)."""
+        """Generate pointer-local rebinding code (reassignment).
+
+        For rvalue sources, reuses the rebind slot declared at init site
+        to avoid creating loop-scoped storage that would dangle.
+        """
         from ..parse import TpyName as _TpyName
         init_expr = self.expressions.gen_expr(init, target_type)
 
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         if self.ctx.is_rvalue_source(init):
+            rebind_slot = self.ctx.rebind_slots.get(name)
+            if rebind_slot:
+                return f"{indent}{name} = &({rebind_slot} = {init_expr});\n"
+            # First rvalue assignment (e.g. global init) — declare slot here
             slot = self.ctx.slots.next_slot()
+            self.ctx.rebind_slots[name] = slot
             return (f"{indent}{static_kw}{cpp_type} {slot} = {init_expr};\n"
                     f"{indent}{name} = &{slot};\n")
         elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:

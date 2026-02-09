@@ -509,6 +509,26 @@ No warning is emitted for:
 - **Rvalues** (constructor calls, function results) — no existing owner
 - **`copy()` wrapped** — intent already explicit
 
+#### Scope Escape Detection (Working)
+
+The compiler detects when a pointer to a local variable might outlive its storage. This happens when a variable declared in an inner scope (e.g., loop body) is assigned to a variable in an outer scope — the inner storage dies at the end of the inner scope, leaving the outer variable dangling.
+
+```python
+def bad() -> None:
+    saved: Point = Point(0, 0)
+    for i in range(10):
+        p: Point = Point(i, i)
+        saved = p        # ERROR: pointer to 'p' may outlive its storage
+        saved = copy(p)  # OK: copy() creates independent storage
+        saved = Point()  # OK: rvalue has fresh storage
+```
+
+Detection uses scope depth comparison — each scope has a numeric depth, and variables track the depth where they were first declared. When assigning an lvalue to a shallower-depth target, the compiler errors.
+
+Special handling for `for-each` variables: `for p in items` assigns `p` the container's depth (not the loop body depth), since `p` references the container's storage. This means `saved = p` is safe when `items` is in the outer scope. For rvalue iterables (`for p in get_items()`), `p` gets the loop body depth — the temporary dies when the loop ends, so assigning `p` to an outer variable is an error.
+
+Use `copy()` to fix escape errors — it creates an independent value that the outer variable can safely own.
+
 #### Owned Parameters (Working)
 
 `Own[T]` can also be used for parameter types to receive values by-value:

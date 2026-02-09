@@ -12,7 +12,7 @@
 | Copy warning: `self.field = x` | Done |
 | Copy warning: `append(x)`, `insert(x)`, `items[i] = x` — `Own[T]` params | Done |
 | Move optimization (liveness analysis -> `std::move`) | TODO |
-| Loop-local escape detection | TODO |
+| Loop-local escape detection (scope-depth based) | Done |
 | Pointer provenance (`return best` from param container) | TODO |
 | `None`/nullptr for nullable pointer-locals | TODO |
 | `Ptr[T]` escape analysis (cross-function provenance) | TODO |
@@ -26,7 +26,6 @@ Tests for patterns described in this doc that can't pass yet:
 | Pattern | Blocked by |
 |---------|------------|
 | `find_max`: iterate list, rebind `best`, return reference | Pointer provenance — dangling check rejects `return best` |
-| Loop-local escape: `saved = x` where `x` is loop-scoped | Loop-local escape detection not implemented |
 | `find() -> Point | None` returning nullable | `None`/nullable pointer-locals not implemented |
 
 ## Summary
@@ -196,6 +195,19 @@ for i in range(1000):
     if x.value > 500:
         saved = x               # ERROR: loop-local pointer escapes iteration
                                 # fix: saved = copy(x)
+```
+
+### Rebind slot for rvalue reassignment
+
+When a pointer-local is reassigned to an rvalue (constructor call, `copy()` result), the codegen reuses a function-scoped "rebind slot" instead of creating a new slot at the current scope. This prevents dangling pointers when rvalue rebinds happen inside loops:
+
+```python
+p = Point(0, 0)                 # function scope, __slot_1
+saved = Point(0, 0)
+for i in range(1000):
+    p = Point(i, i)             # reuses __slot_1 (function-scoped)
+    saved = p                   # safe — points to function-scoped storage
+print(saved.x)                  # valid
 ```
 
 ### Stack slot reuse in loops

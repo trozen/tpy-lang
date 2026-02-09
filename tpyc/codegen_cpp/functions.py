@@ -103,7 +103,7 @@ class FunctionGenerator:
         self.ctx.local_scope_names = {pname for pname, _ in func.params}
         self.ctx.pointer_locals = set()
         self.ctx.slots.reset()
-        self.ctx.reassigned_vars = self.statements.scan_reassigned_vars(func.body)
+        self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(func.body)
 
         # Set up local namespace for this function
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -200,7 +200,7 @@ class FunctionGenerator:
         else:
             self.ctx.pointer_locals = set()
         self.ctx.slots.reset(global_scope=True)
-        self.ctx.reassigned_vars = self.statements.scan_reassigned_vars(stmts)
+        self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(stmts)
         # Use global namespace for module init (globals are directly accessible)
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1

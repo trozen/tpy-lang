@@ -53,6 +53,10 @@ class Scope:
     """A scope containing variable bindings."""
     parent: Optional[Scope] = None
     bindings: dict[str, TpyType] = field(default_factory=dict)
+    depth: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.depth = (self.parent.depth + 1) if self.parent else 0
 
     def lookup(self, name: str) -> Optional[TpyType]:
         if name in self.bindings:

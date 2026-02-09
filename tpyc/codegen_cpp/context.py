@@ -160,7 +160,9 @@ class CodeGenContext:
     pointer_locals: set[str] = field(default_factory=set)
     pointer_globals: set[str] = field(default_factory=set)
     slots: SlotState = field(default_factory=SlotState)
+    rebind_slots: dict[str, str] = field(default_factory=dict)
     reassigned_vars: set[str] = field(default_factory=set)
+    rvalue_reassigned_vars: set[str] = field(default_factory=set)
 
     # --- Module-level flags ---
     _has_synthetic_name: bool = False
@@ -390,4 +392,6 @@ class CodeGenContext:
 
         self.pointer_locals = set()
         self.slots.reset()
+        self.rebind_slots = {}
         self.reassigned_vars = set()
+        self.rvalue_reassigned_vars = set()

@@ -1,7 +1,9 @@
 # TODO
 
 ## Next
-- warn when pointer to local variable may escape context, i.e. assigned to global variable etc
+- local variable slots should be unitialized by default (panic if accessed uninitialized? or only in debug mode?)
+- scope escape detection phase 2: hoist storage slots to function scope for intra-function escapes, downgrade to warning; requires definite-assignment analysis and uninitialized slot handling
+- rebind slot aliasing corner case (loop only): when a pointer-local is aliased inside a loop and then rvalue-rebound in the same loop, the alias may see the new value instead of the old one (non-loop aliasing is handled by separate init/rebind slots)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - all expected warnings/errors should be in `# tpyc` annotation
@@ -25,6 +27,8 @@
 - differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently.
 - make a doc with TPy vs Python differences
 - keyword arguments
+- analysis: when an object is passed to a function by references but then copied, should we suggest passing as Own[]?
+- move escape analysis to separate module?
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
