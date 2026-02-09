@@ -23,8 +23,19 @@ if TYPE_CHECKING:
     from .statements import StatementGenerator
 
 
+# Methods that should be const (don't mutate self)
+CONST_METHODS = frozenset({
+    "__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
+    "__lt__", "__le__", "__gt__", "__ge__",
+    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
+    "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
+    "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
+    "__neg__", "__pos__", "__invert__",
+})
+
+
 class FunctionGenerator:
-    """Generates C++ functions and globals."""
+    """Generates C++ functions, methods, and globals."""
 
     def __init__(
         self,
@@ -97,41 +108,40 @@ class FunctionGenerator:
             params = self.gen_params(func.params)
             out.write(f"{ret_type} {func.name}({params}) {{\n")
 
-        # Reset declared vars and add parameters
-        self.ctx.declared_vars = {pname for pname, _ in func.params}
-        self.ctx.var_types = {pname: ptype for pname, ptype in func.params}
-        # Track local scope names (params + local vars) that shadow globals
-        self.ctx.local_scope_names = {pname for pname, _ in func.params}
-        self.ctx.pointer_locals = set()
-        self.ctx.slots.reset()
-        self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(func.body)
-        self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
-        self.ctx.pending_hoist_decls = []
-
-        # Set up local namespace for this function
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
-        self.ctx.current_ns = local_ns
-
-        self.ctx.indent_level = 1
-        self.ctx.current_return_type = func.return_type
-        self.ctx.current_func_params = {pname: ptype for pname, ptype in func.params}
-
-        # Buffer body to collect hoist declarations
-        body_buf = io.StringIO()
-        for stmt in func.body:
-            self.statements.gen_stmt(body_buf, stmt)
-
-        # Write hoist declarations first, then body
-        for decl in self.ctx.pending_hoist_decls:
-            out.write(decl)
-        out.write(body_buf.getvalue())
-
-        self.ctx.indent_level = 0
-        self.ctx.current_ns = None
+        self.statements.gen_body(out, func.body, func.params, func.return_type,
+                                 func, local_ns)
 
         out.write("}\n")
+
+    def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
+        """Generate a method definition inside a struct."""
+        is_const = method.name in CONST_METHODS
+        is_static = method.is_staticmethod
+        ret_type = method.return_type.to_cpp_return_const() if is_const else method.return_type.to_cpp_return()
+        if is_const:
+            params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
+        else:
+            params = self.gen_params(method.params)
+        const_suffix = " const" if is_const and not is_static else ""
+        static_prefix = "static " if is_static else ""
+        out.write(f"\n  {static_prefix}{ret_type} {method.name}({params}){const_suffix} {{\n")
+
+        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+        if not is_static:
+            local_ns.bind_variable("self", NamedType(record_name))
+        for pname, ptype in method.params:
+            local_ns.bind_variable(pname, ptype)
+        self.statements.gen_body(out, method.body, method.params, method.return_type,
+                                 method, local_ns, indent_level=2, is_method=True)
+
+        out.write("  }\n")
+
+    def gen_body(self, *args, **kwargs) -> None:
+        """Delegate to StatementGenerator.gen_body()."""
+        self.statements.gen_body(*args, **kwargs)
 
     def _resolve_global_type(self, stmt: TpyVarDecl) -> TpyType:
         """Resolve the type of a global variable, unwrapping Own[T] to T."""

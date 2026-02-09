@@ -383,27 +383,3 @@ class CodeGenContext:
             return self.contains_protocol_type(elem_type)
         return False
 
-    def reset_for_scope(self, *, params: list[tuple[str, TpyType]] | None = None,
-                        global_types: dict[str, TpyType | None] | None = None) -> None:
-        """Reset scope tracking for a new function/method/module init."""
-        if global_types:
-            self.declared_vars = set(global_types.keys())
-            self.var_types = {name: typ for name, typ in global_types.items() if typ is not None}
-        else:
-            self.declared_vars = set()
-            self.var_types = {}
-
-        if params:
-            self.declared_vars.update(pname for pname, _ in params)
-            self.var_types.update({pname: ptype for pname, ptype in params})
-            self.local_scope_names = {pname for pname, _ in params}
-        else:
-            self.local_scope_names = set()
-
-        self.pointer_locals = set()
-        self.slots.reset()
-        self.rebind_slots = {}
-        self.reassigned_vars = set()
-        self.rvalue_reassigned_vars = set()
-        self.hoisted_vars = set()
-        self.pending_hoist_decls = []

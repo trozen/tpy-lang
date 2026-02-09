@@ -5,11 +5,10 @@ Generates C++ structs from TurboPython records.
 """
 
 from __future__ import annotations
-import io
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, StrType, TypeParamRef, TypeParamKind
+    NamedType, StrType, TypeParamRef, TypeParamKind
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -23,24 +22,12 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
     from .expressions import ExpressionGenerator
-    from .statements import StatementGenerator
+    from .functions import FunctionGenerator
     from .protocols import ProtocolGenerator
 
 
 class RecordGenerator:
     """Generates C++ structs from TurboPython records."""
-
-    # Methods that should be const (don't mutate self)
-    CONST_METHODS = {"__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
-                     "__lt__", "__le__", "__gt__", "__ge__",
-                     # Binary arithmetic operators (return new value, don't modify self)
-                     "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
-                     "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
-                     # Reverse operators
-                     "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
-                     # Unary operators
-                     "__neg__", "__pos__", "__invert__"}
-
 
     def __init__(
         self,
@@ -53,12 +40,12 @@ class RecordGenerator:
         self.protocols = protocols
         # Will be set after dependencies are created
         self.expressions: ExpressionGenerator | None = None
-        self.statements: StatementGenerator | None = None
+        self.functions: FunctionGenerator | None = None
 
-    def set_dependencies(self, expressions: ExpressionGenerator, statements: StatementGenerator):
-        """Set expression and statement generators (to break circular dependency)."""
+    def set_dependencies(self, expressions: ExpressionGenerator, functions: FunctionGenerator):
+        """Set expression and function generators (to break circular dependency)."""
         self.expressions = expressions
-        self.statements = statements
+        self.functions = functions
 
     def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
         """Sort records so parent classes come before children.
@@ -140,79 +127,35 @@ class RecordGenerator:
 
                 # Generate parameterized constructor from __init__
                 # Use const ref for object types to allow temporaries like MyRecord([1, 2, 3])
-                params = ", ".join(
+                cpp_params = ", ".join(
                     ptype.to_cpp_const_param(pname)
                     for pname, ptype in record.init_method.params
                 )
-                out.write(f"  explicit {record.name}({params})")
-                # Build member init list: base init (if any) + field inits
-                all_inits = []
-                if base_init:
-                    all_inits.append(base_init)
-                all_inits.extend(f"{name}({val})" for name, val in inits)
-                if all_inits:
-                    out.write(" : ")
-                    out.write(", ".join(all_inits))
-                if non_init_stmts:
-                    out.write(" {\n")
-                    self.ctx.declared_vars = {pname for pname, _ in record.init_method.params}
-                    self.ctx.var_types = {pname: ptype for pname, ptype in record.init_method.params}
-                    # Track params as local to prevent false global deref if they shadow globals
-                    self.ctx.local_scope_names = {pname for pname, _ in record.init_method.params}
-                    self.ctx.pointer_locals = set()
-                    self.ctx.slots.reset()
-                    self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(non_init_stmts)
-                    # Set up local namespace for constructor (bind self and params)
-                    local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-                    local_ns.bind_variable("self", NamedType(record.name))
-                    for pname, ptype in record.init_method.params:
-                        local_ns.bind_variable(pname, ptype)
-                    self.ctx.current_ns = local_ns
-                    self.ctx.indent_level = 2
-                    self.ctx.in_method = True
-                    for stmt in non_init_stmts:
-                        self.statements.gen_stmt(out, stmt)
-                    self.ctx.in_method = False
-                    self.ctx.local_scope_names = set()
-                    self.ctx.current_ns = None
-                    self.ctx.indent_level = 0
-                    out.write("  }\n")
-                else:
-                    out.write(" {}\n")
+                out.write(f"  explicit {record.name}({cpp_params})")
             else:
                 # No params: generate default constructor with body
                 out.write(f"  {record.name}()")
-                # Build member init list: base init (if any) + field inits
-                all_inits = []
-                if base_init:
-                    all_inits.append(base_init)
-                all_inits.extend(f"{name}({val})" for name, val in inits)
-                if all_inits:
-                    out.write(" : ")
-                    out.write(", ".join(all_inits))
-                if non_init_stmts:
-                    out.write(" {\n")
-                    self.ctx.declared_vars = set()
-                    self.ctx.var_types = {}
-                    self.ctx.local_scope_names = set()
-                    self.ctx.pointer_locals = set()
-                    self.ctx.slots.reset()
-                    self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(non_init_stmts)
-                    # Set up local namespace for constructor (bind self)
-                    local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-                    local_ns.bind_variable("self", NamedType(record.name))
-                    self.ctx.current_ns = local_ns
-                    self.ctx.indent_level = 2
-                    self.ctx.in_method = True
-                    for stmt in non_init_stmts:
-                        self.statements.gen_stmt(out, stmt)
-                    self.ctx.in_method = False
-                    self.ctx.local_scope_names = set()
-                    self.ctx.current_ns = None
-                    self.ctx.indent_level = 0
-                    out.write("  }\n")
-                else:
-                    out.write(" {}\n")
+
+            # Build member init list: base init (if any) + field inits
+            all_inits = []
+            if base_init:
+                all_inits.append(base_init)
+            all_inits.extend(f"{name}({val})" for name, val in inits)
+            if all_inits:
+                out.write(" : ")
+                out.write(", ".join(all_inits))
+            if non_init_stmts:
+                out.write(" {\n")
+                local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+                local_ns.bind_variable("self", NamedType(record.name))
+                for pname, ptype in record.init_method.params:
+                    local_ns.bind_variable(pname, ptype)
+                self.functions.gen_body(out, non_init_stmts, record.init_method.params,
+                                         record.init_method.return_type, record.init_method,
+                                         local_ns, indent_level=2, is_method=True)
+                out.write("  }\n")
+            else:
+                out.write(" {}\n")
         else:
             # No __init__, use default constructor
             out.write(f"  {record.name}() = default;\n")
@@ -221,7 +164,7 @@ class RecordGenerator:
         for method in record.methods:
             if method.name == "__init__":
                 continue
-            self._gen_method(out, method, record.name)
+            self.functions.gen_method_def(out, method, record.name)
 
         # Generate operator[] if __getitem__ exists (enables Sequence protocol conformance)
         self._gen_subscript_operators(out, record)
@@ -347,66 +290,6 @@ class RecordGenerator:
             if not is_own_field_init:
                 non_init.append(stmt)
         return non_init
-
-    def _gen_method(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
-        """Generate a method definition inside a struct."""
-        is_const = method.name in self.CONST_METHODS
-        is_static = method.is_staticmethod
-        # Const methods must return const refs for object types
-        ret_type = method.return_type.to_cpp_return_const() if is_const else method.return_type.to_cpp_return()
-        # Const methods take parameters by const reference
-        if is_const:
-            params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
-        else:
-            params = self._gen_params(method.params)
-        const_suffix = " const" if is_const and not is_static else ""
-        static_prefix = "static " if is_static else ""
-        out.write(f"\n  {static_prefix}{ret_type} {method.name}({params}){const_suffix} {{\n")
-
-        # Reset declared vars and add parameters
-        self.ctx.declared_vars = {pname for pname, _ in method.params}
-        self.ctx.var_types = {pname: ptype for pname, ptype in method.params}
-        # Track params as local to prevent false global deref if they shadow globals
-        self.ctx.local_scope_names = {pname for pname, _ in method.params}
-        self.ctx.pointer_locals = set()
-        self.ctx.slots.reset()
-        self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(method.body)
-        self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(method), set())
-        self.ctx.pending_hoist_decls = []
-
-        # Set up local namespace for this method (bind self and params, skip self for static)
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        if not is_static:
-            local_ns.bind_variable("self", NamedType(record_name))
-        for pname, ptype in method.params:
-            local_ns.bind_variable(pname, ptype)
-        self.ctx.current_ns = local_ns
-
-        self.ctx.indent_level = 2
-        self.ctx.in_method = True
-        self.ctx.current_return_type = method.return_type
-        self.ctx.current_func_params = {pname: ptype for pname, ptype in method.params}
-
-        # Buffer body to collect hoist declarations
-        body_buf = io.StringIO()
-        for stmt in method.body:
-            self.statements.gen_stmt(body_buf, stmt)
-
-        # Write hoist declarations first, then body (add extra indent for method scope)
-        for decl in self.ctx.pending_hoist_decls:
-            out.write(f"  {decl}")
-        out.write(body_buf.getvalue())
-
-        self.ctx.in_method = False
-        self.ctx.local_scope_names = set()
-        self.ctx.indent_level = 0
-        self.ctx.current_ns = None
-
-        out.write("  }\n")
-
-    def _gen_params(self, params: list[tuple[str, TpyType]]) -> str:
-        """Generate function parameter list."""
-        return ", ".join(ptype.to_cpp_param(pname) for pname, ptype in params)
 
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator[] if __getitem__/__setitem__ exist.

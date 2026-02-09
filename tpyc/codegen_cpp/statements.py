@@ -5,6 +5,7 @@ Generates C++ code from TurboPython statements.
 """
 
 from __future__ import annotations
+import io
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -15,7 +16,7 @@ from ..typesys import (
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
-    TpyImport, TpySubscript, TpyStrLiteral, TpyName, TpyExpr
+    TpyImport, TpySubscript, TpyStrLiteral, TpyName, TpyExpr, TpyFunction,
 )
 from ..namespace import Namespace
 from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
@@ -45,6 +46,46 @@ class StatementGenerator:
     def set_expressions(self, expressions: ExpressionGenerator):
         """Set expressions generator (to break circular dependency)."""
         self.expressions = expressions
+
+    def gen_body(self, out: TextIO, body: list[TpyStmt],
+                 params: list[tuple[str, TpyType]], return_type: TpyType,
+                 func: TpyFunction, local_ns: Namespace,
+                 indent_level: int = 1, is_method: bool = False) -> None:
+        """Generate the body of a function or method.
+
+        Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
+        Shared by gen_function_def() and _gen_method().
+        """
+        self.ctx.declared_vars = {pname for pname, _ in params}
+        self.ctx.var_types = {pname: ptype for pname, ptype in params}
+        self.ctx.local_scope_names = {pname for pname, _ in params}
+        self.ctx.pointer_locals = set()
+        self.ctx.slots.reset()
+        self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.scan_reassigned_vars(body)
+        self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
+        self.ctx.pending_hoist_decls = []
+
+        self.ctx.current_ns = local_ns
+        self.ctx.indent_level = indent_level
+        self.ctx.current_return_type = return_type
+        self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
+        if is_method:
+            self.ctx.in_method = True
+
+        body_buf = io.StringIO()
+        for stmt in body:
+            self.gen_stmt(body_buf, stmt)
+
+        hoist_prefix = "  " * (indent_level - 1)
+        for decl in self.ctx.pending_hoist_decls:
+            out.write(f"{hoist_prefix}{decl}")
+        out.write(body_buf.getvalue())
+
+        if is_method:
+            self.ctx.in_method = False
+        self.ctx.local_scope_names = set()
+        self.ctx.indent_level = 0
+        self.ctx.current_ns = None
 
     def scan_reassigned_vars(self, stmts: list[TpyStmt]) -> tuple[set[str], set[str]]:
         """Pre-scan a function body to find variables that are reassigned after first declaration.

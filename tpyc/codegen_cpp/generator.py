@@ -62,7 +62,7 @@ class CodeGenerator:
 
         # Wire up circular dependencies
         self.statements.set_expressions(self.expressions)
-        self.records.set_dependencies(self.expressions, self.statements)
+        self.records.set_dependencies(self.expressions, self.functions)
         self.functions.set_statements(self.statements)
 
     def generate(self, module: TpyModule, module_name: str = "generated",

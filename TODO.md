@@ -2,7 +2,6 @@
 
 ## Next
 - local variable slots should be uninitialized by default (panic if accessed uninitialized? or only in debug mode?)
-- refactor: extract shared body-generation logic from `functions.py:gen_function_def()`, `records.py:_gen_method()`, and `functions.py:gen_module_init()` — these duplicate the same setup (declared_vars, pointer_locals, slots, reassigned_vars, hoisted_vars, namespace, body buffering) and diverge silently when new features are added
 - rebind slot aliasing corner case (loop only): when a pointer-local is aliased inside a loop and then rvalue-rebound in the same loop, the alias may see the new value instead of the old one (non-loop aliasing is handled by separate init/rebind slots)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
@@ -80,6 +79,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
 - hoising variable slot -- instead of putting them in top-level, keep them at a lower level that would be enough to make the lifetime correct
+- refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
