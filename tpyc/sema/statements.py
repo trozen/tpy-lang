@@ -126,9 +126,18 @@ class StatementAnalyzer:
                     iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                 else:
                     iter_depth = inner_scope.depth
+                # Track provenance for non-value-type loop vars from param-derived iterables
+                track_loop_prov = (
+                    not elem_type.is_value_type()
+                    and self.compat.is_param_derived_expr(stmt.iterable)
+                )
+                if track_loop_prov:
+                    self.init.add_loop_var_provenance(stmt.var)
                 with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                     for s in stmt.body:
                         self.analyze_stmt(s)
+                if track_loop_prov:
+                    self.init.remove_loop_var_provenance(stmt.var)
             self.init.restore(before)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
@@ -333,6 +342,9 @@ class StatementAnalyzer:
                 self.ctx.rvalue_vars.discard(stmt.name)
             else:
                 self.ctx.rvalue_vars.add(stmt.name)
+        # Track pointer provenance for non-value types
+        if stmt.init and not var_type.is_value_type():
+            self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
 
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
@@ -421,6 +433,10 @@ class StatementAnalyzer:
         # Scope escape check for assignments to named variables
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
             self.scopes.check_escape(stmt.target.name, stmt.value, stmt)
+
+        # Track pointer provenance for non-value-type name targets
+        if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
+            self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):

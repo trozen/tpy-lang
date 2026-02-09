@@ -13,7 +13,7 @@
 | Copy warning: `append(x)`, `insert(x)`, `items[i] = x` — `Own[T]` params | Done |
 | Move optimization (liveness analysis -> `std::move`) | TODO |
 | Loop-local escape detection (scope-depth based) | Done |
-| Pointer provenance (`return best` from param container) | TODO |
+| Pointer provenance (`return best` from param container) | Done |
 | `None`/nullptr for nullable pointer-locals | TODO |
 | `Ptr[T]` escape analysis (cross-function provenance) | TODO |
 | Iterator invalidation detection | TODO |
@@ -25,7 +25,6 @@ Tests for patterns described in this doc that can't pass yet:
 
 | Pattern | Blocked by |
 |---------|------------|
-| `find_max`: iterate list, rebind `best`, return reference | Pointer provenance — dangling check rejects `return best` |
 | `find() -> Point | None` returning nullable | `None`/nullable pointer-locals not implemented |
 
 ## Summary

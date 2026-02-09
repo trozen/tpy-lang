@@ -15,7 +15,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp, TpyBinOp, TpyCoerce,
-    TpyIntLiteral, SourceLocation
+    TpyIntLiteral, TpyFunction, SourceLocation
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext
 from .diagnostics import SemanticError
@@ -248,6 +248,42 @@ class TypeCompatibility:
             return module_name == "tpy" and func_name == "copy"
         return False
 
+    def _is_local_shadow(self, name: str) -> bool:
+        """Check if a name is bound in a local scope, shadowing a global."""
+        scope = self.ctx.current_scope
+        while scope and scope is not self.ctx.global_scope:
+            if name in scope.bindings:
+                return True
+            scope = scope.parent
+        return False
+
+    def is_param_derived_expr(self, expr: TpyExpr) -> bool:
+        """Check if an expression's root storage derives from parameters or globals."""
+        if isinstance(expr, TpyCoerce):
+            return self.is_param_derived_expr(expr.expr)
+        if isinstance(expr, TpyName):
+            # Parameters are param-derived
+            func = self.ctx.current_function
+            if isinstance(func, TpyFunction):
+                for pname, _ptype in func.params:
+                    if pname == expr.name:
+                        return True
+            # Globals are param-derived (live forever), but only if
+            # the name isn't shadowed by a local binding
+            if expr.name in self.ctx.global_scope.bindings:
+                if not self._is_local_shadow(expr.name):
+                    return True
+            # Variables tracked as param-derived
+            if expr.name in self.ctx.param_provenance_vars:
+                return True
+            return False
+        if isinstance(expr, TpyFieldAccess):
+            return self.is_param_derived_expr(expr.obj)
+        if isinstance(expr, TpySubscript):
+            return self.is_param_derived_expr(expr.obj)
+        # Constructors, function calls, literals — local storage
+        return False
+
     def needs_copy_warning(self, expr: TpyExpr, target_type: TpyType) -> bool:
         """Check if assigning expr to inline storage (field) needs a copy warning.
 
@@ -327,8 +363,14 @@ class TypeCompatibility:
                     if pname == expr.name:
                         return False  # Parameter - safe to return reference
 
-            # Check if it's a global (safe - lives forever)
+            # Check if it's a global (safe - lives forever), but only
+            # if the name isn't shadowed by a local binding
             if expr.name in self.ctx.global_scope.bindings:
+                if not self._is_local_shadow(expr.name):
+                    return False
+
+            # Storage derives from parameter/global — safe
+            if expr.name in self.ctx.param_provenance_vars:
                 return False
 
             # Local variable - dangling

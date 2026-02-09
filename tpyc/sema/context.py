@@ -104,6 +104,9 @@ class SemanticContext:
     definitely_assigned: set[str] = field(default_factory=set)
     init_terminated: bool = False
 
+    # --- Pointer provenance tracking ---
+    param_provenance_vars: set[str] = field(default_factory=set)
+
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
@@ -140,3 +143,4 @@ class SemanticContext:
         self.rvalue_vars.clear()
         self.definitely_assigned.clear()
         self.init_terminated = False
+        self.param_provenance_vars.clear()

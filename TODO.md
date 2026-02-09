@@ -1,13 +1,13 @@
 # TODO
 
 ## Next
-- local variable slots should be uninitialized by default (panic if accessed uninitialized? or only in debug mode?)
-- rebind slot aliasing corner case (loop only): when a pointer-local is aliased inside a loop and then rvalue-rebound in the same loop, the alias may see the new value instead of the old one (non-loop aliasing is handled by separate init/rebind slots)
+- Pointer-local first declared inside if-branch: when a non-value-type variable is first assigned inside one branch of an if/else (e.g. `if flag: result = points[0]` / `else: result = points[1]`), codegen emits the `T*` declaration scoped inside the `if {}` block, making it invisible to the else-branch and post-if code. Sema passes (definite-assignment sees both branches assign). Fix requires hoisting the pointer-local declaration before the if-statement.
+- finish items from OWNERSHIP_DESIGN.md
+- `None` type, optional values, null pointers
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - all expected warnings/errors should be in `# tpyc` annotation
 - parser: extract to separate module
-- handling local objects, lifetime, pointer vs reference
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - investigate other backends than c++
 - type containing an allocated object (e.g. `Box[T]`)
@@ -40,7 +40,6 @@
 - dict full support
 - str full support
 - tuple, multiple returns (mandelbrot TODOs)
-- `None` type, optional values, null pointers
 - list slicing (`items[1:3]`)
 - make sure docstrings work in every context
 - list/StaticList operator (+=, *, +, in), sort
@@ -78,7 +77,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
-- hoising variable slot -- instead of putting them in top-level, keep them at a lower level that would be enough to make the lifetime correct
+- hoisted variable slots: keep them at the lowest scope that satisfies lifetime, instead of always hoisting to function scope
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 
 ## Other
