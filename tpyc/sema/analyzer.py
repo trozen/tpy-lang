@@ -77,6 +77,9 @@ class SemanticAnalyzer:
         self.function_hoisted_vars: dict[int, set[str]] = {}
         self.top_level_hoisted_vars: set[str] = set()
 
+        # Branch-declared vars that need pre-declaration before if-statements
+        self.if_branch_decls: dict[int, dict[str, TpyType]] = {}
+
         # Convenience aliases for public API
         self.registry = self.ctx.registry
         self.global_scope = self.ctx.global_scope
@@ -268,6 +271,7 @@ class SemanticAnalyzer:
 
         if self.ctx.hoisted_vars:
             self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
+        self.if_branch_decls.update(self.ctx.if_branch_decls)
 
         self.ctx.current_function = None
         self.ctx.current_scope = None
@@ -327,6 +331,7 @@ class SemanticAnalyzer:
 
             if self.ctx.hoisted_vars:
                 self.function_hoisted_vars[id(method)] = self.ctx.hoisted_vars.copy()
+            self.if_branch_decls.update(self.ctx.if_branch_decls)
 
             self.ctx.current_scope = None
             self.ctx.current_function = None
@@ -357,6 +362,7 @@ class SemanticAnalyzer:
 
         if self.ctx.hoisted_vars:
             self.top_level_hoisted_vars = self.ctx.hoisted_vars.copy()
+        self.if_branch_decls.update(self.ctx.if_branch_decls)
 
         self.ctx.current_function = None
         self.ctx.current_scope = None

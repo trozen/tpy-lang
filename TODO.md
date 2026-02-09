@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- Pointer-local first declared inside if-branch: when a non-value-type variable is first assigned inside one branch of an if/else (e.g. `if flag: result = points[0]` / `else: result = points[1]`), codegen emits the `T*` declaration scoped inside the `if {}` block, making it invisible to the else-branch and post-if code. Sema passes (definite-assignment sees both branches assign). Fix requires hoisting the pointer-local declaration before the if-statement.
 - finish items from OWNERSHIP_DESIGN.md
 - `None` type, optional values, null pointers
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
@@ -35,6 +34,7 @@
 - Ptr constructor: `Ptr(value)` to explicitly create pointers
 - Polymorphic coercion: `Dog` → `Ptr[Animal]` (child to parent pointer)
 - Virtual dispatch (requires C++ `virtual` methods) - currently `self.method()` in parent uses static dispatch
+- Protocol-typed local variables: allow protocol types as variable types (e.g. `seq: Sequence[Int32] = items`)
 
 ## Python features
 - dict full support
@@ -94,7 +94,7 @@ Random items that may or may not be implemented in the future, but putting them 
 ## Known Limitations
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
 - Own[T] local variable optimization: allow `return local_var` without copy() since C++ uses NRVO (Named Return Value Optimization). Currently requires explicit copy() for all lvalues.
-- Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope.
+- Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope. (Note: `if`/`else` in functions is fixed — branch-declared vars are pre-declared before the if-statement.)
 
 ## ShedSkin examples
 - score4

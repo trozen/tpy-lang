@@ -53,49 +53,48 @@ Point& chained(std::vector<Point>& points) {
 
 // 36: def both_branches(points: list[Point], flag: Bool) -> Point:
 Point& both_branches(std::vector<Point>& points, bool flag) {
-  // 37:     result = points[0]
-  Point* result = &(tpy::get_item(points, 0));
-  // 38:     if flag:
+  // 37:     if flag:
+  Point* result;
   if (flag) {
-    // 39:         result = points[1]
+    // 38:         result = points[1]
     result = &(tpy::get_item(points, 1));
   } else {
-    // 41:         result = points[2]
+    // 40:         result = points[2]
     result = &(tpy::get_item(points, 2));
   }
-  // 42:     return result  # tpyc: ok (both branches from param)
+  // 41:     return result  # tpyc: ok (both branches from param)
   return (*result);
 }
 
-// 45: def main():
+// 44: def main():
 void main() {
-  // 46:     pts: list[Point] = [Point(), Point(), Point()]
+  // 45:     pts: list[Point] = [Point(), Point(), Point()]
   std::vector<Point> pts = {Point(), Point(), Point()};
-  // 47:     pts[0].x = 10
+  // 46:     pts[0].x = 10
   tpy::get_item(pts, 0).x = 10;
-  // 48:     pts[1].x = 30
+  // 47:     pts[1].x = 30
   tpy::get_item(pts, 1).x = 30;
-  // 49:     pts[2].x = 20
+  // 48:     pts[2].x = 20
   tpy::get_item(pts, 2).x = 20;
-  // 51:     best: Point = find_max(pts)
+  // 50:     best: Point = find_max(pts)
   Point& best = find_max(pts);
-  // 52:     print(best.x)
+  // 51:     print(best.x)
   std::cout << best.x << "\n";
-  // 55:     best.x = 99
+  // 54:     best.x = 99
   best.x = 99;
-  // 56:     print(pts[1].x)
+  // 55:     print(pts[1].x)
   std::cout << tpy::get_item(pts, 1).x << "\n";
-  // 58:     first: Point = get_first(pts)
+  // 57:     first: Point = get_first(pts)
   Point& first = get_first(pts);
-  // 59:     print(first.x)
+  // 58:     print(first.x)
   std::cout << first.x << "\n";
-  // 61:     c: Point = chained(pts)
+  // 60:     c: Point = chained(pts)
   Point& c = chained(pts);
-  // 62:     print(c.x)
+  // 61:     print(c.x)
   std::cout << c.x << "\n";
-  // 64:     b: Point = both_branches(pts, True)
+  // 63:     b: Point = both_branches(pts, True)
   Point& b = both_branches(pts, true);
-  // 65:     print(b.x)
+  // 64:     print(b.x)
   std::cout << b.x << "\n";
 }
 
@@ -105,7 +104,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 68: main()
+  // 67: main()
   main();
 }
 

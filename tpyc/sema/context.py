@@ -107,6 +107,11 @@ class SemanticContext:
     # --- Pointer provenance tracking ---
     param_provenance_vars: set[str] = field(default_factory=set)
 
+    # --- Branch-declared variable tracking ---
+    # Variables first declared inside if-branches that need pre-declaration.
+    # Keyed by id(TpyIf), value is {var_name: var_type}.
+    if_branch_decls: dict[int, dict[str, TpyType]] = field(default_factory=dict)
+
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 

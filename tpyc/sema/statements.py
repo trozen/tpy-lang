@@ -88,6 +88,8 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
+            scope_before = set(self.ctx.current_scope.bindings.keys())
+            assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
             for s in stmt.then_body:
                 self.analyze_stmt(s)
@@ -97,6 +99,20 @@ class StatementAnalyzer:
                 self.analyze_stmt(s)
             else_state = self.init.save()
             self.init.merge_branches(then_state, else_state)
+            # Detect variables first declared inside branches that need
+            # pre-declaration. Skip when both branches terminate (no code
+            # after the if needs the variable).
+            if not self.ctx.init_terminated:
+                branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
+                newly_assigned = self.ctx.definitely_assigned - assigned_before
+                predecl = branch_new & newly_assigned
+            else:
+                predecl = set()
+            if predecl:
+                self.ctx.if_branch_decls[id(stmt)] = {
+                    name: self.ctx.current_scope.lookup(name)
+                    for name in sorted(predecl)
+                }
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
             before = self.init.save()

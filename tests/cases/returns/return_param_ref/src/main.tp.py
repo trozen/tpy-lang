@@ -34,7 +34,6 @@ def chained(points: list[Point]) -> Point:
 
 
 def both_branches(points: list[Point], flag: Bool) -> Point:
-    result = points[0]
     if flag:
         result = points[1]
     else:

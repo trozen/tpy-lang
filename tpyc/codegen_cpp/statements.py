@@ -545,6 +545,27 @@ class StatementGenerator:
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
+        # Pre-declare variables first declared inside branches
+        branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
+        for name, var_type in branch_decls.items():
+            if name not in self.ctx.declared_vars:
+                cpp_type = self.types.type_to_cpp(var_type)
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                self.ctx.var_types[name] = var_type
+                if self.ctx.current_ns and var_type:
+                    self.ctx.current_ns.bind_variable(name, var_type)
+                if self._needs_indirection(var_type, name, None):
+                    self.ctx.pointer_locals.add(name)
+                    if name in self.ctx.rvalue_reassigned_vars:
+                        static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+                        slot = self.ctx.slots.next_slot()
+                        self.ctx.rebind_slots[name] = slot
+                        out.write(f"{indent}{static_kw}std::optional<{cpp_type}> {slot};\n")
+                    out.write(f"{indent}{cpp_type}* {name};\n")
+                else:
+                    out.write(f"{indent}{cpp_type} {name};\n")
+
         cond = self.expressions.gen_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}if ({cond}) {{\n")
