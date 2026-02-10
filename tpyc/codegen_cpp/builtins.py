@@ -13,7 +13,8 @@ from ..typesys import (
     CHAR, is_protocol_type,
 )
 from ..parse import (
-    TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce
+    TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
+    TpyFieldAccess,
 )
 
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template
@@ -200,8 +201,12 @@ class BuiltinGenerator:
                 # Bool uses Python-style formatting via tpy::print_bool
                 parts.append(f'tpy::print_bool({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
-                # Optional non-value: print "None" for nullptr, deref for value
-                parts.append(f'tpy::print_optional({self._gen_expr(arg)})')
+                if isinstance(arg, TpyFieldAccess):
+                    # Field access produces std::optional<T> — use print_optional_val
+                    parts.append(f'tpy::print_optional_val({self._gen_expr(arg)})')
+                else:
+                    # Pointer-local/function return produces T* — use print_optional
+                    parts.append(f'tpy::print_optional({self._gen_expr(arg)})')
             elif isinstance(arg_type, OptionalType) and arg_type.inner.is_value_type():
                 # Optional value-type: use print_optional_val with inner-type-aware formatting
                 inner = arg_type.inner

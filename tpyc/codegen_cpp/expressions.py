@@ -80,7 +80,7 @@ class ExpressionGenerator:
             return "true" if expr.value else "false"
 
         elif isinstance(expr, TpyNoneLiteral):
-            if isinstance(target_type, OptionalType) and target_type.inner.is_value_type():
+            if isinstance(target_type, OptionalType):
                 return "std::nullopt"
             return "nullptr"
 
@@ -187,21 +187,25 @@ class ExpressionGenerator:
         if expr.op in ("is", "is not"):
             left_type = self.ctx.analyzer.get_expr_type(expr.left)
             right_type = self.ctx.analyzer.get_expr_type(expr.right)
-            # Value-type Optional vs None: use .has_value()
-            # Sema guarantees is/is not is only used with Optional vs None,
-            # but check for TpyNoneLiteral explicitly for defensive correctness.
+            # Determine which side is the Optional expression
             opt_expr = None
-            if isinstance(left_type, OptionalType) and left_type.inner.is_value_type() and isinstance(expr.right, TpyNoneLiteral):
+            if isinstance(left_type, OptionalType) and isinstance(expr.right, TpyNoneLiteral):
                 opt_expr = expr.left
-            elif isinstance(right_type, OptionalType) and right_type.inner.is_value_type() and isinstance(expr.left, TpyNoneLiteral):
+            elif isinstance(right_type, OptionalType) and isinstance(expr.left, TpyNoneLiteral):
                 opt_expr = expr.right
             if opt_expr is not None:
+                # Indirect names (T* pointer-locals/globals) use pointer comparison
+                if self.ctx.is_indirect_name(opt_expr):
+                    val = self.gen_expr(opt_expr)
+                    cpp_op = "==" if expr.op == "is" else "!="
+                    return f"({val} {cpp_op} nullptr)"
+                # Everything else (value-type optionals, field accesses) uses .has_value()
                 val = self.gen_expr_deref(opt_expr)
                 if expr.op == "is":
                     return f"(!{val}.has_value())"
                 else:
                     return f"({val}.has_value())"
-            # Non-value Optional / raw pointer: pointer comparison
+            # Fallback: pointer comparison
             cpp_op = "==" if expr.op == "is" else "!="
             left = self.gen_expr(expr.left)
             right = self.gen_expr(expr.right)
@@ -385,8 +389,13 @@ class ExpressionGenerator:
                         # Already a T* pointer-local/global — pass as-is
                         gen_args.append(self.gen_expr(arg, resolved_ptype))
                     elif isinstance(self.ctx.analyzer.get_expr_type(arg), OptionalType):
-                        # Expression already produces T* (e.g. function returning Optional)
-                        gen_args.append(self.gen_expr(arg, resolved_ptype))
+                        arg_gen = self.gen_expr(arg, resolved_ptype)
+                        if isinstance(arg, TpyFieldAccess):
+                            # Field access produces std::optional<T>, convert to T*
+                            gen_args.append(f"tpy::optional_to_ptr({arg_gen})")
+                        else:
+                            # Expression already produces T* (e.g. function returning Optional)
+                            gen_args.append(arg_gen)
                     else:
                         # Lvalue reference — take address
                         gen_args.append(f"&({self.gen_expr(arg, resolved_ptype)})")
@@ -448,7 +457,28 @@ class ExpressionGenerator:
             return f"{type_cpp}({args})"
         # Check for user-defined record constructor (e.g., Point(1, 2))
         if record_info := self.ctx.analyzer.registry.get_record(expr.func):
-            args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
+            init_info = record_info.get_method("__init__")
+            init_params = init_info.params if init_info else []
+            gen_args = []
+            for i, a in enumerate(expr.args):
+                ptype = init_params[i][1] if i < len(init_params) else None
+                # Optional non-value params are T* — same logic as function calls
+                if isinstance(ptype, OptionalType) and not ptype.inner.is_value_type():
+                    if isinstance(a, TpyNoneLiteral):
+                        gen_args.append("nullptr")
+                    elif self.ctx.is_indirect_name(a):
+                        gen_args.append(self.gen_expr(a, ptype))
+                    elif isinstance(self.ctx.analyzer.get_expr_type(a), OptionalType):
+                        arg_gen = self.gen_expr(a, ptype)
+                        if isinstance(a, TpyFieldAccess):
+                            gen_args.append(f"tpy::optional_to_ptr({arg_gen})")
+                        else:
+                            gen_args.append(arg_gen)
+                    else:
+                        gen_args.append(f"&({self.gen_expr(a, ptype)})")
+                else:
+                    gen_args.append(self.gen_expr_deref(a))
+            args = ", ".join(gen_args)
             # Qualify imported records (use original name for aliases)
             if expr.func in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[expr.func]

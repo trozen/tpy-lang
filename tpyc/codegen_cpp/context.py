@@ -318,17 +318,18 @@ class CodeGenContext:
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces an rvalue (needs a stack slot).
 
-        Rvalues: constructor calls, Own[T] returns, literals, binop/unop results.
-        Lvalues: variable names, field access, subscript, function returning T&.
+        Rvalues: constructor calls, Own[T] returns, literals, binop/unop results,
+        field access on rvalue objects (member of temporary).
+        Lvalues: variable names, field access on lvalues, subscript, function returning T&.
 
         For pointer-local init: rvalue → new slot, lvalue → take address.
         """
         # Names are lvalues (either pointer-locals, params, or globals)
         if isinstance(expr, TpyName):
             return False
-        # Field access is an lvalue
+        # Field access: rvalue iff the object is rvalue (member of temporary)
         if isinstance(expr, TpyFieldAccess):
-            return False
+            return self.is_rvalue_source(expr.obj)
         # Subscript into containers is an lvalue (returns T&).
         # NOTE: user-record __getitem__ currently returns const T&, so
         # &(obj[i]) would give const T* (won't assign to T*). This will

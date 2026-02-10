@@ -1,0 +1,3 @@
+Settings(count=None, flag=None, ratio=None, label=None)
+Settings(count=42, flag=True, ratio=3.14, label="hello")
+Settings(count=42, flag=False, ratio=0.0, label="hello")

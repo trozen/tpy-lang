@@ -2,7 +2,6 @@
 
 ## Next
 - finish items from OWNERSHIP_DESIGN.md
-- Optional class members: `self.field: Point | None` → `std::optional<Point>` inline storage
 - None inference: `x = None; x = Point()` → auto-infer `Optional[Point]` without explicit annotation
 - None safety: field/method access on `T | None` without prior `is not None` check is currently silently allowed, generating nullable pointer dereference (UB in C++). Need to decide approach: compile-time narrowing analysis (`if x is not None:` refines type), runtime null checks, or some combination.
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.

@@ -268,4 +268,36 @@ inline std::ostream& operator<<(std::ostream& os, const print_optional<T>& po) {
     return os;
 }
 
+/**
+ * ptr_to_optional - Convert a T* nullable pointer to std::optional<T>.
+ *
+ * nullptr → std::nullopt, otherwise copies the pointed-to value.
+ * Used at the T* → std::optional<T> boundary (e.g., assigning a pointer-local
+ * to an optional record field).
+ */
+template<typename T>
+std::optional<T> ptr_to_optional(const T* ptr) {
+    if (ptr) return *ptr;
+    return std::nullopt;
+}
+
+/**
+ * optional_to_ptr - Convert std::optional<T>& to T* (mutable).
+ *
+ * Empty optional → nullptr, otherwise pointer to stored value.
+ * Used at the std::optional<T> → T* boundary (e.g., reading an optional
+ * record field into a pointer-local variable).
+ */
+template<typename T>
+T* optional_to_ptr(std::optional<T>& opt) {
+    if (opt.has_value()) return &*opt;
+    return nullptr;
+}
+
+template<typename T>
+const T* optional_to_ptr(const std::optional<T>& opt) {
+    if (opt.has_value()) return &*opt;
+    return nullptr;
+}
+
 } // namespace tpy

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    NamedType, StrType, TypeParamRef, TypeParamKind
+    NamedType, StrType, BoolType, FloatType, OptionalType, TypeParamRef, TypeParamKind
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -212,6 +212,19 @@ class RecordGenerator:
             # Handle strings - quote them
             if isinstance(fld.type, StrType):
                 out.write(f' << "\\"" << obj.{fld.name} << "\\""')
+            elif isinstance(fld.type, OptionalType):
+                inner = fld.type.inner
+                inner_cpp = inner.to_cpp()
+                if isinstance(inner, BoolType):
+                    out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{fld.name})')
+                elif isinstance(inner, FloatType):
+                    out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{fld.name})')
+                elif isinstance(inner, StrType):
+                    # Quoted string: None or "value"
+                    f = fld.name
+                    out.write(f' << (obj.{f}.has_value() ? std::string("\\"") + std::string(obj.{f}.value()) + "\\"" : std::string("None"))')
+                else:
+                    out.write(f' << tpy::print_optional_val(obj.{fld.name})')
             elif isinstance(fld.type, TypeParamRef):
                 # Type parameter - use ValuePrinter which handles both scalars and containers
                 out.write(f' << tpy::ValuePrinter(obj.{fld.name})')
@@ -258,8 +271,11 @@ class RecordGenerator:
         Only extracts initializations for fields that belong to this class directly,
         not inherited fields. Inherited field assignments must go in the constructor body.
         """
-        # Get the set of this record's own field names
-        own_field_names = {fld.name for fld in record.fields}
+        # Build field name → type map for target type passing
+        field_types = {fld.name: fld.type for fld in record.fields}
+        own_field_names = set(field_types.keys())
+        # Build param name → type map for T* param detection
+        param_types = {pname: ptype for pname, ptype in init_method.params}
 
         inits = []
         for stmt in init_method.body:
@@ -269,7 +285,15 @@ class RecordGenerator:
                         field_name = stmt.target.field
                         # Only add to member init list if it's this class's own field
                         if field_name in own_field_names:
-                            value = self.expressions.gen_expr(stmt.value)
+                            fld_type = field_types[field_name]
+                            value = self.expressions.gen_expr(stmt.value, fld_type)
+                            # T* param assigned to std::optional<T> field needs conversion
+                            if (isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type()
+                                    and isinstance(stmt.value, TpyName)
+                                    and stmt.value.name in param_types):
+                                p_type = param_types[stmt.value.name]
+                                if isinstance(p_type, OptionalType) and not p_type.inner.is_value_type():
+                                    value = f"tpy::ptr_to_optional({value})"
                             inits.append((field_name, value))
         return inits
 

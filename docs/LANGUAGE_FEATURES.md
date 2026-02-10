@@ -1067,7 +1067,10 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks
   - `print()` prints `None` for empty, value otherwise
-- **Planned**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
+- **Working**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
+  - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
+  - `is None` / `is not None` checks use `.has_value()`
+  - Boundary conversions between `std::optional<T>` fields and `T*` pointer-locals handled automatically
 - **Open**: `T | U` → templates with `if constexpr`, or overloads
 
 ---

@@ -17,6 +17,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
+    TpyFieldAccess,
 )
 from ..namespace import Namespace
 from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
@@ -124,7 +125,7 @@ class StatementGenerator:
             return False
         from ..parse import TpyFieldAccess
         if isinstance(expr, TpyFieldAccess):
-            return False
+            return StatementGenerator._is_scan_rvalue(expr.obj)
         return isinstance(expr, (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
                                  TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                                  TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat))
@@ -210,6 +211,11 @@ class StatementGenerator:
                     if self.ctx.is_indirect_name(stmt.value):
                         # Already a pointer — return as-is
                         return f"{indent}return {ret_expr};\n"
+                    # Field access with non-value Optional produces std::optional<T>, convert to T*
+                    if isinstance(stmt.value, TpyFieldAccess):
+                        val_type = self.ctx.analyzer.get_expr_type(stmt.value)
+                        if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
+                            return f"{indent}return tpy::optional_to_ptr({ret_expr});\n"
                     # Take address of lvalue
                     return f"{indent}return &({ret_expr});\n"
                 ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
@@ -320,6 +326,27 @@ class StatementGenerator:
             return self.types.type_to_cpp(inferred_type)
         raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
 
+    # --- Rvalue slot helpers (shared by init and rebind) ---
+
+    @staticmethod
+    def _ptr_from_rvalue_slot(slot: str, init_expr: str, is_opt_field: bool) -> str:
+        """Assign rvalue into pre-declared slot and derive pointer expression."""
+        if is_opt_field:
+            return f"tpy::optional_to_ptr({slot} = {init_expr})"
+        return f"&*({slot} = {init_expr})"
+
+    @staticmethod
+    def _ptr_from_local_slot(slot: str, is_opt_field: bool) -> str:
+        """Derive pointer from an inline-declared slot."""
+        if is_opt_field:
+            return f"tpy::optional_to_ptr({slot})"
+        return f"&{slot}"
+
+    @staticmethod
+    def _slot_decl_type(cpp_type: str, is_opt_field: bool) -> str:
+        """C++ type for a rvalue materialization slot."""
+        return f"std::optional<{cpp_type}>" if is_opt_field else cpp_type
+
     def _gen_pointer_local_init(self, name: str, cpp_type: str, init: 'TpyExpr',
                                 target_type: TpyType | None, indent: str) -> str:
         """Generate pointer-local initialization code.
@@ -338,13 +365,36 @@ class StatementGenerator:
 
         # None literal → nullptr
         if isinstance(init, TpyNoneLiteral):
-            return f"{indent}{cpp_type}* {name} = nullptr;\n"
+            # Pre-declare rebind slot if future rvalue rebinds need it
+            rebind_decl = ""
+            if name in self.ctx.rvalue_reassigned_vars:
+                static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+                hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
+                slot_opt_cpp = f"std::optional<{cpp_type}>"
+                slot = self.ctx.slots.next_slot()
+                self.ctx.rebind_slots[name] = slot
+                if name in self.ctx.hoisted_vars:
+                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
+                else:
+                    rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
+            return f"{rebind_decl}{indent}{cpp_type}* {name} = nullptr;\n"
 
-        # OptionalType source (e.g., function returning T | None) → direct pointer copy
         init_type = self.ctx.analyzer.get_expr_type(init)
-        if isinstance(init_type, OptionalType):
-            init_expr = self.expressions.gen_expr(init, target_type)
-            return f"{indent}{cpp_type}* {name} = {init_expr};\n"
+        # Optional non-value field on lvalue object → optional_to_ptr directly
+        # Optional non-value non-field source → T* pass-through
+        # Optional non-value field on rvalue → falls through to rvalue path
+        is_opt_field = (isinstance(init_type, OptionalType)
+                        and not init_type.inner.is_value_type()
+                        and isinstance(init, TpyFieldAccess))
+        if isinstance(init_type, OptionalType) and not init_type.inner.is_value_type():
+            if isinstance(init, TpyFieldAccess):
+                if not self.ctx.is_rvalue_source(init):
+                    init_expr = self.expressions.gen_expr(init, target_type)
+                    return f"{indent}{cpp_type}* {name} = tpy::optional_to_ptr({init_expr});\n"
+                # rvalue field: fall through to rvalue path
+            else:
+                init_expr = self.expressions.gen_expr(init, target_type)
+                return f"{indent}{cpp_type}* {name} = {init_expr};\n"
 
         init_expr = self.expressions.gen_expr(init, target_type)
 
@@ -352,27 +402,33 @@ class StatementGenerator:
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         # Hoisted decls go to function scope — use global_scope flag from slot state
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
+        slot_opt_cpp = f"std::optional<{cpp_type}>"
+        target = f"{cpp_type}* {name}"
         if self.ctx.is_rvalue_source(init):
             init_slot = self.ctx.slots.next_slot()
+            slot_type = self._slot_decl_type(cpp_type, is_opt_field)
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {init_slot};\n")
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
                 if name in self.ctx.rvalue_reassigned_vars:
                     rebind_slot = self.ctx.slots.next_slot()
                     self.ctx.rebind_slots[name] = rebind_slot
-                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {rebind_slot};\n")
+                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
                 else:
                     self.ctx.rebind_slots[name] = init_slot
-                return f"{indent}{cpp_type}* {name} = &*({init_slot} = {init_expr});\n"
+                deref = self._ptr_from_rvalue_slot(init_slot, init_expr, is_opt_field)
+                return f"{indent}{target} = {deref};\n"
             if name in self.ctx.rvalue_reassigned_vars:
                 # Separate rebind slot so aliases to init value aren't overwritten
                 rebind_slot = self.ctx.slots.next_slot()
                 self.ctx.rebind_slots[name] = rebind_slot
-                return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
-                        f"{indent}{static_kw}std::optional<{cpp_type}> {rebind_slot};\n"
-                        f"{indent}{cpp_type}* {name} = &{init_slot};\n")
+                deref = self._ptr_from_local_slot(init_slot, is_opt_field)
+                return (f"{indent}{static_kw}{slot_type} {init_slot} = {init_expr};\n"
+                        f"{indent}{static_kw}{slot_opt_cpp} {rebind_slot};\n"
+                        f"{indent}{target} = {deref};\n")
             self.ctx.rebind_slots[name] = init_slot
-            return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
-                    f"{indent}{cpp_type}* {name} = &{init_slot};\n")
+            deref = self._ptr_from_local_slot(init_slot, is_opt_field)
+            return (f"{indent}{static_kw}{slot_type} {init_slot} = {init_expr};\n"
+                    f"{indent}{target} = {deref};\n")
 
         # Pre-declare rebind slot for lvalue-init vars with future rvalue rebinds
         rebind_decl = ""
@@ -380,9 +436,9 @@ class StatementGenerator:
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {slot};\n")
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
             else:
-                rebind_decl = f"{indent}{static_kw}std::optional<{cpp_type}> {slot};\n"
+                rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
 
         if isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
             return f"{rebind_decl}{indent}{cpp_type}* {name} = {init_expr};\n"
@@ -407,29 +463,45 @@ class StatementGenerator:
         if isinstance(init, TpyNoneLiteral):
             return f"{indent}{name} = nullptr;\n"
 
-        # OptionalType source (e.g., function returning T | None) → direct pointer copy
         init_type = self.ctx.analyzer.get_expr_type(init)
-        if isinstance(init_type, OptionalType):
-            init_expr = self.expressions.gen_expr(init, target_type)
-            return f"{indent}{name} = {init_expr};\n"
+        # Optional non-value field on lvalue → optional_to_ptr directly
+        # Optional non-value non-field source → T* pass-through
+        # Optional non-value field on rvalue → falls through to rvalue path
+        is_opt_field = (isinstance(init_type, OptionalType)
+                        and not init_type.inner.is_value_type()
+                        and isinstance(init, TpyFieldAccess))
+        if isinstance(init_type, OptionalType) and not init_type.inner.is_value_type():
+            if isinstance(init, TpyFieldAccess):
+                if not self.ctx.is_rvalue_source(init):
+                    init_expr = self.expressions.gen_expr(init, target_type)
+                    return f"{indent}{name} = tpy::optional_to_ptr({init_expr});\n"
+                # rvalue field: fall through to rvalue path
+            else:
+                init_expr = self.expressions.gen_expr(init, target_type)
+                return f"{indent}{name} = {init_expr};\n"
 
         init_expr = self.expressions.gen_expr(init, target_type)
 
         is_hoisted = name in self.ctx.hoisted_vars
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
+        slot_opt_cpp = f"std::optional<{cpp_type}>"
         if self.ctx.is_rvalue_source(init):
             rebind_slot = self.ctx.rebind_slots.get(name)
             if rebind_slot:
-                return f"{indent}{name} = &*({rebind_slot} = {init_expr});\n"
+                deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field)
+                return f"{indent}{name} = {deref};\n"
             # First rvalue assignment (e.g. global init) — declare slot here
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
+            slot_type = self._slot_decl_type(cpp_type, is_opt_field)
             if is_hoisted:
-                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}std::optional<{cpp_type}> {slot};\n")
-                return f"{indent}{name} = &*({slot} = {init_expr});\n"
-            return (f"{indent}{static_kw}{cpp_type} {slot} = {init_expr};\n"
-                    f"{indent}{name} = &{slot};\n")
+                self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
+                deref = self._ptr_from_rvalue_slot(slot, init_expr, is_opt_field)
+                return f"{indent}{name} = {deref};\n"
+            deref = self._ptr_from_local_slot(slot, is_opt_field)
+            return (f"{indent}{static_kw}{slot_type} {slot} = {init_expr};\n"
+                    f"{indent}{name} = {deref};\n")
         elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
             return f"{indent}{name} = {init_expr};\n"
         elif self.ctx._is_pointer_global(init):
@@ -518,6 +590,23 @@ class StatementGenerator:
             target_type = self.ctx.var_types.get(stmt.target.name)
             cpp_type = self.types.type_to_cpp(target_type) if target_type else "auto"
             return self._gen_pointer_local_rebind(stmt.target.name, cpp_type, stmt.value, target_type, indent)
+
+        # Assignment to optional field: std::optional<T> storage needs boundary conversion
+        if isinstance(stmt.target, TpyFieldAccess):
+            target_type = self.ctx.analyzer.get_expr_type(stmt.target)
+            if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
+                target = self.expressions.gen_expr(stmt.target)
+                # Value source is T* (pointer-local, function returning Optional) → wrap
+                if self.ctx.is_indirect_name(stmt.value):
+                    value = self.expressions.gen_expr(stmt.value)
+                    return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
+                val_type = self.ctx.analyzer.get_expr_type(stmt.value)
+                if isinstance(val_type, OptionalType) and not isinstance(stmt.value, TpyFieldAccess):
+                    value = self.expressions.gen_expr(stmt.value, target_type)
+                    return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
+                # Direct value or optional-to-optional (field-to-field) works without conversion
+                value = self.expressions.gen_expr_deref(stmt.value, target_type)
+                return f"{indent}{target} = {value};\n"
 
         # Default: simple assignment
         target = self.expressions.gen_expr(stmt.target)
