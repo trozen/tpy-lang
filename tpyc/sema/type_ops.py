@@ -98,8 +98,6 @@ class TypeOperations:
                     f"{typ.name}[{', '.join(record_info.type_params)}]"
                 )
         elif isinstance(typ, OptionalType):
-            if typ.inner.is_value_type():
-                raise SemanticError(f"Optional value types ({typ}) not yet supported")
             self.validate_type(typ.inner, allow_type_param_ref)
         elif isinstance(typ, (PtrType, ConstPtrType)):
             self.validate_type(typ.pointee, allow_type_param_ref)

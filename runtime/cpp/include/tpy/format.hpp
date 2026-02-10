@@ -9,9 +9,11 @@
 #include <cmath>
 #include <iostream>
 #include <iomanip>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 namespace tpy {
 
@@ -214,6 +216,39 @@ inline std::string float_to_str(double x) {
         }
     }
     return result;
+}
+
+/**
+ * print_optional_val - Print a std::optional<T> as Python would.
+ *
+ * Prints "None" for empty optional, otherwise prints the value.
+ * The Formatter template parameter controls how the value is printed:
+ * - void (default): prints the value directly via operator<<
+ * - print_bool: prints True/False
+ * - print_float: prints Python-style float
+ */
+template<typename Formatter, typename T>
+struct print_optional_val {
+    const std::optional<T>& opt;
+    explicit print_optional_val(const std::optional<T>& o) : opt(o) {}
+};
+
+// Deduction guide: print_optional_val(opt) deduces Formatter=void
+template<typename T>
+print_optional_val(const std::optional<T>&) -> print_optional_val<void, T>;
+
+template<typename Formatter, typename T>
+inline std::ostream& operator<<(std::ostream& os, const print_optional_val<Formatter, T>& po) {
+    if (po.opt.has_value()) {
+        if constexpr (std::is_same_v<Formatter, void>) {
+            os << *po.opt;
+        } else {
+            os << Formatter(*po.opt);
+        }
+    } else {
+        os << "None";
+    }
+    return os;
 }
 
 /**

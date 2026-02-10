@@ -80,6 +80,8 @@ class ExpressionGenerator:
             return "true" if expr.value else "false"
 
         elif isinstance(expr, TpyNoneLiteral):
+            if isinstance(target_type, OptionalType) and target_type.inner.is_value_type():
+                return "std::nullopt"
             return "nullptr"
 
         elif isinstance(expr, TpyCoerce):
@@ -181,10 +183,26 @@ class ExpressionGenerator:
                 return f"(!{find_expr})"
             return find_expr
 
-        # Identity operators (is / is not) — nullable pointer comparison
+        # Identity operators (is / is not) — nullable comparison
         if expr.op in ("is", "is not"):
+            left_type = self.ctx.analyzer.get_expr_type(expr.left)
+            right_type = self.ctx.analyzer.get_expr_type(expr.right)
+            # Value-type Optional vs None: use .has_value()
+            # Sema guarantees is/is not is only used with Optional vs None,
+            # but check for TpyNoneLiteral explicitly for defensive correctness.
+            opt_expr = None
+            if isinstance(left_type, OptionalType) and left_type.inner.is_value_type() and isinstance(expr.right, TpyNoneLiteral):
+                opt_expr = expr.left
+            elif isinstance(right_type, OptionalType) and right_type.inner.is_value_type() and isinstance(expr.left, TpyNoneLiteral):
+                opt_expr = expr.right
+            if opt_expr is not None:
+                val = self.gen_expr_deref(opt_expr)
+                if expr.op == "is":
+                    return f"(!{val}.has_value())"
+                else:
+                    return f"({val}.has_value())"
+            # Non-value Optional / raw pointer: pointer comparison
             cpp_op = "==" if expr.op == "is" else "!="
-            # Use gen_expr (not gen_expr_deref) — compare the pointer itself
             left = self.gen_expr(expr.left)
             right = self.gen_expr(expr.right)
             return f"({left} {cpp_op} {right})"

@@ -1,0 +1,13 @@
+True
+None
+False
+42
+10
+None
+True
+None
+3.14
+False
+0
+10
+False

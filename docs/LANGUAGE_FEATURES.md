@@ -1063,7 +1063,10 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - `x is None` / `x is not None` for null checks
   - Field/method access on optional values (assumes non-null, like Python)
   - Functions returning `T | None` return `T*` in C++
-- **Planned**: `T | None` for value types (`Int32 | None`) → `std::optional<T>`
+- **Working**: `T | None` for value types (`Int32 | None`, `Bool | None`, `float | None`) → `std::optional<T>`
+  - Variables, parameters, returns use `std::optional<T>` directly
+  - `x is None` / `x is not None` → `.has_value()` checks
+  - `print()` prints `None` for empty, value otherwise
 - **Planned**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
 - **Open**: `T | U` → templates with `if constexpr`, or overloads
 

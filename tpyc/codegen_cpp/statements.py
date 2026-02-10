@@ -197,7 +197,13 @@ class StatementGenerator:
             if stmt.value:
                 ret_type = self.ctx.current_return_type
                 if isinstance(ret_type, OptionalType):
-                    # Optional return: return pointer (not dereferenced)
+                    if ret_type.inner.is_value_type():
+                        # Value-type Optional: return std::nullopt or plain value
+                        if isinstance(stmt.value, TpyNoneLiteral):
+                            return f"{indent}return std::nullopt;\n"
+                        ret_expr = self.expressions.gen_expr_deref(stmt.value, ret_type)
+                        return f"{indent}return {ret_expr};\n"
+                    # Non-value Optional: return pointer (not dereferenced)
                     if isinstance(stmt.value, TpyNoneLiteral):
                         return f"{indent}return nullptr;\n"
                     ret_expr = self.expressions.gen_expr(stmt.value, ret_type)

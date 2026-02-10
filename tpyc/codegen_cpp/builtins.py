@@ -202,6 +202,17 @@ class BuiltinGenerator:
             elif isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
                 # Optional non-value: print "None" for nullptr, deref for value
                 parts.append(f'tpy::print_optional({self._gen_expr(arg)})')
+            elif isinstance(arg_type, OptionalType) and arg_type.inner.is_value_type():
+                # Optional value-type: use print_optional_val with inner-type-aware formatting
+                inner = arg_type.inner
+                gen = self._gen_expr_deref(arg)
+                inner_cpp = inner.to_cpp()
+                if isinstance(inner, BoolType):
+                    parts.append(f'tpy::print_optional_val<tpy::print_bool, {inner_cpp}>({gen})')
+                elif isinstance(inner, FloatType):
+                    parts.append(f'tpy::print_optional_val<tpy::print_float, {inner_cpp}>({gen})')
+                else:
+                    parts.append(f'tpy::print_optional_val({gen})')
             elif isinstance(arg_type, StrType):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))

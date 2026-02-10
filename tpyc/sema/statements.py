@@ -214,13 +214,6 @@ class StatementAnalyzer:
                 stmt
             )
 
-        # Value-type optionals not yet supported
-        if isinstance(stmt.type, OptionalType) and stmt.type.inner.is_value_type():
-            raise self.ctx.error(
-                f"Optional value types ({stmt.type}) not yet supported",
-                stmt
-            )
-
         # Check if this is a reassignment (variable already exists in scope)
         existing_type = self.ctx.current_scope.lookup(stmt.name)
 
