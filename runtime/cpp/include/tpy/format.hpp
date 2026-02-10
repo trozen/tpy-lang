@@ -216,4 +216,21 @@ inline std::string float_to_str(double x) {
     return result;
 }
 
+/**
+ * print_optional - Print a nullable pointer as Python would.
+ *
+ * Prints "None" for nullptr, otherwise prints the pointed-to value.
+ */
+template<typename T>
+struct print_optional {
+    const T* ptr;
+    explicit print_optional(const T* p) : ptr(p) {}
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const print_optional<T>& po) {
+    if (po.ptr) os << *(po.ptr); else os << "None";
+    return os;
+}
+
 } // namespace tpy

@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
+    NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     CHAR, is_protocol_type,
 )
 from ..parse import (
-    TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyCoerce
+    TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce
 )
 
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template
@@ -186,7 +186,9 @@ class BuiltinGenerator:
 
             arg_type = self.types.get_resolved_type(arg)
 
-            if isinstance(arg, TpyStrLiteral):
+            if isinstance(arg, TpyNoneLiteral):
+                parts.append('"None"')
+            elif isinstance(arg, TpyStrLiteral):
                 parts.append(f'"{escape_cpp_string(arg.value)}"')
             elif self.types.is_runtime_bigint(arg, arg_type):
                 # BigInt has operator<< for std::ostream, no .to_string() needed
@@ -197,6 +199,9 @@ class BuiltinGenerator:
             elif isinstance(arg_type, BoolType):
                 # Bool uses Python-style formatting via tpy::print_bool
                 parts.append(f'tpy::print_bool({self._gen_expr_deref(arg)})')
+            elif isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
+                # Optional non-value: print "None" for nullptr, deref for value
+                parts.append(f'tpy::print_optional({self._gen_expr(arg)})')
             elif isinstance(arg_type, StrType):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))
