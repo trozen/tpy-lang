@@ -39,7 +39,7 @@ void __tpy_init() {
   // 30: h = Holder()
   static Holder __global_slot_2 = Holder();
   h = &__global_slot_2;
-  // 31: h.value = find(pts, 2)
+  // 31: h.value = copy(find(pts, 2))
   h->value = tpy::ptr_to_optional(find((*pts), 2));
   // 32: print(h.value is None)
   std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
@@ -47,7 +47,7 @@ void __tpy_init() {
   std::cout << h->value->x << "\n";
   // 34: print(h.value.y)
   std::cout << h->value->y << "\n";
-  // 36: h.value = find(pts, 99)
+  // 36: h.value = copy(find(pts, 99))
   h->value = tpy::ptr_to_optional(find((*pts), 99));
   // 37: print(h.value is None)
   std::cout << tpy::print_bool((!h->value.has_value())) << "\n";

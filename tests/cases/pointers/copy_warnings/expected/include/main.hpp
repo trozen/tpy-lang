@@ -9,6 +9,7 @@ struct Point;
 struct Rect;
 struct Container;
 template<typename T> struct Holder;
+struct OptHolder;
 
 extern std::string_view __name__;
 
@@ -116,6 +117,31 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
   return os;
 }
 
+// 34: class OptHolder:
+struct OptHolder {
+  // 35:     value: Point | None
+  std::optional<Point> value;
+
+  // 37:     def __init__(self) -> None:
+  OptHolder() : value(std::nullopt) {}
+
+  // 40:     def set_value(self, p: Point | None) -> None:
+  void set_value(Point* p) {
+    // 41:         self.value = p            # tpyc: warning(/copies Point | None into field/)
+    this->value = tpy::ptr_to_optional(p);
+    // 42:         self.value = copy(p)      # tpyc: ok
+    this->value = tpy::ptr_to_optional(p);
+  }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
+  os << "OptHolder("
+     << "value=" << tpy::print_optional_val(obj.value)
+     << ")";
+  return os;
+}
+
+Point* find_point(std::vector<Point>& pts, int32_t x);
 void main();
 
 void __tpy_init();

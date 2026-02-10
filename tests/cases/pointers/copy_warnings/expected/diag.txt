@@ -1,4 +1,7 @@
 main.tp.py:12: warning: copies Point into field; use copy() to make this explicit
 main.tp.py:23: warning: copies list[Int32] into field; use copy() to make this explicit
 main.tp.py:31: warning: may copy T into field if not a value type; use copy() to make this explicit
-main.tp.py:37: warning: copies Point into field; use copy() to make this explicit
+main.tp.py:41: warning: copies Point | None into field; use copy() to make this explicit
+main.tp.py:53: warning: copies Point into field; use copy() to make this explicit
+main.tp.py:61: warning: copies Point | None into field; use copy() to make this explicit
+main.tp.py:64: warning: copies Point | None into field; use copy() to make this explicit

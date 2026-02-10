@@ -5,21 +5,47 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 34: def main() -> None:
+// 44: def find_point(pts: list[Point], x: Int32) -> Point | None:
+Point* find_point(std::vector<Point>& pts, int32_t x) {
+  // 45:     for p in pts:
+  for (auto& p : pts) {
+    // 46:         if p.x == x:
+    if ((p.x == x)) {
+      // 47:             return p
+      return &(p);
+    }
+  }
+  // 48:     return None
+  return nullptr;
+}
+
+// 50: def main() -> None:
 void main() {
-  // 35:     r: Rect = Rect()
+  // 51:     r: Rect = Rect()
   Rect r = Rect();
-  // 36:     p: Point = Point()
+  // 52:     p: Point = Point()
   Point p = Point();
-  // 37:     r.corner = p                  # tpyc: warning(/copies Point into field/)
+  // 53:     r.corner = p                  # tpyc: warning(/copies Point into field/)
   r.corner = p;
-  // 38:     r.corner = copy(p)            # tpyc: ok
+  // 54:     r.corner = copy(p)            # tpyc: ok
   r.corner = p;
-  // 39:     r.corner = Point()            # tpyc: ok
+  // 55:     r.corner = Point()            # tpyc: ok
   r.corner = Point();
-  // 40:     r.width = 10                  # tpyc: ok
+  // 56:     r.width = 10                  # tpyc: ok
   r.width = 10;
-  // 41:     print(r.width)
+  // 59:     h: OptHolder = OptHolder()
+  OptHolder h = OptHolder();
+  // 60:     pts: list[Point] = list()
+  std::vector<Point> pts = std::vector<Point>();
+  // 61:     h.value = find_point(pts, 1)  # tpyc: warning(/copies Point | None into field/)
+  h.value = tpy::ptr_to_optional(find_point(pts, 1));
+  // 62:     h.value = copy(find_point(pts, 1))  # tpyc: ok
+  h.value = tpy::ptr_to_optional(find_point(pts, 1));
+  // 64:     h.value = h.value             # tpyc: warning(/copies Point | None into field/)
+  h.value = h.value;
+  // 65:     h.value = copy(h.value)       # tpyc: ok
+  h.value = h.value;
+  // 66:     print(r.width)
   std::cout << r.width << "\n";
 }
 
@@ -29,7 +55,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 43: main()
+  // 68: main()
   main();
 }
 

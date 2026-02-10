@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import Int32, copy
 
 
 class Point:
@@ -13,7 +13,7 @@ class Edge:
     target: Point | None
 
     def __init__(self, p: Point | None):
-        self.target = p
+        self.target = copy(p)
 
 
 def find(items: list[Point], target: Int32) -> Point | None:

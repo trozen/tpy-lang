@@ -423,6 +423,18 @@ class CodeGenContext:
                 return True
         return False
 
+    def unwrap_copy(self, expr: TpyExpr) -> TpyExpr:
+        """If expr is tpy.copy(x), return x; otherwise return expr as-is."""
+        if isinstance(expr, TpyCoerce):
+            inner = self.unwrap_copy(expr.expr)
+            return inner if inner is not expr.expr else expr
+        if isinstance(expr, TpyCall) and len(expr.args) == 1:
+            if expr.func in self.analyzer.imported_names:
+                mod, fn = self.analyzer.imported_names[expr.func]
+                if mod == "tpy" and fn == "copy":
+                    return expr.args[0]
+        return expr
+
     def contains_protocol_type(self, typ: TpyType) -> bool:
         """Check if a type contains a protocol or SelfType anywhere in its structure.
 

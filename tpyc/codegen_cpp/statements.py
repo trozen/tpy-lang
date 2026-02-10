@@ -600,9 +600,17 @@ class StatementGenerator:
                 if self.ctx.is_indirect_name(stmt.value):
                     value = self.expressions.gen_expr(stmt.value)
                     return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
-                val_type = self.ctx.analyzer.get_expr_type(stmt.value)
-                if isinstance(val_type, OptionalType) and not isinstance(stmt.value, TpyFieldAccess):
+                raw_val_type = self.ctx.analyzer.get_expr_type(stmt.value)
+                val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
+                source = self.ctx.unwrap_copy(stmt.value)
+                if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
+                    # Own[T] | None returns std::optional<T> — direct assign
+                    # T | None returns T* — needs ptr_to_optional wrapping
+                    is_owned_optional = (isinstance(val_type, OptionalType)
+                                         and isinstance(val_type.inner, OwnType))
                     value = self.expressions.gen_expr(stmt.value, target_type)
+                    if is_owned_optional:
+                        return f"{indent}{target} = {value};\n"
                     return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
                 # Direct value or optional-to-optional (field-to-field) works without conversion
                 value = self.expressions.gen_expr_deref(stmt.value, target_type)

@@ -28,10 +28,10 @@ pts.append(Point(1, 10))
 pts.append(Point(2, 20))
 
 h = Holder()
-h.value = find(pts, 2)
+h.value = copy(find(pts, 2))
 print(h.value is None)
 print(h.value.x)
 print(h.value.y)
 
-h.value = find(pts, 99)
+h.value = copy(find(pts, 99))
 print(h.value is None)

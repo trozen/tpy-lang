@@ -69,6 +69,14 @@ class TypeCompatibility:
                 actual_inner = actual.wrapped
             else:
                 actual_inner = actual
+            # Own[Optional[T]] → Optional[T]: exact match after unwrap
+            if actual_inner == expected:
+                return None
+            # Optional[Own[T]] → Optional[T]: unwrap Own inside Optional
+            if isinstance(actual_inner, OptionalType) and isinstance(actual_inner.inner, OwnType):
+                actual_inner = OptionalType(actual_inner.inner.wrapped)
+                if actual_inner == expected:
+                    return None
             return self.check_type_compatible(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
 
         # Optional[T] → Optional[T] already handled by == check above
@@ -310,9 +318,14 @@ class TypeCompatibility:
             return False
         if self.is_copy_call(expr):
             return False
-        if not self.is_lvalue(expr):
-            return False
-        return True
+        if self.is_lvalue(expr):
+            return True
+        # T|None function returns always alias an existing object
+        if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
+            val_type = self.ctx.get_expr_type(expr)
+            if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
+                return True
+        return False
 
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an expression is a mutable lvalue (can get a mutable Ptr).

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    NamedType, StrType, BoolType, FloatType, OptionalType, TypeParamRef, TypeParamKind
+    NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -274,9 +274,6 @@ class RecordGenerator:
         # Build field name → type map for target type passing
         field_types = {fld.name: fld.type for fld in record.fields}
         own_field_names = set(field_types.keys())
-        # Build param name → type map for T* param detection
-        param_types = {pname: ptype for pname, ptype in init_method.params}
-
         inits = []
         for stmt in init_method.body:
             if isinstance(stmt, TpyAssign):
@@ -287,13 +284,15 @@ class RecordGenerator:
                         if field_name in own_field_names:
                             fld_type = field_types[field_name]
                             value = self.expressions.gen_expr(stmt.value, fld_type)
-                            # T* param assigned to std::optional<T> field needs conversion
-                            if (isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type()
-                                    and isinstance(stmt.value, TpyName)
-                                    and stmt.value.name in param_types):
-                                p_type = param_types[stmt.value.name]
-                                if isinstance(p_type, OptionalType) and not p_type.inner.is_value_type():
-                                    value = f"tpy::ptr_to_optional({value})"
+                            # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't
+                            if isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type():
+                                raw_val_type = self.ctx.analyzer.get_expr_type(stmt.value)
+                                val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
+                                source = self.ctx.unwrap_copy(stmt.value)
+                                if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
+                                    # Own[T] | None is already std::optional<T>; T | None is T* needing conversion
+                                    if not (isinstance(val_type, OptionalType) and isinstance(val_type.inner, OwnType)):
+                                        value = f"tpy::ptr_to_optional({value})"
                             inits.append((field_name, value))
         return inits
 

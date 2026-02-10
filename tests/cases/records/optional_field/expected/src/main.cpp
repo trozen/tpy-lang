@@ -75,24 +75,24 @@ void __tpy_init() {
   // 55: line2 = Line(Point(0, 0))
   static Line __global_slot_4 = Line(Point(0, 0));
   line2 = &__global_slot_4;
-  // 56: line2.end = find_point(pts, 5)
+  // 56: line2.end = copy(find_point(pts, 5))
   line2->end = tpy::ptr_to_optional(find_point((*pts), 5));
   // 57: print(line2.end is None)
   std::cout << tpy::print_bool((!line2->end.has_value())) << "\n";
   // 58: print(line2.end.x)
   std::cout << line2->end->x << "\n";
-  // 59: line2.end = find_point(pts, 7)
+  // 59: line2.end = copy(find_point(pts, 7))
   line2->end = tpy::ptr_to_optional(find_point((*pts), 7));
   // 60: print(line2.end.y)
   std::cout << line2->end->y << "\n";
-  // 61: line2.end = find_point(pts, 99)
+  // 61: line2.end = copy(find_point(pts, 99))
   line2->end = tpy::ptr_to_optional(find_point((*pts), 99));
   // 62: print(line2.end is None)
   std::cout << tpy::print_bool((!line2->end.has_value())) << "\n";
   // 65: line3 = Line(Point(10, 20))
   static Line __global_slot_5 = Line(Point(10, 20));
   line3 = &__global_slot_5;
-  // 66: line3.end = line.end
+  // 66: line3.end = copy(line.end)
   line3->end = line->end;
   // 67: print(line3.end.x)
   std::cout << line3->end->x << "\n";

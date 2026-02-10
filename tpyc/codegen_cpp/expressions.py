@@ -358,7 +358,12 @@ class ExpressionGenerator:
                 module_name, func_name = self.ctx.analyzer.imported_names[expr.func]
                 # copy(x) from tpy - dereference pointer-locals to get the value
                 if module_name == "tpy" and func_name == "copy":
-                    return self.gen_expr_deref(expr.args[0])
+                    arg = expr.args[0]
+                    arg_type = self.ctx.analyzer.get_expr_type(arg)
+                    # Optional non-value: keep native representation (T* or std::optional<T>)
+                    if isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
+                        return self.gen_expr(arg)
+                    return self.gen_expr_deref(arg)
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:

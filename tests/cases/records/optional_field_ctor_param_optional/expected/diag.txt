@@ -1,1 +1,0 @@
-main.tp.py:16: warning: copies Point | None into field; use copy() to make this explicit
