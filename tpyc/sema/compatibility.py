@@ -10,12 +10,13 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, VoidType, PtrType, ConstPtrType,
-    NamedType, TypeParamRef, INT32_MIN, INT32_MAX, is_protocol_type,
+    NamedType, TypeParamRef, NoneType, OptionalType,
+    INT32_MIN, INT32_MAX, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp, TpyBinOp, TpyCoerce,
-    TpyIntLiteral, TpyFunction, SourceLocation
+    TpyNoneLiteral, TpyIntLiteral, TpyFunction, SourceLocation
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext
 from .diagnostics import SemanticError
@@ -57,6 +58,21 @@ class TypeCompatibility:
         """
         if actual == expected:
             return None
+
+        # None → Optional[T]: always compatible
+        if isinstance(actual, NoneType) and isinstance(expected, OptionalType):
+            return None
+
+        # T → Optional[T]: implicit wrapping
+        if isinstance(expected, OptionalType):
+            if isinstance(actual, OwnType):
+                actual_inner = actual.wrapped
+            else:
+                actual_inner = actual
+            return self.check_type_compatible(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
+
+        # Optional[T] → Optional[T] already handled by == check above
+        # Optional[T] → T: error (cannot implicitly unwrap)
 
         # Protocol matching (structural subtyping)
         if is_protocol_type(expected):
@@ -405,6 +421,21 @@ class TypeCompatibility:
         # Pointers are also value types (the pointer itself is copied)
         # OwnType returns by value (ownership transfer), so no dangling risk
         if return_type.is_value_type() or isinstance(return_type, (VoidType, PtrType, ConstPtrType, OwnType)):
+            return
+
+        # Optional[T] for non-value T returns T* — returning a local would dangle.
+        # But `return None` is always safe (returns nullptr).
+        if isinstance(return_type, OptionalType):
+            if isinstance(expr, TpyNoneLiteral):
+                return
+            if self.is_dangling_return(expr):
+                raise self.ctx.error(
+                    f"Cannot return local or temporary as '{return_type}'. "
+                    f"The returned pointer would dangle. "
+                    f"Return a reference to parameter data, or use Own[{return_type.inner}] "
+                    f"to return by value.",
+                    expr
+                )
             return
 
         # Check if the expression is safe to return as a reference

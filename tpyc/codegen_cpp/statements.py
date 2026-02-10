@@ -10,13 +10,13 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
-    ArrayType, ListType, PendingListType, OwnType, NamedType, StrType,
+    ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
     INT32, BIGINT, is_protocol_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
-    TpyImport, TpySubscript, TpyStrLiteral, TpyName, TpyExpr, TpyFunction,
+    TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
 )
 from ..namespace import Namespace
 from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
@@ -78,6 +78,10 @@ class StatementGenerator:
         self.ctx.local_scope_names = {pname for pname, _ in params}
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.scan_reassigned_vars(body)
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
+        # Optional non-value params are T* in C++ — need pointer-local treatment (->)
+        for pname, ptype in params:
+            if isinstance(ptype, OptionalType) and not ptype.inner.is_value_type():
+                self.ctx.pointer_locals.add(pname)
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
@@ -192,6 +196,16 @@ class StatementGenerator:
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
                 ret_type = self.ctx.current_return_type
+                if isinstance(ret_type, OptionalType):
+                    # Optional return: return pointer (not dereferenced)
+                    if isinstance(stmt.value, TpyNoneLiteral):
+                        return f"{indent}return nullptr;\n"
+                    ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
+                    if self.ctx.is_indirect_name(stmt.value):
+                        # Already a pointer — return as-is
+                        return f"{indent}return {ret_expr};\n"
+                    # Take address of lvalue
+                    return f"{indent}return &({ret_expr});\n"
                 ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
                 # Dereference pointer-locals/pointer-globals on return (T* → T&)
                 if self.ctx.is_indirect_name(stmt.value):
@@ -231,9 +245,13 @@ class StatementGenerator:
 
         Returns True when the variable is reassigned later or initialized from
         a non-rvalue (sharing/aliasing). The caller distinguishes T* vs T&.
+        Optional non-value types always need indirection (they are nullable pointers).
         """
         if target_type is None:
             return False
+        # Optional[T] for non-value T is always a pointer-local
+        if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
+            return True
         if target_type.is_value_type():
             return False
         if name in self.ctx.reassigned_vars:
@@ -266,6 +284,9 @@ class StatementGenerator:
         if stmt.type:
             if self.ctx.contains_protocol_type(stmt.type):
                 return "auto"
+            # Optional non-value types use inner type (pointer-local adds T*)
+            if isinstance(stmt.type, OptionalType) and not stmt.type.inner.is_value_type():
+                return self.types.type_to_cpp(stmt.type.inner)
             return self.types.type_to_cpp(stmt.type)
         elif stmt.init:
             resolved_type = self.ctx.analyzer.var_types.get(id(stmt))
@@ -285,6 +306,9 @@ class StatementGenerator:
                         inferred_type = ArrayType(BIGINT, inferred_type.size)
                     else:
                         inferred_type = ListType(BIGINT)
+            # Optional non-value types use inner type (pointer-local adds T*)
+            if isinstance(inferred_type, OptionalType) and not inferred_type.inner.is_value_type():
+                inferred_type = inferred_type.inner
             if self.ctx.contains_protocol_type(inferred_type):
                 return "auto"
             return self.types.type_to_cpp(inferred_type)
@@ -295,6 +319,8 @@ class StatementGenerator:
         """Generate pointer-local initialization code.
 
         Classifies the source expression:
+        - None literal → nullptr
+        - OptionalType source (function returning T*) → direct pointer copy
         - rvalue → new slot + take address
         - pointer-local name → pointer copy
         - lvalue ref (param, subscript, field) → take address
@@ -303,6 +329,17 @@ class StatementGenerator:
         pre-declared so aliases to the init value aren't overwritten.
         """
         from ..parse import TpyName as _TpyName
+
+        # None literal → nullptr
+        if isinstance(init, TpyNoneLiteral):
+            return f"{indent}{cpp_type}* {name} = nullptr;\n"
+
+        # OptionalType source (e.g., function returning T | None) → direct pointer copy
+        init_type = self.ctx.analyzer.get_expr_type(init)
+        if isinstance(init_type, OptionalType):
+            init_expr = self.expressions.gen_expr(init, target_type)
+            return f"{indent}{cpp_type}* {name} = {init_expr};\n"
+
         init_expr = self.expressions.gen_expr(init, target_type)
 
         is_hoisted = name in self.ctx.hoisted_vars
@@ -359,6 +396,17 @@ class StatementGenerator:
         to avoid creating loop-scoped storage that would dangle.
         """
         from ..parse import TpyName as _TpyName
+
+        # None literal → set to nullptr
+        if isinstance(init, TpyNoneLiteral):
+            return f"{indent}{name} = nullptr;\n"
+
+        # OptionalType source (e.g., function returning T | None) → direct pointer copy
+        init_type = self.ctx.analyzer.get_expr_type(init)
+        if isinstance(init_type, OptionalType):
+            init_expr = self.expressions.gen_expr(init, target_type)
+            return f"{indent}{name} = {init_expr};\n"
+
         init_expr = self.expressions.gen_expr(init, target_type)
 
         is_hoisted = name in self.ctx.hoisted_vars
@@ -393,7 +441,11 @@ class StatementGenerator:
                 var_type = self.ctx.var_types.get(stmt.name)
                 # Pointer-local reassignment
                 if stmt.name in self.ctx.pointer_locals:
-                    cpp_type = self.types.type_to_cpp(var_type) if var_type else "auto"
+                    # OptionalType uses inner type (pointer-local adds T*)
+                    resolve_type = var_type
+                    if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+                        resolve_type = var_type.inner
+                    cpp_type = self.types.type_to_cpp(resolve_type) if resolve_type else "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
                 return f"{indent}{stmt.name} = {init_expr};\n"
@@ -413,11 +465,17 @@ class StatementGenerator:
 
         # Indirection for non-value types in function/method scope
         if self._needs_indirection(target_type, stmt.name, stmt.init):
-            assert stmt.init, f"indirect local '{stmt.name}' missing initializer"
-            if stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
+            is_optional = isinstance(target_type, OptionalType)
+            if not is_optional:
+                assert stmt.init, f"indirect local '{stmt.name}' missing initializer"
+            if is_optional or stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
                 # T* pointer-local — needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
-                return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
+                if stmt.init:
+                    return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
+                else:
+                    # Optional without initializer → nullptr
+                    return f"{indent}{cpp_type}* {stmt.name} = nullptr;\n"
             else:
                 # T& reference — alias without rebinding
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
@@ -555,7 +613,11 @@ class StatementGenerator:
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
         for name, var_type in branch_decls.items():
             if name not in self.ctx.declared_vars:
-                cpp_type = self.types.type_to_cpp(var_type)
+                # OptionalType uses inner type (pointer-local adds T*)
+                resolve_type = var_type
+                if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+                    resolve_type = var_type.inner
+                cpp_type = self.types.type_to_cpp(resolve_type)
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = var_type

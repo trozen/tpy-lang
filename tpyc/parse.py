@@ -12,7 +12,8 @@ from typing import Optional, Union, TYPE_CHECKING
 
 from .typesys import (
     TpyType, NamedType, PtrType, ConstPtrType, OwnType, SelfType, TypeParamRef,
-    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
+    OptionalType, NoneType, VoidType,
+    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, NONE, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind
 )
 from .modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
@@ -78,6 +79,12 @@ class TpyStrLiteral(TpyExpr):
 class TpyBoolLiteral(TpyExpr):
     """Boolean literal."""
     value: bool
+
+
+@dataclass
+class TpyNoneLiteral(TpyExpr):
+    """None literal."""
+    pass
 
 
 @dataclass
@@ -440,6 +447,7 @@ _CMPOP_TO_STR: dict[type, str] = {
     ast.Lt: "<", ast.LtE: "<=",
     ast.Gt: ">", ast.GtE: ">=",
     ast.In: "in", ast.NotIn: "not in",
+    ast.Is: "is", ast.IsNot: "is not",
 }
 
 _UNARYOP_TO_STR: dict[type, str] = {
@@ -1075,6 +1083,16 @@ class Parser:
         elif isinstance(node, ast.Constant) and node.value is None:
             return VOID
 
+        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            left = self._parse_type_annotation(node.left, type_param_scope)
+            right = self._parse_type_annotation(node.right, type_param_scope)
+            if isinstance(right, VoidType):
+                return OptionalType(left)
+            elif isinstance(left, VoidType):
+                return OptionalType(right)
+            else:
+                raise ParseError("Union types not yet supported; only T | None is allowed", node)
+
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
     def _parse_protocol_type_args(self, node: ast.Subscript, name: str,
@@ -1266,6 +1284,8 @@ class Parser:
                 return TpyFloatLiteral(node.value, loc=loc)
             elif isinstance(node.value, str):
                 return TpyStrLiteral(node.value, loc=loc)
+            elif node.value is None:
+                return TpyNoneLiteral(loc=loc)
             else:
                 raise ParseError(f"Unsupported literal type: {type(node.value).__name__}", node)
 

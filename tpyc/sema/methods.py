@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, ListType, PendingListType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType,
     SuperType, TypeParamRef, FunctionInfo, VOID, is_protocol_type,
 )
 from ..parse import (
@@ -114,6 +114,8 @@ class MethodAnalyzer:
 
         if isinstance(obj_type, OwnType):
             obj_type = obj_type.wrapped
+        elif isinstance(obj_type, OptionalType):
+            obj_type = obj_type.inner
 
         # List mutation tracking
         if isinstance(obj_type, (PendingListType, ListType)):

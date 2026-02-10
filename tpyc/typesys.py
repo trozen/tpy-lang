@@ -565,6 +565,72 @@ class OwnType(TpyType):
 
 
 @dataclass(frozen=True)
+class NoneType(TpyType):
+    """The type of the None literal (distinct from VoidType which is for return types)."""
+
+    def to_cpp(self) -> str:
+        return "std::nullptr_t"
+
+    def __str__(self) -> str:
+        return "None"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
+class OptionalType(TpyType):
+    """Nullable wrapper: T | None.
+
+    For non-value inner types, maps to T* (nullable pointer) in locals/params/returns.
+    The canonical storage form (std::optional<T>) is reserved for future class members.
+    """
+    inner: TpyType
+
+    def to_cpp(self) -> str:
+        return f"std::optional<{self.inner.to_cpp()}>"
+
+    def is_value_type(self) -> bool:
+        return self.inner.is_value_type()
+
+    def to_cpp_return(self) -> str:
+        if not self.inner.is_value_type():
+            return f"{self.inner.to_cpp()}*"
+        return self.to_cpp()
+
+    def to_cpp_return_const(self) -> str:
+        if not self.inner.is_value_type():
+            return f"const {self.inner.to_cpp()}*"
+        return self.to_cpp()
+
+    def to_cpp_param(self, name: str) -> str:
+        if not self.inner.is_value_type():
+            return f"{self.inner.to_cpp()}* {name}"
+        return f"{self.to_cpp()} {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        if not self.inner.is_value_type():
+            return f"const {self.inner.to_cpp()}* {name}"
+        return f"{self.to_cpp()} {name}"
+
+    def is_ref_param(self) -> bool:
+        # Optional params are T* (pointer), not T& (reference)
+        return False
+
+    def get_element_type(self) -> Optional['TpyType']:
+        return self.inner.get_element_type()
+
+    def __str__(self) -> str:
+        return f"{self.inner} | None"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.inner,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return OptionalType(types[0])
+
+
+@dataclass(frozen=True)
 class ArrayType(TpyType):
     """Fixed-size array: Array[T, N] -> std::array<T, N>"""
     element_type: TpyType
@@ -785,6 +851,7 @@ CHAR = CharType()
 BOOL = BoolType()
 FLOAT = FloatType()
 BIGINT = BigIntType()
+NONE = NoneType()
 
 # Int32 range limits
 INT32_MIN = -(2**31)

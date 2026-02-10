@@ -9,14 +9,14 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
+    NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
     ResolvedBinop
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
-    TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
@@ -78,6 +78,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyBoolLiteral):
             return "true" if expr.value else "false"
+
+        elif isinstance(expr, TpyNoneLiteral):
+            return "nullptr"
 
         elif isinstance(expr, TpyCoerce):
             if expr.coercion.name == "int_literal_to_int32" or isinstance(expr.expected_type, SpanType):
@@ -177,6 +180,14 @@ class ExpressionGenerator:
             if expr.op == "not in":
                 return f"(!{find_expr})"
             return find_expr
+
+        # Identity operators (is / is not) — nullable pointer comparison
+        if expr.op in ("is", "is not"):
+            cpp_op = "==" if expr.op == "is" else "!="
+            # Use gen_expr (not gen_expr_deref) — compare the pointer itself
+            left = self.gen_expr(expr.left)
+            right = self.gen_expr(expr.right)
+            return f"({left} {cpp_op} {right})"
 
         # Comparison operators - generate C++ directly
         if expr.op in ("==", "!=", "<", ">", "<=", ">=", "&&", "||"):
@@ -348,10 +359,23 @@ class ExpressionGenerator:
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
+                # Optional non-value params are T* — pass raw pointer
+                if isinstance(resolved_ptype, OptionalType) and not resolved_ptype.inner.is_value_type():
+                    if isinstance(arg, TpyNoneLiteral):
+                        gen_args.append("nullptr")
+                    elif self.ctx.is_indirect_name(arg):
+                        # Already a T* pointer-local/global — pass as-is
+                        gen_args.append(self.gen_expr(arg, resolved_ptype))
+                    elif isinstance(self.ctx.analyzer.get_expr_type(arg), OptionalType):
+                        # Expression already produces T* (e.g. function returning Optional)
+                        gen_args.append(self.gen_expr(arg, resolved_ptype))
+                    else:
+                        # Lvalue reference — take address
+                        gen_args.append(f"&({self.gen_expr(arg, resolved_ptype)})")
                 # Temporaries passed to mutable reference params need a temp variable
                 # because C++ can't bind rvalue to non-const lvalue reference
                 # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
-                if (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self.ctx.is_temporary_expr(arg):
+                elif (resolved_ptype.is_ref_param() or isinstance(ptype, TypeParamRef)) and self.ctx.is_temporary_expr(arg):
                     init_expr = self.gen_expr(arg, resolved_ptype)
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
                     gen_args.append(temp_name)
@@ -523,8 +547,12 @@ class ExpressionGenerator:
                             gen_args.append(self.gen_expr_deref(arg))
                     args = ", ".join(gen_args)
 
-        # Use -> for globals (wrapped in tpy::Global<T>)
-        accessor = "->" if self.ctx.is_indirect_name(expr.obj) else "."
+        # Use -> for pointer-locals/globals (T*) and pointer-typed expressions
+        # (OptionalType non-value expressions like function calls return T*)
+        obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
+        is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
+        use_arrow = self.ctx.is_indirect_name(expr.obj) or (obj_type and obj_type.is_pointer()) or is_optional_ptr
+        accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{expr.method}({args})"
 
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
@@ -548,13 +576,14 @@ class ExpressionGenerator:
         obj = self.gen_expr(expr.obj)
         # Check if obj is a pointer type or global - use -> instead of .
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
-        is_global = self.ctx.is_indirect_name(expr.obj)
+        is_indirect = self.ctx.is_indirect_name(expr.obj)
+        is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         if obj_type and obj_type.is_pointer():
             # Global pointer needs deref first: Global<Ptr<T>> -> (*global)->field
-            if is_global:
+            if is_indirect:
                 return f"(*{obj})->{expr.field}"
             return f"{obj}->{expr.field}"
-        if is_global:
+        if is_indirect or is_optional_ptr:
             return f"{obj}->{expr.field}"
         return f"{obj}.{expr.field}"
 

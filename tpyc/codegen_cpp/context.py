@@ -10,12 +10,12 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, PtrType, ConstPtrType, OwnType, NamedType, SelfType,
+    TpyType, PtrType, ConstPtrType, OwnType, OptionalType, NamedType, SelfType,
     BigIntType, IntLiteralType, TypeParamRef, is_protocol_type,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat, TpyCoerce, TpyBinOp,
+    TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyCoerce, TpyBinOp,
     TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess
 )
 from ..namespace import Namespace, BindingKind
@@ -337,7 +337,7 @@ class CodeGenContext:
             return False
         # Constructor calls, literals, ops are rvalues
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                             TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat,
+                             TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
                              TpyBinOp, TpyUnaryOp, TpyMethodCall)):
             return True
         # Coercions: depends on inner expr
@@ -351,9 +351,9 @@ class CodeGenContext:
             # Generic type constructors → rvalue
             if expr.call_type is not None:
                 return True
-            # Functions returning Own[T] → rvalue (ownership transfer)
+            # Functions returning Own[T] or Optional[T] → rvalue (pointer value)
             if func_info := self.analyzer.registry.get_function(expr.func):
-                if isinstance(func_info.return_type, OwnType):
+                if isinstance(func_info.return_type, (OwnType, OptionalType)):
                     return True
                 return False
             # Builtin functions → rvalue

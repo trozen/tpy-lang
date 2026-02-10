@@ -10,12 +10,12 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     VoidType, NamedType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
-    SpanType, TypeParamRef, TypeParamKind, ListLiteralInfo,
-    INT32, FLOAT, STR, CHAR, BOOL, BIGINT, is_protocol_type,
+    SpanType, TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType,
+    INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
-    TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
@@ -70,6 +70,8 @@ class ExpressionAnalyzer:
             typ = STR
         elif isinstance(expr, TpyBoolLiteral):
             typ = BOOL
+        elif isinstance(expr, TpyNoneLiteral):
+            typ = NONE
         elif isinstance(expr, TpyName):
             typ = self._analyze_name(expr)
         elif isinstance(expr, TpyBinOp):
@@ -224,6 +226,19 @@ class ExpressionAnalyzer:
         def is_numeric_type(t: TpyType) -> bool:
             return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType))
 
+        # Identity operators (is / is not) — only valid with None
+        if expr.op in ("is", "is not"):
+            if isinstance(left_type, NoneType) and isinstance(right_type, OptionalType):
+                return BOOL
+            if isinstance(right_type, NoneType) and isinstance(left_type, OptionalType):
+                return BOOL
+            if isinstance(left_type, NoneType) and isinstance(right_type, NoneType):
+                return BOOL
+            raise SemanticError(
+                f"'is' / 'is not' can only compare Optional types with None, "
+                f"got {left_type} and {right_type}"
+            )
+
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
             if is_int_type(left_type) and is_int_type(right_type):
@@ -343,11 +358,14 @@ class ExpressionAnalyzer:
 
         # Handle pointer types - dereference to get the pointee
         # Handle Own[T] - unwrap to get the owned type
+        # Handle Optional[T] - unwrap to get the inner type
         actual_type = obj_type
         if isinstance(obj_type, (PtrType, ConstPtrType)):
             actual_type = obj_type.pointee
         elif isinstance(obj_type, OwnType):
             actual_type = obj_type.wrapped
+        elif isinstance(obj_type, OptionalType):
+            actual_type = obj_type.inner
 
         if isinstance(actual_type, NamedType) and actual_type.is_record:
             record = self.ctx.registry.get_record(actual_type.name)
@@ -488,18 +506,23 @@ class ExpressionAnalyzer:
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"Subscript index must be an integer type, got {index_type}")
 
+        # Unwrap Optional to inner type for subscript access
+        actual_type = obj_type
+        if isinstance(obj_type, OptionalType):
+            actual_type = obj_type.inner
+
         # Use get_element_type() trait for containers and strings
-        elem_type = obj_type.get_element_type()
+        elem_type = actual_type.get_element_type()
         if elem_type is not None:
             return elem_type
 
         # Protocol types - lookup __getitem__ return type
-        if is_protocol_type(obj_type):
-            return self._get_protocol_getitem_type(obj_type)
+        if is_protocol_type(actual_type):
+            return self._get_protocol_getitem_type(actual_type)
 
         # User records with __getitem__ method
-        if isinstance(obj_type, NamedType) and obj_type.is_record:
-            return self._get_record_getitem_type(obj_type)
+        if isinstance(actual_type, NamedType) and actual_type.is_record:
+            return self._get_record_getitem_type(actual_type)
 
         raise SemanticError(f"Cannot index type {obj_type}")
 

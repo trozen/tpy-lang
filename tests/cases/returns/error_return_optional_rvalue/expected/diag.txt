@@ -1,0 +1,1 @@
+main.tp.py:15: error: Cannot return local or temporary as 'Point | None'. The returned pointer would dangle. Return a reference to parameter data, or use Own[Point] to return by value.

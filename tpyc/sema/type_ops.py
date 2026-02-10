@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType,
-    ArrayType, SpanType, ListType, PendingListType, SelfType,
+    ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     RecordInfo, FunctionInfo, is_protocol_type,
 )
@@ -97,6 +97,10 @@ class TypeOperations:
                     f"Generic record '{typ.name}' requires type arguments: "
                     f"{typ.name}[{', '.join(record_info.type_params)}]"
                 )
+        elif isinstance(typ, OptionalType):
+            if typ.inner.is_value_type():
+                raise SemanticError(f"Optional value types ({typ}) not yet supported")
+            self.validate_type(typ.inner, allow_type_param_ref)
         elif isinstance(typ, (PtrType, ConstPtrType)):
             self.validate_type(typ.pointee, allow_type_param_ref)
             if is_protocol_type(typ.pointee):

@@ -14,18 +14,10 @@
 | Move optimization (liveness analysis -> `std::move`) | TODO |
 | Loop-local escape detection (scope-depth based) | Done |
 | Pointer provenance (`return best` from param container) | Done |
-| `None`/nullptr for nullable pointer-locals | TODO |
+| `None`/nullptr for nullable pointer-locals | Done |
 | `Ptr[T]` escape analysis (cross-function provenance) | TODO |
 | Iterator invalidation detection | TODO |
 | `Box[T]`, `Rc[T]`, user-defined value types | TODO |
-
-### Blocked test cases
-
-Tests for patterns described in this doc that can't pass yet:
-
-| Pattern | Blocked by |
-|---------|------------|
-| `find() -> Point | None` returning nullable | `None`/nullable pointer-locals not implemented |
 
 ## Summary
 

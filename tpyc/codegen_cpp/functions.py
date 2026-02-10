@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, is_protocol_type,
+    TpyType, NamedType, OwnType, OptionalType, is_protocol_type,
     Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
 )
 from ..parse import TpyFunction, TpyVarDecl
@@ -147,7 +147,7 @@ class FunctionGenerator:
         self.statements.gen_body(*args, **kwargs)
 
     def _resolve_global_type(self, stmt: TpyVarDecl) -> TpyType:
-        """Resolve the type of a global variable, unwrapping Own[T] to T."""
+        """Resolve the type of a global variable, unwrapping Own[T]/Optional[T] to T."""
         if stmt.type:
             var_type = stmt.type
         elif stmt.init:
@@ -156,6 +156,9 @@ class FunctionGenerator:
             raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
         if isinstance(var_type, OwnType):
             var_type = var_type.wrapped
+        # Optional non-value types use inner type (pointer-global adds T*)
+        elif isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+            var_type = var_type.inner
         return var_type
 
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:

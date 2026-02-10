@@ -10,13 +10,14 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, ConstPtrType, INT32, VOID, BIGINT, is_protocol_type,
+    ListLiteralInfo, ConstPtrType, NoneType, OptionalType,
+    INT32, VOID, BIGINT, is_protocol_type,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName,
-    TpyFieldAccess, TpyFunction,
+    TpyNoneLiteral, TpyFieldAccess, TpyFunction,
 )
 from ..coercions import CoercionContext
 from .diagnostics import SemanticError
@@ -213,6 +214,13 @@ class StatementAnalyzer:
                 stmt
             )
 
+        # Value-type optionals not yet supported
+        if isinstance(stmt.type, OptionalType) and stmt.type.inner.is_value_type():
+            raise self.ctx.error(
+                f"Optional value types ({stmt.type}) not yet supported",
+                stmt
+            )
+
         # Check if this is a reassignment (variable already exists in scope)
         existing_type = self.ctx.current_scope.lookup(stmt.name)
 
@@ -327,15 +335,26 @@ class StatementAnalyzer:
                 # Unwrap OwnType - Own[T] indicates ownership transfer, not variable type
                 elif isinstance(init_type, OwnType):
                     var_type = init_type.wrapped
+                # None literal without annotation — can't infer the Optional type
+                elif isinstance(init_type, NoneType):
+                    raise self.ctx.error(
+                        f"Cannot infer type for '{stmt.name}' initialized with None; "
+                        f"add a type annotation (e.g., x: Point | None = None)",
+                        stmt
+                    )
                 else:
                     var_type = init_type
         elif stmt.type:
-            if not stmt.type.is_value_type():
+            if isinstance(stmt.type, OptionalType):
+                # Optional without initializer is allowed (defaults to None/nullptr)
+                var_type = stmt.type
+            elif not stmt.type.is_value_type():
                 raise self.ctx.error(
                     f"Variable '{stmt.name}' of type '{stmt.type}' must have an initializer",
                     stmt
                 )
-            var_type = stmt.type
+            else:
+                var_type = stmt.type
         else:
             raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
 

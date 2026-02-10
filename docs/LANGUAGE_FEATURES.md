@@ -1058,7 +1058,13 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 
 ### Union/Optional
-- **Open**: `T | None` → `std::optional<T>` or pointer
+- **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
+  - Locals, parameters, returns: `T*` (nullable pointer)
+  - `x is None` / `x is not None` for null checks
+  - Field/method access on optional values (assumes non-null, like Python)
+  - Functions returning `T | None` return `T*` in C++
+- **Planned**: `T | None` for value types (`Int32 | None`) → `std::optional<T>`
+- **Planned**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
 - **Open**: `T | U` → templates with `if constexpr`, or overloads
 
 ---
@@ -1072,6 +1078,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- **Working**: `is`, `is not` (identity comparison with `None` only)
 
 ### Membership
 - **Working**: `in`, `not in` (for list, Array, Span, str)

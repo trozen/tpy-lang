@@ -1,0 +1,4 @@
+True
+False
+3
+7
