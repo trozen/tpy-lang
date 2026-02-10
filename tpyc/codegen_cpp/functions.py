@@ -5,7 +5,6 @@ Generates C++ function declarations, definitions, and global variables.
 """
 
 from __future__ import annotations
-import io
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -208,46 +207,25 @@ class FunctionGenerator:
         # Initialize synthetic __name__ if not user-defined
         if self.ctx._has_synthetic_name:
             out.write(f'  __name__ = "{module_name}";\n')
+
+        self.ctx.reset_scope()
         # Pre-seed with global names and types so re-declarations become assignments
         if global_types:
             self.ctx.declared_vars = set(global_types.keys())
             self.ctx.var_types = {name: typ for name, typ in global_types.items() if typ is not None}
-        else:
-            self.ctx.declared_vars = set()
-            self.ctx.var_types = {}
-        # In module init, there are no local shadowing variables
-        self.ctx.local_scope_names = set()
-        # Non-value-type globals use pointer model (T*) inside __tpy_init
-        if global_types:
             self.ctx.pointer_locals = {
                 name for name, typ in global_types.items()
                 if typ and not typ.is_value_type()
             }
-        else:
-            self.ctx.pointer_locals = set()
         self.ctx.slots.reset(global_scope=True)
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(stmts)
         self.ctx.hoisted_vars = self.ctx.analyzer.top_level_hoisted_vars.copy()
-        self.ctx.pending_hoist_decls = []
-        # Use global namespace for module init (globals are directly accessible)
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
 
-        # Buffer body to collect hoist declarations
-        body_buf = io.StringIO()
-        for stmt in stmts:
-            # Track current statement line for order-aware import qualification
-            self.ctx.current_stmt_line = stmt.loc.line if hasattr(stmt, 'loc') and stmt.loc else 0
-            self.statements.gen_stmt(body_buf, stmt)
-        self.ctx.current_stmt_line = 0  # Reset after top-level processing
-
-        # Write hoist declarations first, then body
-        for decl in self.ctx.pending_hoist_decls:
-            out.write(decl)
-        out.write(body_buf.getvalue())
+        self.statements._gen_buffered_body(out, stmts, track_stmt_line=True)
 
         self.ctx.current_ns = None
-        # Call user's main() if defined
         if has_user_main:
             out.write("  main();\n")
         out.write("}\n\n")

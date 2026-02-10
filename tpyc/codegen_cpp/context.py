@@ -193,6 +193,24 @@ class CodeGenContext:
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
 
+    def reset_scope(self) -> None:
+        """Reset all per-scope state for a new function/method/module-init body."""
+        self.declared_vars = set()
+        self.var_types = {}
+        self.local_scope_names = set()
+        self.pointer_locals = set()
+        self.slots.reset()
+        self.rebind_slots = {}
+        self.reassigned_vars = set()
+        self.rvalue_reassigned_vars = set()
+        self.hoisted_vars = set()
+        self.pending_hoist_decls = []
+        self.current_ns = None
+        self.indent_level = 0
+        self.current_return_type = None
+        self.current_func_params = {}
+        self.in_method = False
+
     def indent(self) -> str:
         """Get current indentation string."""
         return "  " * self.indent_level

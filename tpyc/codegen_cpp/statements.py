@@ -47,6 +47,22 @@ class StatementGenerator:
         """Set expressions generator (to break circular dependency)."""
         self.expressions = expressions
 
+    def _gen_buffered_body(self, out: TextIO, stmts: list[TpyStmt],
+                           track_stmt_line: bool = False) -> None:
+        """Buffer body statements, prepend hoist declarations, write to output."""
+        body_buf = io.StringIO()
+        for stmt in stmts:
+            if track_stmt_line:
+                self.ctx.current_stmt_line = stmt.loc.line if hasattr(stmt, 'loc') and stmt.loc else 0
+            self.gen_stmt(body_buf, stmt)
+        if track_stmt_line:
+            self.ctx.current_stmt_line = 0
+        # Hoist decls have base indent "  "; add extra for nested scopes (methods)
+        hoist_prefix = "  " * (self.ctx.indent_level - 1)
+        for decl in self.ctx.pending_hoist_decls:
+            out.write(f"{hoist_prefix}{decl}")
+        out.write(body_buf.getvalue())
+
     def gen_body(self, out: TextIO, body: list[TpyStmt],
                  params: list[tuple[str, TpyType]], return_type: TpyType,
                  func: TpyFunction, local_ns: Namespace,
@@ -56,15 +72,12 @@ class StatementGenerator:
         Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
         Shared by gen_function_def() and _gen_method().
         """
+        self.ctx.reset_scope()
         self.ctx.declared_vars = {pname for pname, _ in params}
         self.ctx.var_types = {pname: ptype for pname, ptype in params}
         self.ctx.local_scope_names = {pname for pname, _ in params}
-        self.ctx.pointer_locals = set()
-        self.ctx.slots.reset()
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.scan_reassigned_vars(body)
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
-        self.ctx.pending_hoist_decls = []
-
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
@@ -72,14 +85,7 @@ class StatementGenerator:
         if is_method:
             self.ctx.in_method = True
 
-        body_buf = io.StringIO()
-        for stmt in body:
-            self.gen_stmt(body_buf, stmt)
-
-        hoist_prefix = "  " * (indent_level - 1)
-        for decl in self.ctx.pending_hoist_decls:
-            out.write(f"{hoist_prefix}{decl}")
-        out.write(body_buf.getvalue())
+        self._gen_buffered_body(out, body)
 
         if is_method:
             self.ctx.in_method = False

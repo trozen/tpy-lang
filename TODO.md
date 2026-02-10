@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- Global slot bug: non-value-type globals with rvalue init (e.g. `g_point = Point(0, 0)`) generate `__slot_N` references in `__tpy_init()` that aren't declared at that scope. List-literal globals work because they use `__global_slot_N` with `static` storage, but plain rvalue constructors don't get this treatment.
 - finish items from OWNERSHIP_DESIGN.md
 - `None` type, optional values, null pointers
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
