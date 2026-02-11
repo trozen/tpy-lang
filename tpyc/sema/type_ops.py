@@ -16,6 +16,7 @@ from ..typesys import (
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
+    from ..parse import SourceLocation
     from .context import SemanticContext
     from tpyc import modules as builtin_modules
 
@@ -62,18 +63,21 @@ class TypeOperations:
                 return OwnType(resolved_wrapped)
         return typ
 
-    def validate_type(self, typ: TpyType, allow_type_param_ref: bool = False) -> None:
+    def validate_type(
+        self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
+    ) -> None:
         """Validate that a type is well-formed.
 
         Args:
             typ: The type to validate.
             allow_type_param_ref: If True, TypeParamRef is allowed (for generic class definitions).
+            loc: Optional source location for error messages.
         """
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:
-                raise SemanticError(f"Type parameter '{typ.name}' used outside of generic class definition")
+                raise SemanticError(f"Type parameter '{typ.name}' used outside of generic class definition", loc)
             if typ.kind == TypeParamKind.INT:
-                raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation")
+                raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation", loc)
             return
         if isinstance(typ, NamedType) and typ.is_record:
             record_info = self.ctx.registry.get_record(typ.name)
@@ -83,37 +87,42 @@ class TypeOperations:
             elif typ.type_args:
                 # Validate type arguments for generic record
                 if not record_info.is_generic():
-                    raise SemanticError(f"Record '{typ.name}' is not generic, but type arguments were provided")
+                    raise SemanticError(f"Record '{typ.name}' is not generic, but type arguments were provided", loc)
                 if len(typ.type_args) != len(record_info.type_params):
                     raise SemanticError(
                         f"Record '{typ.name}' expects {len(record_info.type_params)} type arguments, "
-                        f"got {len(typ.type_args)}"
+                        f"got {len(typ.type_args)}",
+                        loc,
                     )
                 # Validate each type argument matches its expected kind
-                self.validate_record_type_args(typ, record_info, allow_type_param_ref)
+                self.validate_record_type_args(typ, record_info, allow_type_param_ref, loc)
             elif record_info.is_generic():
                 # Generic record used without type arguments
                 raise SemanticError(
                     f"Generic record '{typ.name}' requires type arguments: "
-                    f"{typ.name}[{', '.join(record_info.type_params)}]"
+                    f"{typ.name}[{', '.join(record_info.type_params)}]",
+                    loc,
                 )
         elif isinstance(typ, OptionalType):
-            self.validate_type(typ.inner, allow_type_param_ref)
+            self.validate_type(typ.inner, allow_type_param_ref, loc)
         elif isinstance(typ, (PtrType, ConstPtrType)):
-            self.validate_type(typ.pointee, allow_type_param_ref)
+            self.validate_type(typ.pointee, allow_type_param_ref, loc)
             if is_protocol_type(typ.pointee):
                 raise SemanticError(
-                    f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type"
+                    f"Protocol type '{typ.pointee.name}' cannot be used as a pointer element type",
+                    loc,
                 )
         elif (elem_type := typ.get_element_type()) is not None:
-            self.validate_type(elem_type, allow_type_param_ref)
+            self.validate_type(elem_type, allow_type_param_ref, loc)
             if is_protocol_type(elem_type):
                 raise SemanticError(
-                    f"Protocol type '{elem_type.name}' cannot be used as a container element type"
+                    f"Protocol type '{elem_type.name}' cannot be used as a container element type",
+                    loc,
                 )
 
     def validate_record_type_args(
-        self, typ: NamedType, record_info: RecordInfo, allow_type_param_ref: bool = False
+        self, typ: NamedType, record_info: RecordInfo, allow_type_param_ref: bool = False,
+        loc: SourceLocation | None = None,
     ) -> None:
         """Validate that type arguments match their expected kinds (TYPE vs INT).
 
@@ -121,15 +130,17 @@ class TypeOperations:
             typ: The NamedType with type_args to validate.
             record_info: The RecordInfo with type_param_kinds.
             allow_type_param_ref: If True, allow TypeParamRef as valid types.
+            loc: Optional source location for error messages.
         """
         if not record_info.type_param_kinds:
             # Legacy: no kinds specified, assume all TYPE
             for arg in typ.type_args:
                 if isinstance(arg, TpyType):
-                    self.validate_type(arg, allow_type_param_ref)
+                    self.validate_type(arg, allow_type_param_ref, loc)
                 else:
                     raise SemanticError(
-                        f"Record '{typ.name}' does not accept integer type arguments"
+                        f"Record '{typ.name}' does not accept integer type arguments",
+                        loc,
                     )
             return
 
@@ -143,20 +154,23 @@ class TypeOperations:
                     continue  # Valid: forwarding an INT type param
                 raise SemanticError(
                     f"Type parameter '{param_name}' of '{typ.name}' requires an integer, "
-                    f"got {arg}"
+                    f"got {arg}",
+                    loc,
                 )
             else:
                 # Expect a type value
                 if isinstance(arg, int):
                     raise SemanticError(
                         f"Type parameter '{param_name}' of '{typ.name}' requires a type, "
-                        f"got integer {arg}"
+                        f"got integer {arg}",
+                        loc,
                     )
                 if isinstance(arg, TpyType):
-                    self.validate_type(arg, allow_type_param_ref)
+                    self.validate_type(arg, allow_type_param_ref, loc)
                 else:
                     raise SemanticError(
-                        f"Invalid type argument for '{param_name}' of '{typ.name}': {arg}"
+                        f"Invalid type argument for '{param_name}' of '{typ.name}': {arg}",
+                        loc,
                     )
 
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:

@@ -19,6 +19,7 @@ from .compatibility import TypeCompatibility
 from .list_literals import ListLiteralTracker
 from .protocols import ProtocolChecker
 from .registration import TypeRegistrar
+from .narrowing import NarrowingTracker
 from .expressions import ExpressionAnalyzer
 from .calls import CallAnalyzer
 from .methods import MethodAnalyzer
@@ -53,9 +54,12 @@ class SemanticAnalyzer:
         # Wire up compatibility's deferred dependencies
         self.compat.set_deps(self.type_ops, self.protocols)
 
+        # Narrowing tracker (depends on type_ops, protocols)
+        self.narrowing = NarrowingTracker(self.ctx, self.type_ops, self.protocols)
+
         # Layer 3: Analyzers with circular deps - create first
         self.expr = ExpressionAnalyzer(
-            self.ctx, self.type_ops, self.operators, self.protocols, self.compat
+            self.ctx, self.type_ops, self.operators, self.protocols, self.compat, self.narrowing
         )
         self.calls = CallAnalyzer(
             self.ctx, self.type_ops, self.protocols, self.compat, self.list_tracker
@@ -64,7 +68,7 @@ class SemanticAnalyzer:
             self.ctx, self.type_ops, self.protocols, self.compat
         )
         self.stmts = StatementAnalyzer(
-            self.ctx, self.type_ops, self.compat, self.list_tracker, self.protocols
+            self.ctx, self.type_ops, self.compat, self.list_tracker, self.protocols, self.narrowing
         )
 
         # Layer 4: Wire circular refs via explicit setters
@@ -72,6 +76,7 @@ class SemanticAnalyzer:
         self.calls.set_cross_deps(self.expr)
         self.methods.set_cross_deps(self.expr, self.calls)
         self.stmts.set_cross_deps(self.expr)
+        self.narrowing.set_readonly_check(StatementAnalyzer._is_readonly_call_expr)
 
         # Per-function/method hoisted vars (scope escape phase 2)
         self.function_hoisted_vars: dict[int, set[str]] = {}

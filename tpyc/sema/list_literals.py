@@ -15,6 +15,7 @@ from ..parse import TpyExpr, TpyName, TpyCoerce
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
+    from ..parse import SourceLocation
     from .context import SemanticContext
 
 from tpyc import modules as builtin_modules
@@ -149,7 +150,9 @@ class ListLiteralTracker:
         # Use get_element_type() for container types (list, Array, Span, etc.)
         return iterable_type.get_element_type()
 
-    def get_iterable_element_type(self, iterable_type: TpyType) -> TpyType:
+    def get_iterable_element_type(
+        self, iterable_type: TpyType, loc: SourceLocation | None = None,
+    ) -> TpyType:
         """Get the element type of an iterable for for-each loops.
 
         Raises SemanticError if type is not iterable.
@@ -157,4 +160,4 @@ class ListLiteralTracker:
         elem_type = self.get_iterable_element_type_or_none(iterable_type)
         if elem_type is not None:
             return elem_type
-        raise SemanticError(f"Cannot iterate over type {iterable_type}")
+        raise SemanticError(f"Cannot iterate over type {iterable_type}", loc)

@@ -16,7 +16,7 @@ from ..parse import (
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
-from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
+from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
 
 if TYPE_CHECKING:
@@ -162,9 +162,10 @@ class MethodAnalyzer:
         method_info = self.protocols.lookup_record_method(record_info, expr.method)
         if method_info and method_info.is_staticmethod:
             if len(expr.args) != len(method_info.params):
-                raise SemanticError(
+                raise self.ctx.error(
                     f"Static method '{expr.method}' expects {len(method_info.params)} arguments, "
-                    f"got {len(expr.args)}"
+                    f"got {len(expr.args)}",
+                    expr,
                 )
             expr.resolved_function_info = method_info
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
@@ -174,7 +175,7 @@ class MethodAnalyzer:
             expr.is_static_call = True
             return method_info.return_type
         elif method_info and not method_info.is_staticmethod:
-            raise SemanticError(f"Method '{expr.method}' requires an instance (not a static method)")
+            raise self.ctx.error(f"Method '{expr.method}' requires an instance (not a static method)", expr)
         return None
 
     def _analyze_module_method_call(self, expr: TpyMethodCall) -> TpyType | None:
@@ -207,7 +208,7 @@ class MethodAnalyzer:
                 expr.resolved_function_info = temp_call.resolved_function_info
                 return result
 
-        raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
+        raise self.ctx.error(f"Module '{module_name}' has no function '{expr.method}'", expr)
 
     def _resolve_module_name(self, name: str) -> str | None:
         """Resolve a name to a module name if it refers to a module. Returns None otherwise."""
@@ -236,9 +237,10 @@ class MethodAnalyzer:
         if len(overloads) == 1:
             resolved = self.type_ops.substitute_method_type_params(overloads[0], type_subst) if type_subst else overloads[0]
             if len(expr.args) != len(resolved.params):
-                raise SemanticError(
+                raise self.ctx.error(
                     f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                    f"got {len(expr.args)}"
+                    f"got {len(expr.args)}",
+                    expr,
                 )
             expr.resolved_function_info = resolved
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
@@ -251,7 +253,7 @@ class MethodAnalyzer:
             resolved = self._resolve_method_overload(overloads, arg_types, type_subst)
             if resolved is None:
                 arg_type_strs = ", ".join(str(t) for t in arg_types)
-                raise SemanticError(f"No matching overload for {expr.method}({arg_type_strs})")
+                raise self.ctx.error(f"No matching overload for {expr.method}({arg_type_strs})", expr)
 
             expr.resolved_function_info = resolved
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
@@ -288,9 +290,10 @@ class MethodAnalyzer:
             method_info = overloads[0]
             resolved = self.type_ops.substitute_method_type_params(method_info, type_subst) if type_subst else method_info
             if len(expr.args) != len(resolved.params):
-                raise SemanticError(
+                raise self.ctx.error(
                     f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                    f"got {len(expr.args)}"
+                    f"got {len(expr.args)}",
+                    expr,
                 )
             expr.resolved_function_info = resolved
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
@@ -315,8 +318,9 @@ class MethodAnalyzer:
                                                             coercion_ctx=CoercionContext.ARG)
                 return resolved.return_type
             param_types_str = ", ".join(str(t) for t in arg_types)
-            raise SemanticError(
-                f"No matching overload for '{expr.method}' with argument types ({param_types_str})"
+            raise self.ctx.error(
+                f"No matching overload for '{expr.method}' with argument types ({param_types_str})",
+                expr,
             )
 
     def _analyze_protocol_or_bound_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
@@ -324,13 +328,14 @@ class MethodAnalyzer:
         if is_protocol_type(obj_type):
             method_sig = self.protocols.get_protocol_method_signature(obj_type, expr.method)
             if method_sig is None:
-                raise SemanticError(f"Protocol '{obj_type.name}' has no method '{expr.method}'")
+                raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
 
             params, return_type = method_sig
             if len(expr.args) != len(params):
-                raise SemanticError(
+                raise self.ctx.error(
                     f"Method '{expr.method}' expects {len(params)} arguments, "
-                    f"got {len(expr.args)}"
+                    f"got {len(expr.args)}",
+                    expr,
                 )
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
                 arg_type = self.expr.analyze_expr(arg)
@@ -533,9 +538,10 @@ class MethodAnalyzer:
         """
         # Check argument count
         if len(expr.args) != len(func_info.params):
-            raise SemanticError(
+            raise self.ctx.error(
                 f"Function '{func_info.name}' expects {len(func_info.params)} arguments, "
-                f"got {len(expr.args)}"
+                f"got {len(expr.args)}",
+                expr,
             )
 
         # Type-check and coerce arguments

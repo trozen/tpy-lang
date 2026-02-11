@@ -90,7 +90,7 @@ class CallAnalyzer:
             binding = self.ctx.current_ns.lookup(expr.func)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
-                    raise SemanticError(f"'{expr.func}' is not callable")
+                    raise self.ctx.error(f"'{expr.func}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
                     return self._analyze_user_function_call(expr, binding.func_info)
                 elif binding.kind == BindingKind.RECORD:
@@ -224,7 +224,7 @@ class CallAnalyzer:
         truly generic functions yet.
         """
         if len(expr.args) != 1:
-            raise SemanticError("copy() takes exactly 1 argument")
+            raise self.ctx.error("copy() takes exactly 1 argument", expr)
         arg_type = self.expr.analyze_expr(expr.args[0])
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
@@ -286,7 +286,7 @@ class CallAnalyzer:
 
         expr.resolved_function_info = func
         if len(expr.args) != len(func.params):
-            raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
+            raise self.ctx.error(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}", expr)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
@@ -360,7 +360,7 @@ class CallAnalyzer:
                     if self.ctx.registry.get_record(type_arg.name) is None:
                         raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
                 # Validate the type (checks for missing generic args, etc.)
-                self.type_ops.validate_type(type_arg)
+                self.type_ops.validate_type(type_arg, loc=expr.loc)
             type_subst = dict(zip(func.type_params, expr.type_args))
             # Validate type parameter bounds
             for param_name, type_arg in type_subst.items():
@@ -542,7 +542,7 @@ class CallAnalyzer:
         """Analyze a legacy function call (fallback path)."""
         expr.resolved_function_info = func
         if len(expr.args) != len(func.params):
-            raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
+            raise self.ctx.error(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}", expr)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)

@@ -19,10 +19,11 @@ from ..parse import (
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp, TpyArrayLiteral, TpyListRepeat, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName,
-    TpyNoneLiteral, TpyFieldAccess, TpyFunction,
+    TpyFieldAccess, TpyFunction,
 )
 from ..coercions import CoercionContext
-from .diagnostics import SemanticError, OPTIONAL_VALUE_TRUTHINESS_WARNING
+from .diagnostics import SemanticError
+from .narrowing import NarrowingTracker
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .reassignment_inference import ReassignmentInference
@@ -48,12 +49,14 @@ class StatementAnalyzer:
         compat: TypeCompatibility,
         list_tracker: ListLiteralTracker,
         protocols: ProtocolChecker,
+        narrowing: NarrowingTracker,
     ):
         self.ctx = ctx
         self.type_ops = type_ops
         self.compat = compat
         self.list_tracker = list_tracker
         self.protocols = protocols
+        self.narrowing = narrowing
         self.scopes = ScopeTracker(ctx, compat)
         self.init = InitTracker(ctx)
         self.reassign = ReassignmentInference(ctx, compat)
@@ -63,83 +66,6 @@ class StatementAnalyzer:
     def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
-
-    def _warn_truthy_value_optionals(self, condition: TpyExpr) -> None:
-        """Warn when truthiness narrows optional value-typed variables."""
-        names = self.expr.get_condition_truthy_value_optional_names(condition)
-        for name in sorted(names):
-            self.ctx.warning(
-                f"{OPTIONAL_VALUE_TRUTHINESS_WARNING} (variable '{name}')",
-                condition,
-            )
-
-    def _update_non_none_after_write(
-        self,
-        name: str,
-        target_type: TpyType,
-        rhs_type: TpyType | None = None,
-        rhs_expr: TpyExpr | None = None,
-    ) -> None:
-        """Update flow facts after assigning/writing a variable."""
-        if not isinstance(target_type, OptionalType):
-            self.ctx.non_none_vars.discard(name)
-            return
-        if isinstance(rhs_type, NoneType) or isinstance(rhs_expr, TpyNoneLiteral):
-            self.ctx.non_none_vars.discard(name)
-            return
-        if isinstance(rhs_type, OptionalType):
-            self.ctx.non_none_vars.discard(name)
-            return
-        if rhs_type is None:
-            self.ctx.non_none_vars.discard(name)
-            return
-        self.ctx.non_none_vars.add(name)
-
-    def _identity_root_name(self, expr: TpyExpr) -> str | None:
-        if isinstance(expr, TpyName):
-            return expr.name
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-            return self._identity_root_name(expr.obj)
-        return None
-
-    def _kill_expr_facts_rooted_at(self, root: str) -> None:
-        if not self.ctx.non_none_exprs:
-            return
-        self.ctx.non_none_exprs = {k for k in self.ctx.non_none_exprs if not k or k[0] != root}
-
-    def _kill_expr_facts_touching_target(self, target: TpyExpr) -> None:
-        root = self._identity_root_name(target)
-        if root is not None:
-            self._kill_expr_facts_rooted_at(root)
-
-    def _expr_contains_unknown_call(self, expr: TpyExpr) -> bool:
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            if not self._is_readonly_call_expr(expr):
-                return True
-            # Even readonly calls evaluate receiver/arguments first; recurse to catch
-            # nested unknown-effect calls in those subexpressions.
-            if isinstance(expr, TpyMethodCall) and self._expr_contains_unknown_call(expr.obj):
-                return True
-            if any(self._expr_contains_unknown_call(arg) for arg in expr.args):
-                return True
-            if isinstance(expr, TpyCall):
-                return any(self._expr_contains_unknown_call(v) for v in expr.kwargs.values())
-            return False
-        if isinstance(expr, TpyBinOp):
-            return self._expr_contains_unknown_call(expr.left) or self._expr_contains_unknown_call(expr.right)
-        if isinstance(expr, TpyUnaryOp):
-            return self._expr_contains_unknown_call(expr.operand)
-        if isinstance(expr, TpyFieldAccess):
-            return self._expr_contains_unknown_call(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self._expr_contains_unknown_call(expr.obj) or self._expr_contains_unknown_call(expr.index)
-        if isinstance(expr, TpyArrayLiteral):
-            return any(self._expr_contains_unknown_call(e) for e in expr.elements)
-        if isinstance(expr, TpyListRepeat):
-            return any(self._expr_contains_unknown_call(e) for e in expr.elements) or self._expr_contains_unknown_call(expr.count)
-        if isinstance(expr, TpyCoerce):
-            return self._expr_contains_unknown_call(expr.expr)
-        return False
 
     def _in_readonly_context(self) -> bool:
         return isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.is_readonly
@@ -244,7 +170,7 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
             self._enforce_readonly_expr(stmt.expr)
-            if self._expr_contains_unknown_call(stmt.expr):
+            if self.narrowing.expr_has_unknown_call(stmt.expr):
                 self.ctx.non_none_exprs.clear()
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
@@ -267,9 +193,9 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
             self._enforce_readonly_expr(stmt.condition)
-            self._warn_truthy_value_optionals(stmt.condition)
-            then_facts, else_facts = self.expr.get_condition_none_facts(stmt.condition)
-            then_expr_facts, else_expr_facts = self.expr.get_condition_expr_none_facts(stmt.condition)
+            self.narrowing.warn_truthy_value_optionals(stmt.condition)
+            then_facts, else_facts = self.narrowing.condition_name_facts(stmt.condition)
+            then_expr_facts, else_expr_facts = self.narrowing.condition_expr_facts(stmt.condition)
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
@@ -302,9 +228,9 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
             self._enforce_readonly_expr(stmt.condition)
-            self._warn_truthy_value_optionals(stmt.condition)
-            then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
-            then_expr_facts, _ = self.expr.get_condition_expr_none_facts(stmt.condition)
+            self.narrowing.warn_truthy_value_optionals(stmt.condition)
+            then_facts, _ = self.narrowing.condition_name_facts(stmt.condition)
+            then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             before = self.init.save()
             with self.scopes.loop_scope():
                 self.init.apply_loop_entry_facts(
@@ -330,7 +256,7 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
             self._enforce_readonly_expr(stmt.iterable)
-            elem_type = self.list_tracker.get_iterable_element_type(iterable_type)
+            elem_type = self.list_tracker.get_iterable_element_type(iterable_type, loc=stmt.loc)
             before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
                 self.init.apply_loop_entry_facts(before)
@@ -357,23 +283,23 @@ class StatementAnalyzer:
             self.init.restore(before)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
-                raise SemanticError("'break' outside loop")
+                raise self.ctx.error("'break' outside loop", stmt)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyContinue):
             if self.ctx.loop_depth == 0:
-                raise SemanticError("'continue' outside loop")
+                raise self.ctx.error("'continue' outside loop", stmt)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyAssert):
             self.expr.analyze_expr(stmt.condition)
             self._enforce_readonly_expr(stmt.condition)
-            self._warn_truthy_value_optionals(stmt.condition)
+            self.narrowing.warn_truthy_value_optionals(stmt.condition)
             if stmt.message is not None:
                 self.expr.analyze_expr(stmt.message)
                 self._enforce_readonly_expr(stmt.message)
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
-            then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
-            then_expr_facts, _ = self.expr.get_condition_expr_none_facts(stmt.condition)
+            then_facts, _ = self.narrowing.condition_name_facts(stmt.condition)
+            then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             self.ctx.non_none_vars.update(then_facts)
             self.ctx.non_none_exprs.update(then_expr_facts)
 
@@ -406,7 +332,7 @@ class StatementAnalyzer:
         # Allow TypeParamRef when inside a generic record's methods
         if stmt.type:
             try:
-                self.type_ops.validate_type(stmt.type, allow_type_param_ref=bool(self.ctx.record_ctx.type_params))
+                self.type_ops.validate_type(stmt.type, allow_type_param_ref=bool(self.ctx.record_ctx.type_params), loc=stmt.loc)
             except SemanticError as e:
                 raise self.ctx.error(str(e), stmt)
 
@@ -513,8 +439,8 @@ class StatementAnalyzer:
                     self.ctx.set_expr_type(stmt.init, init_type)
                 else:
                     func_name = stmt.init.func if is_generic_constructor else "[]"
-                    raise SemanticError(
-                        f"{func_name} requires matching type annotation, got {stmt.type}"
+                    raise self.ctx.error(
+                        f"{func_name} requires matching type annotation, got {stmt.type}", stmt
                     )
             else:
                 init_type = self.expr.analyze_expr(stmt.init)
@@ -609,16 +535,16 @@ class StatementAnalyzer:
                 line=(stmt.loc.line if stmt.loc else None),
             )
         else:
-            raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
+            raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
         self.ctx.current_scope.define(stmt.name, var_type)
         # Any write to the root invalidates identity facts rooted at that variable.
-        self._kill_expr_facts_rooted_at(stmt.name)
-        if stmt.init and self._expr_contains_unknown_call(stmt.init):
+        self.narrowing.kill_facts_rooted_at(stmt.name)
+        if stmt.init and self.narrowing.expr_has_unknown_call(stmt.init):
             self.ctx.non_none_exprs.clear()
         if stmt.init:
             self.init.mark_assigned(stmt.name)
-        self._update_non_none_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
+        self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
         # Record scope depth for new variables (not reassignments of outer-scope
         # vars). Uses scope lookup rather than var_scope_depth existence, so that
         # stale entries from discarded inner scopes get overwritten correctly.
@@ -663,9 +589,9 @@ class StatementAnalyzer:
         value_type = self.expr.analyze_expr(stmt.value)
         self._enforce_readonly_expr(stmt.target)
         self._enforce_readonly_expr(stmt.value)
-        value_has_unknown_call = self._expr_contains_unknown_call(stmt.value)
+        value_has_unknown_call = self.narrowing.expr_has_unknown_call(stmt.value)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
-            declared_target_type = self.expr.get_declared_expr_type(stmt.target)
+            declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
                 target_type = declared_target_type
         if isinstance(stmt.target, TpyName):
@@ -742,11 +668,11 @@ class StatementAnalyzer:
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):
-            self._kill_expr_facts_rooted_at(stmt.target.name)
+            self.narrowing.kill_facts_rooted_at(stmt.target.name)
             self.init.mark_assigned(stmt.target.name)
-            self._update_non_none_after_write(stmt.target.name, target_type, value_type, stmt.value)
+            self.narrowing.update_after_write(stmt.target.name, target_type, value_type, stmt.value)
         else:
-            self._kill_expr_facts_touching_target(stmt.target)
+            self.narrowing.kill_facts_for_target(stmt.target)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -756,7 +682,7 @@ class StatementAnalyzer:
         value_type = self.expr.analyze_expr(stmt.value)
         self._enforce_readonly_expr(stmt.target)
         self._enforce_readonly_expr(stmt.value)
-        self._kill_expr_facts_touching_target(stmt.target)
+        self.narrowing.kill_facts_for_target(stmt.target)
         if (
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)

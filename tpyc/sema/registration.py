@@ -109,7 +109,7 @@ class TypeRegistrar:
                     f"Integer type parameter '{fld.type.name}' cannot be used as a type annotation",
                     loc=fld.loc
                 )
-            self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic)
+            self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
             # Protocol types cannot be used as field types
             if is_protocol_type(fld.type):
                 raise SemanticError(
@@ -125,7 +125,8 @@ class TypeRegistrar:
                 if is_protocol_type(ptype):
                     raise SemanticError(
                         f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.__init__'. "
-                        f"Protocols are only valid for free function parameters"
+                        f"Protocols are only valid for free function parameters",
+                        record.loc,
                     )
                 init_params.append((pname, ptype, None))
 
@@ -134,20 +135,22 @@ class TypeRegistrar:
         for method in record.methods:
             for pname, ptype in method.params:
                 if not self.type_ops.is_type_param_ref(ptype):
-                    self.type_ops.validate_type(ptype, allow_type_param_ref=is_generic)
+                    self.type_ops.validate_type(ptype, allow_type_param_ref=is_generic, loc=record.loc)
                 # Protocol types cannot be used in method parameters
                 if is_protocol_type(ptype):
                     raise SemanticError(
                         f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.{method.name}'. "
-                        f"Protocols are only valid for free function parameters"
+                        f"Protocols are only valid for free function parameters",
+                        record.loc,
                     )
             if not self.type_ops.is_type_param_ref(method.return_type):
-                self.type_ops.validate_type(method.return_type, allow_type_param_ref=is_generic)
+                self.type_ops.validate_type(method.return_type, allow_type_param_ref=is_generic, loc=record.loc)
             # Protocol types cannot be used as method return types
             if is_protocol_type(method.return_type):
                 raise SemanticError(
                     f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
-                    f"Protocols are only valid for free function parameters"
+                    f"Protocols are only valid for free function parameters",
+                    record.loc,
                 )
             methods[method.name] = [FunctionInfo(
                 name=method.name,
@@ -165,7 +168,7 @@ class TypeRegistrar:
             if not is_protocol_type(bound_type):
                 raise SemanticError(
                     f"Type parameter bound must be a protocol, got {bound_type}",
-                    None
+                    record.loc,
                 )
             type_param_bounds[param_name] = bound_type
 

@@ -9,11 +9,13 @@ would be undefined behavior in generated C++.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from .narrowing import ExprIdentity
+
 if TYPE_CHECKING:
     from .context import SemanticContext
 
 # (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars, non_none_vars, non_none_exprs)
-FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str], frozenset[str], frozenset[tuple[str, ...]]]
+FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str], frozenset[str], frozenset[ExprIdentity]]
 
 
 class InitTracker:
