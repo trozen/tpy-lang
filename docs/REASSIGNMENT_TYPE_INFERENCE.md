@@ -15,7 +15,7 @@ Status: In Progress
 | Late annotation retro-validation in local scopes | Done |
 | Late annotation retro-validation for top-level globals | Done |
 | Numeric lattice helper scaffolding for future numeric families | Done |
-| Augmented assignment anchoring policy (`x=0; x += Int32(5)`) | TODO |
+| Augmented assignment policy (`x=0; x += Int32(5)` does not anchor; emits warning) | Done |
 | Full lattice extension for future int/float families (`Int64`, `UInt32`, `Float32`) | TODO |
 
 This document defines how TurboPython should infer variable types across multiple
@@ -94,6 +94,10 @@ Rules:
    - `int + float -> float`
 5. `None` may lift numeric result to optional.
    - `x = None; x = 123` -> `int | None`
+6. Augmented assignment is not an anchoring operation.
+   - `x = 0; x += Int32(5)` keeps `x` as `int` (`BigInt`) and emits a warning.
+   - `x = 0; x += make_i32()` behaves the same when `make_i32() -> Int32`.
+   - Explicit `int` anchors (`x: int = 0`, `x = int(0)`) suppress this warning.
 
 ### Bool
 

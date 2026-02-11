@@ -1085,6 +1085,8 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Literal-seeded variables default to `int` (`BigInt`) and may narrow via compatible literal anchoring (for example to `Int32`).
   - `Bool` does not auto-merge with numeric families during inference.
   - Augmented assignment currently does not perform literal anchoring (`x = 0; x += Int32(5)` remains `int`/`BigInt`).
+  - For `x = 0` style literal-seeded vars, `x += Int32(...)` emits a warning that augmented assignment does not narrow the variable type.
+  - The warning also applies when RHS is a function returning `Int32`; explicit `int` anchors (`x: int = 0`, `x = int(0)`) do not warn.
 - **Working**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
   - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
   - `is None` / `is not None` checks use `.has_value()`

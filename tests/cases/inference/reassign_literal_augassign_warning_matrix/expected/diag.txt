@@ -1,0 +1,2 @@
+main.tp.py:10: warning: Augmented assignment does not narrow 'x' from int to Int32; variable remains int (BigInt). Annotate or initialize 'x' as Int32 to keep Int32 arithmetic.
+main.tp.py:14: warning: Augmented assignment does not narrow 'y' from int to Int32; variable remains int (BigInt). Annotate or initialize 'y' as Int32 to keep Int32 arithmetic.

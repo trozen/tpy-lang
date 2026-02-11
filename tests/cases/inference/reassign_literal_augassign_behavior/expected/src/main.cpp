@@ -4,8 +4,16 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
-// 3: x = 0
-tpy::BigInt x;
+
+// 4: def main() -> None:
+void main() {
+  // 5:     x = 0
+  tpy::BigInt x = tpy::BigInt(0);
+  // 6:     x += Int32(5)
+  x = (x) + (tpy::BigInt(5));
+  // 7:     print(x)
+  std::cout << x << "\n";
+}
 
 void __tpy_init() {
   static bool initialized = false;
@@ -13,12 +21,8 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 3: x = 0
-  x = tpy::BigInt(0);
-  // 4: x += Int32(5)
-  x = (x) + (tpy::BigInt(5));
-  // 5: print(x)
-  std::cout << x << "\n";
+  // 10: main()
+  main();
 }
 
 } // namespace tpy_user::main

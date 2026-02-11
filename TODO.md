@@ -1,10 +1,8 @@
 # TODO
 
 ## Next
-- update CLAUDE.md to better reflect current architecture, it has changed significantly since last time the file was updated
 - merge bool/Bool types -- since CPython has bool, we should stick to that
 - finish items from OWNERSHIP_DESIGN.md
-- None inference: `x = None; x = Point()` → auto-infer `Optional[Point]` without explicit annotation
 - None safety: field/method access on `T | None` without prior `is not None` check is currently silently allowed, generating nullable pointer dereference (UB in C++). Need to decide approach: compile-time narrowing analysis (`if x is not None:` refines type), runtime null checks, or some combination.
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?

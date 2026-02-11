@@ -510,6 +510,18 @@ class StatementAnalyzer:
         from .operators import OperatorResolver
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
+        if (
+            isinstance(stmt.target, TpyName)
+            and isinstance(target_type, BigIntType)
+            and isinstance(value_type, Int32Type)
+            and stmt.target.name in self.ctx.literal_default_vars
+        ):
+            self.ctx.warning(
+                f"Augmented assignment does not narrow '{stmt.target.name}' from int to Int32; "
+                f"variable remains int (BigInt). Annotate or initialize '{stmt.target.name}' as Int32 "
+                f"to keep Int32 arithmetic.",
+                stmt,
+            )
         # Both must be numeric types for arithmetic augmented assignment
         if not isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
             raise SemanticError(f"Augmented assignment target must be a numeric type, got {target_type}")

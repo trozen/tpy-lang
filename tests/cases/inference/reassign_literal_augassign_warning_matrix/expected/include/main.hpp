@@ -7,6 +7,7 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+int32_t ret_i32();
 void main();
 
 void __tpy_init();
