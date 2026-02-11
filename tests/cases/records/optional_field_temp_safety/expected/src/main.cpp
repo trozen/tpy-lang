@@ -25,9 +25,9 @@ void test_init_from_temp() {
   // 29:     print(v is not None)
   std::cout << tpy::print_bool((v != nullptr)) << "\n";
   // 30:     print(v.x)
-  std::cout << v->x << "\n";
+  std::cout << tpy::deref_ptr(v).x << "\n";
   // 31:     print(v.y)
-  std::cout << v->y << "\n";
+  std::cout << tpy::deref_ptr(v).y << "\n";
 }
 
 // 34: def test_rebind_from_temp() -> None:
@@ -42,7 +42,7 @@ void test_rebind_from_temp() {
   // 39:     print(v is not None)
   std::cout << tpy::print_bool((v != nullptr)) << "\n";
   // 40:     print(v.x)
-  std::cout << v->x << "\n";
+  std::cout << tpy::deref_ptr(v).x << "\n";
 }
 
 // 43: def test_rebind_in_block() -> None:
@@ -60,9 +60,9 @@ void test_rebind_in_block() {
   // 50:     print(v is not None)
   std::cout << tpy::print_bool((v != nullptr)) << "\n";
   // 51:     print(v.x)
-  std::cout << v->x << "\n";
+  std::cout << tpy::deref_ptr(v).x << "\n";
   // 52:     print(v.y)
-  std::cout << v->y << "\n";
+  std::cout << tpy::deref_ptr(v).y << "\n";
 }
 
 void __tpy_init() {

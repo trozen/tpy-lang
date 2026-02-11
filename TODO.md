@@ -3,14 +3,14 @@
 ## Next
 - merge bool/Bool types -- since CPython has bool, we should stick to that
 - finish items from OWNERSHIP_DESIGN.md
-- None safety: field/method access on `T | None` without prior `is not None` check is currently silently allowed, generating nullable pointer dereference (UB in C++). Need to decide approach: compile-time narrowing analysis (`if x is not None:` refines type), runtime null checks, or some combination.
+- None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - all expected warnings/errors should be in `# tpyc` annotation
 - parser: extract to separate module
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
-- flow-sensitive None narrowing: refine `x: T | None` to `T` under guards like `if x is not None:` (including loop-carried values) so guarded field/method access is accepted
+- flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust

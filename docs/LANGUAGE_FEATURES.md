@@ -1062,7 +1062,8 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - `x is None` / `x is not None` for null checks
-  - Field/method access on optional values (assumes non-null, like Python)
+  - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
+  - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Functions returning `T | None` return `T*` in C++
 - **Working**: `T | None` for value types (`Int32 | None`, `Bool | None`, `float | None`) → `std::optional<T>`
   - Variables, parameters, returns use `std::optional<T>` directly
@@ -1091,7 +1092,12 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
   - `is None` / `is not None` checks use `.has_value()`
   - Boundary conversions between `std::optional<T>` fields and `T*` pointer-locals handled automatically
+- **Working**: Optional-aware operator checks for value-consuming expressions (e.g., `x + 1` where `x: Int32 | None`)
+  - Unproven use emits warning and inserts runtime null checks
+  - Proven non-None paths (guard/assert narrowed) emit unchecked unwraps
 - **Open**: `T | U` → templates with `if constexpr`, or overloads
+
+For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ---
 
@@ -2231,7 +2237,10 @@ math.fabs(x)       # absolute value (float)
 ## Error Handling
 
 - **Working**: Runtime panics (bounds checks → abort)
-- **Open**: `assert` → conditional panic or compile-time check
+- **Working**: `assert` (`assert cond`, `assert cond, "msg"`)
+  - Emits runtime panic when condition is false
+  - Contributes control-flow narrowing facts
+  - Current limitation: assert message must be a string literal
 - **Open**: `try`/`except` → error codes, `std::expected`, or limited exceptions
 - **Open**: `raise` → if exception model chosen
 

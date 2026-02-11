@@ -137,6 +137,7 @@ class TpyMethodCall(TpyExpr):
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
+    needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     # Note: sema sets resolved_function_info (FunctionInfo) for codegen
 
 
@@ -145,6 +146,7 @@ class TpyFieldAccess(TpyExpr):
     """Field access on a value or pointer."""
     obj: TpyExpr
     field: str
+    needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
 
 
 @dataclass
@@ -165,6 +167,7 @@ class TpySubscript(TpyExpr):
     """Subscript indexing: obj[index]"""
     obj: TpyExpr
     index: TpyExpr
+    needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
 
 
 @dataclass
@@ -219,6 +222,13 @@ class TpyExprStmt(TpyStmt):
 class TpyReturn(TpyStmt):
     """Return statement."""
     value: Optional[TpyExpr]
+
+
+@dataclass
+class TpyAssert(TpyStmt):
+    """Assert statement."""
+    condition: TpyExpr
+    message: TpyExpr | None = None
 
 
 @dataclass
@@ -1224,6 +1234,11 @@ class Parser:
         elif isinstance(node, ast.Return):
             value = self._parse_expr(node.value) if node.value else None
             return TpyReturn(value, loc=loc)
+
+        elif isinstance(node, ast.Assert):
+            cond = self._parse_expr(node.test)
+            msg = self._parse_expr(node.msg) if node.msg else None
+            return TpyAssert(cond, msg, loc=loc)
 
         elif isinstance(node, ast.If):
             cond = self._parse_expr(node.test)

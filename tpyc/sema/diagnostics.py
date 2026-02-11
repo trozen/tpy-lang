@@ -20,6 +20,12 @@ class DiagnosticLevel(Enum):
     WARNING = "warning"
 
 
+OPTIONAL_NONE_ACCESS_WARNING = (
+    "Potential None access on optional value; generated code adds runtime null check. "
+    "Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning."
+)
+
+
 @dataclass
 class Diagnostic:
     """A compiler diagnostic (error or warning)."""

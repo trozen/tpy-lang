@@ -16,7 +16,7 @@ from ..parse import (
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
-from .diagnostics import SemanticError
+from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
 
 if TYPE_CHECKING:
@@ -115,6 +115,10 @@ class MethodAnalyzer:
         if isinstance(obj_type, OwnType):
             obj_type = obj_type.wrapped
         elif isinstance(obj_type, OptionalType):
+            if obj_type.inner.is_value_type():
+                raise self.ctx.error(f"Cannot call method '{expr.method}' on type {obj_type}", expr)
+            self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
+            expr.needs_optional_runtime_check = True
             obj_type = obj_type.inner
 
         # List mutation tracking

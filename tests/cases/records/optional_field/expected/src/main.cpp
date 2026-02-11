@@ -56,15 +56,15 @@ void __tpy_init() {
   // 36: print(line.has_end())
   std::cout << tpy::print_bool(line->has_end()) << "\n";
   // 37: print(line.end.x)
-  std::cout << line->end->x << "\n";
+  std::cout << tpy::deref_optional(line->end).x << "\n";
   // 38: print(line.end.y)
-  std::cout << line->end->y << "\n";
+  std::cout << tpy::deref_optional(line->end).y << "\n";
   // 41: result = line.get_end()
   result = line->get_end();
   // 42: print(result is not None)
   std::cout << tpy::print_bool((result != nullptr)) << "\n";
   // 43: print(result.x)
-  std::cout << result->x << "\n";
+  std::cout << tpy::deref_ptr(result).x << "\n";
   // 52: pts: list[Point] = list()
   static std::vector<Point> __global_slot_3 = std::vector<Point>();
   pts = &__global_slot_3;
@@ -80,11 +80,11 @@ void __tpy_init() {
   // 57: print(line2.end is None)
   std::cout << tpy::print_bool((!line2->end.has_value())) << "\n";
   // 58: print(line2.end.x)
-  std::cout << line2->end->x << "\n";
+  std::cout << tpy::deref_optional(line2->end).x << "\n";
   // 59: line2.end = copy(find_point(pts, 7))
   line2->end = tpy::ptr_to_optional(find_point((*pts), 7));
   // 60: print(line2.end.y)
-  std::cout << line2->end->y << "\n";
+  std::cout << tpy::deref_optional(line2->end).y << "\n";
   // 61: line2.end = copy(find_point(pts, 99))
   line2->end = tpy::ptr_to_optional(find_point((*pts), 99));
   // 62: print(line2.end is None)
@@ -95,9 +95,9 @@ void __tpy_init() {
   // 66: line3.end = copy(line.end)
   line3->end = line->end;
   // 67: print(line3.end.x)
-  std::cout << line3->end->x << "\n";
+  std::cout << tpy::deref_optional(line3->end).x << "\n";
   // 68: print(line3.end.y)
-  std::cout << line3->end->y << "\n";
+  std::cout << tpy::deref_optional(line3->end).y << "\n";
 }
 
 } // namespace tpy_user::main

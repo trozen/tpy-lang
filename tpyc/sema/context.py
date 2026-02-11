@@ -103,6 +103,8 @@ class SemanticContext:
     # --- Definite-assignment tracking ---
     definitely_assigned: set[str] = field(default_factory=set)
     init_terminated: bool = False
+    # Variables proven non-None at current control-flow point.
+    non_none_vars: set[str] = field(default_factory=set)
 
     # --- Reassignment inference tracking ---
     # Vars initialized from int literals without annotation (defaulted to BigInt)
@@ -163,6 +165,7 @@ class SemanticContext:
         self.rvalue_vars.clear()
         self.definitely_assigned.clear()
         self.init_terminated = False
+        self.non_none_vars.clear()
         self.literal_default_vars.clear()
         self.literal_values.clear()
         self.unresolved_none_vars.clear()

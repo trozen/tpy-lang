@@ -16,7 +16,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
-    TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
+    TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName,
     TpyNoneLiteral, TpyFieldAccess, TpyFunction,
 )
@@ -63,6 +63,28 @@ class StatementAnalyzer:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
 
+    def _update_non_none_after_write(
+        self,
+        name: str,
+        target_type: TpyType,
+        rhs_type: TpyType | None = None,
+        rhs_expr: TpyExpr | None = None,
+    ) -> None:
+        """Update flow facts after assigning/writing a variable."""
+        if not isinstance(target_type, OptionalType):
+            self.ctx.non_none_vars.discard(name)
+            return
+        if isinstance(rhs_type, NoneType) or isinstance(rhs_expr, TpyNoneLiteral):
+            self.ctx.non_none_vars.discard(name)
+            return
+        if isinstance(rhs_type, OptionalType):
+            self.ctx.non_none_vars.discard(name)
+            return
+        if rhs_type is None:
+            self.ctx.non_none_vars.discard(name)
+            return
+        self.ctx.non_none_vars.add(name)
+
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         if isinstance(stmt, TpyVarDecl):
@@ -92,13 +114,16 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
+            then_facts, else_facts = self.expr.get_condition_none_facts(stmt.condition)
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
+            self.ctx.non_none_vars.update(then_facts)
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
             self.init.restore(before)
+            self.ctx.non_none_vars.update(else_facts)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()
@@ -119,8 +144,10 @@ class StatementAnalyzer:
                 }
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
+            then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
             before = self.init.save()
             with self.scopes.loop_scope():
+                self.ctx.non_none_vars.update(then_facts)
                 for s in stmt.body:
                     self.analyze_stmt(s)
             self.init.restore(before)
@@ -167,6 +194,14 @@ class StatementAnalyzer:
             if self.ctx.loop_depth == 0:
                 raise SemanticError("'continue' outside loop")
             self.init.mark_terminated()
+        elif isinstance(stmt, TpyAssert):
+            self.expr.analyze_expr(stmt.condition)
+            if stmt.message is not None:
+                self.expr.analyze_expr(stmt.message)
+                if not isinstance(stmt.message, TpyStrLiteral):
+                    raise self.ctx.error("assert message must be a string literal", stmt)
+            then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
+            self.ctx.non_none_vars.update(then_facts)
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param or loop variable."""
@@ -393,6 +428,7 @@ class StatementAnalyzer:
         self.ctx.current_scope.define(stmt.name, var_type)
         if stmt.init:
             self.init.mark_assigned(stmt.name)
+        self._update_non_none_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
         # Record scope depth for new variables (not reassignments of outer-scope
         # vars). Uses scope lookup rather than var_scope_depth existence, so that
         # stale entries from discarded inner scopes get overwritten correctly.
@@ -437,6 +473,9 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyName):
             # Match var-decl flow: reject forbidden rebinding before any type mutation.
             self._check_nonvalue_rebinding(stmt.target.name, stmt)
+            declared_target_type = self.ctx.current_scope.lookup(stmt.target.name)
+            if declared_target_type is not None:
+                target_type = declared_target_type
             target_type = self.reassign.resolve_reassignment_target_type(stmt.target.name, target_type, value_type)
             self.ctx.current_scope.define(stmt.target.name, target_type)
             if self.ctx.current_ns:
@@ -504,6 +543,7 @@ class StatementAnalyzer:
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):
             self.init.mark_assigned(stmt.target.name)
+            self._update_non_none_after_write(stmt.target.name, target_type, value_type, stmt.value)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -524,9 +564,15 @@ class StatementAnalyzer:
             )
         # Both must be numeric types for arithmetic augmented assignment
         if not isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
-            raise SemanticError(f"Augmented assignment target must be a numeric type, got {target_type}")
+            raise self.ctx.error(
+                f"Augmented assignment target must be a numeric type, got {target_type}",
+                stmt,
+            )
         if not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
-            raise SemanticError(f"Augmented assignment value must be a numeric type, got {value_type}")
+            raise self.ctx.error(
+                f"Augmented assignment value must be a numeric type, got {value_type}",
+                stmt,
+            )
         # Special case: Int32 += BigInt should use Int32 ops (value gets converted to Int32)
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
         resolve_value_type = value_type

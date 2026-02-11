@@ -55,10 +55,10 @@ void __tpy_init() {
   std::cout << describe(nullptr) << "\n";
   // 36: print(describe(find(points, 99)))
   std::cout << describe(find((*points), 99)) << "\n";
-  // 39: print(find(points, 5).x)
-  std::cout << find((*points), 5)->x << "\n";
-  // 40: print(find(points, 5).mag())
-  std::cout << find((*points), 5)->mag() << "\n";
+  // 39: print(find(points, 5).x)      # tpyc: warning(/Potential None access on optional value/)
+  std::cout << tpy::deref_ptr(find((*points), 5)).x << "\n";
+  // 40: print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
+  std::cout << tpy::deref_ptr(find((*points), 5)).mag() << "\n";
 }
 
 } // namespace tpy_user::main

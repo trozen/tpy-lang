@@ -1,0 +1,1 @@
+main.tp.py:6: error: Invalid operand type for 'not': Bool | None (expected Bool or numeric type)

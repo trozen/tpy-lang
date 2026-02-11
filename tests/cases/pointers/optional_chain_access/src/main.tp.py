@@ -25,5 +25,5 @@ points.append(Point(3, 4))
 points.append(Point(5, 6))
 
 # Chain field/method access on Optional-returning expression
-print(find(points, 3).x)
-print(find(points, 5).mag())
+print(find(points, 3).x)      # tpyc: warning(/Potential None access on optional value/)
+print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)

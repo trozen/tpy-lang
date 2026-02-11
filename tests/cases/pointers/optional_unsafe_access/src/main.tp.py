@@ -14,10 +14,9 @@ class Point:
 
 
 # Accessing fields/methods on Optional without None check.
-# Currently compiles without error (unsafe — UB if actually None at runtime).
-# TODO: add compile-time narrowing analysis or runtime null checks.
+# Compiles with warning and inserts a runtime null check.
 def use_without_check(p: Point | None) -> Int32:
-    return p.mag()  # tpyc: ok
+    return p.mag()  # tpyc: warning(/Potential None access on optional value/)
 
 
 points: list[Point] = list()

@@ -1,0 +1,1 @@
+main.tp.py:5: error: Use 'is None' / 'is not None' for Optional None checks (not '==' / '!=')

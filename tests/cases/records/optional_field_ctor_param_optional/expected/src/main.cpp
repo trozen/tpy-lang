@@ -58,14 +58,14 @@ void __tpy_init() {
   // 35: print(e2.target is not None)
   std::cout << tpy::print_bool((e2->target.has_value())) << "\n";
   // 36: print(e2.target.x)
-  std::cout << e2->target->x << "\n";
+  std::cout << tpy::deref_optional(e2->target).x << "\n";
   // 37: print(e2.target.y)
-  std::cout << e2->target->y << "\n";
+  std::cout << tpy::deref_optional(e2->target).y << "\n";
   // 39: e3 = Edge(find(pts, 3))
   static Edge __global_slot_5 = Edge(find((*pts), 3));
   e3 = &__global_slot_5;
   // 40: print(e3.target.x)
-  std::cout << e3->target->x << "\n";
+  std::cout << tpy::deref_optional(e3->target).x << "\n";
   // 42: e4 = Edge(find(pts, 99))
   static Edge __global_slot_6 = Edge(find((*pts), 99));
   e4 = &__global_slot_6;

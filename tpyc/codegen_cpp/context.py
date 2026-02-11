@@ -315,6 +315,22 @@ class CodeGenContext:
         """
         return self._is_pointer_global(expr) or self.is_pointer_local(expr)
 
+    def pointer_value_expr(self, expr: TpyExpr, rendered: str) -> str:
+        """Return expression yielding raw pointer value for pointer names.
+
+        Most pointer-globals are wrapped and need one dereference (`*name`) to get
+        `T*`, but globals whose declared type is already pointer-like (Ptr/ConstPtr
+        or Optional non-value) are already `T*` and must be returned as-is.
+        """
+        if not self._is_pointer_global(expr):
+            return rendered
+        expr_type = self.analyzer.get_expr_type(expr)
+        if isinstance(expr_type, (PtrType, ConstPtrType)):
+            return rendered
+        if isinstance(expr_type, OptionalType) and not expr_type.inner.is_value_type():
+            return rendered
+        return f"(*{rendered})"
+
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces an rvalue (needs a stack slot).
 
@@ -452,4 +468,3 @@ class CodeGenContext:
         elif (elem_type := typ.get_element_type()) is not None:
             return self.contains_protocol_type(elem_type)
         return False
-

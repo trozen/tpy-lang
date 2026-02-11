@@ -17,6 +17,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
+    TpyAssert, TpyBoolLiteral,
     TpyFieldAccess,
 )
 from ..namespace import Namespace
@@ -231,6 +232,28 @@ class StatementGenerator:
             return f"{indent}continue;\n"
         elif isinstance(stmt, TpyPassStmt):
             return ""  # No-op - emit nothing
+        elif isinstance(stmt, TpyAssert):
+            # Constant-fold trivially-known assertions.
+            if isinstance(stmt.condition, TpyBoolLiteral):
+                if stmt.condition.value:
+                    return ""
+                if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
+                    msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
+                    return f'{indent}tpy::tpy_panic("{msg}");\n'
+                return f'{indent}tpy::tpy_panic("assertion failed");\n'
+            if isinstance(stmt.condition, TpyNoneLiteral):
+                if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
+                    msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
+                    return f'{indent}tpy::tpy_panic("{msg}");\n'
+                return f'{indent}tpy::tpy_panic("assertion failed");\n'
+            # Use condition expression directly (same truthiness path as if/while).
+            # Forced deref breaks Optional[T] truthiness for non-value T (C|None).
+            cond = self.expressions.gen_expr(stmt.condition)
+            bool_cond = f"static_cast<bool>({cond})"
+            if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
+                msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
+                return f'{indent}if (!({bool_cond})) tpy::tpy_panic("{msg}");\n'
+            return f'{indent}if (!({bool_cond})) tpy::tpy_panic("assertion failed");\n'
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for actual user modules (not builtins)
             # Check is_builtin flag to handle single-file/REPL mode where builtins

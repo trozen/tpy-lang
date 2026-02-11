@@ -36,5 +36,5 @@ print(describe(None))
 print(describe(find(points, 99)))
 
 # Inline field/method access on Optional-returning expression
-print(find(points, 5).x)
-print(find(points, 5).mag())
+print(find(points, 5).x)      # tpyc: warning(/Potential None access on optional value/)
+print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)

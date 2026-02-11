@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .context import SemanticContext
 
-# (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars)
-FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str]]
+# (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars, non_none_vars)
+FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str], frozenset[str]]
 
 
 class InitTracker:
@@ -26,13 +26,15 @@ class InitTracker:
         return (frozenset(self.ctx.definitely_assigned),
                 self.ctx.init_terminated,
                 frozenset(self.ctx.rvalue_vars),
-                frozenset(self.ctx.param_provenance_vars))
+                frozenset(self.ctx.param_provenance_vars),
+                frozenset(self.ctx.non_none_vars))
 
     def restore(self, state: FlowState) -> None:
         self.ctx.definitely_assigned = set(state[0])
         self.ctx.init_terminated = state[1]
         self.ctx.rvalue_vars = set(state[2])
         self.ctx.param_provenance_vars = set(state[3])
+        self.ctx.non_none_vars = set(state[4])
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -54,8 +56,8 @@ class InitTracker:
         self.ctx.param_provenance_vars.discard(name)
 
     def merge_branches(self, then_state: FlowState, else_state: FlowState) -> None:
-        then_assigned, then_term, then_rvalue, then_prov = then_state
-        else_assigned, else_term, else_rvalue, else_prov = else_state
+        then_assigned, then_term, then_rvalue, then_prov, then_non_none = then_state
+        else_assigned, else_term, else_rvalue, else_prov, else_non_none = else_state
         if then_term and else_term:
             self.ctx.definitely_assigned = set(then_assigned | else_assigned)
             self.ctx.init_terminated = True
@@ -88,3 +90,12 @@ class InitTracker:
             self.ctx.param_provenance_vars = set(then_prov)
         else:
             self.ctx.param_provenance_vars = set(then_prov & else_prov)
+        # Non-None facts merge like definite assignment facts.
+        if then_term and else_term:
+            self.ctx.non_none_vars = set(then_non_none | else_non_none)
+        elif then_term:
+            self.ctx.non_none_vars = set(else_non_none)
+        elif else_term:
+            self.ctx.non_none_vars = set(then_non_none)
+        else:
+            self.ctx.non_none_vars = set(then_non_none & else_non_none)

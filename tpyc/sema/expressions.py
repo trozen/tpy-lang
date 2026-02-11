@@ -19,7 +19,7 @@ from ..parse import (
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
-from .diagnostics import SemanticError
+from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -165,6 +165,47 @@ class ExpressionAnalyzer:
         # Fall back to regular analysis
         return self.analyze_expr(expr)
 
+    def _declared_type_for_name(self, name: str) -> TpyType | None:
+        """Get a variable's declared type (without applying flow narrowing)."""
+        if self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(name)
+            if binding and binding.kind == BindingKind.VARIABLE:
+                return binding.type
+        return self.ctx.current_scope.lookup(name)
+
+    def _optional_name_none_facts(self, expr: TpyExpr) -> tuple[set[str], set[str]]:
+        """Return (facts_if_true, facts_if_false) for Optional None-check conditions."""
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            true_facts, false_facts = self._optional_name_none_facts(expr.operand)
+            return false_facts, true_facts
+
+        if isinstance(expr, TpyBinOp):
+            if expr.op in ("is", "is not"):
+                name: str | None = None
+                if isinstance(expr.left, TpyName) and isinstance(expr.right, TpyNoneLiteral):
+                    name = expr.left.name
+                elif isinstance(expr.right, TpyName) and isinstance(expr.left, TpyNoneLiteral):
+                    name = expr.right.name
+                if name is not None:
+                    declared = self._declared_type_for_name(name)
+                    if isinstance(declared, OptionalType):
+                        if expr.op == "is not":
+                            return {name}, set()
+                        return set(), {name}
+            if expr.op == "&&":
+                left_true, left_false = self._optional_name_none_facts(expr.left)
+                right_true, right_false = self._optional_name_none_facts(expr.right)
+                return left_true | right_true, left_false & right_false
+            if expr.op == "||":
+                left_true, left_false = self._optional_name_none_facts(expr.left)
+                right_true, right_false = self._optional_name_none_facts(expr.right)
+                return left_true & right_true, left_false | right_false
+        return set(), set()
+
+    def get_condition_none_facts(self, condition: TpyExpr) -> tuple[set[str], set[str]]:
+        """Public helper for statement flow analysis."""
+        return self._optional_name_none_facts(condition)
+
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
         # Check for INT type parameter references in generic class context
@@ -185,6 +226,8 @@ class ExpressionAnalyzer:
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     self._check_definitely_assigned(expr)
+                    if isinstance(binding.type, OptionalType) and expr.name in self.ctx.non_none_vars:
+                        return binding.type.inner
                     return binding.type
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
@@ -202,6 +245,8 @@ class ExpressionAnalyzer:
                 return self.ctx.builtin_names[expr.name]
             raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
+        if isinstance(typ, OptionalType) and expr.name in self.ctx.non_none_vars:
+            return typ.inner
         return typ
 
     def _check_definitely_assigned(self, expr: TpyName) -> None:
@@ -216,11 +261,64 @@ class ExpressionAnalyzer:
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""
         left_type = self.analyze_expr(expr.left)
-        right_type = self.analyze_expr(expr.right)
+        if expr.op in ("&&", "||"):
+            left_true, left_false = self._optional_name_none_facts(expr.left)
+            saved_non_none = set(self.ctx.non_none_vars)
+            if expr.op == "&&":
+                self.ctx.non_none_vars |= left_true
+            else:
+                self.ctx.non_none_vars |= left_false
+            try:
+                right_type = self.analyze_expr(expr.right)
+            finally:
+                self.ctx.non_none_vars = saved_non_none
+        else:
+            right_type = self.analyze_expr(expr.right)
 
-        # Helper to check if type is any integer type
-        def is_int_type(t: TpyType) -> bool:
-            return isinstance(t, (Int32Type, BigIntType, IntLiteralType))
+        # Preserve declared Optional type for identity checks when flow narrowing
+        # resolved a variable expression to its inner type.
+        if expr.op in ("is", "is not"):
+            if isinstance(expr.left, TpyName):
+                declared_left = self._declared_type_for_name(expr.left.name)
+                if isinstance(declared_left, OptionalType):
+                    left_type = declared_left
+            if isinstance(expr.right, TpyName):
+                declared_right = self._declared_type_for_name(expr.right.name)
+                if isinstance(declared_right, OptionalType):
+                    right_type = declared_right
+
+        # Enforce Pythonic None identity checks for Optional values.
+        # `x == None` / `x != None` on Optional values should use `is` / `is not`.
+        if expr.op in ("==", "!="):
+            left_is_none = isinstance(left_type, NoneType)
+            right_is_none = isinstance(right_type, NoneType)
+            if left_is_none or right_is_none:
+                other = right_type if left_is_none else left_type
+                if isinstance(other, OptionalType):
+                    raise self.ctx.error(
+                        "Use 'is None' / 'is not None' for Optional None checks "
+                        "(not '==' / '!=')",
+                        expr,
+                    )
+                raise self.ctx.error(
+                    f"Cannot compare {left_type} and {right_type} with '{expr.op}'",
+                    expr,
+                )
+
+        # Value optionals in operator expressions use runtime null checks unless
+        # flow already proved non-None for the specific expression.
+        left_effective = left_type
+        right_effective = right_type
+        warned_optional_operator = False
+        if expr.op not in ("is", "is not", "&&", "||", "in", "not in"):
+            if isinstance(left_effective, OptionalType) and left_effective.inner.is_value_type():
+                left_effective = left_effective.inner
+                warned_optional_operator = True
+            if isinstance(right_effective, OptionalType) and right_effective.inner.is_value_type():
+                right_effective = right_effective.inner
+                warned_optional_operator = True
+            if warned_optional_operator:
+                self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
 
         # Helper to check if type is any numeric type
         def is_numeric_type(t: TpyType) -> bool:
@@ -234,15 +332,14 @@ class ExpressionAnalyzer:
                 return BOOL
             if isinstance(left_type, NoneType) and isinstance(right_type, NoneType):
                 return BOOL
-            raise SemanticError(
+            raise self.ctx.error(
                 f"'is' / 'is not' can only compare Optional types with None, "
-                f"got {left_type} and {right_type}"
+                f"got {left_type} and {right_type}",
+                expr,
             )
 
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
-            if is_int_type(left_type) and is_int_type(right_type):
-                return BOOL
             return BOOL
 
         # Membership operators (in, not in) return Bool
@@ -266,78 +363,92 @@ class ExpressionAnalyzer:
             return BOOL
 
         # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
-        if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
+        if isinstance(left_effective, IntLiteralType) and isinstance(right_effective, IntLiteralType):
             # Still resolve for codegen (bitwise ops need the cpp template)
-            if result := self.operators.resolve_binop(left_type, expr.op, right_type):
+            if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
                 expr.resolved_binop = result
             return IntLiteralType(0)  # Value not tracked for compound expressions
 
         # Protocol-typed operands - look up the dunder method in the protocol
         # For Self in protocols, Self binds to the protocol itself when used as a value type
-        if is_protocol_type(left_type):
+        if is_protocol_type(left_effective):
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
-                return_type = self.protocols.lookup_protocol_method_return(left_type, method_name, [right_type])
+                return_type = self.protocols.lookup_protocol_method_return(
+                    left_effective,
+                    method_name,
+                    [right_effective],
+                )
                 if return_type is not None:
                     return return_type
 
         # Arithmetic/bitwise operators - use registry
-        if result := self.operators.resolve_binop(left_type, expr.op, right_type):
+        if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
             expr.resolved_binop = result
             return result.method.return_type
 
         # User-defined types (NamedType record) with dunder methods
-        if isinstance(left_type, NamedType) and left_type.is_record:
+        if isinstance(left_effective, NamedType) and left_effective.is_record:
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
-                record = self.ctx.registry.get_record(left_type.name)
+                record = self.ctx.registry.get_record(left_effective.name)
                 if record and (method := record.get_method(method_name)):
                     # Check parameter count and type
                     if len(method.params) == 1:
                         _, param_type = method.params[0]
-                        if param_type == right_type:
+                        if param_type == right_effective:
                             return method.return_type
 
-        raise SemanticError(f"Invalid operand types for '{expr.op}': {left_type} and {right_type}")
+        raise SemanticError(
+            f"Invalid operand types for '{expr.op}': {left_type} and {right_type}",
+            expr.loc,
+        )
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
         operand_type = self.analyze_expr(expr.operand)
+        effective_type = operand_type
+
+        # Value optionals in unary arithmetic/bitwise ops use runtime checks
+        # unless flow already narrowed them to non-Optional.
+        if expr.op in ("-", "~") and isinstance(operand_type, OptionalType) and operand_type.inner.is_value_type():
+            effective_type = operand_type.inner
+            self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
 
         # Logical not: validate operand type (Bool or numeric types only)
         if expr.op == "!":
-            if isinstance(operand_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType)):
+            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType)):
                 return BOOL
             raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected Bool or numeric type)", expr)
 
         # FloatType supports unary negation
-        if isinstance(operand_type, FloatType):
+        if isinstance(effective_type, FloatType):
             if expr.op == "-":
                 # Still resolve for codegen
-                if result := self.operators.resolve_unaryop(operand_type, expr.op):
+                if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
                 return FLOAT
 
         # IntLiteralType special cases - preserve literal nature when possible
-        if isinstance(operand_type, IntLiteralType):
+        if isinstance(effective_type, IntLiteralType):
             if expr.op == "-":
                 # Still resolve for codegen (needs cpp template)
-                if result := self.operators.resolve_unaryop(operand_type, expr.op):
+                if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
-                return IntLiteralType(-operand_type.value)
+                return IntLiteralType(-effective_type.value)
             if expr.op == "~":
                 # Bitwise not on literal - treat as Int32
                 # Still resolve for codegen
-                if result := self.operators.resolve_unaryop(operand_type, expr.op):
+                if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
                 return INT32
 
         # Use registry for unary operators
-        if result := self.operators.resolve_unaryop(operand_type, expr.op):
+        if result := self.operators.resolve_unaryop(effective_type, expr.op):
             expr.resolved_unaryop = result
             return result.method.return_type
 
-        raise SemanticError(f"Invalid operand type for unary '{expr.op}': {operand_type}")
+        raise self.ctx.error(f"Invalid operand type for unary '{expr.op}': {operand_type}", expr)
 
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
@@ -358,13 +469,17 @@ class ExpressionAnalyzer:
 
         # Handle pointer types - dereference to get the pointee
         # Handle Own[T] - unwrap to get the owned type
-        # Handle Optional[T] - unwrap to get the inner type
+        # Optional[T] uses runtime null checks for unproven access.
         actual_type = obj_type
         if isinstance(obj_type, (PtrType, ConstPtrType)):
             actual_type = obj_type.pointee
         elif isinstance(obj_type, OwnType):
             actual_type = obj_type.wrapped
         elif isinstance(obj_type, OptionalType):
+            if obj_type.inner.is_value_type():
+                raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
+            self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
+            expr.needs_optional_runtime_check = True
             actual_type = obj_type.inner
 
         if isinstance(actual_type, NamedType) and actual_type.is_record:
@@ -506,9 +621,13 @@ class ExpressionAnalyzer:
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise SemanticError(f"Subscript index must be an integer type, got {index_type}")
 
-        # Unwrap Optional to inner type for subscript access
+        # Optional[T] index access uses runtime null checks for unproven access.
         actual_type = obj_type
         if isinstance(obj_type, OptionalType):
+            if obj_type.inner.is_value_type():
+                raise self.ctx.error(f"Cannot index type {obj_type}", expr)
+            self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
+            expr.needs_optional_runtime_check = True
             actual_type = obj_type.inner
 
         # Use get_element_type() trait for containers and strings

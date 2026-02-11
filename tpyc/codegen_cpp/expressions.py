@@ -57,6 +57,22 @@ class ExpressionGenerator:
         result = self.gen_expr(expr, target_type)
         if self.ctx.is_indirect_name(expr):
             result = f"(*{result})"
+        # Value optionals are represented as std::optional<T> and must be
+        # unwrapped when a concrete value is required.
+        expr_type = self.types.get_resolved_type(expr)
+        analyzed_type = self.ctx.analyzer.get_expr_type(expr)
+        if (
+            target_type is not None
+            and isinstance(expr_type, OptionalType)
+            and expr_type.inner.is_value_type()
+            and not isinstance(target_type, OptionalType)
+        ):
+            # If sema already narrowed this expression to non-Optional, unwrap
+            # without an extra runtime check. Otherwise keep checked dereference.
+            if isinstance(analyzed_type, OptionalType):
+                result = f"tpy::deref_optional({result})"
+            else:
+                result = f"(*{result})"
         return result
 
     def gen_expr(self, expr: TpyExpr, target_type: TpyType = None) -> str:
@@ -185,8 +201,11 @@ class ExpressionGenerator:
 
         # Identity operators (is / is not) — nullable comparison
         if expr.op in ("is", "is not"):
-            left_type = self.ctx.analyzer.get_expr_type(expr.left)
-            right_type = self.ctx.analyzer.get_expr_type(expr.right)
+            # Use resolved (declared) types here, not flow-narrowed analyzer types.
+            # A narrowed Optional[T] name may currently analyze as T, but identity
+            # checks against None still need Optional semantics in codegen.
+            left_type = self.types.get_resolved_type(expr.left)
+            right_type = self.types.get_resolved_type(expr.right)
             # Determine which side is the Optional expression
             opt_expr = None
             if isinstance(left_type, OptionalType) and isinstance(expr.right, TpyNoneLiteral):
@@ -200,7 +219,7 @@ class ExpressionGenerator:
                     cpp_op = "==" if expr.op == "is" else "!="
                     return f"({val} {cpp_op} nullptr)"
                 # Everything else (value-type optionals, field accesses) uses .has_value()
-                val = self.gen_expr_deref(opt_expr)
+                val = self.gen_expr(opt_expr)
                 if expr.op == "is":
                     return f"(!{val}.has_value())"
                 else:
@@ -211,11 +230,29 @@ class ExpressionGenerator:
             right = self.gen_expr(expr.right)
             return f"({left} {cpp_op} {right})"
 
-        # Comparison operators - generate C++ directly
-        if expr.op in ("==", "!=", "<", ">", "<=", ">=", "&&", "||"):
-            # When comparing Char with string literal, output literal as char
-            left_target = CHAR if isinstance(right_type, CharType) else None
-            right_target = CHAR if isinstance(left_type, CharType) else None
+        # Logical operators - generate C++ directly.
+        if expr.op in ("&&", "||"):
+            left = self.gen_expr_deref(expr.left)
+            right = self.gen_expr_deref(expr.right)
+            return f"({left} {expr.op} {right})"
+
+        # Comparison operators - generate C++ directly.
+        if expr.op in ("==", "!=", "<", ">", "<=", ">="):
+            # Optional value operands in comparisons must be unwrapped:
+            # - narrowed/proven: unchecked (*x)
+            # - unproven: checked tpy::deref_optional(x)
+            left_target = None
+            right_target = None
+            if isinstance(left_type, OptionalType) and left_type.inner.is_value_type():
+                left_target = left_type.inner
+            if isinstance(right_type, OptionalType) and right_type.inner.is_value_type():
+                right_target = right_type.inner
+            # When comparing Char with string literal, output literal as char.
+            # Keep Optional unwrapping target when present.
+            if left_target is None and isinstance(right_type, CharType):
+                left_target = CHAR
+            if right_target is None and isinstance(left_type, CharType):
+                right_target = CHAR
             # Use gen_expr_deref for pointer-locals/globals (T* needs dereferencing)
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
@@ -253,26 +290,18 @@ class ExpressionGenerator:
             # For forward operators, {self} is the left operand, {0} is right
             if binop_result.is_reverse:
                 # right is {self} (receiver), left is {0} (argument)
-                left = self.gen_expr(expr.left, param_type)
-                right = self.gen_expr(expr.right, receiver_type)
-                # Dereference T* pointer-locals/globals BEFORE conversion
-                if self.ctx.is_indirect_name(expr.left):
-                    left = f"(*{left})"
-                if self.ctx.is_indirect_name(expr.right):
-                    right = f"(*{right})"
+                left = self.gen_expr_deref(expr.left, param_type)
+                right = self.gen_expr_deref(expr.right, receiver_type)
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
-                left = self._convert_to_int32_arg(left, left_type, param_type, expr.left)
+                left_actual = self.types.get_resolved_type(expr.left, param_type)
+                left = self._convert_to_int32_arg(left, left_actual, param_type, expr.left)
             else:
                 # left is {self} (receiver), right is {0} (argument)
-                left = self.gen_expr(expr.left, receiver_type)
-                right = self.gen_expr(expr.right, param_type)
-                # Dereference T* pointer-locals/globals BEFORE conversion
-                if self.ctx.is_indirect_name(expr.left):
-                    left = f"(*{left})"
-                if self.ctx.is_indirect_name(expr.right):
-                    right = f"(*{right})"
+                left = self.gen_expr_deref(expr.left, receiver_type)
+                right = self.gen_expr_deref(expr.right, param_type)
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
-                right = self._convert_to_int32_arg(right, right_type, param_type, expr.right)
+                right_actual = self.types.get_resolved_type(expr.right, param_type)
+                right = self._convert_to_int32_arg(right, right_actual, param_type, expr.right)
             # Generate binop using helper (handles wrappers and is_reverse)
             result = self._gen_binop_from_result(binop_result, left, right)
             # Wrap in parens to avoid precedence issues with cout << and other operators
@@ -289,8 +318,8 @@ class ExpressionGenerator:
         # Protocol-typed operands - use C++ operator syntax
         # The protocol constraint guarantees the operator exists
         if is_protocol_type(left_type):
-            left = self.gen_expr(expr.left, left_type)
-            right = self.gen_expr(expr.right, right_type)
+            left = self.gen_expr_deref(expr.left, left_type)
+            right = self.gen_expr_deref(expr.right, right_type)
             # Map Python operators to C++ operators
             cpp_op = expr.op
             if expr.op == "//":
@@ -299,8 +328,8 @@ class ExpressionGenerator:
 
         # User-defined types (records) - use generated C++ operator
         if isinstance(left_type, NamedType) and left_type.is_record:
-            left = self.gen_expr(expr.left, left_type)
-            right = self.gen_expr(expr.right, right_type)
+            left = self.gen_expr_deref(expr.left, left_type)
+            right = self.gen_expr_deref(expr.right, right_type)
             # Map Python operators to C++ operators
             cpp_op = expr.op
             if expr.op == "//":
@@ -311,16 +340,17 @@ class ExpressionGenerator:
 
     def _gen_unaryop(self, expr: TpyUnaryOp, target_type: TpyType | None) -> str:
         """Generate unary operation code."""
-        operand = self.gen_expr(expr.operand, target_type)
-        operand_type = self.ctx.analyzer.get_expr_type(expr.operand)
-
         # Logical not
         if expr.op == "!":
+            operand = self.gen_expr(expr.operand, target_type)
             return f"(!{operand})"
 
-        # Dereference globals for unary operations
-        if self.ctx.is_indirect_name(expr.operand):
-            operand = f"(*{operand})"
+        operand_type = self.ctx.analyzer.get_expr_type(expr.operand)
+        resolved_operand_type = self.types.get_resolved_type(expr.operand)
+        unary_target = target_type
+        if isinstance(resolved_operand_type, OptionalType) and resolved_operand_type.inner.is_value_type():
+            unary_target = resolved_operand_type.inner
+        operand = self.gen_expr_deref(expr.operand, unary_target)
 
         # Use resolved unary op from sema
         if unaryop_result := expr.resolved_unaryop:
@@ -604,6 +634,12 @@ class ExpressionGenerator:
         # (OptionalType non-value expressions like function calls return T*)
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
+        if expr.needs_optional_runtime_check and is_optional_ptr:
+            if isinstance(expr.obj, TpyFieldAccess):
+                return f"tpy::deref_optional({obj}).{expr.method}({args})"
+            # For pointer-globals with wrapper storage, this yields raw `T*`.
+            ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
+            return f"tpy::deref_ptr({ptr_expr}).{expr.method}({args})"
         use_arrow = self.ctx.is_indirect_name(expr.obj) or (obj_type and obj_type.is_pointer()) or is_optional_ptr
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{expr.method}({args})"
@@ -631,9 +667,15 @@ class ExpressionGenerator:
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
         is_indirect = self.ctx.is_indirect_name(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
+        if expr.needs_optional_runtime_check and is_optional_ptr:
+            if isinstance(expr.obj, TpyFieldAccess):
+                return f"tpy::deref_optional({obj}).{expr.field}"
+            # For pointer-globals with wrapper storage, this yields raw `T*`.
+            ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
+            return f"tpy::deref_ptr({ptr_expr}).{expr.field}"
         if obj_type and obj_type.is_pointer():
-            # Pointer global needs deref first: T** -> (*global)->field
-            if is_indirect:
+            if is_indirect and not isinstance(obj_type, (PtrType, ConstPtrType)):
+                # Global pointer wrapper needs deref first: Global<Ptr<T>> -> (*global)->field
                 return f"(*{obj})->{expr.field}"
             return f"{obj}->{expr.field}"
         if is_indirect or is_optional_ptr:
@@ -698,6 +740,18 @@ class ExpressionGenerator:
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access
         subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+        analyzed_obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
+        if (
+            expr.needs_optional_runtime_check
+            and isinstance(analyzed_obj_type, OptionalType)
+            and not analyzed_obj_type.inner.is_value_type()
+        ):
+            if isinstance(expr.obj, TpyFieldAccess):
+                subscript_obj = f"tpy::deref_optional({obj})"
+            else:
+                # For pointer-globals with wrapper storage, this yields raw `T*`.
+                ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
+                subscript_obj = f"tpy::deref_ptr({ptr_expr})"
         index_expr = self.gen_index_expr(subscript_obj, expr.index, index_type)
 
         # Use registry lookup for __getitem__

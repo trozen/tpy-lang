@@ -1,0 +1,1 @@
+main.tp.py:5: error: Augmented assignment target must be a numeric type, got Int32 | None
