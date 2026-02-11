@@ -136,7 +136,7 @@ class BuiltinGenerator:
             if all(self._builtin_codegen_type_matches(arg, arg_t, ptype)
                    for arg, arg_t, (_, ptype) in zip(args, arg_types, overload.params)):
                 # Generate args with proper type coercion (e.g., int literal → BigInt)
-                # Use _gen_expr_deref to handle globals (tpy::Global<T> needs dereferencing)
+                # Use _gen_expr_deref to handle pointer-locals/globals (T* needs dereferencing)
                 gen_args = [self._gen_expr_deref(arg, ptype) for arg, (_, ptype) in zip(args, overload.params)]
                 return overload.cpp_template.format(*gen_args)
 

@@ -22,9 +22,10 @@ from conftest import (
     pytest.param(case_dir, main_src, id=name)
     for name, case_dir, main_src in discover_cases()
 ])
-def test_exec(case_dir, main_src, tmp_path):
+def test_exec(case_dir, main_src):
     expected_dir = case_dir / "expected"
     module_name = get_module_name(main_src)
+    build_dir = case_dir / "__tpyc__"
 
     # In update mode, clear stale exec artifacts before regenerating
     if UPDATE_EXPECTED:
@@ -34,14 +35,14 @@ def test_exec(case_dir, main_src, tmp_path):
                 f.unlink()
 
     # Compile TurboPython → C++
-    result = compile_with_diagnostics(main_src, tmp_path)
+    result = compile_with_diagnostics(main_src, build_dir)
 
     if not result.success:
         pytest.skip("Compilation failed")
 
     # Build and run C++ (pass all cpp files for multi-module support)
     all_cpp_files = [cpp_path for _, _, cpp_path in result.all_modules] if result.all_modules else None
-    run_result = build_and_run(tmp_path, module_name, all_cpp_files=all_cpp_files)
+    run_result = build_and_run(build_dir, module_name, all_cpp_files=all_cpp_files)
 
     if run_result.success:
         expected_output = expected_dir / "output.txt"

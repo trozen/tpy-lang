@@ -10,6 +10,7 @@ Orchestrates compilation of multiple modules, handling:
 
 from __future__ import annotations
 import os
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -32,12 +33,14 @@ class CppCompilerConfig:
     std: str = "c++23"
     extra_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=lambda: ["-lgmp"])
+    ccache: bool = False
 
     @classmethod
     def from_env(cls) -> CppCompilerConfig:
         """Create config from environment variables. Respects CXX for compiler selection."""
         compiler = os.environ.get("CXX", "g++")
-        return cls(compiler=compiler)
+        ccache = shutil.which("ccache") is not None
+        return cls(compiler=compiler, ccache=ccache)
 
 
 class BuildLayout:
@@ -46,21 +49,29 @@ class BuildLayout:
     Layout:
         output_dir/
           {entry_module}.d/        # root_dir
-            include/               # headers
-              {module}.hpp         # flat module
-              {pkg}/{mod}.hpp      # nested package
-            src/                   # sources
+            include/               # headers (shared across variants)
+              {module}.hpp
+              {pkg}/{mod}.hpp
+            src/                   # sources (shared across variants)
               {module}.cpp
               {pkg}/{mod}.cpp
-            {entry_module}         # binary (when built)
+            debug/                 # variant-specific build artifacts
+              {entry_module}.o
+              {entry_module}
+            release/
+              {entry_module}.o
+              {entry_module}
     """
 
-    def __init__(self, output_dir: Path, entry_module_name: str):
+    def __init__(self, output_dir: Path, entry_module_name: str,
+                 build_variant: str | None = None):
         self.output_dir = output_dir
         self.entry_module_name = entry_module_name
         self.root_dir = output_dir / f"{entry_module_name}.d"
         self.include_dir = self.root_dir / "include"
         self.src_dir = self.root_dir / "src"
+        self.build_variant = build_variant
+        self.build_dir = self.root_dir / build_variant if build_variant else self.root_dir
 
     def hpp_path(self, module_name: str) -> Path:
         """Path to the generated header for a module."""
@@ -78,17 +89,21 @@ class BuildLayout:
 
     def binary_path(self) -> Path:
         """Path to the output binary."""
-        return self.root_dir / self.entry_module_name
+        return self.build_dir / self.entry_module_name
 
-    def build_cpp_command(
+    def build_cpp_commands(
         self,
         runtime_include_dir: Path,
         cpp_files: list[Path],
         output: Path | None = None,
         opt_flags: list[str] | None = None,
         config: CppCompilerConfig | None = None,
-    ) -> list[str]:
-        """Build the C++ compilation command.
+    ) -> list[list[str]]:
+        """Build the C++ compilation command(s).
+
+        When ccache is enabled, splits into per-file compile steps (-c) plus a
+        final link step so that ccache can cache each compilation unit.
+        Otherwise returns a single compile-and-link command.
 
         Args:
             runtime_include_dir: Path to the tpy runtime include directory.
@@ -101,16 +116,42 @@ class BuildLayout:
             config = CppCompilerConfig()
         if output is None:
             output = self.binary_path()
-        return [
+
+        common = [
             config.compiler, f"-std={config.std}",
             *(opt_flags or []),
             *config.extra_flags,
             "-I", str(runtime_include_dir),
             "-I", str(self.include_dir),
-            "-o", str(output),
-            *[str(p) for p in cpp_files],
-            *config.link_flags,
         ]
+
+        if not config.ccache:
+            return [[
+                *common,
+                "-o", str(output),
+                *[str(p) for p in cpp_files],
+                *config.link_flags,
+            ]]
+
+        # Split: compile each .cpp → .o with ccache, then link .o files
+        obj_files: list[str] = []
+        cmds: list[list[str]] = []
+        if self.build_variant:
+            self.build_dir.mkdir(parents=True, exist_ok=True)
+        for cpp in cpp_files:
+            obj = self.build_dir / (cpp.stem + ".o")
+            obj_files.append(str(obj))
+            cmds.append([
+                "ccache", *common,
+                "-c", "-o", str(obj), str(cpp),
+            ])
+        cmds.append([
+            config.compiler,
+            "-o", str(output),
+            *obj_files,
+            *config.link_flags,
+        ])
+        return cmds
 
 
 @dataclass

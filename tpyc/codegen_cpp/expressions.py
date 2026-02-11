@@ -216,7 +216,7 @@ class ExpressionGenerator:
             # When comparing Char with string literal, output literal as char
             left_target = CHAR if isinstance(right_type, CharType) else None
             right_target = CHAR if isinstance(left_type, CharType) else None
-            # Use gen_expr_deref for globals (Global<T> needs dereferencing for comparison)
+            # Use gen_expr_deref for pointer-locals/globals (T* needs dereferencing)
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
             return f"({left} {expr.op} {right})"
@@ -255,7 +255,7 @@ class ExpressionGenerator:
                 # right is {self} (receiver), left is {0} (argument)
                 left = self.gen_expr(expr.left, param_type)
                 right = self.gen_expr(expr.right, receiver_type)
-                # Dereference globals BEFORE conversion (tpy::Global<T> needs explicit deref)
+                # Dereference T* pointer-locals/globals BEFORE conversion
                 if self.ctx.is_indirect_name(expr.left):
                     left = f"(*{left})"
                 if self.ctx.is_indirect_name(expr.right):
@@ -266,7 +266,7 @@ class ExpressionGenerator:
                 # left is {self} (receiver), right is {0} (argument)
                 left = self.gen_expr(expr.left, receiver_type)
                 right = self.gen_expr(expr.right, param_type)
-                # Dereference globals BEFORE conversion (tpy::Global<T> needs explicit deref)
+                # Dereference T* pointer-locals/globals BEFORE conversion
                 if self.ctx.is_indirect_name(expr.left):
                     left = f"(*{left})"
                 if self.ctx.is_indirect_name(expr.right):
@@ -567,7 +567,7 @@ class ExpressionGenerator:
         if hasattr(expr, 'resolved_function_info') and expr.resolved_function_info:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
-                # Globals need dereferencing for method template access
+                # T* pointer-locals/globals need dereferencing for method template access
                 method_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
@@ -632,7 +632,7 @@ class ExpressionGenerator:
         is_indirect = self.ctx.is_indirect_name(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         if obj_type and obj_type.is_pointer():
-            # Global pointer needs deref first: Global<Ptr<T>> -> (*global)->field
+            # Pointer global needs deref first: T** -> (*global)->field
             if is_indirect:
                 return f"(*{obj})->{expr.field}"
             return f"{obj}->{expr.field}"
@@ -652,7 +652,7 @@ class ExpressionGenerator:
         # std::array of std::array needs an extra brace level
         if isinstance(elem_target, ArrayType):
             return f"{{{literal}}}"
-        # Empty list needs explicit type to avoid ambiguity with Global<T> assignment
+        # Empty list needs explicit type to avoid ambiguity with T* assignment
         if not expr.elements and target_type and target_type.get_element_type() is not None:
             return f"{target_type.to_cpp()}{literal}"
         return literal

@@ -63,3 +63,18 @@ class TestBuildLayout:
 
     def test_binary_path(self):
         assert self.layout.binary_path() == Path("/out/main.d/main")
+
+    def test_binary_path_with_variant(self):
+        layout = BuildLayout(Path("/out"), "main", build_variant="debug")
+        assert layout.binary_path() == Path("/out/main.d/debug/main")
+
+    def test_binary_path_release_variant(self):
+        layout = BuildLayout(Path("/out"), "main", build_variant="release")
+        assert layout.binary_path() == Path("/out/main.d/release/main")
+
+    def test_build_dir_no_variant(self):
+        assert self.layout.build_dir == Path("/out/main.d")
+
+    def test_build_dir_with_variant(self):
+        layout = BuildLayout(Path("/out"), "main", build_variant="debug")
+        assert layout.build_dir == Path("/out/main.d/debug")

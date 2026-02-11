@@ -18,10 +18,13 @@ from tpyc.cli import get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic
-from tpyc.compiler import Compiler, CompileError, BuildLayout
+from tpyc.compiler import Compiler, CompileError, BuildLayout, CppCompilerConfig
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
+
+# Shared C++ compiler config (auto-detects ccache)
+CPP_CONFIG = CppCompilerConfig.from_env()
 
 # Paths
 TESTS_DIR = Path(__file__).parent
@@ -121,8 +124,17 @@ class RunResult:
     returncode: int
 
 
+def pytest_configure(config):
+    """Print ccache status at session start."""
+    if CPP_CONFIG.ccache:
+        print("C++ compilation: using ccache")
+    else:
+        print("C++ compilation: ccache not found (install for faster re-runs)")
+
+
 def build_and_run(build_dir: Path, module_name: str,
-                  all_cpp_files: list[Path] | None = None) -> RunResult:
+                  all_cpp_files: list[Path] | None = None,
+                  build_variant: str = "debug") -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
     Args:
@@ -130,9 +142,9 @@ def build_and_run(build_dir: Path, module_name: str,
         module_name: Name of the entry point module.
         all_cpp_files: List of all C++ files to compile (for multi-module).
                        If None, compiles only the entry module.
+        build_variant: Build variant ("debug" or "release").
     """
-    layout = BuildLayout(build_dir, module_name)
-    exe_file = build_dir / "program"
+    layout = BuildLayout(build_dir, module_name, build_variant=build_variant)
 
     # Determine C++ files to compile
     if all_cpp_files is None:
@@ -141,16 +153,18 @@ def build_and_run(build_dir: Path, module_name: str,
         cpp_files = all_cpp_files
 
     # Compile C++ with include path for cross-module references
-    compile_cmd = layout.build_cpp_command(
+    compile_cmds = layout.build_cpp_commands(
         runtime_include_dir=RUNTIME_DIR,
         cpp_files=cpp_files,
-        output=exe_file,
+        config=CPP_CONFIG,
     )
-    result = subprocess.run(compile_cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        pytest.fail(f"C++ compilation failed:\n{result.stderr}")
+    for cmd in compile_cmds:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            pytest.fail(f"C++ compilation failed:\n{result.stderr}")
 
     # Run and capture output
+    exe_file = layout.binary_path()
     result = subprocess.run([str(exe_file)], capture_output=True, text=True)
     return RunResult(
         success=(result.returncode == 0),

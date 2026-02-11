@@ -146,7 +146,8 @@ def main() -> int:
         # Build if requested
         if args.build or args.exec:
             runtime_dir = get_runtime_dir()
-            layout = BuildLayout(output_dir, module_name)
+            build_variant = "release" if args.release else "debug"
+            layout = BuildLayout(output_dir, module_name, build_variant=build_variant)
             binary_path = layout.binary_path()
 
             if args.verbose:
@@ -154,21 +155,22 @@ def main() -> int:
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
             cpp_config = CppCompilerConfig.from_env()
-            compile_cmd = layout.build_cpp_command(
+            compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
                 cpp_files=all_cpp_paths,
                 opt_flags=opt_flags,
                 config=cpp_config,
             )
 
-            if args.verbose >= 2:
-                print(f"  $ {' '.join(compile_cmd)}")
+            for cmd in compile_cmds:
+                if args.verbose >= 2:
+                    print(f"  $ {' '.join(cmd)}")
 
-            result = subprocess.run(compile_cmd, capture_output=True, text=True)
-            if result.returncode != 0:
-                print(f"C++ compilation failed:", file=sys.stderr)
-                print(result.stderr, file=sys.stderr)
-                return 1
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode != 0:
+                    print(f"C++ compilation failed:", file=sys.stderr)
+                    print(result.stderr, file=sys.stderr)
+                    return 1
 
             if args.verbose or not args.exec:
                 print(f"Built: {binary_path}")
