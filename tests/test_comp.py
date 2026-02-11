@@ -6,6 +6,7 @@ Does NOT compile C++ or run binaries - see test_exec.py for that.
 Set UPDATE_EXPECTED=1 to update expected files instead of comparing.
 """
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -48,6 +49,16 @@ def _module_to_expected_path(expected_dir: Path, mod_name: str, ext: str) -> Pat
 def test_comp(case_dir, main_src, tmp_path):
     expected_dir = case_dir / "expected"
     module_name = get_module_name(main_src)
+
+    # In update mode, clear stale comp artifacts before regenerating
+    if UPDATE_EXPECTED:
+        diag = expected_dir / "diag.txt"
+        if diag.exists():
+            diag.unlink()
+        for subdir in ["include", "src"]:
+            d = expected_dir / subdir
+            if d.is_dir():
+                shutil.rmtree(d)
 
     # Compile
     result = compile_with_diagnostics(main_src, tmp_path)

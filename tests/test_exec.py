@@ -26,6 +26,13 @@ def test_exec(case_dir, main_src, tmp_path):
     expected_dir = case_dir / "expected"
     module_name = get_module_name(main_src)
 
+    # In update mode, clear stale exec artifacts before regenerating
+    if UPDATE_EXPECTED:
+        for fname in ["output.txt", "panic.txt"]:
+            f = expected_dir / fname
+            if f.exists():
+                f.unlink()
+
     # Compile TurboPython → C++
     result = compile_with_diagnostics(main_src, tmp_path)
 
