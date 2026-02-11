@@ -21,6 +21,7 @@ from ..parse import (
 )
 from ..namespace import Namespace
 from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
+from .type_resolution import resolve_stmt_binding_type
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -276,54 +277,61 @@ class StatementGenerator:
 
     def _resolve_target_type(self, stmt: TpyVarDecl) -> TpyType | None:
         """Resolve the target type for a variable declaration."""
-        target_type = stmt.type
+        target_type = resolve_stmt_binding_type(
+            stmt,
+            self.ctx.analyzer,
+            include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
+        )
         if target_type is None and stmt.init:
-            resolved_type = self.ctx.analyzer.var_types.get(id(stmt))
-            if resolved_type:
-                target_type = resolved_type
-            else:
-                target_type = self.ctx.analyzer.get_expr_type(stmt.init)
-                if isinstance(target_type, OwnType):
-                    target_type = target_type.wrapped
-                if isinstance(target_type, IntLiteralType):
-                    target_type = BIGINT
-                elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
-                    target_type = ArrayType(BIGINT, target_type.size)
+            target_type = self.ctx.analyzer.get_expr_type(stmt.init)
+        if target_type is not None:
+            if isinstance(target_type, OwnType):
+                target_type = target_type.wrapped
+            if isinstance(target_type, IntLiteralType):
+                target_type = BIGINT
+            elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
+                target_type = ArrayType(BIGINT, target_type.size)
         return target_type
+
+    def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
+        """Normalize declaration type before C++ emission."""
+        if isinstance(var_type, IntLiteralType):
+            var_type = BIGINT
+        elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
+            var_type = ArrayType(BIGINT, var_type.size)
+        elif isinstance(var_type, (ListType, PendingListType)):
+            elem = getattr(var_type, "element_type", None)
+            if isinstance(elem, IntLiteralType):
+                var_type = ListType(BIGINT)
+        # Optional non-value types use inner type (pointer-local adds T*)
+        if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+            var_type = var_type.inner
+        return var_type
+
+    def _cpp_decl_type(self, var_type: TpyType) -> str:
+        """Return C++ declaration type name for a normalized semantic type."""
+        normalized = self._normalize_decl_type_for_cpp(var_type)
+        if self.ctx.contains_protocol_type(normalized):
+            return "auto"
+        return self.types.type_to_cpp(normalized)
 
     def _resolve_cpp_type(self, stmt: TpyVarDecl) -> str:
         """Resolve the C++ type string for a variable declaration."""
         if stmt.type:
-            if self.ctx.contains_protocol_type(stmt.type):
-                return "auto"
-            # Optional non-value types use inner type (pointer-local adds T*)
-            if isinstance(stmt.type, OptionalType) and not stmt.type.inner.is_value_type():
-                return self.types.type_to_cpp(stmt.type.inner)
-            return self.types.type_to_cpp(stmt.type)
+            return self._cpp_decl_type(stmt.type)
         elif stmt.init:
-            resolved_type = self.ctx.analyzer.var_types.get(id(stmt))
-            if resolved_type:
-                return self.types.type_to_cpp(resolved_type)
-            inferred_type = self.ctx.analyzer.get_expr_type(stmt.init)
-            if inferred_type is None:
+            resolved_type = resolve_stmt_binding_type(
+                stmt,
+                self.ctx.analyzer,
+                include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
+            )
+            if resolved_type is None or isinstance(resolved_type, PendingListType):
+                resolved_type = self.ctx.analyzer.get_expr_type(stmt.init)
+            if resolved_type is None:
                 raise CodeGenError(
                     f"Could not infer type for variable '{stmt.name}'", loc=stmt.loc
                 )
-            if isinstance(inferred_type, IntLiteralType):
-                inferred_type = BIGINT
-            elif isinstance(inferred_type, (ArrayType, ListType, PendingListType)):
-                elem = getattr(inferred_type, 'element_type', None)
-                if isinstance(elem, IntLiteralType):
-                    if isinstance(inferred_type, ArrayType):
-                        inferred_type = ArrayType(BIGINT, inferred_type.size)
-                    else:
-                        inferred_type = ListType(BIGINT)
-            # Optional non-value types use inner type (pointer-local adds T*)
-            if isinstance(inferred_type, OptionalType) and not inferred_type.inner.is_value_type():
-                inferred_type = inferred_type.inner
-            if self.ctx.contains_protocol_type(inferred_type):
-                return "auto"
-            return self.types.type_to_cpp(inferred_type)
+            return self._cpp_decl_type(resolved_type)
         raise CodeGenError(f"Variable '{stmt.name}' has no type annotation and no initializer", loc=stmt.loc)
 
     # --- Rvalue slot helpers (shared by init and rebind) ---

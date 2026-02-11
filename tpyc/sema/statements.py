@@ -8,12 +8,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, ConstPtrType, NoneType, OptionalType,
     INT32, VOID, BIGINT, is_protocol_type,
 )
 from ..parse import (
+    TpyExpr,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue,
     TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName,
@@ -23,6 +24,7 @@ from ..coercions import CoercionContext
 from .diagnostics import SemanticError
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
+from .reassignment_inference import ReassignmentInference
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -53,6 +55,7 @@ class StatementAnalyzer:
         self.protocols = protocols
         self.scopes = ScopeTracker(ctx, compat)
         self.init = InitTracker(ctx)
+        self.reassign = ReassignmentInference(ctx, compat)
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
 
@@ -216,6 +219,19 @@ class StatementAnalyzer:
 
         # Check if this is a reassignment (variable already exists in scope)
         existing_type = self.ctx.current_scope.lookup(stmt.name)
+        # Top-level typed globals are pre-registered before statement analysis.
+        # For an earlier unannotated write to the same name, treat this as a
+        # fresh local write and let a later annotation retro-validate history.
+        is_preregistered_global_write = (
+            self.ctx.is_top_level
+            and stmt.type is None
+            and stmt.init is not None
+            and stmt.name not in self.ctx.current_scope.bindings
+            and stmt.name in self.ctx.global_scope.bindings
+            and stmt.name not in self.ctx.authoritative_types
+        )
+        if is_preregistered_global_write:
+            existing_type = None
 
         # Disallow reassignment of non-value-type params and loop vars
         if existing_type is not None:
@@ -296,6 +312,15 @@ class StatementAnalyzer:
                     info.explicit_type = stmt.type
 
             if stmt.type:
+                if existing_type is not None:
+                    self.reassign.check_conflicting_annotation(
+                        stmt.name,
+                        stmt.type,
+                        stmt,
+                        new_line=(stmt.loc.line if stmt.loc else None),
+                    )
+                    ann_line = stmt.loc.line if stmt.loc else None
+                    self.reassign.retro_validate_against_annotation(stmt.name, stmt.type, annotation_line=ann_line)
                 # Special case: single-char string literal can be assigned to Char
                 if (isinstance(stmt.type, CharType) and isinstance(init_type, StrType) and
                     isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
@@ -305,38 +330,47 @@ class StatementAnalyzer:
                                                          f"variable '{stmt.name}'",
                                                          coercion_ctx=CoercionContext.INIT)
                 var_type = stmt.type
+                self.reassign.set_authoritative_annotation(
+                    stmt.name,
+                    stmt.type,
+                    line=(stmt.loc.line if stmt.loc else None),
+                )
             elif existing_type:
+                var_type = self.reassign.resolve_reassignment_target_type(stmt.name, existing_type, init_type)
                 # Reassignment: check if we need to upgrade IntLiteralType
-                if isinstance(existing_type, IntLiteralType) and isinstance(init_type, (Int32Type, BigIntType)):
+                if isinstance(existing_type, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
                     # Upgrade from IntLiteralType to concrete type
-                    var_type = init_type
                     # Update var_types so codegen knows the resolved type
                     orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
                     if orig_decl:
-                        self.ctx.var_types[id(orig_decl)] = init_type
+                        self.ctx.var_types[id(orig_decl)] = var_type
                 else:
                     # Normal reassignment: use existing type, check compatibility
-                    stmt.init = self.compat.coerce_expr(stmt.init, init_type, existing_type,
+                    stmt.init = self.compat.coerce_expr(stmt.init, init_type, var_type,
                                                          f"reassignment to '{stmt.name}'",
                                                          coercion_ctx=CoercionContext.ASSIGN)
-                    var_type = existing_type
+                if var_type != existing_type:
+                    # Keep original declaration's resolved type in sync for codegen.
+                    orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
+                    if orig_decl:
+                        self.ctx.var_types[id(orig_decl)] = var_type
             else:
                 # New variable: resolve IntLiteralType to BigInt (Python int semantics)
                 # This ensures Int32 + untyped_var promotes to BigInt correctly
                 if isinstance(init_type, IntLiteralType):
                     var_type = BIGINT
+                    self.ctx.literal_default_vars.add(stmt.name)
                 # Unwrap OwnType - Own[T] indicates ownership transfer, not variable type
                 elif isinstance(init_type, OwnType):
                     var_type = init_type.wrapped
                 # None literal without annotation — can't infer the Optional type
                 elif isinstance(init_type, NoneType):
-                    raise self.ctx.error(
-                        f"Cannot infer type for '{stmt.name}' initialized with None; "
-                        f"add a type annotation (e.g., x: Point | None = None)",
-                        stmt
-                    )
+                    var_type = init_type
+                    self.ctx.unresolved_none_vars.add(stmt.name)
                 else:
                     var_type = init_type
+            # Track inferred writes for potential future retro-validation.
+            self.reassign.record_write(stmt.name, stmt.init, init_type)
         elif stmt.type:
             if isinstance(stmt.type, OptionalType):
                 # Optional without initializer is allowed (defaults to None/nullptr)
@@ -348,6 +382,11 @@ class StatementAnalyzer:
                 )
             else:
                 var_type = stmt.type
+            self.reassign.set_authoritative_annotation(
+                stmt.name,
+                stmt.type,
+                line=(stmt.loc.line if stmt.loc else None),
+            )
         else:
             raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
 
@@ -387,18 +426,29 @@ class StatementAnalyzer:
                 self.ctx.top_level_decls[stmt.name] = decl_line
             else:
                 self.ctx.top_level_decls[stmt.name] = min(self.ctx.top_level_decls[stmt.name], decl_line)
-        # Track var_decl for later type updates
-        if isinstance(var_type, IntLiteralType):
+        # Track first var_decl for later type updates on reassignment-driven inference.
+        if existing_type is None:
             self.ctx.var_decl_by_name[stmt.name] = stmt
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
+        if isinstance(stmt.target, TpyName):
+            # Match var-decl flow: reject forbidden rebinding before any type mutation.
+            self._check_nonvalue_rebinding(stmt.target.name, stmt)
+            target_type = self.reassign.resolve_reassignment_target_type(stmt.target.name, target_type, value_type)
+            self.ctx.current_scope.define(stmt.target.name, target_type)
+            if self.ctx.current_ns:
+                self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
+            self.ctx.set_expr_type(stmt.target, target_type)
+            self.reassign.record_write(stmt.target.name, stmt.value, value_type)
+            var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
+            if var_decl:
+                self.ctx.var_types[id(var_decl)] = target_type
 
         # Disallow reassignment of non-value-type params and loop vars
         if isinstance(stmt.target, TpyName):
-            self._check_nonvalue_rebinding(stmt.target.name, stmt)
             # Update rvalue status for hoist eligibility
             if self.compat.is_lvalue(stmt.value):
                 self.ctx.rvalue_vars.discard(stmt.target.name)
@@ -423,21 +473,6 @@ class StatementAnalyzer:
                 obj_type = self.ctx.get_expr_type(stmt.target.obj)
                 if isinstance(obj_type, ConstPtrType):
                     raise self.ctx.error("Cannot assign through ConstPtr (read-only pointer)", stmt)
-
-        # When reassigning a variable with IntLiteralType to a concrete integer type,
-        # update the variable's type to the more specific type
-        if isinstance(stmt.target, TpyName) and isinstance(target_type, IntLiteralType):
-            if isinstance(value_type, (Int32Type, BigIntType)):
-                self.ctx.current_scope.define(stmt.target.name, value_type)
-                if self.ctx.current_ns:
-                    self.ctx.current_ns.update_variable_type(stmt.target.name, value_type)
-                self.ctx.set_expr_type(stmt.target, value_type)
-                # Update var_types so codegen knows the resolved type
-                var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
-                if var_decl:
-                    self.ctx.var_types[id(var_decl)] = value_type
-                self.init.mark_assigned(stmt.target.name)
-                return
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
@@ -489,4 +524,3 @@ class StatementAnalyzer:
         operators = OperatorResolver(self.ctx)
         if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):
             stmt.resolved_binop = result
-

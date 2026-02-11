@@ -8,12 +8,14 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, is_protocol_type,
+    TpyType, NamedType, OwnType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
+    BIGINT, is_protocol_type,
     Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
 )
 from ..parse import TpyFunction, TpyVarDecl
 from ..namespace import Namespace
 from .context import module_to_cpp_namespace
+from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -151,7 +153,7 @@ class FunctionGenerator:
         if stmt.type:
             var_type = stmt.type
         elif stmt.init:
-            var_type = self.types.get_resolved_type(stmt.init)
+            var_type = resolve_stmt_type_cascade(stmt, self.ctx.analyzer, self.types)
         else:
             raise RuntimeError(f"Global '{stmt.name}' has no type and no initializer")
         if isinstance(var_type, OwnType):
@@ -159,6 +161,11 @@ class FunctionGenerator:
         # Optional non-value types use inner type (pointer-global adds T*)
         elif isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
             var_type = var_type.inner
+        # Preserve legacy global normalization: int literals default to BigInt.
+        if isinstance(var_type, ListType) and isinstance(var_type.element_type, IntLiteralType):
+            var_type = ListType(BIGINT)
+        elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
+            var_type = ArrayType(BIGINT, var_type.size)
         return var_type
 
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:

@@ -397,7 +397,7 @@ class ExpressionAnalyzer:
                             return self.type_ops.substitute_types(field_type, type_subst)
                     raise self.ctx.error(f"Protocol '{bound.name}' has no field '{expr.field}'", expr)
 
-        raise SemanticError(f"Cannot access field '{expr.field}' on type {obj_type}")
+        raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
 
     def _analyze_array_literal(self, expr: TpyArrayLiteral) -> TpyType:
         """Analyze an array literal [expr, expr, ...]

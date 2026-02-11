@@ -1,0 +1,1 @@
+main.tp.py:4: error: Conflicting explicit annotations for 'x': 'Int32' at line 3 vs 'int' at line 4

@@ -104,6 +104,21 @@ class SemanticContext:
     definitely_assigned: set[str] = field(default_factory=set)
     init_terminated: bool = False
 
+    # --- Reassignment inference tracking ---
+    # Vars initialized from int literals without annotation (defaulted to BigInt)
+    # and still eligible for narrowing to Int32.
+    literal_default_vars: set[str] = field(default_factory=set)
+    # Tracks values of literal writes for range checks during potential narrowing.
+    literal_values: dict[str, list[int]] = field(default_factory=dict)
+    # Vars initialized with None without annotation and awaiting concrete type.
+    unresolved_none_vars: set[str] = field(default_factory=set)
+    # Types from prior writes (for retro-validation when a later annotation appears).
+    write_history: dict[str, list[tuple[TpyType, TpyExpr]]] = field(default_factory=dict)
+    # Authoritative annotation set by an explicit typed write.
+    authoritative_types: dict[str, TpyType] = field(default_factory=dict)
+    # Source line for the authoritative explicit annotation.
+    authoritative_type_lines: dict[str, int] = field(default_factory=dict)
+
     # --- Pointer provenance tracking ---
     param_provenance_vars: set[str] = field(default_factory=set)
 
@@ -148,4 +163,9 @@ class SemanticContext:
         self.rvalue_vars.clear()
         self.definitely_assigned.clear()
         self.init_terminated = False
+        self.literal_default_vars.clear()
+        self.literal_values.clear()
+        self.unresolved_none_vars.clear()
+        self.write_history.clear()
+        self.authoritative_types.clear()
         self.param_provenance_vars.clear()

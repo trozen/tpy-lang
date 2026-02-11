@@ -1,6 +1,8 @@
 # TODO
 
 ## Next
+- update CLAUDE.md to better reflect current architecture, it has changed significantly since last time the file was updated
+- merge bool/Bool types -- since CPython has bool, we should stick to that
 - finish items from OWNERSHIP_DESIGN.md
 - None inference: `x = None; x = Point()` → auto-infer `Optional[Point]` without explicit annotation
 - None safety: field/method access on `T | None` without prior `is not None` check is currently silently allowed, generating nullable pointer dereference (UB in C++). Need to decide approach: compile-time narrowing analysis (`if x is not None:` refines type), runtime null checks, or some combination.
@@ -9,7 +11,8 @@
 - all expected warnings/errors should be in `# tpyc` annotation
 - parser: extract to separate module
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
-- investigate other backends than c++
+- diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
+- flow-sensitive None narrowing: refine `x: T | None` to `T` under guards like `if x is not None:` (including loop-carried values) so guarded field/method access is accepted
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
@@ -81,6 +84,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - hoisted variable slots: keep them at the lowest scope that satisfies lifetime, instead of always hoisting to function scope
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 - C++ header ordering: inline method bodies in structs (constructors, methods) can't call free functions declared later in the header. Affects cases like `self.value = func()` when func is defined before the class in Python but its C++ forward declaration is emitted after the struct. Fix: emit function forward declarations before struct definitions, or move method bodies out-of-line.
+- investigate other backends than c++
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

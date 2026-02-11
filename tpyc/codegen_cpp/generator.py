@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, OwnType
+from ..typesys import TpyType, NamedType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, BIGINT
 from ..parse import TpyModule, TpyRecord, TpyVarDecl
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace
@@ -20,6 +20,7 @@ from .expressions import ExpressionGenerator
 from .statements import StatementGenerator
 from .records import RecordGenerator
 from .functions import FunctionGenerator
+from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -116,11 +117,13 @@ class CodeGenerator:
                 if stmt.name not in seen_globals:
                     global_decls.append(stmt)
                     # Store the type for this global
-                    var_type = stmt.type
-                    if var_type is None and stmt.init:
-                        var_type = self.types.get_resolved_type(stmt.init)
+                    var_type = resolve_stmt_type_cascade(stmt, self.analyzer, self.types)
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
+                    if isinstance(var_type, ListType) and isinstance(var_type.element_type, IntLiteralType):
+                        var_type = ListType(BIGINT)
+                    elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
+                        var_type = ArrayType(BIGINT, var_type.size)
                     seen_globals[stmt.name] = var_type
 
         # Store global names for use in expression generation (method/field access)

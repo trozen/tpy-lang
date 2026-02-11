@@ -1,6 +1,22 @@
 # Reassignment-Based Local Type Inference
 
-Status: Planned
+Status: In Progress
+
+| Item | Status |
+|---|---|
+| `None -> Optional[T]` inference for unannotated reassignments | Done |
+| Literal anchoring (`x=0; x=Int32(...)` -> `Int32` when range-safe) | Done |
+| Function/method return-based anchoring (`x=None; x=make_point()`) | Done |
+| Generic function return anchoring (`x=None; x=first(items)`) | Done |
+| Method call anchoring (`x=None; x=obj.method()`) | Done |
+| Chained call anchoring (`x=None; x=get_factory().create()`) | Done |
+| `bool`/`Bool` annotation normalization | Done |
+| Bare `x=None` without anchor emits inference error | Done |
+| Late annotation retro-validation in local scopes | Done |
+| Late annotation retro-validation for top-level globals | Done |
+| Numeric lattice helper scaffolding for future numeric families | Done |
+| Augmented assignment anchoring policy (`x=0; x += Int32(5)`) | TODO |
+| Full lattice extension for future int/float families (`Int64`, `UInt32`, `Float32`) | TODO |
 
 This document defines how TurboPython should infer variable types across multiple
 assignments when no explicit annotation is present.
@@ -109,6 +125,18 @@ Reason:
 x = None
 x = Point()
 # inferred: Point | None
+```
+
+```python
+x = None
+x = first([Int32(1), Int32(2)])
+# inferred: Int32 | None
+```
+
+```python
+x = None
+x = get_factory().create()
+# inferred: Product | None
 ```
 
 ```python

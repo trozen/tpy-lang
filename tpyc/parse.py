@@ -1006,6 +1006,8 @@ class Parser:
                 return FLOAT
             elif resolved_name == "Bool":
                 return BOOL
+            elif resolved_name == "bool":
+                return BOOL
             elif resolved_name == "None":
                 return VOID
             elif resolved_name == "str":

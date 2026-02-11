@@ -1,0 +1,1 @@
+main.tp.py:11: error: Assignment to 'x' is incompatible with later annotation 'Point' at line 12: Type mismatch: expected Point, got None

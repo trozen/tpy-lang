@@ -1,0 +1,1 @@
+main.tp.py:16: error: Cannot access field 'x' on type None

@@ -153,6 +153,7 @@ Possible syntax options:
 - **Working**: `int` (Python's int → `tpy::BigInt` arbitrary precision using GMP)
 - **Working**: `float` (Python's float → `double`, 64-bit IEEE 754)
 - **Working**: `Int32`, `Bool`, `Char`
+- **Working**: Type annotation aliases `bool` and `Bool` map to the same boolean type
 - **Planned**: `Int64`, `Int8`, `Int16`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
 - **Planned**: `Float32`
 
@@ -1067,6 +1068,23 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks
   - `print()` prints `None` for empty, value otherwise
+- **Working**: Reassignment-based Optional inference for unannotated variables
+  - `x = None; x = Point()` infers `x` as `Point | None`
+  - `x = None; x = 123` infers `x` as `int | None`
+  - `x = None; x = make_point()` works from function/method return types
+  - Bare `x = None` without later type anchor is an error
+- **Working**: Literal anchoring for unannotated reassignment
+  - `x = 0; x = Int32(666)` infers `Int32` (if previous literals fit Int32 range)
+  - `x = 0; x = True` is rejected (no implicit int/bool merge)
+- **Working**: Auto inference rules (reassignment)
+  - Inference is per variable within its binding scope, across all writes.
+  - A later explicit annotation is authoritative and retro-validates earlier writes.
+  - Conflicting explicit annotations are an error.
+  - `None` seeds optional inference: `x = None; x = T(...)` infers `T | None`.
+  - Bare `x = None` with no later concrete anchor is an error.
+  - Literal-seeded variables default to `int` (`BigInt`) and may narrow via compatible literal anchoring (for example to `Int32`).
+  - `Bool` does not auto-merge with numeric families during inference.
+  - Augmented assignment currently does not perform literal anchoring (`x = 0; x += Int32(5)` remains `int`/`BigInt`).
 - **Working**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
   - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
   - `is None` / `is not None` checks use `.has_value()`

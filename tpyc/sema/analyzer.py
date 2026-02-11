@@ -7,7 +7,7 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, NamedType, STR
+from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
 
@@ -265,6 +265,7 @@ class SemanticAnalyzer:
         # Analyze body
         for stmt in func.body:
             self.stmts.analyze_stmt(stmt)
+        self._check_unresolved_none_inference()
 
         # Resolve pending list types after analyzing the full function
         self.list_tracker.resolve_pending_list_types()
@@ -313,6 +314,7 @@ class SemanticAnalyzer:
             # Analyze body
             for stmt in method.body:
                 self.stmts.analyze_stmt(stmt)
+            self._check_unresolved_none_inference()
 
             # Validate super().__init__() position in __init__ methods
             if method.name == "__init__" and self.ctx.super_init_call is not None:
@@ -356,6 +358,7 @@ class SemanticAnalyzer:
 
         for stmt in stmts:
             self.stmts.analyze_stmt(stmt)
+        self._check_unresolved_none_inference()
 
         # Resolve pending list types (same as function analysis)
         self.list_tracker.resolve_pending_list_types()
@@ -368,6 +371,24 @@ class SemanticAnalyzer:
         self.ctx.current_scope = None
         self.ctx.current_ns = None
         self.ctx.is_top_level = False
+
+    def _check_unresolved_none_inference(self) -> None:
+        """Reject variables left as bare None without an inferred or annotated type."""
+        if not self.ctx.unresolved_none_vars:
+            return
+        name = sorted(self.ctx.unresolved_none_vars)[0]
+        # Emit at the first None write location.
+        for typ, expr in self.ctx.write_history.get(name, []):
+            if isinstance(typ, NoneType):
+                raise self._error(
+                    f"Cannot infer type for '{name}': assigned None but never assigned a concrete value; "
+                    f"add a type annotation (e.g., {name}: T | None = None)",
+                    expr
+                )
+        raise self._error(
+            f"Cannot infer type for '{name}': assigned None but never assigned a concrete value; "
+            f"add a type annotation (e.g., {name}: T | None = None)"
+        )
 
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""
