@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .context import SemanticContext
 
-# (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars, non_none_vars)
-FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str], frozenset[str]]
+# (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars, non_none_vars, non_none_exprs)
+FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str], frozenset[str], frozenset[tuple[str, ...]]]
 
 
 class InitTracker:
@@ -27,7 +27,8 @@ class InitTracker:
                 self.ctx.init_terminated,
                 frozenset(self.ctx.rvalue_vars),
                 frozenset(self.ctx.param_provenance_vars),
-                frozenset(self.ctx.non_none_vars))
+                frozenset(self.ctx.non_none_vars),
+                frozenset(self.ctx.non_none_exprs))
 
     def restore(self, state: FlowState) -> None:
         self.ctx.definitely_assigned = set(state[0])
@@ -35,6 +36,7 @@ class InitTracker:
         self.ctx.rvalue_vars = set(state[2])
         self.ctx.param_provenance_vars = set(state[3])
         self.ctx.non_none_vars = set(state[4])
+        self.ctx.non_none_exprs = set(state[5])
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -55,9 +57,36 @@ class InitTracker:
     def remove_loop_var_provenance(self, name: str) -> None:
         self.ctx.param_provenance_vars.discard(name)
 
+    def apply_loop_entry_facts(
+        self,
+        before: FlowState,
+        condition_non_none: set[str] | None = None,
+        condition_non_none_exprs: set[tuple[str, ...]] | None = None,
+    ) -> None:
+        """Apply conservative flow facts at loop body entry.
+
+        We treat loop bodies as potentially revisited. To avoid stale Optional
+        proofs across iterations:
+        - expression-identity facts default to cleared unless re-proven by loop
+          condition facts for this iteration entry.
+        - name-based Optional facts can be constrained to condition-proven names.
+        """
+        self.ctx.definitely_assigned = set(before[0])
+        self.ctx.init_terminated = False
+        self.ctx.rvalue_vars = set(before[2])
+        self.ctx.param_provenance_vars = set(before[3])
+        if condition_non_none is None:
+            self.ctx.non_none_vars = set(before[4])
+        else:
+            self.ctx.non_none_vars = set(condition_non_none)
+        if condition_non_none_exprs is None:
+            self.ctx.non_none_exprs = set()
+        else:
+            self.ctx.non_none_exprs = set(condition_non_none_exprs)
+
     def merge_branches(self, then_state: FlowState, else_state: FlowState) -> None:
-        then_assigned, then_term, then_rvalue, then_prov, then_non_none = then_state
-        else_assigned, else_term, else_rvalue, else_prov, else_non_none = else_state
+        then_assigned, then_term, then_rvalue, then_prov, then_non_none, then_non_none_exprs = then_state
+        else_assigned, else_term, else_rvalue, else_prov, else_non_none, else_non_none_exprs = else_state
         if then_term and else_term:
             self.ctx.definitely_assigned = set(then_assigned | else_assigned)
             self.ctx.init_terminated = True
@@ -99,3 +128,11 @@ class InitTracker:
             self.ctx.non_none_vars = set(then_non_none)
         else:
             self.ctx.non_none_vars = set(then_non_none & else_non_none)
+        if then_term and else_term:
+            self.ctx.non_none_exprs = set(then_non_none_exprs | else_non_none_exprs)
+        elif then_term:
+            self.ctx.non_none_exprs = set(else_non_none_exprs)
+        elif else_term:
+            self.ctx.non_none_exprs = set(then_non_none_exprs)
+        else:
+            self.ctx.non_none_exprs = set(then_non_none_exprs & else_non_none_exprs)

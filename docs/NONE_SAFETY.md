@@ -15,9 +15,15 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Optional in value-consuming operators without proof (`x + 1`) | Done | Warns and inserts runtime null checks |
 | Truthiness narrowing on Optional names (`if x`, `assert x`) | Done | Narrows on true path; value-optionals emit warning |
 | Truthiness narrowing in composed conditions (`not/and/or`) | Done | Name-based facts compose through boolean operators |
-| Truthiness narrowing for field/subscript expressions | Todo | Requires expression identity beyond variable names |
-| Generalized flow facts beyond name-based narrowing | Todo | Current facts track variable names only |
-| Loop-focused truthiness/flow stress semantics | Todo | Need explicit continue/break/reassign coverage and constraints |
+| Truthiness narrowing for field/subscript expressions | Done | Supports stable expression identities (field/chained field, builtin-first simple subscripts) |
+| Generalized flow facts beyond name-based narrowing | Partial | Added expression identities; still not full arbitrary-expression fact tracking |
+| Expression-identity narrowing (Phase 3a) | Done | Tracks stable identities for `obj.field` / chained fields / builtin-first `obj[i]` (simple indexes) |
+| Loop-focused truthiness/flow stress semantics (Phase 3b) | Done | Conservative loop-entry policy applied; dedicated loop stress tests added (`while`/`continue`/`break`/nested/short-circuit) |
+| Invalidation across mutation/alias boundaries | Partial | Implemented for rooted writes and unknown call boundaries; richer effect-aware invalidation pending |
+| Concurrency-aware narrowing safety model | Todo | Only trust facts under proven thread-safety/stability guarantees |
+| Effect contracts for user-defined reads (`readonly`/`may_mutate`) | Todo | Needed for safe narrowing on custom collections (future) |
+| Conservative effect inference for missing annotations | Todo | Infer readonly where provable; default unknown to unsafe |
+| Temporary single-evaluation auto-rewrite for unstable reads | Deferred (intentional) | Keep explicit/user-authored for now; compiler should warn instead |
 | REPL-specific None-safety regression suite | Todo | No dedicated REPL harness coverage yet |
 | Mixed Optional/non-Optional equality & ordering semantics | Todo | Current behavior is conservative; broader policy still open |
 | Custom truthiness semantics policy | Todo | Future user-defined/overridden truthiness behavior not specified |
@@ -41,7 +47,11 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Function-boundary isolation | Covered | None |
 | Operator-phase runtime checks (`+`, comparisons, unary on Optionals) | Covered | Runtime panic tests for binop/comparison/unary optionals |
 | Proven optional comparison unwrapping (`(*x) > 0` vs `x > 0`) | Covered | Dedicated post-assert comparison test |
-| Loop-specific narrowing stress (`while` + reassignment/continue/break) | Partial | Need dedicated loop-focused semantics cases |
+| Loop-specific narrowing stress (`while` + reassignment/continue/break) | Covered | Dedicated loop suite: `loop_while_expr_reproof_ok`, `loop_continue_if_merge_narrowing`, `warn_loop_break_does_not_prove_after_loop`, `warn_loop_subscript_fact_stale_after_write`, `warn_loop_field_fact_stale_after_rebind`, `loop_nested_branch_merge`, `loop_short_circuit_reproof`, `loop_foreach_optional_body_narrowing`, `warn_loop_call_invalidation_after_condition`, `loop_body_renarrow_without_header_fact`, `loop_nested_outer_fact_preserved`, `warn_loop_nested_inner_fact_not_leaked` |
+| Field/subscript truthiness narrowing (`if obj.field`, `if items[i]`) | Covered | Stable identity subset implemented; tests added for field/subscript narrowing |
+| Mutation/alias invalidation for expression identities | Partial | Root writes and unknown-call invalidation covered; effect-aware/method-specific invalidation pending |
+| Concurrency-aware narrowing guards | Not covered | Needs thread-safety/stability contracts and tests |
+| User-defined collection read contracts | Not covered | Requires effect metadata and/or inference |
 | REPL-specific regression suite | Not covered | No dedicated REPL test harness in snippet suite |
 | Rich assert message forms | Not covered | Non-literal assert message support not implemented |
 
@@ -115,13 +125,89 @@ Unproven optional access emits:
 
 ## Known Limitations
 
-- Narrowing is currently name-based in flow analysis.
+- Narrowing supports both name-based facts and a conservative subset of expression identities.
+- Expression-identity facts are currently limited to stable forms:
+  - field/chained-field identities rooted at a name
+  - subscript identities for builtin/stable containers with simple indexes
+- Arbitrary expression identities (for example `f().x`, complex index expressions) are not tracked.
+- There is no concurrency-aware gating yet for expression-identity narrowing.
+- There is no effect contract/inference system yet for user-defined read operations.
 - Equality/ordering rules across mixed Optional/non-Optional values are still conservative.
   - Current focus is safety (runtime checks) and explicit `is`/`is not` for None identity.
   - Broader Python-compat comparison semantics remain open.
 
-## Planned (Next)
+## Design Decisions (Locked)
 
-- Broaden and refine narrowing coverage where needed.
-- Field/subscript truthiness narrowing (`if obj.field`, `if items[i]`) needs expression-identity facts beyond name tracking.
-- Define policy for custom truthiness semantics (future user-defined/overridden truthiness).
+- Implement in two steps:
+  - Phase 3a: expression-identity narrowing (`obj.field`, `items[i]`).
+  - Phase 3b: loop-focused truthiness/flow stress semantics after 3a lands.
+- Safety rule: narrow aggressively, invalidate more aggressively.
+- Do not trust repeated reads unless the read is proven stable.
+  - Example: concurrent/container reads like `csl[i]` may change between reads.
+  - Therefore `if csl[i] is not None: use(csl[i])` must not rely on a stale prior read.
+- Do not auto-rewrite to temporary single-evaluation variables for users (for now).
+  - Keep behavior explicit; emit warnings and keep runtime checks when proof is missing.
+
+## Planned (Detailed)
+
+### Phase 3a: Expression-Identity Narrowing (Implemented Subset)
+
+- Implemented flow facts for stable expression identities:
+  - `name.field` and chained field paths
+  - `name[index]` for builtin/stable containers with simple index forms
+- Intentionally still conservative:
+  - no narrowing for arbitrary call-based bases (for example `f().x`, `get_obj()[i]`)
+  - no narrowing for complex/non-trackable index forms
+
+### Invalidation Rules (Current + Remaining)
+
+- Implemented:
+  - kill all expression-identity facts rooted at `x` when `x` is assigned/rebound
+  - kill rooted expression-identity facts on field/subscript writes
+  - clear expression-identity facts on unknown call boundaries
+- Remaining:
+  - finer-grained effect-aware invalidation for known mutating vs readonly calls
+  - effect-contract-driven invalidation once `@readonly`/effects land
+- Fallback rule remains: if safety is not proven, use warning + runtime null checks.
+
+### Phase 3b: Loop Stress Semantics
+
+- Implemented:
+  - conservative loop-entry fact application (no stale expression-identity carry-over by default)
+  - `while` condition re-proves name/expression Optional facts for loop body entry
+  - `for`/`for-each` loop entry clears expression-identity facts conservatively
+  - targeted loop stress tests covering reassignment, `continue`, `break`, nested merges, and short-circuit conditions
+- Rule:
+  - treat loop body facts as iteration-local unless re-proven by current iteration condition.
+  - if safety proof is not present at use site, keep warning + runtime null checks.
+
+### User-Defined Collections and Effects (Future)
+
+- Target support beyond builtin `list` via effect contracts on read APIs (`__getitem__`, field-like getters).
+- Proposed contract direction:
+  - `@readonly` annotation introduces a function contract.
+    - Compiler verifies constraints (no observable mutation through receiver/aliases/globals in contract scope).
+    - Contract violations should be diagnostics, not silent fallback.
+  - `readonly` (no mutation of observable state)
+  - `may_mutate` (default when unknown)
+  - thread-safety/stability qualifiers for concurrent reads
+- Long-term: add conservative automatic inference for missing annotations.
+  - if a function is not annotated, compiler may deduce and mark it readonly when proof succeeds
+  - explicit annotation remains the enforceable contract surface
+  - infer readonly only when provable
+  - default unknown to unsafe
+  - keep annotation-based enforcement for explicit intent
+
+### Concurrency Policy (Future, Required for broader narrowing)
+
+- Narrowing facts must only be trusted when reads are stable in the relevant region.
+- For concurrent structures, repeated reads may differ even with same key/index.
+- Without proven thread-safety/stability guarantees:
+  - do not carry expression-identity facts across reads,
+  - keep runtime checks on subsequent optional use,
+  - emit guidance warning where appropriate.
+
+### Custom Truthiness Semantics (Future)
+
+- Current truthiness policy assumes built-in/value semantics.
+- For future user-defined or overridden truthiness, behavior must be explicitly specified before enabling narrowing based on those semantics.

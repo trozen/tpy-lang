@@ -599,7 +599,8 @@ class StatementGenerator:
         # Special handling for subscript assignment
         if isinstance(stmt.target, TpySubscript):
             obj = self.expressions.gen_expr(stmt.target.obj)
-            value = self.expressions.gen_expr(stmt.value)
+            target_type = self.ctx.analyzer.get_expr_type(stmt.target)
+            value = self.expressions.gen_expr(stmt.value, target_type)
             obj_type = self.ctx.analyzer.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access

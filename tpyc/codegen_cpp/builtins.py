@@ -69,7 +69,10 @@ class BuiltinGenerator:
         """
         if method.cpp_template is None:
             raise CodeGenError(f"Method '{method.name}' has no C++ template")
-        gen_args = [self._gen_expr_deref(arg) for arg in args]
+        gen_args: list[str] = []
+        for i, arg in enumerate(args):
+            ptype = method.params[i][1] if i < len(method.params) else None
+            gen_args.append(self._gen_expr_deref(arg, ptype))
         return expand_cpp_template(method.cpp_template, obj, *gen_args)
 
     def gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:

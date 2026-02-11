@@ -61,15 +61,20 @@ class ExpressionGenerator:
         # unwrapped when a concrete value is required.
         expr_type = self.types.get_resolved_type(expr)
         analyzed_type = self.ctx.analyzer.get_expr_type(expr)
+        proven_optional_expr = expr.narrowed_optional_proven
         if (
             target_type is not None
-            and isinstance(expr_type, OptionalType)
-            and expr_type.inner.is_value_type()
+            and (
+                (isinstance(expr_type, OptionalType) and expr_type.inner.is_value_type())
+                or proven_optional_expr
+            )
             and not isinstance(target_type, OptionalType)
         ):
             # If sema already narrowed this expression to non-Optional, unwrap
             # without an extra runtime check. Otherwise keep checked dereference.
-            if isinstance(analyzed_type, OptionalType):
+            if proven_optional_expr:
+                result = f"(*{result})"
+            elif isinstance(analyzed_type, OptionalType):
                 result = f"tpy::deref_optional({result})"
             else:
                 result = f"(*{result})"
@@ -96,6 +101,8 @@ class ExpressionGenerator:
             return "true" if expr.value else "false"
 
         elif isinstance(expr, TpyNoneLiteral):
+            if isinstance(target_type, OwnType) and isinstance(target_type.wrapped, OptionalType):
+                return "std::nullopt"
             if isinstance(target_type, OptionalType):
                 return "std::nullopt"
             return "nullptr"
@@ -542,7 +549,15 @@ class ExpressionGenerator:
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
-        args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
+        if hasattr(expr, "resolved_function_info") and expr.resolved_function_info:
+            params = expr.resolved_function_info.params
+            gen_args = []
+            for i, arg in enumerate(expr.args):
+                ptype = params[i][1] if i < len(params) else None
+                gen_args.append(self.gen_expr_deref(arg, ptype))
+            args = ", ".join(gen_args)
+        else:
+            args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
 
         # Handle user module function calls: module.func() -> tpy_user::module::func()
         if expr.user_module_call is not None:
@@ -574,6 +589,8 @@ class ExpressionGenerator:
                 if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                     return self.builtins.gen_method_from_function_info("(*this)", expr.args, method_info)
                 obj = self.gen_expr(expr.obj)
+                if expr.obj.narrowed_optional_proven:
+                    obj = f"(*{obj})"
                 method_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
@@ -605,6 +622,8 @@ class ExpressionGenerator:
                         temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
                         return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
         obj = self.gen_expr(expr.obj)
+        if expr.obj.narrowed_optional_proven:
+            obj = f"(*{obj})"
         obj_type = self.types.get_resolved_type(expr.obj)
 
         # Unwrap OwnType for method lookup - Own[T] behaves as T for method calls
@@ -681,6 +700,8 @@ class ExpressionGenerator:
                         return module_info.variables[expr.field].cpp_expr
 
         obj = self.gen_expr(expr.obj)
+        if expr.obj.narrowed_optional_proven:
+            obj = f"(*{obj})"
         # Check if obj is a pointer type or global - use -> instead of .
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
         is_indirect = self.ctx.is_indirect_name(expr.obj)
@@ -754,6 +775,8 @@ class ExpressionGenerator:
     def _gen_subscript(self, expr: TpySubscript) -> str:
         """Generate subscript code."""
         obj = self.gen_expr(expr.obj)
+        if expr.obj.narrowed_optional_proven:
+            obj = f"(*{obj})"
         obj_type = self.types.get_resolved_type(expr.obj)
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access

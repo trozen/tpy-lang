@@ -105,6 +105,8 @@ class SemanticContext:
     init_terminated: bool = False
     # Variables proven non-None at current control-flow point.
     non_none_vars: set[str] = field(default_factory=set)
+    # Expression identities (e.g. x.field, x[i]) proven non-None.
+    non_none_exprs: set[tuple[str, ...]] = field(default_factory=set)
 
     # --- Reassignment inference tracking ---
     # Vars initialized from int literals without annotation (defaulted to BigInt)
@@ -166,6 +168,7 @@ class SemanticContext:
         self.definitely_assigned.clear()
         self.init_terminated = False
         self.non_none_vars.clear()
+        self.non_none_exprs.clear()
         self.literal_default_vars.clear()
         self.literal_values.clear()
         self.unresolved_none_vars.clear()

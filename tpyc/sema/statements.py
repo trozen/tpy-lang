@@ -17,7 +17,8 @@ from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
-    TpyCall, TpyArrayLiteral, TpySubscript, TpyStrLiteral, TpyName,
+    TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp, TpyArrayLiteral, TpyListRepeat, TpyCoerce,
+    TpySubscript, TpyStrLiteral, TpyName,
     TpyNoneLiteral, TpyFieldAccess, TpyFunction,
 )
 from ..coercions import CoercionContext
@@ -94,6 +95,42 @@ class StatementAnalyzer:
             return
         self.ctx.non_none_vars.add(name)
 
+    def _identity_root_name(self, expr: TpyExpr) -> str | None:
+        if isinstance(expr, TpyName):
+            return expr.name
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            return self._identity_root_name(expr.obj)
+        return None
+
+    def _kill_expr_facts_rooted_at(self, root: str) -> None:
+        if not self.ctx.non_none_exprs:
+            return
+        self.ctx.non_none_exprs = {k for k in self.ctx.non_none_exprs if not k or k[0] != root}
+
+    def _kill_expr_facts_touching_target(self, target: TpyExpr) -> None:
+        root = self._identity_root_name(target)
+        if root is not None:
+            self._kill_expr_facts_rooted_at(root)
+
+    def _expr_contains_unknown_call(self, expr: TpyExpr) -> bool:
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            return True
+        if isinstance(expr, TpyBinOp):
+            return self._expr_contains_unknown_call(expr.left) or self._expr_contains_unknown_call(expr.right)
+        if isinstance(expr, TpyUnaryOp):
+            return self._expr_contains_unknown_call(expr.operand)
+        if isinstance(expr, TpyFieldAccess):
+            return self._expr_contains_unknown_call(expr.obj)
+        if isinstance(expr, TpySubscript):
+            return self._expr_contains_unknown_call(expr.obj) or self._expr_contains_unknown_call(expr.index)
+        if isinstance(expr, TpyArrayLiteral):
+            return any(self._expr_contains_unknown_call(e) for e in expr.elements)
+        if isinstance(expr, TpyListRepeat):
+            return any(self._expr_contains_unknown_call(e) for e in expr.elements) or self._expr_contains_unknown_call(expr.count)
+        if isinstance(expr, TpyCoerce):
+            return self._expr_contains_unknown_call(expr.expr)
+        return False
+
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         if isinstance(stmt, TpyVarDecl):
@@ -104,6 +141,8 @@ class StatementAnalyzer:
             self._analyze_aug_assign(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
+            if self._expr_contains_unknown_call(stmt.expr):
+                self.ctx.non_none_exprs.clear()
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
                 ret_type = self.expr.analyze_expr(stmt.value)
@@ -125,15 +164,18 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self._warn_truthy_value_optionals(stmt.condition)
             then_facts, else_facts = self.expr.get_condition_none_facts(stmt.condition)
+            then_expr_facts, else_expr_facts = self.expr.get_condition_expr_none_facts(stmt.condition)
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
             self.ctx.non_none_vars.update(then_facts)
+            self.ctx.non_none_exprs.update(then_expr_facts)
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
             self.init.restore(before)
             self.ctx.non_none_vars.update(else_facts)
+            self.ctx.non_none_exprs.update(else_expr_facts)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()
@@ -156,9 +198,14 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self._warn_truthy_value_optionals(stmt.condition)
             then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
+            then_expr_facts, _ = self.expr.get_condition_expr_none_facts(stmt.condition)
             before = self.init.save()
             with self.scopes.loop_scope():
-                self.ctx.non_none_vars.update(then_facts)
+                self.init.apply_loop_entry_facts(
+                    before,
+                    condition_non_none=then_facts,
+                    condition_non_none_exprs=then_expr_facts,
+                )
                 for s in stmt.body:
                     self.analyze_stmt(s)
             self.init.restore(before)
@@ -167,6 +214,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.end)
             before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
+                self.init.apply_loop_entry_facts(before)
                 with self.scopes.loop_var(inner_scope, stmt.var, INT32, inner_scope.depth):
                     for s in stmt.body:
                         self.analyze_stmt(s)
@@ -176,6 +224,7 @@ class StatementAnalyzer:
             elem_type = self.list_tracker.get_iterable_element_type(iterable_type)
             before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
+                self.init.apply_loop_entry_facts(before)
                 # For-each var references container's storage — use container's depth.
                 # For rvalue iterables (calls), C++ extends the temporary's lifetime
                 # to the for statement, but it dies when the loop ends. Use body depth
@@ -213,7 +262,9 @@ class StatementAnalyzer:
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
             then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
+            then_expr_facts, _ = self.expr.get_condition_expr_none_facts(stmt.condition)
             self.ctx.non_none_vars.update(then_facts)
+            self.ctx.non_none_exprs.update(then_expr_facts)
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param or loop variable."""
@@ -438,6 +489,10 @@ class StatementAnalyzer:
             raise SemanticError(f"Variable '{stmt.name}' has no type annotation and no initializer")
 
         self.ctx.current_scope.define(stmt.name, var_type)
+        # Any write to the root invalidates identity facts rooted at that variable.
+        self._kill_expr_facts_rooted_at(stmt.name)
+        if stmt.init and self._expr_contains_unknown_call(stmt.init):
+            self.ctx.non_none_exprs.clear()
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self._update_non_none_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
@@ -482,6 +537,11 @@ class StatementAnalyzer:
         """Analyze an assignment."""
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
+        value_has_unknown_call = self._expr_contains_unknown_call(stmt.value)
+        if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
+            declared_target_type = self.expr.get_declared_expr_type(stmt.target)
+            if declared_target_type is not None:
+                target_type = declared_target_type
         if isinstance(stmt.target, TpyName):
             # Match var-decl flow: reject forbidden rebinding before any type mutation.
             self._check_nonvalue_rebinding(stmt.target.name, stmt)
@@ -527,6 +587,8 @@ class StatementAnalyzer:
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
+        if value_has_unknown_call:
+            self.ctx.non_none_exprs.clear()
 
         if isinstance(stmt.target, TpyFieldAccess):
             if self.compat.needs_copy_warning(stmt.value, target_type):
@@ -554,14 +616,18 @@ class StatementAnalyzer:
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):
+            self._kill_expr_facts_rooted_at(stmt.target.name)
             self.init.mark_assigned(stmt.target.name)
             self._update_non_none_after_write(stmt.target.name, target_type, value_type, stmt.value)
+        else:
+            self._kill_expr_facts_touching_target(stmt.target)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         from .operators import OperatorResolver
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
+        self._kill_expr_facts_touching_target(stmt.target)
         if (
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     VoidType, NamedType, PtrType, ConstPtrType, OwnType, ArrayType, ListType, PendingListType,
-    SpanType, TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType,
+    SpanType, ModuleType, TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
@@ -31,6 +31,8 @@ if TYPE_CHECKING:
     from .methods import MethodAnalyzer
 
 from tpyc import modules as builtin_modules
+
+ExprIdentity = tuple[str, ...]
 
 
 class ExpressionAnalyzer:
@@ -173,6 +175,119 @@ class ExpressionAnalyzer:
                 return binding.type
         return self.ctx.current_scope.lookup(name)
 
+    def _is_builtin_stable_subscript_type(self, typ: TpyType) -> bool:
+        """Whether subscript identities for this type are safe to track in phase 3a."""
+        if isinstance(typ, (ListType, ArrayType, SpanType, PendingListType, StrType)):
+            return True
+        if isinstance(typ, ModuleType):
+            qname = typ.qualified_name()
+            return qname in {"builtins.list", "builtins.str", "tpy.Array", "tpy.Span", "tpy.StaticList"}
+        return False
+
+    def _declared_type_for_expr(self, expr: TpyExpr) -> TpyType | None:
+        """Get declared type for identity-capable expressions without flow narrowing."""
+        if isinstance(expr, TpyName):
+            return self._declared_type_for_name(expr.name)
+        if isinstance(expr, TpyFieldAccess):
+            obj_type = self._declared_type_for_expr(expr.obj)
+            if obj_type is None:
+                return None
+            actual_type = obj_type
+            if isinstance(actual_type, (PtrType, ConstPtrType)):
+                actual_type = actual_type.pointee
+            elif isinstance(actual_type, OwnType):
+                actual_type = actual_type.wrapped
+            elif isinstance(actual_type, OptionalType):
+                if actual_type.inner.is_value_type():
+                    return None
+                actual_type = actual_type.inner
+
+            if isinstance(actual_type, NamedType) and actual_type.is_record:
+                record = self.ctx.registry.get_record(actual_type.name)
+                if not record:
+                    return None
+                type_subst = self.type_ops.build_type_substitution(actual_type)
+                field_info = self.protocols.lookup_record_field(record, expr.field)
+                if field_info is None:
+                    return None
+                field_type = field_info.type
+                if type_subst:
+                    field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+                return field_type
+
+            if isinstance(actual_type, TypeParamRef):
+                bound = self.type_ops.get_type_param_bound(actual_type.name)
+                if bound is not None and is_protocol_type(bound):
+                    protocol_info = self.ctx.registry.get_protocol(bound.name)
+                    if protocol_info:
+                        for field_name, field_type in protocol_info.fields or []:
+                            if field_name == expr.field:
+                                type_subst: dict[str, TpyType] = {"Self": actual_type}
+                                if protocol_info.type_params and bound.type_args:
+                                    type_subst.update(dict(zip(protocol_info.type_params, bound.type_args)))
+                                return self.type_ops.substitute_types(field_type, type_subst)
+            return None
+        if isinstance(expr, TpySubscript):
+            obj_type = self._declared_type_for_expr(expr.obj)
+            if obj_type is None:
+                return None
+            actual_type = obj_type
+            if isinstance(actual_type, OptionalType):
+                if actual_type.inner.is_value_type():
+                    return None
+                actual_type = actual_type.inner
+            elem_type = actual_type.get_element_type()
+            if elem_type is not None:
+                return elem_type
+            if is_protocol_type(actual_type):
+                return self._get_protocol_getitem_type(actual_type)
+            if isinstance(actual_type, NamedType) and actual_type.is_record:
+                return self._get_record_getitem_type(actual_type)
+        return None
+
+    def _simple_index_token(self, expr: TpyExpr) -> str | None:
+        if isinstance(expr, TpyIntLiteral):
+            return f"int:{expr.value}"
+        if isinstance(expr, TpyName):
+            return f"name:{expr.name}"
+        if isinstance(expr, TpyUnaryOp) and expr.op == "-" and isinstance(expr.operand, TpyIntLiteral):
+            return f"int:{-expr.operand.value}"
+        return None
+
+    def _expr_identity(self, expr: TpyExpr) -> ExprIdentity | None:
+        if isinstance(expr, TpyName):
+            return (expr.name,)
+        if isinstance(expr, TpyFieldAccess):
+            base = self._expr_identity(expr.obj)
+            if base is None:
+                return None
+            return base + (f".{expr.field}",)
+        if isinstance(expr, TpySubscript):
+            base = self._expr_identity(expr.obj)
+            if base is None:
+                return None
+            base_type = self._declared_type_for_expr(expr.obj)
+            if base_type is None:
+                return None
+            if isinstance(base_type, OptionalType):
+                base_type = base_type.inner
+            if not self._is_builtin_stable_subscript_type(base_type):
+                return None
+            token = self._simple_index_token(expr.index)
+            if token is None:
+                return None
+            return base + (f"[{token}]",)
+        return None
+
+    def _narrow_optional_expr_type(self, expr: TpyExpr, typ: TpyType) -> TpyType:
+        if isinstance(typ, OptionalType):
+            identity = self._expr_identity(expr)
+            if identity is not None and identity in self.ctx.non_none_exprs:
+                if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+                    expr.narrowed_optional_proven = True
+                return typ.inner
+        return typ
+
     def _optional_name_none_facts(self, expr: TpyExpr) -> tuple[set[str], set[str]]:
         """Return (facts_if_true, facts_if_false) for Optional None-check conditions."""
         if isinstance(expr, TpyName):
@@ -212,6 +327,52 @@ class ExpressionAnalyzer:
     def get_condition_none_facts(self, condition: TpyExpr) -> tuple[set[str], set[str]]:
         """Public helper for statement flow analysis."""
         return self._optional_name_none_facts(condition)
+
+    def _optional_expr_none_facts(self, expr: TpyExpr) -> tuple[set[ExprIdentity], set[ExprIdentity]]:
+        """Return (facts_if_true, facts_if_false) for Optional expression identities."""
+        if isinstance(expr, (TpyName, TpyFieldAccess, TpySubscript)):
+            identity = self._expr_identity(expr)
+            declared = self._declared_type_for_expr(expr)
+            if identity is not None and isinstance(declared, OptionalType):
+                return {identity}, set()
+
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            true_facts, false_facts = self._optional_expr_none_facts(expr.operand)
+            return false_facts, true_facts
+
+        if isinstance(expr, TpyBinOp):
+            if expr.op in ("is", "is not"):
+                identity_expr: TpyExpr | None = None
+                if isinstance(expr.right, TpyNoneLiteral):
+                    identity_expr = expr.left
+                elif isinstance(expr.left, TpyNoneLiteral):
+                    identity_expr = expr.right
+                if identity_expr is not None:
+                    identity = self._expr_identity(identity_expr)
+                    declared = self._declared_type_for_expr(identity_expr)
+                    if identity is not None and isinstance(declared, OptionalType):
+                        if expr.op == "is not":
+                            return {identity}, set()
+                        return set(), {identity}
+            if expr.op == "&&":
+                left_true, left_false = self._optional_expr_none_facts(expr.left)
+                right_true, right_false = self._optional_expr_none_facts(expr.right)
+                return left_true | right_true, left_false & right_false
+            if expr.op == "||":
+                left_true, left_false = self._optional_expr_none_facts(expr.left)
+                right_true, right_false = self._optional_expr_none_facts(expr.right)
+                return left_true & right_true, left_false | right_false
+        return set(), set()
+
+    def get_condition_expr_none_facts(
+        self, condition: TpyExpr
+    ) -> tuple[set[ExprIdentity], set[ExprIdentity]]:
+        """Public helper for expression-identity flow analysis."""
+        return self._optional_expr_none_facts(condition)
+
+    def get_declared_expr_type(self, expr: TpyExpr) -> TpyType | None:
+        """Get expression type without applying flow-narrowing facts."""
+        return self._declared_type_for_expr(expr)
 
     def _optional_truthy_names(self, expr: TpyExpr) -> set[str]:
         """Collect Optional variable names used in truthiness contexts."""
@@ -306,16 +467,14 @@ class ExpressionAnalyzer:
             right_type = self.analyze_expr(expr.right)
 
         # Preserve declared Optional type for identity checks when flow narrowing
-        # resolved a variable expression to its inner type.
+        # resolved an expression to its inner type.
         if expr.op in ("is", "is not"):
-            if isinstance(expr.left, TpyName):
-                declared_left = self._declared_type_for_name(expr.left.name)
-                if isinstance(declared_left, OptionalType):
-                    left_type = declared_left
-            if isinstance(expr.right, TpyName):
-                declared_right = self._declared_type_for_name(expr.right.name)
-                if isinstance(declared_right, OptionalType):
-                    right_type = declared_right
+            declared_left = self._declared_type_for_expr(expr.left)
+            if isinstance(declared_left, OptionalType):
+                left_type = declared_left
+            declared_right = self._declared_type_for_expr(expr.right)
+            if isinstance(declared_right, OptionalType):
+                right_type = declared_right
 
         # Enforce Pythonic None identity checks for Optional values.
         # `x == None` / `x != None` on Optional values should use `is` / `is not`.
@@ -524,7 +683,7 @@ class ExpressionAnalyzer:
                 field_type = field_info.type
                 if type_subst:
                     field_type = self.type_ops.substitute_type_params(field_type, type_subst)
-                return field_type
+                return self._narrow_optional_expr_type(expr, field_type)
             raise SemanticError(f"Record '{actual_type.name}' has no field '{expr.field}'")
 
         # Bounded type parameter - access field from protocol bound
@@ -539,7 +698,8 @@ class ExpressionAnalyzer:
                             type_subst: dict[str, TpyType] = {"Self": actual_type}
                             if protocol_info.type_params and bound.type_args:
                                 type_subst.update(dict(zip(protocol_info.type_params, bound.type_args)))
-                            return self.type_ops.substitute_types(field_type, type_subst)
+                            typ = self.type_ops.substitute_types(field_type, type_subst)
+                            return self._narrow_optional_expr_type(expr, typ)
                     raise self.ctx.error(f"Protocol '{bound.name}' has no field '{expr.field}'", expr)
 
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
@@ -663,15 +823,15 @@ class ExpressionAnalyzer:
         # Use get_element_type() trait for containers and strings
         elem_type = actual_type.get_element_type()
         if elem_type is not None:
-            return elem_type
+            return self._narrow_optional_expr_type(expr, elem_type)
 
         # Protocol types - lookup __getitem__ return type
         if is_protocol_type(actual_type):
-            return self._get_protocol_getitem_type(actual_type)
+            return self._narrow_optional_expr_type(expr, self._get_protocol_getitem_type(actual_type))
 
         # User records with __getitem__ method
         if isinstance(actual_type, NamedType) and actual_type.is_record:
-            return self._get_record_getitem_type(actual_type)
+            return self._narrow_optional_expr_type(expr, self._get_record_getitem_type(actual_type))
 
         raise SemanticError(f"Cannot index type {obj_type}")
 
