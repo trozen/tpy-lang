@@ -103,33 +103,34 @@ tpyc/
 ```
 tests/
 ├── cases/                    # All tests, grouped by feature
-│   ├── imports/              # Imports, relative imports, packages, shadowing
-│   ├── generics/             # Generic types, functions, inference, bounds
-│   ├── protocols/            # Protocol definition and implementation
-│   ├── inheritance/          # Class inheritance, super calls
-│   ├── int/                  # int, Int32, BigInt
-│   ├── float/                # Float operations
-│   ├── bool/                 # Bool type and conversion
-│   ├── str/                  # str, Char, string operations
-│   ├── list/                 # List, container methods
 │   ├── array_span/           # Array, Span, StaticList
-│   ├── pointers/             # Ptr, ConstPtr, Own, dangling references
-│   ├── records/              # Class/record methods, dunder, staticmethod
-│   ├── control_flow/         # if/else, for loops, break/continue, iterables
-│   ├── operators/            # Operators, coercion, assignment, subscript
-│   ├── globals/              # Global variables, name binding
+│   ├── bool/                 # Bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
-│   └── returns/              # Return value semantics
+│   ├── control_flow/         # if/else, for loops, break/continue, iterables
+│   ├── float/                # Float operations
+│   ├── generics/             # Generic types, functions, inference, bounds
+│   ├── globals/              # Global variables, name binding
+│   ├── imports/              # Imports, relative imports, packages, shadowing
+│   ├── inference/            # Type inference, variable type deduction
+│   ├── inheritance/          # Class inheritance, super calls, method override
+│   ├── int/                  # int, Int32, BigInt
+│   ├── list/                 # List, container methods
+│   ├── operators/            # Operators, coercion, assignment, subscript
+│   ├── pointers/             # Ptr, ConstPtr, Own, dangling references
+│   ├── protocols/            # Protocol definition and implementation
+│   ├── records/              # Class/record methods, dunder, staticmethod
+│   ├── returns/              # Return value semantics
+│   └── str/                  # str, Char, string operations
 │       ├── {name}/           # Success test
 │       ├── error_{name}/     # Compilation error test
 │       └── panic_{name}/     # Runtime panic test
 │           ├── src/
 │           │   └── main.tp.py
 │           └── expected/
-│               ├── diag.txt      # Compiler diagnostics
-│               ├── main.hpp      # Generated header (if compiles)
-│               ├── main.cpp      # Generated source (if compiles)
-│               └── output.txt    # Runtime output (or panic.txt)
+│               ├── diag.txt           # Compiler diagnostics
+│               ├── include/main.hpp   # Generated header (if compiles)
+│               ├── src/main.cpp       # Generated source (if compiles)
+│               └── output.txt         # Runtime output (or panic.txt)
 ├── harness/tpy/              # CPython simulation module
 ├── conftest.py               # Pytest fixtures and shared utilities
 ├── test_comp.py              # Fast compilation tests (diagnostics, codegen)
@@ -171,11 +172,65 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
-| `typesys.py` | Type definitions (Int32, Bool, Void, Str, Record, Ptr, ConstPtr, StaticList, Array, Span) and TypeRegistry |
-| `sema/` | Multi-pass semantic analysis: type checking, type inference (composable package) |
-| `codegen_cpp/` | C++ code generation: expressions, statements, records, protocols (composable package) |
+| `typesys.py` | Type definitions (Int32, BigInt, Float, Bool, Void, Str, Char, Record, Ptr, ConstPtr, Own, Optional, List, Array, Span, StaticList) and TypeRegistry |
+| `sema/` | Multi-pass semantic analysis (see below) |
+| `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
-| `modules/` | Built-in function/type definitions and module resolution (`resolver.py` for user modules) |
+| `modules/` | Built-in function/type definitions and module resolution (see below) |
+| `namespace.py` | Unified namespace system for name resolution |
+| `coercions.py` | Type coercion rules (numeric widening, etc.) |
+| `repl.py` | Interactive REPL implementation |
+
+### Semantic Analysis (`tpyc/sema/`)
+
+| Module | Purpose |
+|--------|---------|
+| `analyzer.py` | Main semantic analyzer orchestrator |
+| `context.py` | Analysis context and state |
+| `statements.py` | Statement analysis |
+| `expressions.py` | Expression analysis and type checking |
+| `calls.py` | Function call resolution and overload matching |
+| `methods.py` | Method resolution and binding |
+| `operators.py` | Operator type checking |
+| `type_ops.py` | Type operations (coercion, compatibility) |
+| `compatibility.py` | Type compatibility checking |
+| `overloads.py` | Overload resolution |
+| `registration.py` | Symbol registration and scope binding |
+| `scope_tracker.py` | Variable scope tracking |
+| `init_tracker.py` | Variable initialization tracking |
+| `reassignment_inference.py` | Type inference for reassigned variables |
+| `list_literals.py` | List literal type inference |
+| `numeric_lattice.py` | Numeric type lattice for inference |
+| `protocols.py` | Protocol implementation checking |
+| `diagnostics.py` | Error and warning message formatting |
+
+### Code Generation (`tpyc/codegen_cpp/`)
+
+| Module | Purpose |
+|--------|---------|
+| `generator.py` | Main code generator orchestrator |
+| `context.py` | Code generation context (scopes, pointer tracking) |
+| `expressions.py` | Expression code generation |
+| `statements.py` | Statement code generation |
+| `functions.py` | Function code generation |
+| `records.py` | Class/record code generation |
+| `protocols.py` | Protocol code generation |
+| `builtins.py` | Built-in function codegen |
+| `types.py` | Type mapping (TurboPython → C++) |
+| `type_resolution.py` | Runtime type resolution for generics |
+
+### Built-in Modules (`tpyc/modules/`)
+
+| Module | Purpose |
+|--------|---------|
+| `builtins.py` | Built-in functions (`print`, `len`, `str`, `int`, `bool`, etc.) |
+| `resolver.py` | User module resolution |
+| `helpers.py` | Helper utilities for type definitions |
+| `typing.py` | `typing` module (type annotations) |
+| `tpy.py` | TurboPython-specific types and decorators |
+| `math.py` | `math` module |
+| `sys.py` | `sys` module |
+| `time.py` | `time` module |
 
 ### Runtime (`runtime/`)
 
@@ -213,7 +268,6 @@ The compiler is a proof-of-concept. Not yet implemented:
 - `dict`, `set`, `tuple`
 - Exception handling (`try`/`except`/`raise`)
 - `async`/`await`, `lambda`, `yield`
-- Inheritance
 - List slicing (`items[1:3]`)
 
 ## Type Mappings
@@ -222,9 +276,12 @@ The compiler is a proof-of-concept. Not yet implemented:
 |-------------|-----|
 | `int` | `tpy::BigInt` (arbitrary precision) |
 | `Int32` | `int32_t` |
+| `float` | `double` (IEEE 754) |
 | `Bool` | `bool` |
 | `str` | `const char*` (parameters: `std::string_view`) |
 | `Char` | `char` |
+| `None` | `void` (return type) |
+| `Optional[T]` | `std::optional<T>` |
 | `list[T]` | `std::vector<T>` |
 | `Array[T, N]` | `std::array<T, N>` |
 | `Span[T]` | `std::span<const T>` |
