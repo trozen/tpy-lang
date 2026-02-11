@@ -2,36 +2,35 @@
 
 ## Next
 - merge bool/Bool types -- since CPython has bool, we should stick to that
-- finish items from OWNERSHIP_DESIGN.md
+- parser: extract to separate module (currently a 1500-line monolithic file)
+- merge for and for-each handling, introduce real iterators/generators (range() should be a generator)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
-- user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`.
+- user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
-- all expected warnings/errors should be in `# tpyc` annotation
-- parser: extract to separate module
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - readonly effects on protocols: mark read contracts like `Sized.__len__` / `Sequence.__getitem__` as readonly, enforce conformance (impl must be readonly), and satisfy via conservative readonly inference when provable so existing code usually keeps working
 - list literal contextual typing: when LHS has explicit annotation like `list[Int32 | None]`, allow compatible literals (`[]`, `[Int32(1)]`, `[None]`) via contextual element-type widening instead of strict inferred-list mismatch
+- const/mutability design: how to handle const methods (`__len__`, `__getitem__`), method qualifiers (like `const` in C++), and the `mutation_methods` set — unify into a coherent constness model
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
-- `type()` function
+- `type()` function / compile-time type info
 - extract c++ compiler interface
 - `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function
-- how to handle const methods like `__len__` or `__getitem__`; how to handle constness in TPy?
 - template function implementation should be in some specific header file
 - `DeRef` protocol?
 - allow type annotation to use "" (forward decl)
 - `ValueType` protocol bound — `T: ValueType` would suppress copy warnings for generic fields, since value types copy silently
-- propert string handling (STRING_HANDLING.md)
-- `mutation_methods = {"append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__"}` - should rather have some method qualifier? like `const` in C++?
+- proper string handling (STRING_HANDLING.md)
 - Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
 - differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently.
 - make a doc with TPy vs Python differences
 - keyword arguments
-- analysis: when an object is passed to a function by references but then copied, should we suggest passing as Own[]?
+- analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
 - for-each: preserve loop variable after loop exit (if used after the loop)
+- REPL: arr=[1,2,3]; arr[-4]
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
@@ -62,14 +61,12 @@ Random items that may or may not be implemented in the future, but putting them 
 - better handling of tpy_panic -- exceptions in first version (later generation policy)
 - c++ generation profiles: utf8 strings vs char strings; int literal default to int or Int32 (per module, function, build options?)
 - static_cast<char> -- should rather use checked cast (policy based)
-- `arr[(arr.size() - 1)]` -- should use true negative indexing
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- `copy()` builtin for explicit copying
 - support augmented arithmetic operators, like `__iadd__` for `+=` etc.
-- support more dunder methods: `__str__`, `__bool__`, `__hash__`, etc.
+- support more dunder methods: `__bool__`, `__hash__`, etc.
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
-- ability to define `__str__` method
+- ability to define `__str__` method (currently works as explicit call `obj.__str__()`, but `str(obj)` doesn't dispatch to it)
 - better class operator<< tests (but missing str formatting/concatenation)
 - dynamic dispatch
 - full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
@@ -85,6 +82,9 @@ Random items that may or may not be implemented in the future, but putting them 
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 - C++ header ordering: inline method bodies in structs (constructors, methods) can't call free functions declared later in the header. Affects cases like `self.value = func()` when func is defined before the class in Python but its C++ forward declaration is emitted after the struct. Fix: emit function forward declarations before struct definitions, or move method bodies out-of-line.
 - investigate other backends than c++
+- panic show line number?
+- generate const function variants for @readonly functions
+- properly import annotations from tpy module (readonly, noalloc etc); should not be accessible without it; also, should support @tpy.readonly
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

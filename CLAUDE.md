@@ -104,6 +104,7 @@ tpyc/
 tests/
 ├── cases/                    # All tests, grouped by feature
 │   ├── array_span/           # Array, Span, StaticList
+│   ├── assert/               # assert statements, narrowing integration
 │   ├── bool/                 # Bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
 │   ├── control_flow/         # if/else, for loops, break/continue, iterables
@@ -115,6 +116,7 @@ tests/
 │   ├── inheritance/          # Class inheritance, super calls, method override
 │   ├── int/                  # int, Int32, BigInt
 │   ├── list/                 # List, container methods
+│   ├── none_safety/          # Optional types, narrowing, @readonly
 │   ├── operators/            # Operators, coercion, assignment, subscript
 │   ├── pointers/             # Ptr, ConstPtr, Own, dangling references
 │   ├── protocols/            # Protocol definition and implementation
@@ -201,6 +203,7 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 | `reassignment_inference.py` | Type inference for reassigned variables |
 | `list_literals.py` | List literal type inference |
 | `numeric_lattice.py` | Numeric type lattice for inference |
+| `narrowing.py` | Optional narrowing tracker (None-safety flow analysis) |
 | `protocols.py` | Protocol implementation checking |
 | `diagnostics.py` | Error and warning message formatting |
 
