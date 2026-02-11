@@ -139,6 +139,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="tpy::get_item({self}, {0})",
+            is_readonly=True,
         )],
         "__setitem__": [MethodDef(
             params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],

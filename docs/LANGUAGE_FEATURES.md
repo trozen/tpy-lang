@@ -1158,6 +1158,10 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)
+- **Working**: `@readonly` (conservative contract enforcement on functions/methods)
+  - Disallows field/subscript/global writes inside readonly bodies
+  - Disallows calls to unknown/non-readonly functions inside readonly bodies
+  - Current form: `@readonly` (bare name). `@tpy.readonly` is not yet supported.
 - **Open**: Custom decorators → compile-time transforms
 
 ### Type Polymorphism

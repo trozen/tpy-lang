@@ -114,7 +114,17 @@ class StatementAnalyzer:
 
     def _expr_contains_unknown_call(self, expr: TpyExpr) -> bool:
         if isinstance(expr, (TpyCall, TpyMethodCall)):
-            return True
+            if not self._is_readonly_call_expr(expr):
+                return True
+            # Even readonly calls evaluate receiver/arguments first; recurse to catch
+            # nested unknown-effect calls in those subexpressions.
+            if isinstance(expr, TpyMethodCall) and self._expr_contains_unknown_call(expr.obj):
+                return True
+            if any(self._expr_contains_unknown_call(arg) for arg in expr.args):
+                return True
+            if isinstance(expr, TpyCall):
+                return any(self._expr_contains_unknown_call(v) for v in expr.kwargs.values())
+            return False
         if isinstance(expr, TpyBinOp):
             return self._expr_contains_unknown_call(expr.left) or self._expr_contains_unknown_call(expr.right)
         if isinstance(expr, TpyUnaryOp):
@@ -131,6 +141,98 @@ class StatementAnalyzer:
             return self._expr_contains_unknown_call(expr.expr)
         return False
 
+    def _in_readonly_context(self) -> bool:
+        return isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.is_readonly
+
+    def _is_local_name_binding(self, name: str) -> bool:
+        scope = self.ctx.current_scope
+        while scope is not None and scope is not self.ctx.global_scope:
+            if name in scope.bindings:
+                return True
+            scope = scope.parent
+        return False
+
+    @staticmethod
+    def _is_readonly_call_expr(expr: TpyExpr) -> bool:
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            info = expr.resolved_function_info
+            return info is not None and info.is_readonly
+        return False
+
+    def _readonly_violation_call(self, expr: TpyExpr) -> TpyExpr | None:
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            if not self._is_readonly_call_expr(expr):
+                return expr
+            for arg in expr.args:
+                bad = self._readonly_violation_call(arg)
+                if bad is not None:
+                    return bad
+            if isinstance(expr, TpyCall):
+                for kwarg in expr.kwargs.values():
+                    bad = self._readonly_violation_call(kwarg)
+                    if bad is not None:
+                        return bad
+            if isinstance(expr, TpyMethodCall):
+                bad = self._readonly_violation_call(expr.obj)
+                if bad is not None:
+                    return bad
+            return None
+        if isinstance(expr, TpyBinOp):
+            return self._readonly_violation_call(expr.left) or self._readonly_violation_call(expr.right)
+        if isinstance(expr, TpyUnaryOp):
+            return self._readonly_violation_call(expr.operand)
+        if isinstance(expr, TpyFieldAccess):
+            return self._readonly_violation_call(expr.obj)
+        if isinstance(expr, TpySubscript):
+            return self._readonly_violation_call(expr.obj) or self._readonly_violation_call(expr.index)
+        if isinstance(expr, TpyArrayLiteral):
+            for e in expr.elements:
+                bad = self._readonly_violation_call(e)
+                if bad is not None:
+                    return bad
+            return None
+        if isinstance(expr, TpyListRepeat):
+            for e in expr.elements:
+                bad = self._readonly_violation_call(e)
+                if bad is not None:
+                    return bad
+            return self._readonly_violation_call(expr.count)
+        if isinstance(expr, TpyCoerce):
+            return self._readonly_violation_call(expr.expr)
+        return None
+
+    def _enforce_readonly_expr(self, expr: TpyExpr) -> None:
+        if not self._in_readonly_context():
+            return
+        bad = self._readonly_violation_call(expr)
+        if bad is None:
+            return
+        if isinstance(bad, TpyCall):
+            name = bad.func
+            raise self.ctx.error(
+                f"Call to non-readonly or unknown-effect function '{name}' is not allowed in @readonly function",
+                bad,
+            )
+        if isinstance(bad, TpyMethodCall):
+            raise self.ctx.error(
+                f"Call to non-readonly or unknown-effect method '{bad.method}' is not allowed in @readonly function",
+                bad,
+            )
+
+    def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
+        if not self._in_readonly_context():
+            return
+        if isinstance(target, TpyFieldAccess):
+            raise self.ctx.error("Cannot assign to fields inside @readonly function", target)
+        if isinstance(target, TpySubscript):
+            raise self.ctx.error("Cannot assign through subscript inside @readonly function", target)
+        if isinstance(target, TpyName):
+            if not self._is_local_name_binding(target.name) and self.ctx.global_scope.lookup(target.name) is not None:
+                raise self.ctx.error(
+                    f"Cannot assign to global '{target.name}' inside @readonly function",
+                    target,
+                )
+
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         if isinstance(stmt, TpyVarDecl):
@@ -141,11 +243,13 @@ class StatementAnalyzer:
             self._analyze_aug_assign(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
+            self._enforce_readonly_expr(stmt.expr)
             if self._expr_contains_unknown_call(stmt.expr):
                 self.ctx.non_none_exprs.clear()
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
                 ret_type = self.expr.analyze_expr(stmt.value)
+                self._enforce_readonly_expr(stmt.value)
                 expected = self.ctx.current_function.return_type if self.ctx.current_function else VOID
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
@@ -162,6 +266,7 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
+            self._enforce_readonly_expr(stmt.condition)
             self._warn_truthy_value_optionals(stmt.condition)
             then_facts, else_facts = self.expr.get_condition_none_facts(stmt.condition)
             then_expr_facts, else_expr_facts = self.expr.get_condition_expr_none_facts(stmt.condition)
@@ -196,6 +301,7 @@ class StatementAnalyzer:
                 }
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
+            self._enforce_readonly_expr(stmt.condition)
             self._warn_truthy_value_optionals(stmt.condition)
             then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
             then_expr_facts, _ = self.expr.get_condition_expr_none_facts(stmt.condition)
@@ -212,6 +318,8 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyFor):
             self.expr.analyze_expr(stmt.start)
             self.expr.analyze_expr(stmt.end)
+            self._enforce_readonly_expr(stmt.start)
+            self._enforce_readonly_expr(stmt.end)
             before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
                 self.init.apply_loop_entry_facts(before)
@@ -221,6 +329,7 @@ class StatementAnalyzer:
             self.init.restore(before)
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
+            self._enforce_readonly_expr(stmt.iterable)
             elem_type = self.list_tracker.get_iterable_element_type(iterable_type)
             before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
@@ -256,9 +365,11 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyAssert):
             self.expr.analyze_expr(stmt.condition)
+            self._enforce_readonly_expr(stmt.condition)
             self._warn_truthy_value_optionals(stmt.condition)
             if stmt.message is not None:
                 self.expr.analyze_expr(stmt.message)
+                self._enforce_readonly_expr(stmt.message)
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
             then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
@@ -331,6 +442,17 @@ class StatementAnalyzer:
         if is_preregistered_global_write:
             existing_type = None
 
+        if (
+            self._in_readonly_context()
+            and existing_type is not None
+            and not self._is_local_name_binding(stmt.name)
+            and self.ctx.global_scope.lookup(stmt.name) is not None
+        ):
+            raise self.ctx.error(
+                f"Cannot assign to global '{stmt.name}' inside @readonly function",
+                stmt,
+            )
+
         # Disallow reassignment of non-value-type params and loop vars
         if existing_type is not None:
             self._check_nonvalue_rebinding(stmt.name, stmt)
@@ -396,6 +518,7 @@ class StatementAnalyzer:
                     )
             else:
                 init_type = self.expr.analyze_expr(stmt.init)
+            self._enforce_readonly_expr(stmt.init)
 
             # Track list literal to variable mapping for mutation detection
             if isinstance(init_type, PendingListType):
@@ -535,8 +658,11 @@ class StatementAnalyzer:
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
+        self._enforce_readonly_assignment_target(stmt.target)
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
+        self._enforce_readonly_expr(stmt.target)
+        self._enforce_readonly_expr(stmt.value)
         value_has_unknown_call = self._expr_contains_unknown_call(stmt.value)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.expr.get_declared_expr_type(stmt.target)
@@ -625,8 +751,11 @@ class StatementAnalyzer:
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         from .operators import OperatorResolver
+        self._enforce_readonly_assignment_target(stmt.target)
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
+        self._enforce_readonly_expr(stmt.target)
+        self._enforce_readonly_expr(stmt.value)
         self._kill_expr_facts_touching_target(stmt.target)
         if (
             isinstance(stmt.target, TpyName)

@@ -579,6 +579,7 @@ class TypeOperations:
             params=substituted_params,
             return_type=substituted_return,
             is_noalloc=method.is_noalloc,
+            is_readonly=method.is_readonly,
             is_method=method.is_method,
             is_staticmethod=method.is_staticmethod,
             type_params=method.type_params,

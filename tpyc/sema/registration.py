@@ -153,6 +153,7 @@ class TypeRegistrar:
                 name=method.name,
                 params=method.params,
                 return_type=method.return_type,
+                is_readonly=method.is_readonly,
                 is_method=True,
                 is_staticmethod=method.is_staticmethod,
                 cpp_template=DUNDER_CPP_TEMPLATES.get(method.name)
@@ -486,6 +487,7 @@ class TypeRegistrar:
             params=resolved_params,
             return_type=resolved_return,
             is_noalloc=func.is_noalloc,
+            is_readonly=func.is_readonly,
             type_params=func.type_params,
             type_param_bounds=type_param_bounds
         )

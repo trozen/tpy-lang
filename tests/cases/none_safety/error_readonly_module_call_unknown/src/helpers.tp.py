@@ -1,0 +1,2 @@
+def mutate() -> None:
+    return

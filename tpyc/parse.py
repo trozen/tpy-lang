@@ -56,6 +56,7 @@ class TpyExpr:
 
 if TYPE_CHECKING:
     from .coercions import Coercion
+    from .typesys import FunctionInfo
 
 
 @dataclass
@@ -126,6 +127,7 @@ class TpyCall(TpyExpr):
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic function calls
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
+    resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
 
 
 @dataclass
@@ -139,7 +141,7 @@ class TpyMethodCall(TpyExpr):
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
-    # Note: sema sets resolved_function_info (FunctionInfo) for codegen
+    resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
 
 
 @dataclass
@@ -351,6 +353,7 @@ class TpyFunction:
     return_type: TpyType
     body: list[TpyStmt]
     is_noalloc: bool = False
+    is_readonly: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
     type_params: list[str] = field(default_factory=list)
@@ -890,11 +893,14 @@ class Parser:
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyFunction:
         """Parse a method definition."""
-        # Check for @staticmethod decorator
+        # Check decorators (@staticmethod, @readonly)
         is_staticmethod = False
+        is_readonly = False
         for dec in node.decorator_list:
             if isinstance(dec, ast.Name) and dec.id == "staticmethod":
                 is_staticmethod = True
+            elif isinstance(dec, ast.Name) and dec.id == "readonly":
+                is_readonly = True
             else:
                 dec_name = dec.id if isinstance(dec, ast.Name) else type(dec).__name__
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
@@ -925,15 +931,19 @@ class Parser:
             body=body,
             is_method=True,
             is_staticmethod=is_staticmethod,
+            is_readonly=is_readonly,
             loc=self._loc(node)
         )
 
     def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
         """Parse a function definition."""
         is_noalloc = False
+        is_readonly = False
         for dec in node.decorator_list:
             if isinstance(dec, ast.Name) and dec.id == "noalloc":
                 is_noalloc = True
+            elif isinstance(dec, ast.Name) and dec.id == "readonly":
+                is_readonly = True
             else:
                 raise ParseError(f"Unknown decorator on function '{node.name}'", dec)
 
@@ -981,6 +991,7 @@ class Parser:
             return_type=return_type,
             body=body,
             is_noalloc=is_noalloc,
+            is_readonly=is_readonly,
             type_params=type_params,
             type_param_bounds=type_param_bounds,
             loc=self._loc(node)

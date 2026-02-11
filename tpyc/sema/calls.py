@@ -242,6 +242,7 @@ class CallAnalyzer:
                 continue
             if all(type_matches_numeric(arg_type, ptype)
                    for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
+                expr.resolved_function_info = ctor
                 return ctor.return_type
 
         # No matching overload found
@@ -264,6 +265,7 @@ class CallAnalyzer:
 
         matched = resolve_overload(overloads, arg_types, protocol_checker)
         if matched is not None:
+            expr.resolved_function_info = matched
             # Apply coercions to arguments where needed
             for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
                 if arg_t != ptype:
@@ -282,6 +284,7 @@ class CallAnalyzer:
         if func.is_generic():
             return self._analyze_generic_function_call(expr, func)
 
+        expr.resolved_function_info = func
         if len(expr.args) != len(func.params):
             raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
@@ -386,6 +389,8 @@ class CallAnalyzer:
         expr.inferred_type_args = tuple(type_subst[p] for p in func.type_params)
 
         # Resolve and check parameters
+        resolved_func = self.type_ops.substitute_method_type_params(func, type_subst)
+        expr.resolved_function_info = resolved_func
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
             arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
@@ -535,6 +540,7 @@ class CallAnalyzer:
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""
+        expr.resolved_function_info = func
         if len(expr.args) != len(func.params):
             raise SemanticError(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}")
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):

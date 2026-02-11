@@ -3,6 +3,7 @@ Dump documentation for builtin types in markdown format.
 """
 
 from .modules import get_all_modules
+from .modules import MethodDef
 
 
 def _format_type(t) -> str:
@@ -10,6 +11,31 @@ def _format_type(t) -> str:
     if isinstance(t, str):
         return t
     return str(t)
+
+
+def _format_annotations(overload: MethodDef) -> str:
+    """Format method/function annotations for signature display."""
+    annotations: list[str] = []
+    if overload.is_noalloc:
+        annotations.append("@noalloc")
+    if overload.is_readonly:
+        annotations.append("@readonly")
+    return " ".join(annotations)
+
+
+def _format_signature(name: str, overload: MethodDef) -> str:
+    """Format a callable signature with inline annotations."""
+    params = ", ".join(f"{p.name}: {_format_type(p.type)}" for p in overload.params)
+    ret = _format_type(overload.returns)
+    annotations = _format_annotations(overload)
+    if annotations:
+        return f"{annotations} {name}({params}) -> {ret}"
+    return f"{name}({params}) -> {ret}"
+
+
+def _print_signature_item(name: str, overload: MethodDef) -> None:
+    """Print one callable entry."""
+    print(f"- `{_format_signature(name, overload)}`")
 
 
 def dump_builtin_types() -> None:
@@ -50,17 +76,14 @@ def _print_type_doc(qname: str, type_def) -> None:
         print("**Constructors:**\n")
         base_name = qname.split(".")[-1]
         for ctor in type_def.constructors:
-            params = ", ".join(f"{p.name}: {_format_type(p.type)}" for p in ctor.params)
-            print(f"- `{base_name}({params})`")
+            _print_signature_item(base_name, ctor)
         print()
 
     if type_def.methods:
         print("**Methods:**\n")
         for method_name, overloads in type_def.methods.items():
             for ovl in overloads:
-                params = ", ".join(f"{p.name}: {_format_type(p.type)}" for p in ovl.params)
-                ret = _format_type(ovl.returns)
-                print(f"- `{method_name}({params}) -> {ret}`")
+                _print_signature_item(method_name, ovl)
         print()
 
 
@@ -68,9 +91,7 @@ def _print_function_doc(name: str, func_def) -> None:
     """Print documentation for a function."""
     print(f"### {name}()\n")
     for ovl in func_def.overloads:
-        params = ", ".join(f"{p.name}: {_format_type(p.type)}" for p in ovl.params)
-        ret = _format_type(ovl.returns)
-        print(f"- `{name}({params}) -> {ret}`")
+        _print_signature_item(name, ovl)
     print()
 
 
@@ -83,9 +104,7 @@ def _print_protocol_doc(name: str, proto_def) -> None:
     if proto_def.methods:
         print("**Required methods:**\n")
         for method_name, method in proto_def.methods.items():
-            params = ", ".join(f"{p.name}: {_format_type(p.type)}" for p in method.params)
-            ret = _format_type(method.returns)
-            print(f"- `{method_name}({params}) -> {ret}`")
+            _print_signature_item(method_name, method)
         print()
     else:
         print("Marker protocol (no required methods)\n")

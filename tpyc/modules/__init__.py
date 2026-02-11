@@ -30,6 +30,8 @@ class MethodDef:
     params: list[ParamDef]
     returns: "TpyType"  # TpyType, use TypeParamRef("T") for type params
     cpp: str  # Template: "{0}" for args, "{self}" for receiver
+    is_noalloc: bool = False
+    is_readonly: bool = False
 
 
 @dataclass
@@ -308,6 +310,8 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
                 params=[(p.name, p.type) for p in method.params],
                 return_type=method.returns,
                 is_method=True,
+                is_noalloc=method.is_noalloc,
+                is_readonly=method.is_readonly,
                 cpp_template=method.cpp,
             )
             for method in overloads
@@ -320,6 +324,8 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
             name="__init__",
             params=[(p.name, p.type) for p in ctor.params],
             return_type=ctor.returns,
+            is_noalloc=ctor.is_noalloc,
+            is_readonly=ctor.is_readonly,
             cpp_template=ctor.cpp,
         ))
 
@@ -350,6 +356,8 @@ def builtin_function_to_info(fn_def: BuiltinFunctionDef) -> list["FunctionInfo"]
             name=fn_def.name,
             params=[(p.name, p.type) for p in overload.params],
             return_type=overload.returns,
+            is_noalloc=overload.is_noalloc,
+            is_readonly=overload.is_readonly,
             cpp_template=overload.cpp,
             is_builtin_function=True,
             special_handling=fn_def.special_handling,
@@ -583,7 +591,13 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
         for p in method.params
     ]
     resolved_returns = _resolve_type_or_param(method.returns, type_params)
-    return MethodDef(params=resolved_params, returns=resolved_returns, cpp=method.cpp)
+    return MethodDef(
+        params=resolved_params,
+        returns=resolved_returns,
+        cpp=method.cpp,
+        is_noalloc=method.is_noalloc,
+        is_readonly=method.is_readonly,
+    )
 
 
 # Operator to method name mappings

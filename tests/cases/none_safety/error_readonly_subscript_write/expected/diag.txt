@@ -1,0 +1,1 @@
+main.tp.py:6: error: Cannot assign through subscript inside @readonly function

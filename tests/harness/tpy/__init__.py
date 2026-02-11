@@ -415,6 +415,15 @@ def noalloc(func):
     return func
 
 
+def readonly(func):
+    """Decorator marking a function/method as readonly.
+
+    In CPython simulation, this is a no-op.
+    The compiler enforces this constraint at compile time.
+    """
+    return func
+
+
 import copy as _copy_module
 
 def copy(obj):

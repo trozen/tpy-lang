@@ -166,6 +166,7 @@ class MethodAnalyzer:
                     f"Static method '{expr.method}' expects {len(method_info.params)} arguments, "
                     f"got {len(expr.args)}"
                 )
+            expr.resolved_function_info = method_info
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
                 arg_type = self.expr.analyze_expr(arg)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
@@ -190,7 +191,9 @@ class MethodAnalyzer:
             if module_info.is_builtin:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                return self._analyze_builtin_function_overloads(temp_call, overloads)
+                result = self._analyze_builtin_function_overloads(temp_call, overloads)
+                expr.resolved_function_info = temp_call.resolved_function_info
+                return result
             else:
                 func_info = overloads[0]
                 return self._analyze_user_module_function_call(expr, func_info, module_name)
@@ -200,7 +203,9 @@ class MethodAnalyzer:
             if record_info.constructors and not record_info.type_params:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                return self.calls._check_builtin_constructor(temp_call, record_info)
+                result = self.calls._check_builtin_constructor(temp_call, record_info)
+                expr.resolved_function_info = temp_call.resolved_function_info
+                return result
 
         raise SemanticError(f"Module '{module_name}' has no function '{expr.method}'")
 
@@ -540,6 +545,7 @@ class MethodAnalyzer:
                                                     coercion_ctx=CoercionContext.ARG)
 
         # Mark as user module call for codegen
+        expr.resolved_function_info = func_info
         expr.user_module_call = module_name
 
         return func_info.return_type

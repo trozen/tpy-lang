@@ -19,12 +19,12 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Generalized flow facts beyond name-based narrowing | Partial | Added expression identities; still not full arbitrary-expression fact tracking |
 | Expression-identity narrowing (Phase 3a) | Done | Tracks stable identities for `obj.field` / chained fields / builtin-first `obj[i]` (simple indexes) |
 | Loop-focused truthiness/flow stress semantics (Phase 3b) | Done | Conservative loop-entry policy applied; dedicated loop stress tests added (`while`/`continue`/`break`/nested/short-circuit) |
-| Invalidation across mutation/alias boundaries | Partial | Implemented for rooted writes and unknown call boundaries; richer effect-aware invalidation pending |
+| Invalidation across mutation/alias boundaries | Partial | Implemented for rooted writes, readonly-aware call boundaries, and unknown/non-readonly call invalidation |
 | Concurrency-aware narrowing safety model | Todo | Only trust facts under proven thread-safety/stability guarantees |
-| Effect contracts for user-defined reads (`readonly`/`may_mutate`) | Todo | Needed for safe narrowing on custom collections (future) |
+| Effect contracts for user-defined reads (`readonly`/`may_mutate`) | Partial | `@readonly` contract implemented with conservative enforcement; broader effect lattice pending |
 | Conservative effect inference for missing annotations | Todo | Infer readonly where provable; default unknown to unsafe |
 | Temporary single-evaluation auto-rewrite for unstable reads | Deferred (intentional) | Keep explicit/user-authored for now; compiler should warn instead |
-| REPL-specific None-safety regression suite | Todo | No dedicated REPL harness coverage yet |
+| REPL-specific None-safety regression suite | Postponed | Defer to a future generic REPL regression effort (not None-safety-specific) |
 | Mixed Optional/non-Optional equality & ordering semantics | Todo | Current behavior is conservative; broader policy still open |
 | Custom truthiness semantics policy | Todo | Future user-defined/overridden truthiness behavior not specified |
 | Rich assert messages (non-literal expressions) | Todo | Currently string-literal-only |
@@ -51,8 +51,8 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Field/subscript truthiness narrowing (`if obj.field`, `if items[i]`) | Covered | Stable identity subset implemented; tests added for field/subscript narrowing |
 | Mutation/alias invalidation for expression identities | Partial | Root writes and unknown-call invalidation covered; effect-aware/method-specific invalidation pending |
 | Concurrency-aware narrowing guards | Not covered | Needs thread-safety/stability contracts and tests |
-| User-defined collection read contracts | Not covered | Requires effect metadata and/or inference |
-| REPL-specific regression suite | Not covered | No dedicated REPL test harness in snippet suite |
+| User-defined collection read contracts | Partial | `@readonly` exists; broader effect metadata and inference still pending |
+| REPL-specific regression suite | Postponed | Defer to future cross-cutting REPL smoke/regression work |
 | Rich assert message forms | Not covered | Non-literal assert message support not implemented |
 
 ## Goals
@@ -131,7 +131,7 @@ Unproven optional access emits:
   - subscript identities for builtin/stable containers with simple indexes
 - Arbitrary expression identities (for example `f().x`, complex index expressions) are not tracked.
 - There is no concurrency-aware gating yet for expression-identity narrowing.
-- There is no effect contract/inference system yet for user-defined read operations.
+- Effect contract support is partial: `@readonly` exists, but full effect lattice/inference is not implemented.
 - Equality/ordering rules across mixed Optional/non-Optional values are still conservative.
   - Current focus is safety (runtime checks) and explicit `is`/`is not` for None identity.
   - Broader Python-compat comparison semantics remain open.
@@ -183,13 +183,23 @@ Unproven optional access emits:
 
 ### User-Defined Collections and Effects (Future)
 
-- Target support beyond builtin `list` via effect contracts on read APIs (`__getitem__`, field-like getters).
-- Proposed contract direction:
-  - `@readonly` annotation introduces a function contract.
-    - Compiler verifies constraints (no observable mutation through receiver/aliases/globals in contract scope).
-    - Contract violations should be diagnostics, not silent fallback.
-  - `readonly` (no mutation of observable state)
-  - `may_mutate` (default when unknown)
+- Current implemented subset:
+  - `@readonly` annotation is available on functions and methods.
+  - Compiler enforces conservative contract checks:
+    - rejects field/subscript writes in readonly bodies
+    - rejects writes to globals in readonly bodies
+    - rejects calls to unknown/non-readonly functions in readonly bodies
+  - None-safety invalidation is effect-aware:
+    - readonly calls preserve expression-identity facts
+    - unknown/non-readonly calls clear expression-identity facts
+  - Builtin readonly read APIs currently include:
+    - `list.__getitem__`
+    - `tpy.Array.__getitem__`
+    - `tpy.StaticList.__getitem__`
+- Remaining work:
+  - richer effect metadata (`may_mutate`, qualifiers)
+  - conservative effect inference for unannotated functions
+  - decorator form `@tpy.readonly` (currently `@readonly` only)
   - thread-safety/stability qualifiers for concurrent reads
 - Long-term: add conservative automatic inference for missing annotations.
   - if a function is not annotated, compiler may deduce and mark it readonly when proof succeeds
