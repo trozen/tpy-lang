@@ -21,7 +21,7 @@ from ..parse import (
     TpyNoneLiteral, TpyFieldAccess, TpyFunction,
 )
 from ..coercions import CoercionContext
-from .diagnostics import SemanticError
+from .diagnostics import SemanticError, OPTIONAL_VALUE_TRUTHINESS_WARNING
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .reassignment_inference import ReassignmentInference
@@ -62,6 +62,15 @@ class StatementAnalyzer:
     def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
+
+    def _warn_truthy_value_optionals(self, condition: TpyExpr) -> None:
+        """Warn when truthiness narrows optional value-typed variables."""
+        names = self.expr.get_condition_truthy_value_optional_names(condition)
+        for name in sorted(names):
+            self.ctx.warning(
+                f"{OPTIONAL_VALUE_TRUTHINESS_WARNING} (variable '{name}')",
+                condition,
+            )
 
     def _update_non_none_after_write(
         self,
@@ -114,6 +123,7 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
+            self._warn_truthy_value_optionals(stmt.condition)
             then_facts, else_facts = self.expr.get_condition_none_facts(stmt.condition)
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
@@ -144,6 +154,7 @@ class StatementAnalyzer:
                 }
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
+            self._warn_truthy_value_optionals(stmt.condition)
             then_facts, _ = self.expr.get_condition_none_facts(stmt.condition)
             before = self.init.save()
             with self.scopes.loop_scope():
@@ -196,6 +207,7 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyAssert):
             self.expr.analyze_expr(stmt.condition)
+            self._warn_truthy_value_optionals(stmt.condition)
             if stmt.message is not None:
                 self.expr.analyze_expr(stmt.message)
                 if not isinstance(stmt.message, TpyStrLiteral):

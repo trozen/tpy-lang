@@ -13,7 +13,14 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | `is None` / `is not None` on value optionals | Done | Uses `std::optional<T>::has_value()` in generated code |
 | Optional-aware identity checks after flow narrowing | Done | Avoids invalid `== nullptr` for value optionals |
 | Optional in value-consuming operators without proof (`x + 1`) | Done | Warns and inserts runtime null checks |
-| Generalized flow facts beyond name-based narrowing | Todo | Current facts track variable names |
+| Truthiness narrowing on Optional names (`if x`, `assert x`) | Done | Narrows on true path; value-optionals emit warning |
+| Truthiness narrowing in composed conditions (`not/and/or`) | Done | Name-based facts compose through boolean operators |
+| Truthiness narrowing for field/subscript expressions | Todo | Requires expression identity beyond variable names |
+| Generalized flow facts beyond name-based narrowing | Todo | Current facts track variable names only |
+| Loop-focused truthiness/flow stress semantics | Todo | Need explicit continue/break/reassign coverage and constraints |
+| REPL-specific None-safety regression suite | Todo | No dedicated REPL harness coverage yet |
+| Mixed Optional/non-Optional equality & ordering semantics | Todo | Current behavior is conservative; broader policy still open |
+| Custom truthiness semantics policy | Todo | Future user-defined/overridden truthiness behavior not specified |
 | Rich assert messages (non-literal expressions) | Todo | Currently string-literal-only |
 
 ## Test Coverage & Blockers
@@ -26,7 +33,8 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Guard-clause narrowing (`if x is None: return`) | Covered | None |
 | Else-branch narrowing | Covered | None |
 | Non-None assignment proves non-None | Covered | None |
-| Truthiness assert does not narrow (`assert x`) | Covered (current behavior guard) | None |
+| Truthiness assert narrowing (`assert x`) | Covered | Value-optionals warn; non-value optionals narrow quietly |
+| Truthiness composed conditions (`not/and/or`) | Covered | Name-based only |
 | Branch merge intersection | Covered | None |
 | Mixed-variable narrowing isolation | Covered | None |
 | Negation narrowing (`not (x is None)`) | Covered | None |
@@ -68,6 +76,8 @@ def g(p: Point | None) -> Int32:
 
 - `is None` / `is not None` checks work.
 - `== None` / `!= None` on optionals is rejected; use `is None` / `is not None`.
+- Truthiness checks (`if x`, `assert x`, `while x`) narrow on true-path but emit warning.
+  - Reason: truthiness excludes both `None` and falsy non-None values (`0`, `0.0`, `False`, `""`, etc.).
 - Unproven value-consuming operator use compiles with a warning and inserts runtime checks.
 - Proven non-None operator use (guard/assert) emits unchecked unwraps with no extra check.
 
@@ -75,6 +85,7 @@ def g(p: Point | None) -> Int32:
 
 - `if x is not None:`
 - `if x is None: ... else:`
+- `if x:` / `while x:` / `assert x` (name-based; value-optionals warn)
 - short-circuit condition flow (`and` / `or`)
 - `assert x is not None`
 
@@ -112,3 +123,5 @@ Unproven optional access emits:
 ## Planned (Next)
 
 - Broaden and refine narrowing coverage where needed.
+- Field/subscript truthiness narrowing (`if obj.field`, `if items[i]`) needs expression-identity facts beyond name tracking.
+- Define policy for custom truthiness semantics (future user-defined/overridden truthiness).

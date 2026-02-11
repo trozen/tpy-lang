@@ -10,7 +10,7 @@ Point* q{};
 // 14: def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
   // 15:     assert p is not None
-  if (!(static_cast<bool>((p != nullptr)))) tpy::tpy_panic("assertion failed");
+  if (!((p != nullptr))) tpy::tpy_panic("assertion failed");
   // 16:     return p.x
   return p->x;
 }
@@ -18,7 +18,7 @@ int32_t get_x(Point* p) {
 // 19: def get_mag(p: Point | None) -> Int32:
 int32_t get_mag(Point* p) {
   // 20:     assert p is not None, "point required"
-  if (!(static_cast<bool>((p != nullptr)))) tpy::tpy_panic("point required");
+  if (!((p != nullptr))) tpy::tpy_panic("point required");
   // 21:     return p.mag()
   return p->mag();
 }

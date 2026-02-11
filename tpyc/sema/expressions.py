@@ -175,6 +175,13 @@ class ExpressionAnalyzer:
 
     def _optional_name_none_facts(self, expr: TpyExpr) -> tuple[set[str], set[str]]:
         """Return (facts_if_true, facts_if_false) for Optional None-check conditions."""
+        if isinstance(expr, TpyName):
+            declared = self._declared_type_for_name(expr.name)
+            if isinstance(declared, OptionalType):
+                # Truthiness of an Optional value proves non-None on the true path.
+                # False path may be None or a falsy value, so keep it conservative.
+                return {expr.name}, set()
+
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
             true_facts, false_facts = self._optional_name_none_facts(expr.operand)
             return false_facts, true_facts
@@ -205,6 +212,29 @@ class ExpressionAnalyzer:
     def get_condition_none_facts(self, condition: TpyExpr) -> tuple[set[str], set[str]]:
         """Public helper for statement flow analysis."""
         return self._optional_name_none_facts(condition)
+
+    def _optional_truthy_names(self, expr: TpyExpr) -> set[str]:
+        """Collect Optional variable names used in truthiness contexts."""
+        if isinstance(expr, TpyName):
+            declared = self._declared_type_for_name(expr.name)
+            if isinstance(declared, OptionalType):
+                return {expr.name}
+            return set()
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            return self._optional_truthy_names(expr.operand)
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            return self._optional_truthy_names(expr.left) | self._optional_truthy_names(expr.right)
+        return set()
+
+    def get_condition_truthy_value_optional_names(self, condition: TpyExpr) -> set[str]:
+        """Get value-optionals used via truthiness in a condition."""
+        names = self._optional_truthy_names(condition)
+        result: set[str] = set()
+        for name in names:
+            declared = self._declared_type_for_name(name)
+            if isinstance(declared, OptionalType) and declared.inner.is_value_type():
+                result.add(name)
+        return result
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
@@ -417,7 +447,7 @@ class ExpressionAnalyzer:
 
         # Logical not: validate operand type (Bool or numeric types only)
         if expr.op == "!":
-            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType)):
+            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType, OptionalType)):
                 return BOOL
             raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected Bool or numeric type)", expr)
 

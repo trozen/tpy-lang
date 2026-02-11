@@ -246,10 +246,8 @@ class StatementGenerator:
                     msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
                     return f'{indent}tpy::tpy_panic("{msg}");\n'
                 return f'{indent}tpy::tpy_panic("assertion failed");\n'
-            # Use condition expression directly (same truthiness path as if/while).
-            # Forced deref breaks Optional[T] truthiness for non-value T (C|None).
-            cond = self.expressions.gen_expr(stmt.condition)
-            bool_cond = f"static_cast<bool>({cond})"
+            # Use Python-style truthiness conversion for assert conditions.
+            bool_cond = self.expressions.gen_truthy_expr(stmt.condition)
             if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
                 msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
                 return f'{indent}if (!({bool_cond})) tpy::tpy_panic("{msg}");\n'
@@ -768,7 +766,7 @@ class StatementGenerator:
                 else:
                     out.write(f"{indent}{cpp_type} {name};\n")
 
-        cond = self.expressions.gen_expr(stmt.condition)
+        cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}if ({cond}) {{\n")
 
@@ -788,7 +786,7 @@ class StatementGenerator:
 
     def _gen_while(self, out: TextIO, stmt: TpyWhile, indent: str) -> None:
         """Generate a while loop."""
-        cond = self.expressions.gen_expr(stmt.condition)
+        cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
 

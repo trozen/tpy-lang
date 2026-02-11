@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def bad(x: Int32 | None) -> Int32:
 int32_t bad(std::optional<int32_t> x) {
   // 5:     assert x is not None
-  if (!(static_cast<bool>((x.has_value())))) tpy::tpy_panic("assertion failed");
+  if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
   // 6:     x = None
   x = std::nullopt;
   // 7:     return x + 1  # tpyc: warning(/Potential None access/)

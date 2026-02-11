@@ -10,10 +10,10 @@ int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
   // 5:     if flag:
   if (flag) {
     // 6:         assert a is not None
-    if (!(static_cast<bool>((a.has_value())))) tpy::tpy_panic("assertion failed");
+    if (!((a.has_value()))) tpy::tpy_panic("assertion failed");
   } else {
     // 8:         assert b is not None
-    if (!(static_cast<bool>((b.has_value())))) tpy::tpy_panic("assertion failed");
+    if (!((b.has_value()))) tpy::tpy_panic("assertion failed");
   }
   // 9:     return a + 1  # tpyc: warning(/Potential None access/)
   return (tpy::int32_add(tpy::deref_optional(a), 1));

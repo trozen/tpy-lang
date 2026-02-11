@@ -10,7 +10,7 @@ std::optional<int32_t> x;
 // 6: def prove() -> None:
 void prove() {
   // 7:     assert x is not None
-  if (!(static_cast<bool>((x.has_value())))) tpy::tpy_panic("assertion failed");
+  if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
 }
 
 // 10: def use() -> Int32:

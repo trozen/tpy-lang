@@ -16,7 +16,7 @@ void __tpy_init() {
   // 11: x: C | None = None
   x = nullptr;
   // 12: assert x
-  if (!(static_cast<bool>(x))) tpy::tpy_panic("assertion failed");
+  if (!(x)) tpy::tpy_panic("assertion failed");
 }
 
 } // namespace tpy_user::main

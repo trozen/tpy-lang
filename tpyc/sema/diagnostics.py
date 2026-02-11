@@ -25,6 +25,11 @@ OPTIONAL_NONE_ACCESS_WARNING = (
     "Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning."
 )
 
+OPTIONAL_VALUE_TRUTHINESS_WARNING = (
+    "Truthiness check on optional value may also exclude falsy non-None values; "
+    "use 'is not None' for None-only checks."
+)
+
 
 @dataclass
 class Diagnostic:

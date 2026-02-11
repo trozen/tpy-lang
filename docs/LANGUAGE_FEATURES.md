@@ -1068,6 +1068,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 - **Working**: `T | None` for value types (`Int32 | None`, `Bool | None`, `float | None`) → `std::optional<T>`
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks
+  - Truthiness checks (`if x`, `assert x`, `while x`) narrow on true path, with warning about falsy non-None values
   - `print()` prints `None` for empty, value otherwise
 - **Working**: Reassignment-based Optional inference for unannotated variables
   - `x = None; x = Point()` infers `x` as `Point | None`

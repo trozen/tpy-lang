@@ -59,4 +59,13 @@ const T& deref_optional(const std::optional<T>& opt) {
     return *opt;
 }
 
+/**
+ * Optional truthiness helper - matches Python semantics for Optional[value]:
+ * value is truthy only when engaged and contained value is truthy.
+ */
+template <typename T>
+inline bool is_truthy(const std::optional<T>& opt) {
+    return opt.has_value() && static_cast<bool>(*opt);
+}
+
 } // namespace tpy

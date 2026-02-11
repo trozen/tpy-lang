@@ -169,6 +169,25 @@ class ExpressionGenerator:
 
         return "/* unknown expr */"
 
+    def gen_truthy_expr(self, expr: TpyExpr) -> str:
+        """Generate a bool expression using Python-style truthiness semantics.
+
+        For Optional value types, truthiness means "has value and contained value is truthy".
+        """
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            operand_truthy = self.gen_truthy_expr(expr.operand)
+            return f"(!({operand_truthy}))"
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            left = self.gen_truthy_expr(expr.left)
+            right = self.gen_truthy_expr(expr.right)
+            return f"({left} {expr.op} {right})"
+
+        expr_type = self.types.get_resolved_type(expr)
+        rendered = self.gen_expr(expr)
+        if isinstance(expr_type, OptionalType) and expr_type.inner.is_value_type():
+            return f"tpy::is_truthy({rendered})"
+        return rendered
+
     def _gen_binop(self, expr: TpyBinOp, target_type: TpyType | None) -> str:
         """Generate binary operation code."""
         # First pass: get raw types to detect Int32 operands
@@ -342,8 +361,7 @@ class ExpressionGenerator:
         """Generate unary operation code."""
         # Logical not
         if expr.op == "!":
-            operand = self.gen_expr(expr.operand, target_type)
-            return f"(!{operand})"
+            return f"(!({self.gen_truthy_expr(expr.operand)}))"
 
         operand_type = self.ctx.analyzer.get_expr_type(expr.operand)
         resolved_operand_type = self.types.get_resolved_type(expr.operand)

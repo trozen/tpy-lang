@@ -14,7 +14,7 @@ void test_not_with_bool_literals() {
   // 8:     b: Bool = False
   bool b = false;
   // 11:     if not a:
-  if ((!a)) {
+  if ((!(a))) {
     // 12:         print("not True: yes")
     std::cout << "not True: yes" << "\n";
   } else {
@@ -22,7 +22,7 @@ void test_not_with_bool_literals() {
     std::cout << "not True: no" << "\n";
   }
   // 16:     if not b:
-  if ((!b)) {
+  if ((!(b))) {
     // 17:         print("not False: yes")
     std::cout << "not False: yes" << "\n";
   } else {
@@ -39,17 +39,17 @@ void test_not_with_comparisons() {
   // 24:     y: Int32 = 10
   int32_t y = 10;
   // 27:     if not (x > y):
-  if ((!(x > y))) {
+  if ((!((x > y)))) {
     // 28:         print("not (5 > 10): yes")
     std::cout << "not (5 > 10): yes" << "\n";
   }
   // 30:     if not (x == y):
-  if ((!(x == y))) {
+  if ((!((x == y)))) {
     // 31:         print("not (5 == 10): yes")
     std::cout << "not (5 == 10): yes" << "\n";
   }
   // 33:     if not (x < 0):
-  if ((!(x < 0))) {
+  if ((!((x < 0)))) {
     // 34:         print("not (5 < 0): yes")
     std::cout << "not (5 < 0): yes" << "\n";
   }
@@ -63,7 +63,7 @@ void test_not_in_conditions() {
   // 39:     b: Bool = False
   bool b = false;
   // 42:     if not a and b:
-  if (((!a) && b)) {
+  if (((!(a)) && b)) {
     // 43:         print("not True and False: yes")
     std::cout << "not True and False: yes" << "\n";
   } else {
@@ -71,17 +71,17 @@ void test_not_in_conditions() {
     std::cout << "not True and False: no" << "\n";
   }
   // 48:     if not b or a:
-  if (((!b) || a)) {
+  if (((!(b)) || a)) {
     // 49:         print("not False or True: yes")
     std::cout << "not False or True: yes" << "\n";
   }
   // 52:     if not (a and b):
-  if ((!(a && b))) {
+  if ((!((a && b)))) {
     // 53:         print("not (True and False): yes")
     std::cout << "not (True and False): yes" << "\n";
   }
   // 55:     if not (a or b):
-  if ((!(a || b))) {
+  if ((!((a || b)))) {
     // 56:         print("not (True or False): yes")
     std::cout << "not (True or False): yes" << "\n";
   } else {
@@ -96,12 +96,12 @@ void test_double_negation() {
   // 62:     flag: Bool = True
   bool flag = true;
   // 64:     if not not flag:
-  if ((!(!flag))) {
+  if ((!((!(flag))))) {
     // 65:         print("not not True: yes")
     std::cout << "not not True: yes" << "\n";
   }
   // 67:     if not not False:
-  if ((!(!false))) {
+  if ((!((!(false))))) {
     // 68:         print("not not False: yes")
     std::cout << "not not False: yes" << "\n";
   } else {
@@ -121,12 +121,12 @@ bool is_valid(int32_t x) {
 void test_not_with_function_call() {
   // 77:     """Test 'not' with function return value."""
   // 78:     if not is_valid(-5):
-  if ((!is_valid(-(5)))) {
+  if ((!(is_valid(-(5))))) {
     // 79:         print("not is_valid(-5): yes")
     std::cout << "not is_valid(-5): yes" << "\n";
   }
   // 81:     if not is_valid(5):
-  if ((!is_valid(5))) {
+  if ((!(is_valid(5)))) {
     // 82:         print("not is_valid(5): yes")
     std::cout << "not is_valid(5): yes" << "\n";
   } else {
@@ -143,7 +143,7 @@ void test_not_in_while() {
   // 89:     count: Int32 = 0
   int32_t count = 0;
   // 91:     while not done:
-  while ((!done)) {
+  while ((!(done))) {
     // 92:         count += 1
     count = tpy::int32_add(count, 1);
     // 93:         if count >= 3:

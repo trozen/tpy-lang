@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def clamp_positive(x: Int32 | None) -> Int32:
 int32_t clamp_positive(std::optional<int32_t> x) {
   // 5:     assert x is not None and x > 0, "need positive"
-  if (!(static_cast<bool>(((x.has_value()) && ((*x) > 0))))) tpy::tpy_panic("need positive");
+  if (!(((x.has_value()) && ((*x) > 0)))) tpy::tpy_panic("need positive");
   // 6:     return x + 1
   return (tpy::int32_add((*x), 1));
 }

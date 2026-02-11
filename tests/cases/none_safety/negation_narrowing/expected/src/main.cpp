@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def f(x: Int32 | None) -> Int32:
 int32_t f(std::optional<int32_t> x) {
   // 5:     if not (x is None):
-  if ((!(!x.has_value()))) {
+  if ((!((!x.has_value())))) {
     // 6:         return x + 1
     return (tpy::int32_add((*x), 1));
   }
