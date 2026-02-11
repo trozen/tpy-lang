@@ -1161,6 +1161,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `@readonly` (conservative contract enforcement on functions/methods)
   - Disallows field/subscript/global writes inside readonly bodies
   - Disallows calls to unknown/non-readonly functions inside readonly bodies
+  - `print` remains non-readonly by design (observable I/O side effects)
   - Current form: `@readonly` (bare name). `@tpy.readonly` is not yet supported.
 - **Open**: Custom decorators → compile-time transforms
 

@@ -331,6 +331,13 @@ class MethodAnalyzer:
                 raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
 
             params, return_type = method_sig
+            expr.resolved_function_info = FunctionInfo(
+                name=expr.method,
+                params=params,
+                return_type=return_type,
+                is_method=True,
+                is_readonly=False,
+            )
             if len(expr.args) != len(params):
                 raise self.ctx.error(
                     f"Method '{expr.method}' expects {len(params)} arguments, "
@@ -351,6 +358,13 @@ class MethodAnalyzer:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
 
                 params, return_type = method_sig
+                expr.resolved_function_info = FunctionInfo(
+                    name=expr.method,
+                    params=params,
+                    return_type=return_type,
+                    is_method=True,
+                    is_readonly=False,
+                )
                 if len(expr.args) != len(params):
                     raise self.ctx.error(
                         f"Method '{expr.method}' expects {len(params)} arguments, "
@@ -450,6 +464,7 @@ class MethodAnalyzer:
                                                         coercion_ctx=CoercionContext.ARG)
 
             # Store parent type for codegen
+            expr.resolved_function_info = resolved
             expr.super_parent_type = parent_type
             return resolved.return_type
 
@@ -469,6 +484,7 @@ class MethodAnalyzer:
                 expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
             # Store parent type for codegen
+            expr.resolved_function_info = resolved
             expr.super_parent_type = parent_type
             return resolved.return_type
 

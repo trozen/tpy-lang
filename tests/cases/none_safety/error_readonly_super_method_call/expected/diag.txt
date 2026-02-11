@@ -1,0 +1,1 @@
+main.tp.py:12: error: Call to non-readonly or unknown-effect method 'value' is not allowed in @readonly function

@@ -20,6 +20,10 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Expression-identity narrowing (Phase 3a) | Done | Tracks stable identities for `obj.field` / chained fields / builtin-first `obj[i]` (simple indexes) |
 | Loop-focused truthiness/flow stress semantics (Phase 3b) | Done | Conservative loop-entry policy applied; dedicated loop stress tests added (`while`/`continue`/`break`/nested/short-circuit) |
 | Invalidation across mutation/alias boundaries | Partial | Implemented for rooted writes, readonly-aware call boundaries, and unknown/non-readonly call invalidation |
+| Readonly metadata coverage across call paths | Partial | Covered for normal calls, module calls, static methods, protocol calls, `super()` methods, and constructors; effect qualifiers on protocols/constructors remain conservative |
+| Readonly policy for side effects (`print`) | Done | `print` is explicitly non-readonly due to observable I/O side effects |
+| Readonly policy for fresh-object construction + `Own` return | Partial | Policy documented (allowed when not mutating pre-existing observable state); enforcement details still being refined |
+| Protocol readonly effect contracts (`Sized.__len__`, `Sequence.__getitem__`) | Todo | Requires protocol-level readonly qualifiers and conformance/inference support |
 | Concurrency-aware narrowing safety model | Todo | Only trust facts under proven thread-safety/stability guarantees |
 | Effect contracts for user-defined reads (`readonly`/`may_mutate`) | Partial | `@readonly` contract implemented with conservative enforcement; broader effect lattice pending |
 | Conservative effect inference for missing annotations | Todo | Infer readonly where provable; default unknown to unsafe |
@@ -196,7 +200,12 @@ Unproven optional access emits:
     - `list.__getitem__`
     - `tpy.Array.__getitem__`
     - `tpy.StaticList.__getitem__`
+  - Call metadata is propagated through major dispatch forms (including protocol methods, `super()` methods, and constructors) so readonly checks have consistent visibility.
+  - `print` is intentionally non-readonly because it has observable I/O side effects.
+  - Readonly is about not mutating pre-existing observable state; constructing fresh local objects and returning them (for example via `Own[T]`) is intended to be allowed.
 - Remaining work:
+  - protocol-level effect contracts for read APIs (e.g., `Sized.__len__`, `Sequence.__getitem__` marked readonly)
+  - protocol conformance rule: readonly-required protocol methods must be implemented by readonly (explicit or inferred) methods
   - richer effect metadata (`may_mutate`, qualifiers)
   - conservative effect inference for unannotated functions
   - decorator form `@tpy.readonly` (currently `@readonly` only)

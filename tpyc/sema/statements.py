@@ -80,6 +80,9 @@ class StatementAnalyzer:
 
     @staticmethod
     def _is_readonly_call_expr(expr: TpyExpr) -> bool:
+        if isinstance(expr, TpyCall) and expr.func == "super":
+            # super() itself is a pure dispatch helper.
+            return True
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             info = expr.resolved_function_info
             return info is not None and info.is_readonly

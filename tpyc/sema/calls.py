@@ -52,6 +52,34 @@ class CallAnalyzer:
         """Wire circular dependencies (must be called before analyze_call)."""
         self.expr = expr
 
+    def _set_record_constructor_info(
+        self,
+        expr: TpyCall,
+        record: RecordInfo,
+        return_type: TpyType,
+        type_subst: dict[str, TpyType] | None = None,
+    ) -> None:
+        """Attach resolved constructor metadata for readonly/effect checks."""
+        init_overloads = record.get_method_overloads("__init__")
+        if init_overloads:
+            ctor = init_overloads[0]
+            resolved_ctor = self.type_ops.substitute_method_type_params(ctor, type_subst) if type_subst else ctor
+            expr.resolved_function_info = FunctionInfo(
+                name=record.name,
+                params=resolved_ctor.params,
+                return_type=return_type,
+                is_readonly=resolved_ctor.is_readonly,
+            )
+            return
+
+        # Implicit default constructor has unknown effect; keep conservative.
+        expr.resolved_function_info = FunctionInfo(
+            name=record.name,
+            params=[],
+            return_type=return_type,
+            is_readonly=False,
+        )
+
     def analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
         # Handle super() call
@@ -105,6 +133,15 @@ class CallAnalyzer:
                         if func_name == "print":
                             for arg in expr.args:
                                 self.expr.analyze_expr(arg)
+                            # Explicitly model print as non-readonly (observable I/O side effects).
+                            expr.resolved_function_info = FunctionInfo(
+                                name="print",
+                                params=[],
+                                return_type=VOID,
+                                is_readonly=False,
+                                is_builtin_function=True,
+                                special_handling=True,
+                            )
                             return VOID
                         elif func_name == "range":
                             raise SemanticError(
@@ -474,6 +511,7 @@ class CallAnalyzer:
             else:
                 for arg in expr.args:
                     self.expr.analyze_expr(arg)
+            self._set_record_constructor_info(expr, record, expr.call_type, type_subst)
             return expr.call_type
         # Generic record without explicit type args - try type inference
         if record.is_generic():
@@ -513,6 +551,7 @@ class CallAnalyzer:
                             arg, arg_types[i], resolved_ptype,
                             f"argument '{pname}'", coercion_ctx=CoercionContext.ARG
                         )
+                    self._set_record_constructor_info(expr, record, inferred_type, type_subst)
                     return inferred_type
             # Inference failed - require explicit type args
             raise self.ctx.error(
@@ -536,7 +575,9 @@ class CallAnalyzer:
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
         # Use expr.func (local name) not record.name (original) for alias support
-        return NamedType(expr.func)
+        result_type = NamedType(expr.func)
+        self._set_record_constructor_info(expr, record, result_type)
+        return result_type
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""
