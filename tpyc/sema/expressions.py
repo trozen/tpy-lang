@@ -200,7 +200,7 @@ class ExpressionAnalyzer:
             # Check built-in names (like __name__)
             if expr.name in self.ctx.builtin_names:
                 return self.ctx.builtin_names[expr.name]
-            raise SemanticError(f"Undefined variable: '{expr.name}'")
+            raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
         return typ
 

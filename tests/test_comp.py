@@ -15,8 +15,8 @@ from conftest import (
     get_module_name,
     compile_with_diagnostics,
     validate_annotations,
+    parse_annotations,
     check_or_update,
-    remove_if_exists,
     discover_cases,
 )
 
@@ -62,30 +62,27 @@ def test_comp(case_dir, main_src, tmp_path):
         if annotation_errors:
             pytest.fail("\n".join(annotation_errors))
 
+    # Error tests must have at least one # tpyc: error(...) annotation
+    if not UPDATE_EXPECTED and case_dir.name.startswith("error_"):
+        src_dir = case_dir / "src"
+        has_error_annotation = False
+        for src_file in src_dir.rglob("*.py"):
+            annotations = parse_annotations(src_file.read_text())
+            if any(a.level == "error" for a in annotations):
+                has_error_annotation = True
+                break
+        if not has_error_annotation:
+            pytest.fail("Error test must have at least one '# tpyc: error(...)' annotation")
+
     # Handle compilation failure
     if not result.success:
-        if UPDATE_EXPECTED:
-            # Error test: remove any stale generated files
-            for ext in [".hpp", ".cpp"]:
-                remove_if_exists(_module_to_expected_path(expected_dir, module_name, ext))
-            # Also clean up any other module files
-            for mod_name, _, _ in result.all_modules:
-                for ext in [".hpp", ".cpp"]:
-                    remove_if_exists(_module_to_expected_path(expected_dir, mod_name, ext))
-        else:
-            # Verify compilation was expected to fail (no .hpp in expected/include/)
-            include_dir = expected_dir / "include"
-            expects_success = include_dir.exists() and any(include_dir.rglob("*.hpp"))
-            if expects_success:
-                pytest.fail("Expected compilation to fail")
+        if not UPDATE_EXPECTED and not case_dir.name.startswith("error_"):
+            pytest.fail(f"Non-error test failed to compile:\n{result.diagnostics}")
         return
 
-    # Compilation succeeded
-    if not UPDATE_EXPECTED:
-        include_dir = expected_dir / "include"
-        expects_success = include_dir.exists() and any(include_dir.rglob("*.hpp"))
-        if not expects_success:
-            pytest.fail(f"Compilation succeeded unexpectedly:\n{result.diagnostics}")
+    # Error tests must not compile successfully
+    if not UPDATE_EXPECTED and case_dir.name.startswith("error_"):
+        pytest.fail(f"Error test compiled successfully (expected compilation failure)")
 
     # Check/update generated code for all modules
     for mod_name, hpp_path, cpp_path in result.all_modules:

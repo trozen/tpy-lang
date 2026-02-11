@@ -13,8 +13,10 @@ Any other arguments are passed directly to pytest.
 """
 import argparse
 import os
+import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 parser = argparse.ArgumentParser(description="Update test snapshots")
 parser.add_argument("--comp", action="store_true", help="Update compilation tests only")
@@ -24,6 +26,17 @@ parser.add_argument("pattern", nargs="?", help="Case name pattern (passed to pyt
 parser.add_argument("pytest_args", nargs="*", help="Additional pytest arguments")
 
 args = parser.parse_args()
+
+# Clear expected/ dirs before regeneration to remove stale files
+if not args.cpy:
+    cases_dir = Path(__file__).parent / "cases"
+    for expected_dir in cases_dir.rglob("expected"):
+        if not expected_dir.is_dir():
+            continue
+        case_dir = expected_dir.parent
+        if args.pattern and args.pattern not in case_dir.name:
+            continue
+        shutil.rmtree(expected_dir)
 
 # Determine which test files to run
 test_files = []

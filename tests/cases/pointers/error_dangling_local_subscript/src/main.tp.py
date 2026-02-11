@@ -8,4 +8,4 @@ class Point:
 def bad_local_subscript() -> Point:
     local: StaticList[Point, 4] = StaticList[Point, 4]()
     local.append(Point())
-    return local[0]  # error: local dies, so local[0] dangles
+    return local[0]  # tpyc: error(/Cannot return local or temporary/)

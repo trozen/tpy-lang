@@ -14,7 +14,6 @@ from conftest import (
     compile_with_diagnostics,
     build_and_run,
     check_or_update,
-    remove_if_exists,
     discover_cases,
 )
 
@@ -40,19 +39,10 @@ def test_exec(case_dir, main_src, tmp_path):
     if run_result.success:
         expected_output = expected_dir / "output.txt"
         check_or_update(run_result.stdout, expected_output, "Output")
-
-        # Clean up stale panic.txt in update mode
-        if UPDATE_EXPECTED:
-            remove_if_exists(expected_dir / "panic.txt")
     else:
+        if not UPDATE_EXPECTED and not case_dir.name.startswith("panic_"):
+            pytest.fail(f"Non-panic test panicked:\n{run_result.stderr}")
+
         # Runtime panic
         expected_panic = expected_dir / "panic.txt"
         check_or_update(run_result.stderr, expected_panic, "Panic output")
-
-        # Clean up stale output.txt in update mode
-        if UPDATE_EXPECTED:
-            remove_if_exists(expected_dir / "output.txt")
-
-        # In test mode, verify panic was expected
-        if not UPDATE_EXPECTED and not expected_panic.exists():
-            pytest.fail(f"Program panicked unexpectedly.\nstderr: {run_result.stderr}")

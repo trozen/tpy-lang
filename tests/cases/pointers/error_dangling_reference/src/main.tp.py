@@ -10,4 +10,4 @@ class Point:
 
 # ERROR: returning constructor creates temporary - dangling reference
 def create_point(x: Int32, y: Int32) -> Point:
-    return Point(x, y)  # error: Cannot return local or temporary as reference
+    return Point(x, y)  # tpyc: error(/Cannot return local or temporary/)

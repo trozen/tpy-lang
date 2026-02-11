@@ -9,4 +9,4 @@ class Counter:
 
     @staticmethod
     def bad_method() -> Int32:
-        return self.value
+        return self.value  # tpyc: error(/Undefined variable/)

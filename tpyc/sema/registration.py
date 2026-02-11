@@ -435,7 +435,10 @@ class TypeRegistrar:
         resolved_params = []
         for pname, ptype in func.params:
             resolved_ptype = self.type_ops.resolve_type(ptype)
-            self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
+            try:
+                self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
+            except SemanticError as e:
+                raise self.ctx.error(str(e), func)
             # Self type can only be used in protocol method signatures
             if isinstance(resolved_ptype, SelfType):
                 raise SemanticError(
@@ -446,7 +449,10 @@ class TypeRegistrar:
             resolved_params.append((pname, resolved_ptype))
 
         resolved_return = self.type_ops.resolve_type(func.return_type)
-        self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic)
+        try:
+            self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic)
+        except SemanticError as e:
+            raise self.ctx.error(str(e), func)
 
         # Self type can only be used in protocol method signatures
         if isinstance(resolved_return, SelfType):

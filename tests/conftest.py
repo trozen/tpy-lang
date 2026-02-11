@@ -254,11 +254,6 @@ def check_or_update(actual: str, expected_file: Path, description: str) -> None:
         )
 
 
-def remove_if_exists(path: Path) -> None:
-    """Remove a file if it exists (used in update mode to clean up stale files)."""
-    if path.exists():
-        path.unlink()
-
 
 def _discover_from_dirs(base_dirs: list[Path]):
     """Discover test cases from the given directories.
