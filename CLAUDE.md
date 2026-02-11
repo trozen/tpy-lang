@@ -74,12 +74,12 @@ uv run pytest tpyc/ -n auto
 uv run pytest -k hello -n auto
 
 # Update expected snapshots after intentional changes
-uv run python tests/update_snapshots.py              # all cases
-uv run python tests/update_snapshots.py hello        # specific case
-uv run python tests/update_snapshots.py --comp       # compilation tests only
-uv run python tests/update_snapshots.py --exec       # execution tests only
-uv run python tests/update_snapshots.py --cpy        # CPython compatibility checks (read-only)
-uv run python tests/update_snapshots.py --comp hello # specific case, comp only
+uv run python tests/update_snapshots.py                    # all cases
+uv run python tests/update_snapshots.py -k hello           # specific case
+uv run python tests/update_snapshots.py --comp             # compilation tests only
+uv run python tests/update_snapshots.py --exec             # execution tests only
+uv run python tests/update_snapshots.py --cpy              # CPython compatibility checks (read-only)
+uv run python tests/update_snapshots.py --comp -k hello    # specific case, comp only
 ```
 
 **Important**: If a change would modify expected output for *existing* tests (not new tests you're adding), consult with the user before running `update_snapshots.py`. Explain what generated code will change and confirm the change is desired.
