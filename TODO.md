@@ -32,6 +32,9 @@
 - for-each: preserve loop variable after loop exit (if used after the loop)
 - REPL: arr=[1,2,3]; arr[-4]
 
+## Hard Problems
+- handling cyclic imports
+
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
 - Ptr constructor: `Ptr(value)` to explicitly create pointers
@@ -46,6 +49,7 @@
 - list slicing (`items[1:3]`)
 - make sure docstrings work in every context
 - list/StaticList operator (+=, *, +, in), sort
+- bytes type
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:

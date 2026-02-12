@@ -90,7 +90,8 @@ class ExpressionGenerator:
         if isinstance(expr, TpyIntLiteral):
             # Promote to BigInt if target expects it
             if isinstance(target_type, BigIntType):
-                return f"tpy::BigInt({expr.value})"
+                lit = f"{expr.value}LL" if not (-2**31 <= expr.value <= 2**31 - 1) else str(expr.value)
+                return f"tpy::BigInt({lit})"
             return str(expr.value)
 
         elif isinstance(expr, TpyFloatLiteral):

@@ -125,6 +125,9 @@ class BuildLayout:
             "-I", str(self.include_dir),
         ]
 
+        if self.build_variant:
+            self.build_dir.mkdir(parents=True, exist_ok=True)
+
         if not config.ccache:
             return [[
                 *common,
@@ -136,8 +139,6 @@ class BuildLayout:
         # Split: compile each .cpp → .o with ccache, then link .o files
         obj_files: list[str] = []
         cmds: list[list[str]] = []
-        if self.build_variant:
-            self.build_dir.mkdir(parents=True, exist_ok=True)
         for cpp in cpp_files:
             obj = self.build_dir / (cpp.stem + ".o")
             obj_files.append(str(obj))
