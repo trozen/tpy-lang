@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- merge for and for-each handling, introduce real iterators/generators (range() should be a generator)
+- iterator roadmap phase 2: counter-loop optimization for `for i in range(...)` (see LANGUAGE_FEATURES.md)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
@@ -53,7 +53,6 @@
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
-- make `range` a generator function
 - language restriction documentation
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
 - Char type location: currently in `builtins` module but feels like a tpy type. Python doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.

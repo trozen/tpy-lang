@@ -997,16 +997,60 @@ print(sum_all(arr))   # 60
 - **Zero overhead**: Compiles to C++ range-based for loops
 - **Not user-extensible**: Requires C++ `begin()`/`end()` support
 
-**Difference from future `Iterable[T]`**: `NativeIterable[T]` is TurboPython-specific and uses C++ iteration. The future `Iterable[T]` (in `typing` module) will use Python's `__iter__()` → `Iterator[T]` protocol, allowing user-defined iterable types.
+**Difference from `NativeIterator[T]`**: `NativeIterable[T]` is for containers with `begin()`/`end()` (C++ range-for). `NativeIterator[T]` is for lazy producers with `next()` (while-loop). See below.
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 
-#### Planned: `Iterable[T]` and `Iterator[T]`
+#### Working: `NativeIterator[T]` (lazy iteration)
 
-Python-compatible iterating protocols are not yet supported:
+`NativeIterator[T]` is a **marker protocol** for types that produce values lazily via a `next()` method returning `std::optional<T>`. It's used for lazy sequences like `range()` that don't store all values in memory.
 
 ```python
-# NOT YET WORKING - requires exception support
+from tpy import Int32, NativeIterator
+
+def sum_iter(it: NativeIterator[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in it:
+        total += x
+    return total
+
+print(sum_iter(range(5)))          # 10
+print(sum_iter(range(0, 10, 3)))   # 18
+```
+
+**Codegen**: NativeIterator for-loops compile to a while-loop:
+
+```cpp
+auto __iter_0 = tpy::Range(5);
+while (auto __opt_0 = __iter_0.next()) {
+    int32_t x = *__opt_0;
+    // body
+}
+```
+
+**Key characteristics**:
+- **Marker protocol**: Types declare conformance via `extends`, structural `next()` checking planned
+- **Built-in conformance**: `Range` extends `NativeIterator[Int32]`
+- **Lazy evaluation**: Values produced one at a time, no container allocation
+- **break/continue**: Work naturally (break exits while, continue calls next())
+
+#### Iterator Roadmap
+
+| Phase | Status | What |
+|-------|--------|------|
+| 1. NativeIterator + Range | **Working** | Unified for-loop path, `range()` as real type |
+| 2. Counter-loop optimization | Planned | Detect `for i in range(...)` → emit `for (int32_t i = ...)` instead of while-loop |
+| 3. Structural NativeIterator | Planned | Check `next() -> Optional[T]` method for protocol conformance |
+| 4. User-defined iterators | Planned | `__iter__`/`__next__` compiled to NativeIterator |
+| 5. Generator functions | Open | `yield` → state-machine class implementing NativeIterator |
+| 6. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
+
+#### Planned: `Iterable[T]` and `Iterator[T]`
+
+Python-compatible iteration protocols (using `__iter__`/`__next__` with `StopIteration`) are not yet supported. When implemented, they will compile to NativeIterator under the hood:
+
+```python
+# NOT YET WORKING
 class Iterable(Protocol[T]):
     def __iter__(self) -> Iterator[T]: ...
 ```
@@ -1052,6 +1096,7 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
+- `for` loops work on `NativeIterator[T]`-typed parameters ✓ (working)
 - Implicit coercion to `Span[T]` works on types extending `NativeContiguous[T]` ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters (planned - Python-compatible)
 
@@ -1135,10 +1180,10 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Loops
 - **Working**: `while`
-- **Working**: `for i in range(n)`, `for i in range(start, end)`
+- **Working**: `for i in range(n)`, `for i in range(start, end)`, `for i in range(start, end, step)`
 - **Working**: `for item in container` (for-each over list, Array, Span, str)
+- **Working**: `for x in iterator` (for-each over NativeIterator types, e.g. Range)
 - **Working**: `break`, `continue`
-- **Planned**: `for i in range(start, end, step)`
 - **Open**: `for/else`, `while/else` → flag variable pattern
 
 ### Other
@@ -1292,6 +1337,7 @@ struct SortedContainer {
 - `Comparable` - has comparison operators (`<`, `<=`, `>`, `>=`, `==`, `!=`)
 - `Sequence[T]` - has `__len__()` and `__getitem__()`
 - `NativeIterable[T]` - supports C++ range-for iteration
+- `NativeIterator[T]` - lazy iteration via `next() -> Optional[T]`
 - User-defined protocols (including protocols with inheritance)
 
 **Protocol Inheritance with Bounds**: When using a child protocol as a bound (e.g., `T: PrintableAndSized`), methods from all ancestor protocols are available on `T`.
@@ -1848,8 +1894,8 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Open**: `str()`, `int(str)` → string conversion functions (see below)
-- **Open**: `enumerate()` → compile-time transform
-- **Open**: `zip()` → compile-time transform for fixed iterables
+- **Open**: `enumerate()` → returns NativeIterator (see iterator roadmap)
+- **Open**: `zip()` → returns NativeIterator (see iterator roadmap)
 
 #### Type Conversion Functions
 
@@ -2259,7 +2305,7 @@ math.fabs(x)       # absolute value (float)
 
 ## Generators
 
-- **Open**: `yield` → generator as state machine class
+- **Open**: `yield` → generator as state-machine class implementing NativeIterator (see iterator roadmap)
 - **Open**: Generator expressions → lazy iterators with known bounds
 - Could be zero-alloc if state machine is stack-allocated
 
