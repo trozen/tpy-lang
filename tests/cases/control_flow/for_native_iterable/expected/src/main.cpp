@@ -55,7 +55,7 @@ int32_t nested_iteration(T_outer& outer, T_inner& inner) {
   return total;
 }
 
-// 26: def contains_value(items: NativeIterable[Int32], target: Int32) -> Bool:
+// 26: def contains_value(items: NativeIterable[Int32], target: Int32) -> bool:
 template<tpy::NativeIterable<int32_t> T_items>
 bool contains_value(T_items& items, int32_t target) {
   // 28:     return target in items

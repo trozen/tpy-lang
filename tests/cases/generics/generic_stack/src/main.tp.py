@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 class Stack[T]:
     items: list[T]
@@ -12,7 +12,7 @@ class Stack[T]:
     def pop(self) -> T:
         return self.items.pop()
 
-    def is_empty(self) -> Bool:
+    def is_empty(self) -> bool:
         return len(self.items) == 0
 
 

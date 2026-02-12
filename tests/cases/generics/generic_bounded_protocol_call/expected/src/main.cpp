@@ -62,8 +62,8 @@ T clone_it(tpy::param_val_or_ref_t<T> item) {
   return item.clone();
 }
 
-// # Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> Bool)
-// 66: def is_less[T: Comparable](a: T, b: T) -> Bool:
+// # Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> bool)
+// 66: def is_less[T: Comparable](a: T, b: T) -> bool:
 template<tpy::Comparable T>
 bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
   // 67:     return a < b  # Uses __lt__ which takes Self parameter

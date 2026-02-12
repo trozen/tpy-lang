@@ -31,7 +31,7 @@ void value_init() {
 }
 
 // # Assign before if, use after — OK
-// 25: def assign_before_if(cond: Bool) -> None:
+// 25: def assign_before_if(cond: bool) -> None:
 void assign_before_if(bool cond) {
   // 26:     x: Point = Point(1, 2)
   Point __slot_1 = Point(1, 2);
@@ -47,7 +47,7 @@ void assign_before_if(bool cond) {
 }
 
 // # Then-branch returns — code after if only reachable from else
-// 32: def then_returns(cond: Bool) -> None:
+// 32: def then_returns(cond: bool) -> None:
 void then_returns(bool cond) {
   // 33:     if cond:
   if (cond) {
@@ -61,7 +61,7 @@ void then_returns(bool cond) {
 }
 
 // # Both branches return — dead code after is fine
-// 39: def both_return(cond: Bool) -> Int32:
+// 39: def both_return(cond: bool) -> Int32:
 int32_t both_return(bool cond) {
   // 40:     if cond:
   if (cond) {
@@ -76,7 +76,7 @@ int32_t both_return(bool cond) {
 }
 
 // # Both branches assign (value type) — OK after if
-// 47: def both_branches_assign(cond: Bool) -> None:
+// 47: def both_branches_assign(cond: bool) -> None:
 void both_branches_assign(bool cond) {
   // 48:     x: Int32
   int32_t x;
@@ -93,7 +93,7 @@ void both_branches_assign(bool cond) {
 }
 
 // # Else-branch returns, then assigns — OK after if
-// 56: def else_returns(cond: Bool) -> None:
+// 56: def else_returns(cond: bool) -> None:
 void else_returns(bool cond) {
   // 57:     x: Int32
   int32_t x;

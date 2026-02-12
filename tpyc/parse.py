@@ -442,7 +442,7 @@ SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins"}
 # Types from tpy that require explicit import (not auto-available like Python builtins)
 # Python builtins (int, str, bool, list, float, None) remain auto-available
 TPY_TYPES = {
-    "Int32", "Char", "Bool",  # Basic tpy types
+    "Int32", "Char",  # Basic tpy types
     "Span", "Array", "StaticList",  # Container types
     "Ptr", "ConstPtr", "Own",  # Pointer types
 }
@@ -1026,8 +1026,6 @@ class Parser:
                 return BIGINT
             elif resolved_name == "float":
                 return FLOAT
-            elif resolved_name == "Bool":
-                return BOOL
             elif resolved_name == "bool":
                 return BOOL
             elif resolved_name == "None":

@@ -1,5 +1,5 @@
 # Test str() conversion function
-from tpy import Int32, Bool, Char
+from tpy import Int32, Char
 
 # Empty string
 print(str())  # empty
@@ -7,7 +7,7 @@ print(str())  # empty
 # From str (identity)
 print(str("hello"))  # hello
 
-# From Bool (static strings - safe)
+# From bool (static strings - safe)
 print(str(True))   # True
 print(str(False))  # False
 

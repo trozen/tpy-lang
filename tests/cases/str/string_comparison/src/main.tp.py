@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 # Test string comparison operators
 
@@ -76,7 +76,7 @@ def test_empty_strings() -> None:
     if empty != nonempty:
         print("empty != x: yes")
 
-def strings_equal(s1: str, s2: str) -> Bool:
+def strings_equal(s1: str, s2: str) -> bool:
     """Helper function to compare strings."""
     return s1 == s2
 

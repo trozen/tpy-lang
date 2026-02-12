@@ -1,11 +1,11 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 def test_bool():
     # Boolean literals with explicit type
-    a: Bool = True
-    b: Bool = False
+    a: bool = True
+    b: bool = False
 
-    # Type inference for Bool
+    # Type inference for bool
     inferred_true = True
     inferred_false = False
 

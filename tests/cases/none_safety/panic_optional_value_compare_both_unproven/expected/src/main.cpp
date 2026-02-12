@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def gt_pair(a: Int32 | None, b: Int32 | None) -> Bool:
+// 4: def gt_pair(a: Int32 | None, b: Int32 | None) -> bool:
 bool gt_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
   // 5:     return a > b  # tpyc: warning(/Potential None access/)
   return (tpy::deref_optional(a) > tpy::deref_optional(b));

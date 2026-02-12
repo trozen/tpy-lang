@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
 class Point:
@@ -6,7 +6,7 @@ class Point:
     y: Int32
 
 
-def mixed(points: list[Point], flag: Bool) -> Point:
+def mixed(points: list[Point], flag: bool) -> Point:
     local: Point = Point()
     if flag:
         result = points[0]

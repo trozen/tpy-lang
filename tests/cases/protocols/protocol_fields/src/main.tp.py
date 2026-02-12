@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 from typing import Protocol
 
 
@@ -17,7 +17,7 @@ class HasXY(Protocol):
 class Container(Protocol):
     count: Int32
 
-    def is_empty(self) -> Bool:
+    def is_empty(self) -> bool:
         ...
 
 
@@ -51,7 +51,7 @@ class Box:
     def __init__(self, c: Int32):
         self.count = c
 
-    def is_empty(self) -> Bool:
+    def is_empty(self) -> bool:
         return self.count == 0
 
 

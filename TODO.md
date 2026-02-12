@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- merge bool/Bool types -- since CPython has bool, we should stick to that
 - parser: extract to separate module (currently a 1500-line monolithic file)
 - merge for and for-each handling, introduce real iterators/generators (range() should be a generator)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
@@ -56,7 +55,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - make `range` a generator function
 - language restriction documentation
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
-- Char/Bool type location: currently in `builtins` module but feel like tpy types. Python has `bool` (so `Bool` may not be needed), but doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.
+- Char type location: currently in `builtins` module but feels like a tpy type. Python doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.
 - ultimate goal: make tpyc compile with tpyc
 - BigInt: use second bit for int 63-126 bits long; do not allocate mzp_t, use low level GMP functions
 - game of life benchmark TPy vs CPy (two version: idiomatic python, optimized TPy types)
@@ -99,7 +98,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - Unknown record types not rejected: `bar: UnknownType` passes sema, fails at C++ compile
 - Unary `not` not type-checked: `not items` (container) passes sema, fails C++ compile
 - `list.extend` lacks type validation: element type mismatch not checked
-- `and`/`or` return Bool not operand: `1 and 2` returns `1` (bool), Python returns `2`
+- `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
 
 ## Known Limitations
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.

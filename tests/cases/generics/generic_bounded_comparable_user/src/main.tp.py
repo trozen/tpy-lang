@@ -1,6 +1,6 @@
 """Test user-defined record with __lt__ satisfies Comparable bound."""
 from __future__ import annotations
-from tpy import Int32, Bool, Comparable
+from tpy import Int32, Comparable
 
 
 class MyInt:
@@ -9,14 +9,14 @@ class MyInt:
     def __init__(self, v: Int32):
         self.value = v
 
-    def __lt__(self, other: MyInt) -> Bool:
+    def __lt__(self, other: MyInt) -> bool:
         return self.value < other.value
 
-    def __eq__(self, other: MyInt) -> Bool:
+    def __eq__(self, other: MyInt) -> bool:
         return self.value == other.value
 
 
-def is_less[T: Comparable](a: T, b: T) -> Bool:
+def is_less[T: Comparable](a: T, b: T) -> bool:
     return a < b
 
 

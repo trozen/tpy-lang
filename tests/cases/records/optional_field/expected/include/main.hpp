@@ -54,7 +54,7 @@ struct Line {
     this->end = e;
   }
 
-  // 23:     def has_end(self) -> Bool:
+  // 23:     def has_end(self) -> bool:
   bool has_end() {
     // 24:         return self.end is not None
     return (this->end.has_value());

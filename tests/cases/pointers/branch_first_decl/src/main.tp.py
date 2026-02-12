@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
 class Point:
@@ -10,7 +10,7 @@ class Point:
 
 
 # Value type first declared in both branches
-def value_type_branches(cond: Bool) -> Int32:
+def value_type_branches(cond: bool) -> Int32:
     if cond:
         x: Int32 = 10
     else:
@@ -19,7 +19,7 @@ def value_type_branches(cond: Bool) -> Int32:
 
 
 # One branch declares, other terminates
-def else_returns(cond: Bool) -> Int32:
+def else_returns(cond: bool) -> Int32:
     if cond:
         x: Int32 = 42
     else:
@@ -28,7 +28,7 @@ def else_returns(cond: Bool) -> Int32:
 
 
 # Multiple variables first declared in same if
-def multi_var(cond: Bool) -> Int32:
+def multi_var(cond: bool) -> Int32:
     if cond:
         a: Int32 = 1
         b: Int32 = 2
@@ -39,7 +39,7 @@ def multi_var(cond: Bool) -> Int32:
 
 
 # Non-value type with rvalue init (needs rebind slot)
-def rvalue_branch(cond: Bool) -> None:
+def rvalue_branch(cond: bool) -> None:
     if cond:
         p = Point(1, 2)
     else:
@@ -48,7 +48,7 @@ def rvalue_branch(cond: Bool) -> None:
 
 
 # Branch-declared variable reassigned after the if
-def reassign_after(cond: Bool) -> None:
+def reassign_after(cond: bool) -> None:
     if cond:
         x: Int32 = 10
     else:
@@ -58,7 +58,7 @@ def reassign_after(cond: Bool) -> None:
 
 
 # Nested if — inner if has branch declarations
-def nested_if(a: Bool, b: Bool) -> Int32:
+def nested_if(a: bool, b: bool) -> Int32:
     if a:
         if b:
             x: Int32 = 1
@@ -71,7 +71,7 @@ def nested_if(a: Bool, b: Bool) -> Int32:
 
 
 # Non-value type from param in branches (pointer-local)
-def param_branch(points: list[Point], cond: Bool) -> None:
+def param_branch(points: list[Point], cond: bool) -> None:
     if cond:
         p = points[0]
     else:
@@ -80,7 +80,7 @@ def param_branch(points: list[Point], cond: Bool) -> None:
 
 
 # Branch-declared non-value type with rvalue in one branch, lvalue in other
-def mixed_init(points: list[Point], cond: Bool) -> None:
+def mixed_init(points: list[Point], cond: bool) -> None:
     if cond:
         p = points[0]
     else:

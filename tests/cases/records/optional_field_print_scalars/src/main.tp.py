@@ -1,9 +1,9 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
 class Settings:
     count: Int32 | None
-    flag: Bool | None
+    flag: bool | None
     ratio: float | None
     label: str | None
 

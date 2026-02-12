@@ -1,4 +1,4 @@
-from tpy import Int32, Array, Span, Bool
+from tpy import Int32, Array, Span
 
 # Test 'in' and 'not in' operators for different container types
 
@@ -36,7 +36,7 @@ def test_array_membership() -> None:
     if 5 not in arr:
         print("5 not in array: yes")
 
-def check_span_contains(data: Span[Int32], value: Int32) -> Bool:
+def check_span_contains(data: Span[Int32], value: Int32) -> bool:
     """Test membership for Span[Int32]."""
     return value in data
 

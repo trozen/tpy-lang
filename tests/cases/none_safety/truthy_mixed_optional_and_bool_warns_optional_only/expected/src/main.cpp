@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def pick(x: Int32 | None, flag: Bool) -> Int32:
+// 4: def pick(x: Int32 | None, flag: bool) -> Int32:
 int32_t pick(std::optional<int32_t> x, bool flag) {
   // 5:     if x and flag:  # tpyc: warning(/variable 'x'/)
   if ((tpy::is_truthy(x) && flag)) {

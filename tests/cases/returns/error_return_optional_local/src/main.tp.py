@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
 class Point:
@@ -10,7 +10,7 @@ class Point:
         self.y = y
 
 
-def make_optional(flag: Bool) -> Point | None:
+def make_optional(flag: bool) -> Point | None:
     if flag:
         p = Point(1, 2)
         return p  # tpyc: error(/Cannot return local or temporary/)

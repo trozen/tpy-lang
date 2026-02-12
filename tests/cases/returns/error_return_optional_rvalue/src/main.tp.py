@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
 class Point:
@@ -10,7 +10,7 @@ class Point:
         self.y = y
 
 
-def make_maybe(flag: Bool) -> Point | None:
+def make_maybe(flag: bool) -> Point | None:
     if flag:
         return Point(1, 2)  # tpyc: error(/Cannot return local or temporary/)
     return None

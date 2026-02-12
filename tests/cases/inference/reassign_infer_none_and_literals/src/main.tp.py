@@ -1,4 +1,4 @@
-from tpy import Int32, Bool, Own
+from tpy import Int32, Own
 
 
 class Point:
@@ -12,7 +12,7 @@ def make_point() -> Own[Point]:
     return Point(7)
 
 
-def get_flag() -> Bool:
+def get_flag() -> bool:
     return True
 
 

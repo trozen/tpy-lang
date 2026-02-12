@@ -5,23 +5,23 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def pick(cond: Bool) -> None:
+// 1: def pick(cond: bool) -> None:
 void pick(bool cond) {
-  // 5:     if cond:
+  // 2:     if cond:
   std::optional<tpy::BigInt> x;
   if (cond) {
-    // 6:         x = None
+    // 3:         x = None
     x = std::nullopt;
   } else {
-    // 8:         x = 5
+    // 5:         x = 5
     x = 5;
   }
-  // 10:     if x is None:
+  // 7:     if x is None:
   if ((!x.has_value())) {
-    // 11:         print(0)
+    // 8:         print(0)
     std::cout << 0 << "\n";
   } else {
-    // 13:         print(x)
+    // 10:         print(x)
     std::cout << tpy::print_optional_val(x) << "\n";
   }
 }
@@ -32,9 +32,9 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 16: pick(True)
+  // 13: pick(True)
   pick(true);
-  // 17: pick(False)
+  // 14: pick(False)
   pick(false);
 }
 

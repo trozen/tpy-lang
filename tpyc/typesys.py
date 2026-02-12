@@ -210,7 +210,7 @@ class BoolType(TpyType):
         return "bool"
 
     def __str__(self) -> str:
-        return "Bool"
+        return "bool"
 
     def qualified_name(self) -> Optional[str]:
         return "builtins.bool"

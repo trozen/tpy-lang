@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 class Point:
     x: Int32
@@ -8,7 +8,7 @@ class Point:
         self.y = y
 
 # Function with pointer-local `p` (branch-declared, creates rebind_slots entry)
-def foo(cond: Bool) -> None:
+def foo(cond: bool) -> None:
     if cond:
         p = Point(1, 2)
     else:
@@ -20,7 +20,7 @@ class Picker:
     val: Int32
     def __init__(self, val: Int32):
         self.val = val
-    def pick(self, cond: Bool) -> None:
+    def pick(self, cond: bool) -> None:
         if cond:
             p = Point(self.val, self.val)
         else:

@@ -1,8 +1,8 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
-def invert(x: Int32 | None) -> Bool:
-    result: Bool = not x  # tpyc: ok
+def invert(x: Int32 | None) -> bool:
+    result: bool = not x  # tpyc: ok
     return result
 
 

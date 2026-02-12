@@ -5,14 +5,14 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def invert(x: Bool | None) -> Bool:
+// 1: def invert(x: bool | None) -> bool:
 bool invert(std::optional<bool> x) {
-  // 5:     if not x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
+  // 2:     if not x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
   if ((!(tpy::is_truthy(x)))) {
-    // 6:         return True
+    // 3:         return True
     return true;
   }
-  // 7:     return False
+  // 4:     return False
   return false;
 }
 
@@ -22,11 +22,11 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 10: print(invert(True))
+  // 7: print(invert(True))
   std::cout << tpy::print_bool(invert(true)) << "\n";
-  // 11: print(invert(False))
+  // 8: print(invert(False))
   std::cout << tpy::print_bool(invert(false)) << "\n";
-  // 12: print(invert(None))
+  // 9: print(invert(None))
   std::cout << tpy::print_bool(invert(std::nullopt)) << "\n";
 }
 

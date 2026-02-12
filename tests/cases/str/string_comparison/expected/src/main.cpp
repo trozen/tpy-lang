@@ -119,7 +119,7 @@ void test_empty_strings() {
   }
 }
 
-// 79: def strings_equal(s1: str, s2: str) -> Bool:
+// 79: def strings_equal(s1: str, s2: str) -> bool:
 bool strings_equal(std::string_view s1, std::string_view s2) {
   // 80:     """Helper function to compare strings."""
   // 81:     return s1 == s2

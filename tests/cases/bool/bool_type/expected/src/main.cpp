@@ -7,9 +7,9 @@ std::string_view __name__;
 
 // 3: def test_bool():
 void test_bool() {
-  // 5:     a: Bool = True
+  // 5:     a: bool = True
   bool a = true;
-  // 6:     b: Bool = False
+  // 6:     b: bool = False
   bool b = false;
   // 9:     inferred_true = True
   bool inferred_true = true;

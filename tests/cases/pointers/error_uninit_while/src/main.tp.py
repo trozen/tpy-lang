@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 class Point:
     x: Int32
@@ -7,7 +7,7 @@ class Point:
         self.x = x
         self.y = y
 
-def while_record(cond: Bool) -> None:
+def while_record(cond: bool) -> None:
     while cond:
         x: Point = Point(1, 2)
         break

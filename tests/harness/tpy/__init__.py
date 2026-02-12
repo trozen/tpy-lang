@@ -12,9 +12,6 @@ from collections.abc import Sized
 T = TypeVar('T')
 
 
-# Bool is just Python's built-in bool for CPython simulation
-Bool = bool
-
 # Char maps to single-character string in Python
 Char = str
 

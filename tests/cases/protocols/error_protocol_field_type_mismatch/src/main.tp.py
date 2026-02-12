@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 from typing import Protocol
 
 
@@ -6,11 +6,11 @@ class HasValue(Protocol):
     value: Int32
 
 
-# Record has 'value' field but wrong type (Bool instead of Int32)
+# Record has 'value' field but wrong type (bool instead of Int32)
 class WrongType:
-    value: Bool
+    value: bool
 
-    def __init__(self, v: Bool):
+    def __init__(self, v: bool):
         self.value = v
 
 

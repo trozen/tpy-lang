@@ -117,7 +117,7 @@ TurboPython distinguishes between **value types** and **object types**:
 
 ### Value Types
 Small, immutable, passed by copy:
-- `int`, `float`, `Int32`, `Int64`, `Float32`, `Float64`, `Bool`
+- `int`, `float`, `Int32`, `Int64`, `Float32`, `Float64`, `bool`
 - Small immutable structs (configurable threshold)
 - `FixStr[N]` (fixed-size string)
 
@@ -152,8 +152,7 @@ Possible syntax options:
 ### Numeric
 - **Working**: `int` (Python's int → `tpy::BigInt` arbitrary precision using GMP)
 - **Working**: `float` (Python's float → `double`, 64-bit IEEE 754)
-- **Working**: `Int32`, `Bool`, `Char`
-- **Working**: Type annotation aliases `bool` and `Bool` map to the same boolean type
+- **Working**: `Int32`, `bool`, `Char`
 - **Planned**: `Int64`, `Int8`, `Int16`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
 - **Planned**: `Float32`
 
@@ -506,7 +505,7 @@ items.insert(0, p)        # WARNING: copies Point into owned storage
 ```
 
 No warning is emitted for:
-- **Value types** (Int32, Bool, str, etc.) — copy-vs-share is unobservable
+- **Value types** (Int32, bool, str, etc.) — copy-vs-share is unobservable
 - **Rvalues** (constructor calls, function results) — no existing owner
 - **`copy()` wrapped** — intent already explicit
 
@@ -546,7 +545,7 @@ Use `copy()` to silence warnings or fix errors — it creates an independent val
 The compiler verifies that every local variable is definitely assigned before use — preventing undefined behavior from uninitialized C++ variables.
 
 ```python
-def example(cond: Bool) -> None:
+def example(cond: bool) -> None:
     if cond:
         x: Point = Point(1, 2)
     print(x)  # ERROR: variable 'x' may be used before assignment
@@ -773,7 +772,7 @@ Protocols can combine fields and methods:
 ```python
 class Container(Protocol):
     count: Int32
-    def is_empty(self) -> Bool: ...
+    def is_empty(self) -> bool: ...
 ```
 
 Generic protocols can use type parameters in fields:
@@ -1065,7 +1064,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Functions returning `T | None` return `T*` in C++
-- **Working**: `T | None` for value types (`Int32 | None`, `Bool | None`, `float | None`) → `std::optional<T>`
+- **Working**: `T | None` for value types (`Int32 | None`, `bool | None`, `float | None`) → `std::optional<T>`
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks
   - Truthiness checks (`if x`, `assert x`, `while x`) narrow on true path, with warning about falsy non-None values
@@ -1085,7 +1084,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - `None` seeds optional inference: `x = None; x = T(...)` infers `T | None`.
   - Bare `x = None` with no later concrete anchor is an error.
   - Literal-seeded variables default to `int` (`BigInt`) and may narrow via compatible literal anchoring (for example to `Int32`).
-  - `Bool` does not auto-merge with numeric families during inference.
+  - `bool` does not auto-merge with numeric families during inference.
   - Augmented assignment currently does not perform literal anchoring (`x = 0; x += Int32(5)` remains `int`/`BigInt`).
   - For `x = 0` style literal-seeded vars, `x += Int32(...)` emits a warning that augmented assignment does not narrow the variable type.
   - The warning also applies when RHS is a function returning `Int32`; explicit `int` anchors (`x: int = 0`, `x = int(0)`) do not warn.

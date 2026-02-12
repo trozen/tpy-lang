@@ -1,6 +1,6 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
-def maybe_int(flag: Bool) -> Int32 | None:
+def maybe_int(flag: bool) -> Int32 | None:
     if flag:
         return 42
     return None

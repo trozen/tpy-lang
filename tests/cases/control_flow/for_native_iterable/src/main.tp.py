@@ -1,4 +1,4 @@
-from tpy import Int32, Bool, Array, StaticList, NativeIterable
+from tpy import Int32, Array, StaticList, NativeIterable
 
 def sum_iter(items: NativeIterable[Int32]) -> Int32:
     total: Int32 = 0
@@ -23,7 +23,7 @@ def nested_iteration(outer: NativeIterable[Int32], inner: NativeIterable[Int32])
             total += x * y
     return total
 
-def contains_value(items: NativeIterable[Int32], target: Int32) -> Bool:
+def contains_value(items: NativeIterable[Int32], target: Int32) -> bool:
     # Test "in" operator with NativeIterable-typed param
     return target in items
 

@@ -1,4 +1,4 @@
-from tpy import Int32, Bool, copy
+from tpy import Int32, copy
 
 
 class Point:
@@ -20,7 +20,7 @@ class Line:
     def set_end(self, e: Point) -> None:
         self.end = copy(e)
 
-    def has_end(self) -> Bool:
+    def has_end(self) -> bool:
         return self.end is not None
 
     def get_end(self) -> Point | None:

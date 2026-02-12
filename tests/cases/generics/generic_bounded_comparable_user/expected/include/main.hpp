@@ -18,13 +18,13 @@ struct MyInt {
   MyInt() = default;
   explicit MyInt(int32_t v) : value(v) {}
 
-  // 12:     def __lt__(self, other: MyInt) -> Bool:
+  // 12:     def __lt__(self, other: MyInt) -> bool:
   bool __lt__(const MyInt& other) const {
     // 13:         return self.value < other.value
     return (this->value < other.value);
   }
 
-  // 15:     def __eq__(self, other: MyInt) -> Bool:
+  // 15:     def __eq__(self, other: MyInt) -> bool:
   bool __eq__(const MyInt& other) const {
     // 16:         return self.value == other.value
     return (this->value == other.value);

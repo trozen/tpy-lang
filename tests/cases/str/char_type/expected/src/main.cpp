@@ -119,7 +119,7 @@ void test_char_in_string() {
   }
 }
 
-// 75: def is_vowel(c: Char) -> Bool:
+// 75: def is_vowel(c: Char) -> bool:
 bool is_vowel(char c) {
   // 76:     """Check if character is a vowel."""
   // 77:     if c == "a":

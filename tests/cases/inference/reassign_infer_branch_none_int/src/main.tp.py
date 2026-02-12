@@ -1,7 +1,4 @@
-from tpy import Bool
-
-
-def pick(cond: Bool) -> None:
+def pick(cond: bool) -> None:
     if cond:
         x = None
     else:

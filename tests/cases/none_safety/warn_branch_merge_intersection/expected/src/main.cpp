@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def pick(flag: Bool, a: Int32 | None, b: Int32 | None) -> Int32:
+// 4: def pick(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
   // 5:     if flag:
   if (flag) {

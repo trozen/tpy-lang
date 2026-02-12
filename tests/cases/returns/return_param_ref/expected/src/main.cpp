@@ -51,7 +51,7 @@ Point& chained(std::vector<Point>& points) {
   return b;
 }
 
-// 36: def both_branches(points: list[Point], flag: Bool) -> Point:
+// 36: def both_branches(points: list[Point], flag: bool) -> Point:
 Point& both_branches(std::vector<Point>& points, bool flag) {
   // 37:     if flag:
   Point* result;

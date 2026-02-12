@@ -9,7 +9,7 @@ std::string_view __name__;
 Point* p{};
 
 // # Function with pointer-local `p` (branch-declared, creates rebind_slots entry)
-// 11: def foo(cond: Bool) -> None:
+// 11: def foo(cond: bool) -> None:
 void foo(bool cond) {
   // 12:     if cond:
   std::optional<Point> __slot_1;

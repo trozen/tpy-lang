@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
 class Point:
@@ -33,7 +33,7 @@ def chained(points: list[Point]) -> Point:
     return b  # tpyc: ok (chained provenance)
 
 
-def both_branches(points: list[Point], flag: Bool) -> Point:
+def both_branches(points: list[Point], flag: bool) -> Point:
     if flag:
         result = points[1]
     else:

@@ -1,7 +1,7 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
-def pick(x: Int32 | None, flag: Bool) -> Int32:
+def pick(x: Int32 | None, flag: bool) -> Int32:
     if x and flag:  # tpyc: warning(/variable 'x'/)
         return x + 1  # tpyc: ok
     return 0

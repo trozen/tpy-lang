@@ -8,10 +8,10 @@ std::string_view __name__;
 // # Test the 'not' logical operator
 // 5: def test_not_with_bool_literals() -> None:
 void test_not_with_bool_literals() {
-  // 6:     """Test 'not' with Bool literals."""
-  // 7:     a: Bool = True
+  // 6:     """Test 'not' with bool literals."""
+  // 7:     a: bool = True
   bool a = true;
-  // 8:     b: Bool = False
+  // 8:     b: bool = False
   bool b = false;
   // 11:     if not a:
   if ((!(a))) {
@@ -58,9 +58,9 @@ void test_not_with_comparisons() {
 // 36: def test_not_in_conditions() -> None:
 void test_not_in_conditions() {
   // 37:     """Test 'not' combined with other logical operators."""
-  // 38:     a: Bool = True
+  // 38:     a: bool = True
   bool a = true;
-  // 39:     b: Bool = False
+  // 39:     b: bool = False
   bool b = false;
   // 42:     if not a and b:
   if (((!(a)) && b)) {
@@ -93,7 +93,7 @@ void test_not_in_conditions() {
 // 60: def test_double_negation() -> None:
 void test_double_negation() {
   // 61:     """Test double negation."""
-  // 62:     flag: Bool = True
+  // 62:     flag: bool = True
   bool flag = true;
   // 64:     if not not flag:
   if ((!((!(flag))))) {
@@ -110,9 +110,9 @@ void test_double_negation() {
   }
 }
 
-// 72: def is_valid(x: Int32) -> Bool:
+// 72: def is_valid(x: Int32) -> bool:
 bool is_valid(int32_t x) {
-  // 73:     """Helper function returning Bool."""
+  // 73:     """Helper function returning bool."""
   // 74:     return x > 0
   return (x > 0);
 }
@@ -138,7 +138,7 @@ void test_not_with_function_call() {
 // 86: def test_not_in_while() -> None:
 void test_not_in_while() {
   // 87:     """Test 'not' in while condition."""
-  // 88:     done: Bool = False
+  // 88:     done: bool = False
   bool done = false;
   // 89:     count: Int32 = 0
   int32_t count = 0;

@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 x: Int32 | None = None
 print(x is None)
@@ -10,7 +10,7 @@ print(x)
 y: Int32 | None = 10
 print(y)
 
-b: Bool | None = None
+b: bool | None = None
 print(b)
 b = True
 print(b)

@@ -47,7 +47,7 @@ struct Box {
     return tpy::optional_to_ptr(this->item);
   }
 
-  // 21:     def has_item(self) -> Bool:
+  // 21:     def has_item(self) -> bool:
   bool has_item() {
     // 22:         return self.item is not None
     return (this->item.has_value());

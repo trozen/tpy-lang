@@ -1,7 +1,7 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 
-def pick(flag: Bool, a: Int32 | None, b: Int32 | None) -> Int32:
+def pick(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
     if flag:
         assert a is not None
     else:

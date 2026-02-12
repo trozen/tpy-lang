@@ -30,7 +30,7 @@ struct Stack {
     return tpy::pop_back(this->items);
   }
 
-  // 15:     def is_empty(self) -> Bool:
+  // 15:     def is_empty(self) -> bool:
   bool is_empty() {
     // 16:         return len(self.items) == 0
     return (tpy::__len__(this->items) == 0);

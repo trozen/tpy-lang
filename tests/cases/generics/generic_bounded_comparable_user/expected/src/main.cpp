@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 19: def is_less[T: Comparable](a: T, b: T) -> Bool:
+// 19: def is_less[T: Comparable](a: T, b: T) -> bool:
 template<tpy::Comparable T>
 bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
   // 20:     return a < b

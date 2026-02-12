@@ -1,4 +1,4 @@
-from tpy import Int32, Bool
+from tpy import Int32
 
 class Point:
     x: Int32
@@ -22,21 +22,21 @@ def value_init() -> None:
     print(x)  # tpyc: ok
 
 # Assign before if, use after — OK
-def assign_before_if(cond: Bool) -> None:
+def assign_before_if(cond: bool) -> None:
     x: Point = Point(1, 2)
     if cond:
         x = Point(3, 4)
     print(x.x, x.y)  # tpyc: ok
 
 # Then-branch returns — code after if only reachable from else
-def then_returns(cond: Bool) -> None:
+def then_returns(cond: bool) -> None:
     if cond:
         return
     x: Point = Point(5, 6)
     print(x.x, x.y)  # tpyc: ok
 
 # Both branches return — dead code after is fine
-def both_return(cond: Bool) -> Int32:
+def both_return(cond: bool) -> Int32:
     if cond:
         x: Int32 = 1
         return x
@@ -44,7 +44,7 @@ def both_return(cond: Bool) -> Int32:
         return 0
 
 # Both branches assign (value type) — OK after if
-def both_branches_assign(cond: Bool) -> None:
+def both_branches_assign(cond: bool) -> None:
     x: Int32
     if cond:
         x = 1
@@ -53,7 +53,7 @@ def both_branches_assign(cond: Bool) -> None:
     print(x)  # tpyc: ok
 
 # Else-branch returns, then assigns — OK after if
-def else_returns(cond: Bool) -> None:
+def else_returns(cond: bool) -> None:
     x: Int32
     if cond:
         x = 10

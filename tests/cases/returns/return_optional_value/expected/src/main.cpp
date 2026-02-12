@@ -7,7 +7,7 @@ std::string_view __name__;
 // 11: result: Int32 | None = maybe_int(True)
 std::optional<int32_t> result;
 
-// 3: def maybe_int(flag: Bool) -> Int32 | None:
+// 3: def maybe_int(flag: bool) -> Int32 | None:
 std::optional<int32_t> maybe_int(bool flag) {
   // 4:     if flag:
   if (flag) {

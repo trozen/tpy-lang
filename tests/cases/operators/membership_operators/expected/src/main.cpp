@@ -64,7 +64,7 @@ void test_array_membership() {
   }
 }
 
-// 39: def check_span_contains(data: Span[Int32], value: Int32) -> Bool:
+// 39: def check_span_contains(data: Span[Int32], value: Int32) -> bool:
 bool check_span_contains(std::span<const int32_t> data, int32_t value) {
   // 40:     """Test membership for Span[Int32]."""
   // 41:     return value in data

@@ -8,7 +8,7 @@ std::string_view __name__;
 std::optional<int32_t> x;
 // 10: y: Int32 | None = 10
 std::optional<int32_t> y;
-// 13: b: Bool | None = None
+// 13: b: bool | None = None
 std::optional<bool> b;
 // 18: f: float | None = None
 std::optional<double> f;
@@ -51,7 +51,7 @@ void __tpy_init() {
   y = 10;
   // 11: print(y)
   std::cout << tpy::print_optional_val(y) << "\n";
-  // 13: b: Bool | None = None
+  // 13: b: bool | None = None
   b = std::nullopt;
   // 14: print(b)
   std::cout << tpy::print_optional_val<tpy::print_bool, bool>(b) << "\n";

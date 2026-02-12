@@ -1,4 +1,4 @@
-from tpy import Int32, Bool, copy
+from tpy import Int32, copy
 
 
 class Point:
@@ -18,7 +18,7 @@ class Box:
     def get_item(self) -> Point | None:
         return self.item
 
-    def has_item(self) -> Bool:
+    def has_item(self) -> bool:
         return self.item is not None
 
 

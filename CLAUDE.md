@@ -105,7 +105,7 @@ tests/
 ├── cases/                    # All tests, grouped by feature
 │   ├── array_span/           # Array, Span, StaticList
 │   ├── assert/               # assert statements, narrowing integration
-│   ├── bool/                 # Bool type and conversion
+│   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
 │   ├── control_flow/         # if/else, for loops, break/continue, iterables
 │   ├── float/                # Float operations
@@ -174,7 +174,7 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
-| `typesys.py` | Type definitions (Int32, BigInt, Float, Bool, Void, Str, Char, Record, Ptr, ConstPtr, Own, Optional, List, Array, Span, StaticList) and TypeRegistry |
+| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ConstPtr, Own, Optional, List, Array, Span, StaticList) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
@@ -280,7 +280,7 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `int` | `tpy::BigInt` (arbitrary precision) |
 | `Int32` | `int32_t` |
 | `float` | `double` (IEEE 754) |
-| `Bool` | `bool` |
+| `bool` | `bool` |
 | `str` | `const char*` (parameters: `std::string_view`) |
 | `Char` | `char` |
 | `None` | `void` (return type) |

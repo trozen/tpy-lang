@@ -1,7 +1,4 @@
-from tpy import Bool
-
-
-def invert(x: Bool | None) -> Bool:
+def invert(x: bool | None) -> bool:
     if not x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
         return True
     return False

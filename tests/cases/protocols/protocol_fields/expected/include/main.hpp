@@ -93,7 +93,7 @@ struct Box {
   Box() = default;
   explicit Box(int32_t c) : count(c) {}
 
-  // 54:     def is_empty(self) -> Bool:
+  // 54:     def is_empty(self) -> bool:
   bool is_empty() {
     // 55:         return self.count == 0
     return (this->count == 0);

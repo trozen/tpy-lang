@@ -21,7 +21,7 @@ Point make_point() {
   return Point(7);
 }
 
-// 15: def get_flag() -> Bool:
+// 15: def get_flag() -> bool:
 bool get_flag() {
   // 16:     return True
   return true;

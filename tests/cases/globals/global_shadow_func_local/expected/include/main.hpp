@@ -42,7 +42,7 @@ struct Picker {
   Picker() = default;
   explicit Picker(int32_t val) : val(val) {}
 
-  // 23:     def pick(self, cond: Bool) -> None:
+  // 23:     def pick(self, cond: bool) -> None:
   void pick(bool cond) {
     // 24:         if cond:
     std::optional<Point> __slot_1;

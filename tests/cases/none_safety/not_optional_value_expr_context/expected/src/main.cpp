@@ -5,9 +5,9 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def invert(x: Int32 | None) -> Bool:
+// 4: def invert(x: Int32 | None) -> bool:
 bool invert(std::optional<int32_t> x) {
-  // 5:     result: Bool = not x  # tpyc: ok
+  // 5:     result: bool = not x  # tpyc: ok
   bool result = (!(tpy::is_truthy(x)));
   // 6:     return result
   return result;

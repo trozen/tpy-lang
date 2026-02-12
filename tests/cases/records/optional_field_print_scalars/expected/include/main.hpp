@@ -14,7 +14,7 @@ extern Settings* s;
 struct Settings {
   // 5:     count: Int32 | None
   std::optional<int32_t> count;
-  // 6:     flag: Bool | None
+  // 6:     flag: bool | None
   std::optional<bool> flag;
   // 7:     ratio: float | None
   std::optional<double> ratio;

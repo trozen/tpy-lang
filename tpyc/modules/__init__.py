@@ -407,7 +407,6 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
     type_map = {
         "Char": CHAR,
         "Int32": INT32,
-        "Bool": BOOL,
         "str": STR,
         "int": BIGINT,
         "float": FLOAT,

@@ -1,4 +1,4 @@
-from tpy import Int32, Char, Bool
+from tpy import Int32, Char
 
 # Test Char type comprehensively
 
@@ -72,7 +72,7 @@ def test_char_in_string() -> None:
     else:
         print("z in text: no")
 
-def is_vowel(c: Char) -> Bool:
+def is_vowel(c: Char) -> bool:
     """Check if character is a vowel."""
     if c == "a":
         return True

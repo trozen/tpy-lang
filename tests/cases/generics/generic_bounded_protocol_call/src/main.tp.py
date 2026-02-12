@@ -1,7 +1,7 @@
 # Test calling protocol methods on bounded type parameters
 from __future__ import annotations
 from typing import Protocol, Sized
-from tpy import Int32, Own, Bool, Comparable
+from tpy import Int32, Own, Comparable
 
 # Test 1: Builtin protocol (Sized) method call inside generic function
 def get_length[T: Sized](item: T) -> Int32:
@@ -62,8 +62,8 @@ class Clonable(Protocol):
 def clone_it[T: Clonable](item: T) -> Own[T]:
     return item.clone()  # Return type should be Own[T], not Own[Clonable]
 
-# Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> Bool)
-def is_less[T: Comparable](a: T, b: T) -> Bool:
+# Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> bool)
+def is_less[T: Comparable](a: T, b: T) -> bool:
     return a < b  # Uses __lt__ which takes Self parameter
 
 # Another type satisfying Stringable
