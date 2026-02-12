@@ -12,65 +12,47 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 4: for i in range(0):
-  tpy::Range __iter_0 = tpy::Range(0);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 0; ++i) {
     // 5:     print(i)
     std::cout << i << "\n";
   }
   // 7: for i in range(5, 5):
-  tpy::Range __iter_1 = tpy::Range(5, 5);
-  while (auto __opt_1 = __iter_1.next()) {
-    int32_t i = *__opt_1;
+  for (int32_t i = 5; i < 5; ++i) {
     // 8:     print(i)
     std::cout << i << "\n";
   }
   // 10: for i in range(5, 0):
-  tpy::Range __iter_2 = tpy::Range(5, 0);
-  while (auto __opt_2 = __iter_2.next()) {
-    int32_t i = *__opt_2;
+  for (int32_t i = 5; i < 0; ++i) {
     // 11:     print(i)
     std::cout << i << "\n";
   }
   // 13: for i in range(0, 10, -1):
-  tpy::Range __iter_3 = tpy::Range(0, 10, -(1));
-  while (auto __opt_3 = __iter_3.next()) {
-    int32_t i = *__opt_3;
+  for (int32_t i = 0; i > 10; --i) {
     // 14:     print(i)
     std::cout << i << "\n";
   }
   // 17: for i in range(1):
-  tpy::Range __iter_4 = tpy::Range(1);
-  while (auto __opt_4 = __iter_4.next()) {
-    int32_t i = *__opt_4;
+  for (int32_t i = 0; i < 1; ++i) {
     // 18:     print(i)
     std::cout << i << "\n";
   }
   // 20: for i in range(3, 4):
-  tpy::Range __iter_5 = tpy::Range(3, 4);
-  while (auto __opt_5 = __iter_5.next()) {
-    int32_t i = *__opt_5;
+  for (int32_t i = 3; i < 4; ++i) {
     // 21:     print(i)
     std::cout << i << "\n";
   }
   // 24: for i in range(-3, 0):
-  tpy::Range __iter_6 = tpy::Range(-(3), 0);
-  while (auto __opt_6 = __iter_6.next()) {
-    int32_t i = *__opt_6;
+  for (int32_t i = -(3); i < 0; ++i) {
     // 25:     print(i)
     std::cout << i << "\n";
   }
   // 28: for i in range(0, 10, 100):
-  tpy::Range __iter_7 = tpy::Range(0, 10, 100);
-  while (auto __opt_7 = __iter_7.next()) {
-    int32_t i = *__opt_7;
+  for (int32_t i = 0; i < 10; i = tpy::int32_add(i, 100)) {
     // 29:     print(i)
     std::cout << i << "\n";
   }
   // 31: for i in range(10, 0, -100):
-  tpy::Range __iter_8 = tpy::Range(10, 0, -(100));
-  while (auto __opt_8 = __iter_8.next()) {
-    int32_t i = *__opt_8;
+  for (int32_t i = 10; i > 0; i = tpy::int32_add(i, -(100))) {
     // 32:     print(i)
     std::cout << i << "\n";
   }

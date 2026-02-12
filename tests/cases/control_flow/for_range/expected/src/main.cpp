@@ -8,9 +8,9 @@ std::string_view __name__;
 // 3: def print_range(start: Int32, end: Int32) -> None:
 void print_range(int32_t start, int32_t end) {
   // 4:     for i in range(start, end):
-  tpy::Range __iter_0 = tpy::Range(start, end);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  int32_t __start_0 = start;
+  int32_t __stop_0 = end;
+  for (int32_t i = __start_0; i < __stop_0; ++i) {
     // 5:         print(i)
     std::cout << i << "\n";
   }
@@ -21,9 +21,8 @@ int32_t sum_range(int32_t n) {
   // 8:     total: Int32 = 0
   int32_t total = 0;
   // 9:     for i in range(n):
-  tpy::Range __iter_0 = tpy::Range(n);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  int32_t __stop_0 = n;
+  for (int32_t i = 0; i < __stop_0; ++i) {
     // 10:         total += i
     total = tpy::int32_add(total, i);
   }
@@ -38,9 +37,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 14: for i in range(5):
-  tpy::Range __iter_0 = tpy::Range(5);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 5; ++i) {
     // 15:     print(i)
     std::cout << i << "\n";
   }

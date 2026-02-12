@@ -19,6 +19,7 @@ from ..parse import (
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral,
     TpyFieldAccess,
+    TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce,
 )
 from ..namespace import Namespace
 from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
@@ -796,6 +797,34 @@ class StatementGenerator:
 
         out.write(f"{indent}}}\n")
 
+    def _gen_loop_body(self, out: TextIO, stmt: TpyForEach, indent: str,
+                        elem_type: TpyType | None) -> None:
+        """Generate loop body statements with namespace/scope tracking.
+
+        Shared by _gen_iterator_loop, _gen_range_counter_loop, and _gen_for_each.
+        Writes the body statements, the closing brace, and cleans up the loop
+        variable from var_types.
+        """
+        self.ctx.local_scope_names.add(stmt.var)
+        if elem_type:
+            self.ctx.var_types[stmt.var] = elem_type
+        old_ns = self.ctx.current_ns
+        if self.ctx.current_ns and elem_type:
+            inner_ns = Namespace(parent=self.ctx.current_ns)
+            inner_ns.bind_variable(stmt.var, elem_type)
+            self.ctx.current_ns = inner_ns
+        self.ctx.indent_level += 1
+        for s in stmt.body:
+            self.gen_stmt(out, s)
+        self.ctx.indent_level -= 1
+        self.ctx.local_scope_names.discard(stmt.var)
+        self.ctx.current_ns = old_ns
+
+        out.write(f"{indent}}}\n")
+
+        if stmt.var in self.ctx.var_types:
+            del self.ctx.var_types[stmt.var]
+
     def _gen_iterator_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                            iterable_expr: str, elem_type: TpyType) -> None:
         """Generate a while-loop for NativeIterator types.
@@ -831,37 +860,155 @@ class StatementGenerator:
         else:
             out.write(f"{inner_indent}auto& {stmt.var} = *{opt_name};\n")
 
-        # Track loop variable
-        self.ctx.local_scope_names.add(stmt.var)
-        self.ctx.var_types[stmt.var] = elem_type
-        old_ns = self.ctx.current_ns
-        if self.ctx.current_ns:
-            inner_ns = Namespace(parent=self.ctx.current_ns)
-            inner_ns.bind_variable(stmt.var, elem_type)
-            self.ctx.current_ns = inner_ns
-        self.ctx.indent_level += 1
-        for s in stmt.body:
-            self.gen_stmt(out, s)
-        self.ctx.indent_level -= 1
-        self.ctx.local_scope_names.discard(stmt.var)
-        self.ctx.current_ns = old_ns
+        self._gen_loop_body(out, stmt, indent, elem_type)
 
-        out.write(f"{indent}}}\n")
+    @staticmethod
+    def _unwrap_coerce(expr: TpyExpr) -> TpyExpr:
+        """Unwrap TpyCoerce nodes to get the underlying expression."""
+        while isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        return expr
 
-        if stmt.var in self.ctx.var_types:
-            del self.ctx.var_types[stmt.var]
+    @staticmethod
+    def _is_literal_range_arg(expr: TpyExpr) -> bool:
+        """Check if a range arg is a compile-time literal (safe to inline).
+
+        Only literals can be inlined in the for-loop condition. Variable names
+        must be pre-evaluated into temps because Python's range() captures args
+        at call time, but the for-loop condition re-evaluates each iteration.
+        """
+        expr = StatementGenerator._unwrap_coerce(expr)
+        if isinstance(expr, TpyIntLiteral):
+            return True
+        if isinstance(expr, TpyUnaryOp) and expr.op == '-' and isinstance(expr.operand, TpyIntLiteral):
+            return True
+        return False
+
+    def _gen_range_counter_loop(self, out: TextIO, stmt: TpyForEach,
+                                 indent: str, elem_type: TpyType) -> bool:
+        """Optimize range() to a C-style for-loop.
+
+        Returns True if the optimization was applied, False if the caller
+        should fall back to the generic while-loop codegen.
+        """
+        assert isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range"
+        range_call = stmt.iterable
+        nargs = len(range_call.args)
+
+        # Classify the step from the original AST (unwrap TpyCoerce from sema)
+        if nargs == 3:
+            step_ast = self._unwrap_coerce(range_call.args[2])
+            if isinstance(step_ast, TpyIntLiteral):
+                if step_ast.value == 0:
+                    return False  # zero step panics at runtime — use Range ctor
+                elif step_ast.value > 0:
+                    step_kind = "literal_pos"
+                    step_val = step_ast.value
+                else:
+                    step_kind = "literal_neg"
+                    step_val = step_ast.value
+            elif (isinstance(step_ast, TpyUnaryOp) and step_ast.op == '-'
+                  and isinstance(step_ast.operand, TpyIntLiteral)):
+                val = -step_ast.operand.value
+                if val == 0:
+                    return False
+                step_kind = "literal_neg"
+                step_val = val
+            else:
+                step_kind = "variable"
+                step_val = None
+        else:
+            step_kind = "plus_one"
+            step_val = 1
+
+        # Generate arg expressions with proper BigInt→Int32 conversion
+        gen_args = self.builtins.gen_range_args(range_call)
+
+        # Determine start/stop/step C++ expressions
+        if nargs == 1:
+            start_expr, stop_expr = "0", gen_args[0]
+        elif nargs == 2:
+            start_expr, stop_expr = gen_args[0], gen_args[1]
+        else:
+            start_expr, stop_expr = gen_args[0], gen_args[1]
+
+        n = self.ctx.iter_counter
+        self.ctx.iter_counter += 1
+
+        self.ctx.temps.flush(out, indent)
+
+        # Pre-evaluate non-literal args into temps (left-to-right, matching
+        # Python's argument evaluation order).  Literals are safe to inline
+        # since they can't change; everything else must be captured once.
+        if nargs >= 2:
+            start_arg_ast = range_call.args[0]
+            if not self._is_literal_range_arg(start_arg_ast):
+                temp_name = f"__start_{n}"
+                out.write(f"{indent}int32_t {temp_name} = {start_expr};\n")
+                start_expr = temp_name
+
+        stop_arg_ast = range_call.args[0] if nargs == 1 else range_call.args[1]
+        if not self._is_literal_range_arg(stop_arg_ast):
+            temp_name = f"__stop_{n}"
+            out.write(f"{indent}int32_t {temp_name} = {stop_expr};\n")
+            stop_expr = temp_name
+
+        var = stmt.var
+        cpp_elem = elem_type.to_cpp()
+
+        if step_kind == "plus_one":
+            out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
+                      f"{var} < {stop_expr}; ++{var}) {{\n")
+        elif step_kind == "literal_pos":
+            if step_val == 1:
+                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
+                          f"{var} < {stop_expr}; ++{var}) {{\n")
+            else:
+                step_cpp = gen_args[2]
+                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
+                          f"{var} < {stop_expr}; "
+                          f"{var} = tpy::int32_add({var}, {step_cpp})) {{\n")
+        elif step_kind == "literal_neg":
+            if step_val == -1:
+                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
+                          f"{var} > {stop_expr}; --{var}) {{\n")
+            else:
+                step_cpp = gen_args[2]
+                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
+                          f"{var} > {stop_expr}; "
+                          f"{var} = tpy::int32_add({var}, {step_cpp})) {{\n")
+        else:
+            # Variable step — capture, zero-check, ternary condition
+            step_cpp = gen_args[2]
+            step_temp = f"__step_{n}"
+            out.write(f"{indent}int32_t {step_temp} = {step_cpp};\n")
+            step_cpp = step_temp
+            out.write(f'{indent}if ({step_cpp} == 0) tpy::tpy_panic("range() arg 3 must not be zero");\n')
+            out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
+                      f"{step_cpp} > 0 ? {var} < {stop_expr} : {var} > {stop_expr}; "
+                      f"{var} = tpy::int32_add({var}, {step_cpp})) {{\n")
+
+        self._gen_loop_body(out, stmt, indent, elem_type)
+        return True
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator."""
         from tpyc.modules import get_native_iterator_element_type
-        iterable = self.expressions.gen_expr_deref(stmt.iterable)
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
         # Check for NativeIterator types first — these use while-loop codegen
         iter_elem = get_native_iterator_element_type(iterable_type)
         if iter_elem is not None:
+            # Optimize range() calls to C-style counter loops
+            if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
+                if self._gen_range_counter_loop(out, stmt, indent, iter_elem):
+                    return
+            # General NativeIterator path (or range fallback for zero-step)
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_iterator_loop(out, stmt, indent, iterable, iter_elem)
             return
+
+        iterable = self.expressions.gen_expr_deref(stmt.iterable)
 
         # Determine element type for the loop variable
         # Handle protocol types (e.g., NativeIterable[T])
@@ -898,23 +1045,4 @@ class StatementGenerator:
             # Fallback: use auto
             out.write(f"{indent}for (auto {stmt.var} : {iterable}) {{\n")
 
-        # Track loop variable as local to prevent false global deref if it shadows a global
-        self.ctx.local_scope_names.add(stmt.var)
-        # Set up inner namespace for loop variable
-        old_ns = self.ctx.current_ns
-        if self.ctx.current_ns and elem_type:
-            inner_ns = Namespace(parent=self.ctx.current_ns)
-            inner_ns.bind_variable(stmt.var, elem_type)
-            self.ctx.current_ns = inner_ns
-        self.ctx.indent_level += 1
-        for s in stmt.body:
-            self.gen_stmt(out, s)
-        self.ctx.indent_level -= 1
-        self.ctx.local_scope_names.discard(stmt.var)
-        self.ctx.current_ns = old_ns
-
-        out.write(f"{indent}}}\n")
-
-        # Remove loop variable type after loop ends
-        if stmt.var in self.ctx.var_types:
-            del self.ctx.var_types[stmt.var]
+        self._gen_loop_body(out, stmt, indent, elem_type)

@@ -13,9 +13,7 @@ void loop_escape_copy_ok() {
   std::optional<Point> __slot_2;
   Point* saved = &__slot_1;
   // 13:     for i in range(3):
-  tpy::Range __iter_0 = tpy::Range(3);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 3; ++i) {
     // 14:         p: Point = Point(i, i)
     Point p = Point(i, i);
     // 15:         saved = copy(p)  # tpyc: ok
@@ -33,9 +31,7 @@ void loop_rvalue_ok() {
   std::optional<Point> __slot_2;
   Point* saved = &__slot_1;
   // 21:     for i in range(3):
-  tpy::Range __iter_0 = tpy::Range(3);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 3; ++i) {
     // 22:         saved = Point(i, i)  # tpyc: ok
     saved = &*(__slot_2 = Point(i, i));
   }
@@ -66,9 +62,7 @@ void value_type_ok() {
   // 35:     saved: Int32 = 0
   int32_t saved = 0;
   // 36:     for i in range(3):
-  tpy::Range __iter_0 = tpy::Range(3);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 3; ++i) {
     // 37:         n: Int32 = i * 10
     int32_t n = (tpy::int32_mul(i, 10));
     // 38:         saved = n  # tpyc: ok
@@ -89,9 +83,7 @@ void foreach_shadow_safe() {
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 47:     for i in range(1):
-  tpy::Range __iter_0 = tpy::Range(1);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 1; ++i) {
     // 48:         p: Point = Point(i, i)
     Point p = Point(i, i);
     // 49:         pass

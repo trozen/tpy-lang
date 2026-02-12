@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- iterator roadmap phase 2: counter-loop optimization for `for i in range(...)` (see LANGUAGE_FEATURES.md)
+- iterator roadmap - implement all features (see LANGUAGE_FEATURES.md)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
@@ -34,6 +34,7 @@
 
 ## Hard Problems
 - handling cyclic imports
+- allow method overloads?
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)

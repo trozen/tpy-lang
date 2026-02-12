@@ -47,9 +47,8 @@ struct Finder {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // 17:         for i in range(n):
-    tpy::Range __iter_0 = tpy::Range(n);
-    while (auto __opt_0 = __iter_0.next()) {
-      int32_t i = *__opt_0;
+    int32_t __stop_0 = n;
+    for (int32_t i = 0; i < __stop_0; ++i) {
       // 18:             p: Point = Point(i, i * 2)
       Point* p = &*(__slot_2 = Point(i, (tpy::int32_mul(i, 2))));
       // 19:             saved = p  # tpyc: warning(/hoisted to function scope/)

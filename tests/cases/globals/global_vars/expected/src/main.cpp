@@ -68,9 +68,9 @@ void __tpy_init() {
   // 5: end = 3
   end = tpy::BigInt(3);
   // 6: for i in range(start, end):
-  tpy::Range __iter_0 = tpy::Range((start).to_int32(), (end).to_int32());
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  int32_t __start_0 = (start).to_int32();
+  int32_t __stop_0 = (end).to_int32();
+  for (int32_t i = __start_0; i < __stop_0; ++i) {
     // 7:     print(i)
     std::cout << i << "\n";
   }
@@ -120,9 +120,7 @@ void __tpy_init() {
   // 38: print(i)
   std::cout << i << "\n";
   // 39: for i in range(0, 2):
-  tpy::Range __iter_1 = tpy::Range(0, 2);
-  while (auto __opt_1 = __iter_1.next()) {
-    int32_t i = *__opt_1;
+  for (int32_t i = 0; i < 2; ++i) {
     // 40:     print(i)
     std::cout << i << "\n";
   }

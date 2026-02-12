@@ -14,9 +14,11 @@ int32_t sum_range_step(int32_t start, int32_t stop, int32_t step) {
   // 21:     total: Int32 = 0
   int32_t total = 0;
   // 22:     for i in range(start, stop, step):
-  tpy::Range __iter_0 = tpy::Range(start, stop, step);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  int32_t __start_0 = start;
+  int32_t __stop_0 = stop;
+  int32_t __step_0 = step;
+  if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
+  for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i = tpy::int32_add(i, __step_0)) {
     // 23:         total += i
     total = tpy::int32_add(total, i);
   }
@@ -31,30 +33,22 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 4: for i in range(5):
-  tpy::Range __iter_0 = tpy::Range(5);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 5; ++i) {
     // 5:     print(i)
     std::cout << i << "\n";
   }
   // 8: for i in range(2, 6):
-  tpy::Range __iter_1 = tpy::Range(2, 6);
-  while (auto __opt_1 = __iter_1.next()) {
-    int32_t i = *__opt_1;
+  for (int32_t i = 2; i < 6; ++i) {
     // 9:     print(i)
     std::cout << i << "\n";
   }
   // 12: for i in range(0, 10, 2):
-  tpy::Range __iter_2 = tpy::Range(0, 10, 2);
-  while (auto __opt_2 = __iter_2.next()) {
-    int32_t i = *__opt_2;
+  for (int32_t i = 0; i < 10; i = tpy::int32_add(i, 2)) {
     // 13:     print(i)
     std::cout << i << "\n";
   }
   // 16: for i in range(10, 0, -2):
-  tpy::Range __iter_3 = tpy::Range(10, 0, -(2));
-  while (auto __opt_3 = __iter_3.next()) {
-    int32_t i = *__opt_3;
+  for (int32_t i = 10; i > 0; i = tpy::int32_add(i, -(2))) {
     // 17:     print(i)
     std::cout << i << "\n";
   }
@@ -63,9 +57,8 @@ void __tpy_init() {
   // 29: n = 5
   n = tpy::BigInt(5);
   // 30: for i in range(n):
-  tpy::Range __iter_4 = tpy::Range((n).to_int32());
-  while (auto __opt_4 = __iter_4.next()) {
-    int32_t i = *__opt_4;
+  int32_t __stop_4 = (n).to_int32();
+  for (int32_t i = 0; i < __stop_4; ++i) {
     // 31:     print(i)
     std::cout << i << "\n";
   }

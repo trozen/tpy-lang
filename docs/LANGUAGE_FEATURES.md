@@ -1018,10 +1018,18 @@ print(sum_iter(range(5)))          # 10
 print(sum_iter(range(0, 10, 3)))   # 18
 ```
 
-**Codegen**: NativeIterator for-loops compile to a while-loop:
+**Codegen**: `for i in range(...)` is optimized to a C-style counter loop:
 
 ```cpp
-auto __iter_0 = tpy::Range(5);
+for (int32_t i = 0; i < 5; ++i) {
+    // body
+}
+```
+
+Step ±1 uses `++i`/`--i`; other literal steps use checked `tpy::int32_add(i, step)`; variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). Generic `NativeIterator[T]` parameters (not `range()` calls) still use the while-loop path:
+
+```cpp
+auto __iter_0 = it;
 while (auto __opt_0 = __iter_0.next()) {
     int32_t x = *__opt_0;
     // body
@@ -1032,18 +1040,19 @@ while (auto __opt_0 = __iter_0.next()) {
 - **Marker protocol**: Types declare conformance via `extends`, structural `next()` checking planned
 - **Built-in conformance**: `Range` extends `NativeIterator[Int32]`
 - **Lazy evaluation**: Values produced one at a time, no container allocation
-- **break/continue**: Work naturally (break exits while, continue calls next())
+- **break/continue**: Work naturally in both counter-loops and while-loops
 
 #### Iterator Roadmap
 
 | Phase | Status | What |
 |-------|--------|------|
 | 1. NativeIterator + Range | **Working** | Unified for-loop path, `range()` as real type |
-| 2. Counter-loop optimization | Planned | Detect `for i in range(...)` → emit `for (int32_t i = ...)` instead of while-loop |
-| 3. Structural NativeIterator | Planned | Check `next() -> Optional[T]` method for protocol conformance |
-| 4. User-defined iterators | Planned | `__iter__`/`__next__` compiled to NativeIterator |
-| 5. Generator functions | Open | `yield` → state-machine class implementing NativeIterator |
-| 6. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
+| 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
+| 3. Generic `Range[T]` | Planned | `range()` over any numeric type (`Int32`, `BigInt`, `float`), not just `Int32` |
+| 4. Structural NativeIterator | Planned | Check `next() -> Optional[T]` method for protocol conformance |
+| 5. User-defined iterators | Planned | `__iter__`/`__next__` compiled to NativeIterator |
+| 6. Generator functions | Open | `yield` → state-machine class implementing NativeIterator |
+| 7. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
 #### Planned: `Iterable[T]` and `Iterator[T]`
 

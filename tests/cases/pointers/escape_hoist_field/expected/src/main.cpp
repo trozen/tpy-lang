@@ -14,9 +14,7 @@ void field_access_escape() {
   Inner __slot_1 = Inner(0);
   Inner* saved = &__slot_1;
   // 17:     for i in range(3):
-  tpy::Range __iter_0 = tpy::Range(3);
-  while (auto __opt_0 = __iter_0.next()) {
-    int32_t i = *__opt_0;
+  for (int32_t i = 0; i < 3; ++i) {
     // 18:         o: Outer = Outer(Inner(i))
     Outer* o = &*(__slot_2 = Outer(Inner(i)));
     // 19:         saved = o.inner  # tpyc: warning(/hoisted to function scope/)

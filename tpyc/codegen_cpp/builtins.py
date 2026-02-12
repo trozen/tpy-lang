@@ -128,8 +128,12 @@ class BuiltinGenerator:
             result = result.replace(f"{{{name}}}", typ.to_cpp())
         return result
 
-    def gen_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:
-        """Generate C++ code for a builtin function call using unified FunctionInfo overloads."""
+    def _match_overload_args(self, expr: TpyCall,
+                             overloads: list[FunctionInfo]) -> tuple[FunctionInfo, list[str]]:
+        """Match a builtin call to an overload and generate C++ arg expressions.
+
+        Returns (matched_overload, gen_args). Raises RuntimeError if no match.
+        """
         args = expr.args
         arg_types = [self.ctx.analyzer.get_expr_type(arg) for arg in args]
 
@@ -138,12 +142,31 @@ class BuiltinGenerator:
                 continue
             if all(self._builtin_codegen_type_matches(arg, arg_t, ptype)
                    for arg, arg_t, (_, ptype) in zip(args, arg_types, overload.params)):
-                # Generate args with proper type coercion (e.g., int literal → BigInt)
-                # Use _gen_expr_deref to handle pointer-locals/globals (T* needs dereferencing)
-                gen_args = [self._gen_expr_deref(arg, ptype) for arg, (_, ptype) in zip(args, overload.params)]
-                return overload.cpp_template.format(*gen_args)
+                gen_args = [self._gen_expr_deref(arg, ptype)
+                            for arg, (_, ptype) in zip(args, overload.params)]
+                return overload, gen_args
 
         raise RuntimeError(f"No matching overload for {expr.func}")
+
+    def gen_range_args(self, expr: TpyCall) -> list[str]:
+        """Generate individual C++ arg expressions for range(), with BigInt conversion.
+
+        Returns the generated arg list (e.g. ["0", "10", "2"]) rather than
+        formatting into the full template string.  Used by the counter-loop
+        optimisation in statements.py.
+        """
+        overloads = self.ctx.analyzer.registry.get_builtin_function_overloads("range")
+        overload, gen_args = self._match_overload_args(expr, overloads)
+        # BigInt→Int32 conversion (normally baked into the template)
+        for i, (_, ptype) in enumerate(overload.params):
+            if isinstance(ptype, BigIntType):
+                gen_args[i] = f"({gen_args[i]}).to_int32()"
+        return gen_args
+
+    def gen_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:
+        """Generate C++ code for a builtin function call using unified FunctionInfo overloads."""
+        overload, gen_args = self._match_overload_args(expr, overloads)
+        return overload.cpp_template.format(*gen_args)
 
     def _builtin_codegen_type_matches(self, arg: TpyExpr, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if an argument matches a parameter type for codegen purposes."""
