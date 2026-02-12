@@ -29,7 +29,9 @@ void __tpy_init() {
   // 5: print(len(sl))
   std::cout << tpy::__len__((*sl)) << "\n";
   // 6: for i in range(len(sl)):
-  for (int32_t i = 0; i < tpy::__len__((*sl)); ++i) {
+  tpy::Range __iter_0 = tpy::Range(tpy::__len__((*sl)));
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 7:     print(sl[i])
     std::cout << tpy::get_item((*sl), i) << "\n";
   }
@@ -39,7 +41,9 @@ void __tpy_init() {
   // 11: print(len(nums))
   std::cout << tpy::__len__((*nums)) << "\n";
   // 12: for i in range(len(nums)):
-  for (int32_t i = 0; i < tpy::__len__((*nums)); ++i) {
+  tpy::Range __iter_1 = tpy::Range(tpy::__len__((*nums)));
+  while (auto __opt_1 = __iter_1.next()) {
+    int32_t i = *__opt_1;
     // 13:     print(nums[i])
     std::cout << tpy::get_item((*nums), i) << "\n";
   }

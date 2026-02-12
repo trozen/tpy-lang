@@ -16,7 +16,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
-    TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
+    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp, TpyArrayLiteral, TpyListRepeat, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName,
     TpyFieldAccess, TpyFunction,
@@ -244,18 +244,6 @@ class StatementAnalyzer:
                 for s in stmt.body:
                     self.analyze_stmt(s)
             self.init.restore(before)
-        elif isinstance(stmt, TpyFor):
-            self.expr.analyze_expr(stmt.start)
-            self.expr.analyze_expr(stmt.end)
-            self._enforce_readonly_expr(stmt.start)
-            self._enforce_readonly_expr(stmt.end)
-            before = self.init.save()
-            with self.scopes.loop_scope() as inner_scope:
-                self.init.apply_loop_entry_facts(before)
-                with self.scopes.loop_var(inner_scope, stmt.var, INT32, inner_scope.depth):
-                    for s in stmt.body:
-                        self.analyze_stmt(s)
-            self.init.restore(before)
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
             self._enforce_readonly_expr(stmt.iterable)
@@ -263,13 +251,17 @@ class StatementAnalyzer:
             before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
                 self.init.apply_loop_entry_facts(before)
-                # For-each var references container's storage — use container's depth.
-                # For rvalue iterables (calls), C++ extends the temporary's lifetime
-                # to the for statement, but it dies when the loop ends. Use body depth
-                # so that escaping to any outer-scoped variable is caught.
-                if self.compat.is_lvalue(stmt.iterable):
+                # NativeIterator produces fresh values each iteration (like rvalues)
+                is_native_iterator = builtin_modules.get_native_iterator_element_type(iterable_type) is not None
+                if is_native_iterator:
+                    iter_depth = inner_scope.depth
+                elif self.compat.is_lvalue(stmt.iterable):
+                    # For-each var references container's storage — use container's depth.
                     iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                 else:
+                    # For rvalue iterables (calls), C++ extends the temporary's lifetime
+                    # to the for statement, but it dies when the loop ends. Use body depth
+                    # so that escaping to any outer-scoped variable is caught.
                     iter_depth = inner_scope.depth
                 # Track provenance for non-value-type loop vars from param-derived iterables
                 track_loop_prov = (

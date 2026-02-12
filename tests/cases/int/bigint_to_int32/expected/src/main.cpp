@@ -77,7 +77,9 @@ int32_t loop_test(const tpy::BigInt& n) {
   // 30:     total: Int32 = 0
   int32_t total = 0;
   // 31:     for i in range(n):
-  for (int32_t i = 0; i < n.to_int32(); ++i) {
+  tpy::Range __iter_0 = tpy::Range((n).to_int32());
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 32:         total += 1
     total = tpy::int32_add(total, 1);
   }

@@ -143,11 +143,6 @@ class CallAnalyzer:
                                 special_handling=True,
                             )
                             return VOID
-                        elif func_name == "range":
-                            raise SemanticError(
-                                "range() can only be used in 'for i in range(...)' loops",
-                                expr.loc
-                            )
                         elif func_name in ("enumerate", "zip"):
                             raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
                     # Check for user module function (registered via _register_user_module_import)

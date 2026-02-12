@@ -28,7 +28,9 @@ void test_continue() {
   // 14:     total: Int32 = 0
   int32_t total = 0;
   // 15:     for i in range(10):
-  for (int32_t i = 0; i < 10; ++i) {
+  tpy::Range __iter_0 = tpy::Range(10);
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 16:         if i % 2 == 0:
     if (((tpy::int32_mod(i, 2)) == 0)) {
       // 17:             continue
@@ -46,9 +48,13 @@ void test_nested_break() {
   // 23:     count: Int32 = 0
   int32_t count = 0;
   // 24:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  tpy::Range __iter_0 = tpy::Range(3);
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 25:         for j in range(5):
-    for (int32_t j = 0; j < 5; ++j) {
+    tpy::Range __iter_1 = tpy::Range(5);
+    while (auto __opt_1 = __iter_1.next()) {
+      int32_t j = *__opt_1;
       // 26:             if j == 2:
       if ((j == 2)) {
         // 27:                 break
@@ -67,9 +73,13 @@ void test_nested_continue() {
   // 33:     count: Int32 = 0
   int32_t count = 0;
   // 34:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  tpy::Range __iter_0 = tpy::Range(3);
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 35:         for j in range(4):
-    for (int32_t j = 0; j < 4; ++j) {
+    tpy::Range __iter_1 = tpy::Range(4);
+    while (auto __opt_1 = __iter_1.next()) {
+      int32_t j = *__opt_1;
       // 36:             if j == 1:
       if ((j == 1)) {
         // 37:                 continue

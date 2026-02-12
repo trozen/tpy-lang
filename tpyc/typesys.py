@@ -262,6 +262,23 @@ class BigIntType(TpyType):
 
 
 @dataclass(frozen=True)
+class RangeType(TpyType):
+    """Range type: range() -> tpy::Range (lazy Int32 iterator)."""
+
+    def to_cpp(self) -> str:
+        return "tpy::Range"
+
+    def __str__(self) -> str:
+        return "range"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.range"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class IntLiteralType(TpyType):
     """Unresolved integer literal - can coerce to Int32 or BigInt.
 
@@ -852,6 +869,7 @@ BOOL = BoolType()
 FLOAT = FloatType()
 BIGINT = BigIntType()
 NONE = NoneType()
+RANGE = RangeType()
 
 # Int32 range limits
 INT32_MIN = -(2**31)

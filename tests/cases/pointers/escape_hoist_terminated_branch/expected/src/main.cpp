@@ -14,7 +14,9 @@ void terminated_branch() {
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 14:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  tpy::Range __iter_0 = tpy::Range(3);
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 15:         items: list[Point] = [Point(99, 99)]
     std::vector<Point> items = {Point(99, 99)};
     // 16:         p: Point = Point(i, i)

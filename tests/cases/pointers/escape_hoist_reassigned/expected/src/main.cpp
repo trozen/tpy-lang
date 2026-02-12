@@ -16,7 +16,9 @@ void hoist_and_reassign() {
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 15:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  tpy::Range __iter_0 = tpy::Range(3);
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 16:         p: Point = Point(i, 0)
     Point* p = &*(__slot_2 = Point(i, 0));
     // 17:         p = Point(i, i + 10)

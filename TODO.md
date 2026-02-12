@@ -4,6 +4,7 @@
 - merge for and for-each handling, introduce real iterators/generators (range() should be a generator)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
+- how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
@@ -29,6 +30,7 @@
 - analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
 - for-each: preserve loop variable after loop exit (if used after the loop)
 - REPL: arr=[1,2,3]; arr[-4]
+- better C++ code formatting? 4 space indentation (or tab?)
 
 ## Hard Problems
 - handling cyclic imports

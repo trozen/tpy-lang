@@ -24,6 +24,9 @@
 // Range utilities (no dependencies)
 #include "ranges.hpp"
 
+// Range iterator (depends on core, int32)
+#include "range.hpp"
+
 // StaticList (depends on core)
 #include "static_list.hpp"
 

@@ -121,21 +121,26 @@ class ListLiteralTracker:
                     self.ctx.current_scope.define(info.variable_name, resolved)
 
     def is_type_iterable(self, typ: TpyType) -> bool:
-        """Check if a type is iterable (extends NativeIterable or is NativeIterable protocol).
+        """Check if a type is iterable (extends NativeIterable, NativeIterator, or is a protocol type).
 
-        A type is iterable if it declares extends=["NativeIterable[T]"] or is itself
-        a NativeIterable[T] protocol type.
+        A type is iterable if it declares extends=["NativeIterable[T]"] or
+        extends=["NativeIterator[T]"], or is itself a NativeIterable[T] or
+        NativeIterator[T] protocol type.
         """
-        # NativeIterable[T] protocol type
-        if is_protocol_type(typ) and typ.name == "NativeIterable":
+        # NativeIterable[T] or NativeIterator[T] protocol type
+        if is_protocol_type(typ) and typ.name in ("NativeIterable", "NativeIterator"):
             return True
-        # Check if type extends NativeIterable
-        return builtin_modules.type_extends_any(typ, "NativeIterable")
+        # Check if type extends NativeIterable or NativeIterator
+        if builtin_modules.type_extends_any(typ, "NativeIterable"):
+            return True
+        if builtin_modules.type_extends_any(typ, "NativeIterator"):
+            return True
+        return False
 
     def get_iterable_element_type_or_none(self, iterable_type: TpyType) -> TpyType | None:
         """Get the element type of an iterable, or None if not iterable.
 
-        For types extending NativeIterable[T], returns T.
+        For types extending NativeIterable[T] or NativeIterator[T], returns T.
         """
         # Handle NativeIterable[T] protocol type
         if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterable":
@@ -143,9 +148,20 @@ class ListLiteralTracker:
                 return iterable_type.type_args[0]
             return None
 
+        # Handle NativeIterator[T] protocol type
+        if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterator":
+            if iterable_type.type_args:
+                return iterable_type.type_args[0]
+            return None
+
         # Handle str -> Char
         if isinstance(iterable_type, StrType):
             return CHAR
+
+        # Check NativeIterator extends (e.g., Range extends NativeIterator[Int32])
+        iter_elem = builtin_modules.get_native_iterator_element_type(iterable_type)
+        if iter_elem is not None:
+            return iter_elem
 
         # Use get_element_type() for container types (list, Array, Span, etc.)
         return iterable_type.get_element_type()

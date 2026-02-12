@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <string_view>
@@ -123,6 +124,19 @@ concept NativeIterable = requires(const T& t) {
     { std::ranges::begin(t) } -> std::input_or_output_iterator;
     { std::ranges::end(t) } -> std::sentinel_for<decltype(std::ranges::begin(t))>;
     { *std::ranges::begin(t) } -> std::convertible_to<ElemT>;
+};
+
+/**
+ * NativeIterator concept - types that produce values lazily via next()
+ *
+ * A type is NativeIterator<ElemT> if calling next() returns
+ * std::optional<ElemT>. Used for lazy producers like Range.
+ *
+ * Future: Iterable<T> will use Python's __iter__/__next__ protocol.
+ */
+template<typename T, typename ElemT>
+concept NativeIterator = requires(T& t) {
+    { t.next() } -> std::same_as<std::optional<ElemT>>;
 };
 
 /**

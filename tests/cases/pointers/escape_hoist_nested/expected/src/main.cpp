@@ -9,12 +9,16 @@ std::string_view __name__;
 void nested_loop_escape() {
   std::optional<Point> __slot_2;
   // 11:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  tpy::Range __iter_0 = tpy::Range(3);
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 12:         outer: Point = Point(i, 0)
     Point __slot_1 = Point(i, 0);
     Point* outer = &__slot_1;
     // 13:         for j in range(3):
-    for (int32_t j = 0; j < 3; ++j) {
+    tpy::Range __iter_1 = tpy::Range(3);
+    while (auto __opt_1 = __iter_1.next()) {
+      int32_t j = *__opt_1;
       // 14:             inner: Point = Point(j, j)
       Point* inner = &*(__slot_2 = Point(j, j));
       // 15:             outer = inner  # tpyc: warning(/hoisted to function scope/)

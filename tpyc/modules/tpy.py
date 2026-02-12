@@ -195,6 +195,16 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::Comparable",
     )
 
+    # NativeIterator[T] protocol: types that produce values lazily via next()
+    # This is a marker protocol - types declare conformance via extends=["NativeIterator[T]"].
+    # Maps to C++ next() -> std::optional<T> pattern.
+    # Future: structural next() conformance checking.
+    module.protocol("NativeIterator",
+        type_params=["T"],
+        methods={},  # Marker protocol for now
+        cpp_concept="tpy::NativeIterator",
+    )
+
     # NativeIterable[T] protocol: types that support C++ range-based for loops
     # This is a marker protocol - types declare conformance via extends=["NativeIterable[T]"].
     # Maps to C++ begin()/end() iteration pattern.

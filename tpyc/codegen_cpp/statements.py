@@ -15,7 +15,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
-    TpyIf, TpyWhile, TpyFor, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
+    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral,
     TpyFieldAccess,
@@ -150,7 +150,7 @@ class StatementGenerator:
             if isinstance(stmt, TpyIf):
                 self._scan_stmts(stmt.then_body, declared, reassigned, rvalue_reassigned)
                 self._scan_stmts(stmt.else_body, declared, reassigned, rvalue_reassigned)
-            elif isinstance(stmt, (TpyWhile, TpyFor, TpyForEach)):
+            elif isinstance(stmt, (TpyWhile, TpyForEach)):
                 self._scan_stmts(stmt.body, declared, reassigned, rvalue_reassigned)
 
     def gen_stmt(self, out: TextIO, stmt: TpyStmt) -> None:
@@ -169,8 +169,6 @@ class StatementGenerator:
             self._gen_if(out, stmt, indent)
         elif isinstance(stmt, TpyWhile):
             self._gen_while(out, stmt, indent)
-        elif isinstance(stmt, TpyFor):
-            self._gen_for(out, stmt, indent)
         elif isinstance(stmt, TpyForEach):
             self._gen_for_each(out, stmt, indent)
         else:
@@ -798,27 +796,48 @@ class StatementGenerator:
 
         out.write(f"{indent}}}\n")
 
-    def _gen_for(self, out: TextIO, stmt: TpyFor, indent: str) -> None:
-        """Generate a for loop (range-based)."""
-        start = self.expressions.gen_expr_deref(stmt.start)
-        end = self.expressions.gen_expr_deref(stmt.end)
-        # Convert BigInt bounds to Int32 (range loops use Int32 counter)
-        start_type = self.ctx.analyzer.get_expr_type(stmt.start)
-        end_type = self.ctx.analyzer.get_expr_type(stmt.end)
-        if isinstance(start_type, BigIntType):
-            start = f"{start}.to_int32()"
-        if isinstance(end_type, BigIntType):
-            end = f"{end}.to_int32()"
-        self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}for (int32_t {stmt.var} = {start}; {stmt.var} < {end}; ++{stmt.var}) {{\n")
+    def _gen_iterator_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                           iterable_expr: str, elem_type: TpyType) -> None:
+        """Generate a while-loop for NativeIterator types.
 
-        # Track loop variable as local to prevent false global deref if it shadows a global
+        Produces:
+            tpy::Range __iter_N = <iterable>;
+            while (auto __opt_N = __iter_N.next()) {
+                int32_t var = *__opt_N;
+                // body
+            }
+        """
+        n = self.ctx.iter_counter
+        self.ctx.iter_counter += 1
+        iter_name = f"__iter_{n}"
+        opt_name = f"__opt_{n}"
+
+        iterable_type = self.types.get_resolved_type(stmt.iterable)
+        # Protocol-typed params use template params — use auto for deduction
+        if is_protocol_type(iterable_type):
+            iter_cpp_type = "auto"
+        else:
+            iter_cpp_type = self.types.type_to_cpp(iterable_type)
+
+        self.ctx.temps.flush(out, indent)
+        out.write(f"{indent}{iter_cpp_type} {iter_name} = {iterable_expr};\n")
+        out.write(f"{indent}while (auto {opt_name} = {iter_name}.next()) {{\n")
+
+        # Declare loop variable inside the while body
+        inner_indent = indent + "  "
+        if elem_type.is_value_type():
+            cpp_elem = elem_type.to_cpp()
+            out.write(f"{inner_indent}{cpp_elem} {stmt.var} = *{opt_name};\n")
+        else:
+            out.write(f"{inner_indent}auto& {stmt.var} = *{opt_name};\n")
+
+        # Track loop variable
         self.ctx.local_scope_names.add(stmt.var)
-        # Set up inner namespace for loop variable
+        self.ctx.var_types[stmt.var] = elem_type
         old_ns = self.ctx.current_ns
         if self.ctx.current_ns:
             inner_ns = Namespace(parent=self.ctx.current_ns)
-            inner_ns.bind_variable(stmt.var, INT32)
+            inner_ns.bind_variable(stmt.var, elem_type)
             self.ctx.current_ns = inner_ns
         self.ctx.indent_level += 1
         for s in stmt.body:
@@ -829,10 +848,20 @@ class StatementGenerator:
 
         out.write(f"{indent}}}\n")
 
+        if stmt.var in self.ctx.var_types:
+            del self.ctx.var_types[stmt.var]
+
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
-        """Generate a for-each loop over a collection."""
+        """Generate a for-each loop over a collection or iterator."""
+        from tpyc.modules import get_native_iterator_element_type
         iterable = self.expressions.gen_expr_deref(stmt.iterable)
         iterable_type = self.types.get_resolved_type(stmt.iterable)
+
+        # Check for NativeIterator types first — these use while-loop codegen
+        iter_elem = get_native_iterator_element_type(iterable_type)
+        if iter_elem is not None:
+            self._gen_iterator_loop(out, stmt, indent, iterable, iter_elem)
+            return
 
         # Determine element type for the loop variable
         # Handle protocol types (e.g., NativeIterable[T])

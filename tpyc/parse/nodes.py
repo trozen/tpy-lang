@@ -247,15 +247,6 @@ class TpyWhile(TpyStmt):
 
 
 @dataclass
-class TpyFor(TpyStmt):
-    """For loop (range-based only)."""
-    var: str
-    start: TpyExpr
-    end: TpyExpr
-    body: list[TpyStmt]
-
-
-@dataclass
 class TpyForEach(TpyStmt):
     """For-each loop over a collection."""
     var: str

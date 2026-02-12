@@ -448,6 +448,16 @@ class NativeIterable(_Protocol[T]):
 
 
 @_runtime_checkable
+class NativeIterator(_Protocol[T]):
+    """Types that produce values lazily via next().
+
+    In CPython, this matches any iterable type (for-loop compatibility).
+    The TurboPython compiler uses this for types with a next() -> Optional[T] method.
+    """
+    def __iter__(self): ...
+
+
+@_runtime_checkable
 class Comparable(_Protocol):
     """Protocol for types supporting comparison with <."""
     def __lt__(self, other: "Comparable") -> bool: ...

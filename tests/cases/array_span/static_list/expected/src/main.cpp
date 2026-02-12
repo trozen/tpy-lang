@@ -34,7 +34,9 @@ void process_list(StaticList<Item, 16>& items) {
 // 24: def print_list(items: StaticList[Item, 16]) -> None:
 void print_list(StaticList<Item, 16>& items) {
   // 25:     for i in range(len(items)):
-  for (int32_t i = 0; i < tpy::__len__(items); ++i) {
+  tpy::Range __iter_0 = tpy::Range(tpy::__len__(items));
+  while (auto __opt_0 = __iter_0.next()) {
+    int32_t i = *__opt_0;
     // 26:         item: Item = items[i]
     Item& item = tpy::get_item(items, i);
     // 27:         print(item.value)

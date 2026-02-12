@@ -620,6 +620,37 @@ UNARYOP_TO_METHOD = {
 }
 
 
+def get_native_iterator_element_type(tpy_type: "TpyType") -> "TpyType | None":
+    """If type is/extends NativeIterator[T], return T. Otherwise None."""
+    from tpyc.typesys import is_protocol_type
+
+    # Direct NativeIterator[T] protocol type
+    if is_protocol_type(tpy_type) and tpy_type.name == "NativeIterator":
+        if tpy_type.type_args:
+            return tpy_type.type_args[0]
+        return None
+
+    # TODO: extract shared helper with type_conforms_to_protocol() — both do
+    # the same regex-based extends string parsing to resolve protocol type args.
+    type_def = lookup_type(tpy_type)
+    if type_def is None:
+        return None
+
+    type_params = extract_type_params(tpy_type)
+
+    for ext in type_def.extends:
+        match = re.match(r"(\w+)\[(\w+)\]", ext)
+        if match and match.group(1) == "NativeIterator":
+            ext_type_name = match.group(2)
+            if ext_type_name in type_params:
+                return type_params[ext_type_name]
+            resolved = _resolve_concrete_type_name(ext_type_name)
+            if resolved is not None:
+                return resolved
+
+    return None
+
+
 def _type_matches_param(arg_type: "TpyType", param_type: "TpyType") -> bool:
     """Check if an argument type matches a parameter type.
 

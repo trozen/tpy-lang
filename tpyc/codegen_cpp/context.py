@@ -174,6 +174,9 @@ class CodeGenContext:
     hoisted_vars: set[str] = field(default_factory=set)
     pending_hoist_decls: list[str] = field(default_factory=list)
 
+    # --- Iterator loop counter ---
+    iter_counter: int = 0
+
     # --- Module-level flags ---
     _has_synthetic_name: bool = False
 
@@ -210,6 +213,7 @@ class CodeGenContext:
         self.current_return_type = None
         self.current_func_params = {}
         self.in_method = False
+        self.iter_counter = 0
 
     def indent(self) -> str:
         """Get current indentation string."""
