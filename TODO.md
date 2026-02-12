@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- parser: extract to separate module (currently a 1500-line monolithic file)
 - merge for and for-each handling, introduce real iterators/generators (range() should be a generator)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
@@ -88,6 +87,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - panic show line number?
 - generate const function variants for @readonly functions
 - properly import annotations from tpy module (readonly, noalloc etc); should not be accessible without it; also, should support @tpy.readonly
+- @extern_c/@extern_cpp functions/classes etc
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
