@@ -273,7 +273,10 @@ class RangeType(TpyType):
         return f"Range[{self.elem}]"
 
     def qualified_name(self) -> Optional[str]:
-        return f"builtins.Range[{self.elem}]"
+        return "builtins.Range"
+
+    def get_element_type(self) -> Optional["TpyType"]:
+        return self.elem
 
     def is_value_type(self) -> bool:
         return True

@@ -347,12 +347,10 @@ def init_module() -> BuiltinModule:
     # Range: lazy iterator returned by range()
     RANGE_BIGINT = RangeType(BIGINT)
 
-    module.register_type(RANGE, cpp_type="tpy::Range<int32_t>",
-        extends=["NativeIterator[Int32]"],
-        methods={},
-    )
-    module.register_type(RANGE_BIGINT, cpp_type="tpy::Range<tpy::BigInt>",
-        extends=["NativeIterator[int]"],
+    module.type("Range", cpp_type="tpy::Range<{T}>", type_params=["T"],
+        param_kinds=[TypeParamKind.TYPE],
+        type_factory=lambda t: RangeType(t),
+        extends=["NativeIterator[T]"],
         methods={},
     )
 
