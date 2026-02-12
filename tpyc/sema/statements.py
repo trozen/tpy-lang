@@ -252,7 +252,7 @@ class StatementAnalyzer:
             with self.scopes.loop_scope() as inner_scope:
                 self.init.apply_loop_entry_facts(before)
                 # NativeIterator produces fresh values each iteration (like rvalues)
-                is_native_iterator = builtin_modules.get_native_iterator_element_type(iterable_type) is not None
+                is_native_iterator = builtin_modules.get_native_iterator_element_type(iterable_type, registry=self.ctx.registry) is not None
                 if is_native_iterator:
                     iter_depth = inner_scope.depth
                 elif self.compat.is_lvalue(stmt.iterable):

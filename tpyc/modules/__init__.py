@@ -620,7 +620,7 @@ UNARYOP_TO_METHOD = {
 }
 
 
-def get_native_iterator_element_type(tpy_type: "TpyType") -> "TpyType | None":
+def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistry | None" = None) -> "TpyType | None":
     """If type is/extends NativeIterator[T], return T. Otherwise None."""
     from tpyc.typesys import is_protocol_type
 
@@ -634,6 +634,11 @@ def get_native_iterator_element_type(tpy_type: "TpyType") -> "TpyType | None":
     # the same regex-based extends string parsing to resolve protocol type args.
     type_def = lookup_type(tpy_type)
     if type_def is None:
+        # Check user-defined records with next() -> Optional[T]
+        if registry is not None:
+            from tpyc.typesys import NamedType, OptionalType
+            if isinstance(tpy_type, NamedType) and tpy_type.is_record:
+                return _find_record_next_element(tpy_type.name, tpy_type.type_args, registry)
         return None
 
     type_params = extract_type_params(tpy_type)
@@ -647,6 +652,40 @@ def get_native_iterator_element_type(tpy_type: "TpyType") -> "TpyType | None":
             resolved = _resolve_concrete_type_name(ext_type_name)
             if resolved is not None:
                 return resolved
+
+    return None
+
+
+def _find_record_next_element(
+    record_name: str, type_args: "list[TpyType] | None", registry: "TypeRegistry",
+) -> "TpyType | None":
+    """Walk a record's method table (and parent chain) looking for next() -> Optional[T]."""
+    from tpyc.typesys import NamedType, OptionalType, TypeParamRef
+
+    record = registry.get_record(record_name)
+    if record is None:
+        return None
+
+    type_subst: dict[str, "TpyType"] = {}
+    if record.type_params and type_args:
+        type_subst = dict(zip(record.type_params, type_args))
+
+    for method in record.get_method_overloads("next"):
+        if len(method.params) == 0 and isinstance(method.return_type, OptionalType):
+            inner = method.return_type.inner
+            if isinstance(inner, TypeParamRef) and inner.name in type_subst:
+                return type_subst[inner.name]
+            return inner
+
+    # Walk parent chain
+    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_record:
+        parent_args = list(record.parent.type_args) if record.parent.type_args else None
+        if type_subst and parent_args:
+            parent_args = [
+                type_subst[a.name] if isinstance(a, TypeParamRef) and a.name in type_subst else a
+                for a in parent_args
+            ]
+        return _find_record_next_element(record.parent.name, parent_args, registry)
 
     return None
 

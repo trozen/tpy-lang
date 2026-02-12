@@ -133,7 +133,7 @@ class ListLiteralTracker:
         # Check if type extends NativeIterable or NativeIterator
         if builtin_modules.type_extends_any(typ, "NativeIterable"):
             return True
-        if builtin_modules.type_extends_any(typ, "NativeIterator"):
+        if builtin_modules.get_native_iterator_element_type(typ, registry=self.ctx.registry) is not None:
             return True
         return False
 
@@ -159,7 +159,7 @@ class ListLiteralTracker:
             return CHAR
 
         # Check NativeIterator extends (e.g., Range extends NativeIterator[Int32])
-        iter_elem = builtin_modules.get_native_iterator_element_type(iterable_type)
+        iter_elem = builtin_modules.get_native_iterator_element_type(iterable_type, registry=self.ctx.registry)
         if iter_elem is not None:
             return iter_elem
 

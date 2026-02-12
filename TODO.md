@@ -31,6 +31,7 @@
 - for-each: preserve loop variable after loop exit (if used after the loop)
 - REPL: arr=[1,2,3]; arr[-4]
 - better C++ code formatting? 4 space indentation (or tab?)
+- argument default values
 
 ## Hard Problems
 - handling cyclic imports
@@ -106,6 +107,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
 - Own[T] local variable optimization: allow `return local_var` without copy() since C++ uses NRVO (Named Return Value Optimization). Currently requires explicit copy() for all lvalues.
 - Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope. (Note: `if`/`else` in functions is fixed — branch-declared vars are pre-declared before the if-statement.)
+- Generic Optional codegen mismatch: for generic records, `T | None` generates `T*`/`nullptr` instead of `std::optional<T>`. This breaks C++ concepts that expect `std::optional<ElemT>` (e.g., `tpy::NativeIterator`). Value-type Optional (`Int32 | None` → `std::optional<int32_t>`) works fine.
+- Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.
 
 ## ShedSkin examples
 - score4

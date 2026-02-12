@@ -997,7 +997,7 @@ class StatementGenerator:
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
         # Check for NativeIterator types first — these use while-loop codegen
-        iter_elem = get_native_iterator_element_type(iterable_type)
+        iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             # Optimize range() calls to C-style counter loops
             if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":

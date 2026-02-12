@@ -1003,19 +1003,39 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 
 #### Working: `NativeIterator[T]` (lazy iteration)
 
-`NativeIterator[T]` is a **marker protocol** for types that produce values lazily via a `next()` method returning `std::optional<T>`. It's used for lazy sequences like `range()` that don't store all values in memory.
+`NativeIterator[T]` is a **structural protocol** for types that produce values lazily via a `next()` method returning `T | None`. Any type with a zero-parameter `next()` method returning `Optional[T]` automatically conforms — no explicit `extends` declaration needed.
 
 ```python
 from tpy import Int32, NativeIterator
 
+class Counter:
+    current: Int32
+    limit: Int32
+
+    def __init__(self, limit: Int32) -> None:
+        self.current = 0
+        self.limit = limit
+
+    def next(self) -> Int32 | None:
+        if self.current < self.limit:
+            result = self.current
+            self.current += 1
+            return result
+        return None
+
+# Direct use in for-loop (structural detection)
+for x in Counter(5):
+    print(x)
+
+# Pass to function taking NativeIterator[Int32] (structural conformance)
 def sum_iter(it: NativeIterator[Int32]) -> Int32:
     total: Int32 = 0
     for x in it:
         total += x
     return total
 
+print(sum_iter(Counter(5)))        # 10
 print(sum_iter(range(5)))          # 10
-print(sum_iter(range(0, 10, 3)))   # 18
 ```
 
 **Codegen**: `for i in range(...)` is optimized to a C-style counter loop:
@@ -1037,7 +1057,7 @@ while (auto __opt_0 = __iter_0.next()) {
 ```
 
 **Key characteristics**:
-- **Marker protocol**: Types declare conformance via `extends`, structural `next()` checking planned
+- **Structural protocol**: Any type with `next() -> T | None` automatically conforms
 - **Built-in conformance**: `Range` extends `NativeIterator[Int32]`
 - **Lazy evaluation**: Values produced one at a time, no container allocation
 - **break/continue**: Work naturally in both counter-loops and while-loops
@@ -1049,7 +1069,7 @@ while (auto __opt_0 = __iter_0.next()) {
 | 1. NativeIterator + Range | **Working** | Unified for-loop path, `range()` as real type |
 | 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
 | 3. Generic `Range[T]` | Planned | `range()` over any numeric type (`Int32`, `BigInt`, `float`), not just `Int32` |
-| 4. Structural NativeIterator | Planned | Check `next() -> Optional[T]` method for protocol conformance |
+| 4. Structural NativeIterator | **Working** | Check `next() -> Optional[T]` method for protocol conformance |
 | 5. User-defined iterators | Planned | `__iter__`/`__next__` compiled to NativeIterator |
 | 6. Generator functions | Open | `yield` → state-machine class implementing NativeIterator |
 | 7. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
@@ -1191,7 +1211,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `while`
 - **Working**: `for i in range(n)`, `for i in range(start, end)`, `for i in range(start, end, step)`
 - **Working**: `for item in container` (for-each over list, Array, Span, str)
-- **Working**: `for x in iterator` (for-each over NativeIterator types, e.g. Range)
+- **Working**: `for x in iterator` (for-each over NativeIterator types — Range and user-defined)
 - **Working**: `break`, `continue`
 - **Open**: `for/else`, `while/else` → flag variable pattern
 

@@ -6,7 +6,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
-from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, NamedType, OwnType
+from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -196,12 +196,13 @@ def init_module() -> BuiltinModule:
     )
 
     # NativeIterator[T] protocol: types that produce values lazily via next()
-    # This is a marker protocol - types declare conformance via extends=["NativeIterator[T]"].
+    # Structural protocol — any type with next() -> T | None conforms automatically.
     # Maps to C++ next() -> std::optional<T> pattern.
-    # Future: structural next() conformance checking.
     module.protocol("NativeIterator",
         type_params=["T"],
-        methods={},  # Marker protocol for now
+        methods={
+            "next": MethodDef(params=[], returns=OptionalType(T), cpp="{self}.next()"),
+        },
         cpp_concept="tpy::NativeIterator",
     )
 
