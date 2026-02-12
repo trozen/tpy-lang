@@ -14,7 +14,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: x = 2_147_483_648
-  x = tpy::BigInt(2147483648LL);
+  x = tpy::BigInt(static_cast<int64_t>(2147483648LL));
   // 4: x = Int32(1)
   x = tpy::BigInt(1);
   // 5: print(x)

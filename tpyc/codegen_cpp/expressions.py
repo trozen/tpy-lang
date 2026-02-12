@@ -90,8 +90,14 @@ class ExpressionGenerator:
         if isinstance(expr, TpyIntLiteral):
             # Promote to BigInt if target expects it
             if isinstance(target_type, BigIntType):
-                lit = f"{expr.value}LL" if not (-2**31 <= expr.value <= 2**31 - 1) else str(expr.value)
-                return f"tpy::BigInt({lit})"
+                if -2**31 <= expr.value <= 2**31 - 1:
+                    return f"tpy::BigInt({expr.value})"
+                elif -2**63 <= expr.value <= 2**63 - 1:
+                    # Use static_cast for portability (int64_t is long on Linux, long long on macOS)
+                    return f"tpy::BigInt(static_cast<int64_t>({expr.value}LL))"
+                else:
+                    # TODO: support arbitrary precision literals via string parsing
+                    raise ValueError(f"Integer literal {expr.value} exceeds int64 range")
             return str(expr.value)
 
         elif isinstance(expr, TpyFloatLiteral):
