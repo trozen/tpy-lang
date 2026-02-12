@@ -351,6 +351,10 @@ def init_module() -> BuiltinModule:
         extends=["NativeIterator[Int32]"],
         methods={},
     )
+    module.register_type(RANGE_BIGINT, cpp_type="tpy::Range<tpy::BigInt>",
+        extends=["NativeIterator[int]"],
+        methods={},
+    )
 
     # print() - variadic print function
     # Signature: print(*args) -> None

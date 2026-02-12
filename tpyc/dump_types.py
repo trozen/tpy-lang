@@ -64,7 +64,10 @@ def dump_builtin_types() -> None:
 
 def _print_type_doc(qname: str, type_def) -> None:
     """Print documentation for a type."""
-    name = qname.split(".")[-1]
+    if type_def.type_obj is not None:
+        name = str(type_def.type_obj)
+    else:
+        name = qname.split(".")[-1]
     if type_def.type_params:
         name += f"[{', '.join(type_def.type_params)}]"
     print(f"### {name}\n")

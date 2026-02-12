@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iostream>
 #include <optional>
 #include <type_traits>
 
@@ -15,13 +16,14 @@ namespace tpy {
 
 template<typename T>
 class Range {
+    T start_;
     T current_;
     T end_;
     T step_;
 public:
-    Range(T end) : current_{}, end_(std::move(end)), step_(1) {}
-    Range(T start, T end) : current_(std::move(start)), end_(std::move(end)), step_(1) {}
-    Range(T start, T end, T step) : current_(std::move(start)), end_(std::move(end)), step_(std::move(step)) {
+    Range(T end) : start_{}, current_{}, end_(std::move(end)), step_(1) {}
+    Range(T start, T end) : start_(start), current_(std::move(start)), end_(std::move(end)), step_(1) {}
+    Range(T start, T end, T step) : start_(start), current_(std::move(start)), end_(std::move(end)), step_(std::move(step)) {
         if (step_ == T{}) tpy_panic("range() arg 3 must not be zero");
     }
 
@@ -36,6 +38,12 @@ public:
             return val;
         }
         return std::nullopt;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const Range& r) {
+        os << "range(" << r.start_ << ", " << r.end_;
+        if (r.step_ != T{1}) os << ", " << r.step_;
+        return os << ")";
     }
 };
 

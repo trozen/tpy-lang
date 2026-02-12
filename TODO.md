@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- Range[T] doesn't show up in --dump-types
 - iterator roadmap - implement all features (see LANGUAGE_FEATURES.md)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
