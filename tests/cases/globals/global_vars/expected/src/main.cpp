@@ -68,9 +68,9 @@ void __tpy_init() {
   // 5: end = 3
   end = tpy::BigInt(3);
   // 6: for i in range(start, end):
-  int32_t __start_0 = (start).to_int32();
-  int32_t __stop_0 = (end).to_int32();
-  for (int32_t i = __start_0; i < __stop_0; ++i) {
+  tpy::BigInt __start_0 = start;
+  tpy::BigInt __stop_0 = end;
+  for (tpy::BigInt i = __start_0; i < __stop_0; ++i) {
     // 7:     print(i)
     std::cout << i << "\n";
   }

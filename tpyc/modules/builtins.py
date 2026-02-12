@@ -6,7 +6,7 @@ Defines functions like chr, print, len, etc.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
-from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, RANGE, ListType, NamedType, TypeParamRef, OwnType
+from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, RANGE, RangeType, ListType, NamedType, TypeParamRef, OwnType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -344,8 +344,10 @@ def init_module() -> BuiltinModule:
     # None: Void type (used for function returns)
     module.register_type(VOID, cpp_type="void", methods={})
 
-    # Range: lazy Int32 iterator returned by range()
-    module.register_type(RANGE, cpp_type="tpy::Range",
+    # Range: lazy iterator returned by range()
+    RANGE_BIGINT = RangeType(BIGINT)
+
+    module.register_type(RANGE, cpp_type="tpy::Range<int32_t>",
         extends=["NativeIterator[Int32]"],
         methods={},
     )
@@ -358,14 +360,15 @@ def init_module() -> BuiltinModule:
     module.function("print", overloads=[], special_handling=True)
 
     # range() - range iterator for for loops
-    # Returns a Range object (NativeIterator[Int32])
     module.function("range", overloads=[
-        MethodDef(params=[ParamDef("stop", INT32)], returns=RANGE, cpp="tpy::Range({0})"),
-        MethodDef(params=[ParamDef("start", INT32), ParamDef("stop", INT32)], returns=RANGE, cpp="tpy::Range({0}, {1})"),
-        MethodDef(params=[ParamDef("start", INT32), ParamDef("stop", INT32), ParamDef("step", INT32)], returns=RANGE, cpp="tpy::Range({0}, {1}, {2})"),
-        MethodDef(params=[ParamDef("stop", BIGINT)], returns=RANGE, cpp="tpy::Range(({0}).to_int32())"),
-        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT)], returns=RANGE, cpp="tpy::Range(({0}).to_int32(), ({1}).to_int32())"),
-        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT), ParamDef("step", BIGINT)], returns=RANGE, cpp="tpy::Range(({0}).to_int32(), ({1}).to_int32(), ({2}).to_int32())"),
+        # Int32 overloads
+        MethodDef(params=[ParamDef("stop", INT32)], returns=RANGE, cpp="tpy::Range<int32_t>({0})"),
+        MethodDef(params=[ParamDef("start", INT32), ParamDef("stop", INT32)], returns=RANGE, cpp="tpy::Range<int32_t>({0}, {1})"),
+        MethodDef(params=[ParamDef("start", INT32), ParamDef("stop", INT32), ParamDef("step", INT32)], returns=RANGE, cpp="tpy::Range<int32_t>({0}, {1}, {2})"),
+        # BigInt overloads
+        MethodDef(params=[ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0})"),
+        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1})"),
+        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT), ParamDef("step", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1}, {2})"),
     ])
 
     return module

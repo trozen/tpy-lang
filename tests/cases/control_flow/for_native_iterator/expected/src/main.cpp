@@ -58,25 +58,25 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 21: print(sum_iter(range(5)))          # 0+1+2+3+4 = 10
-  auto __tmp_1 = tpy::Range(5);
+  auto __tmp_1 = tpy::Range<int32_t>(5);
   std::cout << sum_iter(__tmp_1) << "\n";
   // 22: print(sum_iter(range(1, 6)))       # 1+2+3+4+5 = 15
-  auto __tmp_2 = tpy::Range(1, 6);
+  auto __tmp_2 = tpy::Range<int32_t>(1, 6);
   std::cout << sum_iter(__tmp_2) << "\n";
   // 23: print(sum_iter(range(0, 10, 3)))   # 0+3+6+9 = 18
-  auto __tmp_3 = tpy::Range(0, 10, 3);
+  auto __tmp_3 = tpy::Range<int32_t>(0, 10, 3);
   std::cout << sum_iter(__tmp_3) << "\n";
   // 25: print(count_iter(range(7)))        # 7
-  auto __tmp_4 = tpy::Range(7);
+  auto __tmp_4 = tpy::Range<int32_t>(7);
   std::cout << count_iter(__tmp_4) << "\n";
   // 26: print(count_iter(range(0, 0)))     # 0 (empty range)
-  auto __tmp_5 = tpy::Range(0, 0);
+  auto __tmp_5 = tpy::Range<int32_t>(0, 0);
   std::cout << count_iter(__tmp_5) << "\n";
   // 28: print(first_or_fallback(range(3), -1))   # 0
-  auto __tmp_6 = tpy::Range(3);
+  auto __tmp_6 = tpy::Range<int32_t>(3);
   std::cout << first_or_fallback(__tmp_6, -(1)) << "\n";
   // 29: print(first_or_fallback(range(0), -1))   # -1 (empty range, returns fallback)
-  auto __tmp_7 = tpy::Range(0);
+  auto __tmp_7 = tpy::Range<int32_t>(0);
   std::cout << first_or_fallback(__tmp_7, -(1)) << "\n";
 }
 

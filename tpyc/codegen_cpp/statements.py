@@ -921,8 +921,7 @@ class StatementGenerator:
             step_kind = "plus_one"
             step_val = 1
 
-        # Generate arg expressions with proper BigInt→Int32 conversion
-        gen_args = self.builtins.gen_range_args(range_call)
+        gen_args = self.builtins.gen_range_args(range_call, elem_type)
 
         # Determine start/stop/step C++ expressions
         if nargs == 1:
@@ -937,6 +936,9 @@ class StatementGenerator:
 
         self.ctx.temps.flush(out, indent)
 
+        var = stmt.var
+        cpp_elem = elem_type.to_cpp()
+
         # Pre-evaluate non-literal args into temps (left-to-right, matching
         # Python's argument evaluation order).  Literals are safe to inline
         # since they can't change; everything else must be captured once.
@@ -944,17 +946,14 @@ class StatementGenerator:
             start_arg_ast = range_call.args[0]
             if not self._is_literal_range_arg(start_arg_ast):
                 temp_name = f"__start_{n}"
-                out.write(f"{indent}int32_t {temp_name} = {start_expr};\n")
+                out.write(f"{indent}{cpp_elem} {temp_name} = {start_expr};\n")
                 start_expr = temp_name
 
         stop_arg_ast = range_call.args[0] if nargs == 1 else range_call.args[1]
         if not self._is_literal_range_arg(stop_arg_ast):
             temp_name = f"__stop_{n}"
-            out.write(f"{indent}int32_t {temp_name} = {stop_expr};\n")
+            out.write(f"{indent}{cpp_elem} {temp_name} = {stop_expr};\n")
             stop_expr = temp_name
-
-        var = stmt.var
-        cpp_elem = elem_type.to_cpp()
 
         if step_kind == "plus_one":
             out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
@@ -965,31 +964,41 @@ class StatementGenerator:
                           f"{var} < {stop_expr}; ++{var}) {{\n")
             else:
                 step_cpp = gen_args[2]
+                incr = self._gen_step_increment(var, step_cpp, elem_type)
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} < {stop_expr}; "
-                          f"{var} = tpy::int32_add({var}, {step_cpp})) {{\n")
+                          f"{incr}) {{\n")
         elif step_kind == "literal_neg":
             if step_val == -1:
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} > {stop_expr}; --{var}) {{\n")
             else:
                 step_cpp = gen_args[2]
+                incr = self._gen_step_increment(var, step_cpp, elem_type)
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} > {stop_expr}; "
-                          f"{var} = tpy::int32_add({var}, {step_cpp})) {{\n")
+                          f"{incr}) {{\n")
         else:
             # Variable step — capture, zero-check, ternary condition
             step_cpp = gen_args[2]
             step_temp = f"__step_{n}"
-            out.write(f"{indent}int32_t {step_temp} = {step_cpp};\n")
+            out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
             step_cpp = step_temp
             out.write(f'{indent}if ({step_cpp} == 0) tpy::tpy_panic("range() arg 3 must not be zero");\n')
+            incr = self._gen_step_increment(var, step_cpp, elem_type)
             out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                       f"{step_cpp} > 0 ? {var} < {stop_expr} : {var} > {stop_expr}; "
-                      f"{var} = tpy::int32_add({var}, {step_cpp})) {{\n")
+                      f"{incr}) {{\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
         return True
+
+    def _gen_step_increment(self, var: str, step: str, elem_type: TpyType) -> str:
+        """Generate step increment expression, using checked arithmetic for Int32."""
+        from tpyc.typesys import Int32Type
+        if isinstance(elem_type, Int32Type):
+            return f"{var} = tpy::int32_add({var}, {step})"
+        return f"{var} += {step}"
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator."""

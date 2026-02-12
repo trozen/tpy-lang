@@ -148,19 +148,28 @@ class BuiltinGenerator:
 
         raise RuntimeError(f"No matching overload for {expr.func}")
 
-    def gen_range_args(self, expr: TpyCall) -> list[str]:
-        """Generate individual C++ arg expressions for range(), with BigInt conversion.
+    def gen_range_args(self, expr: TpyCall, elem_type: TpyType = None) -> list[str]:
+        """Generate individual C++ arg expressions for range().
 
         Returns the generated arg list (e.g. ["0", "10", "2"]) rather than
         formatting into the full template string.  Used by the counter-loop
         optimisation in statements.py.
+
+        When elem_type is provided, selects the overload matching
+        Range[elem_type] by param count — bypassing the codegen type matcher
+        which can disagree with sema on IntLiteral/BigInt classification.
         """
+        from tpyc.typesys import RangeType
         overloads = self.ctx.analyzer.registry.get_builtin_function_overloads("range")
+        nargs = len(expr.args)
+        if elem_type is not None:
+            for o in overloads:
+                if (isinstance(o.return_type, RangeType)
+                        and o.return_type.elem == elem_type
+                        and len(o.params) == nargs):
+                    return [self._gen_expr_deref(arg, ptype)
+                            for arg, (_, ptype) in zip(expr.args, o.params)]
         overload, gen_args = self._match_overload_args(expr, overloads)
-        # BigInt→Int32 conversion (normally baked into the template)
-        for i, (_, ptype) in enumerate(overload.params):
-            if isinstance(ptype, BigIntType):
-                gen_args[i] = f"({gen_args[i]}).to_int32()"
         return gen_args
 
     def gen_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:

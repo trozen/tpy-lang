@@ -499,6 +499,11 @@ class StatementAnalyzer:
             else:
                 # New variable: resolve IntLiteralType to BigInt (Python int semantics)
                 # This ensures Int32 + untyped_var promotes to BigInt correctly
+                # TODO: consider defaulting to Int32 when the literal fits in Int32
+                # range — more efficient (no GMP overhead) and `for i in range(4)`
+                # would naturally loop over int32_t. Need to handle overflow: either
+                # auto-promote to BigInt on reassignment, or panic (current checked
+                # Int32 behavior).
                 if isinstance(init_type, IntLiteralType):
                     var_type = BIGINT
                     self.ctx.literal_default_vars.add(stmt.name)

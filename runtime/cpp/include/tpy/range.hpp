@@ -1,7 +1,7 @@
 /**
  * TurboPython Runtime - Range
  *
- * Python-style range() as a lazy iterator producing int32_t values.
+ * Python-style range() as a lazy iterator producing values of type T.
  * Depends on: core.hpp (tpy_panic), int32.hpp (int32_add)
  */
 
@@ -9,24 +9,30 @@
 
 #include <cstdint>
 #include <optional>
+#include <type_traits>
 
 namespace tpy {
 
+template<typename T>
 class Range {
-    int32_t current_;
-    int32_t end_;
-    int32_t step_;
+    T current_;
+    T end_;
+    T step_;
 public:
-    Range(int32_t end) : current_(0), end_(end), step_(1) {}
-    Range(int32_t start, int32_t end) : current_(start), end_(end), step_(1) {}
-    Range(int32_t start, int32_t end, int32_t step) : current_(start), end_(end), step_(step) {
-        if (step == 0) tpy_panic("range() arg 3 must not be zero");
+    Range(T end) : current_{}, end_(std::move(end)), step_(1) {}
+    Range(T start, T end) : current_(std::move(start)), end_(std::move(end)), step_(1) {}
+    Range(T start, T end, T step) : current_(std::move(start)), end_(std::move(end)), step_(std::move(step)) {
+        if (step_ == T{}) tpy_panic("range() arg 3 must not be zero");
     }
 
-    std::optional<int32_t> next() {
-        if (step_ > 0 ? current_ < end_ : current_ > end_) {
-            int32_t val = current_;
-            current_ = int32_add(current_, step_);
+    std::optional<T> next() {
+        if (step_ > T{} ? current_ < end_ : current_ > end_) {
+            T val = current_;
+            if constexpr (std::is_same_v<T, int32_t>) {
+                current_ = int32_add(current_, step_);
+            } else {
+                current_ += step_;
+            }
             return val;
         }
         return std::nullopt;

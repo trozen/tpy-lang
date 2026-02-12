@@ -12,7 +12,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: for i in range(1, 10, 0):
-  tpy::Range __iter_0 = tpy::Range(1, 10, 0);
+  tpy::Range<int32_t> __iter_0 = tpy::Range<int32_t>(1, 10, 0);
   while (auto __opt_0 = __iter_0.next()) {
     int32_t i = *__opt_0;
     // 4:     print(i)

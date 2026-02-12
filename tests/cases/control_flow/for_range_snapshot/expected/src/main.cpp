@@ -91,8 +91,8 @@ void __tpy_init() {
   // 37: count2: Int32 = 0
   count2 = 0;
   // 38: for i in range(n):
-  int32_t __stop_1 = (n).to_int32();
-  for (int32_t i = 0; i < __stop_1; ++i) {
+  tpy::BigInt __stop_1 = n;
+  for (tpy::BigInt i = 0; i < __stop_1; ++i) {
     // 39:     n = 0
     n = tpy::BigInt(0);
     // 40:     count2 += 1

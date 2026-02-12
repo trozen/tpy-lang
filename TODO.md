@@ -1,12 +1,13 @@
 # TODO
 
 ## Next
+- Range[T] doesn't show up in --dump-types
 - iterator roadmap - implement all features (see LANGUAGE_FEATURES.md)
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
-- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
+- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc). Also: `n = 4` currently defaults to BigInt — should default to Int32 when the literal fits, so `for i in range(n)` loops over int32_t instead of BigInt
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - readonly effects on protocols: mark read contracts like `Sized.__len__` / `Sequence.__getitem__` as readonly, enforce conformance (impl must be readonly), and satisfy via conservative readonly inference when provable so existing code usually keeps working

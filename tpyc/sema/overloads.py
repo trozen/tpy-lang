@@ -100,12 +100,23 @@ def resolve_overload(
                for arg_t, (_, ptype) in zip(arg_types, overload.params)):
             return overload
 
-    # Second pass: allow coercions
+    # Second pass: allow coercions, prefer overload with most non-coercion
+    # matches and fewest narrowing conversions (BigInt→Int32 is lossy).
+    candidates: list[tuple[int, int, FunctionInfo]] = []
     for overload in overloads:
         if len(overload.params) != len(arg_types):
             continue
         if all(type_matches_with_coercion(arg_t, ptype, protocol_checker)
                for arg_t, (_, ptype) in zip(arg_types, overload.params)):
-            return overload
+            score = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
+                        if type_matches_numeric(arg_t, ptype))
+            narrowing = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
+                           if isinstance(arg_t, BigIntType) and isinstance(ptype, Int32Type))
+            candidates.append((score, narrowing, overload))
+
+    if candidates:
+        # Best: most numeric matches, then fewest narrowing conversions
+        candidates.sort(key=lambda x: (-x[0], x[1]))
+        return candidates[0][2]
 
     return None

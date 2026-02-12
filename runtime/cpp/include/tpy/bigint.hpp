@@ -162,6 +162,12 @@ public:
     BigInt& operator/=(const BigInt& rhs) { *this = *this / rhs; return *this; }
     BigInt& operator%=(const BigInt& rhs) { *this = *this % rhs; return *this; }
 
+    // Increment/decrement operators
+    BigInt& operator++() { *this += BigInt(1); return *this; }
+    BigInt operator++(int) { BigInt tmp = *this; ++(*this); return tmp; }
+    BigInt& operator--() { *this -= BigInt(1); return *this; }
+    BigInt operator--(int) { BigInt tmp = *this; --(*this); return tmp; }
+
     // Shift operators (Python semantics: arbitrary precision)
     BigInt operator<<(int32_t shift) const {
         if (shift < 0) {

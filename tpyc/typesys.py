@@ -263,13 +263,14 @@ class BigIntType(TpyType):
 
 @dataclass(frozen=True)
 class RangeType(TpyType):
-    """Range type: range() -> tpy::Range (lazy Int32 iterator)."""
+    """Range type: range() -> tpy::Range<T> (lazy iterator over T)."""
+    elem: "TpyType"
 
     def to_cpp(self) -> str:
-        return "tpy::Range"
+        return f"tpy::Range<{self.elem.to_cpp()}>"
 
     def __str__(self) -> str:
-        return "range"
+        return f"Range[{self.elem}]"
 
     def qualified_name(self) -> Optional[str]:
         return "builtins.range"
@@ -869,7 +870,7 @@ BOOL = BoolType()
 FLOAT = FloatType()
 BIGINT = BigIntType()
 NONE = NoneType()
-RANGE = RangeType()
+RANGE = RangeType(INT32)
 
 # Int32 range limits
 INT32_MIN = -(2**31)

@@ -57,8 +57,8 @@ void __tpy_init() {
   // 29: n = 5
   n = tpy::BigInt(5);
   // 30: for i in range(n):
-  int32_t __stop_4 = (n).to_int32();
-  for (int32_t i = 0; i < __stop_4; ++i) {
+  tpy::BigInt __stop_4 = n;
+  for (tpy::BigInt i = 0; i < __stop_4; ++i) {
     // 31:     print(i)
     std::cout << i << "\n";
   }
