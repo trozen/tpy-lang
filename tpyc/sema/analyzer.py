@@ -82,6 +82,9 @@ class SemanticAnalyzer:
         self.function_hoisted_vars: dict[int, set[str]] = {}
         self.top_level_hoisted_vars: set[str] = set()
 
+        # Per-function `global x` declarations (for codegen)
+        self.function_global_decls: dict[int, set[str]] = {}
+
         # Branch-declared vars that need pre-declaration before if-statements
         self.if_branch_decls: dict[int, dict[str, TpyType]] = {}
 
@@ -281,6 +284,8 @@ class SemanticAnalyzer:
 
         if self.ctx.hoisted_vars:
             self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
+        if self.ctx.global_declarations:
+            self.function_global_decls[id(func)] = self.ctx.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
 
         self.ctx.current_function = None
@@ -358,6 +363,8 @@ class SemanticAnalyzer:
 
             if self.ctx.hoisted_vars:
                 self.function_hoisted_vars[id(method)] = self.ctx.hoisted_vars.copy()
+            if self.ctx.global_declarations:
+                self.function_global_decls[id(method)] = self.ctx.global_declarations.copy()
             self.if_branch_decls.update(self.ctx.if_branch_decls)
 
             self.ctx.current_scope = None

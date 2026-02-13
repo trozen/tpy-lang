@@ -1,0 +1,1 @@
+main.tp.py:2: error: name 'x' is not defined at module level

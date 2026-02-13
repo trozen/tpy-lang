@@ -23,7 +23,7 @@ from .nodes import (
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt, TpyRaiseStopIteration,
+    TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyModule,
 )
 from .imports import ImportProcessor, SPECIAL_MODULES, check_tpy_type_imported
@@ -67,7 +67,7 @@ class Parser:
     FORBIDDEN_CONSTRUCTS = {
         "dict", "set", "tuple",
         "try", "with", "async", "await",
-        "lambda", "yield", "global", "nonlocal",
+        "lambda", "yield", "nonlocal",
     }
 
     def __init__(self):
@@ -780,6 +780,9 @@ class Parser:
 
         elif isinstance(node, ast.Continue):
             return TpyContinue(loc=loc)
+
+        elif isinstance(node, ast.Global):
+            return TpyGlobal(node.names, loc=loc)
 
         elif isinstance(node, ast.Raise):
             return self._parse_raise(node, loc)

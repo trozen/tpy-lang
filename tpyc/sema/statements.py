@@ -17,6 +17,7 @@ from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
+    TpyGlobal,
     TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp, TpyArrayLiteral, TpyListRepeat, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName,
     TpyFieldAccess, TpyFunction,
@@ -298,14 +299,36 @@ class StatementAnalyzer:
             then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             self.ctx.non_none_vars.update(then_facts)
             self.ctx.non_none_exprs.update(then_expr_facts)
+        elif isinstance(stmt, TpyGlobal):
+            self._analyze_global_stmt(stmt)
         elif isinstance(stmt, TpyRaiseStopIteration):
             func = self.ctx.current_function
             if not isinstance(func, TpyFunction) or func.name != "__next__":
                 raise self.ctx.error("'raise StopIteration' can only be used inside a __next__ method", stmt)
             self.init.mark_terminated()
 
+    def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
+        """Analyze a `global x, y` statement."""
+        from .context import MODULE_INIT_CONTEXT
+        # Must be inside a function, not at module level
+        if self.ctx.is_top_level or isinstance(self.ctx.current_function, type(MODULE_INIT_CONTEXT)):
+            raise self.ctx.error("'global' declaration is only allowed inside a function", stmt)
+        for name in stmt.names:
+            # Name must exist in global scope
+            global_type = self.ctx.global_scope.lookup(name)
+            if global_type is None:
+                raise self.ctx.error(f"name '{name}' is not defined at module level", stmt)
+            # Must not shadow a function parameter
+            func = self.ctx.current_function
+            if isinstance(func, TpyFunction):
+                for pname, _ in func.params:
+                    if pname == name:
+                        raise self.ctx.error(
+                            f"name '{name}' is a parameter and cannot be declared global", stmt)
+            self.ctx.global_declarations.add(name)
+
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
-        """Error if reassigning a non-value-type param or loop variable."""
+        """Error if reassigning a non-value-type param, loop variable, or global."""
         existing_type = self.ctx.current_scope.lookup(name)
         if existing_type is None or existing_type.is_value_type():
             return
@@ -324,6 +347,12 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"Cannot reassign loop variable '{name}' of type '{existing_type}'; "
                 f"assign to a new local variable instead",
+                node
+            )
+        # Check global-declared non-value-type variables
+        if name in self.ctx.global_declarations:
+            raise self.ctx.error(
+                f"Cannot reassign global variable '{name}' of non-value type '{existing_type}'",
                 node
             )
 
@@ -353,21 +382,31 @@ class StatementAnalyzer:
                 stmt
             )
 
-        # Check if this is a reassignment (variable already exists in scope)
-        existing_type = self.ctx.current_scope.lookup(stmt.name)
-        # Top-level typed globals are pre-registered before statement analysis.
-        # For an earlier unannotated write to the same name, treat this as a
-        # fresh local write and let a later annotation retro-validate history.
-        is_preregistered_global_write = (
-            self.ctx.is_top_level
-            and stmt.type is None
-            and stmt.init is not None
-            and stmt.name not in self.ctx.current_scope.bindings
-            and stmt.name in self.ctx.global_scope.bindings
-            and stmt.name not in self.ctx.authoritative_types
-        )
-        if is_preregistered_global_write:
-            existing_type = None
+        # Handle `global x` declarations: treat as reassignment of the global variable
+        is_global_declared = stmt.name in self.ctx.global_declarations
+        if is_global_declared:
+            existing_type = self.ctx.global_scope.lookup(stmt.name)
+            if stmt.type is not None:
+                raise self.ctx.error(
+                    f"Cannot add type annotation to global variable '{stmt.name}' from inside a function",
+                    stmt
+                )
+        else:
+            # Check if this is a reassignment (variable already exists in scope)
+            existing_type = self.ctx.current_scope.lookup(stmt.name)
+            # Top-level typed globals are pre-registered before statement analysis.
+            # For an earlier unannotated write to the same name, treat this as a
+            # fresh local write and let a later annotation retro-validate history.
+            is_preregistered_global_write = (
+                self.ctx.is_top_level
+                and stmt.type is None
+                and stmt.init is not None
+                and stmt.name not in self.ctx.current_scope.bindings
+                and stmt.name in self.ctx.global_scope.bindings
+                and stmt.name not in self.ctx.authoritative_types
+            )
+            if is_preregistered_global_write:
+                existing_type = None
 
         if (
             self._in_readonly_context()
@@ -543,7 +582,12 @@ class StatementAnalyzer:
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
-        self.ctx.current_scope.define(stmt.name, var_type)
+        if is_global_declared:
+            # Update global scope type; bind in current scope for local reads
+            self.ctx.global_scope.define(stmt.name, var_type)
+            self.ctx.current_scope.define(stmt.name, var_type)
+        else:
+            self.ctx.current_scope.define(stmt.name, var_type)
         # Any write to the root invalidates identity facts rooted at that variable.
         self.narrowing.kill_facts_rooted_at(stmt.name)
         if stmt.init and self.narrowing.expr_has_unknown_call(stmt.init):

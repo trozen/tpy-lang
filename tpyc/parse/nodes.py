@@ -274,6 +274,12 @@ class TpyPassStmt(TpyStmt):
 
 
 @dataclass
+class TpyGlobal(TpyStmt):
+    """global x, y — declares names as referring to module-level variables."""
+    names: list[str]
+
+
+@dataclass
 class TpyRaiseStopIteration(TpyStmt):
     """raise StopIteration — terminates __next__ method."""
     pass

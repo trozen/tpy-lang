@@ -162,6 +162,9 @@ class CodeGenContext:
     # --- Temporary variable management ---
     temps: TempState = field(default_factory=TempState)
 
+    # --- Global declaration tracking (from `global x` statements) ---
+    global_declared_vars: set[str] = field(default_factory=set)
+
     # --- Pointer-local tracking ---
     pointer_locals: set[str] = field(default_factory=set)
     pointer_globals: set[str] = field(default_factory=set)
@@ -201,6 +204,7 @@ class CodeGenContext:
         self.declared_vars = set()
         self.var_types = {}
         self.local_scope_names = set()
+        self.global_declared_vars = set()
         self.pointer_locals = set()
         self.slots.reset()
         self.rebind_slots = {}

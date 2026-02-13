@@ -16,6 +16,7 @@ from ..typesys import (
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt, TpyRaiseStopIteration,
+    TpyGlobal,
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral,
     TpyFieldAccess, TpyMethodCall,
@@ -80,6 +81,7 @@ class StatementGenerator:
         self.ctx.declared_vars = {pname for pname, _ in params}
         self.ctx.var_types = {pname: ptype for pname, ptype in params}
         self.ctx.local_scope_names = {pname for pname, _ in params}
+        self.ctx.global_declared_vars = self.ctx.analyzer.function_global_decls.get(id(func), set())
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.scan_reassigned_vars(body)
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
         # Optional non-value params are T* in C++ — need pointer-local treatment (->)
@@ -111,6 +113,9 @@ class StatementGenerator:
         reassigned: set[str] = set()
         rvalue_reassigned: set[str] = set()
         self._scan_stmts(stmts, declared, reassigned, rvalue_reassigned)
+        # Global-declared vars are not local reassignments
+        reassigned -= self.ctx.global_declared_vars
+        rvalue_reassigned -= self.ctx.global_declared_vars
         return reassigned, rvalue_reassigned
 
     @staticmethod
@@ -231,6 +236,8 @@ class StatementGenerator:
             return f"{indent}continue;\n"
         elif isinstance(stmt, TpyPassStmt):
             return ""  # No-op - emit nothing
+        elif isinstance(stmt, TpyGlobal):
+            return ""  # No C++ output — just a sema directive
         elif isinstance(stmt, TpyRaiseStopIteration):
             return f"{indent}return std::nullopt;\n"
         elif isinstance(stmt, TpyAssert):
@@ -546,6 +553,14 @@ class StatementGenerator:
 
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
+        # Global-declared vars: emit assignment to the existing global, not a local decl
+        if stmt.name in self.ctx.global_declared_vars:
+            if not stmt.init:
+                return None
+            var_type = self.ctx.analyzer.get_expr_type(stmt.init)
+            init_expr = self.expressions.gen_expr(stmt.init, var_type)
+            return f"{indent}{stmt.name} = {init_expr};\n"
+
         # Check if variable is already declared (reassignment)
         if stmt.name in self.ctx.declared_vars:
             if stmt.init:

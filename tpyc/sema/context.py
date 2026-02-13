@@ -123,6 +123,9 @@ class SemanticContext:
     # Source line for the authoritative explicit annotation.
     authoritative_type_lines: dict[str, int] = field(default_factory=dict)
 
+    # --- Global declaration tracking (per-function `global x` statements) ---
+    global_declarations: set[str] = field(default_factory=set)
+
     # --- Pointer provenance tracking ---
     param_provenance_vars: set[str] = field(default_factory=set)
 
@@ -178,4 +181,5 @@ class SemanticContext:
         self.unresolved_none_vars.clear()
         self.write_history.clear()
         self.authoritative_types.clear()
+        self.global_declarations.clear()
         self.param_provenance_vars.clear()
