@@ -1,0 +1,1 @@
+main.tp.py:11: error: Ptr() argument must be a mutable lvalue

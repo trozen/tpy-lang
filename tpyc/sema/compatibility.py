@@ -305,6 +305,9 @@ class TypeCompatibility:
             return self.is_param_derived_expr(expr.obj)
         if isinstance(expr, TpySubscript):
             return self.is_param_derived_expr(expr.obj)
+        # Pointer constructors derive provenance from their argument (address-taking)
+        if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
+            return self.is_param_derived_expr(expr.args[0])
         # Constructors, function calls, literals — local storage
         return False
 
@@ -362,6 +365,12 @@ class TypeCompatibility:
 
         # Constructor call - creates temporary
         if isinstance(expr, TpyCall):
+            # Pointer constructors: dangling depends on the argument, not the pointer itself
+            if isinstance(expr.call_type, (PtrType, ConstPtrType)):
+                if not expr.args:
+                    return False  # Ptr[T]() → nullptr, always safe
+                return self.is_dangling_return(expr.args[0])
+
             # Generic type constructor creates a temporary
             if expr.call_type is not None:
                 return True
@@ -431,9 +440,17 @@ class TypeCompatibility:
         newly constructed object would create a dangling reference.
         """
         # Only check object types (value types are returned by value)
-        # Pointers are also value types (the pointer itself is copied)
         # OwnType returns by value (ownership transfer), so no dangling risk
-        if return_type.is_value_type() or isinstance(return_type, (VoidType, PtrType, ConstPtrType, OwnType)):
+        # Pointer types need dangling checks (the pointer value may point to a local)
+        if isinstance(return_type, (PtrType, ConstPtrType)):
+            if self.is_dangling_return(expr):
+                raise self.ctx.error(
+                    "Cannot return pointer to local or temporary value; "
+                    "the returned pointer would dangle",
+                    expr
+                )
+            return
+        if return_type.is_value_type() or isinstance(return_type, (VoidType, OwnType)):
             return
 
         # Optional[T] for non-value T returns T* — returning a local would dangle.

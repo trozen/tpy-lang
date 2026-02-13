@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, ConstPtrType, NoneType, OptionalType,
+    ListLiteralInfo, PtrType, ConstPtrType, NoneType, OptionalType,
     INT32, VOID, BIGINT, is_protocol_type,
 )
 from ..parse import (
@@ -567,8 +567,9 @@ class StatementAnalyzer:
                 self.ctx.rvalue_vars.discard(stmt.name)
             else:
                 self.ctx.rvalue_vars.add(stmt.name)
-        # Track pointer provenance for non-value types
-        if stmt.init and not var_type.is_value_type():
+        # Track provenance for non-value types and pointer types
+        # (pointers are value types but carry address provenance)
+        if stmt.init and (not var_type.is_value_type() or isinstance(var_type, (PtrType, ConstPtrType))):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
 
         # Scope escape check for variable declarations (new and reassignment)
@@ -668,8 +669,8 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
             self.scopes.check_escape(stmt.target.name, stmt.value, stmt)
 
-        # Track pointer provenance for non-value-type name targets
-        if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
+        # Track provenance for non-value-type and pointer-type name targets
+        if isinstance(stmt.target, TpyName) and (not target_type.is_value_type() or isinstance(target_type, (PtrType, ConstPtrType))):
             self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
 
         # Mark as definitely assigned for plain name targets

@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    SpanType, VOID, BIGINT, is_protocol_type,
+    PtrType, ConstPtrType, VoidType, SpanType,
+    VOID, BIGINT, is_protocol_type,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName
 from ..namespace import BindingKind
@@ -120,6 +121,15 @@ class CallAnalyzer:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
                 if arg_types:
                     self._validate_generic_constructor(expr, arg_types)
+                if isinstance(expr.call_type, (PtrType, ConstPtrType)) and expr.args:
+                    self._validate_ptr_constructor(expr)
+                    # Set resolved constructor for codegen (the &{0} template)
+                    lookup = builtin_modules.lookup_generic_type(expr.func)
+                    if lookup:
+                        for ctor in lookup.type_def.constructors:
+                            if len(ctor.params) == len(expr.args) and ctor.cpp:
+                                expr.resolved_function_info = _method_def_to_function_info(ctor)
+                                break
                 return expr.call_type
             # Otherwise fall through to function handling (type_args will be used)
 
@@ -245,6 +255,8 @@ class CallAnalyzer:
                                     elem_type = BIGINT
                                 result_type = type_def.type_factory(elem_type)
                                 expr.call_type = result_type
+                                if isinstance(result_type, (PtrType, ConstPtrType)):
+                                    self._validate_ptr_constructor(expr)
                                 if ctor.cpp:
                                     expr.resolved_function_info = _method_def_to_function_info(ctor)
                                 return result_type
@@ -342,6 +354,35 @@ class CallAnalyzer:
                 f"{expr.func}() cannot be constructed from {arg_types[0]}",
                 expr
             )
+
+    def _validate_ptr_constructor(self, expr: TpyCall) -> None:
+        """Validate Ptr/ConstPtr constructor arguments (lvalue, type match, no void args)."""
+        assert isinstance(expr.call_type, (PtrType, ConstPtrType))
+        pointee = expr.call_type.pointee
+        is_mutable = isinstance(expr.call_type, PtrType)
+        kind = "Ptr" if is_mutable else "ConstPtr"
+
+        if len(expr.args) != 1:
+            raise self.ctx.error(f"{kind}() takes 0 or 1 argument, got {len(expr.args)}", expr)
+
+        arg = expr.args[0]
+        arg_type = self.ctx.get_expr_type(arg)
+
+        if isinstance(pointee, VoidType):
+            raise self.ctx.error(f"{kind}[None]() does not accept arguments", expr)
+
+        if arg_type != pointee:
+            raise self.ctx.error(
+                f"{kind}[{pointee}]() expects {pointee}, got {arg_type}", expr)
+
+        if is_mutable:
+            if not self.compat.is_mutable_lvalue(arg):
+                raise self.ctx.error(
+                    f"{kind}() argument must be a mutable lvalue", expr)
+        else:
+            if not self.compat.is_lvalue(arg):
+                raise self.ctx.error(
+                    f"{kind}() argument must be an lvalue", expr)
 
     def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
         """Check a builtin type constructor call using unified RecordInfo.constructors."""

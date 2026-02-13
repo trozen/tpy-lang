@@ -1098,7 +1098,7 @@ class TypeRegistry:
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
         # Fundamental types not in module system (pointer wrappers)
-        self._fundamental_types = {"Ptr", "ConstPtr", "Own"}
+        self._fundamental_types = {"Own"}
 
     def register_record(self, info: RecordInfo, name: str | None = None) -> None:
         """Register a record type.

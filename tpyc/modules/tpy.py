@@ -6,7 +6,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
-from tpyc.typesys import INT32, BIGINT, FLOAT, STR, CHAR, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType
+from tpyc.typesys import INT32, BIGINT, FLOAT, STR, CHAR, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ConstPtrType, NamedType, OwnType, OptionalType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -96,6 +96,24 @@ def init_module() -> BuiltinModule:
             cpp="{self}[{0}]",
         )],
     })
+
+    # Ptr[T]: Mutable pointer
+    module.type("Ptr", cpp_type="{T}*", type_params=["T"],
+                param_kinds=[TypeParamKind.TYPE],
+                type_factory=lambda t: PtrType(t),
+                constructors=[
+                    MethodDef(params=[], returns=VOID, cpp="nullptr"),
+                    MethodDef(params=[ParamDef("x", T)], returns=T, cpp="&{0}"),
+                ])
+
+    # ConstPtr[T]: Read-only pointer
+    module.type("ConstPtr", cpp_type="const {T}*", type_params=["T"],
+                param_kinds=[TypeParamKind.TYPE],
+                type_factory=lambda t: ConstPtrType(t),
+                constructors=[
+                    MethodDef(params=[], returns=VOID, cpp="nullptr"),
+                    MethodDef(params=[ParamDef("x", T)], returns=T, cpp="&{0}"),
+                ])
 
     # StaticList[T, N]: Fixed-capacity container
     # Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)

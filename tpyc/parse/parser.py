@@ -926,7 +926,7 @@ class Parser:
             if isinstance(node.value, ast.Name):
                 name = node.value.id
                 # Fundamental generic types (not in module system)
-                if name in ("Ptr", "ConstPtr", "Own"):
+                if name == "Own":
                     raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
                 # Module-defined generic types
                 from tpyc.modules import lookup_generic_type as _lookup_generic_type

@@ -502,6 +502,9 @@ class ExpressionGenerator:
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
         if expr.call_type is not None:
+            # Pointer null constructors: Ptr[T]() / ConstPtr[T]() → nullptr
+            if isinstance(expr.call_type, (PtrType, ConstPtrType)) and not expr.args:
+                return "nullptr"
             # List repeat already generates the target type via from_range
             if len(expr.args) == 1 and isinstance(expr.args[0], TpyListRepeat):
                 return self.gen_expr(expr.args[0], expr.call_type)

@@ -519,10 +519,16 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
 
     For list[Int32], returns {"T": Int32}.
     For Container[Point, 10], returns {"T": Point}.
+    For Ptr[Point], returns {"T": Point}.
 
     Note: Only type parameters that are themselves types are extracted.
     Integer parameters like N in Container[T, N] are not included.
     """
+    from tpyc.typesys import PtrType, ConstPtrType
+    # Pointer types store their type param as pointee (not via get_element_type,
+    # since pointers are not containers)
+    if isinstance(tpy_type, (PtrType, ConstPtrType)):
+        return {"T": tpy_type.pointee}
     if (elem_type := tpy_type.get_element_type()) is not None:
         return {"T": elem_type}
     return {}
