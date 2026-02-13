@@ -173,14 +173,6 @@ COERCIONS: list[Coercion] = [
         to_type=ConstPtrType,
         type_match=lambda p1, p2: isinstance(p1, PtrType) and isinstance(p2, ConstPtrType) and p1.pointee == p2.pointee,
     ),
-    Coercion(
-        name="ptr_to_record",
-        from_type=PtrType,
-        to_type=NamedType,
-        type_match=lambda ptr, rec: isinstance(ptr, PtrType) and isinstance(rec, NamedType) and rec.is_record and ptr.pointee == rec,
-        codegen=lambda e, _a, _b, _c: f"tpy::deref_ptr({e})",
-    ),
-
     # Span coercions: any NativeContiguous[T] type can coerce to Span[T]
     # Arg context allows temporaries
     Coercion(
@@ -212,3 +204,17 @@ def resolve_coercion(actual: TpyType, expected: TpyType, ctx: CoercionContext) -
             if coercion.type_match(actual, expected):
                 return coercion
     return None
+
+
+def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: str) -> str:
+    if isinstance(actual, (PtrType, ConstPtrType)):
+        return f"tpy::deref_ptr({e})"
+    return f"{e}.__deref__()"
+
+
+DEREF_COERCION = Coercion(
+    name="deref_to_target",
+    from_type=TpyType,
+    to_type=TpyType,
+    codegen=_deref_codegen,
+)

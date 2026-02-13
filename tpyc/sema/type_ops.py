@@ -607,6 +607,34 @@ class TypeOperations:
             cpp_template=method.cpp_template,  # Preserve cpp_template for codegen
         )
 
+    def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
+        """If typ has __deref__(), return resolved return type. Else None."""
+        from tpyc import modules as builtin_modules
+
+        record_info = self.ctx.registry.get_record_for_type(typ)
+        if not record_info:
+            return None
+        overloads = record_info.get_method_overloads("__deref__")
+        if not overloads:
+            return None
+        method = overloads[0]
+        type_subst = builtin_modules.extract_type_params(typ)
+        if not type_subst and isinstance(typ, NamedType) and typ.is_record:
+            type_subst = self.build_type_substitution(typ)
+        if type_subst:
+            method = self.substitute_method_type_params(method, type_subst)
+        return method.return_type
+
+    def get_deref_coercion_target(self, typ: TpyType) -> TpyType | None:
+        """Get the deref target for coercion purposes.
+
+        Like get_deref_target_type() but excludes ConstPtr — record params
+        are T& (mutable ref) but deref_ptr(const T*) returns const T&.
+        """
+        if isinstance(typ, ConstPtrType):
+            return None
+        return self.get_deref_target_type(typ)
+
     def _get_iterable_element_type_or_none(self, iterable_type: TpyType) -> TpyType | None:
         """Get the element type of an iterable, or None if not iterable.
 

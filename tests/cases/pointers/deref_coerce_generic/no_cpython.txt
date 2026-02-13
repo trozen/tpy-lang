@@ -1,0 +1,1 @@
+__deref__() and generic classes are TurboPython-specific.

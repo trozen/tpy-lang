@@ -324,6 +324,7 @@ class MethodAnalyzer:
             resolved = resolve_overload(
                 resolved_overloads, arg_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
+                deref_checker=self.type_ops.get_deref_coercion_target,
             )
             if resolved is not None:
                 expr.resolved_function_info = resolved
@@ -493,6 +494,7 @@ class MethodAnalyzer:
         resolved = resolve_overload(
             resolved_overloads, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
+            deref_checker=self.type_ops.get_deref_coercion_target,
         )
         if resolved is not None:
             # Coerce arguments
@@ -534,6 +536,7 @@ class MethodAnalyzer:
         return resolve_overload(
             resolved_overloads, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
+            deref_checker=self.type_ops.get_deref_coercion_target,
         )
 
     def _analyze_user_module_function_call(

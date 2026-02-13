@@ -246,6 +246,10 @@ class ProtocolChecker:
         # Allow IntLiteralType to match any integer type it can coerce to
         if resolve_coercion(actual_return, expected_return, CoercionContext.RETURN) is not None:
             return True
+        # Deref coercion: Deref[T] -> T
+        deref_target = self.type_ops.get_deref_coercion_target(actual_return)
+        if deref_target is not None and deref_target == expected_return:
+            return True
         return False
 
     def collect_protocol_methods(self, protocol_name: str, visited: set[str] | None = None) -> list[MethodSignature]:

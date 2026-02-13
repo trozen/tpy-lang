@@ -413,22 +413,7 @@ class ExpressionAnalyzer:
 
     def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""
-        record_info = self.ctx.registry.get_record_for_type(typ)
-        if not record_info:
-            return None
-        overloads = record_info.get_method_overloads("__deref__")
-        if not overloads:
-            return None
-        method = overloads[0]
-        # Builtin types (Ptr, ConstPtr, list, etc.)
-        type_subst = builtin_modules.extract_type_params(typ)
-        # User-defined generic records (Box[T], etc.) — extract_type_params
-        # only handles builtins, so fall back to build_type_substitution
-        if not type_subst and isinstance(typ, NamedType) and typ.is_record:
-            type_subst = self.type_ops.build_type_substitution(typ)
-        if type_subst:
-            method = self.type_ops.substitute_method_type_params(method, type_subst)
-        return method.return_type
+        return self.type_ops.get_deref_target_type(typ)
 
     def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
         """Try to find a field on typ. Returns field type or None."""

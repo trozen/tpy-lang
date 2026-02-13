@@ -7,8 +7,10 @@
 | 1 | Add `__deref__` method to Ptr[T] | Done |
 | 2 | Sema — generalize auto-deref (field access, method calls) | Done |
 | 3 | Codegen — emit deref calls for user types | Done |
-| 4 | Deref coercion (replace hardcoded `ptr_to_record`) | TODO |
+| 4 | Deref coercion (replace hardcoded `ptr_to_record`) | Done |
 | 5 | ConstPtr `__deref__`, mutability enforcement | Partial |
+| 6 | Null-safety for Ptr/ConstPtr auto-deref | TODO |
+| 7 | Generate `operator*` for types with `__deref__` | TODO |
 
 ## Motivation
 
@@ -98,9 +100,13 @@ Codegen also handles the interaction with Optional receivers:
 - **Narrowed Optional** (`Ref | None` proven non-null): C++ var is still `Ref*`, so codegen emits `r->__deref__().field` (arrow for pointer deref, then user deref chain).
 - **Runtime null check**: Emits `tpy::deref_ptr(r).__deref__().field`.
 
-### Stage 4: Deref coercion — TODO
+### Stage 4: Deref coercion — Done
 
-Replace the hardcoded `ptr_to_record` coercion (`coercions.py`) with a generic rule: if type has `__deref__() -> T` and target is `T`, coerce via `obj.__deref__()`. For Ptr[T], codegen still emits `tpy::deref_ptr()` as a special case.
+Replaced the hardcoded `ptr_to_record` coercion with a generic deref fallback in `check_type_compatible()`. When `resolve_coercion()` finds no match, the compatibility checker looks up `__deref__() -> T` via `TypeOperations.get_deref_target_type()` and applies a `DEREF_COERCION` sentinel if the target matches.
+
+- `Ptr[T]` → `T`: codegen emits `tpy::deref_ptr(expr)` (null-checked)
+- User Deref types → `T`: codegen emits `expr.__deref__()`
+- `ConstPtr[T]` → `T`: excluded for now — C++ generates record params as `T&` (mutable ref) but `deref_ptr(const T*)` returns `const T&`, causing const-correctness errors. Requires parameter codegen changes (`const T&` for read-only params).
 
 ### Stage 5: ConstPtr, mutability — Partial
 
@@ -108,6 +114,19 @@ Replace the hardcoded `ptr_to_record` coercion (`coercions.py`) with a generic r
 - ConstPtr auto-deref works for field access and const method calls — **done**
 - `__deref_mut__` for mutable deref distinction — **future**
 - Transitive constness enforcement (e.g. `ConstPtr[list[T]]` blocking `.append()`) — **future**, requires a full const-propagation system
+
+### Stage 6: Null-safety for Ptr/ConstPtr auto-deref — TODO
+
+Currently, auto-deref through `Ptr[T]`/`ConstPtr[T]` generates unchecked `->` access, while explicit `.__deref__()` generates checked `tpy::deref_ptr()`. This is a correctness gap: a null `Ptr[T]` passed to a function produces UB on `->` access with no diagnostic.
+
+Options to explore:
+- Null-assert on Ptr/ConstPtr parameters at function entry (one-time check, `->` safe within body)
+- Check all `->` access (safe but adds overhead)
+- Opt-in via annotation (e.g. `@checked` vs default unchecked)
+
+### Stage 7: Generate `operator*` for types with `__deref__` — TODO
+
+Emit C++ `operator*()` (and potentially `operator->()`) on user-defined types that implement `__deref__`. This enables interop with C++ code that expects standard pointer-like dereferencing semantics (e.g. `*box` instead of `box.__deref__()`).
 
 ## Deref[T] Protocol Definition
 
