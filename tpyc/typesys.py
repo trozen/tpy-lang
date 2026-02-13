@@ -504,6 +504,9 @@ class PtrType(TpyType):
     def to_cpp(self) -> str:
         return f"{self.pointee.to_cpp()}*"
 
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.Ptr"
+
     def is_pointer(self) -> bool:
         return True
 

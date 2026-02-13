@@ -104,7 +104,10 @@ def init_module() -> BuiltinModule:
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
                     MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
-                ])
+                ],
+                methods={
+                    "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_ptr({self})")],
+                })
 
     # ConstPtr[T]: Read-only pointer
     module.type("ConstPtr", cpp_type="const {T}*", type_params=["T"],
