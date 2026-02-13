@@ -101,6 +101,7 @@ def init_module() -> BuiltinModule:
     module.type("Ptr", cpp_type="{T}*", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: PtrType(t),
+                extends=["Deref[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
                     MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
@@ -113,10 +114,14 @@ def init_module() -> BuiltinModule:
     module.type("ConstPtr", cpp_type="const {T}*", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: ConstPtrType(t),
+                extends=["Deref[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
                     MethodDef(params=[ParamDef("x", T, requires_lvalue=True)], returns=T, cpp="&{0}"),
-                ])
+                ],
+                methods={
+                    "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_ptr({self})")],
+                })
 
     # StaticList[T, N]: Fixed-capacity container
     # Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
@@ -209,6 +214,17 @@ def init_module() -> BuiltinModule:
             cpp="tpy::staticlist_reverse({self})",
         )],
     })
+
+    # Deref[T] protocol: types that can be dereferenced to yield T
+    # Structural protocol — any type with __deref__() -> T conforms automatically.
+    # Ptr[T] and ConstPtr[T] explicitly extend this for clarity.
+    module.protocol("Deref",
+        type_params=["T"],
+        methods={
+            "__deref__": MethodDef(params=[], returns=T, cpp="{self}.__deref__()"),
+        },
+        cpp_concept="tpy::Deref",
+    )
 
     # Comparable protocol: types that support < operator
     # Used for bounded type parameters like T: Comparable

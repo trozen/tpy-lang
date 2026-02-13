@@ -93,6 +93,19 @@ class MethodAnalyzer:
 
         return SuperType(record_info.parent, ctx.record_ctx.record.name)
 
+    def _try_resolve_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+        """Try to resolve method on obj_type. Returns return type or None."""
+        result = self._analyze_builtin_type_method(expr, obj_type)
+        if result is not None:
+            return result
+        result = self._analyze_user_record_method(expr, obj_type)
+        if result is not None:
+            return result
+        result = self._analyze_protocol_or_bound_method(expr, obj_type)
+        if result is not None:
+            return result
+        return None
+
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
         # super().method() calls
@@ -121,29 +134,30 @@ class MethodAnalyzer:
             expr.needs_optional_runtime_check = True
             obj_type = obj_type.inner
 
-        # List mutation tracking
+        # List mutation tracking (before deref chain — applies to direct list types only)
         if isinstance(obj_type, (PendingListType, ListType)):
             if expr.method in LIST_MUTATION_METHODS:
                 from .list_literals import ListLiteralTracker
                 tracker = ListLiteralTracker(self.ctx)
                 tracker.mark_list_mutated(expr.obj)
 
-        # Built-in type methods
-        result = self._analyze_builtin_type_method(expr, obj_type)
-        if result is not None:
-            return result
+        # Deref chain — resolves through Ptr, ConstPtr, and any Deref[T] type
+        original_type = obj_type
+        current_type = obj_type
+        deref_depth = 0
+        while deref_depth <= 8:
+            result = self._try_resolve_method(expr, current_type)
+            if result is not None:
+                expr.deref_depth = deref_depth
+                return result
 
-        # User-defined record methods
-        result = self._analyze_user_record_method(expr, obj_type)
-        if result is not None:
-            return result
+            deref_target = self.expr.get_deref_target_type(current_type)
+            if deref_target is None:
+                break
+            current_type = deref_target
+            deref_depth += 1
 
-        # Protocol-typed values and bounded type parameters
-        result = self._analyze_protocol_or_bound_method(expr, obj_type)
-        if result is not None:
-            return result
-
-        raise self.ctx.error(f"Cannot call method '{expr.method}' on type {obj_type}", expr)
+        raise self.ctx.error(f"Cannot call method '{expr.method}' on type {original_type}", expr)
 
     def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""

@@ -140,6 +140,7 @@ class TpyMethodCall(TpyExpr):
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
+    deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
 
 
 @dataclass
@@ -148,6 +149,7 @@ class TpyFieldAccess(TpyExpr):
     obj: TpyExpr
     field: str
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
+    deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
 
 
 @dataclass

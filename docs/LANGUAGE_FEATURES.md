@@ -467,6 +467,39 @@ def ok(x: Int32) -> Ptr[Int32]:
     return Ptr(x)           # OK: x is a parameter
 ```
 
+#### Auto-Deref via `Deref[T]` Protocol (Working)
+
+Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and support **auto-deref**: the compiler automatically resolves field access and method calls through `__deref__` chains.
+
+`Ptr[T]` and `ConstPtr[T]` conform to `Deref[T]` (mapped to `->` in C++). User-defined types can also implement `__deref__`:
+
+```python
+from tpy import Int32, copy
+
+class Point:
+    x: Int32
+    y: Int32
+    def __init__(self, x: Int32, y: Int32) -> None:
+        self.x = x
+        self.y = y
+    def sum(self) -> Int32:
+        return self.x + self.y
+
+class Ref:
+    _target: Point
+    def __init__(self, target: Point) -> None:
+        self._target = copy(target)
+    def __deref__(self) -> Point:
+        return self._target
+
+def main() -> None:
+    r: Ref = Ref(Point(10, 20))
+    print(r.x)     # auto-deref: r.__deref__().x → 10
+    print(r.sum())  # auto-deref: r.__deref__().sum() → 30
+```
+
+Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref__() -> Point`, then `box.x` resolves through both (max depth: 8). Auto-deref also works through `Optional` receivers (`Ref | None`).
+
 #### Owned Return Values (Working)
 
 Object types are normally returned by reference (`T&`) to avoid hidden copies. But this creates a problem when returning newly constructed objects:
@@ -1458,6 +1491,7 @@ struct SortedContainer {
 - `Sized` - has `__len__()` method
 - `Comparable` - has comparison operators (`<`, `<=`, `>`, `>=`, `==`, `!=`)
 - `Sequence[T]` - has `__len__()` and `__getitem__()`
+- `Deref[T]` - has `__deref__() -> T` (auto-deref for field/method access)
 - `NativeIterable[T]` - supports C++ range-for iteration
 - `OptIterator[T]` - lazy iteration via `next() -> Optional[T]`
 - User-defined protocols (including protocols with inheritance)

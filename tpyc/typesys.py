@@ -535,6 +535,9 @@ class ConstPtrType(TpyType):
     def to_cpp(self) -> str:
         return f"const {self.pointee.to_cpp()}*"
 
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.ConstPtr"
+
     def is_pointer(self) -> bool:
         return True
 

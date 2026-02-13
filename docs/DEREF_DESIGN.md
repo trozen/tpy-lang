@@ -5,10 +5,10 @@
 | Stage | Description | Status |
 |-------|-------------|--------|
 | 1 | Add `__deref__` method to Ptr[T] | Done |
-| 2 | Sema — generalize auto-deref (field access, method calls) | TODO |
-| 3 | Codegen — emit deref calls for user types | TODO |
+| 2 | Sema — generalize auto-deref (field access, method calls) | Done |
+| 3 | Codegen — emit deref calls for user types | Done |
 | 4 | Deref coercion (replace hardcoded `ptr_to_record`) | TODO |
-| 5 | ConstPtr support, `__deref_mut__` | Future |
+| 5 | ConstPtr `__deref__`, mutability enforcement | Partial |
 
 ## Motivation
 
@@ -53,7 +53,7 @@ When resolving `obj.field` or `obj.method()`:
 
 1. Try `obj`'s own type first
 2. If not found and type has `__deref__() -> T`, try `T`
-3. Repeat until found or no more `__deref__` in the chain
+3. Repeat until found or no more `__deref__` in the chain (max depth: 8)
 
 ```python
 class Wrapper[T]:
@@ -71,81 +71,56 @@ print(w.x)  # Wrapper has no x → deref to Ptr[Point] → deref to Point → fo
 - User types: `obj.__deref__()` → literal `obj.__deref__()` call in C++
 - Field/method access through Ptr keeps the `->` optimization in codegen
 
-## Implementation Roadmap
+## Implementation
 
-### Stage 1: Add `__deref__` to Ptr[T]
+### Stage 1: Add `__deref__` to Ptr[T] — Done
 
-**Scope:** Small, purely additive, zero risk.
+Added `__deref__` method to Ptr's module definition in `tpy.py`. Users can call `ptr.__deref__()` explicitly.
 
-Add `__deref__` method to Ptr's module definition in `tpy.py`:
+### Stage 2: Sema — generalize auto-deref — Done
 
-```python
-"__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_ptr({self})")]
-```
+Replaced hardcoded pointer checks with generic deref chain resolution.
 
-Users can call `ptr.__deref__()` explicitly. Nothing else changes — existing auto-deref still uses the hardcoded `isinstance(PtrType)` paths. User-defined types with `__deref__` also work for explicit calls immediately.
+**Field access** (`sema/expressions.py`): `_analyze_field_access` unwraps Optional/Own, then walks a deref chain via `get_deref_target_type()` until the field is found. `deref_depth` is stored on the AST node.
 
-### Stage 2: Sema — generalize auto-deref
+**Method calls** (`sema/methods.py`): `analyze_method_call` uses the same deref chain pattern via `_try_resolve_method()`.
 
-**Scope:** Medium. Touches 2 key dispatch points.
+**Type resolution** (`get_deref_target_type`): Looks up `__deref__` on any type via the registry, handles both builtin types (Ptr, ConstPtr — via `extract_type_params`) and user-defined generic records (via `build_type_substitution`).
 
-Replace hardcoded pointer checks with generic deref chain resolution.
-
-**Field access** (`sema/expressions.py`, `_analyze_field_access`):
-
-Current:
-```python
-if isinstance(obj_type, (PtrType, ConstPtrType)):
-    actual_type = obj_type.pointee
-```
-
-New: walk the deref chain until the field is found:
-```
-current_type = obj_type
-deref_depth = 0
-while True:
-    if current_type has the field → done, record deref_depth
-    if current_type has __deref__ → current_type = return type of __deref__, depth++
-    else → error "no field X"
-```
-
-**Method calls** (`sema/methods.py`, `analyze_method_call`): Same pattern as a new fallback after `_analyze_user_record_method` / `_analyze_builtin_type_method` return None.
-
-**AST annotation:** Store `deref_depth: int` on `TpyFieldAccess` and `TpyMethodCall` so codegen knows how many deref calls to emit.
-
-Ptr[T] enters the chain naturally via its `__deref__` method — no special case needed in sema.
-
-### Stage 3: Codegen — emit deref calls
-
-**Scope:** Medium. Concentrated in `codegen_cpp/expressions.py`.
+### Stage 3: Codegen — emit deref calls — Done
 
 Two strategies based on type:
 
-- **Ptr[T]:** Keep generating `ptr->field` via existing `is_indirect_name` / `is_pointer()` checks. This is a codegen optimization — Ptr maps to `T*` in C++, so `->` is natural.
+- **Ptr[T] / ConstPtr[T]:** Keep generating `ptr->field` via existing `is_indirect_name` / `is_pointer()` checks.
 - **User Deref types:** Generate `obj.__deref__().field` / `obj.__deref__().method()`. For depth 2+: `obj.__deref__().__deref__().field`.
 
-Key insight: `is_indirect_name` is a codegen-level concept ("this C++ variable is `T*`"), not a semantic one. Deref is the semantic concept. They're orthogonal — user Deref types are structs in C++, not raw pointers.
+Codegen also handles the interaction with Optional receivers:
+- **Narrowed Optional** (`Ref | None` proven non-null): C++ var is still `Ref*`, so codegen emits `r->__deref__().field` (arrow for pointer deref, then user deref chain).
+- **Runtime null check**: Emits `tpy::deref_ptr(r).__deref__().field`.
 
-### Stage 4: Deref coercion
-
-**Scope:** Small.
+### Stage 4: Deref coercion — TODO
 
 Replace the hardcoded `ptr_to_record` coercion (`coercions.py`) with a generic rule: if type has `__deref__() -> T` and target is `T`, coerce via `obj.__deref__()`. For Ptr[T], codegen still emits `tpy::deref_ptr()` as a special case.
 
-### Stage 5 (future): ConstPtr, mutability
+### Stage 5: ConstPtr, mutability — Partial
 
-- Add `__deref__` to ConstPtr[T] (returns const ref to T)
-- Consider `__deref_mut__` for mutable deref distinction
-- Enforce: field *assignment* through a deref chain requires `__deref_mut__` or Ptr in the chain
+- ConstPtr[T] has `__deref__` and extends `Deref[T]` — **done**
+- ConstPtr auto-deref works for field access and const method calls — **done**
+- `__deref_mut__` for mutable deref distinction — **future**
+- Transitive constness enforcement (e.g. `ConstPtr[list[T]]` blocking `.append()`) — **future**, requires a full const-propagation system
 
-## Current hardcoded Ptr sites (reference)
+## Deref[T] Protocol Definition
 
-Sites that Stage 2-4 will generalize:
+Defined in `tpyc/modules/tpy.py`:
 
-| File | Line | What it does |
-|------|------|-------------|
-| `sema/expressions.py` | 435 | Field access: `isinstance(PtrType)` → use `pointee` |
-| `coercions.py` | 176 | `ptr_to_record` coercion → `tpy::deref_ptr()` |
-| `codegen_cpp/expressions.py` | 696 | Method call: `is_pointer()` → use `->` |
-| `codegen_cpp/expressions.py` | 731 | Field access: `is_pointer()` → use `->` |
-| `codegen_cpp/context.py` | 314 | `is_indirect_name` — stays as codegen optimization |
+```python
+module.protocol("Deref",
+    type_params=["T"],
+    methods={
+        "__deref__": MethodDef(params=[], returns=T, cpp="{self}.__deref__()"),
+    },
+    cpp_concept="tpy::Deref",
+)
+```
+
+Both `Ptr[T]` and `ConstPtr[T]` declare `extends=["Deref[T]"]`. User-defined types conform structurally by implementing `__deref__() -> T`.

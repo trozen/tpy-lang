@@ -687,12 +687,20 @@ class ExpressionGenerator:
         # (OptionalType non-value expressions like function calls return T*)
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
+        deref_chain = ".__deref__()" * expr.deref_depth
+        # Optional with runtime null check — must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional({obj}).{expr.method}({args})"
+                return f"tpy::deref_optional({obj}){deref_chain}.{expr.method}({args})"
             # For pointer-globals with wrapper storage, this yields raw `T*`.
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_ptr({ptr_expr}).{expr.method}({args})"
+            return f"tpy::deref_ptr({ptr_expr}){deref_chain}.{expr.method}({args})"
+        # User-defined Deref: emit .__deref__() calls before method call
+        if deref_chain and obj_type and not obj_type.is_pointer():
+            is_indirect = self.ctx.is_indirect_name(expr.obj)
+            if is_indirect or is_optional_ptr:
+                return f"{obj}->{deref_chain[1:]}.{expr.method}({args})"
+            return f"{obj}{deref_chain}.{expr.method}({args})"
         use_arrow = self.ctx.is_indirect_name(expr.obj) or (obj_type and obj_type.is_pointer()) or is_optional_ptr
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{expr.method}({args})"
@@ -722,12 +730,19 @@ class ExpressionGenerator:
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
         is_indirect = self.ctx.is_indirect_name(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
+        deref_chain = ".__deref__()" * expr.deref_depth
+        # Optional with runtime null check — must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional({obj}).{expr.field}"
-            # For pointer-globals with wrapper storage, this yields raw `T*`.
+                return f"tpy::deref_optional({obj}){deref_chain}.{expr.field}"
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_ptr({ptr_expr}).{expr.field}"
+            return f"tpy::deref_ptr({ptr_expr}){deref_chain}.{expr.field}"
+        # User-defined Deref: emit .__deref__() calls before field access
+        if deref_chain and obj_type and not obj_type.is_pointer():
+            if is_indirect or is_optional_ptr:
+                # C++ var is a pointer (narrowed Optional) — arrow then deref chain
+                return f"{obj}->{deref_chain[1:]}.{expr.field}"
+            return f"{obj}{deref_chain}.{expr.field}"
         if obj_type and obj_type.is_pointer():
             if is_indirect and not isinstance(obj_type, (PtrType, ConstPtrType)):
                 # Global pointer wrapper needs deref first: Global<Ptr<T>> -> (*global)->field
