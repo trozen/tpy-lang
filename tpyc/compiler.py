@@ -98,6 +98,7 @@ class BuildLayout:
         output: Path | None = None,
         opt_flags: list[str] | None = None,
         config: CppCompilerConfig | None = None,
+        extra_objects: list[str] | None = None,
     ) -> list[list[str]]:
         """Build the C++ compilation command(s).
 
@@ -111,6 +112,7 @@ class BuildLayout:
             output: Output binary path. Defaults to self.binary_path().
             opt_flags: Optimization flags (e.g., ["-O3", "-DNDEBUG"]).
             config: Compiler configuration. Defaults to CppCompilerConfig().
+            extra_objects: Pre-compiled object files to include in the link step.
         """
         if config is None:
             config = CppCompilerConfig()
@@ -133,6 +135,7 @@ class BuildLayout:
                 *common,
                 "-o", str(output),
                 *[str(p) for p in cpp_files],
+                *(extra_objects or []),
                 *config.link_flags,
             ]]
 
@@ -150,6 +153,7 @@ class BuildLayout:
             config.compiler,
             "-o", str(output),
             *obj_files,
+            *(extra_objects or []),
             *config.link_flags,
         ])
         return cmds

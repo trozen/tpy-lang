@@ -6,7 +6,7 @@ All existing imports like ``from .parse import X`` continue to work.
 """
 
 from .nodes import (
-    ParseError, SourceLocation,
+    ParseError, SourceLocation, FunctionLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,

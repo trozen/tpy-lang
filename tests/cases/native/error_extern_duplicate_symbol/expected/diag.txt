@@ -1,0 +1,1 @@
+main.tp.py:7: error: Duplicate extern symbol 'my_func' (already declared by 'my_func')

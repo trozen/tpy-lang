@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
-    BIGINT, is_protocol_type,
+    BIGINT, is_protocol_type, FunctionInfo,
     Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
 )
 from ..parse import TpyFunction, TpyVarDecl
@@ -58,6 +58,21 @@ class FunctionGenerator:
         """Generate function parameter list."""
         return ", ".join(ptype.to_cpp_param(pname) for pname, ptype in params)
 
+    def gen_c_params(self, params: list[tuple[str, TpyType]]) -> str:
+        """Generate parameter list for extern \"C\" declarations.
+
+        Uses C-compatible types: str maps to const char* instead of
+        std::string_view (which is not ABI-compatible with C).
+        """
+        from ..typesys import StrType
+        parts = []
+        for pname, ptype in params:
+            if isinstance(ptype, StrType):
+                parts.append(f"const char* {pname}")
+            else:
+                parts.append(ptype.to_cpp_param(pname))
+        return ", ".join(parts)
+
     def gen_params_with_protocols(self, params: list[tuple[str, TpyType]]) -> str:
         """Generate function parameter list, using template types for protocol params."""
         result = []
@@ -73,6 +88,19 @@ class FunctionGenerator:
 
     def gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function declaration."""
+        from ..parse.nodes import FunctionLinkage
+        # @native (C++ import) declarations are handled outside the namespace by generator.py
+        if func.linkage == FunctionLinkage.NATIVE:
+            return
+
+        # @native_c and @extern_c both use extern "C" linkage
+        if func.linkage in (FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C):
+            c_name = func.native_name or func.name
+            ret_type = func.return_type.to_cpp_return()
+            params = self.gen_c_params(func.params)
+            out.write(f'extern "C" {ret_type} {c_name}({params});\n')
+            return
+
         protocol_params = self.protocols.get_protocol_params(func.params)
         is_generic = bool(func.type_params)
 
@@ -89,10 +117,45 @@ class FunctionGenerator:
             params = self.gen_params(func.params)
             out.write(f"{ret_type} {func.name}({params});\n")
 
+    def gen_extern_c_redecl(self, out: TextIO, func_info: FunctionInfo) -> None:
+        """Emit an extern "C" re-declaration for a C-linkage function.
+
+        This makes the C symbol visible in the current namespace without
+        needing to trace through re-export chains or cross-module using
+        declarations. Legal because extern "C" functions can be declared
+        multiple times.
+        """
+        c_name = func_info.native_name or func_info.name
+        ret_type = func_info.return_type.to_cpp_return()
+        params = self.gen_c_params(func_info.params)
+        out.write(f'extern "C" {ret_type} {c_name}({params});\n')
+
     def gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
+        from ..parse.nodes import FunctionLinkage
+        # Stubs have no body — declaration only
+        if func.is_stub:
+            return
+        # @native (C++ import) exports are handled outside the namespace by generator.py
+        if func.linkage == FunctionLinkage.NATIVE:
+            return
+
         self.ctx.emit_preceding_comments(out, func.loc)
         self.ctx.emit_source_comment(out, func.loc)
+
+        if func.linkage == FunctionLinkage.EXTERN_C:
+            c_name = func.native_name or func.name
+            ret_type = func.return_type.to_cpp_return()
+            params = self.gen_c_params(func.params)
+            out.write(f'extern "C" {ret_type} {c_name}({params}) {{\n')
+
+            local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+            for pname, ptype in func.params:
+                local_ns.bind_variable(pname, ptype)
+            self.statements.gen_body(out, func.body, func.params, func.return_type,
+                                     func, local_ns)
+            out.write("}\n")
+            return
 
         protocol_params = self.protocols.get_protocol_params(func.params)
         is_generic = bool(func.type_params)
@@ -272,3 +335,71 @@ class FunctionGenerator:
         out.write(f"  {ns}::__tpy_init();\n")
         out.write("  return 0;\n")
         out.write("}\n")
+
+    def gen_native_header_decl(self, out: TextIO, func: TpyFunction) -> None:
+        """Generate a @native C++ declaration outside the tpy_user namespace (in header).
+
+        Parses native_name on '::' to extract namespace and emits the declaration
+        wrapped in the appropriate namespace block.
+        """
+        cpp_name = func.native_name or func.name
+        ret_type = func.return_type.to_cpp_return()
+        params = self.gen_params(func.params)
+        ns, bare_name = self._split_native_name(cpp_name)
+        if ns:
+            out.write(f"namespace {ns} {{ {ret_type} {bare_name}({params}); }}\n")
+        else:
+            out.write(f"{ret_type} {bare_name}({params});\n")
+
+    # Backward compat alias
+    gen_extern_cpp_header_decl = gen_native_header_decl
+
+    def gen_extern_cpp_source_def(self, out: TextIO, func: TpyFunction) -> None:
+        """Generate an extern_cpp export definition outside the tpy_user namespace (in source).
+
+        Wraps the definition in the appropriate namespace and adds a using-directive
+        to access the tpy_user module symbols.
+        """
+        if func.is_stub:
+            return
+        cpp_name = func.native_name or func.name
+        ret_type = func.return_type.to_cpp_return()
+        params = self.gen_params(func.params)
+        ns, bare_name = self._split_extern_cpp_name(cpp_name)
+
+        self.ctx.emit_preceding_comments(out, func.loc)
+        self.ctx.emit_source_comment(out, func.loc)
+
+        tpy_ns = module_to_cpp_namespace(self.ctx.module_name)
+        if ns:
+            out.write(f"namespace {ns} {{\n")
+            out.write(f"{ret_type} {bare_name}({params}) {{\n")
+            out.write(f"  using namespace {tpy_ns};\n")
+        else:
+            out.write(f"{ret_type} {bare_name}({params}) {{\n")
+            out.write(f"  using namespace {tpy_ns};\n")
+
+        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+        for pname, ptype in func.params:
+            local_ns.bind_variable(pname, ptype)
+        self.statements.gen_body(out, func.body, func.params, func.return_type,
+                                 func, local_ns)
+
+        out.write("}\n")
+        if ns:
+            out.write(f"}} // namespace {ns}\n")
+
+    @staticmethod
+    def _split_native_name(name: str) -> tuple[str, str]:
+        """Split a qualified C++ name into (namespace, bare_name).
+
+        'physics::calc' -> ('physics', 'calc')
+        'a::b::func'    -> ('a::b', 'func')
+        'func'           -> ('', 'func')
+        """
+        idx = name.rfind("::")
+        if idx == -1:
+            return ("", name)
+        return (name[:idx], name[idx + 2:])
+
+    _split_extern_cpp_name = _split_native_name

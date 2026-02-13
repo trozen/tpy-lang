@@ -945,6 +945,14 @@ class RecordInfo:
         return bool(self.type_params)
 
 
+class FunctionLinkage(Enum):
+    """Linkage mode for functions."""
+    DEFAULT = "default"
+    NATIVE = "native"        # C++ import (stub, no body)
+    NATIVE_C = "native_c"    # C import (stub, no body)
+    EXTERN_C = "extern_c"    # C export (has body)
+
+
 @dataclass
 class FunctionInfo:
     """Information about a function.
@@ -967,11 +975,43 @@ class FunctionInfo:
     is_readonly: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
+    linkage: FunctionLinkage = FunctionLinkage.DEFAULT
+    native_name: Optional[str] = None
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
+
+    @property
+    def is_native_import(self) -> bool:
+        return self.linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C)
+
+    @property
+    def is_stub(self) -> bool:
+        return self.is_native_import
+
+    @property
+    def is_extern_c(self) -> bool:
+        return self.linkage == FunctionLinkage.EXTERN_C
+
+    @property
+    def is_native_c(self) -> bool:
+        return self.linkage == FunctionLinkage.NATIVE_C
+
+    @property
+    def is_native(self) -> bool:
+        return self.linkage == FunctionLinkage.NATIVE
+
+    @property
+    def is_extern_cpp(self) -> bool:
+        """Backward compat: @native maps to old is_extern_cpp."""
+        return self.linkage == FunctionLinkage.NATIVE
+
+    @property
+    def extern_name(self) -> Optional[str]:
+        """Backward compat alias for native_name."""
+        return self.native_name
 
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""

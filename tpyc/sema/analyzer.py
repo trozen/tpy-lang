@@ -249,6 +249,10 @@ class SemanticAnalyzer:
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
+        # Stub functions (extern imports with ... body) have no body to analyze
+        if func.is_stub:
+            return
+
         self.ctx.reset_function_tracking()
         self.ctx.current_function = func
         self.ctx.current_scope = Scope(parent=self.ctx.global_scope)

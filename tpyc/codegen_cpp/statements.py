@@ -266,10 +266,13 @@ class StatementGenerator:
                 parts = stmt.module_name.split('.')
                 for i in range(1, len(parts)):
                     parent_pkg = '.'.join(parts[:i])
+                    if parent_pkg == self.ctx.module_name:
+                        continue  # don't self-init
                     if parent_pkg in self.ctx.all_user_modules:
                         result += f"{indent}{module_to_cpp_namespace(parent_pkg)}::__tpy_init();\n"
-                # Then init the submodule itself
-                result += f"{indent}{module_to_cpp_namespace(stmt.module_name)}::__tpy_init();\n"
+                # Then init the submodule itself (skip self-init)
+                if stmt.module_name != self.ctx.module_name:
+                    result += f"{indent}{module_to_cpp_namespace(stmt.module_name)}::__tpy_init();\n"
                 return result
             return ""  # Builtin module - no init needed
         return None

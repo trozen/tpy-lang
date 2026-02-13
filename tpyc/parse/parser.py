@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
-    ParseError, SourceLocation, ParseWarning,
+    ParseError, SourceLocation, ParseWarning, FunctionLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
@@ -380,15 +380,40 @@ class Parser:
             loc=self._loc(node)
         )
 
+    # Decorator names that set function linkage
+    _LINKAGE_DECORATORS: dict[str, FunctionLinkage] = {
+        "native": FunctionLinkage.NATIVE,
+        "native_c": FunctionLinkage.NATIVE_C,
+        "extern_c": FunctionLinkage.EXTERN_C,
+    }
+
     def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
         """Parse a function definition."""
         is_noalloc = False
         is_readonly = False
+        linkage = FunctionLinkage.DEFAULT
+        native_name: str | None = None
         for dec in node.decorator_list:
             if isinstance(dec, ast.Name) and dec.id == "noalloc":
                 is_noalloc = True
             elif isinstance(dec, ast.Name) and dec.id == "readonly":
                 is_readonly = True
+            elif isinstance(dec, ast.Name) and dec.id in self._LINKAGE_DECORATORS:
+                new_linkage = self._LINKAGE_DECORATORS[dec.id]
+                if linkage != FunctionLinkage.DEFAULT:
+                    raise ParseError(
+                        f"Function '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
+                linkage = new_linkage
+            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id in self._LINKAGE_DECORATORS:
+                new_linkage = self._LINKAGE_DECORATORS[dec.func.id]
+                if linkage != FunctionLinkage.DEFAULT:
+                    raise ParseError(
+                        f"Function '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
+                linkage = new_linkage
+                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
+                    native_name = dec.args[0].value
+                else:
+                    raise ParseError(f"@{dec.func.id}() requires a single string argument", dec)
             else:
                 raise ParseError(f"Unknown decorator on function '{node.name}'", dec)
 
@@ -425,7 +450,25 @@ class Parser:
         if node.returns:
             return_type = self._parse_type_annotation(node.returns, type_param_scope)
 
-        body = [self._parse_stmt(stmt) for stmt in node.body]
+        # Validate body vs linkage
+        is_stub_body = self._is_stub_body(node.body)
+        is_stub = False
+
+        if linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
+            if not is_stub_body:
+                raise ParseError(
+                    f"@{linkage.value} function '{node.name}' must have `...` body (it declares an external symbol)",
+                    node)
+            is_stub = True
+            body = []
+        elif linkage == FunctionLinkage.EXTERN_C:
+            if is_stub_body:
+                raise ParseError(
+                    f"@extern_c function '{node.name}' must have a body (it exports a TPy function)",
+                    node)
+            body = [self._parse_stmt(stmt) for stmt in node.body]
+        else:
+            body = [self._parse_stmt(stmt) for stmt in node.body]
 
         # Restore the scope
         self._type_param_scope = old_scope
@@ -437,10 +480,25 @@ class Parser:
             body=body,
             is_noalloc=is_noalloc,
             is_readonly=is_readonly,
+            linkage=linkage,
+            native_name=native_name,
+            is_stub=is_stub,
             type_params=type_params,
             type_param_bounds=type_param_bounds,
             loc=self._loc(node)
         )
+
+    def _is_stub_body(self, body: list[ast.stmt]) -> bool:
+        """Check if a function body is a stub (only `...`).
+
+        Only Ellipsis marks a declaration-only stub. `pass` is a valid
+        no-op body that should still generate a definition.
+        """
+        if len(body) == 1:
+            stmt = body[0]
+            if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) and stmt.value.value is ...:
+                return True
+        return False
 
     def _parse_type_annotation(self, node: ast.expr, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
         """Parse a type annotation.

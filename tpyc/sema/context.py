@@ -131,6 +131,10 @@ class SemanticContext:
     # Keyed by id(TpyIf), value is {var_name: var_type}.
     if_branch_decls: dict[int, dict[str, TpyType]] = field(default_factory=dict)
 
+    # --- Extern symbol tracking ---
+    # Maps extern C/C++ symbol name -> Python function name (for duplicate detection)
+    extern_symbols: dict[str, str] = field(default_factory=dict)
+
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 

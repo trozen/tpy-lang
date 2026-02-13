@@ -433,6 +433,26 @@ def readonly(func):
     return func
 
 
+class _ExternLinkage:
+    """Decorator for native/native_c/extern_c linkage.
+
+    In CPython simulation, this is a no-op — the decorated function runs as-is.
+    The compiler uses this to emit appropriate linkage declarations.
+    """
+    def __call__(self, name_or_func):
+        if callable(name_or_func):
+            return name_or_func
+        def decorator(func):
+            return func
+        return decorator
+
+native = _ExternLinkage()
+native_c = _ExternLinkage()
+extern_c = _ExternLinkage()
+# Kept for backward compatibility during transition
+extern_cpp = _ExternLinkage()
+
+
 import copy as _copy_module
 
 def copy(obj):

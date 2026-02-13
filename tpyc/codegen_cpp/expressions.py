@@ -482,9 +482,15 @@ class ExpressionGenerator:
                     gen_arg = self.gen_expr_deref(arg, resolved_ptype)
                     gen_args.append(gen_arg)
 
-            # Determine function name - use fully qualified for user module imports
+            # Determine function name
             func_cpp_name = expr.func
-            if expr.func in self.ctx.user_imported_functions:
+            if func_info.is_native_import or func_info.is_extern_c:
+                # @native/@native_c/@extern_c: use the C/C++ symbol name directly.
+                # For @native_c, the calling module's header has a local re-declaration
+                # so no namespace qualification is needed (works for same-module,
+                # cross-module, and package re-export cases).
+                func_cpp_name = func_info.native_name or func_info.name
+            elif expr.func in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func]
                 func_cpp_name = f"{module_to_cpp_namespace(source_module)}::{original_name}"
 
@@ -571,7 +577,12 @@ class ExpressionGenerator:
 
         # Handle user module function calls: module.func() -> tpy_user::module::func()
         if expr.user_module_call is not None:
-            return f"{module_to_cpp_namespace(expr.user_module_call)}::{expr.method}({args})"
+            ns = module_to_cpp_namespace(expr.user_module_call)
+            fi = expr.resolved_function_info
+            if fi and (fi.is_native_import or fi.is_extern_c):
+                func_name = fi.native_name or fi.name
+                return f"{ns}::{func_name}({args})"
+            return f"{ns}::{expr.method}({args})"
 
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:

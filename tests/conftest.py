@@ -132,8 +132,19 @@ def pytest_configure(config):
         print("C++ compilation: ccache not found (install for faster re-runs)")
 
 
+def find_extra_src_files(case_dir: Path) -> list[Path]:
+    """Find extra C++ source files in the test's src/ directory.
+
+    These are compiled alongside the generated C++ to provide stub
+    implementations for native functions.
+    """
+    src_dir = case_dir / "src"
+    return sorted(src_dir.glob("*.cpp"))
+
+
 def build_and_run(build_dir: Path, module_name: str,
                   all_cpp_files: list[Path] | None = None,
+                  extra_src_files: list[Path] | None = None,
                   build_variant: str = "debug") -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
@@ -142,6 +153,8 @@ def build_and_run(build_dir: Path, module_name: str,
         module_name: Name of the entry point module.
         all_cpp_files: List of all C++ files to compile (for multi-module).
                        If None, compiles only the entry module.
+        extra_src_files: Additional C++ source files to include in the build
+                         (e.g., stub implementations for native functions).
         build_variant: Build variant ("debug" or "release").
     """
     layout = BuildLayout(build_dir, module_name, build_variant=build_variant)
@@ -150,7 +163,10 @@ def build_and_run(build_dir: Path, module_name: str,
     if all_cpp_files is None:
         cpp_files = [layout.cpp_path(module_name)]
     else:
-        cpp_files = all_cpp_files
+        cpp_files = list(all_cpp_files)
+
+    if extra_src_files:
+        cpp_files.extend(extra_src_files)
 
     # Compile C++ with include path for cross-module references
     compile_cmds = layout.build_cpp_commands(

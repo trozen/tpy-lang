@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo,
+    TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, VoidType, is_protocol_type,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl
@@ -496,15 +496,39 @@ class TypeRegistrar:
                 )
             type_param_bounds[param_name] = resolved_bound
 
+        # Map TpyFunction linkage to FunctionInfo linkage
+        linkage_map = {
+            'DEFAULT': FunctionLinkage.DEFAULT,
+            'NATIVE': FunctionLinkage.NATIVE,
+            'NATIVE_C': FunctionLinkage.NATIVE_C,
+            'EXTERN_C': FunctionLinkage.EXTERN_C,
+        }
+        fi_linkage = linkage_map[func.linkage.name]
+
         info = FunctionInfo(
             name=func.name,
             params=resolved_params,
             return_type=resolved_return,
             is_noalloc=func.is_noalloc,
             is_readonly=func.is_readonly,
+            linkage=fi_linkage,
+            native_name=func.native_name,
             type_params=func.type_params,
             type_param_bounds=type_param_bounds
         )
+
+        # Check for duplicate extern symbol names
+        if fi_linkage != FunctionLinkage.DEFAULT:
+            symbol = func.native_name or func.name
+            if symbol in self.ctx.extern_symbols:
+                prev = self.ctx.extern_symbols[symbol]
+                raise self.ctx.error(
+                    f"Duplicate extern symbol '{symbol}' "
+                    f"(already declared by '{prev}')",
+                    func
+                )
+            self.ctx.extern_symbols[symbol] = func.name
+
         self.ctx.registry.register_function(info)
         self.ctx.global_ns.bind_function(info)
 
