@@ -92,6 +92,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - generate const function variants for @readonly functions
 - properly import annotations from tpy module (readonly, noalloc etc); should not be accessible without it; also, should support @tpy.readonly
 - @extern_c/@extern_cpp functions/classes etc
+- `# tpy: range-check=off`
+- warn on mutable globals
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

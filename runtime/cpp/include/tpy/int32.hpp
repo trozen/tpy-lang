@@ -6,7 +6,13 @@
 
 #pragma once
 
+#include <cctype>
+#include <cerrno>
+#include <cmath>
 #include <cstdint>
+#include <cstdlib>
+#include <string>
+#include <string_view>
 #include "core.hpp"
 
 namespace tpy {
@@ -134,6 +140,50 @@ inline int32_t int32_pow(int32_t base, int32_t exp) {
         tpy_panic("Int32 overflow in power");
     }
     return result;
+}
+
+// --- Int32 conversion from other types ---
+
+inline int32_t int32_from_float(double v) {
+    if (std::isnan(v)) {
+        tpy_panic("cannot convert float NaN to integer");
+    }
+    if (std::isinf(v)) {
+        tpy_panic("cannot convert float infinity to integer");
+    }
+    if (v <= -2147483649.0 || v >= 2147483648.0) {
+        tpy_panic("Int32 overflow: float value out of range");
+    }
+    return static_cast<int32_t>(v);
+}
+
+inline int32_t int32_from_str(std::string_view s) {
+    size_t start = 0;
+    while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) ++start;
+    size_t end = s.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
+
+    if (start >= end) {
+        std::string msg = "invalid literal for Int32() with base 10: '" + std::string(s) + "'";
+        tpy_panic(msg.c_str());
+    }
+
+    std::string trimmed(s.substr(start, end - start));
+    char* endptr;
+    errno = 0;
+    long result = std::strtol(trimmed.c_str(), &endptr, 10);
+
+    if (endptr != trimmed.c_str() + trimmed.size()) {
+        std::string msg = "invalid literal for Int32() with base 10: '" + std::string(s) + "'";
+        tpy_panic(msg.c_str());
+    }
+
+    if (errno == ERANGE || result < INT32_MIN || result > INT32_MAX) {
+        std::string msg = "Int32 overflow: value out of range for '" + std::string(s) + "'";
+        tpy_panic(msg.c_str());
+    }
+
+    return static_cast<int32_t>(result);
 }
 
 } // namespace tpy

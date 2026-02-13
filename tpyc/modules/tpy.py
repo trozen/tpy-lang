@@ -6,7 +6,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
-from tpyc.typesys import INT32, BIGINT, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType
+from tpyc.typesys import INT32, BIGINT, FLOAT, STR, CHAR, VOID, BOOL, SELF, ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -23,6 +23,9 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[], returns=INT32, cpp="0"),
         MethodDef(params=[ParamDef("x", INT32)], returns=INT32, cpp="{0}"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=INT32, cpp="{0}.to_int32()"),
+        MethodDef(params=[ParamDef("x", FLOAT)], returns=INT32, cpp="tpy::int32_from_float({0})"),
+        MethodDef(params=[ParamDef("x", STR)], returns=INT32, cpp="tpy::int32_from_str({0})"),
+        MethodDef(params=[ParamDef("x", BOOL)], returns=INT32, cpp="static_cast<int32_t>({0})"),
     ], methods={
         "__int__": [MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt({self})")],
         **make_binop_methods({

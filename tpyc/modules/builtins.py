@@ -228,6 +228,8 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", BIGINT)], returns=BIGINT, cpp="tpy::BigInt({0})"),
         MethodDef(params=[ParamDef("x", FLOAT)], returns=BIGINT, cpp="tpy::BigInt::from_float({0})"),
         MethodDef(params=[ParamDef("x", STR)], returns=BIGINT, cpp="tpy::BigInt::from_str({0})"),
+        MethodDef(params=[ParamDef("x", BOOL)], returns=BIGINT, cpp="tpy::BigInt(static_cast<int32_t>({0}))"),
+        MethodDef(params=[ParamDef("x", CHAR)], returns=BIGINT, cpp="tpy::BigInt(static_cast<int32_t>({0}))"),
     ], methods={
         **make_binop_methods({
             "__add__": ("({self}) + ({0})", BIGINT),
@@ -253,6 +255,8 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", FLOAT)], returns=FLOAT, cpp="static_cast<double>({0})"),
         MethodDef(params=[ParamDef("x", INT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=FLOAT, cpp="static_cast<double>({0})"),
+        MethodDef(params=[ParamDef("x", BOOL)], returns=FLOAT, cpp="static_cast<double>({0})"),
+        MethodDef(params=[ParamDef("x", STR)], returns=FLOAT, cpp="tpy::float_from_str({0})"),
     ], methods={
         # Binary arithmetic operators (float, float)
         "__add__": [
@@ -338,6 +342,8 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", BOOL)], returns=BOOL, cpp="{0}"),
         MethodDef(params=[ParamDef("x", INT32)], returns=BOOL, cpp="({0} != 0)"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=BOOL, cpp="({0} != 0)"),
+        MethodDef(params=[ParamDef("x", FLOAT)], returns=BOOL, cpp="({0} != 0.0)"),
+        MethodDef(params=[ParamDef("x", STR)], returns=BOOL, cpp="(std::string_view({0}).size() != 0)"),
     ], methods={})
 
     # Char: Single character type

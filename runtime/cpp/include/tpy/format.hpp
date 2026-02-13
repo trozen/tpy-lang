@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <iomanip>
 #include <optional>
@@ -14,6 +16,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+
+#include "core.hpp"
 
 namespace tpy {
 
@@ -215,6 +219,35 @@ inline std::string float_to_str(double x) {
             result = result.substr(0, end);
         }
     }
+    return result;
+}
+
+/**
+ * float_from_str - Convert string to double.
+ * Panics on invalid input (Python raises ValueError).
+ * Supports optional leading/trailing whitespace, sign, and special values
+ * "inf", "infinity", "-inf", "-infinity", "nan" (case-insensitive).
+ */
+inline double float_from_str(std::string_view s) {
+    size_t start = 0;
+    while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) ++start;
+    size_t end = s.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
+
+    if (start >= end) {
+        std::string msg = "could not convert string to float: '" + std::string(s) + "'";
+        tpy_panic(msg.c_str());
+    }
+
+    std::string trimmed(s.substr(start, end - start));
+    char* endptr;
+    double result = std::strtod(trimmed.c_str(), &endptr);
+
+    if (endptr != trimmed.c_str() + trimmed.size()) {
+        std::string msg = "could not convert string to float: '" + std::string(s) + "'";
+        tpy_panic(msg.c_str());
+    }
+
     return result;
 }
 
