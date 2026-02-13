@@ -12,47 +12,47 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 4: for i in range(0):
-  for (int32_t i = 0; i < 0; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(0); ++i) {
     // 5:     print(i)
     std::cout << i << "\n";
   }
   // 7: for i in range(5, 5):
-  for (int32_t i = 5; i < 5; ++i) {
+  for (tpy::BigInt i = tpy::BigInt(5); i < tpy::BigInt(5); ++i) {
     // 8:     print(i)
     std::cout << i << "\n";
   }
   // 10: for i in range(5, 0):
-  for (int32_t i = 5; i < 0; ++i) {
+  for (tpy::BigInt i = tpy::BigInt(5); i < tpy::BigInt(0); ++i) {
     // 11:     print(i)
     std::cout << i << "\n";
   }
   // 13: for i in range(0, 10, -1):
-  for (int32_t i = 0; i > 10; --i) {
+  for (tpy::BigInt i = tpy::BigInt(0); i > tpy::BigInt(10); --i) {
     // 14:     print(i)
     std::cout << i << "\n";
   }
   // 17: for i in range(1):
-  for (int32_t i = 0; i < 1; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(1); ++i) {
     // 18:     print(i)
     std::cout << i << "\n";
   }
   // 20: for i in range(3, 4):
-  for (int32_t i = 3; i < 4; ++i) {
+  for (tpy::BigInt i = tpy::BigInt(3); i < tpy::BigInt(4); ++i) {
     // 21:     print(i)
     std::cout << i << "\n";
   }
   // 24: for i in range(-3, 0):
-  for (int32_t i = -(3); i < 0; ++i) {
+  for (tpy::BigInt i = -(tpy::BigInt(3)); i < tpy::BigInt(0); ++i) {
     // 25:     print(i)
     std::cout << i << "\n";
   }
   // 28: for i in range(0, 10, 100):
-  for (int32_t i = 0; i < 10; i = tpy::int32_add(i, 100)) {
+  for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(10); i += tpy::BigInt(100)) {
     // 29:     print(i)
     std::cout << i << "\n";
   }
   // 31: for i in range(10, 0, -100):
-  for (int32_t i = 10; i > 0; i = tpy::int32_add(i, -(100))) {
+  for (tpy::BigInt i = tpy::BigInt(10); i > tpy::BigInt(0); i += -(tpy::BigInt(100))) {
     // 32:     print(i)
     std::cout << i << "\n";
   }

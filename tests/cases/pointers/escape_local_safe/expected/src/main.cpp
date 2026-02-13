@@ -13,9 +13,9 @@ void loop_escape_copy_ok() {
   std::optional<Point> __slot_2;
   Point* saved = &__slot_1;
   // 13:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 14:         p: Point = Point(i, i)
-    Point p = Point(i, i);
+    Point p = Point((i).to_int32(), (i).to_int32());
     // 15:         saved = copy(p)  # tpyc: ok
     saved = &*(__slot_2 = p);
   }
@@ -31,9 +31,9 @@ void loop_rvalue_ok() {
   std::optional<Point> __slot_2;
   Point* saved = &__slot_1;
   // 21:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 22:         saved = Point(i, i)  # tpyc: ok
-    saved = &*(__slot_2 = Point(i, i));
+    saved = &*(__slot_2 = Point((i).to_int32(), (i).to_int32()));
   }
   // 23:     print(saved.x, saved.y)
   std::cout << saved->x << " " << saved->y << "\n";
@@ -62,9 +62,9 @@ void value_type_ok() {
   // 35:     saved: Int32 = 0
   int32_t saved = 0;
   // 36:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 37:         n: Int32 = i * 10
-    int32_t n = (tpy::int32_mul(i, 10));
+    int32_t n = (((i) * (tpy::BigInt(10)))).to_int32();
     // 38:         saved = n  # tpyc: ok
     saved = n;
   }
@@ -83,9 +83,9 @@ void foreach_shadow_safe() {
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 47:     for i in range(1):
-  for (int32_t i = 0; i < 1; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(1); ++i) {
     // 48:         p: Point = Point(i, i)
-    Point p = Point(i, i);
+    Point p = Point((i).to_int32(), (i).to_int32());
     // 49:         pass
   }
   // 50:     for p in items:

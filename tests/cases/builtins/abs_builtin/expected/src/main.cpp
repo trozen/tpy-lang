@@ -37,7 +37,7 @@ void __tpy_init() {
   // 12: print(abs(y))
   std::cout << tpy::BigInt::abs(y) << "\n";
   // 13: print(abs(99))
-  std::cout << std::abs(99) << "\n";
+  std::cout << tpy::BigInt::abs(tpy::BigInt(99)) << "\n";
   // 15: big = int(-1000000)
   big = tpy::BigInt(-(1000000));
   // 16: print(abs(big))

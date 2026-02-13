@@ -28,14 +28,14 @@ void test_continue() {
   // 14:     total: Int32 = 0
   int32_t total = 0;
   // 15:     for i in range(10):
-  for (int32_t i = 0; i < 10; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(10); ++i) {
     // 16:         if i % 2 == 0:
-    if (((tpy::int32_mod(i, 2)) == 0)) {
+    if ((((i) % (tpy::BigInt(2))) == 0)) {
       // 17:             continue
       continue;
     }
     // 18:         total += i
-    total = tpy::int32_add(total, i);
+    total = tpy::int32_add(total, (i).to_int32());
   }
   // 19:     print(total)  # 1 + 3 + 5 + 7 + 9 = 25
   std::cout << total << "\n";
@@ -46,9 +46,9 @@ void test_nested_break() {
   // 23:     count: Int32 = 0
   int32_t count = 0;
   // 24:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 25:         for j in range(5):
-    for (int32_t j = 0; j < 5; ++j) {
+    for (tpy::BigInt j = 0; j < tpy::BigInt(5); ++j) {
       // 26:             if j == 2:
       if ((j == 2)) {
         // 27:                 break
@@ -67,9 +67,9 @@ void test_nested_continue() {
   // 33:     count: Int32 = 0
   int32_t count = 0;
   // 34:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 35:         for j in range(4):
-    for (int32_t j = 0; j < 4; ++j) {
+    for (tpy::BigInt j = 0; j < tpy::BigInt(4); ++j) {
       // 36:             if j == 1:
       if ((j == 1)) {
         // 37:                 continue

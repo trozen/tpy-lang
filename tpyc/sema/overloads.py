@@ -115,6 +115,16 @@ def resolve_overload(
             candidates.append((score, narrowing, overload))
 
     if candidates:
+        # When return types vary across candidates, IntLiteral→Int32 is also
+        # narrowing (Python's default int is BigInt, so prefer that).
+        # When return types are identical (e.g. Char(97)), Int32 is fine.
+        if len(candidates) > 1 and not all(
+            c[2].return_type == candidates[0][2].return_type for c in candidates[1:]
+        ):
+            for i, (score, narrowing, overload) in enumerate(candidates):
+                extra = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
+                            if isinstance(ptype, Int32Type) and isinstance(arg_t, IntLiteralType))
+                candidates[i] = (score, narrowing + extra, overload)
         # Best: most numeric matches, then fewest narrowing conversions
         candidates.sort(key=lambda x: (-x[0], x[1]))
         return candidates[0][2]

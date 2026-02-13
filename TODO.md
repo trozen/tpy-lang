@@ -2,10 +2,7 @@
 
 ## Next
 - iterator roadmap - steps 1-5 done (`OptIterator`, `range()`, structural conformance, `__iter__`/`__next__`); remaining: generators, combinators (see LANGUAGE_FEATURES.md)
-- `list(range(...))` / `list(iterator)` — currently rejected at sema. Two approaches:
-  - Add `begin()`/`end()` C++ iterator adapter to Range (makes it NativeIterable, works with existing list constructor and C++ algorithms)
-  - Add `tpy::collect<Container>(iter)` C++ helper + OptIterator constructor overload for list/StaticList (handles any user-defined iterator)
-  - Ideally both: Range gets begin/end, and a generic collect path covers all OptIterator types
+- configurable default int literal deduction: compiler flag (e.g. `--default-int=Int32`) to resolve ambiguous integer literals as Int32 instead of BigInt, for performance-oriented code
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?

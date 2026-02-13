@@ -33,22 +33,22 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 4: for i in range(5):
-  for (int32_t i = 0; i < 5; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(5); ++i) {
     // 5:     print(i)
     std::cout << i << "\n";
   }
   // 8: for i in range(2, 6):
-  for (int32_t i = 2; i < 6; ++i) {
+  for (tpy::BigInt i = tpy::BigInt(2); i < tpy::BigInt(6); ++i) {
     // 9:     print(i)
     std::cout << i << "\n";
   }
   // 12: for i in range(0, 10, 2):
-  for (int32_t i = 0; i < 10; i = tpy::int32_add(i, 2)) {
+  for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(10); i += tpy::BigInt(2)) {
     // 13:     print(i)
     std::cout << i << "\n";
   }
   // 16: for i in range(10, 0, -2):
-  for (int32_t i = 10; i > 0; i = tpy::int32_add(i, -(2))) {
+  for (tpy::BigInt i = tpy::BigInt(10); i > tpy::BigInt(0); i += -(tpy::BigInt(2))) {
     // 17:     print(i)
     std::cout << i << "\n";
   }

@@ -120,7 +120,7 @@ void __tpy_init() {
   // 38: print(i)
   std::cout << i << "\n";
   // 39: for i in range(0, 2):
-  for (int32_t i = 0; i < 2; ++i) {
+  for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(2); ++i) {
     // 40:     print(i)
     std::cout << i << "\n";
   }

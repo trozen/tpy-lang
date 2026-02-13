@@ -178,6 +178,12 @@ class BuiltinGenerator:
 
     def gen_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:
         """Generate C++ code for a builtin function call using unified FunctionInfo overloads."""
+        # Use sema-resolved overload when available (avoids re-resolution disagreements)
+        if expr.resolved_function_info and expr.resolved_function_info.cpp_template:
+            fi = expr.resolved_function_info
+            gen_args = [self._gen_expr_deref(arg, ptype)
+                        for arg, (_, ptype) in zip(expr.args, fi.params)]
+            return fi.cpp_template.format(*gen_args)
         overload, gen_args = self._match_overload_args(expr, overloads)
         return overload.cpp_template.format(*gen_args)
 

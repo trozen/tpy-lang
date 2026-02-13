@@ -20,9 +20,9 @@ void __tpy_init() {
   static Point __global_slot_1 = Point(0, 0);
   saved = &__global_slot_1;
   // 13: for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
+  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 14:     p: Point = Point(i, i)
-    Point* p = &*(__global_slot_2 = Point(i, i));
+    Point* p = &*(__global_slot_2 = Point((i).to_int32(), (i).to_int32()));
     // 15:     saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }
