@@ -192,7 +192,7 @@ class MethodAnalyzer:
             if module_info.is_builtin:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                result = self._analyze_builtin_function_overloads(temp_call, overloads)
+                result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
                 expr.resolved_function_info = temp_call.resolved_function_info
                 return result
             else:
@@ -519,25 +519,6 @@ class MethodAnalyzer:
             resolved_overloads, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
         )
-
-    def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
-        """Type-check a call to a builtin function using unified FunctionInfo overloads."""
-        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-        protocol_checker = self.protocols.type_conforms_to_protocol
-
-        matched = resolve_overload(overloads, arg_types, protocol_checker)
-        if matched is not None:
-            # Apply coercions to arguments where needed
-            for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
-                if arg_t != ptype:
-                    expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
-                                                            f"argument '{pname}'",
-                                                            coercion_ctx=CoercionContext.ARG)
-            return matched.return_type
-
-        # No matching overload found
-        arg_type_strs = ", ".join(str(t) for t in arg_types)
-        raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
 
     def _analyze_user_module_function_call(
         self, expr: TpyMethodCall, func_info: FunctionInfo, module_name: str
