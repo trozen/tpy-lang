@@ -288,6 +288,12 @@ class StaticList(metaclass=StaticListMeta):
         """Reverse in place."""
         self._data.reverse()
 
+    def __repr__(self) -> str:
+        return repr(self._data)
+
+    def __str__(self) -> str:
+        return repr(self._data)
+
 
 class ArrayMeta(type):
     """Metaclass to support Array[T, N] syntax."""
@@ -344,6 +350,12 @@ class Array(metaclass=ArrayMeta):
 
     def __iter__(self):
         return iter(self._data)
+
+    def __repr__(self) -> str:
+        return repr(self._data)
+
+    def __str__(self) -> str:
+        return repr(self._data)
 
 
 class SpanMeta(type):

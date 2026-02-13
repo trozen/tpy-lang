@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    CHAR, is_protocol_type,
+    ListType, ArrayType, SpanType, ModuleType, CHAR, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -256,8 +256,10 @@ class BuiltinGenerator:
             elif isinstance(arg_type, StrType):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))
-            elif arg_type.get_element_type() is not None:
-                # Container types use ListPrinter for formatting
+            elif isinstance(arg_type, (ListType, ArrayType, SpanType)) or (
+                isinstance(arg_type, ModuleType) and arg_type.qualified_name() == "tpy.StaticList"
+            ):
+                # Sequence containers use ListPrinter for [a, b, c] formatting
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD
                     cpp_type = arg_type.to_cpp()

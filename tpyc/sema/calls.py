@@ -98,9 +98,10 @@ class CallAnalyzer:
                 record = self.ctx.registry.get_record(expr.func)
                 if record:
                     return self._analyze_record_constructor(expr, record)
-                # It's a builtin type instantiation - use call_type directly
-                for arg in expr.args:
-                    self.expr.analyze_expr(arg)
+                # It's a builtin type instantiation — validate constructor args
+                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                if arg_types:
+                    self._validate_generic_constructor(expr, arg_types)
                 return expr.call_type
             # Otherwise fall through to function handling (type_args will be used)
 
@@ -209,25 +210,34 @@ class CallAnalyzer:
             params = ", ".join(type_def.type_params)
 
             # Check for constructors that can infer type from arguments
-            if expr.args and type_def.constructors:
-                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                for ctor in type_def.constructors:
-                    if len(ctor.params) != len(arg_types):
-                        continue
-                    # Try to match and infer type parameters
-                    inferred_params = self.type_ops.match_generic_constructor(ctor.params, arg_types)
-                    if inferred_params is not None:
-                        # Use type_factory to create the result type
-                        elem_type = inferred_params.get("T")
-                        if elem_type and type_def.type_factory:
-                            # Resolve IntLiteralType to BigInt (Python semantics)
-                            if isinstance(elem_type, IntLiteralType):
-                                elem_type = BIGINT
-                            result_type = type_def.type_factory(elem_type)
-                            expr.call_type = result_type
-                            return result_type
-
             if expr.args:
+                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                if type_def.constructors:
+                    for ctor in type_def.constructors:
+                        if len(ctor.params) != len(arg_types):
+                            continue
+                        # Try to match and infer type parameters
+                        inferred_params = self.type_ops.match_generic_constructor(ctor.params, arg_types)
+                        if inferred_params is not None:
+                            # Use type_factory to create the result type
+                            elem_type = inferred_params.get("T")
+                            if elem_type and type_def.type_factory:
+                                # Resolve IntLiteralType to BigInt (Python semantics)
+                                if isinstance(elem_type, IntLiteralType):
+                                    elem_type = BIGINT
+                                result_type = type_def.type_factory(elem_type)
+                                expr.call_type = result_type
+                                return result_type
+
+                # Show specific error when a non-literal type with element info
+                # can't match any constructor (e.g., Range passed to list())
+                if (len(arg_types) == 1
+                        and not isinstance(arg_types[0], PendingListType)
+                        and arg_types[0].get_element_type() is not None):
+                    raise self.ctx.error(
+                        f"{expr.func}() cannot be constructed from {arg_types[0]}",
+                        expr
+                    )
                 raise self.ctx.error(
                     f"Cannot infer element type for {expr.func}() from these arguments; "
                     f"use {expr.func}[{params}]() or provide a type annotation",
@@ -262,6 +272,35 @@ class CallAnalyzer:
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
         return OwnType(arg_type)
+
+    def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
+        """Validate protocol-typed constructor params for generic type instantiation.
+
+        When call_type is set (e.g., list[int](arg)), sema skips constructor matching.
+        This catches cases where the arg doesn't conform to a required protocol,
+        preventing invalid C++ from being generated.
+        """
+        lookup = builtin_modules.lookup_generic_type(expr.func)
+        if lookup is None or not lookup.type_def.constructors:
+            return
+        # Check constructors with matching arity
+        for ctor in lookup.type_def.constructors:
+            if len(ctor.params) != len(arg_types):
+                continue
+            # Only validate protocol-typed params (e.g., NativeIterable[T])
+            all_ok = True
+            for p, at in zip(ctor.params, arg_types):
+                if is_protocol_type(p.type) and not builtin_modules.type_extends_any(at, p.type.name):
+                    all_ok = False
+                    break
+            if all_ok:
+                return
+        # No constructor matched — emit error for single-arg case
+        if len(arg_types) == 1:
+            raise self.ctx.error(
+                f"{expr.func}() cannot be constructed from {arg_types[0]}",
+                expr
+            )
 
     def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
         """Check a builtin type constructor call using unified RecordInfo.constructors."""

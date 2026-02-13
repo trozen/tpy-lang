@@ -1,0 +1,21 @@
+None
+42
+7
+3.14
+True
+False
+hello
+world
+A
+[1, 2, 3]
+[10, 20, 30]
+[5, 6]
+range(0, 5)
+range(2, 7)
+range(0, 10, 3)
+range(0, 3)
+x: 42 True 3.14
+10
+None
+True
+2.5
