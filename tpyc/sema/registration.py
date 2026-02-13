@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, VoidType, ParamInfo, is_protocol_type,
 )
-from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl
+from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 
@@ -98,6 +98,9 @@ class TypeRegistrar:
 
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
+        is_native = record.linkage != RecordLinkage.DEFAULT
+        is_native_c = record.linkage == RecordLinkage.NATIVE_C
+
         # For generic records, skip validation of TypeParamRef types
         is_generic = bool(record.type_params)
 
@@ -129,6 +132,10 @@ class TypeRegistrar:
                         record.loc,
                     )
                 init_params.append((pname, ptype, None))
+        elif is_native and record.fields:
+            # Native records without __init__: synthesize init_params from fields
+            for fld in record.fields:
+                init_params.append((fld.name, fld.type, fld.default_value))
 
         # Register all methods
         methods = {}
@@ -195,7 +202,10 @@ class TypeRegistrar:
             type_param_kinds=record.type_param_kinds,
             type_param_bounds=type_param_bounds,
             parent=None,
-            implemented_protocols=[]
+            implemented_protocols=[],
+            native_name=record.native_name,
+            is_native=is_native,
+            is_native_c=is_native_c,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
@@ -214,6 +224,13 @@ class TypeRegistrar:
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None:
             return
+
+        # Native records cannot have bases
+        if record_info.is_native and record.bases:
+            raise SemanticError(
+                f"@{record.linkage.value} class '{record.name}' cannot have base classes",
+                record.loc
+            )
 
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in register_record) so forward-referenced protocols are recognized

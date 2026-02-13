@@ -174,8 +174,13 @@ class TypeResolver:
 
         For imported record types from user modules, generates fully qualified names
         like tpy_user::utils::Point or tpy_user::pkg::mod::Point for packages.
+        Native records use their native C++ name directly (no namespace qualification).
         """
         if isinstance(typ, NamedType) and typ.is_record:
+            # Native records use their native C++ name directly (globally visible)
+            record_info = self.ctx.analyzer.registry.get_record(typ.name)
+            if record_info and record_info.is_native:
+                return typ.to_cpp()  # to_cpp() already resolves via _native_cpp_names
             # Check if this record is imported from a user module
             if typ.name in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[typ.name]

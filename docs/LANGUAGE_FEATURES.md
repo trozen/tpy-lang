@@ -2397,6 +2397,98 @@ math.fabs(x)       # absolute value (float)
 
 ---
 
+## Native Interop (Partial)
+
+TurboPython can import existing C/C++ functions and export its own functions with C linkage. See `docs/NATIVE_INTEROP.md` for the full design document.
+
+### Native Functions (Working)
+
+Three decorators, all imported from `tpy`:
+
+```python
+from tpy import native, native_c, extern_c, Int32
+
+# Import a C++ function (forward declaration)
+@native
+def global_func(x: Int32) -> Int32: ...
+
+# Import a C++ function with qualified name
+@native("physics::calculate_force")
+def calc_force(mass: float, accel: float) -> float: ...
+
+# Import a C function (extern "C" linkage)
+@native_c
+def abs(x: Int32) -> Int32: ...
+
+# Import a C function with renamed symbol
+@native_c("clock")
+def get_clock() -> Int32: ...
+
+# Export a TPy function with C linkage
+@extern_c
+def app_init() -> None:
+    print("initialized")
+
+# Export with renamed symbol
+@extern_c("app_tick")
+def game_tick(time: Int32) -> None:
+    print(time)
+```
+
+Cross-module imports of native functions work normally — the compiler re-declares extern symbols in each module.
+
+### Native Classes — Fields Only (Working)
+
+Import existing C++ classes and C structs so TPy code can declare their fields and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
+
+```python
+from tpy import native, native_c, Int32
+
+# @native — C++ class import (constructor call syntax)
+@native
+class Vec2:
+    x: Int32
+    y: Int32
+
+# @native with rename — fully qualified C++ name
+@native("b2::Vec2")
+class PhysVec:
+    x: float
+    y: float
+
+# @native_c — C struct import (aggregate init syntax)
+@native_c
+class Point:
+    x: Int32
+    y: Int32
+
+# @native_c with rename — C name differs from Python name
+@native_c("SDL_Rect")
+class Rect:
+    x: Int32
+    y: Int32
+    w: Int32
+    h: Int32
+
+# Opaque handle — no fields
+@native("SDL_Window")
+class Window: ...
+```
+
+Generated C++:
+- `@native` classes use constructor call syntax: `Vec2(1, 2)`
+- `@native_c` classes use aggregate initialization: `Point{5, 6}`
+- Renamed types use the native name everywhere, including composite types like `Ptr[Rect]` → `SDL_Rect*`
+
+**Not yet supported:**
+- Stub methods on `@native` classes (planned)
+- `# tpy: include()` header directives (planned)
+- `# tpy: link()` link directives (planned)
+- `@extern_c` class — export TPy struct for C (planned)
+- C header generation (`--emit-c-header`) (planned)
+
+---
+
 ## Variables & Scope
 
 - **Working**: Local variables (inferred and annotated)

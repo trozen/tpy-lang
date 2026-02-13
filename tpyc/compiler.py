@@ -99,6 +99,8 @@ class BuildLayout:
         opt_flags: list[str] | None = None,
         config: CppCompilerConfig | None = None,
         extra_objects: list[str] | None = None,
+        extra_include_dirs: list[Path] | None = None,
+        force_includes: list[Path] | None = None,
     ) -> list[list[str]]:
         """Build the C++ compilation command(s).
 
@@ -113,11 +115,19 @@ class BuildLayout:
             opt_flags: Optimization flags (e.g., ["-O3", "-DNDEBUG"]).
             config: Compiler configuration. Defaults to CppCompilerConfig().
             extra_objects: Pre-compiled object files to include in the link step.
+            extra_include_dirs: Additional include directories (-I flags).
+            force_includes: Headers to force-include via -include flag.
         """
         if config is None:
             config = CppCompilerConfig()
         if output is None:
             output = self.binary_path()
+
+        extra_flags: list[str] = []
+        for d in (extra_include_dirs or []):
+            extra_flags += ["-I", str(d)]
+        for h in (force_includes or []):
+            extra_flags += ["-include", str(h)]
 
         common = [
             config.compiler, f"-std={config.std}",
@@ -125,6 +135,7 @@ class BuildLayout:
             *config.extra_flags,
             "-I", str(runtime_include_dir),
             "-I", str(self.include_dir),
+            *extra_flags,
         ]
 
         if self.build_variant:

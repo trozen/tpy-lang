@@ -122,6 +122,7 @@ class RunResult:
     stdout: str
     stderr: str
     returncode: int
+    cpp_build_failed: bool = False
 
 
 def pytest_configure(config):
@@ -142,9 +143,34 @@ def find_extra_src_files(case_dir: Path) -> list[Path]:
     return sorted(src_dir.glob("*.cpp"))
 
 
+def find_extra_include_dirs(case_dir: Path) -> list[Path]:
+    """Find extra include directories for C++ compilation.
+
+    If the test's src/ directory contains .h files (e.g., native type
+    definitions for interop tests), returns it as an include directory.
+    """
+    src_dir = case_dir / "src"
+    if any(src_dir.glob("*.hpp")):
+        return [src_dir]
+    return []
+
+
+def find_force_includes(case_dir: Path) -> list[Path]:
+    """Find headers to force-include before all generated code.
+
+    Returns .h files from the test's src/ directory. These are injected
+    via -include so that native type definitions are visible in generated
+    headers without needing # tpy: include() directives.
+    """
+    src_dir = case_dir / "src"
+    return sorted(src_dir.glob("*.hpp"))
+
+
 def build_and_run(build_dir: Path, module_name: str,
                   all_cpp_files: list[Path] | None = None,
                   extra_src_files: list[Path] | None = None,
+                  extra_include_dirs: list[Path] | None = None,
+                  force_includes: list[Path] | None = None,
                   build_variant: str = "debug") -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
@@ -155,6 +181,10 @@ def build_and_run(build_dir: Path, module_name: str,
                        If None, compiles only the entry module.
         extra_src_files: Additional C++ source files to include in the build
                          (e.g., stub implementations for native functions).
+        extra_include_dirs: Additional include directories for C++ compilation
+                            (e.g., directories containing native type headers).
+        force_includes: Headers to force-include via -include before all source
+                        (e.g., native type definitions for interop tests).
         build_variant: Build variant ("debug" or "release").
     """
     layout = BuildLayout(build_dir, module_name, build_variant=build_variant)
@@ -173,11 +203,19 @@ def build_and_run(build_dir: Path, module_name: str,
         runtime_include_dir=RUNTIME_DIR,
         cpp_files=cpp_files,
         config=CPP_CONFIG,
+        extra_include_dirs=extra_include_dirs or None,
+        force_includes=force_includes or None,
     )
     for cmd in compile_cmds:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            pytest.fail(f"C++ compilation failed:\n{result.stderr}")
+            return RunResult(
+                success=False,
+                stdout="",
+                stderr=result.stderr,
+                returncode=result.returncode,
+                cpp_build_failed=True,
+            )
 
     # Run and capture output
     exe_file = layout.binary_path()

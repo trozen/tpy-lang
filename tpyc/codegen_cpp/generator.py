@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, BIGINT
+from ..typesys import TpyType, NamedType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, BIGINT, clear_native_cpp_names, register_native_cpp_name
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace
@@ -86,6 +86,18 @@ class CodeGenerator:
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
+        # Populate native C++ name mappings for this module's codegen.
+        # Must include both own records and imported records so NamedType.to_cpp()
+        # resolves correctly in all type positions (Ptr[Rect] → SDL_Rect*, etc.)
+        clear_native_cpp_names()
+        for record in module.records:
+            record_info = self.analyzer.registry.get_record(record.name)
+            if record_info and record_info.is_native and record_info.native_name:
+                register_native_cpp_name(record.name, record_info.native_name)
+        for local_name, (_src_mod, original_name) in self.analyzer.ctx.user_imported_records.items():
+            record_info = self.analyzer.registry.get_record(local_name)
+            if record_info and record_info.is_native and record_info.native_name:
+                register_native_cpp_name(local_name, record_info.native_name)
         # Filter user_module_imports to only include actual user modules (not builtins without user files)
         if actual_user_modules is not None:
             self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}
@@ -206,11 +218,18 @@ class CodeGenerator:
         self._generate_forward_decls_and_concepts(hpp, module, deps)
         self._generate_definitions_and_reexports(hpp, module, global_decls, seen_globals, deps)
 
+    def _is_native_record(self, record_name: str) -> bool:
+        """Check if a record is a native import."""
+        record_info = self.analyzer.registry.get_record(record_name)
+        return record_info is not None and record_info.is_native
+
     def _collect_protocol_deps(self, module: TpyModule) -> _ProtocolDeps:
         """Collect all dependency sets needed for protocol ordering."""
+        # Exclude native records — they don't generate C++ structs
+        non_native = [r for r in module.records if not self._is_native_record(r.name)]
         deps = _ProtocolDeps(
-            module_record_names={r.name for r in module.records},
-            records_by_name={r.name: r for r in module.records},
+            module_record_names={r.name for r in non_native},
+            records_by_name={r.name: r for r in non_native},
         )
 
         # Records referenced in protocol signatures
@@ -375,8 +394,11 @@ class CodeGenerator:
         global_decls: list, seen_globals: dict, deps: _ProtocolDeps
     ) -> None:
         """Generate remaining forward decls, global externs, record definitions, functions, and re-exports."""
-        # Forward declare remaining records
+        # Forward declare remaining records (excluding native records)
+        emitted_fwd = False
         for record in module.records:
+            if self._is_native_record(record.name):
+                continue
             if record.name in deps.protocol_referenced_records:
                 continue
             if record.name in deps.early_definition_records:
@@ -392,7 +414,10 @@ class CodeGenerator:
                 hpp.write(f"{template_header} struct {record.name};\n")
             else:
                 hpp.write(f"struct {record.name};\n")
-        if module.records:
+            emitted_fwd = True
+        # Ensure spacing between forward decl section and externs when records exist
+        has_non_native_records = any(not self._is_native_record(r.name) for r in module.records)
+        if emitted_fwd or has_non_native_records:
             hpp.write("\n")
 
         # Global extern declarations

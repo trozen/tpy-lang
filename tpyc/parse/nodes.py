@@ -341,6 +341,13 @@ class TpyImport(TpyStmt):
     alias: str | None = None
 
 
+class RecordLinkage(Enum):
+    """Linkage mode for records (classes)."""
+    DEFAULT = "default"
+    NATIVE = "native"        # C++ class import (fields only)
+    NATIVE_C = "native_c"    # C struct import (fields only)
+
+
 class FunctionLinkage(Enum):
     """Linkage mode for functions."""
     DEFAULT = "default"
@@ -409,6 +416,8 @@ class TpyRecord:
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     bases: list[TpyType] = field(default_factory=list)
+    linkage: RecordLinkage = RecordLinkage.DEFAULT
+    native_name: str | None = None
     loc: SourceLocation | None = None
 
     @property

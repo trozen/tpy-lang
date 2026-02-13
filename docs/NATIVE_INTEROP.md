@@ -17,13 +17,15 @@ TurboPython can import existing C/C++ functions and export its own functions wit
 | 1 | Duplicate symbol detection | **Done** |
 | 1 | Conflicting decorator detection | **Done** |
 | 1 | Body validation (stub vs real) | **Done** |
-| 2 | `@native` class — import C++ class | TODO |
-| 3 | `@native_c` class — import C struct | TODO |
+| 2 | `@native` class — import C++ class (fields) | **Done** |
+| 2 | `@native` class — stub methods | TODO |
+| 3 | `@native_c` class — import C struct (fields) | **Done** |
 | 4 | `@extern_c` class — export C struct | TODO |
 | 5 | C header generation (`--emit-c-header`) | TODO |
 | — | Include directive (`# tpy: include(...)`) | TODO |
 | — | Link directive (`# tpy: link(...)`) | TODO |
 | — | Opaque handle types | TODO |
+| — | Field renaming (`# tpy: native(...)`) | TODO |
 | — | Callback function pointers | Open |
 | — | `@native` enum / constants | Open |
 | — | Auto-bindgen from C headers | Open |
@@ -185,53 +187,58 @@ Planned: `str`, `Ptr[T]`, `ConstPtr[T]`, opaque handle types.
 
 ---
 
-## Phase 2: `@native` classes (planned)
+## Phase 2: `@native` classes
 
-Import existing C++ classes so TPy code can construct them, call their methods, and pass them around. The class body contains only type annotations and stub methods — no code is generated.
+Import existing C++ classes so TPy code can declare their fields and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
+
+**Current status**: Fields only. Stub methods are not yet supported.
 
 ```python
-from tpy import native
+from tpy import native, Int32
 
-@native("SDL_Window")
-class Window:
-    """Opaque handle — no fields exposed."""
-    ...
+# Bare @native — Python and C++ names match
+@native
+class Vec2:
+    x: Int32
+    y: Int32
 
+# @native with rename — fully qualified C++ name
 @native("b2::Vec2")
 class Vec2:
     x: float
     y: float
 
-    def length(self) -> float: ...
-    def normalize(self) -> None: ...
-
-@native("b2::World")
-class World:
-    def create_body(self, pos: Vec2) -> Ptr[Body]: ...
-    def step(self, dt: float, vel_iters: Int32, pos_iters: Int32) -> None: ...
+# Opaque handle — no fields, just ...
+@native("SDL_Window")
+class Window:
+    ...
 ```
 
 ### Generated C++
 
-No struct definition — the compiler trusts the external type exists and emits the correct qualified name:
+No struct definition. Construction uses C++ constructor call syntax:
 
 ```cpp
-// Calls use the native C++ name directly
-b2::Vec2 v{1.0, 2.0};
-v.normalize();
-double len = v.length();
+// Vec2(1, 2) → Vec2(1, 2)   (C++ constructor)
+Vec2 v = Vec2(1, 2);
 
-b2::World world;
-auto* body = world.create_body(v);
-world.step(0.016, 8, 3);
+// b2::Vec2(1.0, 2.0) → b2::Vec2(1.0, 2.0)
+b2::Vec2 v = b2::Vec2(1.0, 2.0);
 ```
 
-### Design considerations
+The native name also resolves inside composite types:
 
-- **Opaque vs transparent**: A `@native` class with only `...` body is opaque (pointer-only, no field access). A class with field annotations is transparent (fields are accessible, layout must match C++).
-- **Construction**: `Vec2(1.0, 2.0)` → aggregate initialization or constructor call depending on whether the native type has constructors.
-- **Ownership**: By default, `@native` class instances are treated as non-value types (pointer-local model). `Own[Window]` for by-value semantics.
-- **Include directive**: See "Include and link directives" section below.
+```python
+@native_c
+def get_vec(p: Ptr[Vec2]) -> Int32: ...
+# → int32_t get_vec(b2::Vec2* p);
+```
+
+### Not yet supported
+
+- **Stub methods** — `def length(self) -> float: ...` on `@native` classes (produces a clear error)
+- **`# tpy: include()`** — header include directives
+- **`# tpy: link()`** — link directives
 
 ## Include and link directives (planned)
 
@@ -271,13 +278,20 @@ class Vec2: ...
 
 The pragma approach is preferred because a single header often covers multiple declarations, avoiding repetition.
 
-## Phase 3: `@native_c` classes (planned)
+## Phase 3: `@native_c` classes
 
-Import C structs. Similar to `@native` classes but with C linkage — no methods, no namespaces, POD-only.
+Import C structs. Similar to `@native` classes but with C linkage — no methods, no namespaces, POD-only. Construction uses aggregate initialization (`{}` syntax).
 
 ```python
-from tpy import native_c
+from tpy import native_c, Int32
 
+# Bare @native_c — Python and C names match
+@native_c
+class Point:
+    x: Int32
+    y: Int32
+
+# @native_c with rename — C name differs from Python name
 @native_c("SDL_Rect")
 class Rect:
     x: Int32
@@ -286,12 +300,73 @@ class Rect:
     h: Int32
 ```
 
-Generated C++ uses `extern "C"` compatible types only. Methods on C structs would be free functions:
+### Generated C++
+
+No struct definition. Construction uses aggregate initialization:
+
+```cpp
+// Point(5, 6) → Point{5, 6}   (aggregate init, POD)
+Point p = Point{5, 6};
+
+// Rect(0, 0, 800, 600) → SDL_Rect{0, 0, 800, 600}
+SDL_Rect r = SDL_Rect{0, 0, 800, 600};
+```
+
+Works with native functions using these types:
 
 ```python
 @native_c("SDL_RenderFillRect")
 def fill_rect(renderer: Ptr[Renderer], rect: ConstPtr[Rect]) -> Int32: ...
+# → int32_t SDL_RenderFillRect(Renderer* renderer, const SDL_Rect* rect);
 ```
+
+## Field renaming (planned)
+
+When importing C/C++ types, field names often don't match Python conventions. Field renaming lets you use Pythonic names while mapping to the actual C/C++ field names.
+
+### Syntax options
+
+**Option A: Comment pragma (recommended)**
+
+```python
+@native_c("timespec")
+class TimeSpec:
+    seconds: Int32      # tpy: native("tv_sec")
+    nanoseconds: Int32  # tpy: native("tv_nsec")
+```
+
+Consistent with the `# tpy: include(...)` / `# tpy: link(...)` pragma style. The comment is parsed by the compiler, not by Python — so the source file remains valid Python with correct type annotations.
+
+**Option B: `native()` as default value**
+
+```python
+@native_c("timespec")
+class TimeSpec:
+    seconds: Int32 = native("tv_sec")
+    nanoseconds: Int32 = native("tv_nsec")
+```
+
+More visible and refactoring-friendly (tools can rename it). But `native("tv_sec")` isn't actually a default value — it's a rename directive. This overloads the assignment syntax in a potentially confusing way, and prevents using actual default values.
+
+**Option C: Wrapper type**
+
+```python
+@native_c("timespec")
+class TimeSpec:
+    seconds: Native[Int32, "tv_sec"]
+    nanoseconds: Native[Int32, "tv_nsec"]
+```
+
+Type-level encoding, visible to type checkers. But `Native[Int32, "tv_sec"]` is noisy compared to `Int32`, and composing with other type wrappers (`Optional[Native[Int32, "tv_sec"]]`) gets unwieldy.
+
+### Semantics
+
+Field renaming applies to both `@native` and `@native_c` classes. In codegen:
+
+- `ts.seconds` in Python → `ts.tv_sec` in C++
+- `TimeSpec(seconds=Int32(0), nanoseconds=Int32(0))` → `timespec{0, 0}` (positional, field names not emitted)
+
+Fields without a rename annotation use their Python name as-is (current behavior).
 
 ## Phase 4: `@extern_c` classes (planned)
 

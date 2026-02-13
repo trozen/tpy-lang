@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
-    ParseError, SourceLocation, ParseWarning, FunctionLinkage,
+    ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
@@ -175,8 +175,30 @@ class Parser:
             if has_protocol:
                 return self._parse_protocol(node)
 
-        if node.decorator_list:
-            raise ParseError(f"Decorators not allowed on class '{node.name}'", node)
+        # Parse record linkage decorators (@native, @native_c)
+        linkage = RecordLinkage.DEFAULT
+        native_name: str | None = None
+        for dec in node.decorator_list:
+            if isinstance(dec, ast.Name) and dec.id in self._RECORD_LINKAGE_DECORATORS:
+                new_linkage = self._RECORD_LINKAGE_DECORATORS[dec.id]
+                if linkage != RecordLinkage.DEFAULT:
+                    raise ParseError(
+                        f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
+                linkage = new_linkage
+            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id in self._RECORD_LINKAGE_DECORATORS:
+                new_linkage = self._RECORD_LINKAGE_DECORATORS[dec.func.id]
+                if linkage != RecordLinkage.DEFAULT:
+                    raise ParseError(
+                        f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
+                linkage = new_linkage
+                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
+                    native_name = dec.args[0].value
+                else:
+                    raise ParseError(f"@{dec.func.id}() requires a single string argument", dec)
+            elif isinstance(dec, ast.Name):
+                raise ParseError(f"Unknown decorator '{dec.id}' on class '{node.name}'", dec)
+            else:
+                raise ParseError(f"Unsupported decorator on class '{node.name}'", dec)
 
         # Extract type parameters FIRST so they're in scope when parsing bases
         # Python 3.12+ syntax: class Foo[T, U]:
@@ -245,12 +267,19 @@ class Parser:
                 methods.append(self._parse_method(item, node.name, type_param_scope))
             elif isinstance(item, ast.Pass):
                 pass
+            elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Constant) and item.value.value is ...:
+                pass  # Ellipsis for opaque native types
             else:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 
+        # Validate native class bodies: methods not yet supported
+        if linkage != RecordLinkage.DEFAULT and methods:
+            raise ParseError(
+                f"Methods on @{linkage.value} classes are not yet supported", node)
+
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, loc=self._loc(node))
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
@@ -379,6 +408,12 @@ class Parser:
             is_readonly=is_readonly,
             loc=self._loc(node)
         )
+
+    # Decorator names that set record linkage
+    _RECORD_LINKAGE_DECORATORS: dict[str, RecordLinkage] = {
+        "native": RecordLinkage.NATIVE,
+        "native_c": RecordLinkage.NATIVE_C,
+    }
 
     # Decorator names that set function linkage
     _LINKAGE_DECORATORS: dict[str, FunctionLinkage] = {

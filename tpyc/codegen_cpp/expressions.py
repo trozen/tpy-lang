@@ -550,6 +550,14 @@ class ExpressionGenerator:
                 else:
                     gen_args.append(self.gen_expr_deref(a))
             args = ", ".join(gen_args)
+            # Native records: use native C++ name
+            if record_info.is_native:
+                cpp_name = record_info.native_name or expr.func
+                # @native_c: aggregate init (POD struct)
+                if record_info.is_native_c:
+                    return f"{cpp_name}{{{args}}}"
+                # @native: constructor call (C++ class)
+                return f"{cpp_name}({args})"
             # Qualify imported records (use original name for aliases)
             if expr.func in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[expr.func]

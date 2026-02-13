@@ -51,7 +51,10 @@ class RecordGenerator:
         """Sort records so parent classes come before children.
 
         Uses topological sort based on inheritance relationships.
+        Native records are excluded (no C++ struct generation needed).
         """
+        # Filter out native records — they don't generate C++ structs
+        records = [r for r in records if not self._is_native(r)]
         record_by_name = {r.name: r for r in records}
 
         # Build dependency graph
@@ -86,8 +89,17 @@ class RecordGenerator:
 
         return result
 
+    def _is_native(self, record: TpyRecord) -> bool:
+        """Check if a record is a native import (no C++ generation needed)."""
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        return record_info is not None and record_info.is_native
+
     def gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
+        # Native records don't generate C++ structs — they're defined in external headers
+        if self._is_native(record):
+            return
+
         # Get record info for inheritance information
         record_info = self.ctx.analyzer.registry.get_record(record.name)
 

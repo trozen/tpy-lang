@@ -22,6 +22,25 @@ class TypeParamKind(Enum):
     INT = "int"    # An integer literal like N
 
 
+# Native C++ name mapping for @native/@native_c records.
+# Maps Python class name → C++ name (e.g., "Rect" → "SDL_Rect").
+# Used by NamedType.to_cpp() so composite types like Ptr[Rect] resolve correctly.
+# NOTE: Global mutable state — safe because the compilation pipeline is sequential
+# (each CodeGenerator.generate() call clears and repopulates before use).
+# Would need to move into CodeGenContext if codegen ever runs concurrently.
+_native_cpp_names: dict[str, str] = {}
+
+
+def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
+    """Register a mapping from a Python class name to its native C++ name."""
+    _native_cpp_names[py_name] = cpp_name
+
+
+def clear_native_cpp_names() -> None:
+    """Clear all native C++ name mappings (called per-compilation)."""
+    _native_cpp_names.clear()
+
+
 @dataclass(frozen=True)
 class TpyType:
     """Base class for all TurboPython types."""
@@ -406,13 +425,15 @@ class NamedType(TpyType):
         if self.is_protocol:
             # Template parameter placeholder - actual type substituted at instantiation
             return "T"
+        # Check for native C++ name mapping (@native/@native_c records)
+        cpp_name = _native_cpp_names.get(self.name, self.name)
         if self.type_args:
             args = ", ".join(
                 t.to_cpp() if isinstance(t, TpyType) else str(t)
                 for t in self.type_args
             )
-            return f"{self.name}<{args}>"
-        return self.name
+            return f"{cpp_name}<{args}>"
+        return cpp_name
 
     def __str__(self) -> str:
         if self.type_args:
@@ -930,6 +951,9 @@ class RecordInfo:
     implemented_protocols: list['NamedType'] = field(default_factory=list)  # Explicit protocol implementations
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     cpp_type: Optional[str] = None  # C++ type template for builtins
+    native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
+    is_native: bool = False       # True for @native or @native_c records
+    is_native_c: bool = False     # True for @native_c specifically
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""

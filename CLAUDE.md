@@ -153,7 +153,10 @@ tests/
 │       ├── error_{name}/     # Compilation error test
 │       └── panic_{name}/     # Runtime panic test
 │           ├── src/
-│           │   └── main.tp.py
+│           │   ├── main.tp.py
+│           │   ├── native_types.hpp   # (optional) C++ type defs for native interop tests
+│           │   └── native_types.cpp   # (optional) C++ stubs for native interop tests
+│           ├── no_cpython.txt         # (optional) Skip CPython compatibility test
 │           └── expected/
 │               ├── diag.txt           # Compiler diagnostics
 │               ├── include/main.hpp   # Generated header (if compiles)
