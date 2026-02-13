@@ -5,7 +5,7 @@ from .modules import MethodDef
 from .typesys import INT32
 
 
-def test_dump_types_includes_readonly_annotations(capsys):
+def test_print_types_includes_readonly_annotations(capsys):
     dump_builtin_types()
     out = capsys.readouterr().out
 

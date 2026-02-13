@@ -6,7 +6,8 @@ Usage:
     tpyc input.tp.py -o out/      # Compile to C++ in out/
     tpyc input.tp.py --build      # Compile to C++ and build binary
     tpyc input.tp.py --exec       # Compile, build, and run
-    tpyc - --exec                 # Read from stdin, build, and run
+    tpyc --exec <<EOF             # Read from stdin, build, and run
+    tpyc --dump-code <<EOF        # Print generated C++ to stdout
     tpyc --repl                   # Start interactive REPL
     tpyc --repl file.tp.py        # Load file then start REPL
     tpyc --repl --verbose         # REPL with C++ output shown
@@ -56,7 +57,8 @@ def main() -> int:
     parser.add_argument("-O", "--release", action="store_true", help="Build with optimizations (default: debug)")
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
     parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
-    parser.add_argument("--dump-types", action="store_true", help="Dump documentation for all builtin types")
+    parser.add_argument("--print-types", action="store_true", help="Print documentation for all builtin types")
+    parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
 
     args = parser.parse_args()
 
@@ -69,17 +71,21 @@ def main() -> int:
             preload_files = [Path(args.input).resolve()]
         return REPLSession(verbose=args.verbose, preload_files=preload_files).run()
 
-    # Handle --dump-types
-    if args.dump_types:
+    # Handle --print-types
+    if args.print_types:
         from .dump_types import dump_builtin_types
         dump_builtin_types()
         return 0
+
+    # Auto-detect stdin when no input file given and stdin is piped/heredoc
+    if not args.input and not sys.stdin.isatty():
+        args.input = "-"
 
     # Require input file for non-REPL modes
     if not args.input:
         parser.error("the following arguments are required: input")
 
-    # Handle stdin input (specified as "-")
+    # Handle stdin input (specified as "-" or auto-detected)
     reading_from_stdin = args.input == "-"
     temp_dir = None
 
@@ -110,6 +116,9 @@ def main() -> int:
         # Get module name for output paths
         module_name = get_module_name(input_path)
 
+    if args.dump_code and (args.build or args.exec):
+        parser.error("--dump-code cannot be combined with --build or --exec")
+
     try:
         options = CodeGenOptions(emit_source_comments=args.emit_source)
         all_cpp_paths = []
@@ -136,12 +145,23 @@ def main() -> int:
             if args.verbose:
                 print("  Semantic analysis passed")
 
+            if args.dump_code:
+                hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
+                print(f"// === include/{compiled.name}.hpp ===")
+                print(hpp_code)
+                print(f"// === src/{compiled.name}.cpp ===")
+                print(cpp_code)
+                continue
+
             hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
             all_cpp_paths.append(cpp_path)
 
             if args.verbose or not (args.build or args.exec):
                 print(f"Generated: {hpp_path}")
                 print(f"Generated: {cpp_path}")
+
+        if args.dump_code:
+            return 0
 
         # Build if requested
         if args.build or args.exec:

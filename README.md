@@ -79,7 +79,7 @@ uv run pytest -k hello -n auto
 For pretty printing:
 
 ```
-tpyc --dump-types | glow -p
+tpyc --print-types | glow -p
 ```
 
 ## Manual Build

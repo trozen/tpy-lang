@@ -16,25 +16,39 @@ TurboPython (tpyc) is a proof-of-concept compiler that translates Python to C++.
 
 ```bash
 # Compile and run (debug build, default)
-tpyc -x examples/hello.tp.py
+uv run tpyc -x examples/hello.tp.py
 
 # Compile and run (release build, optimized)
-tpyc -xO examples/hello.tp.py
+uv run tpyc -xO examples/hello.tp.py
+
+# Compile and run a snippet from stdin
+uv run tpyc -x <<'EOF'
+def greet(name: str) -> None:
+    print("Hello, " + name)
+greet("world")
+EOF
+
+# Print generated C++ to stdout
+uv run tpyc --dump-code <<'EOF'
+def add(a: int, b: int) -> int:
+    return a + b
+print(add(1, 2))
+EOF
 
 # Compile to C++ and build binary
-tpyc -b examples/hello.tp.py
+uv run tpyc -b examples/hello.tp.py
 
 # Compile to C++ only (output in __tpyc__/ next to source)
-tpyc examples/hello.tp.py
+uv run tpyc examples/hello.tp.py
 
 # Compile to specific output directory
-tpyc examples/hello.tp.py -o out/
+uv run tpyc examples/hello.tp.py -o out/
 
 # Verbose mode (-v for info, -vv for compilation commands)
-tpyc -x examples/hello.tp.py -vv
+uv run tpyc -x examples/hello.tp.py -vv
 
 # Interactive REPL
-tpyc -i
+uv run tpyc -i
 
 # Install for development (uses uv package manager)
 uv sync
@@ -42,13 +56,24 @@ uv sync
 
 ## Agent Workflow
 
-Always use `uv run` to invoke Python/tpyc (never bare `python` or `tpyc`). Use `tmp/scratchpad/` (repo-local, gitignored) for scratch files. To inspect generated C++, compile there and use the Read tool:
+Always use `uv run` to invoke Python/tpyc (never bare `python` or `tpyc`). Use the Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
+
+To inspect generated C++, use `--dump-code` with a small snippet:
 
 ```bash
-uv run tpyc file.tp.py -o tmp/scratchpad/
+uv run tpyc --dump-code <<'EOF'
+x: int = 42
+print(x)
+EOF
 ```
 
-Use the Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
+To run a snippet quickly:
+
+```bash
+uv run tpyc -x <<'EOF'
+print("hello")
+EOF
+```
 
 ## Testing
 

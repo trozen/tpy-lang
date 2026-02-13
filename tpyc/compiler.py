@@ -729,3 +729,17 @@ class Compiler:
         cpp_path.write_text(cpp_code)
 
         return hpp_path, cpp_path
+
+    def generate_code_to_strings(self, compiled: CompiledModule,
+                                  options: CodeGenOptions | None = None) -> tuple[str, str]:
+        """Generate C++ code and return as strings (no file I/O)."""
+        codegen = CodeGenerator(compiled.analyzer, options)
+        actual_user_modules = set(self.modules.keys())
+        return codegen.generate(
+            compiled.ast, compiled.name,
+            is_entry_point=compiled.is_entry_point,
+            actual_user_modules=actual_user_modules,
+            reexported_functions=compiled.exports.reexported_functions,
+            reexported_records=compiled.exports.reexported_records,
+            reexported_variables=compiled.exports.reexported_variables
+        )
