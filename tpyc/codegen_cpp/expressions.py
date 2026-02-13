@@ -627,6 +627,12 @@ class ExpressionGenerator:
             return f"{parent_cpp}::{expr.method}({args})"
         # Handle ClassName.staticmethod() -> ClassName::staticmethod()
         if expr.is_static_call and isinstance(expr.obj, TpyName):
+            # For native records, use the C++ class and method names
+            record_info = self.ctx.analyzer.registry.get_record(expr.obj.name)
+            if record_info and record_info.is_native:
+                cpp_class = record_info.native_name or expr.obj.name
+                cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
+                return f"{cpp_class}::{cpp_method}({args})"
             return f"{expr.obj.name}::{expr.method}({args})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
@@ -703,7 +709,9 @@ class ExpressionGenerator:
             return f"tpy::deref_ptr({ptr_expr}).{expr.method}({args})"
         use_arrow = self.ctx.is_indirect_name(expr.obj) or (obj_type and obj_type.is_pointer()) or is_optional_ptr
         accessor = "->" if use_arrow else "."
-        return f"{obj}{accessor}{expr.method}({args})"
+        # Use native method name if available (for @native/@native_c class methods)
+        cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
+        return f"{obj}{accessor}{cpp_method}({args})"
 
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""

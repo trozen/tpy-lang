@@ -7,22 +7,26 @@ std::string_view __name__;
 
 
 
-// 24: def main() -> None:
+// 26: def main() -> None:
 void main() {
-  // 25:     p = Point(Int32(10), Int32(20))
+  // 27:     p = Point(Int32(10), Int32(20))
   Point p = Point{10, 20};
-  // 26:     print(p.x)
+  // 28:     print(p.x)
   std::cout << p.x << "\n";
-  // 27:     print(p.y)
+  // 29:     print(p.y)
   std::cout << p.y << "\n";
-  // 28:     print(point_sum(Ptr(p)))
+  // 30:     print(point_sum(Ptr(p)))
   std::cout << point_sum(&p) << "\n";
-  // 30:     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
+  // 31:     print(p.manhattan())
+  std::cout << p.manhattan() << "\n";
+  // 33:     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
   Rect r = Rect{0, 0, 800, 600};
-  // 31:     print(r.w)
+  // 34:     print(r.w)
   std::cout << r.w << "\n";
-  // 32:     print(rect_area(Ptr(r)))
+  // 35:     print(rect_area(Ptr(r)))
   std::cout << rect_area(&r) << "\n";
+  // 36:     print(r.area())
+  std::cout << r.area() << "\n";
 }
 
 void __tpy_init() {
@@ -31,7 +35,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 34: main()
+  // 38: main()
   main();
 }
 

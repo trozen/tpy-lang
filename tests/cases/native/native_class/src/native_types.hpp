@@ -4,6 +4,9 @@
 struct Vec2 {
     int32_t x;
     int32_t y;
+    int32_t sum() const;
+    int32_t dot(const Vec2& other) const;
+    static Vec2 zero();
 };
 
 namespace ns {
@@ -11,6 +14,7 @@ struct Color {
     int32_t r;
     int32_t g;
     int32_t b;
+    int32_t brightness() const;
 };
 }
 

@@ -14,12 +14,16 @@ void main() {
   std::cout << v.x << "\n";
   // 11:     print(vec2_sum(Ptr(v)))
   std::cout << vec2_sum(&v) << "\n";
-  // 13:     r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
+  // 12:     print(v.sum())
+  std::cout << v.sum() << "\n";
+  // 14:     r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
   Rect r = Rect{0, 0, 40, 30};
-  // 14:     print(r.w)
+  // 15:     print(r.w)
   std::cout << r.w << "\n";
-  // 15:     print(rect_area(Ptr(r)))
+  // 16:     print(rect_area(Ptr(r)))
   std::cout << rect_area(&r) << "\n";
+  // 17:     print(r.area())
+  std::cout << r.area() << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +34,7 @@ void __tpy_init() {
   __name__ = "__main__";
   // 2: from lib import Vec2, MyRect, rect_area
   tpy_user::lib::__tpy_init();
-  // 17: main()
+  // 19: main()
   main();
 }
 

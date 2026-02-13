@@ -166,6 +166,8 @@ class TypeRegistrar:
                 is_readonly=method.is_readonly,
                 is_method=True,
                 is_staticmethod=method.is_staticmethod,
+                linkage=method.linkage,
+                native_name=method.native_name,
                 cpp_template=DUNDER_CPP_TEMPLATES.get(method.name)
             )]
 

@@ -7,6 +7,9 @@
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
 - configurable default int literal deduction: compiler flag (e.g. `--default-int=Int32`) to resolve ambiguous integer literals as Int32 instead of BigInt, for performance-oriented code
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
+- `# tpy:` directives handling
+- constant global variables
+- implicitly @readonly for CONST_METHODS
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc). Also: `n = 4` currently defaults to BigInt — should default to Int32 when the literal fits, so `for i in range(n)` loops over int32_t instead of BigInt
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)

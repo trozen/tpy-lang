@@ -2437,30 +2437,38 @@ def game_tick(time: Int32) -> None:
 
 Cross-module imports of native functions work normally — the compiler re-declares extern symbols in each module.
 
-### Native Classes — Fields Only (Working)
+### Native Classes (Working)
 
-Import existing C++ classes and C structs so TPy code can declare their fields and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
+Import existing C++ classes and C structs so TPy code can declare their fields, call their methods, and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
 
 ```python
-from tpy import native, native_c, Int32
+from tpy import native, native_c, Int32, Float
 
 # @native — C++ class import (constructor call syntax)
 @native
 class Vec2:
     x: Int32
     y: Int32
+    def sum(self) -> Int32: ...        # stub method (... body)
+    def dot(self, other: Vec2) -> Int32: ...
+    @staticmethod
+    def zero() -> Vec2: ...            # static method
 
 # @native with rename — fully qualified C++ name
 @native("b2::Vec2")
 class PhysVec:
-    x: float
-    y: float
+    x: Float
+    y: Float
+    def length(self) -> Float: ...
+    @native("mag")
+    def magnitude(self) -> Float: ...  # method rename
 
 # @native_c — C struct import (aggregate init syntax)
 @native_c
 class Point:
     x: Int32
     y: Int32
+    def manhattan(self) -> Int32: ...
 
 # @native_c with rename — C name differs from Python name
 @native_c("SDL_Rect")
@@ -2469,6 +2477,7 @@ class Rect:
     y: Int32
     w: Int32
     h: Int32
+    def area(self) -> Int32: ...
 
 # Opaque handle — no fields
 @native("SDL_Window")
@@ -2479,9 +2488,10 @@ Generated C++:
 - `@native` classes use constructor call syntax: `Vec2(1, 2)`
 - `@native_c` classes use aggregate initialization: `Point{5, 6}`
 - Renamed types use the native name everywhere, including composite types like `Ptr[Rect]` → `SDL_Rect*`
+- Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
+- `@native("cpp_name")` on methods allows renaming individual methods
 
 **Not yet supported:**
-- Stub methods on `@native` classes (planned)
 - `# tpy: include()` header directives (planned)
 - `# tpy: link()` link directives (planned)
 - `@extern_c` class — export TPy struct for C (planned)

@@ -4,6 +4,7 @@
 struct Point {
     int32_t x;
     int32_t y;
+    int32_t manhattan() const;
 };
 
 struct Rect {
@@ -11,6 +12,7 @@ struct Rect {
     int32_t y;
     int32_t w;
     int32_t h;
+    int32_t area() const;
 };
 
 #ifdef __cplusplus

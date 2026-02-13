@@ -18,7 +18,7 @@ TurboPython can import existing C/C++ functions and export its own functions wit
 | 1 | Conflicting decorator detection | **Done** |
 | 1 | Body validation (stub vs real) | **Done** |
 | 2 | `@native` class — import C++ class (fields) | **Done** |
-| 2 | `@native` class — stub methods | TODO |
+| 2 | `@native` class — stub methods | **Done** |
 | 3 | `@native_c` class — import C struct (fields) | **Done** |
 | 4 | `@extern_c` class — export C struct | TODO |
 | 5 | C header generation (`--emit-c-header`) | TODO |
@@ -191,28 +191,50 @@ Planned: `str`, `Ptr[T]`, `ConstPtr[T]`, opaque handle types.
 
 Import existing C++ classes so TPy code can declare their fields and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
 
-**Current status**: Fields only. Stub methods are not yet supported.
-
 ```python
-from tpy import native, Int32
+from tpy import native, Int32, Float
 
 # Bare @native — Python and C++ names match
 @native
 class Vec2:
     x: Int32
     y: Int32
+    def sum(self) -> Int32: ...
+    def dot(self, other: Vec2) -> Int32: ...
+    @staticmethod
+    def zero() -> Vec2: ...
 
 # @native with rename — fully qualified C++ name
 @native("b2::Vec2")
 class Vec2:
-    x: float
-    y: float
+    x: Float
+    y: Float
+    def length(self) -> Float: ...
 
 # Opaque handle — no fields, just ...
 @native("SDL_Window")
 class Window:
     ...
 ```
+
+### Stub methods
+
+Methods on `@native` classes must be stubs (`...` body). They declare the method signature so TPy code can call it — the actual implementation lives in the C++ header.
+
+```python
+@native
+class Vec2:
+    x: Float
+    y: Float
+    def length(self) -> Float: ...              # instance method
+    def dot(self, other: Vec2) -> Float: ...    # method with record param
+    @staticmethod
+    def zero() -> Vec2: ...                     # static method
+    @native("mag")
+    def magnitude(self) -> Float: ...           # method with C++ rename
+```
+
+Methods with real bodies (not `...`) produce a parse error.
 
 ### Generated C++
 
@@ -221,6 +243,8 @@ No struct definition. Construction uses C++ constructor call syntax:
 ```cpp
 // Vec2(1, 2) → Vec2(1, 2)   (C++ constructor)
 Vec2 v = Vec2(1, 2);
+v.length();          // instance method call
+Vec2::zero();        // static method call
 
 // b2::Vec2(1.0, 2.0) → b2::Vec2(1.0, 2.0)
 b2::Vec2 v = b2::Vec2(1.0, 2.0);
@@ -236,7 +260,6 @@ def get_vec(p: Ptr[Vec2]) -> Int32: ...
 
 ### Not yet supported
 
-- **Stub methods** — `def length(self) -> float: ...` on `@native` classes (produces a clear error)
 - **`# tpy: include()`** — header include directives
 - **`# tpy: link()`** — link directives
 

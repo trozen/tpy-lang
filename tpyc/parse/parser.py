@@ -272,10 +272,23 @@ class Parser:
             else:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 
-        # Validate native class bodies: methods not yet supported
-        if linkage != RecordLinkage.DEFAULT and methods:
-            raise ParseError(
-                f"Methods on @{linkage.value} classes are not yet supported", node)
+        # Validate method constraints based on class linkage
+        for method in methods:
+            if linkage != RecordLinkage.DEFAULT:
+                # Native class: methods must be stubs
+                if not method.is_stub:
+                    raise ParseError(
+                        f"Methods on @{linkage.value} classes must have '...' body (stub declaration)", node)
+            else:
+                # Non-native class: stubs and @native decorators are not allowed
+                if method.is_stub:
+                    raise ParseError(
+                        f"Method '{method.name}' cannot have '...' body on a regular class "
+                        f"(only allowed on @native/@native_c classes)", node)
+                if method.native_name is not None:
+                    raise ParseError(
+                        f"@native(\"...\") decorator on method '{method.name}' is only allowed "
+                        f"on @native/@native_c classes", node)
 
         # Restore the scope
         self._type_param_scope = old_scope
@@ -365,16 +378,30 @@ class Parser:
         self._type_param_scope = old_scope
         return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, loc=self._loc(node))
 
+    # Decorator names that set method linkage (for method renaming on native classes)
+    _METHOD_LINKAGE_DECORATORS: dict[str, FunctionLinkage] = {
+        "native": FunctionLinkage.NATIVE,
+        "native_c": FunctionLinkage.NATIVE_C,
+    }
+
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyFunction:
         """Parse a method definition."""
-        # Check decorators (@staticmethod, @readonly)
+        # Check decorators (@staticmethod, @readonly, @native("cpp_name"))
         is_staticmethod = False
         is_readonly = False
+        method_linkage = FunctionLinkage.DEFAULT
+        native_name: str | None = None
         for dec in node.decorator_list:
             if isinstance(dec, ast.Name) and dec.id == "staticmethod":
                 is_staticmethod = True
             elif isinstance(dec, ast.Name) and dec.id == "readonly":
                 is_readonly = True
+            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id in self._METHOD_LINKAGE_DECORATORS:
+                method_linkage = self._METHOD_LINKAGE_DECORATORS[dec.func.id]
+                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
+                    native_name = dec.args[0].value
+                else:
+                    raise ParseError(f"@{dec.func.id}() on method requires a single string argument", dec)
             else:
                 dec_name = dec.id if isinstance(dec, ast.Name) else type(dec).__name__
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
@@ -397,7 +424,13 @@ class Parser:
         if node.name != "__init__" and node.returns:
             return_type = self._parse_type_annotation(node.returns, type_param_scope)
 
-        body = [self._parse_stmt(stmt) for stmt in node.body]
+        is_stub_body = self._is_stub_body(node.body)
+        is_stub = is_stub_body
+        if is_stub:
+            body = []
+        else:
+            body = [self._parse_stmt(stmt) for stmt in node.body]
+
         return TpyFunction(
             name=node.name,
             params=params,
@@ -406,6 +439,9 @@ class Parser:
             is_method=True,
             is_staticmethod=is_staticmethod,
             is_readonly=is_readonly,
+            is_stub=is_stub,
+            linkage=method_linkage,
+            native_name=native_name,
             loc=self._loc(node)
         )
 

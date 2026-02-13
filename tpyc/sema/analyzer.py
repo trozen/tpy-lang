@@ -242,11 +242,8 @@ class SemanticAnalyzer:
         if module.top_level_stmts:
             self._analyze_top_level(module.top_level_stmts)
 
-        # Fifth pass: analyze record methods (skip native records — no methods)
+        # Fifth pass: analyze record methods
         for record in module.records:
-            record_info = self.ctx.registry.get_record(record.name)
-            if record_info and record_info.is_native:
-                continue
             self._analyze_record_methods(record)
 
         # Sixth pass: analyze function bodies

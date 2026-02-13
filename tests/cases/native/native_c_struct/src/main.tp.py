@@ -5,6 +5,7 @@ from tpy import native_c, Int32, Ptr
 class Point:
     x: Int32
     y: Int32
+    def manhattan(self) -> Int32: ...
 
 # @native_c with rename — C name differs from Python name
 @native_c("Rect")
@@ -13,6 +14,7 @@ class MyRect:
     y: Int32
     w: Int32
     h: Int32
+    def area(self) -> Int32: ...
 
 # Native C functions that use the imported types
 @native_c
@@ -26,9 +28,11 @@ def main() -> None:
     print(p.x)
     print(p.y)
     print(point_sum(Ptr(p)))
+    print(p.manhattan())
 
     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
     print(r.w)
     print(rect_area(Ptr(r)))
+    print(r.area())
 
 main()

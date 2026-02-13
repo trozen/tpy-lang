@@ -1,10 +1,14 @@
-from tpy import native, native_c, Int32, Ptr
+from tpy import native, native_c, Int32, Float, Ptr
 
 # @native class — C++ class import (constructor call syntax)
 @native
 class Vec2:
     x: Int32
     y: Int32
+    def sum(self) -> Int32: ...
+    def dot(self, other: Vec2) -> Int32: ...
+    @staticmethod
+    def zero() -> Vec2: ...
 
 # @native with rename — fully qualified C++ name
 @native("ns::Color")
@@ -12,6 +16,7 @@ class Color:
     r: Int32
     g: Int32
     b: Int32
+    def brightness(self) -> Int32: ...
 
 # Native C++ functions that use the imported types
 @native
@@ -25,9 +30,16 @@ def main() -> None:
     print(v.x)
     print(v.y)
     print(vec2_sum(Ptr(v)))
+    print(v.sum())
+    print(v.dot(Vec2(Int32(1), Int32(2))))
+
+    z = Vec2.zero()
+    print(z.x)
+    print(z.y)
 
     c = Color(Int32(100), Int32(150), Int32(200))
     print(c.r)
     print(color_brightness(Ptr(c)))
+    print(c.brightness())
 
 main()

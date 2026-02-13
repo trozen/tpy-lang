@@ -1,1 +1,1 @@
-main.tp.py:4: error: Methods on @native classes are not yet supported
+main.tp.py:4: error: Methods on @native classes must have '...' body (stub declaration)
