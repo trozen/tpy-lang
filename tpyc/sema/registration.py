@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo, FunctionLinkage,
-    TypeParamKind, OptionalType, VoidType, is_protocol_type,
+    TypeParamKind, OptionalType, VoidType, ParamInfo, is_protocol_type,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl
 from .diagnostics import SemanticError
@@ -154,7 +154,7 @@ class TypeRegistrar:
                 )
             methods[method.name] = [FunctionInfo(
                 name=method.name,
-                params=method.params,
+                params=[ParamInfo(n, t) for n, t in method.params],
                 return_type=method.return_type,
                 is_readonly=method.is_readonly,
                 is_method=True,
@@ -168,7 +168,7 @@ class TypeRegistrar:
             if not isinstance(next_info.return_type, (OptionalType, VoidType)):
                 methods["__next_opt__"] = [FunctionInfo(
                     name="__next_opt__",
-                    params=next_info.params,
+                    params=[ParamInfo(p.name, p.type) for p in next_info.params],
                     return_type=OptionalType(next_info.return_type),
                     is_method=True,
                 )]
@@ -507,7 +507,7 @@ class TypeRegistrar:
 
         info = FunctionInfo(
             name=func.name,
-            params=resolved_params,
+            params=[ParamInfo(n, t) for n, t in resolved_params],
             return_type=resolved_return,
             is_noalloc=func.is_noalloc,
             is_readonly=func.is_readonly,

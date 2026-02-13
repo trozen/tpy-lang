@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType,
-    SuperType, TypeParamRef, FunctionInfo, VOID, is_protocol_type,
+    SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt
@@ -330,7 +330,8 @@ class MethodAnalyzer:
             if method_sig is None:
                 raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
 
-            params, return_type = method_sig
+            raw_params, return_type = method_sig
+            params = [ParamInfo(n, t) for n, t in raw_params]
             expr.resolved_function_info = FunctionInfo(
                 name=expr.method,
                 params=params,
@@ -357,7 +358,8 @@ class MethodAnalyzer:
                 if method_sig is None:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
 
-                params, return_type = method_sig
+                raw_params, return_type = method_sig
+                params = [ParamInfo(n, t) for n, t in raw_params]
                 expr.resolved_function_info = FunctionInfo(
                     name=expr.method,
                     params=params,

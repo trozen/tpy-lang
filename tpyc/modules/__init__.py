@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Callable
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import TypeParamRef, NamedType, PtrType, ConstPtrType, ProtocolInfo, MethodSignature, TypeParamKind
+from tpyc.typesys import TypeParamRef, NamedType, PtrType, ConstPtrType, ProtocolInfo, MethodSignature, TypeParamKind, ParamInfo
 
 
 @dataclass
@@ -22,6 +22,8 @@ class ParamDef:
     """Parameter definition for a function/method."""
     name: str
     type: "TpyType"  # TpyType, use TypeParamRef("T") for type params
+    requires_lvalue: bool = False
+    requires_mutable: bool = False
 
 
 @dataclass
@@ -280,7 +282,7 @@ def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
     """Convert builtin ProtocolDef to unified ProtocolInfo."""
     methods = []
     for name, method_def in pdef.methods.items():
-        params = [(p.name, p.type) for p in method_def.params]
+        params = [ParamInfo(p.name, p.type) for p in method_def.params]
         methods.append(MethodSignature(name=name, params=params, return_type=method_def.returns))
 
     return ProtocolInfo(
@@ -307,7 +309,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         methods[method_name] = [
             FunctionInfo(
                 name=method_name,
-                params=[(p.name, p.type) for p in method.params],
+                params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in method.params],
                 return_type=method.returns,
                 is_method=True,
                 is_noalloc=method.is_noalloc,
@@ -322,7 +324,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
     for ctor in type_def.constructors:
         constructors.append(FunctionInfo(
             name="__init__",
-            params=[(p.name, p.type) for p in ctor.params],
+            params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in ctor.params],
             return_type=ctor.returns,
             is_noalloc=ctor.is_noalloc,
             is_readonly=ctor.is_readonly,
@@ -354,7 +356,7 @@ def builtin_function_to_info(fn_def: BuiltinFunctionDef) -> list["FunctionInfo"]
     for overload in fn_def.overloads:
         result.append(FunctionInfo(
             name=fn_def.name,
-            params=[(p.name, p.type) for p in overload.params],
+            params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in overload.params],
             return_type=overload.returns,
             is_noalloc=overload.is_noalloc,
             is_readonly=overload.is_readonly,
@@ -592,7 +594,8 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
         # resolved.params[0].type == Int32, resolved.returns == Int32
     """
     resolved_params = [
-        ParamDef(name=p.name, type=_resolve_type_or_param(p.type, type_params))
+        ParamDef(name=p.name, type=_resolve_type_or_param(p.type, type_params),
+                 requires_lvalue=p.requires_lvalue, requires_mutable=p.requires_mutable)
         for p in method.params
     ]
     resolved_returns = _resolve_type_or_param(method.returns, type_params)

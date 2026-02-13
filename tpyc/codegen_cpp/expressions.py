@@ -320,7 +320,7 @@ class ExpressionGenerator:
         if binop_result := expr.resolved_binop:
             # Get types for proper literal promotion
             # FunctionInfo.params is list[tuple[str, TpyType]]
-            param_type = binop_result.method.params[0][1] if binop_result.method.params else None
+            param_type = binop_result.method.params[0].type if binop_result.method.params else None
             receiver_type = binop_result.receiver_type
             # For reverse operators, {self} is the right operand, {0} is left
             # For forward operators, {self} is the left operand, {0} is right
@@ -532,7 +532,7 @@ class ExpressionGenerator:
             init_params = init_info.params if init_info else []
             gen_args = []
             for i, a in enumerate(expr.args):
-                ptype = init_params[i][1] if i < len(init_params) else None
+                ptype = init_params[i].type if i < len(init_params) else None
                 # Optional non-value params are T* — same logic as function calls
                 if isinstance(ptype, OptionalType) and not ptype.inner.is_value_type():
                     if isinstance(a, TpyNoneLiteral):
@@ -564,7 +564,7 @@ class ExpressionGenerator:
             params = expr.resolved_function_info.params
             gen_args = []
             for i, arg in enumerate(expr.args):
-                ptype = params[i][1] if i < len(params) else None
+                ptype = params[i].type if i < len(params) else None
                 gen_args.append(self.gen_expr_deref(arg, ptype))
             args = ", ".join(gen_args)
         else:

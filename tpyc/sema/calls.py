@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, ConstPtrType, VoidType, SpanType,
+    PtrType, ConstPtrType, VoidType, SpanType, ParamInfo,
     VOID, BIGINT, is_protocol_type,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName
@@ -35,7 +35,7 @@ def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
     """Convert a MethodDef (module-level constructor) to FunctionInfo for resolved_function_info."""
     return FunctionInfo(
         name="__init__",
-        params=[(p.name, p.type) for p in m.params],
+        params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in m.params],
         return_type=m.returns,
         cpp_template=m.cpp,
     )
@@ -130,6 +130,7 @@ class CallAnalyzer:
                             if len(ctor.params) == len(expr.args) and ctor.cpp:
                                 expr.resolved_function_info = _method_def_to_function_info(ctor)
                                 break
+                    self._validate_lvalue_params(expr)
                 return expr.call_type
             # Otherwise fall through to function handling (type_args will be used)
 
@@ -259,6 +260,7 @@ class CallAnalyzer:
                                     self._validate_ptr_constructor(expr)
                                 if ctor.cpp:
                                     expr.resolved_function_info = _method_def_to_function_info(ctor)
+                                self._validate_lvalue_params(expr)
                                 return result_type
 
                 # Show specific error when a non-literal type with element info
@@ -355,12 +357,31 @@ class CallAnalyzer:
                 expr
             )
 
+    def _validate_lvalue_params(self, expr: TpyCall) -> None:
+        """Validate requires_lvalue / requires_mutable constraints on resolved params."""
+        fi = expr.resolved_function_info
+        if fi is None:
+            return
+        for i, param in enumerate(fi.params):
+            if i >= len(expr.args):
+                break
+            if param.requires_mutable:
+                if not self.compat.is_mutable_lvalue(expr.args[i]):
+                    raise self.ctx.error(
+                        f"argument '{param.name}' must be a mutable lvalue", expr)
+            elif param.requires_lvalue:
+                if not self.compat.is_lvalue(expr.args[i]):
+                    raise self.ctx.error(
+                        f"argument '{param.name}' must be an lvalue", expr)
+
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
-        """Validate Ptr/ConstPtr constructor arguments (lvalue, type match, no void args)."""
+        """Validate Ptr/ConstPtr constructor arguments (type match, no void args).
+
+        Lvalue checking is handled generically by _validate_lvalue_params.
+        """
         assert isinstance(expr.call_type, (PtrType, ConstPtrType))
         pointee = expr.call_type.pointee
-        is_mutable = isinstance(expr.call_type, PtrType)
-        kind = "Ptr" if is_mutable else "ConstPtr"
+        kind = "Ptr" if isinstance(expr.call_type, PtrType) else "ConstPtr"
 
         if len(expr.args) != 1:
             raise self.ctx.error(f"{kind}() takes 0 or 1 argument, got {len(expr.args)}", expr)
@@ -374,15 +395,6 @@ class CallAnalyzer:
         if arg_type != pointee:
             raise self.ctx.error(
                 f"{kind}[{pointee}]() expects {pointee}, got {arg_type}", expr)
-
-        if is_mutable:
-            if not self.compat.is_mutable_lvalue(arg):
-                raise self.ctx.error(
-                    f"{kind}() argument must be a mutable lvalue", expr)
-        else:
-            if not self.compat.is_lvalue(arg):
-                raise self.ctx.error(
-                    f"{kind}() argument must be an lvalue", expr)
 
     def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
         """Check a builtin type constructor call using unified RecordInfo.constructors."""

@@ -103,7 +103,7 @@ def init_module() -> BuiltinModule:
                 type_factory=lambda t: PtrType(t),
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
-                    MethodDef(params=[ParamDef("x", T)], returns=T, cpp="&{0}"),
+                    MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
                 ])
 
     # ConstPtr[T]: Read-only pointer
@@ -112,7 +112,7 @@ def init_module() -> BuiltinModule:
                 type_factory=lambda t: ConstPtrType(t),
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
-                    MethodDef(params=[ParamDef("x", T)], returns=T, cpp="&{0}"),
+                    MethodDef(params=[ParamDef("x", T, requires_lvalue=True)], returns=T, cpp="&{0}"),
                 ])
 
     # StaticList[T, N]: Fixed-capacity container

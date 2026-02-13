@@ -954,6 +954,23 @@ class FunctionLinkage(Enum):
 
 
 @dataclass
+class ParamInfo:
+    """Function parameter with optional constraints.
+
+    Tuple-compatible: unpacks as (name, type) for backward compat with
+    existing ``for pname, ptype in func.params`` patterns.
+    """
+    name: str
+    type: TpyType
+    requires_lvalue: bool = False
+    requires_mutable: bool = False
+
+    def __iter__(self):
+        yield self.name
+        yield self.type
+
+
+@dataclass
 class FunctionInfo:
     """Information about a function.
 
@@ -969,7 +986,7 @@ class FunctionInfo:
     - special_handling = True if sema/codegen handle it specially (skip overload matching)
     """
     name: str
-    params: list[tuple[str, TpyType]]  # (name, type)
+    params: list[ParamInfo]
     return_type: TpyType
     is_noalloc: bool = False
     is_readonly: bool = False

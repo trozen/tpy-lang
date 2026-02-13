@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType,
     ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
-    RecordInfo, FunctionInfo, is_protocol_type,
+    RecordInfo, FunctionInfo, ParamInfo, is_protocol_type,
 )
 from .diagnostics import SemanticError
 
@@ -582,8 +582,9 @@ class TypeOperations:
     ) -> FunctionInfo:
         """Substitute type parameters in a method signature."""
         substituted_params = [
-            (pname, self.substitute_type_params(ptype, type_subst))
-            for pname, ptype in method.params
+            ParamInfo(p.name, self.substitute_type_params(p.type, type_subst),
+                      p.requires_lvalue, p.requires_mutable)
+            for p in method.params
         ]
         substituted_return = self.substitute_type_params(method.return_type, type_subst)
 

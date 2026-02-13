@@ -426,6 +426,47 @@ Implicit conversions between records and pointers with safety checks:
 - Span/str elements cannot convert to `Ptr[T]` (read-only source)
 - `Ptr[T]` → `T` includes runtime null check that panics if null
 
+#### Pointer Constructors (Working)
+
+Explicit constructors for `Ptr[T]` and `ConstPtr[T]`, as an alternative to implicit coercions:
+
+```python
+from tpy import Ptr, ConstPtr, Int32
+
+def test() -> None:
+    # Null pointers
+    p: Ptr[None] = Ptr[None]()        # → nullptr
+    q: Ptr[Int32] = Ptr[Int32]()      # → nullptr (typed null)
+
+    # Address-of with explicit type
+    x: Int32 = Int32(42)
+    px: Ptr[Int32] = Ptr[Int32](x)    # → &x
+
+    # Address-of with type inference
+    py: Ptr[Int32] = Ptr(x)           # → &x (infers Ptr[Int32])
+    cp: ConstPtr[Int32] = ConstPtr(x) # → &x (infers ConstPtr[Int32])
+```
+
+**Safety rules:**
+- Argument must be an lvalue (`Ptr(Point(1,2))` rejected — temporary)
+- `Ptr` requires a mutable lvalue; `ConstPtr` accepts any lvalue
+- `Ptr[None](arg)` rejected — void pointer with argument makes no sense
+- Dangling detection works through pointer constructors and intermediate variables:
+
+```python
+def bad() -> Ptr[Int32]:
+    x: Int32 = Int32(1)
+    return Ptr(x)          # ERROR: returned pointer would dangle
+
+def also_bad() -> Ptr[Int32]:
+    x: Int32 = Int32(1)
+    p: Ptr[Int32] = Ptr(x)
+    return p                # ERROR: returned pointer would dangle
+
+def ok(x: Int32) -> Ptr[Int32]:
+    return Ptr(x)           # OK: x is a parameter
+```
+
 #### Owned Return Values (Working)
 
 Object types are normally returned by reference (`T&`) to avoid hidden copies. But this creates a problem when returning newly constructed objects:
