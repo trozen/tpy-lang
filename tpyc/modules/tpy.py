@@ -195,15 +195,15 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::Comparable",
     )
 
-    # NativeIterator[T] protocol: types that produce values lazily via next()
-    # Structural protocol — any type with next() -> T | None conforms automatically.
-    # Maps to C++ next() -> std::optional<T> pattern.
-    module.protocol("NativeIterator",
+    # OptIterator[T] protocol: types that produce values lazily via __next_opt__()
+    # Structural protocol — any type with __next_opt__() -> T | None conforms automatically.
+    # Maps to C++ __next_opt__() -> std::optional<T> pattern.
+    module.protocol("OptIterator",
         type_params=["T"],
         methods={
-            "next": MethodDef(params=[], returns=OptionalType(T), cpp="{self}.next()"),
+            "__next_opt__": MethodDef(params=[], returns=OptionalType(T), cpp="{self}.__next_opt__()"),
         },
-        cpp_concept="tpy::NativeIterator",
+        cpp_concept="tpy::OptIterator",
     )
 
     # NativeIterable[T] protocol: types that support C++ range-based for loops

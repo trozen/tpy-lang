@@ -1,1 +1,0 @@
-main.tp.py:8: error: Type Range[int] does not conform to protocol NativeIterator[Int32] in argument 'it'

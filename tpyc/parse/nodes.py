@@ -272,6 +272,12 @@ class TpyPassStmt(TpyStmt):
     pass
 
 
+@dataclass
+class TpyRaiseStopIteration(TpyStmt):
+    """raise StopIteration — terminates __next__ method."""
+    pass
+
+
 @dataclass(frozen=True)
 class RelativeImportKey:
     """Structured key for relative import placeholders in import dicts.

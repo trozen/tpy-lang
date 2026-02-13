@@ -1,1 +1,0 @@
-NativeIterator structural protocol not available in CPython

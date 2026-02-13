@@ -15,10 +15,10 @@ from ..typesys import (
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
-    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
+    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt, TpyRaiseStopIteration,
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral,
-    TpyFieldAccess,
+    TpyFieldAccess, TpyMethodCall,
     TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce,
 )
 from ..namespace import Namespace
@@ -231,6 +231,8 @@ class StatementGenerator:
             return f"{indent}continue;\n"
         elif isinstance(stmt, TpyPassStmt):
             return ""  # No-op - emit nothing
+        elif isinstance(stmt, TpyRaiseStopIteration):
+            return f"{indent}return std::nullopt;\n"
         elif isinstance(stmt, TpyAssert):
             # Constant-fold trivially-known assertions.
             if isinstance(stmt.condition, TpyBoolLiteral):
@@ -827,11 +829,12 @@ class StatementGenerator:
 
     def _gen_iterator_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                            iterable_expr: str, elem_type: TpyType) -> None:
-        """Generate a while-loop for NativeIterator types.
+        """Generate a while-loop for OptIterator types.
 
         Produces:
-            tpy::Range __iter_N = <iterable>;
-            while (auto __opt_N = __iter_N.next()) {
+            auto& __iter_N = <iterable>;   // variable — reference for consumption
+            auto  __iter_N = <iterable>;   // temporary — copy/move for ownership
+            while (auto __opt_N = __iter_N.__next_opt__()) {
                 int32_t var = *__opt_N;
                 // body
             }
@@ -841,18 +844,48 @@ class StatementGenerator:
         iter_name = f"__iter_{n}"
         opt_name = f"__opt_{n}"
 
-        iterable_type = self.types.get_resolved_type(stmt.iterable)
-        # Protocol-typed params use template params — use auto for deduction
-        if is_protocol_type(iterable_type):
-            iter_cpp_type = "auto"
-        else:
-            iter_cpp_type = self.types.type_to_cpp(iterable_type)
+        binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
 
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}{iter_cpp_type} {iter_name} = {iterable_expr};\n")
-        out.write(f"{indent}while (auto {opt_name} = {iter_name}.next()) {{\n")
+        out.write(f"{indent}{binding} {iter_name} = {iterable_expr};\n")
+        out.write(f"{indent}while (auto {opt_name} = {iter_name}.__next_opt__()) {{\n")
 
         # Declare loop variable inside the while body
+        inner_indent = indent + "  "
+        if elem_type.is_value_type():
+            cpp_elem = elem_type.to_cpp()
+            out.write(f"{inner_indent}{cpp_elem} {stmt.var} = *{opt_name};\n")
+        else:
+            out.write(f"{inner_indent}auto& {stmt.var} = *{opt_name};\n")
+
+        self._gen_loop_body(out, stmt, indent, elem_type)
+
+    def _gen_iter_protocol_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                                iterable_expr: str, elem_type: TpyType) -> None:
+        """Generate a while-loop for types with __iter__() returning an iterator.
+
+        Produces:
+            auto& __obj_N = container;              // variable — reference
+            auto  __obj_N = Container(args);        // temporary — own it
+            auto  __iter_N = __obj_N.__iter__();    // always own the iterator
+            while (auto __opt_N = __iter_N.__next_opt__()) {
+                T x = *__opt_N;
+                // body
+            }
+        """
+        n = self.ctx.iter_counter
+        self.ctx.iter_counter += 1
+        obj_name = f"__obj_{n}"
+        iter_name = f"__iter_{n}"
+        opt_name = f"__opt_{n}"
+
+        obj_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+
+        self.ctx.temps.flush(out, indent)
+        out.write(f"{indent}{obj_binding} {obj_name} = {iterable_expr};\n")
+        out.write(f"{indent}auto {iter_name} = {obj_name}.__iter__();\n")
+        out.write(f"{indent}while (auto {opt_name} = {iter_name}.__next_opt__()) {{\n")
+
         inner_indent = indent + "  "
         if elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
@@ -868,6 +901,39 @@ class StatementGenerator:
         while isinstance(expr, TpyCoerce):
             expr = expr.expr
         return expr
+
+    def _is_lvalue_iterable(self, expr: TpyExpr) -> bool:
+        """Check if the iterable expression is a C++ lvalue.
+
+        Lvalue expressions get auto& to preserve consumption semantics.
+        Rvalue expressions (constructors, value-returning calls, literals)
+        get auto to own the temporary safely.
+        """
+        expr = self._unwrap_coerce(expr)
+        if isinstance(expr, TpyName):
+            return True
+        if isinstance(expr, TpyFieldAccess):
+            return self._is_lvalue_iterable(expr.obj)
+        if isinstance(expr, TpySubscript):
+            return self._is_lvalue_iterable(expr.obj)
+        # Method/function calls returning non-value types use T& in C++ (lvalue).
+        # Constructors always produce rvalues.
+        # Optional returns use T* (pointer by value, rvalue).
+        if isinstance(expr, TpyMethodCall):
+            return self._returns_by_ref(expr)
+        if isinstance(expr, TpyCall):
+            # Constructor calls (generic instantiation or record name) are rvalues
+            if expr.call_type is not None:
+                return False
+            if self.ctx.analyzer.registry.get_record(expr.func):
+                return False
+            return self._returns_by_ref(expr)
+        return False
+
+    def _returns_by_ref(self, expr: TpyExpr) -> bool:
+        """Check if a call expression returns by reference (T&) in C++."""
+        ret_type = self.types.get_resolved_type(expr)
+        return not ret_type.is_value_type() and not isinstance(ret_type, OptionalType)
 
     @staticmethod
     def _is_literal_range_arg(expr: TpyExpr) -> bool:
@@ -1002,19 +1068,26 @@ class StatementGenerator:
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator."""
-        from tpyc.modules import get_native_iterator_element_type
+        from tpyc.modules import get_native_iterator_element_type, get_iter_element_type
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
-        # Check for NativeIterator types first — these use while-loop codegen
+        # Check for OptIterator types first — these use while-loop codegen
         iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             # Optimize range() calls to C-style counter loops
             if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
                 if self._gen_range_counter_loop(out, stmt, indent, iter_elem):
                     return
-            # General NativeIterator path (or range fallback for zero-step)
+            # General OptIterator path (or range fallback for zero-step)
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_iterator_loop(out, stmt, indent, iterable, iter_elem)
+            return
+
+        # Check for __iter__()-based types (container → separate iterator)
+        iter_elem = get_iter_element_type(iterable_type, registry=self.ctx.analyzer.registry)
+        if iter_elem is not None:
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            self._gen_iter_protocol_loop(out, stmt, indent, iterable, iter_elem)
             return
 
         iterable = self.expressions.gen_expr_deref(stmt.iterable)

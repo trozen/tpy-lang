@@ -350,7 +350,7 @@ def init_module() -> BuiltinModule:
     module.type("Range", cpp_type="tpy::Range<{T}>", type_params=["T"],
         param_kinds=[TypeParamKind.TYPE],
         type_factory=lambda t: RangeType(t),
-        extends=["NativeIterator[T]"],
+        extends=["OptIterator[T]"],
         methods={},
     )
 

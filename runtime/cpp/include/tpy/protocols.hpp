@@ -127,16 +127,15 @@ concept NativeIterable = requires(const T& t) {
 };
 
 /**
- * NativeIterator concept - types that produce values lazily via next()
+ * OptIterator concept - types that produce values lazily via __next_opt__()
  *
- * A type is NativeIterator<ElemT> if calling next() returns
- * std::optional<ElemT>. Used for lazy producers like Range.
- *
- * Future: Iterable<T> will use Python's __iter__/__next__ protocol.
+ * A type is OptIterator<ElemT> if calling __next_opt__() returns
+ * std::optional<ElemT>. Used for lazy producers like Range and user-defined
+ * iterators (whose __next__ is compiled to __next_opt__).
  */
 template<typename T, typename ElemT>
-concept NativeIterator = requires(T& t) {
-    { t.next() } -> std::same_as<std::optional<ElemT>>;
+concept OptIterator = requires(T& t) {
+    { t.__next_opt__() } -> std::same_as<std::optional<ElemT>>;
 };
 
 /**

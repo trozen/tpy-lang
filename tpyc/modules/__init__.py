@@ -425,10 +425,10 @@ def type_extends_protocol(tpy_type: "TpyType", protocol_name: str, protocol_type
     resolves the concrete type name and compares.
     """
     from tpyc.typesys import RangeType
-    # Range[T] extends NativeIterator[T] — check elem type directly
+    # Range[T] extends OptIterator[T] — check elem type directly
     # (qualified_name is the same for all Range variants, so lookup_type
     # would return the Int32 registration regardless of elem type)
-    if isinstance(tpy_type, RangeType) and protocol_name == "NativeIterator":
+    if isinstance(tpy_type, RangeType) and protocol_name == "OptIterator":
         return len(protocol_type_args) == 1 and tpy_type.elem == protocol_type_args[0]
 
     type_def = lookup_type(tpy_type)
@@ -628,11 +628,11 @@ UNARYOP_TO_METHOD = {
 
 
 def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistry | None" = None) -> "TpyType | None":
-    """If type is/extends NativeIterator[T], return T. Otherwise None."""
+    """If type is/extends OptIterator[T], return T. Otherwise None."""
     from tpyc.typesys import is_protocol_type, RangeType
 
-    # Direct NativeIterator[T] protocol type
-    if is_protocol_type(tpy_type) and tpy_type.name == "NativeIterator":
+    # Direct OptIterator[T] protocol type
+    if is_protocol_type(tpy_type) and tpy_type.name == "OptIterator":
         if tpy_type.type_args:
             return tpy_type.type_args[0]
         return None
@@ -645,7 +645,7 @@ def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistr
     # the same regex-based extends string parsing to resolve protocol type args.
     type_def = lookup_type(tpy_type)
     if type_def is None:
-        # Check user-defined records with next() -> Optional[T]
+        # Check user-defined records with __next_opt__()/__next__() -> Optional[T]
         if registry is not None:
             from tpyc.typesys import NamedType, OptionalType
             if isinstance(tpy_type, NamedType) and tpy_type.is_record:
@@ -656,7 +656,7 @@ def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistr
 
     for ext in type_def.extends:
         match = re.match(r"(\w+)\[(\w+)\]", ext)
-        if match and match.group(1) == "NativeIterator":
+        if match and match.group(1) == "OptIterator":
             ext_type_name = match.group(2)
             if ext_type_name in type_params:
                 return type_params[ext_type_name]
@@ -670,7 +670,11 @@ def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistr
 def _find_record_next_element(
     record_name: str, type_args: "list[TpyType] | None", registry: "TypeRegistry",
 ) -> "TpyType | None":
-    """Walk a record's method table (and parent chain) looking for next() -> Optional[T]."""
+    """Walk a record's method table (and parent chain) looking for __next_opt__() -> Optional[T].
+
+    Classes defining __next__() -> T have a synthesized __next_opt__() -> Optional[T]
+    added during registration, so only __next_opt__ needs to be checked here.
+    """
     from tpyc.typesys import NamedType, OptionalType, TypeParamRef
 
     record = registry.get_record(record_name)
@@ -681,7 +685,7 @@ def _find_record_next_element(
     if record.type_params and type_args:
         type_subst = dict(zip(record.type_params, type_args))
 
-    for method in record.get_method_overloads("next"):
+    for method in record.get_method_overloads("__next_opt__"):
         if len(method.params) == 0 and isinstance(method.return_type, OptionalType):
             inner = method.return_type.inner
             if isinstance(inner, TypeParamRef) and inner.name in type_subst:
@@ -697,6 +701,55 @@ def _find_record_next_element(
                 for a in parent_args
             ]
         return _find_record_next_element(record.parent.name, parent_args, registry)
+
+    return None
+
+
+def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+    """If type has __iter__() returning a OptIterator-conforming type, return element type T."""
+    from tpyc.typesys import NamedType
+    if not (isinstance(tpy_type, NamedType) and tpy_type.is_record):
+        return None
+    record = registry.get_record(tpy_type.name)
+    if record is None:
+        return None
+    type_subst: dict[str, "TpyType"] = {}
+    if record.type_params and tpy_type.type_args:
+        type_subst = dict(zip(record.type_params, tpy_type.type_args))
+    return _find_iter_method_element_type(record, type_subst, registry)
+
+
+def _find_iter_method_element_type(
+    record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
+) -> "TpyType | None":
+    """Check if record has __iter__() returning an iterator type, and extract element type."""
+    from tpyc.typesys import NamedType, OwnType, TypeParamRef
+
+    for method in record.get_method_overloads("__iter__"):
+        if len(method.params) != 0:
+            continue
+        ret = method.return_type
+        if isinstance(ret, TypeParamRef) and ret.name in type_subst:
+            ret = type_subst[ret.name]
+        if isinstance(ret, OwnType):
+            ret = ret.wrapped
+        if isinstance(ret, NamedType) and ret.is_record:
+            elem = _find_record_next_element(ret.name, ret.type_args, registry)
+            if elem is not None:
+                return elem
+
+    # Walk parent chain
+    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_record:
+        parent_info = registry.get_record(record.parent.name)
+        if parent_info:
+            parent_subst = dict(type_subst)
+            if record.parent.type_args and parent_info.type_params:
+                for param_name, arg in zip(parent_info.type_params, record.parent.type_args):
+                    if isinstance(arg, TypeParamRef) and arg.name in type_subst:
+                        parent_subst[param_name] = type_subst[arg.name]
+                    else:
+                        parent_subst[param_name] = arg
+            return _find_iter_method_element_type(parent_info, parent_subst, registry)
 
     return None
 

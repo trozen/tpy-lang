@@ -1,0 +1,1 @@
+main.tp.py:8: error: Type Range[int] does not conform to protocol OptIterator[Int32] in argument 'it'

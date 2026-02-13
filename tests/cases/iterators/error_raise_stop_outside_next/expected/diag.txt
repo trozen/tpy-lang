@@ -1,0 +1,1 @@
+main.tp.py:10: error: 'raise StopIteration' can only be used inside a __next__ method

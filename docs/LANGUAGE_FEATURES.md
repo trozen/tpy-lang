@@ -997,16 +997,16 @@ print(sum_all(arr))   # 60
 - **Zero overhead**: Compiles to C++ range-based for loops
 - **Not user-extensible**: Requires C++ `begin()`/`end()` support
 
-**Difference from `NativeIterator[T]`**: `NativeIterable[T]` is for containers with `begin()`/`end()` (C++ range-for). `NativeIterator[T]` is for lazy producers with `next()` (while-loop). See below.
+**Difference from `OptIterator[T]`**: `NativeIterable[T]` is for containers with `begin()`/`end()` (C++ range-for). `OptIterator[T]` is for lazy producers with `next()` (while-loop). See below.
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 
-#### Working: `NativeIterator[T]` (lazy iteration)
+#### Working: `OptIterator[T]` (lazy iteration)
 
-`NativeIterator[T]` is a **structural protocol** for types that produce values lazily via a `next()` method returning `T | None`. Any type with a zero-parameter `next()` method returning `Optional[T]` automatically conforms — no explicit `extends` declaration needed.
+`OptIterator[T]` is a **structural protocol** for types that produce values lazily via `__next_opt__()` returning `T | None`. Any type with a `__next_opt__() -> Optional[T]` method automatically conforms — no explicit `extends` declaration needed. Types with `__next__() -> T` + `raise StopIteration` also conform (the compiler synthesizes `__next_opt__` in the type registry).
 
 ```python
-from tpy import Int32, NativeIterator
+from tpy import Int32, OptIterator
 
 class Counter:
     current: Int32
@@ -1016,7 +1016,7 @@ class Counter:
         self.current = 0
         self.limit = limit
 
-    def next(self) -> Int32 | None:
+    def __next_opt__(self) -> Int32 | None:
         if self.current < self.limit:
             result = self.current
             self.current += 1
@@ -1027,8 +1027,8 @@ class Counter:
 for x in Counter(5):
     print(x)
 
-# Pass to function taking NativeIterator[Int32] (structural conformance)
-def sum_iter(it: NativeIterator[Int32]) -> Int32:
+# Pass to function taking OptIterator[Int32] (structural conformance)
+def sum_iter(it: OptIterator[Int32]) -> Int32:
     total: Int32 = 0
     for x in it:
         total += x
@@ -1046,18 +1046,18 @@ for (int32_t i = 0; i < 5; ++i) {
 }
 ```
 
-Step ±1 uses `++i`/`--i`; other literal steps use checked `tpy::int32_add(i, step)` for Int32 or `i += step` for BigInt; variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). Generic `NativeIterator[T]` parameters (not `range()` calls) still use the while-loop path:
+Step ±1 uses `++i`/`--i`; other literal steps use checked `tpy::int32_add(i, step)` for Int32 or `i += step` for BigInt; variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). Generic `OptIterator[T]` parameters (not `range()` calls) still use the while-loop path:
 
 ```cpp
-auto __iter_0 = it;
-while (auto __opt_0 = __iter_0.next()) {
+auto& __iter_0 = it;  // reference for variable (preserves consumption)
+while (auto __opt_0 = __iter_0.__next_opt__()) {
     int32_t x = *__opt_0;
     // body
 }
 ```
 
 **Key characteristics**:
-- **Structural protocol**: Any type with `next() -> T | None` automatically conforms
+- **Structural protocol**: Any type with `__next_opt__() -> T | None` automatically conforms
 - **Built-in conformance**: `Range[T]` is generic — `range()` with Int32 args produces `Range[Int32]`, with BigInt args produces `Range[BigInt]`
 - **Lazy evaluation**: Values produced one at a time, no container allocation
 - **break/continue**: Work naturally in both counter-loops and while-loops
@@ -1066,23 +1066,77 @@ while (auto __opt_0 = __iter_0.next()) {
 
 | Phase | Status | What |
 |-------|--------|------|
-| 1. NativeIterator + Range | **Working** | Unified for-loop path, `range()` as real type |
+| 1. OptIterator + Range | **Working** | Unified for-loop path, `range()` as real type |
 | 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
 | 3. Generic `Range[T]` | **Working** | `range()` over `Int32` or `BigInt` — element type inferred from arguments |
-| 4. Structural NativeIterator | **Working** | Check `next() -> Optional[T]` method for protocol conformance |
-| 5. User-defined iterators | Planned | `__iter__`/`__next__` compiled to NativeIterator |
-| 6. Generator functions | Open | `yield` → state-machine class implementing NativeIterator |
+| 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
+| 5. User-defined iterators | **Working** | `__iter__`/`__next__` compiled to `__next_opt__` under the hood |
+| 6. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
 | 7. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
-#### Planned: `Iterable[T]` and `Iterator[T]`
+See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
 
-Python-compatible iteration protocols (using `__iter__`/`__next__` with `StopIteration`) are not yet supported. When implemented, they will compile to NativeIterator under the hood:
+#### Working: User-Defined Iterators (`__iter__`/`__next__`)
+
+Two patterns for user-defined iterators, both producing `__next_opt__() -> std::optional<T>` in C++:
+
+**Pattern 1: Python-compatible** — `__next__(self) -> T` + `raise StopIteration` (runs in both tpyc and CPython):
 
 ```python
-# NOT YET WORKING
-class Iterable(Protocol[T]):
-    def __iter__(self) -> Iterator[T]: ...
+from __future__ import annotations
+from tpy import Int32
+
+class Counter:
+    current: Int32
+    limit: Int32
+
+    def __init__(self, limit: Int32) -> None:
+        self.current = 0
+        self.limit = limit
+
+    def __iter__(self) -> Counter:
+        return self
+
+    def __next__(self) -> Int32:
+        if self.current < self.limit:
+            result = self.current
+            self.current += 1
+            return result
+        raise StopIteration
+
+for x in Counter(5):
+    print(x)
 ```
+
+**Pattern 2: TurboPython-specific** — `__next_opt__(self) -> T | None`:
+
+```python
+class Counter:
+    # ... same fields and __init__ ...
+    def __next_opt__(self) -> Int32 | None:
+        if self.current < self.limit:
+            result = self.current
+            self.current += 1
+            return result
+        return None
+```
+
+**Container → Iterator separation** via `__iter__()`:
+
+```python
+class NumberRange:
+    def __init__(self, start: Int32, limit: Int32) -> None:
+        self.start = start
+        self.limit = limit
+
+    def __iter__(self) -> Own[RangeIter]:
+        return RangeIter(self.start, self.limit)
+```
+
+**Rules**:
+- Direct `obj.__next__()` calls are forbidden — use a for-loop or call `obj.__next_opt__()` instead
+- `raise StopIteration` is only allowed inside `__next__` methods
+- The `next()` builtin is not yet supported
 
 #### Working: `NativeContiguous[T]` (Span coercion)
 
@@ -1125,7 +1179,7 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
-- `for` loops work on `NativeIterator[T]`-typed parameters ✓ (working)
+- `for` loops work on `OptIterator[T]`-typed parameters ✓ (working)
 - Implicit coercion to `Span[T]` works on types extending `NativeContiguous[T]` ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters (planned - Python-compatible)
 
@@ -1211,7 +1265,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `while`
 - **Working**: `for i in range(n)`, `for i in range(start, end)`, `for i in range(start, end, step)`
 - **Working**: `for item in container` (for-each over list, Array, Span, str)
-- **Working**: `for x in iterator` (for-each over NativeIterator types — Range and user-defined)
+- **Working**: `for x in iterator` (for-each over OptIterator types — Range and user-defined)
 - **Working**: `break`, `continue`
 - **Open**: `for/else`, `while/else` → flag variable pattern
 
@@ -1366,7 +1420,7 @@ struct SortedContainer {
 - `Comparable` - has comparison operators (`<`, `<=`, `>`, `>=`, `==`, `!=`)
 - `Sequence[T]` - has `__len__()` and `__getitem__()`
 - `NativeIterable[T]` - supports C++ range-for iteration
-- `NativeIterator[T]` - lazy iteration via `next() -> Optional[T]`
+- `OptIterator[T]` - lazy iteration via `next() -> Optional[T]`
 - User-defined protocols (including protocols with inheritance)
 
 **Protocol Inheritance with Bounds**: When using a child protocol as a bound (e.g., `T: PrintableAndSized`), methods from all ancestor protocols are available on `T`.
@@ -1923,8 +1977,8 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Open**: `str()`, `int(str)` → string conversion functions (see below)
-- **Open**: `enumerate()` → returns NativeIterator (see iterator roadmap)
-- **Open**: `zip()` → returns NativeIterator (see iterator roadmap)
+- **Open**: `enumerate()` → returns OptIterator (see iterator roadmap)
+- **Open**: `zip()` → returns OptIterator (see iterator roadmap)
 
 #### Type Conversion Functions
 
@@ -2334,7 +2388,7 @@ math.fabs(x)       # absolute value (float)
 
 ## Generators
 
-- **Open**: `yield` → generator as state-machine class implementing NativeIterator (see iterator roadmap)
+- **Open**: `yield` → generator as state-machine class implementing OptIterator (see iterator roadmap)
 - **Open**: Generator expressions → lazy iterators with known bounds
 - Could be zero-alloc if state machine is stack-allocated
 

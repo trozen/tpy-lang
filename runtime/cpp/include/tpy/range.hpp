@@ -27,7 +27,7 @@ public:
         if (step_ == T{}) tpy_panic("range() arg 3 must not be zero");
     }
 
-    std::optional<T> next() {
+    std::optional<T> __next_opt__() {
         if (step_ > T{} ? current_ < end_ : current_ > end_) {
             T val = current_;
             if constexpr (std::is_same_v<T, int32_t>) {

@@ -16,7 +16,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
-    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
+    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp, TpyArrayLiteral, TpyListRepeat, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName,
     TpyFieldAccess, TpyFunction,
@@ -251,9 +251,10 @@ class StatementAnalyzer:
             before = self.init.save()
             with self.scopes.loop_scope() as inner_scope:
                 self.init.apply_loop_entry_facts(before)
-                # NativeIterator produces fresh values each iteration (like rvalues)
+                # OptIterator and __iter__-based types produce fresh values each iteration
                 is_native_iterator = builtin_modules.get_native_iterator_element_type(iterable_type, registry=self.ctx.registry) is not None
-                if is_native_iterator:
+                is_iter_based = builtin_modules.get_iter_element_type(iterable_type, registry=self.ctx.registry) is not None
+                if is_native_iterator or is_iter_based:
                     iter_depth = inner_scope.depth
                 elif self.compat.is_lvalue(stmt.iterable):
                     # For-each var references container's storage — use container's depth.
@@ -297,6 +298,11 @@ class StatementAnalyzer:
             then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             self.ctx.non_none_vars.update(then_facts)
             self.ctx.non_none_exprs.update(then_expr_facts)
+        elif isinstance(stmt, TpyRaiseStopIteration):
+            func = self.ctx.current_function
+            if not isinstance(func, TpyFunction) or func.name != "__next__":
+                raise self.ctx.error("'raise StopIteration' can only be used inside a __next__ method", stmt)
+            self.init.mark_terminated()
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param or loop variable."""

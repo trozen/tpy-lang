@@ -121,26 +121,31 @@ class ListLiteralTracker:
                     self.ctx.current_scope.define(info.variable_name, resolved)
 
     def is_type_iterable(self, typ: TpyType) -> bool:
-        """Check if a type is iterable (extends NativeIterable, NativeIterator, or is a protocol type).
+        """Check if a type is iterable.
 
-        A type is iterable if it declares extends=["NativeIterable[T]"] or
-        extends=["NativeIterator[T]"], or is itself a NativeIterable[T] or
-        NativeIterator[T] protocol type.
+        A type is iterable if it:
+        - Is a NativeIterable[T] or OptIterator[T] protocol type
+        - Declares extends=["NativeIterable[T]"] or extends=["OptIterator[T]"]
+        - Has __next_opt__() or __next__() (OptIterator conformance)
+        - Has __iter__() returning an iterator type
         """
-        # NativeIterable[T] or NativeIterator[T] protocol type
-        if is_protocol_type(typ) and typ.name in ("NativeIterable", "NativeIterator"):
+        # NativeIterable[T] or OptIterator[T] protocol type
+        if is_protocol_type(typ) and typ.name in ("NativeIterable", "OptIterator"):
             return True
-        # Check if type extends NativeIterable or NativeIterator
+        # Check if type extends NativeIterable or OptIterator
         if builtin_modules.type_extends_any(typ, "NativeIterable"):
             return True
         if builtin_modules.get_native_iterator_element_type(typ, registry=self.ctx.registry) is not None:
+            return True
+        # Check __iter__() method
+        if builtin_modules.get_iter_element_type(typ, registry=self.ctx.registry) is not None:
             return True
         return False
 
     def get_iterable_element_type_or_none(self, iterable_type: TpyType) -> TpyType | None:
         """Get the element type of an iterable, or None if not iterable.
 
-        For types extending NativeIterable[T] or NativeIterator[T], returns T.
+        For types extending NativeIterable[T] or OptIterator[T], returns T.
         """
         # Handle NativeIterable[T] protocol type
         if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterable":
@@ -148,8 +153,8 @@ class ListLiteralTracker:
                 return iterable_type.type_args[0]
             return None
 
-        # Handle NativeIterator[T] protocol type
-        if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterator":
+        # Handle OptIterator[T] protocol type
+        if is_protocol_type(iterable_type) and iterable_type.name == "OptIterator":
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
             return None
@@ -158,8 +163,13 @@ class ListLiteralTracker:
         if isinstance(iterable_type, StrType):
             return CHAR
 
-        # Check NativeIterator extends (e.g., Range extends NativeIterator[Int32])
+        # Check OptIterator extends (e.g., Range extends OptIterator[Int32])
         iter_elem = builtin_modules.get_native_iterator_element_type(iterable_type, registry=self.ctx.registry)
+        if iter_elem is not None:
+            return iter_elem
+
+        # Check __iter__() method (container → separate iterator)
+        iter_elem = builtin_modules.get_iter_element_type(iterable_type, registry=self.ctx.registry)
         if iter_elem is not None:
             return iter_elem
 

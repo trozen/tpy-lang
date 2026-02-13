@@ -120,9 +120,16 @@ class FunctionGenerator:
 
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
         """Generate a method definition inside a struct."""
+        # __next__() -> T is emitted as __next_opt__() -> std::optional<T>
+        is_dunder_next = method.name == "__next__"
+        cpp_name = "__next_opt__" if is_dunder_next else method.name
+        cpp_return_type = method.return_type
+        if is_dunder_next:
+            cpp_return_type = OptionalType(method.return_type)
+
         is_const = method.name in CONST_METHODS
         is_static = method.is_staticmethod
-        ret_type = method.return_type.to_cpp_return_const() if is_const else method.return_type.to_cpp_return()
+        ret_type = cpp_return_type.to_cpp_return_const() if is_const else cpp_return_type.to_cpp_return()
         if is_const:
             params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
         else:
@@ -132,7 +139,7 @@ class FunctionGenerator:
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent="  ")
         self.ctx.emit_source_comment(out, method.loc, indent="  ")
-        out.write(f"  {static_prefix}{ret_type} {method.name}({params}){const_suffix} {{\n")
+        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not is_static:
@@ -143,6 +150,13 @@ class FunctionGenerator:
                                  method, local_ns, indent_level=2, is_method=True)
 
         out.write("  }\n")
+
+        # Also emit a __next__() panic stub so direct calls compile but fail at runtime
+        if is_dunder_next:
+            orig_ret = method.return_type.to_cpp_return()
+            out.write(f"\n  {orig_ret} __next__() {{\n")
+            out.write(f'    tpy::tpy_panic("__next__() is not directly callable; use a for-loop");\n')
+            out.write("  }\n")
 
     def gen_body(self, *args, **kwargs) -> None:
         """Delegate to StatementGenerator.gen_body()."""

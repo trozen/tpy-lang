@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo,
-    TypeParamKind, is_protocol_type,
+    TypeParamKind, OptionalType, VoidType, is_protocol_type,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl
 from .diagnostics import SemanticError
@@ -161,6 +161,17 @@ class TypeRegistrar:
                 is_staticmethod=method.is_staticmethod,
                 cpp_template=DUNDER_CPP_TEMPLATES.get(method.name)
             )]
+
+        # __next__() -> T implies __next_opt__() -> Optional[T] for protocol conformance
+        if "__next__" in methods and "__next_opt__" not in methods:
+            next_info = methods["__next__"][0]
+            if not isinstance(next_info.return_type, (OptionalType, VoidType)):
+                methods["__next_opt__"] = [FunctionInfo(
+                    name="__next_opt__",
+                    params=next_info.params,
+                    return_type=OptionalType(next_info.return_type),
+                    is_method=True,
+                )]
 
         # Convert parsed bounds to NamedType (validate they are protocols)
         type_param_bounds: dict[str, NamedType] = {}

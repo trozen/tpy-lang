@@ -107,7 +107,7 @@ tests/
 │   ├── assert/               # assert statements, narrowing integration
 │   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
-│   ├── control_flow/         # if/else, for loops, break/continue, iterables
+│   ├── control_flow/         # if/else, for loops, break/continue
 │   ├── float/                # Float operations
 │   ├── generics/             # Generic types, functions, inference, bounds
 │   ├── globals/              # Global variables, name binding
@@ -115,6 +115,7 @@ tests/
 │   ├── inference/            # Type inference, variable type deduction
 │   ├── inheritance/          # Class inheritance, super calls, method override
 │   ├── int/                  # int, Int32, BigInt
+│   ├── iterators/            # Iterators, range, __iter__/__next__, NativeIterable
 │   ├── list/                 # List, container methods
 │   ├── none_safety/          # Optional types, narrowing, @readonly
 │   ├── operators/            # Operators, coercion, assignment, subscript

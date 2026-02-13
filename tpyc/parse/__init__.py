@@ -12,7 +12,7 @@ from .nodes import (
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt,
+    TpyPassStmt, TpyRaiseStopIteration,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol,
     ParseWarning, TpyModule,
 )
@@ -32,7 +32,7 @@ __all__ = [
     "TpyFieldAccess", "TpyArrayLiteral", "TpyListRepeat", "TpySubscript", "TpyCoerce",
     "TpyStmt", "TpyVarDecl", "TpyAssign", "TpyAugAssign", "TpyExprStmt", "TpyReturn",
     "TpyAssert", "TpyIf", "TpyWhile", "TpyForEach", "TpyBreak", "TpyContinue",
-    "TpyPassStmt",
+    "TpyPassStmt", "TpyRaiseStopIteration",
     "RelativeImportKey", "TpyImport", "TpyFunction", "TpyRecord", "TpyProtocol",
     "ParseWarning", "TpyModule",
     # imports

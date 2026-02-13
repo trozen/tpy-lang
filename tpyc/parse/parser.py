@@ -23,7 +23,7 @@ from .nodes import (
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt,
+    TpyPassStmt, TpyRaiseStopIteration,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyModule,
 )
 from .imports import ImportProcessor, SPECIAL_MODULES, check_tpy_type_imported
@@ -66,7 +66,7 @@ class Parser:
 
     FORBIDDEN_CONSTRUCTS = {
         "dict", "set", "tuple",
-        "try", "raise", "with", "async", "await",
+        "try", "with", "async", "await",
         "lambda", "yield", "global", "nonlocal",
     }
 
@@ -723,8 +723,26 @@ class Parser:
         elif isinstance(node, ast.Continue):
             return TpyContinue(loc=loc)
 
+        elif isinstance(node, ast.Raise):
+            return self._parse_raise(node, loc)
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
+
+    def _parse_raise(self, node: ast.Raise, loc: SourceLocation | None) -> TpyStmt:
+        """Parse a raise statement. Only `raise StopIteration` is supported."""
+        exc = node.exc
+        if exc is None:
+            raise ParseError("'raise' requires an exception; only 'raise StopIteration' is supported", node)
+        # raise StopIteration
+        if isinstance(exc, ast.Name) and exc.id == "StopIteration":
+            return TpyRaiseStopIteration(loc=loc)
+        # raise StopIteration()
+        if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name) and exc.func.id == "StopIteration":
+            if exc.args or exc.keywords:
+                raise ParseError("'raise StopIteration' does not accept arguments", node)
+            return TpyRaiseStopIteration(loc=loc)
+        raise ParseError("Only 'raise StopIteration' is supported", node)
 
     def _parse_expr(self, node: ast.expr) -> TpyExpr:
         """Parse an expression."""

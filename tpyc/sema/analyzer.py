@@ -7,7 +7,7 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType
+from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType, VoidType
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
 
@@ -291,6 +291,15 @@ class SemanticAnalyzer:
         self.ctx.record_ctx.type_param_kinds = record.type_param_kinds if record.type_param_kinds else None
         self.ctx.record_ctx.type_param_bounds = record.type_param_bounds if record.type_param_bounds else None
 
+        # Reject class defining both __next__ and __next_opt__ (codegen renames __next__ → __next_opt__)
+        method_names = {m.name for m in record.methods}
+        if "__next__" in method_names and "__next_opt__" in method_names:
+            next_method = next(m for m in record.methods if m.name == "__next__")
+            raise self._error(
+                "Cannot define both __next__ and __next_opt__ in the same class",
+                next_method
+            )
+
         for method in record.methods:
             self.ctx.reset_function_tracking()
             self.ctx.current_function = method
@@ -315,6 +324,13 @@ class SemanticAnalyzer:
             for pname, ptype in method.params:
                 local_ns.bind_variable(pname, ptype)
             self.ctx.current_ns = local_ns
+
+            # __next__ must have an explicit non-void return type annotation
+            if method.name == "__next__" and isinstance(method.return_type, VoidType):
+                raise self._error(
+                    "__next__ method must have a return type annotation",
+                    method
+                )
 
             # Analyze body
             for stmt in method.body:

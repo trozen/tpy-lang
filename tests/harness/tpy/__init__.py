@@ -448,7 +448,7 @@ class NativeIterable(_Protocol[T]):
 
 
 @_runtime_checkable
-class NativeIterator(_Protocol[T]):
+class OptIterator(_Protocol[T]):
     """Types that produce values lazily via next().
 
     In CPython, this matches any iterable type (for-loop compatibility).
