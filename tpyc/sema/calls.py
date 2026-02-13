@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
-    StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo,
-    VOID, BIGINT, is_protocol_type,
+    StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
+    SpanType, VOID, BIGINT, is_protocol_type,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName
 from ..namespace import BindingKind
@@ -27,6 +27,24 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
 
 from tpyc import modules as builtin_modules
+from tpyc.modules import MethodDef
+
+
+def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
+    """Convert a MethodDef (module-level constructor) to FunctionInfo for resolved_function_info."""
+    return FunctionInfo(
+        name="__init__",
+        params=[(p.name, p.type) for p in m.params],
+        return_type=m.returns,
+        cpp_template=m.cpp,
+    )
+
+
+def _has_type_param_ref(t: TpyType) -> bool:
+    """Check if a type contains an unresolved TypeParamRef (e.g. Span[T])."""
+    if isinstance(t, TypeParamRef):
+        return True
+    return any(isinstance(a, TypeParamRef) for a in t.inner_types())
 
 
 class CallAnalyzer:
@@ -227,6 +245,8 @@ class CallAnalyzer:
                                     elem_type = BIGINT
                                 result_type = type_def.type_factory(elem_type)
                                 expr.call_type = result_type
+                                if ctor.cpp:
+                                    expr.resolved_function_info = _method_def_to_function_info(ctor)
                                 return result_type
 
                 # Show specific error when a non-literal type with element info
@@ -274,26 +294,47 @@ class CallAnalyzer:
         return OwnType(arg_type)
 
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
-        """Validate protocol-typed constructor params for generic type instantiation.
+        """Validate and resolve generic type constructor calls.
 
-        When call_type is set (e.g., list[int](arg)), sema skips constructor matching.
-        This catches cases where the arg doesn't conform to a required protocol,
-        preventing invalid C++ from being generated.
+        When call_type is set (e.g., list[int](iterable)), checks that args
+        conform to constructor params and sets resolved_function_info for codegen.
+        For params with TypeParamRef (e.g. Span[T]), structural compatibility is
+        checked (arg must be a container with matching element type) even though
+        T itself is unresolved.
         """
         lookup = builtin_modules.lookup_generic_type(expr.func)
         if lookup is None or not lookup.type_def.constructors:
             return
-        # Check constructors with matching arity
         for ctor in lookup.type_def.constructors:
             if len(ctor.params) != len(arg_types):
                 continue
-            # Only validate protocol-typed params (e.g., NativeIterable[T])
-            all_ok = True
+            rejected = False
+            fully_checked = True
             for p, at in zip(ctor.params, arg_types):
-                if is_protocol_type(p.type) and not builtin_modules.type_extends_any(at, p.type.name):
-                    all_ok = False
+                if is_protocol_type(p.type):
+                    if not builtin_modules.type_extends_any(at, p.type.name):
+                        rejected = True
+                        break
+                elif _has_type_param_ref(p.type):
+                    # Can't fully resolve T, but reject clearly incompatible
+                    # types. For Span[T]: arg must have an element type, and
+                    # if T is known from call_type, element types must match.
+                    if isinstance(p.type, SpanType):
+                        arg_elem = at.get_element_type()
+                        if arg_elem is None:
+                            rejected = True
+                            break
+                        expected_elem = expr.call_type.get_element_type() if expr.call_type else None
+                        if expected_elem is not None and not type_matches_numeric(arg_elem, expected_elem):
+                            rejected = True
+                            break
+                    fully_checked = False
+                elif not type_matches_numeric(at, p.type):
+                    rejected = True
                     break
-            if all_ok:
+            if not rejected:
+                if fully_checked and ctor.cpp:
+                    expr.resolved_function_info = _method_def_to_function_info(ctor)
                 return
         # No constructor matched — emit error for single-arg case
         if len(arg_types) == 1:

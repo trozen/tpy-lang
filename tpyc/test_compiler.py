@@ -39,6 +39,20 @@ class TestCompilerFromSource:
         assert len(file_ast.top_level_stmts) == len(source_ast.top_level_stmts)
 
 
+class TestCodegenRegression:
+    def test_generic_ctor_invalid_arg_rejected(self):
+        """Invalid generic constructor arg (Int32 for Span[T] param) must be rejected by sema."""
+        import pytest
+        from .sema.diagnostics import SemanticError
+        source = (
+            'from tpy import StaticList, Int32\n'
+            'x: StaticList[Int32, 4] = StaticList[Int32, 4](Int32(1))\n'
+        )
+        compiler = Compiler.from_source(source)
+        with pytest.raises(SemanticError, match="cannot be constructed from"):
+            compiler.compile()
+
+
 class TestBuildLayout:
     def setup_method(self):
         self.layout = BuildLayout(Path("/out"), "main")

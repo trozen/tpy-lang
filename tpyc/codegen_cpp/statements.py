@@ -990,7 +990,7 @@ class StatementGenerator:
             step_kind = "plus_one"
             step_val = 1
 
-        gen_args = self.builtins.gen_range_args(range_call, elem_type)
+        gen_args = self.builtins.gen_range_args(range_call)
 
         # Determine start/stop/step C++ expressions
         if nargs == 1:

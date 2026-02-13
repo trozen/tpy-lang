@@ -505,27 +505,19 @@ class ExpressionGenerator:
             # List repeat already generates the target type via from_range
             if len(expr.args) == 1 and isinstance(expr.args[0], TpyListRepeat):
                 return self.gen_expr(expr.args[0], expr.call_type)
-            # Check for constructor with cpp template (e.g., list(iterable))
-            # Skip for literals - they use simpler initialization
-            if expr.args and not isinstance(expr.args[0], TpyArrayLiteral):
-                if lookup := builtin_modules.lookup_generic_type(expr.func):
-                    type_def = lookup.type_def
-                    if type_def.constructors:
-                        # Find matching constructor and use its cpp template
-                        arg_types = [self.types.get_resolved_type(a) for a in expr.args]
-                        for ctor in type_def.constructors:
-                            if len(ctor.params) == len(arg_types):
-                                # Check if this constructor matches (Iterable matches containers)
-                                if all(self.builtins.ctor_param_matches(at, p.type) for at, p in zip(arg_types, ctor.params)):
-                                    type_params = builtin_modules.extract_type_params(expr.call_type)
-                                    # Dereference globals for constructor templates that use method calls
-                                    gen_args = []
-                                    for a in expr.args:
-                                        gen = self.gen_expr(a, expr.call_type)
-                                        if self.ctx.is_indirect_name(a):
-                                            gen = f"(*{gen})"
-                                        gen_args.append(gen)
-                                    return self.builtins.apply_cpp_template(ctor.cpp, gen_args, type_params, expr.call_type)
+            # Use sema-resolved constructor when available (e.g. list(iterable))
+            if (expr.args and not isinstance(expr.args[0], TpyArrayLiteral)
+                    and expr.resolved_function_info
+                    and expr.resolved_function_info.cpp_template):
+                ctor = expr.resolved_function_info
+                type_params = builtin_modules.extract_type_params(expr.call_type)
+                gen_args = []
+                for a in expr.args:
+                    gen = self.gen_expr(a, expr.call_type)
+                    if self.ctx.is_indirect_name(a):
+                        gen = f"(*{gen})"
+                    gen_args.append(gen)
+                return self.builtins.apply_cpp_template(ctor.cpp_template, gen_args, type_params, expr.call_type)
             # Pass call_type as target for proper nested array brace generation
             args = ", ".join(self.gen_expr_deref(a, expr.call_type) for a in expr.args)
             # Use qualified type name for imported records
@@ -565,7 +557,7 @@ class ExpressionGenerator:
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
-        if hasattr(expr, "resolved_function_info") and expr.resolved_function_info:
+        if expr.resolved_function_info:
             params = expr.resolved_function_info.params
             gen_args = []
             for i, arg in enumerate(expr.args):
@@ -603,7 +595,7 @@ class ExpressionGenerator:
         # Check for inherited builtin method with cpp_template first
         # This must be checked before the self.method() shortcut because
         # inherited builtin methods need the cpp_template substitution
-        if hasattr(expr, 'resolved_function_info') and expr.resolved_function_info:
+        if expr.resolved_function_info:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
                 # For self.inherited_method(), use (*this) as the receiver
@@ -652,7 +644,7 @@ class ExpressionGenerator:
             obj_type = obj_type.wrapped
 
         # Builtin methods with cpp_template (resolved by sema)
-        if hasattr(expr, 'resolved_function_info') and expr.resolved_function_info:
+        if expr.resolved_function_info:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
                 # T* pointer-locals/globals need dereferencing for method template access

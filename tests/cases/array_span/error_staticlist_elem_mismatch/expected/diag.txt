@@ -1,0 +1,1 @@
+main.tp.py:2: error: StaticList() cannot be constructed from PendingList[str, 1]#0

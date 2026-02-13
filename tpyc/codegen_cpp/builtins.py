@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    ListType, ArrayType, SpanType, ModuleType, CHAR, is_protocol_type,
+    ListType, ArrayType, SpanType, ModuleType, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -22,8 +22,6 @@ from .context import escape_cpp_string, CodeGenError, expand_cpp_template
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
-
-from tpyc import modules as builtin_modules
 
 
 class BuiltinGenerator:
@@ -77,9 +75,15 @@ class BuiltinGenerator:
 
     def gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:
         """Generate C++ code for a builtin type constructor using unified RecordInfo.constructors."""
+        fi = expr.resolved_function_info
+        if fi and fi.cpp_template:
+            gen_args = [self._gen_expr_deref(arg, ptype)
+                        for arg, (_, ptype) in zip(expr.args, fi.params)]
+            return fi.cpp_template.format(*gen_args)
+
+        # Fallback for synthetic calls (e.g. module-aliased constructors like t.Int32(42))
         args = expr.args
         arg_types = [self.ctx.analyzer.get_expr_type(arg) for arg in args]
-
         for ctor in record_info.constructors:
             if len(ctor.params) != len(args):
                 continue
@@ -90,34 +94,6 @@ class BuiltinGenerator:
 
         raise RuntimeError(f"No matching constructor for {expr.func}")
 
-    def ctor_param_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
-        """Check if argument type matches constructor parameter (for generic type constructors)."""
-        # Check for protocol type with TypeParamRef (e.g., NativeIterable[T], OptIterator[T])
-        if is_protocol_type(param_type) and param_type.type_args:
-            has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
-            if has_type_param:
-                protocol_name = param_type.name
-                if protocol_name == "OptIterator":
-                    elem_type = builtin_modules.get_native_iterator_element_type(
-                        arg_type, registry=self.ctx.analyzer.registry)
-                    return elem_type is not None
-                # Get element type from arg to build concrete protocol type
-                elem_type = arg_type.get_element_type()
-                if elem_type is None:
-                    # No element type - check if it's a concrete protocol like NativeIterable[Char]
-                    # This handles str which has no get_element_type but extends NativeIterable[Char]
-                    if isinstance(arg_type, StrType) and protocol_name == "NativeIterable":
-                        elem_type = CHAR
-                    else:
-                        return False
-                # Check with type-arg-aware protocol conformance
-                return builtin_modules.type_extends_protocol(arg_type, protocol_name, [elem_type])
-
-        if isinstance(param_type, TpyType):
-            return arg_type == param_type or (
-                isinstance(arg_type, IntLiteralType) and isinstance(param_type, (Int32Type, BigIntType))
-            )
-        return False
 
     def apply_cpp_template(
         self, template: str, args: list[str], type_params: dict[str, TpyType], result_type: TpyType
@@ -152,38 +128,25 @@ class BuiltinGenerator:
 
         raise RuntimeError(f"No matching overload for {expr.func}")
 
-    def gen_range_args(self, expr: TpyCall, elem_type: TpyType = None) -> list[str]:
+    def gen_range_args(self, expr: TpyCall) -> list[str]:
         """Generate individual C++ arg expressions for range().
 
         Returns the generated arg list (e.g. ["0", "10", "2"]) rather than
         formatting into the full template string.  Used by the counter-loop
         optimisation in statements.py.
-
-        When elem_type is provided, selects the overload matching
-        Range[elem_type] by param count — bypassing the codegen type matcher
-        which can disagree with sema on IntLiteral/BigInt classification.
         """
-        from tpyc.typesys import RangeType
-        overloads = self.ctx.analyzer.registry.get_builtin_function_overloads("range")
-        nargs = len(expr.args)
-        if elem_type is not None:
-            for o in overloads:
-                if (isinstance(o.return_type, RangeType)
-                        and o.return_type.elem == elem_type
-                        and len(o.params) == nargs):
-                    return [self._gen_expr_deref(arg, ptype)
-                            for arg, (_, ptype) in zip(expr.args, o.params)]
-        overload, gen_args = self._match_overload_args(expr, overloads)
-        return gen_args
+        fi = expr.resolved_function_info
+        return [self._gen_expr_deref(arg, ptype)
+                for arg, (_, ptype) in zip(expr.args, fi.params)]
 
     def gen_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:
         """Generate C++ code for a builtin function call using unified FunctionInfo overloads."""
-        # Use sema-resolved overload when available (avoids re-resolution disagreements)
-        if expr.resolved_function_info and expr.resolved_function_info.cpp_template:
-            fi = expr.resolved_function_info
+        fi = expr.resolved_function_info
+        if fi and fi.cpp_template:
             gen_args = [self._gen_expr_deref(arg, ptype)
                         for arg, (_, ptype) in zip(expr.args, fi.params)]
             return fi.cpp_template.format(*gen_args)
+        # Fallback: re-resolve (shouldn't normally be needed)
         overload, gen_args = self._match_overload_args(expr, overloads)
         return overload.cpp_template.format(*gen_args)
 
