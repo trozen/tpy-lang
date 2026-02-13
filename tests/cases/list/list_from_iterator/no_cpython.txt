@@ -1,0 +1,1 @@
+__next_opt__ is a TurboPython-specific iterator protocol

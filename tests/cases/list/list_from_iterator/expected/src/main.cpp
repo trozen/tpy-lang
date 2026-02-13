@@ -4,6 +4,8 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
+// 18: result = list(Counter(5))
+std::vector<int32_t>* result{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -11,11 +13,11 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 3: for i in range(1, 10, 0):
-  for (int32_t i : tpy::Range<int32_t>(1, 10, 0)) {
-    // 4:     print(i)
-    std::cout << i << "\n";
-  }
+  // 18: result = list(Counter(5))
+  static std::vector<int32_t> __global_slot_1 = tpy::collect<std::vector<int32_t>>(Counter(5));
+  result = &__global_slot_1;
+  // 19: print(result)
+  std::cout << tpy::ListPrinter((*result)) << "\n";
 }
 
 } // namespace tpy_user::main

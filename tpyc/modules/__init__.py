@@ -424,13 +424,6 @@ def type_extends_protocol(tpy_type: "TpyType", protocol_name: str, protocol_type
     For non-generic types like str with extends=["NativeIterable[Char]"],
     resolves the concrete type name and compares.
     """
-    from tpyc.typesys import RangeType
-    # Range[T] extends OptIterator[T] — check elem type directly
-    # (qualified_name is the same for all Range variants, so lookup_type
-    # would return the Int32 registration regardless of elem type)
-    if isinstance(tpy_type, RangeType) and protocol_name == "OptIterator":
-        return len(protocol_type_args) == 1 and tpy_type.elem == protocol_type_args[0]
-
     type_def = lookup_type(tpy_type)
     if type_def is None:
         return False
@@ -629,17 +622,13 @@ UNARYOP_TO_METHOD = {
 
 def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistry | None" = None) -> "TpyType | None":
     """If type is/extends OptIterator[T], return T. Otherwise None."""
-    from tpyc.typesys import is_protocol_type, RangeType
+    from tpyc.typesys import is_protocol_type
 
     # Direct OptIterator[T] protocol type
     if is_protocol_type(tpy_type) and tpy_type.name == "OptIterator":
         if tpy_type.type_args:
             return tpy_type.type_args[0]
         return None
-
-    # Range[T] — element type is T
-    if isinstance(tpy_type, RangeType):
-        return tpy_type.elem
 
     # TODO: extract shared helper with type_conforms_to_protocol() — both do
     # the same regex-based extends string parsing to resolve protocol type args.

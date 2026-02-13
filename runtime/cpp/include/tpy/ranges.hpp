@@ -114,4 +114,20 @@ Container from_range(R&& range) {
     }
 }
 
+/**
+ * collect<Container> - Collect elements from an OptIterator into a container.
+ *
+ * Calls __next_opt__() repeatedly until std::nullopt, pushing elements
+ * into the container. Used for list(iterator) where iterator is a
+ * user-defined OptIterator (not NativeIterable).
+ */
+template<typename Container, typename Iter>
+Container collect(Iter&& iter) {
+    Container result;
+    while (auto opt = iter.__next_opt__()) {
+        result.push_back(std::move(*opt));
+    }
+    return result;
+}
+
 } // namespace tpy

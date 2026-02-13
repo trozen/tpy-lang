@@ -100,7 +100,7 @@ void __tpy_init() {
   static std::vector<tpy::BigInt> __global_slot_6 = {100, 200, 300};
   src = &__global_slot_6;
   // 54: copy = list(src)
-  static std::vector<tpy::BigInt> __global_slot_7 = std::vector<tpy::BigInt>((*src).begin(), (*src).end());
+  static std::vector<tpy::BigInt> __global_slot_7 = tpy::from_range<std::vector<tpy::BigInt>>((*src));
   copy = &__global_slot_7;
   // 55: print(copy)
   std::cout << tpy::ListPrinter((*copy)) << "\n";
@@ -114,7 +114,7 @@ void __tpy_init() {
   static std::array<int32_t, 3> __global_slot_8 = {5, 6, 7};
   arr = &__global_slot_8;
   // 62: from_arr = list(arr)
-  static std::vector<int32_t> __global_slot_9 = std::vector<int32_t>((*arr).begin(), (*arr).end());
+  static std::vector<int32_t> __global_slot_9 = tpy::from_range<std::vector<int32_t>>((*arr));
   from_arr = &__global_slot_9;
   // 63: print(from_arr)
   std::cout << tpy::ListPrinter((*from_arr)) << "\n";

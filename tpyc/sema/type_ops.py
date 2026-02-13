@@ -375,13 +375,18 @@ class TypeOperations:
         arg_type: TpyType,
         inferred: dict[str, TpyType],
     ) -> bool:
-        """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T])."""
+        """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], OptIterator[T])."""
         from tpyc import modules as builtin_modules
 
-        elem_type = self._get_iterable_element_type_or_none(arg_type)
+        protocol_name = param_type.name
+        if protocol_name == "OptIterator":
+            elem_type = builtin_modules.get_native_iterator_element_type(
+                arg_type, registry=self.ctx.registry)
+        else:
+            elem_type = self._get_iterable_element_type_or_none(arg_type)
+            if elem_type is not None and not builtin_modules.type_extends_any(arg_type, protocol_name):
+                elem_type = None
         if elem_type is None:
-            return False
-        if not builtin_modules.type_extends_any(arg_type, "NativeIterable"):
             return False
         for ta in param_type.type_args:
             if isinstance(ta, TypeParamRef):

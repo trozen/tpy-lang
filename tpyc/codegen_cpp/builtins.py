@@ -92,11 +92,15 @@ class BuiltinGenerator:
 
     def ctor_param_matches(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if argument type matches constructor parameter (for generic type constructors)."""
-        # Check for protocol type with TypeParamRef (e.g., NativeIterable[T])
+        # Check for protocol type with TypeParamRef (e.g., NativeIterable[T], OptIterator[T])
         if is_protocol_type(param_type) and param_type.type_args:
             has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
             if has_type_param:
                 protocol_name = param_type.name
+                if protocol_name == "OptIterator":
+                    elem_type = builtin_modules.get_native_iterator_element_type(
+                        arg_type, registry=self.ctx.analyzer.registry)
+                    return elem_type is not None
                 # Get element type from arg to build concrete protocol type
                 elem_type = arg_type.get_element_type()
                 if elem_type is None:

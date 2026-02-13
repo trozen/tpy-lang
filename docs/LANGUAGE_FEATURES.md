@@ -992,7 +992,7 @@ print(sum_all(arr))   # 60
 
 **Key characteristics**:
 - **Marker protocol**: Types declare conformance via `extends`, no methods required
-- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `NativeIterable[T]`
+- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]`, `Range[T]` extend `NativeIterable[T]`
 - **str**: Extends `NativeIterable[Char]` (iterates over characters)
 - **Zero overhead**: Compiles to C++ range-based for loops
 - **Not user-extensible**: Requires C++ `begin()`/`end()` support
@@ -1035,7 +1035,6 @@ def sum_iter(it: OptIterator[Int32]) -> Int32:
     return total
 
 print(sum_iter(Counter(5)))        # 10
-print(sum_iter(range(5)))          # 10
 ```
 
 **Codegen**: `for i in range(...)` is optimized to a C-style counter loop:
@@ -1058,7 +1057,6 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 
 **Key characteristics**:
 - **Structural protocol**: Any type with `__next_opt__() -> T | None` automatically conforms
-- **Built-in conformance**: `Range[T]` is generic — `range()` with Int32 args produces `Range[Int32]`, with BigInt args produces `Range[BigInt]`
 - **Lazy evaluation**: Values produced one at a time, no container allocation
 - **break/continue**: Work naturally in both counter-loops and while-loops
 
@@ -1066,9 +1064,9 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 
 | Phase | Status | What |
 |-------|--------|------|
-| 1. OptIterator + Range | **Working** | Unified for-loop path, `range()` as real type |
+| 1. OptIterator | **Working** | User-defined iterators via `__next_opt__()` protocol |
 | 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
-| 3. Generic `Range[T]` | **Working** | `range()` over `Int32` or `BigInt` — element type inferred from arguments |
+| 3. Range as NativeIterable | **Working** | `Range[T]` is an immutable container with `begin()`/`end()`, supports `list(range(...))` |
 | 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
 | 5. User-defined iterators | **Working** | `__iter__`/`__next__` compiled to `__next_opt__` under the hood |
 | 6. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
@@ -1265,7 +1263,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `while`
 - **Working**: `for i in range(n)`, `for i in range(start, end)`, `for i in range(start, end, step)`
 - **Working**: `for item in container` (for-each over list, Array, Span, str)
-- **Working**: `for x in iterator` (for-each over OptIterator types — Range and user-defined)
+- **Working**: `for x in iterator` (for-each over OptIterator types — user-defined iterators)
 - **Working**: `break`, `continue`
 - **Open**: `for/else`, `while/else` → flag variable pattern
 
@@ -1973,7 +1971,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Planned**: List slicing: `items[1:3]`
 - **Open**: `isinstance()` → compile-time type check / type narrowing
 - **Open**: `type()` → compile-time type info
-- **Working**: `list()` → empty list constructor (requires type annotation) and `list(iterable)` with type inference
+- **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from NativeIterable containers, `list(range(...))`, `list(iterator)` from OptIterator
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Open**: `str()`, `int(str)` → string conversion functions (see below)
@@ -1997,6 +1995,13 @@ x = []                       # error: Empty array literal requires explicit type
 x = list([1, 2, 3])          # → list[int], infers element type from literal
 y = list(some_array)         # → list[T], infers from array's element type
 z = list(other_list)         # → list[T], copies the list
+
+# List from range
+nums = list(range(5))        # → [0, 1, 2, 3, 4]
+nums2 = list(range(2, 7))   # → [2, 3, 4, 5, 6]
+
+# List from user-defined iterator (OptIterator)
+result = list(Counter(5))    # → [0, 1, 2, 3, 4]
 ```
 
 Generated C++:
@@ -2004,8 +2009,11 @@ Generated C++:
 // list([1, 2, 3]) - from literal
 std::vector<tpy::BigInt> x({1, 2, 3});
 
-// list(array) - from other container
-std::vector<T> y(arr.begin(), arr.end());
+// list(container) - from NativeIterable (range, array, list, etc.)
+auto y = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
+
+// list(iterator) - from OptIterator (user-defined)
+auto z = tpy::collect<std::vector<int32_t>>(Counter(5));
 ```
 
 **`int()` (Working)**:

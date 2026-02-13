@@ -1074,14 +1074,15 @@ class StatementGenerator:
         from tpyc.modules import get_native_iterator_element_type, get_iter_element_type
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
-        # Check for OptIterator types first — these use while-loop codegen
+        # Optimize range() calls to C-style counter loops (before protocol checks)
+        if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
+            elem_type = iterable_type.get_element_type()
+            if elem_type and self._gen_range_counter_loop(out, stmt, indent, elem_type):
+                return
+
+        # Check for OptIterator types — these use while-loop codegen
         iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
-            # Optimize range() calls to C-style counter loops
-            if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
-                if self._gen_range_counter_loop(out, stmt, indent, iter_elem):
-                    return
-            # General OptIterator path (or range fallback for zero-step)
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_iterator_loop(out, stmt, indent, iterable, iter_elem)
             return

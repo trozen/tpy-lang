@@ -186,7 +186,13 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[ParamDef("x", NamedType("NativeIterable", (T,), is_protocol=True))],
             returns=T,  # Placeholder - sema infers actual list[T] from argument
-            cpp="std::vector<{T}>({0}.begin(), {0}.end())",
+            cpp="tpy::from_range<std::vector<{T}>>({0})",
+        ),
+        # list(iterator) - create list from OptIterator (user-defined iterators)
+        MethodDef(
+            params=[ParamDef("x", NamedType("OptIterator", (T,), is_protocol=True))],
+            returns=T,
+            cpp="tpy::collect<std::vector<{T}>>({0})",
         ),
     ])
 
@@ -350,7 +356,7 @@ def init_module() -> BuiltinModule:
     module.type("Range", cpp_type="tpy::Range<{T}>", type_params=["T"],
         param_kinds=[TypeParamKind.TYPE],
         type_factory=lambda t: RangeType(t),
-        extends=["OptIterator[T]"],
+        extends=["NativeIterable[T]"],
         methods={},
     )
 

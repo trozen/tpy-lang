@@ -8,6 +8,7 @@ namespace tpy_user::main {
 struct Counter;
 
 extern std::string_view __name__;
+extern std::vector<int32_t>* result;
 
 // 3: class Counter:
 struct Counter {
@@ -16,9 +17,9 @@ struct Counter {
   // 5:     limit: Int32
   int32_t limit;
 
-  // 7:     def __init__(self, start: Int32, limit: Int32) -> None:
+  // 7:     def __init__(self, limit: Int32) -> None:
   Counter() = default;
-  explicit Counter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+  explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
   // 11:     def __next_opt__(self) -> Int32 | None:
   std::optional<int32_t> __next_opt__() {
@@ -45,12 +46,6 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
   return os;
 }
 
-template<tpy::OptIterator<int32_t> T_it>
-int32_t sum_iter(T_it& it);
-template<tpy::OptIterator<int32_t> T_it>
-int32_t count_iter(T_it& it);
-template<tpy::OptIterator<int32_t> T_it>
-int32_t first_or_fallback(T_it& it, int32_t fallback);
 
 void __tpy_init();
 } // namespace tpy_user::main
