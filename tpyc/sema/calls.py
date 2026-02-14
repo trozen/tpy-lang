@@ -408,10 +408,8 @@ class CallAnalyzer:
             if all(type_matches_numeric(arg_type, ptype)
                    for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
                 # Reject int literals that are out of range for the target fixed-int type
-                # (don't let them silently fall through to the BigInt constructor)
                 if (isinstance(ctor.return_type, FixedIntType) and len(arg_types) == 1
-                        and isinstance(arg_types[0], IntLiteralType)
-                        and isinstance(ctor.params[0].type, BigIntType)):
+                        and isinstance(arg_types[0], IntLiteralType)):
                     lit = arg_types[0]
                     target = ctor.return_type
                     if not (target.min_value <= lit.value <= target.max_value):

@@ -25,6 +25,15 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
     constructors = [
         MethodDef(params=[], returns=typ, cpp="0"),
         MethodDef(params=[ParamDef("x", typ)], returns=typ, cpp="{0}"),
+    ]
+    # Cross-type constructors from all other fixed-int types
+    for other in ALL_FIXED_INTS:
+        if other != typ:
+            constructors.append(
+                MethodDef(params=[ParamDef("x", other)], returns=typ,
+                          cpp="tpy::int_cast_check<" + cpp_t + ">({0})")
+            )
+    constructors += [
         MethodDef(params=[ParamDef("x", BIGINT)], returns=typ, cpp="({0}).to_fixed_check<" + cpp_t + ">()"),
         MethodDef(params=[ParamDef("x", FLOAT)], returns=typ, cpp="tpy::from_float_check<" + cpp_t + ">({0})"),
         MethodDef(params=[ParamDef("x", STR)], returns=typ, cpp="tpy::from_str_check<" + cpp_t + ">({0})"),

@@ -166,6 +166,30 @@ T pow_check(T base, T exp) {
     return result;
 }
 
+// --- Checked cast between fixed-int types ---
+
+template<typename To, typename From>
+To int_cast_check(From v) {
+    if constexpr (std::is_signed_v<From> && std::is_unsigned_v<To>) {
+        if (v < 0 || static_cast<std::make_unsigned_t<From>>(v) > std::numeric_limits<To>::max()) {
+            std::string msg = std::string(fixed_int_name<To>()) + " overflow: value out of range";
+            tpy_panic(msg.c_str());
+        }
+    } else if constexpr (std::is_unsigned_v<From> && std::is_signed_v<To>) {
+        if (v > static_cast<std::make_unsigned_t<To>>(std::numeric_limits<To>::max())) {
+            std::string msg = std::string(fixed_int_name<To>()) + " overflow: value out of range";
+            tpy_panic(msg.c_str());
+        }
+    } else if constexpr (sizeof(From) > sizeof(To)) {
+        if (v < static_cast<From>(std::numeric_limits<To>::min()) ||
+            v > static_cast<From>(std::numeric_limits<To>::max())) {
+            std::string msg = std::string(fixed_int_name<To>()) + " overflow: value out of range";
+            tpy_panic(msg.c_str());
+        }
+    }
+    return static_cast<To>(v);
+}
+
 // --- Conversion from other types ---
 
 template<typename T>
