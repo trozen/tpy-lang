@@ -34,6 +34,7 @@ class MethodDef:
     cpp: str  # Template: "{0}" for args, "{self}" for receiver
     is_noalloc: bool = False
     is_readonly: bool = False
+    is_static: bool = False
 
 
 @dataclass
@@ -312,6 +313,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
                 params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in method.params],
                 return_type=method.returns,
                 is_method=True,
+                is_staticmethod=method.is_static,
                 is_noalloc=method.is_noalloc,
                 is_readonly=method.is_readonly,
                 cpp_template=method.cpp,

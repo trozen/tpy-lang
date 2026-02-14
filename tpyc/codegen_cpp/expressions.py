@@ -615,6 +615,11 @@ class ExpressionGenerator:
         if expr.resolved_function_info:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
+                # Static method on builtin type — no receiver, just args
+                if expr.is_static_call:
+                    gen_args = [self.builtins._gen_expr_deref(arg, ptype)
+                                for arg, (_, ptype) in zip(expr.args, method_info.params)]
+                    return method_info.cpp_template.format(*gen_args)
                 # For self.inherited_method(), use (*this) as the receiver
                 if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                     return self.builtins.gen_method_from_function_info("(*this)", expr.args, method_info)

@@ -170,33 +170,54 @@ class MethodAnalyzer:
         assert isinstance(expr.obj, TpyName)
         if self.ctx.current_ns is None:
             return None
-        is_record_name = False
+
+        record_info = None
         binding = self.ctx.current_ns.lookup(expr.obj.name)
         if binding and binding.kind == BindingKind.RECORD:
-            is_record_name = True
+            record_info = self.ctx.registry.get_record(expr.obj.name)
+        elif binding and binding.kind == BindingKind.IMPORTED_NAME:
+            # Builtin types imported from modules (e.g. from tpy import UInt8)
+            import_info = self.ctx.imported_names.get(expr.obj.name)
+            if import_info:
+                qname = f"{import_info[0]}.{import_info[1]}"
+                record_info = self.ctx.registry.get_builtin_record(qname)
 
-        if not is_record_name:
+        if record_info is None:
             return None
 
-        record_info = self.ctx.registry.get_record(expr.obj.name)
-        method_info = self.protocols.lookup_record_method(record_info, expr.method)
-        if method_info and method_info.is_staticmethod:
-            if len(expr.args) != len(method_info.params):
+        overloads = record_info.get_method_overloads(expr.method)
+        if not overloads:
+            return None
+        if not overloads[0].is_staticmethod:
+            raise self.ctx.error(f"Method '{expr.method}' requires an instance (not a static method)", expr)
+
+        if len(overloads) == 1:
+            resolved = overloads[0]
+            if len(expr.args) != len(resolved.params):
                 raise self.ctx.error(
-                    f"Static method '{expr.method}' expects {len(method_info.params)} arguments, "
+                    f"Static method '{expr.method}' expects {len(resolved.params)} arguments, "
                     f"got {len(expr.args)}",
                     expr,
                 )
-            expr.resolved_function_info = method_info
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
+            expr.resolved_function_info = resolved
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
                 arg_type = self.expr.analyze_expr(arg)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
-            expr.is_static_call = True
-            return method_info.return_type
-        elif method_info and not method_info.is_staticmethod:
-            raise self.ctx.error(f"Method '{expr.method}' requires an instance (not a static method)", expr)
-        return None
+        else:
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            resolved = self._resolve_method_overload(overloads, arg_types, {})
+            if resolved is None:
+                arg_type_strs = ", ".join(str(t) for t in arg_types)
+                raise self.ctx.error(
+                    f"No matching overload for {expr.obj.name}.{expr.method}({arg_type_strs})", expr)
+            expr.resolved_function_info = resolved
+            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
+                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
+                                                        coercion_ctx=CoercionContext.ARG)
+
+        expr.is_static_call = True
+        return resolved.return_type
 
     def _analyze_module_method_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for module.function() pattern. Returns type or None if not a module call."""

@@ -40,7 +40,17 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
         MethodDef(params=[ParamDef("x", BOOL)], returns=typ, cpp="static_cast<" + cpp_t + ">({0})"),
     ]
 
+    # trunc: truncating (wrapping) conversion from any other fixed-int type
+    trunc_overloads = []
+    for other in ALL_FIXED_INTS:
+        if other != typ:
+            trunc_overloads.append(
+                MethodDef(params=[ParamDef("x", other)], returns=typ,
+                          cpp=f"static_cast<{cpp_t}>({{0}})", is_static=True)
+            )
+
     methods = {
+        "trunc": trunc_overloads,
         "__int__": [MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt({self})")],
         **make_binop_methods({
             "__add__": (f"tpy::add_check<{cpp_t}>({{self}}, {{0}})", typ),

@@ -59,6 +59,12 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
         def __repr__(self): return str(int(self))
         def __str__(self): return str(int(self))
 
+    @classmethod
+    def trunc(cls, value):
+        return cls(int(value))
+
+    FixedInt.trunc = trunc
+
     if signed:
         def __neg__(self): return type(self)(int.__neg__(self))
         FixedInt.__neg__ = __neg__
