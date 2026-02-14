@@ -11,7 +11,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
-    INT32, BIGINT, is_protocol_type,
+    INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -970,12 +970,32 @@ class StatementGenerator:
         must be pre-evaluated into temps because Python's range() captures args
         at call time, but the for-loop condition re-evaluates each iteration.
         """
+        return StatementGenerator._extract_int_literal(expr) is not None
+
+    _FIXED_INT_NAMES = frozenset(str(t) for t in ALL_FIXED_INTS)
+
+    @staticmethod
+    def _extract_int_literal(expr: TpyExpr) -> int | None:
+        """Extract a compile-time integer value from a range argument.
+
+        Handles bare literals (3), negated literals (-3), and fixed-int
+        constructor calls with a literal arg (Int32(3)).
+        Returns the integer value or None if not a compile-time constant.
+        """
         expr = StatementGenerator._unwrap_coerce(expr)
         if isinstance(expr, TpyIntLiteral):
-            return True
+            return expr.value
         if isinstance(expr, TpyUnaryOp) and expr.op == '-' and isinstance(expr.operand, TpyIntLiteral):
-            return True
-        return False
+            return -expr.operand.value
+        # Int32(3), UInt8(10), etc. — constructor call with a single literal arg
+        if (isinstance(expr, TpyCall) and len(expr.args) == 1
+                and expr.func in StatementGenerator._FIXED_INT_NAMES):
+            inner = StatementGenerator._unwrap_coerce(expr.args[0])
+            if isinstance(inner, TpyIntLiteral):
+                return inner.value
+            if isinstance(inner, TpyUnaryOp) and inner.op == '-' and isinstance(inner.operand, TpyIntLiteral):
+                return -inner.operand.value
+        return None
 
     def _gen_range_counter_loop(self, out: TextIO, stmt: TpyForEach,
                                  indent: str, elem_type: TpyType) -> bool:
@@ -990,23 +1010,16 @@ class StatementGenerator:
 
         # Classify the step from the original AST (unwrap TpyCoerce from sema)
         if nargs == 3:
-            step_ast = self._unwrap_coerce(range_call.args[2])
-            if isinstance(step_ast, TpyIntLiteral):
-                if step_ast.value == 0:
+            step_lit = self._extract_int_literal(range_call.args[2])
+            if step_lit is not None:
+                if step_lit == 0:
                     return False  # zero step panics at runtime -- use Range ctor
-                elif step_ast.value > 0:
+                elif step_lit > 0:
                     step_kind = "literal_pos"
-                    step_val = step_ast.value
+                    step_val = step_lit
                 else:
                     step_kind = "literal_neg"
-                    step_val = step_ast.value
-            elif (isinstance(step_ast, TpyUnaryOp) and step_ast.op == '-'
-                  and isinstance(step_ast.operand, TpyIntLiteral)):
-                val = -step_ast.operand.value
-                if val == 0:
-                    return False
-                step_kind = "literal_neg"
-                step_val = val
+                    step_val = step_lit
             else:
                 step_kind = "variable"
                 step_val = None
@@ -1057,41 +1070,42 @@ class StatementGenerator:
                           f"{var} < {stop_expr}; ++{var}) {{\n")
             else:
                 step_cpp = gen_args[2]
-                incr = self._gen_step_increment(var, step_cpp, elem_type)
+                self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} < {stop_expr}; "
-                          f"{incr}) {{\n")
+                          f"{var} += {step_cpp}) {{\n")
         elif step_kind == "literal_neg":
             if step_val == -1:
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} > {stop_expr}; --{var}) {{\n")
             else:
                 step_cpp = gen_args[2]
-                incr = self._gen_step_increment(var, step_cpp, elem_type)
+                self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} > {stop_expr}; "
-                          f"{incr}) {{\n")
+                          f"{var} += {step_cpp}) {{\n")
         else:
-            # Variable step -- capture, zero-check, ternary condition
+            # Variable step -- capture, zero-check, upfront overflow check, ternary condition
             step_cpp = gen_args[2]
             step_temp = f"__step_{n}"
             out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
             step_cpp = step_temp
             out.write(f'{indent}if ({step_cpp} == 0) tpy::tpy_panic("range() arg 3 must not be zero");\n')
-            incr = self._gen_step_increment(var, step_cpp, elem_type)
+            self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
             out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                       f"{step_cpp} > 0 ? {var} < {stop_expr} : {var} > {stop_expr}; "
-                      f"{incr}) {{\n")
+                      f"{var} += {step_cpp}) {{\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
         return True
 
-    def _gen_step_increment(self, var: str, step: str, elem_type: TpyType) -> str:
-        """Generate step increment expression, using checked arithmetic for fixed-width integers."""
-        from tpyc.typesys import FixedIntType
+    def _gen_range_overflow_check(self, out: TextIO, indent: str,
+                                    start_expr: str, stop_expr: str,
+                                    step_expr: str, elem_type: TpyType) -> None:
+        """Emit upfront overflow check for fixed-int range loops with step != ±1."""
         if isinstance(elem_type, FixedIntType):
-            return f"{var} = tpy::add_check<{elem_type.to_cpp()}>({var}, {step})"
-        return f"{var} += {step}"
+            cpp_t = elem_type.to_cpp()
+            out.write(f"{indent}tpy::range_check_overflow<{cpp_t}>({start_expr}, {stop_expr}, {step_expr});\n")
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator."""

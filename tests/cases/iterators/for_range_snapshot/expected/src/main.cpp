@@ -47,7 +47,8 @@ void test_all_args_snapshot() {
   int32_t __stop_0 = stop;
   int32_t __step_0 = step;
   if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-  for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i = tpy::add_check<int32_t>(i, __step_0)) {
+  tpy::range_check_overflow<int32_t>(__start_0, __stop_0, __step_0);
+  for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i += __step_0) {
     // 19:         start = 100
     start = 100;
     // 20:         stop = 100

@@ -2,17 +2,62 @@
  * TurboPython Runtime - Range
  *
  * Python-style range() as an immutable, reusable container with begin/end.
- * Depends on: core.hpp (tpy_panic), int32.hpp (int32_add)
+ * Depends on: core.hpp (tpy_panic), fixed_int.hpp
  */
 
 #pragma once
 
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <type_traits>
 #include "fixed_int.hpp"
 
 namespace tpy {
+
+// Upfront overflow check for range loops with fixed-width integer types.
+// Verifies that stepping through [start, stop) with the given step will never
+// overflow T, so the loop body can use unchecked += for maximum speed.
+// For step ±1 this is unnecessary (stop is already a valid T value).
+// All arithmetic uses unsigned to avoid signed overflow UB in the check itself.
+//
+// The check computes the exact exit value (the value of i after the final
+// increment) and verifies it fits in T.  When step evenly divides
+// (stop - start), the exit value is exactly `stop` (always representable).
+// Otherwise the exit value overshoots by (step - remainder), and we check
+// that overshoot against T's bounds.
+template<typename T>
+void range_check_overflow(T start, T stop, T step) {
+    static_assert(std::is_integral_v<T> && sizeof(T) <= 8);
+    using U = std::make_unsigned_t<T>;
+    if (step > T{0}) {
+        if (start >= stop) return;  // empty range
+        U d = static_cast<U>(stop) - static_cast<U>(start);
+        U ustep = static_cast<U>(step);
+        U rem = d % ustep;
+        if (rem == 0) return;  // exit value is exactly stop, always safe
+        // Exit value = stop + (step - rem).  Need: stop + (step - rem) <= T::max.
+        U overshoot = ustep - rem;
+        U room = static_cast<U>(std::numeric_limits<T>::max()) - static_cast<U>(stop);
+        if (overshoot > room) {
+            tpy_panic("range() would overflow on iteration");
+        }
+    } else if constexpr (std::is_signed_v<T>) {
+        if (step < T{0}) {
+            if (start <= stop) return;  // empty range
+            U d = static_cast<U>(start) - static_cast<U>(stop);
+            U abs_step = static_cast<U>(0) - static_cast<U>(step);
+            U rem = d % abs_step;
+            if (rem == 0) return;  // exit value is exactly stop, always safe
+            // Exit value = stop - (abs_step - rem).  Need: stop - (abs_step - rem) >= T::min.
+            U overshoot = abs_step - rem;
+            U room = static_cast<U>(stop) - static_cast<U>(std::numeric_limits<T>::min());
+            if (overshoot > room) {
+                tpy_panic("range() would overflow on iteration");
+            }
+        }
+    }
+}
 
 template<typename T>
 class Range {
@@ -25,6 +70,8 @@ public:
     Range(T start, T end) : start_(start), end_(std::move(end)), step_(1) {}
     Range(T start, T end, T step) : start_(start), end_(std::move(end)), step_(std::move(step)) {
         if (step_ == T{}) tpy_panic("range() arg 3 must not be zero");
+        if constexpr (std::is_integral_v<T> && sizeof(T) <= 8)
+            range_check_overflow<T>(start_, end_, step_);
     }
 
     struct Iterator {
@@ -34,10 +81,7 @@ public:
         T current_, end_, step_;
         T operator*() const { return current_; }
         Iterator& operator++() {
-            if constexpr (std::is_integral_v<T> && sizeof(T) <= 8)
-                current_ = tpy::add_check<T>(current_, step_);
-            else
-                current_ += step_;
+            current_ += step_;
             if (step_ > T{} ? !(current_ < end_) : !(current_ > end_))
                 current_ = end_;
             return *this;

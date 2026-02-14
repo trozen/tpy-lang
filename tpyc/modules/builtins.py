@@ -381,15 +381,20 @@ def init_module() -> BuiltinModule:
     module.function("print", overloads=[], special_handling=True)
 
     # range() - range iterator for for loops
-    module.function("range", overloads=[
-        # Int32 overloads
-        MethodDef(params=[ParamDef("stop", INT32)], returns=RANGE, cpp="tpy::Range<int32_t>({0})"),
-        MethodDef(params=[ParamDef("start", INT32), ParamDef("stop", INT32)], returns=RANGE, cpp="tpy::Range<int32_t>({0}, {1})"),
-        MethodDef(params=[ParamDef("start", INT32), ParamDef("stop", INT32), ParamDef("step", INT32)], returns=RANGE, cpp="tpy::Range<int32_t>({0}, {1}, {2})"),
-        # BigInt overloads
+    range_overloads = []
+    for fixed_type in ALL_FIXED_INTS:
+        cpp_t = fixed_type.to_cpp()
+        rt = RangeType(fixed_type)
+        range_overloads += [
+            MethodDef(params=[ParamDef("stop", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}})"),
+            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}}, {{1}})"),
+            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type), ParamDef("step", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}}, {{1}}, {{2}})"),
+        ]
+    range_overloads += [
         MethodDef(params=[ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0})"),
         MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1})"),
         MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT), ParamDef("step", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1}, {2})"),
-    ])
+    ]
+    module.function("range", overloads=range_overloads)
 
     return module

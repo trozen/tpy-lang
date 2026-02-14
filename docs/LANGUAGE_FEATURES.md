@@ -1172,15 +1172,18 @@ def sum_iter(it: OptIterator[Int32]) -> Int32:
 print(sum_iter(Counter(5)))        # 10
 ```
 
-**Codegen**: `for i in range(...)` is optimized to a C-style counter loop:
+**Codegen**: `for i in range(...)` is optimized to a C-style counter loop. `range()` accepts all fixed-width integer types (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64) as well as BigInt, preserving the element type in the loop variable:
 
 ```cpp
-for (int32_t i = 0; i < 5; ++i) {
-    // body
-}
+// range(Int8(0), Int8(10)) → int8_t loop
+for (int8_t i = 0; i < 10; ++i) { ... }
+
+// range(Int32(0), Int32(100), Int32(3)) → int32_t loop with upfront overflow check
+tpy::range_check_overflow<int32_t>(0, 100, 3);
+for (int32_t i = 0; i < 100; i += 3) { ... }
 ```
 
-Step ±1 uses `++i`/`--i`; other literal steps use checked `tpy::int32_add(i, step)` for Int32 or `i += step` for BigInt; variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). Generic `OptIterator[T]` parameters (not `range()` calls) still use the while-loop path:
+Step ±1 uses `++i`/`--i` with no overflow check. Other steps use an upfront `range_check_overflow` that verifies the final increment won't overflow, then uses unchecked `i += step` in the hot loop. Variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). Generic `OptIterator[T]` parameters (not `range()` calls) still use the while-loop path:
 
 ```cpp
 auto& __iter_0 = it;  // reference for variable (preserves consumption)

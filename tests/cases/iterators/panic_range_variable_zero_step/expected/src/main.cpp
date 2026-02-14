@@ -20,7 +20,8 @@ void __tpy_init() {
   // 5: for i in range(1, 5, step):
   int32_t __step_0 = step;
   if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-  for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i = tpy::add_check<int32_t>(i, __step_0)) {
+  tpy::range_check_overflow<int32_t>(1, 5, __step_0);
+  for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
     // 6:     print(i)
     std::cout << i << "\n";
   }
