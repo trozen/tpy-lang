@@ -179,6 +179,32 @@ z = x + y       # Result is int (BigInt), not Int32
 
 Negation (`-x`) is only available on signed types — unsigned types produce a compile error.
 
+**Explicit cross-type casts**: Any fixed-width integer type can be explicitly converted to any other using the constructor. Out-of-range values panic at runtime:
+
+```python
+from tpy import Int8, Int32, UInt8
+
+a: UInt8 = UInt8(42)
+b: Int32 = Int32(a)      # OK: widening, always safe
+c: UInt8 = UInt8(b)      # OK: narrowing, panics if b > 255
+
+d: UInt8 = UInt8(Int32(300))  # Runtime panic: UInt8 overflow
+e: UInt8 = UInt8(-3)          # Compile error: out of range literal
+```
+
+**Truncating conversion** (`trunc`): For wrapping/modular conversion without panicking, use the `trunc()` static method:
+
+```python
+from tpy import Int8, Int32, UInt8
+
+x: Int32 = Int32(300)
+print(UInt8.trunc(x))       # 44 (300 % 256)
+print(UInt8.trunc(Int8(-1))) # 255
+
+# Also accepts BigInt (int)
+print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
+```
+
 **Float promotion**: Any operation involving `float` promotes to `float`:
 
 | Operation | Result Type | Rationale |
@@ -512,6 +538,28 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 **Null-safety:** Auto-deref through `Ptr[T]`/`ConstPtr[T]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance (e.g., `Ptr(x)` constructed from a local variable) skip the null check and use direct `->` access.
 
 **C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
+
+#### Unsafe Pointer Operations (Working)
+
+Low-level pointer arithmetic for C interop and performance-critical code. These bypass bounds checking:
+
+```python
+from tpy import Ptr, ConstPtr, Int32, Array
+
+# Get raw pointer to array data
+arr: Array[Int32, 4] = [10, 20, 30, 40]
+p: Ptr[Int32] = arr.unsafe_ptr()
+
+# Indexed read/write (no bounds check)
+val: Int32 = p.unsafe_load(Int32(2))   # → 30
+p.unsafe_store(Int32(0), Int32(99))    # arr[0] = 99
+
+# ConstPtr has unsafe_load only (no store)
+cp: ConstPtr[Int32] = ConstPtr(arr.unsafe_ptr())
+val2: Int32 = cp.unsafe_load(Int32(1))  # → 20
+```
+
+Generated C++: `unsafe_ptr()` → `.data()`, `unsafe_load(i)` → `ptr[i]`, `unsafe_store(i, v)` → `ptr[i] = v`.
 
 #### Owned Return Values (Working)
 
@@ -2571,7 +2619,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 - **Working**: Local variables (inferred and annotated)
 - **Working**: Global variables (typed)
 - **Planned**: Type inference from function returns
-- **Open**: `global` → explicit global access
+- **Open**: `global` → explicit global mutation from functions (attempted and reverted; may revisit)
 - **Open**: `:=` walrus → if useful pattern emerges
 
 ---

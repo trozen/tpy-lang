@@ -60,6 +60,8 @@ Options:
   -O, --release     Build with optimizations (default: debug)
   -i, --repl        Start interactive REPL
   -o <dir>          Output directory (default: __tpyc__/ next to source)
+  --dump-code       Print generated C++ to stdout (no build)
+  --emit-source     Embed Python source lines as comments in generated C++
   -v                Verbose output
   -vv               Show compilation commands
 ```
