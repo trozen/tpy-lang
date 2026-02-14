@@ -18,7 +18,6 @@
 #include <gmp.h>
 
 #include "core.hpp"
-#include "int32.hpp"
 #include "fixed_int.hpp"
 #include "type_traits.hpp"
 
@@ -201,8 +200,8 @@ public:
     BigInt& operator>>=(int32_t shift) { *this = *this >> shift; return *this; }
 
     // BigInt overloads for shift (convert to int32)
-    BigInt operator<<(const BigInt& shift) const { return *this << shift.to_int32_check(); }
-    BigInt operator>>(const BigInt& shift) const { return *this >> shift.to_int32_check(); }
+    BigInt operator<<(const BigInt& shift) const { return *this << shift.to_fixed_check<int32_t>(); }
+    BigInt operator>>(const BigInt& shift) const { return *this >> shift.to_fixed_check<int32_t>(); }
 
     // Bitwise operators
     BigInt operator&(const BigInt& rhs) const {
@@ -270,17 +269,6 @@ public:
     bool operator<=(const BigInt& rhs) const { return compare(rhs) <= 0; }
     bool operator>(const BigInt& rhs) const { return compare(rhs) > 0; }
     bool operator>=(const BigInt& rhs) const { return compare(rhs) >= 0; }
-
-    // Conversion to int32_t (for len() interop, etc.)
-    int32_t to_int32_check() const {
-        if (is_small()) {
-            int64_t v = small_value();
-            if (v >= INT32_MIN && v <= INT32_MAX) {
-                return static_cast<int32_t>(v);
-            }
-        }
-        tpy_panic("Int32 overflow: value out of range");
-    }
 
     // Generic conversion to any fixed-width integer type
     template<typename T>

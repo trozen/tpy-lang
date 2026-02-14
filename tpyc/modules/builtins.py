@@ -46,7 +46,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[ParamDef("i", BIGINT)],
             returns=CHAR,
-            cpp="static_cast<char>(({0}).to_int32_check())",
+            cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())",
         ),
     ])
 
@@ -357,7 +357,7 @@ def init_module() -> BuiltinModule:
     module.register_type(CHAR, cpp_type="char", constructors=[
         MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
         MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
-        MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_int32_check())"),
+        MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())"),
     ], methods={})
 
     # None: Void type (used for function returns)

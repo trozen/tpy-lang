@@ -811,7 +811,7 @@ class ExpressionGenerator:
         count_type = self.ctx.analyzer.get_expr_type(expr.count)
         # BigInt count needs conversion (IntLiteralType is already plain int)
         if isinstance(count_type, BigIntType):
-            count = f"{count}.to_int32_check()"
+            count = f"{count}.to_fixed_check<int32_t>()"
 
         # Determine result type and element type
         if target_type is not None:
@@ -876,7 +876,7 @@ class ExpressionGenerator:
 
         index_expr = self.gen_expr_deref(index)
         if self.types.is_runtime_bigint(index, index_type):
-            index_expr = f"{index_expr}.to_int32_check()"
+            index_expr = f"{index_expr}.to_fixed_check<int32_t>()"
         return index_expr
 
     def _is_negative_literal(self, expr: TpyExpr) -> tuple[bool, int]:

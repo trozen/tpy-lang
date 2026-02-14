@@ -82,12 +82,12 @@ void __tpy_init() {
   // 11: idx = 1
   idx = tpy::BigInt(1);
   // 12: print(items[idx])
-  std::cout << tpy::get_item((*items), idx.to_int32_check()) << "\n";
+  std::cout << tpy::get_item((*items), idx.to_fixed_check<int32_t>()) << "\n";
   // 14: # Test 3: Global BigInt used in list repeat count
   // 15: count = 3
   count = tpy::BigInt(3);
   // 16: repeated: list[Int32] = [0] * count
-  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count.to_int32_check(), {0}));
+  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count.to_fixed_check<int32_t>(), {0}));
   repeated = &__global_slot_2;
   // 17: print(len(repeated))
   std::cout << tpy::__len__((*repeated)) << "\n";

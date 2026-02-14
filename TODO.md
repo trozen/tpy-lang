@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- add Int64/16/8 and other integer types
 - None safety: refine Optional comparison semantics for mixed Optional/non-Optional operands (post-phase-2 polish)
 - user record `__getitem__`: generate both const and non-const overloads so `p = obj[i]` creates a shared pointer-local (matching CPython), not a copy. Currently `__getitem__` is const-only → returns `const T&` → can't take mutable `T*`... or maybe: generate mutable function for now, use `@readonly` contract later (and generate const version from readonly)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
@@ -84,7 +83,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
 - formatting/linting like in genweb
 - properties with getter/setter
-- indexing: Int32 vs Int64 vs SizeType?
 - list[Ptr[Point]] not supported, but it should be, eventually
 - `Span(list([1,2,3]))` not supported
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code

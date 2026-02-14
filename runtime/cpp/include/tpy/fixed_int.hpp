@@ -17,9 +17,34 @@
 #include <string_view>
 #include <type_traits>
 #include "core.hpp"
-#include "int32.hpp"
 
 namespace tpy {
+
+// --- Checked power helper (reusable across all integer types) ---
+
+template<typename T>
+bool try_pow(T base, T exp, T& result) {
+    if (exp < 0) return false;
+    if (exp == 0) { result = 1; return true; }
+
+    result = 1;
+    T b = base;
+
+    while (exp > 0) {
+        if (exp & 1) {
+            if (__builtin_mul_overflow(result, b, &result)) {
+                return false;
+            }
+        }
+        exp >>= 1;
+        if (exp > 0) {
+            if (__builtin_mul_overflow(b, b, &b)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
 
 // --- Type name helper for error messages ---
 

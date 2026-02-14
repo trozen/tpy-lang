@@ -15,10 +15,7 @@
 // Formatting (no dependencies)
 #include "format.hpp"
 
-// Int32 checked arithmetic (depends on core)
-#include "int32.hpp"
-
-// Fixed-width integer checked arithmetic (depends on core, int32)
+// Fixed-width integer checked arithmetic (depends on core)
 #include "fixed_int.hpp"
 
 // Type traits (no dependencies)
@@ -27,13 +24,13 @@
 // Range utilities (no dependencies)
 #include "ranges.hpp"
 
-// Range iterator (depends on core, int32)
+// Range iterator (depends on core, fixed_int)
 #include "range.hpp"
 
 // StaticList (depends on core)
 #include "static_list.hpp"
 
-// BigInt arbitrary precision (depends on core, int32, type_traits)
+// BigInt arbitrary precision (depends on core, fixed_int, type_traits)
 #include "bigint.hpp"
 
 // Container operations (depends on core, type_traits, static_list)

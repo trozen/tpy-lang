@@ -180,15 +180,6 @@ inline const char* bool_to_str(bool x) {
 }
 
 /**
- * int32_to_str - Convert Int32 to string.
- * Note: Returns std::string. Caller must ensure the result is used immediately
- * or stored in std::string/auto, not std::string_view.
- */
-inline std::string int32_to_str(int32_t x) {
-    return std::to_string(x);
-}
-
-/**
  * fixed_to_str - Convert any fixed-width integer to string.
  * 8-bit types are promoted to int to avoid char interpretation.
  */
