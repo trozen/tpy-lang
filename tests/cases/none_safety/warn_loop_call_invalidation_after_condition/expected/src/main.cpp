@@ -18,7 +18,7 @@ int32_t use_after_call(Box& b) {
     // 17:         opaque(b)
     opaque(b);
     // 18:         return b.value + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::int32_add(tpy::deref_optional_check(b.value), 1));
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
   }
   // 19:     return 0
   return 0;

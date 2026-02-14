@@ -80,11 +80,11 @@ void __tpy_init() {
   // 11: idx = 1
   idx = tpy::BigInt(1);
   // 12: print(items[idx])
-  std::cout << tpy::get_item((*items), idx.to_int32()) << "\n";
+  std::cout << tpy::get_item((*items), idx.to_int32_check()) << "\n";
   // 15: count = 3
   count = tpy::BigInt(3);
   // 16: repeated: list[Int32] = [0] * count
-  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count.to_int32(), {0}));
+  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count.to_int32_check(), {0}));
   repeated = &__global_slot_2;
   // 17: print(len(repeated))
   std::cout << tpy::__len__((*repeated)) << "\n";
@@ -150,7 +150,7 @@ void __tpy_init() {
   // 65: increment = 5
   increment = tpy::BigInt(5);
   // 66: counter += increment
-  counter = tpy::int32_add(counter, (increment).to_int32());
+  counter = tpy::add_check<int32_t>(counter, (increment).to_fixed_check<int32_t>());
   // 67: print(counter)
   std::cout << counter << "\n";
   // 70: a = 10
@@ -180,7 +180,7 @@ void __tpy_init() {
   // 96: delta = 5
   delta = tpy::BigInt(5);
   // 97: arr[0] += delta  # global BigInt on RHS needs deref before .to_int32()
-  tpy::set_item((*arr), 0, tpy::int32_add(tpy::get_item((*arr), 0), (delta).to_int32()));
+  tpy::set_item((*arr), 0, tpy::add_check<int32_t>(tpy::get_item((*arr), 0), (delta).to_fixed_check<int32_t>()));
   // 98: print(arr[0])
   std::cout << tpy::get_item((*arr), 0) << "\n";
 }

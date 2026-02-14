@@ -24,7 +24,7 @@ struct Settings {
   // 13:     def area(self) -> Int32:
   int32_t area() {
     // 14:         return self.width * self.height
-    return (tpy::int32_mul(this->width, this->height));
+    return (tpy::mul_check<int32_t>(this->width, this->height));
   }
 };
 

@@ -10,7 +10,7 @@ std::string_view __name__;
 // 5: def helper_add(x: Int32) -> Int32:
 extern "C" int32_t Helper_Add(int32_t x) {
   // 6:     return x + Int32(1)
-  return (tpy::int32_add(x, 1));
+  return (tpy::add_check<int32_t>(x, 1));
 }
 
 // # Export that calls the renamed function above.

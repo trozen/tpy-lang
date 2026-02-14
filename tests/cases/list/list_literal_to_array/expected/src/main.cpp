@@ -8,7 +8,7 @@ std::string_view __name__;
 // 13: def sum_array(arr: Array[Int32, 3]) -> Int32:
 int32_t sum_array(std::array<int32_t, 3>& arr) {
   // 14:     return arr[0] + arr[1] + arr[2]
-  return (tpy::int32_add((tpy::int32_add(arr[0], arr[1])), arr[2]));
+  return (tpy::add_check<int32_t>((tpy::add_check<int32_t>(arr[0], arr[1])), arr[2]));
 }
 
 // 17: def main():
@@ -40,7 +40,7 @@ void main() {
   std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
   while ((sum_array(__tmp_4) > count)) {
     // 38:         count = count + 1
-    count = (tpy::int32_add(count, 1));
+    count = (tpy::add_check<int32_t>(count, 1));
   }
   // 39:     print(count)  # 1
   std::cout << count << "\n";

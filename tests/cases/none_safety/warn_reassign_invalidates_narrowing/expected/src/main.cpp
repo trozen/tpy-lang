@@ -12,7 +12,7 @@ int32_t bad(std::optional<int32_t> x) {
   // 6:     x = None
   x = std::nullopt;
   // 7:     return x + 1  # tpyc: warning(/Potential None access/)
-  return (tpy::int32_add(tpy::deref_optional_check(x), 1));
+  return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
 }
 
 void __tpy_init() {

@@ -18,9 +18,9 @@ int32_t sum_range_step(int32_t start, int32_t stop, int32_t step) {
   int32_t __stop_0 = stop;
   int32_t __step_0 = step;
   if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-  for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i = tpy::int32_add(i, __step_0)) {
+  for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i = tpy::add_check<int32_t>(i, __step_0)) {
     // 23:         total += i
-    total = tpy::int32_add(total, i);
+    total = tpy::add_check<int32_t>(total, i);
   }
   // 24:     return total
   return total;

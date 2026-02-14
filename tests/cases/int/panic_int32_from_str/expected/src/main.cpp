@@ -15,7 +15,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: x: Int32 = Int32("abc")
-  x = tpy::int32_from_str("abc");
+  x = tpy::from_str_check<int32_t>("abc");
   // 4: print(x)
   std::cout << x << "\n";
 }

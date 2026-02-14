@@ -14,7 +14,7 @@ int32_t use_after_write(std::vector<std::optional<int32_t>>& items, int32_t i) {
     // 6:         items[i] = items[0]
     tpy::set_item(items, i, tpy::get_item(items, 0));
     // 7:         return items[i] + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::int32_add(tpy::deref_optional_check(tpy::get_item(items, i)), 1));
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::get_item(items, i)), 1));
   }
   // 8:     return 0
   return 0;

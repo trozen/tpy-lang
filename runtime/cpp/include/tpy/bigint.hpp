@@ -11,12 +11,15 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <gmp.h>
 
 #include "core.hpp"
 #include "int32.hpp"
+#include "fixed_int.hpp"
 #include "type_traits.hpp"
 
 namespace tpy {
@@ -43,6 +46,15 @@ public:
             hi_ = 0;
         } else {
             init_gmp(v);
+        }
+    }
+
+    BigInt(uint64_t v) noexcept {
+        if (v <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) && fits_small(static_cast<int64_t>(v))) {
+            lo_ = static_cast<int64_t>(v) << 1;
+            hi_ = 0;
+        } else {
+            init_gmp_ui(v);
         }
     }
 
@@ -189,8 +201,8 @@ public:
     BigInt& operator>>=(int32_t shift) { *this = *this >> shift; return *this; }
 
     // BigInt overloads for shift (convert to int32)
-    BigInt operator<<(const BigInt& shift) const { return *this << shift.to_int32(); }
-    BigInt operator>>(const BigInt& shift) const { return *this >> shift.to_int32(); }
+    BigInt operator<<(const BigInt& shift) const { return *this << shift.to_int32_check(); }
+    BigInt operator>>(const BigInt& shift) const { return *this >> shift.to_int32_check(); }
 
     // Bitwise operators
     BigInt operator&(const BigInt& rhs) const {
@@ -260,14 +272,45 @@ public:
     bool operator>=(const BigInt& rhs) const { return compare(rhs) >= 0; }
 
     // Conversion to int32_t (for len() interop, etc.)
-    int32_t to_int32() const {
+    int32_t to_int32_check() const {
         if (is_small()) {
             int64_t v = small_value();
             if (v >= INT32_MIN && v <= INT32_MAX) {
                 return static_cast<int32_t>(v);
             }
         }
-        tpy_panic("BigInt value too large for int32_t conversion");
+        tpy_panic("Int32 overflow: value out of range");
+    }
+
+    // Generic conversion to any fixed-width integer type
+    template<typename T>
+    T to_fixed_check() const {
+        if (is_small()) {
+            int64_t v = small_value();
+            if constexpr (std::is_signed_v<T>) {
+                if (v >= static_cast<int64_t>(std::numeric_limits<T>::min()) &&
+                    v <= static_cast<int64_t>(std::numeric_limits<T>::max())) {
+                    return static_cast<T>(v);
+                }
+            } else {
+                if (v >= 0 && static_cast<uint64_t>(v) <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+                    return static_cast<T>(v);
+                }
+            }
+        } else {
+            // GMP path for large values — only int64_t/uint64_t might fit
+            if constexpr (std::is_same_v<T, int64_t>) {
+                if (mpz_fits_slong_p(gmp_ptr())) {
+                    return static_cast<int64_t>(mpz_get_si(gmp_ptr()));
+                }
+            } else if constexpr (std::is_same_v<T, uint64_t>) {
+                if (mpz_sgn(gmp_ptr()) >= 0 && mpz_fits_ulong_p(gmp_ptr())) {
+                    return static_cast<uint64_t>(mpz_get_ui(gmp_ptr()));
+                }
+            }
+        }
+        std::string msg = std::string(tpy::fixed_int_name<T>()) + " overflow: value out of range";
+        tpy_panic(msg.c_str());
     }
 
     // Conversion to double (for float operations)
@@ -329,6 +372,13 @@ private:
     void init_gmp(int64_t v) {
         auto* z = new __mpz_struct;
         mpz_init_set_si(z, v);
+        lo_ = 1;
+        hi_ = reinterpret_cast<int64_t>(z);
+    }
+
+    void init_gmp_ui(uint64_t v) {
+        auto* z = new __mpz_struct;
+        mpz_init_set_ui(z, v);
         lo_ = 1;
         hi_ = reinterpret_cast<int64_t>(z);
     }
@@ -598,7 +648,7 @@ inline BigInt BigInt::pow(const BigInt& exp) const {
     // Fast path: small base and small exponent - avoid GMP allocation
     if (is_small() && exp.is_small()) {
         int64_t result;
-        if (checked_pow<int64_t>(small_value(), exp.small_value(), result) && fits_small(result)) {
+        if (try_pow<int64_t>(small_value(), exp.small_value(), result) && fits_small(result)) {
             BigInt r;
             r.lo_ = result << 1;
             return r;

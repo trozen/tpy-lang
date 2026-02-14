@@ -15,7 +15,7 @@ int32_t nested_warn(std::optional<int32_t> x, std::optional<int32_t> y) {
       break;
     }
     // 8:         return y + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::int32_add(tpy::deref_optional_check(y), 1));
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(y), 1));
   }
   // 9:     return 0
   return 0;

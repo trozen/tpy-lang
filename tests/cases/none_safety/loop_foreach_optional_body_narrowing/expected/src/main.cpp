@@ -19,7 +19,7 @@ int32_t sum_non_none(std::vector<std::optional<int32_t>>& items) {
       continue;
     }
     // 9:         total = total + item  # tpyc: ok
-    total = (tpy::int32_add(total, (*item)));
+    total = (tpy::add_check<int32_t>(total, (*item)));
   }
   // 10:     return total
   return total;

@@ -12,7 +12,7 @@ int32_t score(Point* p) {
   // 12:     if p:  # tpyc: ok
   if (p) {
     // 13:         return p.x + 1  # tpyc: ok
-    return (tpy::int32_add(p->x, 1));
+    return (tpy::add_check<int32_t>(p->x, 1));
   }
   // 14:     return 0
   return 0;

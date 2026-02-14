@@ -16,7 +16,7 @@ void print_point(Point& p) {
 // 15: def get_sum(p: Point) -> Int32:
 int32_t get_sum(Point& p) {
   // 16:     return p.x + p.y
-  return (tpy::int32_add(p.x, p.y));
+  return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 18: def modify_point(p: Point) -> None:

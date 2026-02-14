@@ -39,7 +39,7 @@ void __tpy_init() {
   // 13: print(abs(99))
   std::cout << tpy::BigInt::abs(tpy::BigInt(99)) << "\n";
   // 15: big = int(-1000000)
-  big = tpy::BigInt(-(1000000));
+  big = tpy::BigInt(static_cast<int64_t>(-(1000000)));
   // 16: print(abs(big))
   std::cout << tpy::BigInt::abs(big) << "\n";
   // 19: z: float = -3.14

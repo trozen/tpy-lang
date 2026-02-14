@@ -13,7 +13,8 @@ from ..typesys import (
     TpyType, NamedType, PtrType, ConstPtrType, OwnType, TypeParamRef,
     OptionalType, VoidType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
-    MethodSignature, ProtocolInfo, TypeParamKind
+    MethodSignature, ProtocolInfo, TypeParamKind,
+    INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
 )
 from ..modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
@@ -27,6 +28,9 @@ from .nodes import (
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyModule,
 )
 from .imports import ImportProcessor, SPECIAL_MODULES, check_tpy_type_imported
+
+# Map of fixed-int type names to their singleton instances
+_FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
 
 
 # Operator-to-string mappings for AST binary, comparison, and unary operators
@@ -594,8 +598,8 @@ class Parser:
             check_tpy_type_imported(name, resolved_name, node, self._imports.tpy_star_import, self._imports.tpy_import_aliases)
             if resolved_name == "Self":
                 return SELF
-            elif resolved_name == "Int32":
-                return INT32
+            elif (fixed_int := _FIXED_INT_MAP.get(resolved_name)) is not None:
+                return fixed_int
             elif resolved_name == "int":
                 return BIGINT
             elif resolved_name == "float":
@@ -1046,7 +1050,7 @@ class Parser:
             return str(val)
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # Int32(x) just becomes x in C++
-            if node.func.id == "Int32":
+            if node.func.id in _FIXED_INT_MAP:
                 if not node.args:
                     return "0"
                 return self._get_default_value(node.args[0])
@@ -1065,8 +1069,8 @@ class Parser:
                 return STR
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             type_name = node.func.id
-            if type_name == "Int32":
-                return INT32
+            if (fixed_int := _FIXED_INT_MAP.get(type_name)) is not None:
+                return fixed_int
             if type_name == "int":
                 return BIGINT
             if type_name == "float":

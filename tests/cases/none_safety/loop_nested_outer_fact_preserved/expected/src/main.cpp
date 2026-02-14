@@ -15,7 +15,7 @@ int32_t nested_ok(std::optional<int32_t> x, std::optional<int32_t> y) {
       break;
     }
     // 8:         return x + 1  # tpyc: ok
-    return (tpy::int32_add((*x), 1));
+    return (tpy::add_check<int32_t>((*x), 1));
   }
   // 9:     return 0
   return 0;

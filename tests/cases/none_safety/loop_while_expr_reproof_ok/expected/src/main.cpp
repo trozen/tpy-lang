@@ -14,7 +14,7 @@ int32_t first_plus(std::vector<std::optional<int32_t>>& items, int32_t i) {
   // 6:     while items[i] is not None:
   while ((tpy::get_item(items, i).has_value())) {
     // 7:         out = items[i] + 1  # tpyc: ok
-    out = (tpy::int32_add((*tpy::get_item(items, i)), 1));
+    out = (tpy::add_check<int32_t>((*tpy::get_item(items, i)), 1));
     // 8:         break
     break;
   }

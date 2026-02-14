@@ -25,7 +25,7 @@ void test_stop_snapshot() {
     // 8:         n = 0
     n = 0;
     // 9:         count += 1
-    count = tpy::int32_add(count, 1);
+    count = tpy::add_check<int32_t>(count, 1);
   }
   // 10:     print(count)  # 5
   std::cout << count << "\n";
@@ -47,7 +47,7 @@ void test_all_args_snapshot() {
   int32_t __stop_0 = stop;
   int32_t __step_0 = step;
   if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-  for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i = tpy::int32_add(i, __step_0)) {
+  for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i = tpy::add_check<int32_t>(i, __step_0)) {
     // 19:         start = 100
     start = 100;
     // 20:         stop = 100
@@ -55,7 +55,7 @@ void test_all_args_snapshot() {
     // 21:         step = 100
     step = 100;
     // 22:         total += i
-    total = tpy::int32_add(total, i);
+    total = tpy::add_check<int32_t>(total, i);
   }
   // 23:     print(total)  # 0 + 2 + 4 + 6 + 8 = 20
   std::cout << total << "\n";
@@ -82,7 +82,7 @@ void __tpy_init() {
   int32_t __stop_0 = get_stop(3);
   for (int32_t i = 0; i < __stop_0; ++i) {
     // 32:     count += 1
-    count = tpy::int32_add(count, 1);
+    count = tpy::add_check<int32_t>(count, 1);
   }
   // 33: print(count)  # 3 (get_stop prints "3" once, then loop runs 3 times)
   std::cout << count << "\n";
@@ -96,7 +96,7 @@ void __tpy_init() {
     // 39:     n = 0
     n = tpy::BigInt(0);
     // 40:     count2 += 1
-    count2 = tpy::int32_add(count2, 1);
+    count2 = tpy::add_check<int32_t>(count2, 1);
   }
   // 41: print(count2)  # 4
   std::cout << count2 << "\n";

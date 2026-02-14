@@ -18,7 +18,7 @@ int32_t get_value(tpy::param_val_or_ref_t<T> item) {
 template<HasXY T>
 int32_t sum_xy(tpy::param_val_or_ref_t<T> item) {
   // 84:     return item.x + item.y
-  return (tpy::int32_add(item.x, item.y));
+  return (tpy::add_check<int32_t>(item.x, item.y));
 }
 
 // # Function using protocol with field and method

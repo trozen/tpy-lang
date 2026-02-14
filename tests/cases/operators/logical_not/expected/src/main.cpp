@@ -145,7 +145,7 @@ void test_not_in_while() {
   // 91:     while not done:
   while ((!(done))) {
     // 92:         count += 1
-    count = tpy::int32_add(count, 1);
+    count = tpy::add_check<int32_t>(count, 1);
     // 93:         if count >= 3:
     if ((count >= 3)) {
       // 94:             done = True

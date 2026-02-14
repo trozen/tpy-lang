@@ -21,7 +21,7 @@ int32_t function_with_pass_branch(int32_t x) {
     return -(1);
   }
   // 13:     return x * 2
-  return (tpy::int32_mul(x, 2));
+  return (tpy::mul_check<int32_t>(x, 2));
 }
 
 // 15: def pass_in_loop() -> Int32:
@@ -33,14 +33,14 @@ int32_t pass_in_loop() {
   // 18:     while i < 10:
   while ((i < 10)) {
     // 19:         if i % 2 == 0:
-    if (((tpy::int32_mod(i, 2)) == 0)) {
+    if (((tpy::mod_check<int32_t>(i, 2)) == 0)) {
       // 20:             pass
     } else {
       // 22:             total += i
-      total = tpy::int32_add(total, i);
+      total = tpy::add_check<int32_t>(total, i);
     }
     // 23:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 24:     return total
   return total;

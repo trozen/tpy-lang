@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Callable, Optional
 
 from .typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
     NamedType, PtrType, ConstPtrType, CharType, StrType,
     SpanType, PendingListType, TypeParamRef, TypeParamKind,
 )
@@ -30,6 +30,20 @@ def _int_type_param_match(actual: TpyType, expected: TpyType) -> bool:
     return isinstance(actual, TypeParamRef) and actual.kind == TypeParamKind.INT
 
 
+def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
+    """Check if actual FixedIntType can safely widen to expected FixedIntType."""
+    if not isinstance(actual, FixedIntType) or not isinstance(expected, FixedIntType):
+        return False
+    if actual == expected:
+        return False
+    if actual.signed == expected.signed:
+        return actual.bits < expected.bits
+    # Unsigned → signed: need strictly more bits (e.g. UInt8 → Int16)
+    if not actual.signed and expected.signed:
+        return actual.bits < expected.bits
+    return False
+
+
 def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     """Check if actual type (extending NativeContiguous[T]) can coerce to Span[T]."""
     if not isinstance(expected, SpanType):
@@ -44,8 +58,8 @@ def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     if isinstance(actual, PendingListType):
         if actual_elem == expected_elem:
             return True
-        # IntLiteral elements coerce to Int32/BigInt
-        if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (Int32Type, BigIntType)):
+        # IntLiteral elements coerce to any FixedIntType or BigInt
+        if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (FixedIntType, BigIntType)):
             return True
         return False
 
@@ -54,9 +68,9 @@ def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     # Direct element type match
     if actual_elem == expected_elem:
         return type_extends_protocol(actual, "NativeContiguous", [actual_elem])
-    # Allow IntLiteral element to coerce to Int32/BigInt elements
+    # Allow IntLiteral element to coerce to FixedInt/BigInt elements
     # Check NativeContiguous[expected_elem] since containers extend NativeContiguous with concrete types
-    if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (Int32Type, BigIntType)):
+    if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (FixedIntType, BigIntType)):
         return type_extends_protocol(actual, "NativeContiguous", [expected_elem])
     return False
 
@@ -79,13 +93,12 @@ class Coercion:
 # NOTE: Order matters; higher priority first for overlapping rules.
 COERCIONS: list[Coercion] = [
     # INT type parameter coercions (compile-time constants)
-    # INT type params (like N in Matrix[T, N: int]) can coerce to Int32
     Coercion(
-        name="int_type_param_to_int32",
+        name="int_type_param_to_fixed_int",
         from_type=TypeParamRef,
-        to_type=Int32Type,
+        to_type=FixedIntType,
         type_match=_int_type_param_match,
-        codegen=lambda e, _a, _b, _c: f"static_cast<int32_t>({e})",
+        codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
     Coercion(
         name="int_type_param_to_bigint",
@@ -95,24 +108,36 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"tpy::BigInt(static_cast<int64_t>({e}))",
     ),
 
-    # Integer coercions
+    # Integer literal to any fixed-width integer (range-checked)
     Coercion(
-        name="int_literal_to_int32",
+        name="int_literal_to_fixed_int",
         from_type=IntLiteralType,
-        to_type=Int32Type,
-        check_range=lambda lit, _: -(2 ** 31) <= lit.value <= (2 ** 31 - 1),
+        to_type=FixedIntType,
+        check_range=lambda lit, target: target.min_value <= lit.value <= target.max_value,
     ),
+
+    # Widening between fixed-width integers (e.g. Int8 → Int32, UInt8 → Int16)
     Coercion(
-        name="int32_to_bigint",
-        from_type=Int32Type,
+        name="fixed_int_widening",
+        from_type=FixedIntType,
+        to_type=FixedIntType,
+        type_match=_is_safe_widening,
+        codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
+    ),
+
+    # Fixed-width integer to BigInt
+    Coercion(
+        name="fixed_int_to_bigint",
+        from_type=FixedIntType,
         to_type=BigIntType,
         codegen=lambda e, _a, _b, _c: f"tpy::BigInt({e})",
     ),
+    # BigInt to fixed-width integer (narrowing, runtime checked)
     Coercion(
-        name="bigint_to_int32",
+        name="bigint_to_fixed_int",
         from_type=BigIntType,
-        to_type=Int32Type,
-        codegen=lambda e, _a, _b, _c: f"({e}).to_int32()",
+        to_type=FixedIntType,
+        codegen=lambda e, _a, b, _c: f"({e}).to_fixed_check<{b.to_cpp()}>()",
     ),
 
     # Float coercions
@@ -123,8 +148,8 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
     Coercion(
-        name="int32_to_float",
-        from_type=Int32Type,
+        name="fixed_int_to_float",
+        from_type=FixedIntType,
         to_type=FloatType,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),

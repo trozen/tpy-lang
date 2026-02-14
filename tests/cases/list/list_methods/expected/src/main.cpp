@@ -16,7 +16,7 @@ void print_list(std::vector<int32_t>& nums) {
     // 9:         print(nums[i])
     std::cout << tpy::get_item(nums, i) << "\n";
     // 10:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 11:     print("---")
   std::cout << "---" << "\n";

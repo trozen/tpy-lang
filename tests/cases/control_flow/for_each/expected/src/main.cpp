@@ -26,7 +26,7 @@ int32_t sum_array() {
   // 19:     for n in nums:
   for (tpy::BigInt n : nums) {
     // 20:         result += n
-    result = tpy::int32_add(result, (n).to_int32());
+    result = tpy::add_check<int32_t>(result, (n).to_fixed_check<int32_t>());
   }
   // 21:     return result
   return result;
@@ -56,7 +56,7 @@ int32_t nested_sum() {
     // 43:         for b in inner:
     for (tpy::BigInt b : inner) {
       // 44:             total += a * b
-      total = tpy::int32_add(total, (((a) * (b))).to_int32());
+      total = tpy::add_check<int32_t>(total, (((a) * (b))).to_fixed_check<int32_t>());
     }
   }
   // 45:     return total
@@ -77,7 +77,7 @@ void __tpy_init() {
   // 6: for x in items:
   for (tpy::BigInt x : (*items)) {
     // 7:     total += x
-    total = tpy::int32_add(total, (x).to_int32());
+    total = tpy::add_check<int32_t>(total, (x).to_fixed_check<int32_t>());
   }
   // 8: print(total)  # 15
   std::cout << total << "\n";

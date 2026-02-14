@@ -9,13 +9,13 @@ std::string_view __name__;
 // 49: def return_expr_as_int32(a: int, b: int) -> Int32:
 int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b) {
   // 50:     return a + b  # Expression result (BigInt) -> Int32
-  return (((a) + (b))).to_int32();
+  return (((a) + (b))).to_fixed_check<int32_t>();
 }
 
 // 52: def take_int32(n: Int32) -> Int32:
 int32_t take_int32(int32_t n) {
   // 53:     return n * 2
-  return (tpy::int32_mul(n, 2));
+  return (tpy::mul_check<int32_t>(n, 2));
 }
 
 // 56: def test_bigint_expr_to_int32() -> None:
@@ -31,23 +31,23 @@ void test_bigint_expr_to_int32() {
   // 64:     print(result)  # 30
   std::cout << result << "\n";
   // 67:     print(take_int32(a + b))  # 60
-  std::cout << take_int32((((a) + (b))).to_int32()) << "\n";
+  std::cout << take_int32((((a) + (b))).to_fixed_check<int32_t>()) << "\n";
   // 70:     sum_val: Int32 = a + b + 5
-  int32_t sum_val = (((((a) + (b))) + (tpy::BigInt(5)))).to_int32();
+  int32_t sum_val = (((((a) + (b))) + (tpy::BigInt(5)))).to_fixed_check<int32_t>();
   // 71:     print(sum_val)  # 35
   std::cout << sum_val << "\n";
   // 74:     sum_val = a * b
-  sum_val = (((a) * (b))).to_int32();
+  sum_val = (((a) * (b))).to_fixed_check<int32_t>();
   // 75:     print(sum_val)  # 200
   std::cout << sum_val << "\n";
   // 78:     c: Counter = Counter(100)
   Counter c = Counter(100);
   // 79:     val: Int32 = c.get()
-  int32_t val = (c.get()).to_int32();
+  int32_t val = (c.get()).to_fixed_check<int32_t>();
   // 80:     print(val)  # 100
   std::cout << val << "\n";
   // 83:     val = c.add(50)
-  val = (c.add(50)).to_int32();
+  val = (c.add(50)).to_fixed_check<int32_t>();
   // 84:     print(val)  # 150
   std::cout << val << "\n";
 }
@@ -56,13 +56,13 @@ void test_bigint_expr_to_int32() {
 // 89: def modify_via_ptr(p: Ptr[Point]) -> None:
 void modify_via_ptr(Point* p) {
   // 90:     p.x = p.x + 100
-  tpy::deref_check(p).x = (tpy::int32_add(tpy::deref_check(p).x, 100));
+  tpy::deref_check(p).x = (tpy::add_check<int32_t>(tpy::deref_check(p).x, 100));
 }
 
 // 92: def read_via_const_ptr(p: ConstPtr[Point]) -> Int32:
 int32_t read_via_const_ptr(const Point* p) {
   // 93:     return p.x + p.y
-  return (tpy::int32_add(tpy::deref_check(p).x, tpy::deref_check(p).y));
+  return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
 }
 
 // 96: def test_field_access_to_ptr() -> None:
@@ -98,17 +98,17 @@ void test_literal_expr_to_int32() {
   // 123:     print("Literal expressions -> Int32:")
   std::cout << "Literal expressions -> Int32:" << "\n";
   // 126:     x: Int32 = 10 + 20 + 30
-  int32_t x = tpy::int32_add(tpy::int32_add(10, 20), 30);
+  int32_t x = tpy::add_check<int32_t>(tpy::add_check<int32_t>(10, 20), 30);
   // 127:     print(x)  # 60
   std::cout << x << "\n";
   // 130:     y: Int32 = (5 + 5) * (2 + 3)
-  int32_t y = tpy::int32_mul(tpy::int32_add(5, 5), tpy::int32_add(2, 3));
+  int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(5, 5), tpy::add_check<int32_t>(2, 3));
   // 131:     print(y)  # 50
   std::cout << y << "\n";
   // 134:     aa: Int32 = 100
   int32_t aa = 100;
   // 135:     bb: Int32 = aa + 50  # Int32 + literal -> Int32
-  int32_t bb = (tpy::int32_add(aa, 50));
+  int32_t bb = (tpy::add_check<int32_t>(aa, 50));
   // 136:     print(bb)  # 150
   std::cout << bb << "\n";
 }

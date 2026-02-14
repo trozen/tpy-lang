@@ -10,7 +10,7 @@ int32_t negate_checked(std::optional<int32_t> x) {
   // 5:     assert x is not None
   if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
   // 6:     return -x  # tpyc: ok
-  return tpy::int32_neg((*x));
+  return tpy::neg_check<int32_t>((*x));
 }
 
 void __tpy_init() {

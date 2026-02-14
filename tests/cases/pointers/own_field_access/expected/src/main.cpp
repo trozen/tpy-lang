@@ -14,7 +14,7 @@ Point make_point(int32_t x, int32_t y) {
 // 24: def use_owned_point(p: Own[Point]) -> Int32:
 int32_t use_owned_point(Point p) {
   // 26:     return p.x + p.y
-  return (tpy::int32_add(p.x, p.y));
+  return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 29: def main():

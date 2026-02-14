@@ -57,7 +57,7 @@ int32_t multi_var(bool cond) {
     b = 4;
   }
   // 38:     return a + b
-  return (tpy::int32_add(a, b));
+  return (tpy::add_check<int32_t>(a, b));
 }
 
 // # Non-value type with rvalue init (needs rebind slot)
@@ -90,7 +90,7 @@ void reassign_after(bool cond) {
     x = 20;
   }
   // 56:     x = x + 1
-  x = (tpy::int32_add(x, 1));
+  x = (tpy::add_check<int32_t>(x, 1));
   // 57:     print(x)
   std::cout << x << "\n";
 }
@@ -111,7 +111,7 @@ int32_t nested_if(bool a, bool b) {
       x = 2;
     }
     // 67:         y: Int32 = x + 10
-    y = (tpy::int32_add(x, 10));
+    y = (tpy::add_check<int32_t>(x, 10));
   } else {
     // 69:         y = 99
     y = 99;

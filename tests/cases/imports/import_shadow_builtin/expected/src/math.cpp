@@ -10,7 +10,7 @@ int32_t MAGIC{};
 // 4: def custom_add(x: Int32, y: Int32) -> Int32:
 int32_t custom_add(int32_t x, int32_t y) {
   // 5:     return x + y
-  return (tpy::int32_add(x, y));
+  return (tpy::add_check<int32_t>(x, y));
 }
 
 void __tpy_init() {

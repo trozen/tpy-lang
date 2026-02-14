@@ -17,7 +17,7 @@ int32_t nested(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
         break;
       }
       // 9:             return a + b  # tpyc: ok
-      return (tpy::int32_add((*a), (*b)));
+      return (tpy::add_check<int32_t>((*a), (*b)));
     }
     // 10:         break
     break;

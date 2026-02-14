@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
@@ -115,7 +115,7 @@ class ExpressionGenerator:
             return "nullptr"
 
         elif isinstance(expr, TpyCoerce):
-            if expr.coercion.name == "int_literal_to_int32" or isinstance(expr.expected_type, SpanType):
+            if expr.coercion.name == "int_literal_to_fixed_int" or isinstance(expr.expected_type, SpanType):
                 inner_target = expr.expected_type
             else:
                 inner_target = expr.actual_type
@@ -123,12 +123,12 @@ class ExpressionGenerator:
             if isinstance(expr.expected_type, SpanType):
                 return self._gen_span_coercion(expr.expr, expr.expected_type, gen_inner)
             # IntLiteralType may be runtime BigInt; sema records this on the coercion.
-            if expr.coercion.name == "int_literal_to_int32":
+            if expr.coercion.name == "int_literal_to_fixed_int":
                 if expr.runtime_bigint:
-                    return f"({gen_inner}).to_int32()"
+                    return f"({gen_inner}).to_fixed_check<{expr.expected_type.to_cpp()}>()"
                 return gen_inner
             # Coercions that call methods on the inner expression need dereferencing for globals
-            if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr", "bigint_to_int32"):
+            if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr", "bigint_to_fixed_int"):
                 if self.ctx.is_indirect_name(expr.expr):
                     gen_inner = f"(*{gen_inner})"
             return expr.coercion.codegen(gen_inner, expr.actual_type, expr.expected_type, expr.context_kind)
@@ -211,15 +211,17 @@ class ExpressionGenerator:
 
     def _gen_binop(self, expr: TpyBinOp, target_type: TpyType | None) -> str:
         """Generate binary operation code."""
-        # First pass: get raw types to detect Int32 operands
+        # First pass: get raw types to detect fixed-int operands
         left_raw = self.types.get_resolved_type(expr.left)
         right_raw = self.types.get_resolved_type(expr.right)
-        # If one operand is Int32, resolve literals as Int32 (not BigInt)
-        int32_context = target_type if isinstance(target_type, Int32Type) else None
-        if isinstance(left_raw, Int32Type) or isinstance(right_raw, Int32Type):
-            int32_context = INT32
-        left_type = self.types.get_resolved_type(expr.left, int32_context)
-        right_type = self.types.get_resolved_type(expr.right, int32_context)
+        # If one operand is a FixedIntType, resolve literals as that type (not BigInt)
+        fixed_context = target_type if isinstance(target_type, FixedIntType) else None
+        if isinstance(left_raw, FixedIntType):
+            fixed_context = left_raw
+        elif isinstance(right_raw, FixedIntType):
+            fixed_context = right_raw
+        left_type = self.types.get_resolved_type(expr.left, fixed_context)
+        right_type = self.types.get_resolved_type(expr.right, fixed_context)
 
         # Handle 'in' and 'not in' operators
         if expr.op in ("in", "not in"):
@@ -307,14 +309,14 @@ class ExpressionGenerator:
         right_analyzer_type = self.ctx.analyzer.get_expr_type(expr.right)
         left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
         right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
-        if (isinstance(target_type, Int32Type) and left_is_literal and right_is_literal):
+        if (isinstance(target_type, FixedIntType) and left_is_literal and right_is_literal):
             # Pass target_type to handle nested binops like 1 + (2 + 3)
             left = self.gen_expr(expr.left, target_type)
             right = self.gen_expr(expr.right, target_type)
-            # Use registry to get Int32 binary operator
+            # Use registry to get the fixed-int binary operator
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
-                cpp_template = self.builtins.get_type_method_template(INT32, method_name)
+                cpp_template = self.builtins.get_type_method_template(target_type, method_name)
                 if cpp_template:
                     return expand_cpp_template(cpp_template, left, right)
             # Fallback for operators not in module system (bitwise operators)
@@ -334,14 +336,14 @@ class ExpressionGenerator:
                 right = self.gen_expr_deref(expr.right, receiver_type)
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                 left_actual = self.types.get_resolved_type(expr.left, param_type)
-                left = self._convert_to_int32_arg(left, left_actual, param_type, expr.left)
+                left = self._convert_to_fixed_int_arg(left, left_actual, param_type, expr.left)
             else:
                 # left is {self} (receiver), right is {0} (argument)
                 left = self.gen_expr_deref(expr.left, receiver_type)
                 right = self.gen_expr_deref(expr.right, param_type)
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                 right_actual = self.types.get_resolved_type(expr.right, param_type)
-                right = self._convert_to_int32_arg(right, right_actual, param_type, expr.right)
+                right = self._convert_to_fixed_int_arg(right, right_actual, param_type, expr.right)
             # Generate binop using helper (handles wrappers and is_reverse)
             result = self._gen_binop_from_result(binop_result, left, right)
             # Wrap in parens to avoid precedence issues with cout << and other operators
@@ -804,7 +806,7 @@ class ExpressionGenerator:
         count_type = self.ctx.analyzer.get_expr_type(expr.count)
         # BigInt count needs conversion (IntLiteralType is already plain int)
         if isinstance(count_type, BigIntType):
-            count = f"{count}.to_int32()"
+            count = f"{count}.to_int32_check()"
 
         # Determine result type and element type
         if target_type is not None:
@@ -869,7 +871,7 @@ class ExpressionGenerator:
 
         index_expr = self.gen_expr_deref(index)
         if self.types.is_runtime_bigint(index, index_type):
-            index_expr = f"{index_expr}.to_int32()"
+            index_expr = f"{index_expr}.to_int32_check()"
         return index_expr
 
     def _is_negative_literal(self, expr: TpyExpr) -> tuple[bool, int]:
@@ -908,11 +910,12 @@ class ExpressionGenerator:
             gen_inner = f"(*{gen_inner})"
         return f"tpy::as_span({gen_inner})"
 
-    def _convert_to_int32_arg(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType, expr: TpyExpr) -> str:
-        """Convert to Int32 when a runtime BigInt may be present."""
-        if isinstance(expected_type, Int32Type):
+    def _convert_to_fixed_int_arg(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType, expr: TpyExpr) -> str:
+        """Convert to the target FixedIntType when a runtime BigInt may be present."""
+        if isinstance(expected_type, FixedIntType):
+            cpp_t = expected_type.to_cpp()
             if isinstance(actual_type, BigIntType):
-                return f"({gen_expr}).to_int32()"
+                return f"({gen_expr}).to_fixed_check<{cpp_t}>()"
             if isinstance(actual_type, IntLiteralType) and self.types.is_runtime_bigint(expr, actual_type):
-                return f"({gen_expr}).to_int32()"
+                return f"({gen_expr}).to_fixed_check<{cpp_t}>()"
         return gen_expr

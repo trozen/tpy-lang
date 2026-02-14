@@ -27,7 +27,7 @@ struct Value {
   // 14:     def duplicate(self) -> Own[Value]:
   Value duplicate() {
     // 15:         return Value(self.x * 2)
-    return Value((tpy::int32_mul(this->x, 2)));
+    return Value((tpy::mul_check<int32_t>(this->x, 2)));
   }
 };
 

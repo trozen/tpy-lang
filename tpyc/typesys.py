@@ -150,20 +150,40 @@ class TpyType:
 
 
 @dataclass(frozen=True)
-class Int32Type(TpyType):
-    """32-bit integer type."""
+class FixedIntType(TpyType):
+    """Fixed-width integer type (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64)."""
+    bits: int = 32
+    signed: bool = True
+
+    @property
+    def min_value(self) -> int:
+        if self.signed:
+            return -(2 ** (self.bits - 1))
+        return 0
+
+    @property
+    def max_value(self) -> int:
+        if self.signed:
+            return 2 ** (self.bits - 1) - 1
+        return 2 ** self.bits - 1
 
     def to_cpp(self) -> str:
-        return "int32_t"
+        prefix = "int" if self.signed else "uint"
+        return f"{prefix}{self.bits}_t"
 
     def __str__(self) -> str:
-        return "Int32"
+        prefix = "Int" if self.signed else "UInt"
+        return f"{prefix}{self.bits}"
 
     def qualified_name(self) -> Optional[str]:
-        return "tpy.Int32"
+        return f"tpy.{self}"
 
     def is_value_type(self) -> bool:
         return True
+
+
+# Backward compat alias — isinstance(x, Int32Type) matches any FixedIntType
+Int32Type = FixedIntType
 
 
 @dataclass(frozen=True)
@@ -898,7 +918,16 @@ class ListLiteralInfo:
 
 
 # Singleton instances for built-in types
-INT32 = Int32Type()
+INT8 = FixedIntType(8, True)
+INT16 = FixedIntType(16, True)
+INT32 = FixedIntType(32, True)
+INT64 = FixedIntType(64, True)
+UINT8 = FixedIntType(8, False)
+UINT16 = FixedIntType(16, False)
+UINT32 = FixedIntType(32, False)
+UINT64 = FixedIntType(64, False)
+ALL_FIXED_INTS = [INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64]
+
 VOID = VoidType()
 STR = StrType()
 CHAR = CharType()
@@ -908,9 +937,9 @@ BIGINT = BigIntType()
 NONE = NoneType()
 RANGE = RangeType(INT32)
 
-# Int32 range limits
-INT32_MIN = -(2**31)
-INT32_MAX = 2**31 - 1
+# Backward-compat range limits (use type.min_value / type.max_value instead)
+INT32_MIN = INT32.min_value
+INT32_MAX = INT32.max_value
 
 
 def is_protocol_type(typ: TpyType) -> bool:

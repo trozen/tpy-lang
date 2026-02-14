@@ -20,9 +20,9 @@ void multi_hoist() {
   // 15:     for i in range(3):
   for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 16:         a: Point = Point(i, 10)
-    Point* a = &*(__slot_3 = Point((i).to_int32(), 10));
+    Point* a = &*(__slot_3 = Point((i).to_fixed_check<int32_t>(), 10));
     // 17:         b: Point = Point(20, i)
-    Point* b = &*(__slot_4 = Point(20, (i).to_int32()));
+    Point* b = &*(__slot_4 = Point(20, (i).to_fixed_check<int32_t>()));
     // 18:         saved_a = a  # tpyc: warning(/hoisted to function scope/)
     saved_a = a;
     // 19:         saved_b = b  # tpyc: warning(/hoisted to function scope/)

@@ -19,7 +19,7 @@ void __tpy_init() {
   // 4: x: Int32 = 2147483647  # INT32_MAX
   x = 2147483647;
   // 5: y: Int32 = x + 1       # Should panic
-  y = (tpy::int32_add(x, 1));
+  y = (tpy::add_check<int32_t>(x, 1));
   // 6: print(y)
   std::cout << y << "\n";
 }

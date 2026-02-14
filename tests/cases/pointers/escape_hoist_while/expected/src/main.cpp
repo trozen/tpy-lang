@@ -20,7 +20,7 @@ void while_escape() {
     // 15:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
     // 16:         i = i + 1
-    i = (tpy::int32_add(i, 1));
+    i = (tpy::add_check<int32_t>(i, 1));
   }
   // 17:     print(saved.x, saved.y)
   std::cout << saved->x << " " << saved->y << "\n";

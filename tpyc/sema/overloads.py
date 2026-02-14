@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, IntLiteralType, Int32Type, BigIntType, TypeParamRef,
+    TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, TypeParamRef,
     TypeParamKind, FunctionInfo, is_protocol_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -51,7 +51,10 @@ def type_matches_numeric(
     if arg_type == param_type:
         return True
     if isinstance(arg_type, IntLiteralType):
-        if isinstance(param_type, (Int32Type, BigIntType, IntLiteralType)):
+        if isinstance(param_type, FixedIntType):
+            # Range-check: literal must fit in the target fixed-int type
+            return param_type.min_value <= arg_type.value <= param_type.max_value
+        if isinstance(param_type, (BigIntType, IntLiteralType)):
             return True
     if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
         if isinstance(param_type, (Int32Type, BigIntType)):

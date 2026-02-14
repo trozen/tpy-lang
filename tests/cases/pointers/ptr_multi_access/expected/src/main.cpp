@@ -8,7 +8,7 @@ std::string_view __name__;
 // 12: def use_fields(p: Ptr[Point]) -> None:
 void use_fields(Point* p) {
   // 14:     print(p.x + p.y)
-  std::cout << (tpy::int32_add(tpy::deref_check(p).x, tpy::deref_check(p).y)) << "\n";
+  std::cout << (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y)) << "\n";
 }
 
 // 16: def use_methods(p: Ptr[Point]) -> None:

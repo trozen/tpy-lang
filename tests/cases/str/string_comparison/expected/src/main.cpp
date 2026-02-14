@@ -179,7 +179,7 @@ int32_t find_string(std::vector<std::string_view>& items, std::string_view targe
       return i;
     }
     // 112:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 113:     return -1
   return -(1);

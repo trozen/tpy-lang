@@ -24,7 +24,7 @@ int32_t sum_range(int32_t n) {
   int32_t __stop_0 = n;
   for (int32_t i = 0; i < __stop_0; ++i) {
     // 10:         total += i
-    total = tpy::int32_add(total, i);
+    total = tpy::add_check<int32_t>(total, i);
   }
   // 11:     return total
   return total;

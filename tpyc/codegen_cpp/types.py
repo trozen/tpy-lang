@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
     PendingListType, ListType, ArrayType, TypeParamRef, NamedType,
     INT32, BIGINT, FLOAT
 )
@@ -62,13 +62,15 @@ class TypeResolver:
             if expr.op == "div":
                 return FLOAT
 
-            # Determine Int32 context: explicit target or operand is Int32
-            int32_ctx = target_type if isinstance(target_type, Int32Type) else None
-            if isinstance(left_raw, Int32Type) or isinstance(right_raw, Int32Type):
-                int32_ctx = INT32
+            # Determine fixed-int context: explicit target or operand is a FixedIntType
+            fixed_ctx = target_type if isinstance(target_type, FixedIntType) else None
+            if isinstance(left_raw, FixedIntType):
+                fixed_ctx = left_raw
+            elif isinstance(right_raw, FixedIntType):
+                fixed_ctx = right_raw
             # Second pass with context for proper literal resolution
-            left_type = self.get_resolved_type(expr.left, int32_ctx)
-            right_type = self.get_resolved_type(expr.right, int32_ctx)
+            left_type = self.get_resolved_type(expr.left, fixed_ctx)
+            right_type = self.get_resolved_type(expr.right, fixed_ctx)
             # Use analyzer types for literal check - analyzer returns IntLiteralType for
             # all-literal expressions (including nested binops like 2+3)
             # NOTE: Variables (TpyName) may have IntLiteralType but aren't actual literals
@@ -76,14 +78,14 @@ class TypeResolver:
             right_analyzer_type = self.ctx.analyzer.get_expr_type(expr.right)
             left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
             right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
-            # If target is Int32 and both operands are literals, result is Int32
-            if isinstance(int32_ctx, Int32Type) and left_is_literal and right_is_literal:
-                return INT32
-            # If either operand is Int32 (and other is compatible), result is Int32
-            if isinstance(left_type, Int32Type) and isinstance(right_type, (Int32Type, IntLiteralType)):
-                return INT32
-            if isinstance(right_type, Int32Type) and isinstance(left_type, (Int32Type, IntLiteralType)):
-                return INT32
+            # If target is fixed-int and both operands are literals, result is that type
+            if isinstance(fixed_ctx, FixedIntType) and left_is_literal and right_is_literal:
+                return fixed_ctx
+            # If either operand is FixedIntType (and other is compatible), result is that type
+            if isinstance(left_type, FixedIntType) and isinstance(right_type, (FixedIntType, IntLiteralType)):
+                return left_type
+            if isinstance(right_type, FixedIntType) and isinstance(left_type, (FixedIntType, IntLiteralType)):
+                return right_type
             # Otherwise, result is BigInt if either operand is BigInt, or if both are IntLiteral
             is_bigint_op = (
                 isinstance(left_type, BigIntType) or
@@ -106,10 +108,10 @@ class TypeResolver:
             if isinstance(elem_type, IntLiteralType):
                 elem_type = INT32
             return ListType(elem_type)
-        # Resolve IntLiteralType based on context (Int32 if target, else BigInt)
+        # Resolve IntLiteralType based on context (FixedInt if target, else BigInt)
         if isinstance(typ, IntLiteralType):
-            if isinstance(target_type, Int32Type):
-                return INT32
+            if isinstance(target_type, FixedIntType):
+                return target_type
             return BIGINT
         # Resolve IntLiteralType in container element types
         if isinstance(typ, ListType) and isinstance(typ.element_type, IntLiteralType):
@@ -144,22 +146,20 @@ class TypeResolver:
         # Default to True for safety
         return True
 
-    def is_int32_arithmetic(self, left_type: TpyType, right_type: TpyType, op: str) -> bool:
-        """Check if binary op produces Int32 result (needs checked arithmetic).
+    def is_fixed_int_arithmetic(self, left_type: TpyType, right_type: TpyType, op: str) -> bool:
+        """Check if binary op produces fixed-int result (needs checked arithmetic).
 
-        Only applies when at least one operand is explicitly Int32Type.
+        Only applies when at least one operand is explicitly a FixedIntType.
         IntLiteralType alone defaults to BigInt (Python semantics).
         """
         if op not in ("+", "-", "*", "//", "%", "**"):
             return False
-        # Need at least one explicit Int32 operand
-        has_int32 = isinstance(left_type, Int32Type) or isinstance(right_type, Int32Type)
-        if not has_int32:
+        has_fixed = isinstance(left_type, FixedIntType) or isinstance(right_type, FixedIntType)
+        if not has_fixed:
             return False
-        # The other operand must be Int32 or IntLiteral (coerces to Int32)
-        def is_int32_compatible(t: TpyType) -> bool:
-            return isinstance(t, (Int32Type, IntLiteralType))
-        return is_int32_compatible(left_type) and is_int32_compatible(right_type)
+        def is_fixed_compatible(t: TpyType) -> bool:
+            return isinstance(t, (FixedIntType, IntLiteralType))
+        return is_fixed_compatible(left_type) and is_fixed_compatible(right_type)
 
     def is_runtime_bigint(self, expr: TpyExpr, expr_type: TpyType) -> bool:
         """Check if expression is stored as BigInt at runtime."""

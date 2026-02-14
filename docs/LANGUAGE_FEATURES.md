@@ -152,13 +152,12 @@ Possible syntax options:
 ### Numeric
 - **Working**: `int` (Python's int → `tpy::BigInt` arbitrary precision using GMP)
 - **Working**: `float` (Python's float → `double`, 64-bit IEEE 754)
-- **Working**: `Int32`, `bool`, `Char`
-- **Planned**: `Int64`, `Int8`, `Int16`, `UInt8`, `UInt16`, `UInt32`, `UInt64`
+- **Working**: `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `bool`, `Char`
 - **Planned**: `Float32`
 
 #### Mixed Arithmetic and Type Promotion (Working)
 
-Operations between `Int32` and `int` (BigInt) follow Python's promotion rules - the result is always the wider type:
+All fixed-width integer types use checked arithmetic (panics on overflow). Operations between fixed-width types and `int` (BigInt) follow Python's promotion rules - the result is always the wider type:
 
 ```python
 x: Int32 = 5
@@ -172,6 +171,13 @@ z = x + y       # Result is int (BigInt), not Int32
 | `Int32 + int` | `int` | Promotes to BigInt to avoid overflow |
 | `int + Int32` | `int` | Promotes to BigInt to avoid overflow |
 | `Int32 + literal` | `Int32` | Literal coerces to target type |
+
+**Implicit widening**: Smaller fixed-width integers widen to larger ones automatically:
+- Signed: `Int8` → `Int16` → `Int32` → `Int64`
+- Unsigned: `UInt8` → `UInt16` → `UInt32` → `UInt64`
+- Cross-sign: `UInt8` → `Int16`, `UInt16` → `Int32`, `UInt32` → `Int64`
+
+Negation (`-x`) is only available on signed types — unsigned types produce a compile error.
 
 **Float promotion**: Any operation involving `float` promotes to `float`:
 
@@ -187,11 +193,11 @@ For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), the target type is pres
 ```python
 total: Int32 = 0
 big_value = 10  # int (BigInt)
-total += big_value  # big_value.to_int32(), then Int32 addition
+total += big_value  # big_value converted to Int32, then Int32 addition
 total *= big_value  # same: converts to Int32 first
 ```
 
-This ensures `Int32` variables stay in the checked arithmetic domain. If the BigInt value is too large for Int32, the conversion panics at runtime.
+This ensures fixed-width variables stay in the checked arithmetic domain. If the BigInt value is too large for the target type, the conversion panics at runtime.
 
 ### Strings
 - **Working**: `str` type with string literals, comparison, iteration

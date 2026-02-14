@@ -12,7 +12,7 @@ int32_t read_at(std::vector<std::optional<int32_t>>& items, int32_t i) {
   // 5:     if items[i] is not None:
   if ((tpy::get_item(items, i).has_value())) {
     // 6:         return items[i] + 1  # tpyc: ok
-    return (tpy::int32_add((*tpy::get_item(items, i)), 1));
+    return (tpy::add_check<int32_t>((*tpy::get_item(items, i)), 1));
   }
   // 7:     return 0
   return 0;

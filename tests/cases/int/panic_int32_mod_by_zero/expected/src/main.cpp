@@ -23,7 +23,7 @@ void __tpy_init() {
   // 5: y: Int32 = 0
   y = 0;
   // 6: z: Int32 = x % y  # Should panic
-  z = (tpy::int32_mod(x, y));
+  z = (tpy::mod_check<int32_t>(x, y));
   // 7: print(z)
   std::cout << z << "\n";
 }

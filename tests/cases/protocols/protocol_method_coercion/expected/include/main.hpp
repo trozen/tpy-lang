@@ -28,13 +28,13 @@ struct SimpleCalc {
   // 15:     def add(self, x: Int32) -> Int32:
   int32_t add(int32_t x) {
     // 16:         return self.base + x
-    return (tpy::int32_add(this->base, x));
+    return (tpy::add_check<int32_t>(this->base, x));
   }
 
   // 18:     def multiply(self, x: Int32, y: Int32) -> Int32:
   int32_t multiply(int32_t x, int32_t y) {
     // 19:         return x * y
-    return (tpy::int32_mul(x, y));
+    return (tpy::mul_check<int32_t>(x, y));
   }
 };
 

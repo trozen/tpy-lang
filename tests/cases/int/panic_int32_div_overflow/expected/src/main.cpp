@@ -23,7 +23,7 @@ void __tpy_init() {
   // 5: y: Int32 = -1
   y = -(1);
   // 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
-  z = (tpy::int32_div(x, y));
+  z = (tpy::div_check<int32_t>(x, y));
   // 7: print(z)
   std::cout << z << "\n";
 }

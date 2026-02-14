@@ -163,10 +163,10 @@ int32_t count_vowels(std::string_view text) {
     // 94:         if is_vowel(text[i]):
     if (is_vowel(tpy::get_char(text, i))) {
       // 95:             count += 1
-      count = tpy::int32_add(count, 1);
+      count = tpy::add_check<int32_t>(count, 1);
     }
     // 96:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 97:     return count
   return count;

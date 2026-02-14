@@ -22,9 +22,9 @@ int32_t sum_list(std::vector<int32_t>& nums) {
   // 6:     while i < len(nums):
   while ((i < tpy::__len__(nums))) {
     // 7:         total += nums[i]
-    total = tpy::int32_add(total, tpy::get_item(nums, i));
+    total = tpy::add_check<int32_t>(total, tpy::get_item(nums, i));
     // 8:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 9:     return total
   return total;
@@ -58,9 +58,9 @@ void __tpy_init() {
   static std::vector<tpy::BigInt> __global_slot_3 = {72, 73};
   chars = &__global_slot_3;
   // 24: print(chr(chars[0]), end='')
-  std::cout << static_cast<char>((tpy::get_item((*chars), 0)).to_int32());
+  std::cout << static_cast<char>((tpy::get_item((*chars), 0)).to_fixed_check<int32_t>());
   // 25: print(chr(chars[1]))
-  std::cout << static_cast<char>((tpy::get_item((*chars), 1)).to_int32()) << "\n";
+  std::cout << static_cast<char>((tpy::get_item((*chars), 1)).to_fixed_check<int32_t>()) << "\n";
 }
 
 } // namespace tpy_user::main

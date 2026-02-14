@@ -16,7 +16,7 @@ void __tpy_init() {
   // 3: x: Int32 = 1
   x = 1;
   // 4: print(x << 100)  # Should panic: shift count too large
-  std::cout << (tpy::int32_lshift(x, 100)) << "\n";
+  std::cout << (tpy::lshift_check<int32_t>(x, 100)) << "\n";
 }
 
 } // namespace tpy_user::main

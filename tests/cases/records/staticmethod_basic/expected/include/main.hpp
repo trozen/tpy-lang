@@ -30,7 +30,7 @@ struct Counter {
   // 15:     def add(a: Int32, b: Int32) -> Int32:
   static int32_t add(int32_t a, int32_t b) {
     // 16:         return a + b
-    return (tpy::int32_add(a, b));
+    return (tpy::add_check<int32_t>(a, b));
   }
 
   // 18:     def get(self) -> Int32:

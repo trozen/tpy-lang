@@ -22,7 +22,7 @@ void __tpy_init() {
   // 13: for i in range(3):
   for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 14:     p: Point = Point(i, i)
-    Point* p = &*(__global_slot_2 = Point((i).to_int32(), (i).to_int32()));
+    Point* p = &*(__global_slot_2 = Point((i).to_fixed_check<int32_t>(), (i).to_fixed_check<int32_t>()));
     // 15:     saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

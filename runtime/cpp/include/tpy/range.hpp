@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <iostream>
 #include <type_traits>
+#include "fixed_int.hpp"
 
 namespace tpy {
 
@@ -33,8 +34,8 @@ public:
         T current_, end_, step_;
         T operator*() const { return current_; }
         Iterator& operator++() {
-            if constexpr (std::is_same_v<T, int32_t>)
-                current_ = int32_add(current_, step_);
+            if constexpr (std::is_integral_v<T> && sizeof(T) <= 8)
+                current_ = tpy::add_check<T>(current_, step_);
             else
                 current_ += step_;
             if (step_ > T{} ? !(current_ < end_) : !(current_ > end_))

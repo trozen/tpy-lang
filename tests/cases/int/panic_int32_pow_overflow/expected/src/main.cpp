@@ -19,7 +19,7 @@ void __tpy_init() {
   // 4: x: Int32 = 2
   x = 2;
   // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
-  y = (tpy::int32_pow(x, 31));
+  y = (tpy::pow_check<int32_t>(x, 31));
   // 6: print(y)
   std::cout << y << "\n";
 }

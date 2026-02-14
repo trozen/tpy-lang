@@ -8,7 +8,7 @@ std::string_view __name__;
 // 3: def add(a: Int32, b: Int32) -> Int32:
 int32_t add(int32_t a, int32_t b) {
   // 4:     return a + b
-  return (tpy::int32_add(a, b));
+  return (tpy::add_check<int32_t>(a, b));
 }
 
 void __tpy_init() {

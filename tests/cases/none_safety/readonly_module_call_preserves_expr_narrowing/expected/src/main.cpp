@@ -13,7 +13,7 @@ int32_t use_after_check(std::vector<std::optional<int32_t>>& items, int32_t i) {
     // 7:         h.noop()
     tpy_user::helpers::noop();
     // 8:         return items[i] + 1  # tpyc: ok
-    return (tpy::int32_add((*tpy::get_item(items, i)), 1));
+    return (tpy::add_check<int32_t>((*tpy::get_item(items, i)), 1));
   }
   // 9:     return 0
   return 0;

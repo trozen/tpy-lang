@@ -10,7 +10,7 @@ int32_t f(std::optional<int32_t> x) {
   // 5:     if not (x is None):
   if ((!((!x.has_value())))) {
     // 6:         return x + 1
-    return (tpy::int32_add((*x), 1));
+    return (tpy::add_check<int32_t>((*x), 1));
   }
   // 7:     return 0
   return 0;

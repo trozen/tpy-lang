@@ -10,7 +10,7 @@ int32_t bump_positive(int32_t n) {
   // 5:     assert n > 0, "n must be positive"
   if (!((n > 0))) tpy::tpy_panic("n must be positive");
   // 6:     return n + 1
-  return (tpy::int32_add(n, 1));
+  return (tpy::add_check<int32_t>(n, 1));
 }
 
 void __tpy_init() {

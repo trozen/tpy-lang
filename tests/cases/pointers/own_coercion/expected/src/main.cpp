@@ -10,7 +10,7 @@ int32_t return_owned_int32() {
   // 8:     big: int = 42
   tpy::BigInt big = tpy::BigInt(42);
   // 9:     return copy(big)  # BigInt -> Own[Int32] requires .to_int32() coercion
-  return (big).to_int32();
+  return (big).to_fixed_check<int32_t>();
 }
 
 // 11: def take_owned_int32(x: Own[Int32]) -> Int32:
@@ -28,7 +28,7 @@ void main() {
   // 20:     big: int = 100
   tpy::BigInt big = tpy::BigInt(100);
   // 21:     result2: Int32 = take_owned_int32(big)
-  int32_t result2 = take_owned_int32((big).to_int32());
+  int32_t result2 = take_owned_int32((big).to_fixed_check<int32_t>());
   // 22:     print(result2)  # 100
   std::cout << result2 << "\n";
 }

@@ -10,7 +10,7 @@ int32_t add_one(std::optional<int32_t> x) {
   // 5:     assert x is not None
   if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
   // 6:     return x + 1
-  return (tpy::int32_add((*x), 1));
+  return (tpy::add_check<int32_t>((*x), 1));
 }
 
 void __tpy_init() {

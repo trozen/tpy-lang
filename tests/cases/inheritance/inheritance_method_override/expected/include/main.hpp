@@ -58,7 +58,7 @@ struct Square : Shape {
   // 23:     def area(self) -> Int32:
   int32_t area() {
     // 24:         return self.side * self.side
-    return (tpy::int32_mul(this->side, this->side));
+    return (tpy::mul_check<int32_t>(this->side, this->side));
   }
 };
 
@@ -86,7 +86,7 @@ struct Rectangle : Shape {
   // 36:     def area(self) -> Int32:
   int32_t area() {
     // 37:         return self.width * self.height
-    return (tpy::int32_mul(this->width, this->height));
+    return (tpy::mul_check<int32_t>(this->width, this->height));
   }
 };
 

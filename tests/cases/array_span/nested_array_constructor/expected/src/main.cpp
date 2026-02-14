@@ -8,7 +8,7 @@ std::string_view __name__;
 // 8: def take_span_nested(s: Span[Array[Int32, 2]]) -> Int32:
 int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s) {
   // 9:     return s[0][0] + s[1][1]
-  return (tpy::int32_add(s[0][0], s[1][1]));
+  return (tpy::add_check<int32_t>(s[0][0], s[1][1]));
 }
 
 // 11: def main() -> None:

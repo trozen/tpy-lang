@@ -403,12 +403,16 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
 
     Used for resolving extends declarations like extends=["NativeIterable[Char]"].
     """
-    from tpyc.typesys import CHAR, INT32, BOOL, STR, VOID, BIGINT, FLOAT
+    from tpyc.typesys import (
+        CHAR, BOOL, STR, VOID, BIGINT, FLOAT,
+        INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
+    )
 
     # Map of simple type names to their singleton instances
     type_map = {
         "Char": CHAR,
-        "Int32": INT32,
+        "Int8": INT8, "Int16": INT16, "Int32": INT32, "Int64": INT64,
+        "UInt8": UINT8, "UInt16": UINT16, "UInt32": UINT32, "UInt64": UINT64,
         "str": STR,
         "int": BIGINT,
         "float": FLOAT,

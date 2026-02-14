@@ -17,7 +17,7 @@ void print_list(std::vector<int32_t>& nums) {
     // 10:         print(nums[i])
     std::cout << tpy::get_item(nums, i) << "\n";
     // 11:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 12:     print("---")
   std::cout << "---" << "\n";
@@ -33,7 +33,7 @@ void print_staticlist(StaticList<int32_t, 16>& nums) {
     // 18:         print(nums[i])
     std::cout << tpy::get_item(nums, i) << "\n";
     // 19:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 20:     print("---")
   std::cout << "---" << "\n";
@@ -365,7 +365,7 @@ void print_item_list(StaticList<Item, 16>& items) {
     // 239:         print(items[i].value)
     std::cout << tpy::get_item(items, i).value << "\n";
     // 240:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 241:     print("---")
   std::cout << "---" << "\n";

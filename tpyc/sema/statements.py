@@ -805,10 +805,11 @@ class StatementAnalyzer:
             and isinstance(value_type, Int32Type)
             and stmt.target.name in self.ctx.literal_default_vars
         ):
+            type_name = str(value_type)
             self.ctx.warning(
-                f"Augmented assignment does not narrow '{stmt.target.name}' from int to Int32; "
-                f"variable remains int (BigInt). Annotate or initialize '{stmt.target.name}' as Int32 "
-                f"to keep Int32 arithmetic.",
+                f"Augmented assignment does not narrow '{stmt.target.name}' from int to {type_name}; "
+                f"variable remains int (BigInt). Annotate or initialize '{stmt.target.name}' as {type_name} "
+                f"to keep {type_name} arithmetic.",
                 stmt,
             )
         # Both must be numeric types for arithmetic augmented assignment
@@ -822,11 +823,11 @@ class StatementAnalyzer:
                 f"Augmented assignment value must be a numeric type, got {value_type}",
                 stmt,
             )
-        # Special case: Int32 += BigInt should use Int32 ops (value gets converted to Int32)
+        # Special case: FixedInt += BigInt should use the target's ops (value gets converted)
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
         resolve_value_type = value_type
         if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
-            resolve_value_type = INT32
+            resolve_value_type = target_type
         # Resolve the binary operation for codegen
         operators = OperatorResolver(self.ctx)
         if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):

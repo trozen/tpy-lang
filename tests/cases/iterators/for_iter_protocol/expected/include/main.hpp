@@ -29,7 +29,7 @@ struct RangeIter {
       // 13:             result = self.current
       int32_t result = this->current;
       // 14:             self.current += 1
-      this->current = tpy::int32_add(this->current, 1);
+      this->current = tpy::add_check<int32_t>(this->current, 1);
       // 15:             return result
       return result;
     }

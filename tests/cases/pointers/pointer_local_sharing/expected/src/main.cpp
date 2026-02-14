@@ -71,7 +71,7 @@ void test_foreach_mutation() {
   // 42:     for p in points:
   for (auto& p : points) {
     // 43:         p.x += 1
-    p.x = tpy::int32_add(p.x, 1);
+    p.x = tpy::add_check<int32_t>(p.x, 1);
   }
   // 44:     print(points[0].x)  # 2
   std::cout << tpy::get_item(points, 0).x << "\n";
@@ -216,7 +216,7 @@ void test_foreach_value_from_pointer_local() {
   // 126:     for n in nums:
   for (int32_t n : nums) {
     // 127:         total = total + n
-    total = (tpy::int32_add(total, n));
+    total = (tpy::add_check<int32_t>(total, n));
   }
   // 128:     print(total)  # 60
   std::cout << total << "\n";

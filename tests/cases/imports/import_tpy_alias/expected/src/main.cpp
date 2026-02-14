@@ -24,7 +24,7 @@ void __tpy_init() {
   // 7: print(y)
   std::cout << y << "\n";
   // 8: print(x + y)
-  std::cout << (tpy::int32_add(x, y)) << "\n";
+  std::cout << (tpy::add_check<int32_t>(x, y)) << "\n";
 }
 
 } // namespace tpy_user::main

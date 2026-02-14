@@ -14,7 +14,7 @@ void bump() {
   // 7:     global counter
   // 8:     global flag
   // 9:     counter = counter + Int32(1)
-  counter = (tpy::int32_add(counter, 1));
+  counter = (tpy::add_check<int32_t>(counter, 1));
   // 10:     flag = True
   flag = true;
 }

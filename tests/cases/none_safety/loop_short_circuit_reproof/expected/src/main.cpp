@@ -10,7 +10,7 @@ int32_t shrink(std::optional<int32_t> x) {
   // 5:     while x is not None and x > 0:
   while (((x.has_value()) && ((*x) > 0))) {
     // 6:         x = x - 1  # tpyc: ok
-    x = (tpy::int32_sub((*x), 1));
+    x = (tpy::sub_check<int32_t>((*x), 1));
   }
   // 7:     return 0
   return 0;

@@ -10,7 +10,7 @@ int32_t score(std::optional<int32_t> x) {
   // 5:     if x is not None and x > 3:
   if (((x.has_value()) && ((*x) > 3))) {
     // 6:         return x + 10
-    return (tpy::int32_add((*x), 10));
+    return (tpy::add_check<int32_t>((*x), 10));
   }
   // 7:     if x is None or x < 0:
   if (((!x.has_value()) || ((*x) < 0))) {
@@ -18,7 +18,7 @@ int32_t score(std::optional<int32_t> x) {
     return 0;
   }
   // 9:     return x + 1
-  return (tpy::int32_add((*x), 1));
+  return (tpy::add_check<int32_t>((*x), 1));
 }
 
 void __tpy_init() {

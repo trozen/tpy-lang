@@ -66,7 +66,7 @@ struct Counter {
   // 85:     def add(self, a: Int32) -> Int32:
   int32_t add(int32_t a) {
     // 87:         return self.val + a
-    return (tpy::int32_add(this->val, a));
+    return (tpy::add_check<int32_t>(this->val, a));
   }
 };
 

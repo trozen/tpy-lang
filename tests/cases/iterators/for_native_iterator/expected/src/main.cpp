@@ -15,7 +15,7 @@ int32_t sum_iter(T_it& it) {
   while (auto __opt_0 = __iter_0.__next_opt__()) {
     int32_t x = *__opt_0;
     // 21:         total += x
-    total = tpy::int32_add(total, x);
+    total = tpy::add_check<int32_t>(total, x);
   }
   // 22:     return total
   return total;
@@ -31,7 +31,7 @@ int32_t count_iter(T_it& it) {
   while (auto __opt_0 = __iter_0.__next_opt__()) {
     int32_t x = *__opt_0;
     // 27:         n += 1
-    n = tpy::int32_add(n, 1);
+    n = tpy::add_check<int32_t>(n, 1);
   }
   // 28:     return n
   return n;

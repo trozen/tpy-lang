@@ -27,9 +27,9 @@ struct Numbers {
     // 12:         while i < len(self.data):
     while ((i < tpy::__len__(this->data))) {
       // 13:             total += self.data[i]
-      total = tpy::int32_add(total, tpy::get_item(this->data, i));
+      total = tpy::add_check<int32_t>(total, tpy::get_item(this->data, i));
       // 14:             i += 1
-      i = tpy::int32_add(i, 1);
+      i = tpy::add_check<int32_t>(i, 1);
     }
     // 15:         return total
     return total;

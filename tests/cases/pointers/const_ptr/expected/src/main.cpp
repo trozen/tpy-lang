@@ -9,7 +9,7 @@ std::string_view __name__;
 int32_t read_point(const Point* p) {
   // 14:     """Read from a const pointer - should work."""
   // 15:     return p.x + p.y
-  return (tpy::int32_add(tpy::deref_check(p).x, tpy::deref_check(p).y));
+  return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
 }
 
 // 17: def modify_via_ptr(p: Ptr[Point], new_x: Int32) -> None:

@@ -28,7 +28,7 @@ struct MyNumber {
   // 15:     def add(self, x: Int32) -> Int32:
   int32_t add(int32_t x) {
     // 16:         return self.value + x
-    return (tpy::int32_add(this->value, x));
+    return (tpy::add_check<int32_t>(this->value, x));
   }
 };
 

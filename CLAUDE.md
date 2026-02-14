@@ -139,7 +139,7 @@ tests/
 │   ├── imports/              # Imports, relative imports, packages, shadowing
 │   ├── inference/            # Type inference, variable type deduction
 │   ├── inheritance/          # Class inheritance, super calls, method override
-│   ├── int/                  # int, Int32, BigInt
+│   ├── int/                  # int, Int8-64, UInt8-64, BigInt
 │   ├── iterators/            # Iterators, range, __iter__/__next__, NativeIterable
 │   ├── list/                 # List, container methods
 │   ├── none_safety/          # Optional types, narrowing, @readonly
@@ -307,7 +307,8 @@ The compiler is a proof-of-concept. Not yet implemented:
 | TurboPython | C++ |
 |-------------|-----|
 | `int` | `tpy::BigInt` (arbitrary precision) |
-| `Int32` | `int32_t` |
+| `Int8/16/32/64` | `int8_t/int16_t/int32_t/int64_t` |
+| `UInt8/16/32/64` | `uint8_t/uint16_t/uint32_t/uint64_t` |
 | `float` | `double` (IEEE 754) |
 | `bool` | `bool` |
 | `str` | `const char*` (parameters: `std::string_view`) |

@@ -27,7 +27,7 @@ void process_list(StaticList<Item, 16>& items) {
   // 20:     first: Item = items[0]
   Item& first = tpy::get_item(items, 0);
   // 21:     items[1] = Item(first.value + 5)
-  tpy::set_item(items, 1, Item((tpy::int32_add(first.value, 5))));
+  tpy::set_item(items, 1, Item((tpy::add_check<int32_t>(first.value, 5))));
 }
 
 // @noalloc

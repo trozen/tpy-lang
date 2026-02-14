@@ -25,7 +25,7 @@ tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
 template<typename T>
 tpy::return_val_or_ref_t<T> last(std::vector<T>& items) {
   // 10:     return items[len(items) - 1]
-  return tpy::get_item(items, (tpy::int32_sub(tpy::__len__(items), 1)));
+  return tpy::get_item(items, (tpy::sub_check<int32_t>(tpy::__len__(items), 1)));
 }
 
 void __tpy_init() {

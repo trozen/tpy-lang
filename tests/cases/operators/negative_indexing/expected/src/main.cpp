@@ -73,7 +73,7 @@ void test_negative_index_in_expression() {
   // 61:     nums: list[Int32] = [5, 10, 15, 20]
   std::vector<int32_t> nums = {5, 10, 15, 20};
   // 64:     total: Int32 = nums[-1] + nums[-2]
-  int32_t total = (tpy::int32_add(tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)), tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2))));
+  int32_t total = (tpy::add_check<int32_t>(tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)), tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2))));
   // 65:     print(total)
   std::cout << total << "\n";
   // 68:     if nums[-1] > nums[-2]:

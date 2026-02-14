@@ -14,7 +14,7 @@ int32_t read(Holder& h) {
   // 19:     if h.value is not None:
   if ((h.value.has_value())) {
     // 20:         return h.value.x + 1  # tpyc: ok
-    return (tpy::int32_add((*h.value).x, 1));
+    return (tpy::add_check<int32_t>((*h.value).x, 1));
   }
   // 21:     return 0
   return 0;

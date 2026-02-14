@@ -15,9 +15,9 @@ int32_t sum_seq(T_s& s) {
   // 19:     while i < len(s):
   while ((i < tpy::__len__(s))) {
     // 20:         total += s[i]
-    total = tpy::int32_add(total, s[i]);
+    total = tpy::add_check<int32_t>(total, s[i]);
     // 21:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 22:     return total
   return total;

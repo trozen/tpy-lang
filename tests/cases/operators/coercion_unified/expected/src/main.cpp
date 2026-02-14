@@ -15,19 +15,19 @@ int32_t take_int32(int32_t n) {
 // 27: def take_ptr(p: Ptr[Point]) -> None:
 void take_ptr(Point* p) {
   // 28:     p.x = p.x + 1
-  tpy::deref_check(p).x = (tpy::int32_add(tpy::deref_check(p).x, 1));
+  tpy::deref_check(p).x = (tpy::add_check<int32_t>(tpy::deref_check(p).x, 1));
 }
 
 // 30: def take_const_ptr(p: ConstPtr[Point]) -> Int32:
 int32_t take_const_ptr(const Point* p) {
   // 31:     return p.x + p.y
-  return (tpy::int32_add(tpy::deref_check(p).x, tpy::deref_check(p).y));
+  return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
 }
 
 // 33: def take_point(p: Point) -> Int32:
 int32_t take_point(Point& p) {
   // 34:     return p.x + p.y
-  return (tpy::int32_add(p.x, p.y));
+  return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 36: def take_span(s: Span[Int32]) -> Int32:
@@ -39,9 +39,9 @@ int32_t take_span(std::span<const int32_t> s) {
   // 39:     while i < len(s):
   while ((i < tpy::__len__(s))) {
     // 40:         result = result + s[i]
-    result = (tpy::int32_add(result, s[i]));
+    result = (tpy::add_check<int32_t>(result, s[i]));
     // 41:         i = i + 1
-    i = (tpy::int32_add(i, 1));
+    i = (tpy::add_check<int32_t>(i, 1));
   }
   // 42:     return result
   return result;
@@ -53,7 +53,7 @@ int32_t return_bigint_as_int32() {
   // 48:     big: int = 42
   tpy::BigInt big = tpy::BigInt(42);
   // 49:     return big  # BigInt -> Int32 in return
-  return (big).to_int32();
+  return (big).to_fixed_check<int32_t>();
 }
 
 // 52: def test_bigint_to_int32() -> None:
@@ -63,13 +63,13 @@ void test_bigint_to_int32() {
   // 56:     big: int = 100
   tpy::BigInt big = tpy::BigInt(100);
   // 57:     small: Int32 = big
-  int32_t small = (big).to_int32();
+  int32_t small = (big).to_fixed_check<int32_t>();
   // 58:     print(small)  # 100
   std::cout << small << "\n";
   // 61:     big = 200
   big = tpy::BigInt(200);
   // 62:     small = big
-  small = (big).to_int32();
+  small = (big).to_fixed_check<int32_t>();
   // 63:     print(small)  # 200
   std::cout << small << "\n";
   // 66:     result: Int32 = return_bigint_as_int32()
@@ -79,7 +79,7 @@ void test_bigint_to_int32() {
   // 70:     big = 300
   big = tpy::BigInt(300);
   // 71:     print(take_int32(big))  # 300
-  std::cout << take_int32((big).to_int32()) << "\n";
+  std::cout << take_int32((big).to_fixed_check<int32_t>()) << "\n";
 }
 
 // # --- Record -> Ptr coercion ---

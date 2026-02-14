@@ -15,7 +15,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: x: Int32 = Int32(3000000000.0)
-  x = tpy::int32_from_float(3000000000.0);
+  x = tpy::from_float_check<int32_t>(3000000000.0);
   // 4: print(x)
   std::cout << x << "\n";
 }

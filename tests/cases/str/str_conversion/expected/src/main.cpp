@@ -31,15 +31,15 @@ void __tpy_init() {
   // 16: print(str(c))  # A
   std::cout << tpy::char_to_str(c) << "\n";
   // 19: print(str(Int32(42)))    # 42
-  std::cout << tpy::int32_to_str(42) << "\n";
+  std::cout << tpy::fixed_to_str<int32_t>(42) << "\n";
   // 20: print(str(Int32(-123)))  # -123
-  std::cout << tpy::int32_to_str(-(123)) << "\n";
+  std::cout << tpy::fixed_to_str<int32_t>(-(123)) << "\n";
   // 21: print(str(Int32(0)))     # 0
-  std::cout << tpy::int32_to_str(0) << "\n";
+  std::cout << tpy::fixed_to_str<int32_t>(0) << "\n";
   // 24: print(str(12345))         # 12345
-  std::cout << tpy::int32_to_str(12345) << "\n";
+  std::cout << tpy::fixed_to_str<int16_t>(12345) << "\n";
   // 25: print(str(-99999))        # -99999
-  std::cout << tpy::int32_to_str(-(99999)) << "\n";
+  std::cout << tpy::fixed_to_str<int32_t>(-(99999)) << "\n";
   // 29: x: float = 3.14
   x = 3.14;
   // 30: print(str(x))  # 3.140000

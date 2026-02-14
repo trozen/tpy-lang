@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def b_value() -> Int32:
 int32_t b_value() {
   // 5:     return d_value() + Int32(10)
-  return (tpy::int32_add(tpy_user::mod_d::d_value(), 10));
+  return (tpy::add_check<int32_t>(tpy_user::mod_d::d_value(), 10));
 }
 
 void __tpy_init() {

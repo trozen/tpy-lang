@@ -35,7 +35,7 @@ void __tpy_init() {
   tpy::BigInt __stop_0 = big_end;
   for (tpy::BigInt i = __start_0; i < __stop_0; ++i) {
     // 10:     count += 1
-    count = tpy::int32_add(count, 1);
+    count = tpy::add_check<int32_t>(count, 1);
     // 11:     if count >= 5:
     if ((count >= 5)) {
       // 12:         break

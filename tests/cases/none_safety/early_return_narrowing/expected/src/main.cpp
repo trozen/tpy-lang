@@ -13,7 +13,7 @@ int32_t safe_add(std::optional<int32_t> x) {
     return 0;
   }
   // 7:     return x + 1
-  return (tpy::int32_add((*x), 1));
+  return (tpy::add_check<int32_t>((*x), 1));
 }
 
 void __tpy_init() {

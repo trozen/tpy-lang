@@ -47,7 +47,7 @@ void main() {
     // 38:         print(r.x)  # tpyc: ok
     std::cout << r->x << "\n";
     // 39:         i = i + Int32(1)
-    i = (tpy::int32_add(i, 1));
+    i = (tpy::add_check<int32_t>(i, 1));
   }
   // 42:     s: Ptr[Point] = Ptr(a)
   Point* s = &a;
@@ -60,7 +60,7 @@ void main() {
     // 46:         s = get_ptr(s)
     s = get_ptr(s);
     // 47:         j = j + Int32(1)
-    j = (tpy::int32_add(j, 1));
+    j = (tpy::add_check<int32_t>(j, 1));
   }
   // 49:     print(s.x)  # tpyc: ok
   std::cout << tpy::deref_check(s).x << "\n";

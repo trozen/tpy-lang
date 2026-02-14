@@ -10,7 +10,7 @@ int32_t score(std::optional<int32_t> x) {
   // 5:     if x:  # tpyc: warning(/Truthiness check on optional value/)
   if (tpy::is_truthy(x)) {
     // 6:         return x + 1  # tpyc: ok
-    return (tpy::int32_add((*x), 1));
+    return (tpy::add_check<int32_t>((*x), 1));
   }
   // 7:     return 0
   return 0;

@@ -21,7 +21,7 @@ namespace tpy {
 
 // Computes base^exp with overflow detection. Returns true on success, false on overflow.
 template<typename T>
-bool checked_pow(T base, T exp, T& result) {
+bool try_pow(T base, T exp, T& result) {
     if (exp < 0) return false;
     if (exp == 0) { result = 1; return true; }
 
@@ -136,7 +136,7 @@ inline int32_t int32_pow(int32_t base, int32_t exp) {
         tpy_panic("Negative exponent not supported (would require float)");
     }
     int32_t result;
-    if (!checked_pow(base, exp, result)) {
+    if (!try_pow(base, exp, result)) {
         tpy_panic("Int32 overflow in power");
     }
     return result;

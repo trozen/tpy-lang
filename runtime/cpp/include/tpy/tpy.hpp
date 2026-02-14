@@ -18,6 +18,9 @@
 // Int32 checked arithmetic (depends on core)
 #include "int32.hpp"
 
+// Fixed-width integer checked arithmetic (depends on core, int32)
+#include "fixed_int.hpp"
+
 // Type traits (no dependencies)
 #include "type_traits.hpp"
 

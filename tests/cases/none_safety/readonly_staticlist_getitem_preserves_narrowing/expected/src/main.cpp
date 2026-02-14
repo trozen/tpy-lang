@@ -21,7 +21,7 @@ int32_t use(StaticList<std::optional<int32_t>, 2>& items, int32_t i) {
     // 11:         touch(items)
     touch(items);
     // 12:         return items[i] + 1  # tpyc: ok
-    return (tpy::int32_add((*tpy::get_item(items, i)), 1));
+    return (tpy::add_check<int32_t>((*tpy::get_item(items, i)), 1));
   }
   // 13:     return 0
   return 0;

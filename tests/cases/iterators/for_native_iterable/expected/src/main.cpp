@@ -13,7 +13,7 @@ int32_t sum_iter(T_items& items) {
   // 5:     for x in items:
   for (int32_t x : items) {
     // 6:         total += x
-    total = tpy::int32_add(total, x);
+    total = tpy::add_check<int32_t>(total, x);
   }
   // 7:     return total
   return total;
@@ -48,7 +48,7 @@ int32_t nested_iteration(T_outer& outer, T_inner& inner) {
     // 22:         for y in inner:
     for (int32_t y : inner) {
       // 23:             total += x * y
-      total = tpy::int32_add(total, (tpy::int32_mul(x, y)));
+      total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(x, y)));
     }
   }
   // 24:     return total

@@ -10,7 +10,7 @@ int32_t use(std::optional<int32_t> x) {
   // 5:     assert x  # tpyc: warning(/Truthiness check on optional value/)
   if (!(tpy::is_truthy(x))) tpy::tpy_panic("assertion failed");
   // 6:     return x + 1  # tpyc: ok
-  return (tpy::int32_add((*x), 1));
+  return (tpy::add_check<int32_t>((*x), 1));
 }
 
 void __tpy_init() {

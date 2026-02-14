@@ -14,7 +14,7 @@ void loop_escape() {
   // 12:     for i in range(3):
   for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 13:         p: Point = Point(i, i)
-    Point* p = &*(__slot_2 = Point((i).to_int32(), (i).to_int32()));
+    Point* p = &*(__slot_2 = Point((i).to_fixed_check<int32_t>(), (i).to_fixed_check<int32_t>()));
     // 14:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

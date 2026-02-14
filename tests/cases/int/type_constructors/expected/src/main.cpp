@@ -12,17 +12,17 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 6: print(Int32(3.7))    # 3
-  std::cout << tpy::int32_from_float(3.7) << "\n";
+  std::cout << tpy::from_float_check<int32_t>(3.7) << "\n";
   // 7: print(Int32(-3.7))   # -3
-  std::cout << tpy::int32_from_float(-(3.7)) << "\n";
+  std::cout << tpy::from_float_check<int32_t>(-(3.7)) << "\n";
   // 8: print(Int32(0.0))    # 0
-  std::cout << tpy::int32_from_float(0.0) << "\n";
+  std::cout << tpy::from_float_check<int32_t>(0.0) << "\n";
   // 11: print(Int32("42"))    # 42
-  std::cout << tpy::int32_from_str("42") << "\n";
+  std::cout << tpy::from_str_check<int32_t>("42") << "\n";
   // 12: print(Int32("-100"))  # -100
-  std::cout << tpy::int32_from_str("-100") << "\n";
+  std::cout << tpy::from_str_check<int32_t>("-100") << "\n";
   // 13: print(Int32(" 7 "))   # 7 (whitespace stripped)
-  std::cout << tpy::int32_from_str(" 7 ") << "\n";
+  std::cout << tpy::from_str_check<int32_t>(" 7 ") << "\n";
   // 16: print(Int32(True))    # 1
   std::cout << static_cast<int32_t>(true) << "\n";
   // 17: print(Int32(False))   # 0

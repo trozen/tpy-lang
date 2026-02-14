@@ -23,9 +23,9 @@ int32_t sum_span(std::span<const int32_t> values) {
   // 6:     while i < len(values):
   while ((i < tpy::__len__(values))) {
     // 7:         total += values[i]
-    total = tpy::int32_add(total, values[i]);
+    total = tpy::add_check<int32_t>(total, values[i]);
     // 8:         i += 1
-    i = tpy::int32_add(i, 1);
+    i = tpy::add_check<int32_t>(i, 1);
   }
   // 9:     return total
   return total;

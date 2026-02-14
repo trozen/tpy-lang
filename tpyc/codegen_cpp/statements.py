@@ -685,14 +685,14 @@ class StatementGenerator:
         value = self.expressions.gen_expr(stmt.value, target_type)
         value_type = self.types.get_resolved_type(stmt.value, target_type)
 
-        # Special case: Int32 += BigInt should convert BigInt to Int32, then use Int32 ops
+        # Special case: FixedInt += BigInt should convert BigInt to the target type
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
         if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
-            # Dereference globals before .to_int32() conversion
+            # Dereference globals before .to_fixed_check<T>() conversion
             if self.ctx.is_indirect_name(stmt.value):
                 value = f"(*{value})"
-            value = f"({value}).to_int32()"
-            value_type = INT32
+            value = f"({value}).to_fixed_check<{target_type.to_cpp()}>()"
+            value_type = target_type
 
         # Use resolved binop from sema for augmented assignment (a += b is a = a + b)
         if binop_result := stmt.resolved_binop:
@@ -739,13 +739,13 @@ class StatementGenerator:
         value = self.expressions.gen_expr(stmt.value, elem_type)
         value_type = self.types.get_resolved_type(stmt.value, elem_type)
 
-        # Special case: Int32 += BigInt should convert BigInt to Int32
+        # Special case: FixedInt += BigInt should convert BigInt to the element type
         if isinstance(elem_type, Int32Type) and isinstance(value_type, BigIntType):
-            # Dereference globals before .to_int32() conversion
+            # Dereference globals before .to_fixed_check<T>() conversion
             if self.ctx.is_indirect_name(stmt.value):
                 value = f"(*{value})"
-            value = f"({value}).to_int32()"
-            value_type = INT32
+            value = f"({value}).to_fixed_check<{elem_type.to_cpp()}>()"
+            value_type = elem_type
 
         # Compute the result expression using resolved binop from sema
         if binop_result := stmt.resolved_binop:
@@ -1081,10 +1081,10 @@ class StatementGenerator:
         return True
 
     def _gen_step_increment(self, var: str, step: str, elem_type: TpyType) -> str:
-        """Generate step increment expression, using checked arithmetic for Int32."""
-        from tpyc.typesys import Int32Type
-        if isinstance(elem_type, Int32Type):
-            return f"{var} = tpy::int32_add({var}, {step})"
+        """Generate step increment expression, using checked arithmetic for fixed-width integers."""
+        from tpyc.typesys import FixedIntType
+        if isinstance(elem_type, FixedIntType):
+            return f"{var} = tpy::add_check<{elem_type.to_cpp()}>({var}, {step})"
         return f"{var} += {step}"
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:

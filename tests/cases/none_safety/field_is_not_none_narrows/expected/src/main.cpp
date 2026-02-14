@@ -14,7 +14,7 @@ int32_t next_value(Box& b) {
   // 12:     if b.value is not None:
   if ((b.value.has_value())) {
     // 13:         return b.value + 1  # tpyc: ok
-    return (tpy::int32_add((*b.value), 1));
+    return (tpy::add_check<int32_t>((*b.value), 1));
   }
   // 14:     return 0
   return 0;

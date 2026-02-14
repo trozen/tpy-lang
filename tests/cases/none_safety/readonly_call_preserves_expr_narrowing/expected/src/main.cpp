@@ -19,7 +19,7 @@ int32_t use(Box& b) {
     // 18:         observe(b)
     observe(b);
     // 19:         return b.value + 1  # tpyc: ok
-    return (tpy::int32_add((*b.value), 1));
+    return (tpy::add_check<int32_t>((*b.value), 1));
   }
   // 20:     return 0
   return 0;

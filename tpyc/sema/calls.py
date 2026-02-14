@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, ConstPtrType, VoidType, SpanType, ParamInfo,
+    PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     VOID, BIGINT, is_protocol_type,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName
@@ -407,6 +407,19 @@ class CallAnalyzer:
                 continue
             if all(type_matches_numeric(arg_type, ptype)
                    for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
+                # Reject int literals that are out of range for the target fixed-int type
+                # (don't let them silently fall through to the BigInt constructor)
+                if (isinstance(ctor.return_type, FixedIntType) and len(arg_types) == 1
+                        and isinstance(arg_types[0], IntLiteralType)
+                        and isinstance(ctor.params[0].type, BigIntType)):
+                    lit = arg_types[0]
+                    target = ctor.return_type
+                    if not (target.min_value <= lit.value <= target.max_value):
+                        raise self.ctx.error(
+                            f"{target} overflow: {lit.value} is outside range "
+                            f"[{target.min_value}, {target.max_value}]",
+                            expr,
+                        )
                 expr.resolved_function_info = ctor
                 return ctor.return_type
 

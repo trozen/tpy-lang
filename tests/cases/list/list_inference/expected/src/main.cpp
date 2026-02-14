@@ -17,7 +17,7 @@ int32_t test_no_mutation() {
   // 11:     local = [1, 2, 3]
   std::array<tpy::BigInt, 3> local = {tpy::BigInt(1), tpy::BigInt(2), tpy::BigInt(3)};
   // 12:     return local[0]
-  return (local[0]).to_int32();
+  return (local[0]).to_fixed_check<int32_t>();
 }
 
 // # Local with mutation -> vector (ListType)

@@ -69,23 +69,23 @@ void test_augmented_assign_mixed() {
   // 43:     b = 7  # BigInt
   tpy::BigInt b = tpy::BigInt(7);
   // 45:     x += b
-  x = tpy::int32_add(x, (b).to_int32());
+  x = tpy::add_check<int32_t>(x, (b).to_fixed_check<int32_t>());
   // 46:     print(x)  # 107
   std::cout << x << "\n";
   // 48:     x -= b
-  x = tpy::int32_sub(x, (b).to_int32());
+  x = tpy::sub_check<int32_t>(x, (b).to_fixed_check<int32_t>());
   // 49:     print(x)  # 100
   std::cout << x << "\n";
   // 51:     x *= b
-  x = tpy::int32_mul(x, (b).to_int32());
+  x = tpy::mul_check<int32_t>(x, (b).to_fixed_check<int32_t>());
   // 52:     print(x)  # 700
   std::cout << x << "\n";
   // 54:     x //= b
-  x = tpy::int32_div(x, (b).to_int32());
+  x = tpy::div_check<int32_t>(x, (b).to_fixed_check<int32_t>());
   // 55:     print(x)  # 100
   std::cout << x << "\n";
   // 57:     x %= b
-  x = tpy::int32_mod(x, (b).to_int32());
+  x = tpy::mod_check<int32_t>(x, (b).to_fixed_check<int32_t>());
   // 58:     print(x)  # 2
   std::cout << x << "\n";
 }
@@ -94,17 +94,17 @@ void test_augmented_assign_mixed() {
 void test_nested_literal_binop() {
   // 62:     """Nested literal binops assigned to Int32 should use Int32 arithmetic."""
   // 63:     x: Int32 = 1 + (2 + 3)
-  int32_t x = tpy::int32_add(1, tpy::int32_add(2, 3));
+  int32_t x = tpy::add_check<int32_t>(1, tpy::add_check<int32_t>(2, 3));
   // 64:     print(x)  # 6
   std::cout << x << "\n";
   // 66:     y: Int32 = (1 + 2) * (3 + 4)
-  int32_t y = tpy::int32_mul(tpy::int32_add(1, 2), tpy::int32_add(3, 4));
+  int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(1, 2), tpy::add_check<int32_t>(3, 4));
   // 67:     print(y)  # 21
   std::cout << y << "\n";
   // 70:     z: Int32 = 0
   int32_t z = 0;
   // 71:     z = 10 + (20 + 30)
-  z = tpy::int32_add(10, tpy::int32_add(20, 30));
+  z = tpy::add_check<int32_t>(10, tpy::add_check<int32_t>(20, 30));
   // 72:     print(z)  # 60
   std::cout << z << "\n";
 }

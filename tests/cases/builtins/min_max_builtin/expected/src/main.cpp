@@ -53,9 +53,9 @@ void __tpy_init() {
   // 16: print(max(x, y))
   std::cout << ((x) > (y) ? (x) : (y)) << "\n";
   // 18: big1 = int(-1000000)
-  big1 = tpy::BigInt(-(1000000));
+  big1 = tpy::BigInt(static_cast<int64_t>(-(1000000)));
   // 19: big2 = int(1000000)
-  big2 = tpy::BigInt(1000000);
+  big2 = tpy::BigInt(static_cast<int64_t>(1000000));
   // 20: print(min(big1, big2))
   std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
   // 21: print(max(big1, big2))

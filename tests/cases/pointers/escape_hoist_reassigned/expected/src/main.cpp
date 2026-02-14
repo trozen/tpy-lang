@@ -18,9 +18,9 @@ void hoist_and_reassign() {
   // 15:     for i in range(3):
   for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
     // 16:         p: Point = Point(i, 0)
-    Point* p = &*(__slot_2 = Point((i).to_int32(), 0));
+    Point* p = &*(__slot_2 = Point((i).to_fixed_check<int32_t>(), 0));
     // 17:         p = Point(i, i + 10)
-    p = &*(__slot_3 = Point((i).to_int32(), (((i) + (tpy::BigInt(10)))).to_int32()));
+    p = &*(__slot_3 = Point((i).to_fixed_check<int32_t>(), (((i) + (tpy::BigInt(10)))).to_fixed_check<int32_t>()));
     // 18:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

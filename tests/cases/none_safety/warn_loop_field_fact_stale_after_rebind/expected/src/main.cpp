@@ -16,7 +16,7 @@ int32_t stale_after_rebind(Box& b, Box& other) {
     // 15:         if 0 == 1:
     if ((0 == 1)) {
       // 16:             return local.value + 1  # tpyc: warning(/Potential None access/)
-      return (tpy::int32_add(tpy::deref_optional_check(local->value), 1));
+      return (tpy::add_check<int32_t>(tpy::deref_optional_check(local->value), 1));
     }
     // 17:         break
     break;

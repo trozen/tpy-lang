@@ -16,7 +16,7 @@ int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
     if (!((b.has_value()))) tpy::tpy_panic("assertion failed");
   }
   // 9:     return a + 1  # tpyc: warning(/Potential None access/)
-  return (tpy::int32_add(tpy::deref_optional_check(a), 1));
+  return (tpy::add_check<int32_t>(tpy::deref_optional_check(a), 1));
 }
 
 void __tpy_init() {

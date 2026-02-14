@@ -13,15 +13,15 @@ void test_binary_ops() {
   // 8:     b: Int32 = 7
   int32_t b = 7;
   // 11:     print(a + b)  # 27
-  std::cout << (tpy::int32_add(a, b)) << "\n";
+  std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
   // 14:     print(a - b)  # 13
-  std::cout << (tpy::int32_sub(a, b)) << "\n";
+  std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
   // 17:     print(a * b)  # 140
-  std::cout << (tpy::int32_mul(a, b)) << "\n";
+  std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
   // 20:     print(a // b)  # 2
-  std::cout << (tpy::int32_div(a, b)) << "\n";
+  std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
   // 23:     print(a % b)  # 6
-  std::cout << (tpy::int32_mod(a, b)) << "\n";
+  std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
 }
 
 // 26: def test_unary_neg():
@@ -30,11 +30,11 @@ void test_unary_neg() {
   // 28:     x: Int32 = 42
   int32_t x = 42;
   // 29:     print(-x)  # -42
-  std::cout << tpy::int32_neg(x) << "\n";
+  std::cout << tpy::neg_check<int32_t>(x) << "\n";
   // 31:     y: Int32 = -100
   int32_t y = -(100);
   // 32:     print(-y)  # 100
-  std::cout << tpy::int32_neg(y) << "\n";
+  std::cout << tpy::neg_check<int32_t>(y) << "\n";
 }
 
 // 35: def test_mixed_literals():
@@ -43,11 +43,11 @@ void test_mixed_literals() {
   // 37:     x: Int32 = 10
   int32_t x = 10;
   // 40:     print(x + 5)  # 15
-  std::cout << (tpy::int32_add(x, 5)) << "\n";
+  std::cout << (tpy::add_check<int32_t>(x, 5)) << "\n";
   // 43:     print(5 + x)  # 15
-  std::cout << (tpy::int32_add(5, x)) << "\n";
+  std::cout << (tpy::add_check<int32_t>(5, x)) << "\n";
   // 46:     print(x * 2 + 3)  # 23
-  std::cout << (tpy::int32_add((tpy::int32_mul(x, 2)), 3)) << "\n";
+  std::cout << (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(x, 2)), 3)) << "\n";
 }
 
 // 49: def test_negative_division():
@@ -58,9 +58,9 @@ void test_negative_division() {
   // 52:     b: Int32 = 5
   int32_t b = 5;
   // 55:     print(a // b)  # -4
-  std::cout << (tpy::int32_div(a, b)) << "\n";
+  std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
   // 58:     print(a % b)  # 3
-  std::cout << (tpy::int32_mod(a, b)) << "\n";
+  std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
 }
 
 void __tpy_init() {

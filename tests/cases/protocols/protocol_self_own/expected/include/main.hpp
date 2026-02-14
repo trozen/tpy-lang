@@ -29,7 +29,7 @@ struct Point {
   // 16:     def __add__(self, other: Point) -> Own[Point]:
   Point __add__(const Point& other) const {
     // 17:         return Point(self.x + other.x, self.y + other.y)
-    return Point((tpy::int32_add(this->x, other.x)), (tpy::int32_add(this->y, other.y)));
+    return Point((tpy::add_check<int32_t>(this->x, other.x)), (tpy::add_check<int32_t>(this->y, other.y)));
   }
 
   friend Point operator+(const Point& lhs, const Point& other) {

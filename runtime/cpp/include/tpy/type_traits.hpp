@@ -26,8 +26,14 @@ class BigInt;
 template<typename T> struct is_value_type : std::false_type {};
 
 // Primitive value types
+template<> struct is_value_type<int8_t> : std::true_type {};
+template<> struct is_value_type<int16_t> : std::true_type {};
 template<> struct is_value_type<int32_t> : std::true_type {};
 template<> struct is_value_type<int64_t> : std::true_type {};
+template<> struct is_value_type<uint8_t> : std::true_type {};
+template<> struct is_value_type<uint16_t> : std::true_type {};
+template<> struct is_value_type<uint32_t> : std::true_type {};
+template<> struct is_value_type<uint64_t> : std::true_type {};
 template<> struct is_value_type<bool> : std::true_type {};
 template<> struct is_value_type<char> : std::true_type {};
 template<> struct is_value_type<double> : std::true_type {};

@@ -10,7 +10,7 @@ int32_t add_if_both(std::optional<int32_t> a, std::optional<int32_t> b) {
   // 5:     if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
   if ((tpy::is_truthy(a) && tpy::is_truthy(b))) {
     // 6:         return a + b  # tpyc: ok
-    return (tpy::int32_add((*a), (*b)));
+    return (tpy::add_check<int32_t>((*a), (*b)));
   }
   // 7:     return 0
   return 0;

@@ -18,7 +18,7 @@ void terminated_branch() {
     // 15:         items: list[Point] = [Point(99, 99)]
     std::vector<Point> items = {Point(99, 99)};
     // 16:         p: Point = Point(i, i)
-    Point* p = &*(__slot_2 = Point((i).to_int32(), (i).to_int32()));
+    Point* p = &*(__slot_2 = Point((i).to_fixed_check<int32_t>(), (i).to_fixed_check<int32_t>()));
     // 17:         if i == 0:
     if ((i == 0)) {
       // 18:             p = items[0]

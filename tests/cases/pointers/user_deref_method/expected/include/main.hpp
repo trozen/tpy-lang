@@ -24,7 +24,7 @@ struct Point {
   // 9:     def sum(self) -> Int32:
   int32_t sum() {
     // 10:         return self.x + self.y
-    return (tpy::int32_add(this->x, this->y));
+    return (tpy::add_check<int32_t>(this->x, this->y));
   }
 };
 

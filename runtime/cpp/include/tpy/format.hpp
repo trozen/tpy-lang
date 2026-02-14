@@ -189,6 +189,18 @@ inline std::string int32_to_str(int32_t x) {
 }
 
 /**
+ * fixed_to_str - Convert any fixed-width integer to string.
+ * 8-bit types are promoted to int to avoid char interpretation.
+ */
+template<typename T>
+inline std::string fixed_to_str(T x) {
+    if constexpr (sizeof(T) == 1)
+        return std::to_string(static_cast<int>(x));
+    else
+        return std::to_string(x);
+}
+
+/**
  * float_to_str - Convert double to string.
  * Produces Python-like output (removes trailing zeros after decimal point).
  * Note: Returns std::string. Caller must ensure the result is used immediately

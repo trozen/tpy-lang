@@ -21,7 +21,9 @@ SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins"}
 # Types from tpy that require explicit import (not auto-available like Python builtins)
 # Python builtins (int, str, bool, list, float, None) remain auto-available
 TPY_TYPES = {
-    "Int32", "Char",  # Basic tpy types
+    "Int8", "Int16", "Int32", "Int64",  # Signed fixed-width integers
+    "UInt8", "UInt16", "UInt32", "UInt64",  # Unsigned fixed-width integers
+    "Char",  # Character type
     "Span", "Array", "StaticList",  # Container types
     "Ptr", "ConstPtr", "Own",  # Pointer types
 }

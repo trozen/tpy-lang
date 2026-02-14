@@ -13,7 +13,7 @@ int32_t describe(std::optional<int32_t> x) {
     return -(1);
   } else {
     // 8:         return x + 1
-    return (tpy::int32_add((*x), 1));
+    return (tpy::add_check<int32_t>((*x), 1));
   }
 }
 

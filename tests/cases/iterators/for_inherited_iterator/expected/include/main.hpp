@@ -29,7 +29,7 @@ struct Counter {
       // 13:             result = self.current
       int32_t result = this->current;
       // 14:             self.current += 1
-      this->current = tpy::int32_add(this->current, 1);
+      this->current = tpy::add_check<int32_t>(this->current, 1);
       // 15:             return result
       return result;
     }
@@ -52,7 +52,7 @@ struct DoubleCounter : Counter {
 
   // 19:     def __init__(self, limit: Int32) -> None:
   DoubleCounter() = default;
-  explicit DoubleCounter(int32_t limit) : Counter((tpy::int32_mul(limit, 2))) {}
+  explicit DoubleCounter(int32_t limit) : Counter((tpy::mul_check<int32_t>(limit, 2))) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DoubleCounter& obj) {

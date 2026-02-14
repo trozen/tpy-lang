@@ -6,7 +6,7 @@ language that compiles to C++ for ultra-low-latency applications.
 """
 
 from .typesys import (
-    TpyType, Int32Type, VoidType, NamedType, PtrType, ConstPtrType,
+    TpyType, Int32Type, FixedIntType, VoidType, NamedType, PtrType, ConstPtrType,
     ModuleType, INT32, VOID, TypeRegistry
 )
 from .parse import Parser, ParseError, TpyModule
@@ -18,7 +18,7 @@ __all__ = [
     "Parser", "ParseError",
     "SemanticAnalyzer", "SemanticError",
     "CodeGenerator",
-    "TpyType", "Int32Type", "VoidType", "NamedType",
+    "TpyType", "Int32Type", "FixedIntType", "VoidType", "NamedType",
     "PtrType", "ConstPtrType", "ModuleType",
     "INT32", "VOID", "TypeRegistry", "TpyModule"
 ]

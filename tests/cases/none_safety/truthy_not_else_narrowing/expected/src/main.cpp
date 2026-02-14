@@ -13,7 +13,7 @@ int32_t use_else(std::optional<int32_t> x) {
     return 0;
   } else {
     // 8:         return x + 1  # tpyc: ok
-    return (tpy::int32_add((*x), 1));
+    return (tpy::add_check<int32_t>((*x), 1));
   }
 }
 

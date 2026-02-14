@@ -17,7 +17,7 @@ int32_t use_after_continue_merge(bool flag, std::optional<int32_t> x) {
       continue;
     }
     // 9:         x = x + 1  # tpyc: ok
-    x = (tpy::int32_add((*x), 1));
+    x = (tpy::add_check<int32_t>((*x), 1));
     // 10:         flag = False
     flag = false;
   }

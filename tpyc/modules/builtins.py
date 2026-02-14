@@ -6,7 +6,10 @@ Defines functions like chr, print, len, etc.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
-from tpyc.typesys import INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, RANGE, RangeType, ListType, NamedType, TypeParamRef, OwnType
+from tpyc.typesys import (
+    INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, RANGE, RangeType, ListType,
+    NamedType, TypeParamRef, OwnType, ALL_FIXED_INTS, FixedIntType,
+)
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -43,7 +46,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[ParamDef("i", BIGINT)],
             returns=CHAR,
-            cpp="static_cast<char>(({0}).to_int32())",
+            cpp="static_cast<char>(({0}).to_int32_check())",
         ),
     ])
 
@@ -203,7 +206,9 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("x", STR)], returns=STR, cpp="{0}"),
             MethodDef(params=[ParamDef("x", BOOL)], returns=STR, cpp="tpy::bool_to_str({0})"),
             MethodDef(params=[ParamDef("x", CHAR)], returns=STR, cpp="tpy::char_to_str({0})"),
-            MethodDef(params=[ParamDef("x", INT32)], returns=STR, cpp="tpy::int32_to_str({0})"),
+            *[MethodDef(params=[ParamDef("x", t)], returns=STR,
+                       cpp=f"tpy::fixed_to_str<{t.to_cpp()}>({{0}})")
+              for t in ALL_FIXED_INTS],
             MethodDef(params=[ParamDef("x", BIGINT)], returns=STR, cpp="({0}).to_string()"),
             MethodDef(params=[ParamDef("x", FLOAT)], returns=STR, cpp="tpy::float_to_str({0})"),
         ],
@@ -224,7 +229,9 @@ def init_module() -> BuiltinModule:
     # Uses C++ operator overloads defined in tpy::BigInt
     module.register_type(BIGINT, cpp_type="tpy::BigInt", constructors=[
         MethodDef(params=[], returns=BIGINT, cpp="tpy::BigInt(0)"),
-        MethodDef(params=[ParamDef("x", INT32)], returns=BIGINT, cpp="tpy::BigInt({0})"),
+        *[MethodDef(params=[ParamDef("x", t)], returns=BIGINT,
+                    cpp=f"tpy::BigInt(static_cast<{'int64_t' if t.signed else 'uint64_t'}>({{0}}))")
+          for t in ALL_FIXED_INTS],
         MethodDef(params=[ParamDef("x", BIGINT)], returns=BIGINT, cpp="tpy::BigInt({0})"),
         MethodDef(params=[ParamDef("x", FLOAT)], returns=BIGINT, cpp="tpy::BigInt::from_float({0})"),
         MethodDef(params=[ParamDef("x", STR)], returns=BIGINT, cpp="tpy::BigInt::from_str({0})"),
@@ -350,7 +357,7 @@ def init_module() -> BuiltinModule:
     module.register_type(CHAR, cpp_type="char", constructors=[
         MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
         MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
-        MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_int32())"),
+        MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_int32_check())"),
     ], methods={})
 
     # None: Void type (used for function returns)

@@ -12,7 +12,7 @@ int32_t body_renarrow(bool flag, std::optional<int32_t> x) {
     // 6:         if x is not None:
     if ((x.has_value())) {
       // 7:             return x + 1  # tpyc: ok
-      return (tpy::int32_add((*x), 1));
+      return (tpy::add_check<int32_t>((*x), 1));
     }
     // 8:         flag = False
     flag = false;

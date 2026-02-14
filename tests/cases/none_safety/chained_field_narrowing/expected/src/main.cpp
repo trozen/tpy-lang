@@ -14,7 +14,7 @@ int32_t read(Outer& o) {
   // 19:     if o.inner.value is not None:
   if ((o.inner.value.has_value())) {
     // 20:         return o.inner.value + 1  # tpyc: ok
-    return (tpy::int32_add((*o.inner.value), 1));
+    return (tpy::add_check<int32_t>((*o.inner.value), 1));
   }
   // 21:     return 0
   return 0;

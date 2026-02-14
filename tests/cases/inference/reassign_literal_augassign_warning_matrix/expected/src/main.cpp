@@ -32,7 +32,7 @@ void main() {
   // 19:     print(z)
   std::cout << z << "\n";
   // 21:     w = int(0)
-  tpy::BigInt w = tpy::BigInt(0);
+  tpy::BigInt w = tpy::BigInt(static_cast<int64_t>(0));
   // 22:     w += Int32(5)  # tpyc: ok
   w = (w) + (tpy::BigInt(5));
   // 23:     print(w)

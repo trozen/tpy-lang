@@ -18,19 +18,19 @@ struct Container {
   // 5:     def get_double(self) -> Int32:
   int32_t get_double() {
     // 6:         return Int32(N * 2)
-    return (tpy::int32_mul(N, 2));
+    return (tpy::mul_check<int32_t>(N, 2));
   }
 
   // 8:     def get_plus_one(self) -> Int32:
   int32_t get_plus_one() {
     // 9:         return Int32(N + 1)
-    return (tpy::int32_add(N, 1));
+    return (tpy::add_check<int32_t>(N, 1));
   }
 
   // 11:     def get_minus_five(self) -> Int32:
   int32_t get_minus_five() {
     // 12:         return Int32(N - 5)
-    return (tpy::int32_sub(N, 5));
+    return (tpy::sub_check<int32_t>(N, 5));
   }
 };
 

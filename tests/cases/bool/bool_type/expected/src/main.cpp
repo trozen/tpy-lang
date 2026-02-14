@@ -48,7 +48,7 @@ void test_bool() {
   // 32:     while flag:
   while (flag) {
     // 33:         count = count + 1
-    count = (tpy::int32_add(count, 1));
+    count = (tpy::add_check<int32_t>(count, 1));
     // 34:         if count == 3:
     if ((count == 3)) {
       // 35:             flag = False

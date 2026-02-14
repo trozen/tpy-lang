@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, VoidType, PtrType, ConstPtrType,
     NamedType, TypeParamRef, NoneType, OptionalType,
-    INT32_MIN, INT32_MAX, is_protocol_type,
+    is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -175,8 +175,8 @@ class TypeCompatibility:
 
         if coercion.check_range and not coercion.check_range(actual, expected):
             raise SemanticError(
-                f"Integer literal {actual.value} is outside Int32 range "
-                f"[{INT32_MIN}, {INT32_MAX}] in {context}",
+                f"Integer literal {actual.value} is outside {expected} range "
+                f"[{expected.min_value}, {expected.max_value}] in {context}",
                 loc
             )
 
@@ -220,7 +220,7 @@ class TypeCompatibility:
         if coercion is None:
             return expr
         runtime_bigint = False
-        if coercion.name == "int_literal_to_int32":
+        if coercion.name == "int_literal_to_fixed_int":
             runtime_bigint = self.is_runtime_bigint_expr(expr)
         coerced = TpyCoerce(
             expr=expr,

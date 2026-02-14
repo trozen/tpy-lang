@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     ListType, ArrayType, SpanType, ModuleType, is_protocol_type,
 )
@@ -240,8 +240,12 @@ class BuiltinGenerator:
                 else:
                     parts.append(f'tpy::ListPrinter({self._gen_expr_deref(arg)})')
             else:
-                # Int32, Char, Bool, literals, etc. - direct output
-                parts.append(self._gen_expr_deref(arg))
+                # FixedInt, Char, Bool, literals, etc. - direct output
+                expr_code = self._gen_expr_deref(arg)
+                # 8-bit integers need cast to avoid char interpretation in std::cout
+                if isinstance(arg_type, FixedIntType) and arg_type.bits == 8:
+                    expr_code = f"static_cast<int>({expr_code})"
+                parts.append(expr_code)
 
         # Add end string
         if end_str:

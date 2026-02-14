@@ -36,15 +36,15 @@ void __tpy_init() {
   // 4: b: Int32 = 10      # 0b1010
   b = 10;
   // 7: print(a & b)       # 8 (0b1000)
-  std::cout << ((a) & (b)) << "\n";
+  std::cout << (static_cast<int32_t>(a & b)) << "\n";
   // 10: print(a | b)       # 14 (0b1110)
-  std::cout << ((a) | (b)) << "\n";
+  std::cout << (static_cast<int32_t>(a | b)) << "\n";
   // 13: print(a ^ b)       # 6 (0b0110)
-  std::cout << ((a) ^ (b)) << "\n";
+  std::cout << (static_cast<int32_t>(a ^ b)) << "\n";
   // 16: c: Int32 = 0
   c = 0;
   // 17: print(~c)          # -1
-  std::cout << ~(c) << "\n";
+  std::cout << static_cast<int32_t>(~(c)) << "\n";
   // 20: print(1 << 4)      # 16
   std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(4))) << "\n";
   // 23: print(32 >> 2)     # 8

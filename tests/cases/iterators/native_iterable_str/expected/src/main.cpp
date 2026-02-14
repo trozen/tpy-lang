@@ -14,7 +14,7 @@ int32_t count_chars(T_text& text) {
   // 7:     for c in text:
   for (char c : text) {
     // 8:         count += 1
-    count = tpy::int32_add(count, 1);
+    count = tpy::add_check<int32_t>(count, 1);
   }
   // 9:     return count
   return count;
@@ -42,7 +42,7 @@ int32_t sum_span(T_items& items) {
   // 20:     for x in items:
   for (int32_t x : items) {
     // 21:         total += x
-    total = tpy::int32_add(total, x);
+    total = tpy::add_check<int32_t>(total, x);
   }
   // 22:     return total
   return total;

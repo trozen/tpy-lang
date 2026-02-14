@@ -16,51 +16,68 @@ T = TypeVar('T')
 Char = str
 
 
-class Int32(int):
-    """32-bit signed integer with overflow behavior."""
 
-    MIN = -(2**31)
-    MAX = 2**31 - 1
+def _make_fixed_int_type(name: str, bits: int, signed: bool):
+    """Factory for fixed-width integer types with overflow wrapping."""
+    if signed:
+        min_val = -(2 ** (bits - 1))
+        max_val = 2 ** (bits - 1) - 1
+        mod = 2 ** bits
+    else:
+        min_val = 0
+        max_val = 2 ** bits - 1
+        mod = 2 ** bits
 
-    def __new__(cls, value: int = 0) -> Int32:
-        # Wrap on overflow (like C++ int32_t)
-        value = int(value)
-        if value < cls.MIN or value > cls.MAX:
-            value = ((value - cls.MIN) % (2**32)) + cls.MIN
-        return super().__new__(cls, value)
+    class FixedInt(int):
+        MIN = min_val
+        MAX = max_val
 
-    def __add__(self, other: int) -> Int32:
-        return Int32(super().__add__(other))
+        def __new__(cls, value: int = 0) -> FixedInt:
+            value = int(value)
+            if signed:
+                if value < min_val or value > max_val:
+                    value = ((value - min_val) % mod) + min_val
+            else:
+                if value < 0 or value > max_val:
+                    value = value % mod
+            return super().__new__(cls, value)
 
-    def __radd__(self, other: int) -> Int32:
-        return Int32(super().__radd__(other))
+        def __add__(self, other): return type(self)(int.__add__(self, other))
+        def __radd__(self, other): return type(self)(int.__radd__(self, other))
+        def __sub__(self, other): return type(self)(int.__sub__(self, other))
+        def __rsub__(self, other): return type(self)(int.__rsub__(self, other))
+        def __mul__(self, other): return type(self)(int.__mul__(self, other))
+        def __rmul__(self, other): return type(self)(int.__rmul__(self, other))
+        def __floordiv__(self, other): return type(self)(int.__floordiv__(self, other))
+        def __mod__(self, other): return type(self)(int.__mod__(self, other))
+        def __and__(self, other): return type(self)(int.__and__(self, other))
+        def __or__(self, other): return type(self)(int.__or__(self, other))
+        def __xor__(self, other): return type(self)(int.__xor__(self, other))
+        def __lshift__(self, other): return type(self)(int.__lshift__(self, other))
+        def __rshift__(self, other): return type(self)(int.__rshift__(self, other))
+        def __invert__(self): return type(self)(int.__invert__(self))
+        def __repr__(self): return str(int(self))
+        def __str__(self): return str(int(self))
 
-    def __sub__(self, other: int) -> Int32:
-        return Int32(super().__sub__(other))
+    if signed:
+        def __neg__(self): return type(self)(int.__neg__(self))
+        FixedInt.__neg__ = __neg__
 
-    def __rsub__(self, other: int) -> Int32:
-        return Int32(super().__rsub__(other))
+    FixedInt.__name__ = name
+    FixedInt.__qualname__ = name
+    return FixedInt
 
-    def __mul__(self, other: int) -> Int32:
-        return Int32(super().__mul__(other))
 
-    def __rmul__(self, other: int) -> Int32:
-        return Int32(super().__rmul__(other))
+Int8 = _make_fixed_int_type("Int8", 8, True)
+Int16 = _make_fixed_int_type("Int16", 16, True)
+Int64 = _make_fixed_int_type("Int64", 64, True)
+UInt8 = _make_fixed_int_type("UInt8", 8, False)
+UInt16 = _make_fixed_int_type("UInt16", 16, False)
+UInt32 = _make_fixed_int_type("UInt32", 32, False)
+UInt64 = _make_fixed_int_type("UInt64", 64, False)
 
-    def __floordiv__(self, other: int) -> Int32:
-        return Int32(super().__floordiv__(other))
-
-    def __mod__(self, other: int) -> Int32:
-        return Int32(super().__mod__(other))
-
-    def __neg__(self) -> Int32:
-        return Int32(super().__neg__())
-
-    def __repr__(self) -> str:
-        return str(int(self))
-
-    def __str__(self) -> str:
-        return str(int(self))
+# Rebuild Int32 using the same factory for consistency
+Int32 = _make_fixed_int_type("Int32", 32, True)
 
 
 class _Ptr(Generic[T]):
