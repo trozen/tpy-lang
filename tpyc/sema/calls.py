@@ -571,15 +571,49 @@ class CallAnalyzer:
                                                                 coercion_ctx=CoercionContext.ARG)
                 return resolved.return_type
 
-        # No matching overload found - try to give a specific hint
-        # Check for ConstPtr passed where Ptr is required
-        for overload in overloads:
-            for arg_t, param in zip(arg_types, overload.params):
-                if isinstance(arg_t, ConstPtrType) and isinstance(param.type, PtrType):
+        # No matching overload found - try to give a helpful error
+        arg_type_strs = ", ".join(str(t) for t in arg_types)
+
+        # For generic overloads, check for conflicting type parameter inference
+        for overload in generic:
+            if len(arg_types) != len(overload.params):
+                continue
+            partial: dict[str, TpyType] = {}
+            conflict_param = None
+            for (pname, ptype), arg_t in zip(overload.params, arg_types):
+                before = dict(partial)
+                if not self.type_ops.match_type_with_inference(ptype, arg_t, partial):
+                    # Find which type param conflicted
+                    for tp in overload.type_params:
+                        if tp in before:
+                            expected = before[tp]
+                            # Try to extract what this arg would infer
+                            trial: dict[str, TpyType] = {}
+                            self.type_ops.match_type_with_inference(ptype, arg_t, trial)
+                            if tp in trial and trial[tp] != expected:
+                                conflict_param = (tp, expected, trial[tp], pname)
+                                break
+                    break
+            if conflict_param:
+                tp_name, first_t, second_t, param_name = conflict_param
+                raise self.ctx.error(
+                    f"No matching overload for {expr.func}({arg_type_strs}): "
+                    f"type parameter {tp_name} inferred as {first_t} and {second_t}",
+                    expr
+                )
+
+        # Check for ConstPtr passed at a position where all overloads expect Ptr
+        for i, arg_t in enumerate(arg_types):
+            if isinstance(arg_t, ConstPtrType):
+                all_need_ptr_at_i = all(
+                    i < len(o.params) and isinstance(o.params[i].type, PtrType)
+                    for o in overloads
+                )
+                if all_need_ptr_at_i:
                     raise self.ctx.error(
                         f"{expr.func}() requires a mutable Ptr, got {arg_t}", expr
                     )
-        arg_type_strs = ", ".join(str(t) for t in arg_types)
+
         raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
 
     def _analyze_user_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
