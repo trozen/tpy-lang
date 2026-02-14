@@ -53,7 +53,7 @@ class RecordGenerator:
         Uses topological sort based on inheritance relationships.
         Native records are excluded (no C++ struct generation needed).
         """
-        # Filter out native records — they don't generate C++ structs
+        # Filter out native records -- they don't generate C++ structs
         records = [r for r in records if not self._is_native(r)]
         record_by_name = {r.name: r for r in records}
 
@@ -96,7 +96,7 @@ class RecordGenerator:
 
     def gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a struct declaration for a record."""
-        # Native records don't generate C++ structs — they're defined in external headers
+        # Native records don't generate C++ structs -- they're defined in external headers
         if self._is_native(record):
             return
 
@@ -286,7 +286,7 @@ class RecordGenerator:
         Only extracts initializations for fields that belong to this class directly,
         not inherited fields. Inherited field assignments must go in the constructor body.
         """
-        # Build field name → type map for target type passing
+        # Build field name -> type map for target type passing
         field_types = {fld.name: fld.type for fld in record.fields}
         own_field_names = set(field_types.keys())
         inits = []
@@ -397,7 +397,7 @@ class RecordGenerator:
         """Generate operator*() for types with __deref__().
 
         Enables C++ interop: *box instead of box.__deref__().
-        Only for user-defined types — Ptr[T]/ConstPtr[T] map to raw T*
+        Only for user-defined types -- Ptr[T]/ConstPtr[T] map to raw T*
         which already support *ptr natively.
         """
         deref_method = None

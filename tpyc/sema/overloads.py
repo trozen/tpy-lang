@@ -42,7 +42,7 @@ def type_matches_numeric(
     """Type matching for numeric operators and constructors.
 
     Handles IntLiteralType and TypeParamRef(INT) flexibility without
-    triggering general type coercions (e.g., Int32→BigInt promotion).
+    triggering general type coercions (e.g., Int32->BigInt promotion).
 
     - Exact equality
     - IntLiteralType matches IntLiteralType, Int32Type, or BigIntType
@@ -113,7 +113,7 @@ def resolve_overload(
             return overload
 
     # Second pass: allow coercions, prefer overload with most non-coercion
-    # matches and fewest narrowing conversions (BigInt→Int32 is lossy).
+    # matches and fewest narrowing conversions (BigInt->Int32 is lossy).
     candidates: list[tuple[int, int, FunctionInfo]] = []
     for overload in overloads:
         if len(overload.params) != len(arg_types):
@@ -127,7 +127,7 @@ def resolve_overload(
             candidates.append((score, narrowing, overload))
 
     if candidates:
-        # When return types vary across candidates, IntLiteral→Int32 is also
+        # When return types vary across candidates, IntLiteral->Int32 is also
         # narrowing (Python's default int is BigInt, so prefer that).
         # When return types are identical (e.g. Char(97)), Int32 is fine.
         if len(candidates) > 1 and not all(

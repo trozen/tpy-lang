@@ -62,10 +62,10 @@ class ListLiteralTracker:
         """Resolve all pending list types after function analysis.
 
         Resolution rules (in priority order):
-        1. Explicit annotation → use it
-        2. is_mutated → ListType
-        3. passed_to_list_param → ListType
-        4. Otherwise → ArrayType
+        1. Explicit annotation -> use it
+        2. is_mutated -> ListType
+        3. passed_to_list_param -> ListType
+        4. Otherwise -> ArrayType
 
         Element type resolution:
         - If passed to typed param (list[T] or Span[T]), use T
@@ -168,7 +168,7 @@ class ListLiteralTracker:
         if iter_elem is not None:
             return iter_elem
 
-        # Check __iter__() method (container → separate iterator)
+        # Check __iter__() method (container -> separate iterator)
         iter_elem = builtin_modules.get_iter_element_type(iterable_type, registry=self.ctx.registry)
         if iter_elem is not None:
             return iter_elem

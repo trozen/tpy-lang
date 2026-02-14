@@ -82,7 +82,7 @@ class ScopeTracker:
             return self.get_expr_scope_depth(expr.obj)
         if isinstance(expr, TpySubscript):
             return self.get_expr_scope_depth(expr.obj)
-        # Calls, literals etc. — fresh storage, no escape
+        # Calls, literals etc. -- fresh storage, no escape
         return 0
 
     def is_scope_escape(self, target_name: str, source_expr: TpyExpr) -> bool:
@@ -101,7 +101,7 @@ class ScopeTracker:
 
         Hoisting is only safe when the source variable owns its storage
         (rvalue-initialized). For-each variables and lvalue-initialized
-        variables keep the hard error — they alias other storage that
+        variables keep the hard error -- they alias other storage that
         hoisting can't fix.
         """
         if self.is_scope_escape(target_name, source_expr):

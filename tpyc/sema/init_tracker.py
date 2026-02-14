@@ -124,7 +124,7 @@ class InitTracker:
         else:
             self.ctx.rvalue_vars = set(then_rvalue & else_rvalue)
         # Provenance merge: intersection when both branches reach the merge
-        # point — the variable is only param-derived if both paths agree.
+        # point -- the variable is only param-derived if both paths agree.
         if then_term and else_term:
             self.ctx.param_provenance_vars = set(then_prov | else_prov)
         elif then_term:

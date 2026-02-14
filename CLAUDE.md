@@ -8,9 +8,9 @@ TurboPython (tpyc) is a proof-of-concept compiler that translates Python to C++.
 
 **Goals:**
 
-1. **Performance** — Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`).
-2. **Idiomatic Python** — Standard Python should work out of the box, with minimal restrictions (e.g. type annotations on functions).
-3. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
+1. **Performance** -- Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`).
+2. **Idiomatic Python** -- Standard Python should work out of the box, with minimal restrictions (e.g. type annotations on functions).
+3. **Tooling-friendly** -- Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
 
 ## Commands
 
@@ -188,13 +188,14 @@ tests/
 For `tpyc/` compiler modules:
 - Imports at top of file only (avoid internal imports unless unavoidable)
 - Use type annotations
+- **ASCII only** in source code and comments -- no Unicode arrows (`→`), em dashes (`—`), or other non-ASCII characters. Use `->` and `--` instead.
 
 ## Architecture
 
 The compiler follows a 4-stage pipeline:
 
 ```
-TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator → C++ (.hpp/.cpp)
+TurboPython Source (.tp.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++ (.hpp/.cpp)
 ```
 
 ### Core Modules (`tpyc/`)
@@ -248,7 +249,7 @@ TurboPython Source (.tp.py) → Parser → Semantic Analyzer → Code Generator 
 | `records.py` | Class/record code generation |
 | `protocols.py` | Protocol code generation |
 | `builtins.py` | Built-in function codegen |
-| `types.py` | Type mapping (TurboPython → C++) |
+| `types.py` | Type mapping (TurboPython -> C++) |
 | `type_resolution.py` | Runtime type resolution for generics |
 
 ### Built-in Modules (`tpyc/modules/`)

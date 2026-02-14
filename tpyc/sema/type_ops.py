@@ -310,7 +310,7 @@ class TypeOperations:
 
         Returns True if types match (with inference), False otherwise.
         """
-        # TypeParamRef — infer or check consistency
+        # TypeParamRef -- infer or check consistency
         if isinstance(param_type, TypeParamRef):
             if param_type.name in inferred:
                 existing = inferred[param_type.name]
@@ -366,7 +366,7 @@ class TypeOperations:
                 )
             return False
 
-        # Concrete type — check compatibility
+        # Concrete type -- check compatibility
         return self.types_match_for_inference(param_type, arg_type)
 
     def _match_protocol_type_args_with_inference(
@@ -628,7 +628,7 @@ class TypeOperations:
     def get_deref_coercion_target(self, typ: TpyType) -> TpyType | None:
         """Get the deref target for coercion purposes.
 
-        Like get_deref_target_type() but excludes ConstPtr — record params
+        Like get_deref_target_type() but excludes ConstPtr -- record params
         are T& (mutable ref) but deref_check(const T*) returns const T&.
         """
         if isinstance(typ, ConstPtrType):

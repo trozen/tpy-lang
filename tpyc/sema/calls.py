@@ -117,7 +117,7 @@ class CallAnalyzer:
                 record = self.ctx.registry.get_record(expr.func)
                 if record:
                     return self._analyze_record_constructor(expr, record)
-                # It's a builtin type instantiation — validate constructor args
+                # It's a builtin type instantiation -- validate constructor args
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
                 if arg_types:
                     self._validate_generic_constructor(expr, arg_types)
@@ -350,7 +350,7 @@ class CallAnalyzer:
                 if fully_checked and ctor.cpp:
                     expr.resolved_function_info = _method_def_to_function_info(ctor)
                 return
-        # No constructor matched — emit error for single-arg case
+        # No constructor matched -- emit error for single-arg case
         if len(arg_types) == 1:
             raise self.ctx.error(
                 f"{expr.func}() cannot be constructed from {arg_types[0]}",

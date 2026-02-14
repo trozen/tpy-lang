@@ -276,7 +276,7 @@ def init_module() -> BuiltinModule:
     })
 
     # Deref[T] protocol: types that can be dereferenced to yield T
-    # Structural protocol — any type with __deref__() -> T conforms automatically.
+    # Structural protocol -- any type with __deref__() -> T conforms automatically.
     # Ptr[T] and ConstPtr[T] explicitly extend this for clarity.
     module.protocol("Deref",
         type_params=["T"],

@@ -38,7 +38,7 @@ def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
         return False
     if actual.signed == expected.signed:
         return actual.bits < expected.bits
-    # Unsigned → signed: need strictly more bits (e.g. UInt8 → Int16)
+    # Unsigned -> signed: need strictly more bits (e.g. UInt8 -> Int16)
     if not actual.signed and expected.signed:
         return actual.bits < expected.bits
     return False
@@ -116,7 +116,7 @@ COERCIONS: list[Coercion] = [
         check_range=lambda lit, target: target.min_value <= lit.value <= target.max_value,
     ),
 
-    # Widening between fixed-width integers (e.g. Int8 → Int32, UInt8 → Int16)
+    # Widening between fixed-width integers (e.g. Int8 -> Int32, UInt8 -> Int16)
     Coercion(
         name="fixed_int_widening",
         from_type=FixedIntType,

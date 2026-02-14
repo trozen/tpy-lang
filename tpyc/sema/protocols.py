@@ -153,11 +153,11 @@ class ProtocolChecker:
             overloads, type_subst = self.lookup_record_method_overloads(record, method_name)
             if not overloads:
                 return False
-            # Apply type args from the instantiated type (e.g., Counter[Int32] → T=Int32)
+            # Apply type args from the instantiated type (e.g., Counter[Int32] -> T=Int32)
             if record.type_params and actual.type_args:
                 record_subst = dict(zip(record.type_params, actual.type_args))
                 type_subst = {**record_subst, **type_subst}
-                # Transitively resolve TypeParamRef chains (e.g., Base.T→Mid.U→Child.V→Int32)
+                # Transitively resolve TypeParamRef chains (e.g., Base.T->Mid.U->Child.V->Int32)
                 changed = True
                 while changed:
                     changed = False

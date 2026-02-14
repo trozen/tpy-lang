@@ -645,7 +645,7 @@ def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistr
             return tpy_type.type_args[0]
         return None
 
-    # TODO: extract shared helper with type_conforms_to_protocol() — both do
+    # TODO: extract shared helper with type_conforms_to_protocol() -- both do
     # the same regex-based extends string parsing to resolve protocol type args.
     type_def = lookup_type(tpy_type)
     if type_def is None:

@@ -135,14 +135,14 @@ class MethodAnalyzer:
             expr.needs_optional_runtime_check = True
             obj_type = obj_type.inner
 
-        # List mutation tracking (before deref chain — applies to direct list types only)
+        # List mutation tracking (before deref chain -- applies to direct list types only)
         if isinstance(obj_type, (PendingListType, ListType)):
             if expr.method in LIST_MUTATION_METHODS:
                 from .list_literals import ListLiteralTracker
                 tracker = ListLiteralTracker(self.ctx)
                 tracker.mark_list_mutated(expr.obj)
 
-        # Deref chain — resolves through Ptr, ConstPtr, and any Deref[T] type
+        # Deref chain -- resolves through Ptr, ConstPtr, and any Deref[T] type
         original_type = obj_type
         current_type = obj_type
         deref_depth = 0

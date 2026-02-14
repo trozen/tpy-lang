@@ -59,28 +59,28 @@ class TypeCompatibility:
         if actual == expected:
             return None
 
-        # None → Optional[T]: always compatible
+        # None -> Optional[T]: always compatible
         if isinstance(actual, NoneType) and isinstance(expected, OptionalType):
             return None
 
-        # T → Optional[T]: implicit wrapping
+        # T -> Optional[T]: implicit wrapping
         if isinstance(expected, OptionalType):
             if isinstance(actual, OwnType):
                 actual_inner = actual.wrapped
             else:
                 actual_inner = actual
-            # Own[Optional[T]] → Optional[T]: exact match after unwrap
+            # Own[Optional[T]] -> Optional[T]: exact match after unwrap
             if actual_inner == expected:
                 return None
-            # Optional[Own[T]] → Optional[T]: unwrap Own inside Optional
+            # Optional[Own[T]] -> Optional[T]: unwrap Own inside Optional
             if isinstance(actual_inner, OptionalType) and isinstance(actual_inner.inner, OwnType):
                 actual_inner = OptionalType(actual_inner.inner.wrapped)
                 if actual_inner == expected:
                     return None
             return self.check_type_compatible(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
 
-        # Optional[T] → Optional[T] already handled by == check above
-        # Optional[T] → T: error (cannot implicitly unwrap)
+        # Optional[T] -> Optional[T] already handled by == check above
+        # Optional[T] -> T: error (cannot implicitly unwrap)
 
         # Protocol matching (structural subtyping)
         if is_protocol_type(expected):
@@ -315,7 +315,7 @@ class TypeCompatibility:
         # Pointer constructors derive provenance from their argument (address-taking)
         if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
             return self.is_param_derived_expr(expr.args[0])
-        # Constructors, function calls, literals — local storage
+        # Constructors, function calls, literals -- local storage
         return False
 
     def needs_copy_warning(self, expr: TpyExpr, target_type: TpyType) -> bool:
@@ -375,7 +375,7 @@ class TypeCompatibility:
             # Pointer constructors: dangling depends on the argument, not the pointer itself
             if isinstance(expr.call_type, (PtrType, ConstPtrType)):
                 if not expr.args:
-                    return False  # Ptr[T]() → nullptr, always safe
+                    return False  # Ptr[T]() -> nullptr, always safe
                 return self.is_dangling_return(expr.args[0])
 
             # Generic type constructor creates a temporary
@@ -414,7 +414,7 @@ class TypeCompatibility:
                 if not self._is_local_shadow(expr.name):
                     return False
 
-            # Storage derives from parameter/global — safe
+            # Storage derives from parameter/global -- safe
             if expr.name in self.ctx.param_provenance_vars:
                 return False
 
@@ -460,7 +460,7 @@ class TypeCompatibility:
         if return_type.is_value_type() or isinstance(return_type, (VoidType, OwnType)):
             return
 
-        # Optional[T] for non-value T returns T* — returning a local would dangle.
+        # Optional[T] for non-value T returns T* -- returning a local would dangle.
         # But `return None` is always safe (returns nullptr).
         if isinstance(return_type, OptionalType):
             if isinstance(expr, TpyNoneLiteral):

@@ -263,7 +263,7 @@ class StatementAnalyzer:
                 if is_native_iterator or is_iter_based:
                     iter_depth = inner_scope.depth
                 elif self.compat.is_lvalue(stmt.iterable):
-                    # For-each var references container's storage — use container's depth.
+                    # For-each var references container's storage -- use container's depth.
                     iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                 else:
                     # For rvalue iterables (calls), C++ extends the temporary's lifetime
@@ -588,7 +588,7 @@ class StatementAnalyzer:
                 # New variable: resolve IntLiteralType to BigInt (Python int semantics)
                 # This ensures Int32 + untyped_var promotes to BigInt correctly
                 # TODO: consider defaulting to Int32 when the literal fits in Int32
-                # range — more efficient (no GMP overhead) and `for i in range(4)`
+                # range -- more efficient (no GMP overhead) and `for i in range(4)`
                 # would naturally loop over int32_t. Need to handle overflow: either
                 # auto-promote to BigInt on reassignment, or panic (current checked
                 # Int32 behavior).
@@ -598,7 +598,7 @@ class StatementAnalyzer:
                 # Unwrap OwnType - Own[T] indicates ownership transfer, not variable type
                 elif isinstance(init_type, OwnType):
                     var_type = init_type.wrapped
-                # None literal without annotation — can't infer the Optional type
+                # None literal without annotation -- can't infer the Optional type
                 elif isinstance(init_type, NoneType):
                     var_type = init_type
                     self.ctx.unresolved_none_vars.add(stmt.name)

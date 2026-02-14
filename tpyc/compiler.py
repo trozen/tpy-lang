@@ -150,7 +150,7 @@ class BuildLayout:
                 *config.link_flags,
             ]]
 
-        # Split: compile each .cpp → .o with ccache, then link .o files
+        # Split: compile each .cpp -> .o with ccache, then link .o files
         obj_files: list[str] = []
         cmds: list[list[str]] = []
         for cpp in cpp_files:

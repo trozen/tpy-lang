@@ -88,7 +88,7 @@ class CodeGenerator:
         self.ctx.source_lines = module.source_lines
         # Populate native C++ name mappings for this module's codegen.
         # Must include both own records and imported records so NamedType.to_cpp()
-        # resolves correctly in all type positions (Ptr[Rect] → SDL_Rect*, etc.)
+        # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
         clear_native_cpp_names()
         for record in module.records:
             record_info = self.analyzer.registry.get_record(record.name)
@@ -122,7 +122,7 @@ class CodeGenerator:
 
         # Separate global declarations from other top-level statements early
         # (needed for extern declarations in header)
-        # Track seen names and types to handle re-declarations (z = 0; z = 5; → one global, one assignment)
+        # Track seen names and types to handle re-declarations (z = 0; z = 5; -> one global, one assignment)
         global_decls = []
         native_globals: list[TpyVarDecl] = []
         seen_globals: dict[str, TpyType | None] = {}
@@ -143,7 +143,7 @@ class CodeGenerator:
                     else:
                         global_decls.append(stmt)
 
-        # Track native global name mappings (Python name → C/C++ name)
+        # Track native global name mappings (Python name -> C/C++ name)
         self.ctx.native_global_names = {
             stmt.name: (stmt.native_name or stmt.name)
             for stmt in native_globals
@@ -154,8 +154,8 @@ class CodeGenerator:
 
         # Store global names for use in expression generation (method/field access)
         self.ctx.global_names = set(seen_globals.keys())
-        # Classify globals: non-value-type → pointer globals (T*)
-        # Exclude native globals — they're external externs, not our managed T* slots
+        # Classify globals: non-value-type -> pointer globals (T*)
+        # Exclude native globals -- they're external externs, not our managed T* slots
         self.ctx.pointer_globals = {
             name for name, typ in seen_globals.items()
             if typ and not typ.is_value_type()
@@ -237,7 +237,7 @@ class CodeGenerator:
 
     def _collect_protocol_deps(self, module: TpyModule) -> _ProtocolDeps:
         """Collect all dependency sets needed for protocol ordering."""
-        # Exclude native records — they don't generate C++ structs
+        # Exclude native records -- they don't generate C++ structs
         non_native = [r for r in module.records if not self._is_native_record(r.name)]
         deps = _ProtocolDeps(
             module_record_names={r.name for r in non_native},

@@ -133,7 +133,7 @@ class FunctionGenerator:
     def gen_function_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate a function definition."""
         from ..parse.nodes import FunctionLinkage
-        # Stubs have no body — declaration only
+        # Stubs have no body -- declaration only
         if func.is_stub:
             return
         # @native (C++ import) exports are handled outside the namespace by generator.py

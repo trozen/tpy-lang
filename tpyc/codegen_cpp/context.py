@@ -404,7 +404,7 @@ class CodeGenContext:
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
 
-        Unifies pointer-globals (T*) and pointer-locals (T*) — both use
+        Unifies pointer-globals (T*) and pointer-locals (T*) -- both use
         -> for field/method access and (*x) for value dereference.
         """
         return self._is_pointer_global(expr) or self.is_pointer_local(expr)
@@ -432,7 +432,7 @@ class CodeGenContext:
         field access on rvalue objects (member of temporary).
         Lvalues: variable names, field access on lvalues, subscript, function returning T&.
 
-        For pointer-local init: rvalue → new slot, lvalue → take address.
+        For pointer-local init: rvalue -> new slot, lvalue -> take address.
         """
         # Names are lvalues (either pointer-locals, params, or globals)
         if isinstance(expr, TpyName):
@@ -456,21 +456,21 @@ class CodeGenContext:
             return self.is_rvalue_source(expr.expr)
         # Function calls
         if isinstance(expr, TpyCall):
-            # Record constructors → rvalue
+            # Record constructors -> rvalue
             if self.analyzer.registry.get_record(expr.func):
                 return True
-            # Generic type constructors → rvalue
+            # Generic type constructors -> rvalue
             if expr.call_type is not None:
                 return True
-            # Functions returning Own[T] or Optional[T] → rvalue (pointer value)
+            # Functions returning Own[T] or Optional[T] -> rvalue (pointer value)
             if func_info := self.analyzer.registry.get_function(expr.func):
                 if isinstance(func_info.return_type, (OwnType, OptionalType)):
                     return True
                 return False
-            # Builtin functions → rvalue
+            # Builtin functions -> rvalue
             if self.analyzer.registry.get_builtin_function_overloads(expr.func):
                 return True
-            # copy() → rvalue
+            # copy() -> rvalue
             if expr.func in self.analyzer.imported_names:
                 module_name, func_name = self.analyzer.imported_names[expr.func]
                 if module_name == "tpy" and func_name == "copy":

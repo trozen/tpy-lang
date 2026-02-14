@@ -285,7 +285,7 @@ class ExpressionAnalyzer:
         def is_numeric_type(t: TpyType) -> bool:
             return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType))
 
-        # Identity operators (is / is not) — only valid with None
+        # Identity operators (is / is not) -- only valid with None
         if expr.op in ("is", "is not"):
             if isinstance(left_type, NoneType) and isinstance(right_type, OptionalType):
                 return BOOL
@@ -474,7 +474,7 @@ class ExpressionAnalyzer:
             expr.needs_optional_runtime_check = True
             actual_type = obj_type.inner
 
-        # Deref chain loop — resolves through Ptr, ConstPtr, and any Deref[T] type
+        # Deref chain loop -- resolves through Ptr, ConstPtr, and any Deref[T] type
         current_type = actual_type
         deref_depth = 0
         while deref_depth <= 8:

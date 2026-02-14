@@ -84,7 +84,7 @@ class StatementGenerator:
         self.ctx.global_declared_vars = self.ctx.analyzer.function_global_decls.get(id(func), set())
         self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.scan_reassigned_vars(body)
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
-        # Optional non-value params are T* in C++ — need pointer-local treatment (->)
+        # Optional non-value params are T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             if isinstance(ptype, OptionalType) and not ptype.inner.is_value_type():
                 self.ctx.pointer_locals.add(pname)
@@ -217,7 +217,7 @@ class StatementGenerator:
                         return f"{indent}return nullptr;\n"
                     ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
                     if self.ctx.is_indirect_name(stmt.value):
-                        # Already a pointer — return as-is
+                        # Already a pointer -- return as-is
                         return f"{indent}return {ret_expr};\n"
                     # Field access with non-value Optional produces std::optional<T>, convert to T*
                     if isinstance(stmt.value, TpyFieldAccess):
@@ -227,7 +227,7 @@ class StatementGenerator:
                     # Take address of lvalue
                     return f"{indent}return &({ret_expr});\n"
                 ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
-                # Dereference pointer-locals/pointer-globals on return (T* → T&)
+                # Dereference pointer-locals/pointer-globals on return (T* -> T&)
                 if self.ctx.is_indirect_name(stmt.value):
                     ret_expr = f"(*{ret_expr})"
                 return f"{indent}return {ret_expr};\n"
@@ -239,7 +239,7 @@ class StatementGenerator:
         elif isinstance(stmt, TpyPassStmt):
             return ""  # No-op - emit nothing
         elif isinstance(stmt, TpyGlobal):
-            return ""  # No C++ output — just a sema directive
+            return ""  # No C++ output -- just a sema directive
         elif isinstance(stmt, TpyRaiseStopIteration):
             return f"{indent}return std::nullopt;\n"
         elif isinstance(stmt, TpyAssert):
@@ -394,18 +394,18 @@ class StatementGenerator:
         """Generate pointer-local initialization code.
 
         Classifies the source expression:
-        - None literal → nullptr
-        - OptionalType source (function returning T*) → direct pointer copy
-        - rvalue → new slot + take address
-        - pointer-local name → pointer copy
-        - lvalue ref (param, subscript, field) → take address
+        - None literal -> nullptr
+        - OptionalType source (function returning T*) -> direct pointer copy
+        - rvalue -> new slot + take address
+        - pointer-local name -> pointer copy
+        - lvalue ref (param, subscript, field) -> take address
 
         For vars with future rvalue rebinds, a separate rebind slot is
         pre-declared so aliases to the init value aren't overwritten.
         """
         from ..parse import TpyName as _TpyName
 
-        # None literal → nullptr
+        # None literal -> nullptr
         if isinstance(init, TpyNoneLiteral):
             # Pre-declare rebind slot if future rvalue rebinds need it
             rebind_decl = ""
@@ -422,9 +422,9 @@ class StatementGenerator:
             return f"{rebind_decl}{indent}{cpp_type}* {name} = nullptr;\n"
 
         init_type = self.ctx.analyzer.get_expr_type(init)
-        # Optional non-value field on lvalue object → optional_to_ptr directly
-        # Optional non-value non-field source → T* pass-through
-        # Optional non-value field on rvalue → falls through to rvalue path
+        # Optional non-value field on lvalue object -> optional_to_ptr directly
+        # Optional non-value non-field source -> T* pass-through
+        # Optional non-value field on rvalue -> falls through to rvalue path
         is_opt_field = (isinstance(init_type, OptionalType)
                         and not init_type.inner.is_value_type()
                         and isinstance(init, TpyFieldAccess))
@@ -442,7 +442,7 @@ class StatementGenerator:
 
         is_hoisted = name in self.ctx.hoisted_vars
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
-        # Hoisted decls go to function scope — use global_scope flag from slot state
+        # Hoisted decls go to function scope -- use global_scope flag from slot state
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
         slot_opt_cpp = f"std::optional<{cpp_type}>"
         target = f"{cpp_type}* {name}"
@@ -489,7 +489,7 @@ class StatementGenerator:
         elif self.ctx.is_global_name(init):
             return f"{rebind_decl}{indent}{cpp_type}* {name} = &({init_expr});\n"
         else:
-            # lvalue ref: param, subscript, field → take address
+            # lvalue ref: param, subscript, field -> take address
             return f"{rebind_decl}{indent}{cpp_type}* {name} = &({init_expr});\n"
 
     def _gen_pointer_local_rebind(self, name: str, cpp_type: str, init: 'TpyExpr',
@@ -501,14 +501,14 @@ class StatementGenerator:
         """
         from ..parse import TpyName as _TpyName
 
-        # None literal → set to nullptr
+        # None literal -> set to nullptr
         if isinstance(init, TpyNoneLiteral):
             return f"{indent}{name} = nullptr;\n"
 
         init_type = self.ctx.analyzer.get_expr_type(init)
-        # Optional non-value field on lvalue → optional_to_ptr directly
-        # Optional non-value non-field source → T* pass-through
-        # Optional non-value field on rvalue → falls through to rvalue path
+        # Optional non-value field on lvalue -> optional_to_ptr directly
+        # Optional non-value non-field source -> T* pass-through
+        # Optional non-value field on rvalue -> falls through to rvalue path
         is_opt_field = (isinstance(init_type, OptionalType)
                         and not init_type.inner.is_value_type()
                         and isinstance(init, TpyFieldAccess))
@@ -533,7 +533,7 @@ class StatementGenerator:
             if rebind_slot:
                 deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field)
                 return f"{indent}{name} = {deref};\n"
-            # First rvalue assignment (e.g. global init) — declare slot here
+            # First rvalue assignment (e.g. global init) -- declare slot here
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
             slot_type = self._slot_decl_type(cpp_type, is_opt_field)
@@ -600,15 +600,15 @@ class StatementGenerator:
             if not is_optional:
                 assert stmt.init, f"indirect local '{stmt.name}' missing initializer"
             if is_optional or stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
-                # T* pointer-local — needs rebinding support (or hoisted storage)
+                # T* pointer-local -- needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
                 if stmt.init:
                     return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
                 else:
-                    # Optional without initializer → nullptr
+                    # Optional without initializer -> nullptr
                     return f"{indent}{cpp_type}* {stmt.name} = nullptr;\n"
             else:
-                # T& reference — alias without rebinding
+                # T& reference -- alias without rebinding
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
                 return f"{indent}{cpp_type}& {stmt.name} = {init_expr};\n"
 
@@ -650,7 +650,7 @@ class StatementGenerator:
             target_type = self.ctx.analyzer.get_expr_type(stmt.target)
             if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
                 target = self.expressions.gen_expr(stmt.target)
-                # Value source is T* (pointer-local, function returning Optional) → wrap
+                # Value source is T* (pointer-local, function returning Optional) -> wrap
                 if self.ctx.is_indirect_name(stmt.value):
                     value = self.expressions.gen_expr(stmt.value)
                     return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
@@ -658,8 +658,8 @@ class StatementGenerator:
                 val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
                 source = self.ctx.unwrap_copy(stmt.value)
                 if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
-                    # Own[T] | None returns std::optional<T> — direct assign
-                    # T | None returns T* — needs ptr_to_optional wrapping
+                    # Own[T] | None returns std::optional<T> -- direct assign
+                    # T | None returns T* -- needs ptr_to_optional wrapping
                     is_owned_optional = (isinstance(val_type, OptionalType)
                                          and isinstance(val_type.inner, OwnType))
                     value = self.expressions.gen_expr(stmt.value, target_type)
@@ -859,8 +859,8 @@ class StatementGenerator:
         """Generate a while-loop for OptIterator types.
 
         Produces:
-            auto& __iter_N = <iterable>;   // variable — reference for consumption
-            auto  __iter_N = <iterable>;   // temporary — copy/move for ownership
+            auto& __iter_N = <iterable>;   // variable -- reference for consumption
+            auto  __iter_N = <iterable>;   // temporary -- copy/move for ownership
             while (auto __opt_N = __iter_N.__next_opt__()) {
                 int32_t var = *__opt_N;
                 // body
@@ -892,8 +892,8 @@ class StatementGenerator:
         """Generate a while-loop for types with __iter__() returning an iterator.
 
         Produces:
-            auto& __obj_N = container;              // variable — reference
-            auto  __obj_N = Container(args);        // temporary — own it
+            auto& __obj_N = container;              // variable -- reference
+            auto  __obj_N = Container(args);        // temporary -- own it
             auto  __iter_N = __obj_N.__iter__();    // always own the iterator
             while (auto __opt_N = __iter_N.__next_opt__()) {
                 T x = *__opt_N;
@@ -993,7 +993,7 @@ class StatementGenerator:
             step_ast = self._unwrap_coerce(range_call.args[2])
             if isinstance(step_ast, TpyIntLiteral):
                 if step_ast.value == 0:
-                    return False  # zero step panics at runtime — use Range ctor
+                    return False  # zero step panics at runtime -- use Range ctor
                 elif step_ast.value > 0:
                     step_kind = "literal_pos"
                     step_val = step_ast.value
@@ -1072,7 +1072,7 @@ class StatementGenerator:
                           f"{var} > {stop_expr}; "
                           f"{incr}) {{\n")
         else:
-            # Variable step — capture, zero-check, ternary condition
+            # Variable step -- capture, zero-check, ternary condition
             step_cpp = gen_args[2]
             step_temp = f"__step_{n}"
             out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
@@ -1104,14 +1104,14 @@ class StatementGenerator:
             if elem_type and self._gen_range_counter_loop(out, stmt, indent, elem_type):
                 return
 
-        # Check for OptIterator types — these use while-loop codegen
+        # Check for OptIterator types -- these use while-loop codegen
         iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_iterator_loop(out, stmt, indent, iterable, iter_elem)
             return
 
-        # Check for __iter__()-based types (container → separate iterator)
+        # Check for __iter__()-based types (container -> separate iterator)
         iter_elem = get_iter_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)

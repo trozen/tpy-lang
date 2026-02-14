@@ -210,10 +210,10 @@ class BuiltinGenerator:
                 parts.append(f'tpy::print_bool({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
                 if isinstance(arg, TpyFieldAccess):
-                    # Field access produces std::optional<T> — use print_optional_val
+                    # Field access produces std::optional<T> -- use print_optional_val
                     parts.append(f'tpy::print_optional_val({self._gen_expr(arg)})')
                 else:
-                    # Pointer-local/function return produces T* — use print_optional
+                    # Pointer-local/function return produces T* -- use print_optional
                     parts.append(f'tpy::print_optional({self._gen_expr(arg)})')
             elif isinstance(arg_type, OptionalType) and arg_type.inner.is_value_type():
                 # Optional value-type: use print_optional_val with inner-type-aware formatting

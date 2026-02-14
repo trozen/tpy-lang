@@ -23,9 +23,9 @@ class TypeParamKind(Enum):
 
 
 # Native C++ name mapping for @native/@native_c records.
-# Maps Python class name → C++ name (e.g., "Rect" → "SDL_Rect").
+# Maps Python class name -> C++ name (e.g., "Rect" -> "SDL_Rect").
 # Used by NamedType.to_cpp() so composite types like Ptr[Rect] resolve correctly.
-# NOTE: Global mutable state — safe because the compilation pipeline is sequential
+# NOTE: Global mutable state -- safe because the compilation pipeline is sequential
 # (each CodeGenerator.generate() call clears and repopulates before use).
 # Would need to move into CodeGenContext if codegen ever runs concurrently.
 _native_cpp_names: dict[str, str] = {}
@@ -182,7 +182,7 @@ class FixedIntType(TpyType):
         return True
 
 
-# Backward compat alias — isinstance(x, Int32Type) matches any FixedIntType
+# Backward compat alias -- isinstance(x, Int32Type) matches any FixedIntType
 Int32Type = FixedIntType
 
 

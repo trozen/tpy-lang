@@ -140,10 +140,10 @@ class ExpressionGenerator:
             return f'"{escape_cpp_string(expr.value)}"'
 
         elif isinstance(expr, TpyName):
-            # self → (*this) only in instance methods (self is implicit receiver, not a param)
+            # self -> (*this) only in instance methods (self is implicit receiver, not a param)
             if expr.name == "self" and self.ctx.in_method and "self" not in self.ctx.current_func_params:
                 return "(*this)"
-            # Native global name substitution (Python name → C/C++ name)
+            # Native global name substitution (Python name -> C/C++ name)
             # Skip if shadowed by a local variable
             if expr.name in self.ctx.native_global_names and expr.name not in self.ctx.local_scope_names:
                 return self.ctx.native_global_names[expr.name]
@@ -241,7 +241,7 @@ class ExpressionGenerator:
                 return f"(!{find_expr})"
             return find_expr
 
-        # Identity operators (is / is not) — nullable comparison
+        # Identity operators (is / is not) -- nullable comparison
         if expr.op in ("is", "is not"):
             # Use resolved (declared) types here, not flow-narrowed analyzer types.
             # A narrowed Optional[T] name may currently analyze as T, but identity
@@ -300,7 +300,7 @@ class ExpressionGenerator:
             right = self.gen_expr_deref(expr.right, right_target)
             return f"({left} {expr.op} {right})"
 
-        # Optimization: IntLiteral op IntLiteral with Int32 target → direct Int32 arithmetic
+        # Optimization: IntLiteral op IntLiteral with Int32 target -> direct Int32 arithmetic
         # This avoids unnecessary BigInt heap allocations
         # Use analyzer types for this check - analyzer returns IntLiteralType for all-literal
         # expressions (including nested binops like 2+3), while get_resolved_type returns BigInt
@@ -349,7 +349,7 @@ class ExpressionGenerator:
             # Wrap in parens to avoid precedence issues with cout << and other operators
             return f"({result})"
 
-        # Fallback for IntLiteral + IntLiteral → BigInt (arbitrary precision)
+        # Fallback for IntLiteral + IntLiteral -> BigInt (arbitrary precision)
         # (Int32 case is handled earlier as an optimization)
         if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
             left = self.gen_expr(expr.left, BIGINT)
@@ -457,12 +457,12 @@ class ExpressionGenerator:
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
-                # Optional non-value params are T* — pass raw pointer
+                # Optional non-value params are T* -- pass raw pointer
                 if isinstance(resolved_ptype, OptionalType) and not resolved_ptype.inner.is_value_type():
                     if isinstance(arg, TpyNoneLiteral):
                         gen_args.append("nullptr")
                     elif self.ctx.is_indirect_name(arg):
-                        # Already a T* pointer-local/global — pass as-is
+                        # Already a T* pointer-local/global -- pass as-is
                         gen_args.append(self.gen_expr(arg, resolved_ptype))
                     elif isinstance(self.ctx.analyzer.get_expr_type(arg), OptionalType):
                         arg_gen = self.gen_expr(arg, resolved_ptype)
@@ -473,7 +473,7 @@ class ExpressionGenerator:
                             # Expression already produces T* (e.g. function returning Optional)
                             gen_args.append(arg_gen)
                     else:
-                        # Lvalue reference — take address
+                        # Lvalue reference -- take address
                         gen_args.append(f"&({self.gen_expr(arg, resolved_ptype)})")
                 # Temporaries passed to mutable reference params need a temp variable
                 # because C++ can't bind rvalue to non-const lvalue reference
@@ -508,7 +508,7 @@ class ExpressionGenerator:
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
         if expr.call_type is not None:
-            # Pointer null constructors: Ptr[T]() / ConstPtr[T]() → nullptr
+            # Pointer null constructors: Ptr[T]() / ConstPtr[T]() -> nullptr
             if isinstance(expr.call_type, (PtrType, ConstPtrType)) and not expr.args:
                 return "nullptr"
             # List repeat already generates the target type via from_range
@@ -539,7 +539,7 @@ class ExpressionGenerator:
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
-                # Optional non-value params are T* — same logic as function calls
+                # Optional non-value params are T* -- same logic as function calls
                 if isinstance(ptype, OptionalType) and not ptype.inner.is_value_type():
                     if isinstance(a, TpyNoneLiteral):
                         gen_args.append("nullptr")
@@ -713,7 +713,7 @@ class ExpressionGenerator:
         obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         deref_chain = ".__deref__()" * expr.deref_depth
-        # Optional with runtime null check — must come before deref fast path
+        # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
                 return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.method}({args})"
@@ -762,7 +762,7 @@ class ExpressionGenerator:
         is_indirect = self.ctx.is_indirect_name(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         deref_chain = ".__deref__()" * expr.deref_depth
-        # Optional with runtime null check — must come before deref fast path
+        # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
                 return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.field}"
@@ -771,7 +771,7 @@ class ExpressionGenerator:
         # User-defined Deref: emit .__deref__() calls before field access
         if deref_chain and obj_type and not obj_type.is_pointer():
             if is_indirect or is_optional_ptr:
-                # C++ var is a pointer (narrowed Optional) — arrow then deref chain
+                # C++ var is a pointer (narrowed Optional) -- arrow then deref chain
                 return f"{obj}->{deref_chain[1:]}.{expr.field}"
             return f"{obj}{deref_chain}.{expr.field}"
         if obj_type and obj_type.is_pointer():
