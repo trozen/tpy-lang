@@ -46,6 +46,10 @@ struct Box {
     // 15:         return self._value
     return this->_value;
   }
+
+  auto operator*() -> decltype(__deref__()) {
+    return __deref__();
+  }
 };
 
 template<typename T>

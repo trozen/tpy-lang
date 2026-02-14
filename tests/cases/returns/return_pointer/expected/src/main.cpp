@@ -34,9 +34,9 @@ void main() {
   // 21:     ptr2: Ptr[Point] = get_ptr_copy(ptr)
   Point* ptr2 = get_ptr_copy(ptr);
   // 23:     print(ptr1.x)
-  std::cout << ptr1->x << "\n";
+  std::cout << tpy::deref_ptr(ptr1).x << "\n";
   // 24:     print(ptr2.y)
-  std::cout << ptr2->y << "\n";
+  std::cout << tpy::deref_ptr(ptr2).y << "\n";
 }
 
 void __tpy_init() {

@@ -472,7 +472,7 @@ def ok(x: Int32) -> Ptr[Int32]:
 
 Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and support **auto-deref**: the compiler automatically resolves field access and method calls through `__deref__` chains.
 
-`Ptr[T]` and `ConstPtr[T]` conform to `Deref[T]` (mapped to `->` in C++). User-defined types can also implement `__deref__`:
+`Ptr[T]` and `ConstPtr[T]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
 
 ```python
 from tpy import Int32, copy
@@ -502,6 +502,10 @@ def main() -> None:
 Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref__() -> Point`, then `box.x` resolves through both (max depth: 8). Auto-deref also works through `Optional` receivers (`Ref | None`).
 
 **Deref coercion:** Types with `__deref__() -> T` also coerce to `T` in assignment, argument, and return contexts. For example, a user `Ref` with `__deref__() -> Point` can be passed where `Point` is expected — the compiler inserts `ref.__deref__()` automatically. `Ptr[T]` uses `tpy::deref_ptr()` for null-checked coercion.
+
+**Null-safety:** All auto-deref through `Ptr[T]`/`ConstPtr[T]` is null-checked at runtime via `tpy::deref_ptr()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior.
+
+**C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
 
 #### Owned Return Values (Working)
 

@@ -181,6 +181,9 @@ class RecordGenerator:
         # Generate binary operators from dunder methods (enables protocol conformance)
         self._gen_binary_operators(out, record)
 
+        # Generate operator*() for types with __deref__ (C++ interop)
+        self._gen_deref_operators(out, record)
+
         out.write("};\n")
         self._gen_record_ostream(out, record)
 
@@ -377,3 +380,22 @@ class RecordGenerator:
             out.write(f"\n  friend {ret_cpp} operator{cpp_op}(const {record.name}& lhs, {param_cpp}) {{\n")
             out.write(f"    return lhs.{method.name}({param_name});\n")
             out.write("  }\n")
+
+    def _gen_deref_operators(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate operator*() for types with __deref__().
+
+        Enables C++ interop: *box instead of box.__deref__().
+        Only for user-defined types — Ptr[T]/ConstPtr[T] map to raw T*
+        which already support *ptr natively.
+        """
+        deref_method = None
+        for method in record.methods:
+            if method.name == "__deref__":
+                deref_method = method
+                break
+        if deref_method is None:
+            return
+
+        out.write("\n  auto operator*() -> decltype(__deref__()) {\n")
+        out.write("    return __deref__();\n")
+        out.write("  }\n")

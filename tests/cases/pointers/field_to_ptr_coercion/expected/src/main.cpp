@@ -8,13 +8,13 @@ std::string_view __name__;
 // 13: def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {
   // 14:     p.x = 999
-  p->x = 999;
+  tpy::deref_ptr(p).x = 999;
 }
 
 // 16: def read_inner(p: ConstPtr[Inner]) -> Int32:
 int32_t read_inner(const Inner* p) {
   // 17:     return p.x
-  return p->x;
+  return tpy::deref_ptr(p).x;
 }
 
 // 19: def test_field_to_ptr() -> None:

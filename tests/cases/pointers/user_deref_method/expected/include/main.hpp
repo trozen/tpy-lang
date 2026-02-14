@@ -51,6 +51,10 @@ struct Ref {
     // 17:         return self._target
     return this->_target;
   }
+
+  auto operator*() -> decltype(__deref__()) {
+    return __deref__();
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {

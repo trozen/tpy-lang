@@ -12,9 +12,9 @@ void main() {
   // 16:     p: Ptr[Point] = Ptr(pt)
   Point* p = &pt;
   // 18:     print(p.sum())
-  std::cout << p->sum() << "\n";
+  std::cout << tpy::deref_ptr(p).sum() << "\n";
   // 19:     print(p.describe())
-  std::cout << p->describe() << "\n";
+  std::cout << tpy::deref_ptr(p).describe() << "\n";
 }
 
 void __tpy_init() {

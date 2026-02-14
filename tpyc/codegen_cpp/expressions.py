@@ -701,7 +701,9 @@ class ExpressionGenerator:
             if is_indirect or is_optional_ptr:
                 return f"{obj}->{deref_chain[1:]}.{expr.method}({args})"
             return f"{obj}{deref_chain}.{expr.method}({args})"
-        use_arrow = self.ctx.is_indirect_name(expr.obj) or (obj_type and obj_type.is_pointer()) or is_optional_ptr
+        if obj_type and obj_type.is_pointer():
+            return f"tpy::deref_ptr({obj}).{expr.method}({args})"
+        use_arrow = self.ctx.is_indirect_name(expr.obj) or is_optional_ptr
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{expr.method}({args})"
 
@@ -747,7 +749,7 @@ class ExpressionGenerator:
             if is_indirect and not isinstance(obj_type, (PtrType, ConstPtrType)):
                 # Global pointer wrapper needs deref first: Global<Ptr<T>> -> (*global)->field
                 return f"(*{obj})->{expr.field}"
-            return f"{obj}->{expr.field}"
+            return f"tpy::deref_ptr({obj}).{expr.field}"
         if is_indirect or is_optional_ptr:
             return f"{obj}->{expr.field}"
         return f"{obj}.{expr.field}"

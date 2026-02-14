@@ -22,9 +22,9 @@ void main() {
   // 18:     print(cpp.__deref__().y)
   std::cout << tpy::deref_ptr(cpp).y << "\n";
   // 20:     print(cpp.x)
-  std::cout << cpp->x << "\n";
+  std::cout << tpy::deref_ptr(cpp).x << "\n";
   // 21:     print(cpp.y)
-  std::cout << cpp->y << "\n";
+  std::cout << tpy::deref_ptr(cpp).y << "\n";
 }
 
 void __tpy_init() {

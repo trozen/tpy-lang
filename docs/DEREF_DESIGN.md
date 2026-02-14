@@ -9,8 +9,9 @@
 | 3 | Codegen — emit deref calls for user types | Done |
 | 4 | Deref coercion (replace hardcoded `ptr_to_record`) | Done |
 | 5 | ConstPtr `__deref__`, mutability enforcement | Partial |
-| 6 | Null-safety for Ptr/ConstPtr auto-deref | TODO |
-| 7 | Generate `operator*` for types with `__deref__` | TODO |
+| 6 | Null-safety for Ptr/ConstPtr auto-deref | Done |
+| 7 | Generate `operator*` for types with `__deref__` | Done |
+| 8 | Provenance-based null-check elision | TODO |
 
 ## Motivation
 
@@ -115,18 +116,27 @@ Replaced the hardcoded `ptr_to_record` coercion with a generic deref fallback in
 - `__deref_mut__` for mutable deref distinction — **future**
 - Transitive constness enforcement (e.g. `ConstPtr[list[T]]` blocking `.append()`) — **future**, requires a full const-propagation system
 
-### Stage 6: Null-safety for Ptr/ConstPtr auto-deref — TODO
+### Stage 6: Null-safety for Ptr/ConstPtr auto-deref — Done
 
-Currently, auto-deref through `Ptr[T]`/`ConstPtr[T]` generates unchecked `->` access, while explicit `.__deref__()` generates checked `tpy::deref_ptr()`. This is a correctness gap: a null `Ptr[T]` passed to a function produces UB on `->` access with no diagnostic.
+Replaced unchecked `ptr->field` / `ptr->method()` with `tpy::deref_ptr(ptr).field` / `tpy::deref_ptr(ptr).method()` in codegen for `PtrType` and `ConstPtrType`. Every auto-deref through a pointer is now null-checked via the existing `tpy::deref_ptr()` runtime function, which panics with "null pointer dereference" on null. This matches the behavior of explicit `.__deref__()` calls.
 
-Options to explore:
-- Null-assert on Ptr/ConstPtr parameters at function entry (one-time check, `->` safe within body)
-- Check all `->` access (safe but adds overhead)
-- Opt-in via annotation (e.g. `@checked` vs default unchecked)
+The C++ optimizer can elide redundant null checks on the same pointer in release builds (`-O2`/`-O3`).
 
-### Stage 7: Generate `operator*` for types with `__deref__` — TODO
+### Stage 7: Generate `operator*` for types with `__deref__` — Done
 
-Emit C++ `operator*()` (and potentially `operator->()`) on user-defined types that implement `__deref__`. This enables interop with C++ code that expects standard pointer-like dereferencing semantics (e.g. `*box` instead of `box.__deref__()`).
+User-defined records with `__deref__()` now get `operator*()` generated in the C++ struct, enabling `*box` syntax for C++ interop. Uses `auto` return type with `decltype(__deref__())` to handle generic type parameters correctly. `Ptr[T]`/`ConstPtr[T]` are excluded since they map to raw `T*`/`const T*` which already support `*ptr` natively.
+
+**Known limitation**: `operator*()` is non-const only, since `__deref__()` is generated as non-const. A const overload requires const method generation for `__deref__`, which depends on the broader const method system (Stage 5).
+
+### Stage 8: Provenance-based null-check elision — TODO
+
+Currently all Ptr/ConstPtr auto-deref emits `tpy::deref_ptr()` unconditionally. Pointers with known non-null provenance could skip the null check and use direct `->` access:
+
+- `Ptr(var)` — constructed from a valid lvalue, always non-null
+- Implicit record-to-ptr coercion — always non-null
+- Already checked in the same basic block — redundant check
+
+The compiler already tracks pointer provenance for escape analysis — extending it with a "known non-null" flag and threading that to codegen would eliminate unnecessary checks.
 
 ## Deref[T] Protocol Definition
 
@@ -143,3 +153,7 @@ module.protocol("Deref",
 ```
 
 Both `Ptr[T]` and `ConstPtr[T]` declare `extends=["Deref[T]"]`. User-defined types conform structurally by implementing `__deref__() -> T`.
+
+## Notes
+
+**Cosmetic codegen improvements** (nice to have, not staged): Generate `operator->` for user deref types (needs `requires` clause for non-value targets). Use `*box` / `box->field` instead of `box.__deref__().field` in codegen for user types. Replace `(*x).field` with `x->field` for narrowed Optionals.

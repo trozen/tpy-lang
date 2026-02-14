@@ -8,13 +8,13 @@ std::string_view __name__;
 // 11: def modify_point(p: Ptr[Point]) -> None:
 void modify_point(Point* p) {
   // 12:     p.x = 999
-  p->x = 999;
+  tpy::deref_ptr(p).x = 999;
 }
 
 // 14: def read_point(p: ConstPtr[Point]) -> Int32:
 int32_t read_point(const Point* p) {
   // 15:     return p.x
-  return p->x;
+  return tpy::deref_ptr(p).x;
 }
 
 // 17: def test_coercion() -> None:

@@ -9,14 +9,14 @@ std::string_view __name__;
 int32_t read_point(const Point* p) {
   // 14:     """Read from a const pointer - should work."""
   // 15:     return p.x + p.y
-  return (tpy::int32_add(p->x, p->y));
+  return (tpy::int32_add(tpy::deref_ptr(p).x, tpy::deref_ptr(p).y));
 }
 
 // 17: def modify_via_ptr(p: Ptr[Point], new_x: Int32) -> None:
 void modify_via_ptr(Point* p, int32_t new_x) {
   // 18:     """Modify via mutable pointer."""
   // 19:     p.x = new_x
-  p->x = new_x;
+  tpy::deref_ptr(p).x = new_x;
 }
 
 // 21: def test_ptr_to_const_ptr() -> None:
@@ -27,9 +27,9 @@ void test_ptr_to_const_ptr() {
   // 26:     mp: Ptr[Point] = pt
   Point* mp = &pt;
   // 29:     print(mp.x)
-  std::cout << mp->x << "\n";
+  std::cout << tpy::deref_ptr(mp).x << "\n";
   // 30:     print(mp.y)
-  std::cout << mp->y << "\n";
+  std::cout << tpy::deref_ptr(mp).y << "\n";
   // 33:     modify_via_ptr(mp, 100)
   modify_via_ptr(mp, 100);
   // 34:     print(pt.x)
@@ -52,11 +52,11 @@ void test_const_ptr_preserves_value() {
   // 47:     cp: ConstPtr[Point] = mp
   const Point* cp = mp;
   // 49:     print(cp.x)
-  std::cout << cp->x << "\n";
+  std::cout << tpy::deref_ptr(cp).x << "\n";
   // 52:     mp.x = 999
-  mp->x = 999;
+  tpy::deref_ptr(mp).x = 999;
   // 53:     print(cp.x)
-  std::cout << cp->x << "\n";
+  std::cout << tpy::deref_ptr(cp).x << "\n";
 }
 
 void __tpy_init() {
