@@ -2491,6 +2491,26 @@ Generated C++:
 - Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
 - `@native("cpp_name")` on methods allows renaming individual methods
 
+### Native Global Variables (Working)
+
+Import extern C/C++ global variables:
+
+```python
+from tpy import native_c_global, native_global, Int32
+
+# C global (extern "C")
+frame_count: Int32 = native_c_global("DG_FrameCount")
+
+# C global without rename (Python name = C name)
+tick: Int32 = native_c_global()
+
+# C++ global (possibly namespaced)
+score: Int32 = native_global("engine::score")
+lives: Int32 = native_global()
+```
+
+Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation.
+
 **Not yet supported:**
 - `# tpy: include()` header directives (planned)
 - `# tpy: link()` link directives (planned)

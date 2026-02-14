@@ -189,12 +189,21 @@ class TpyStmt:
     loc: SourceLocation | None = field(default=None, kw_only=True)
 
 
+class VarLinkage(Enum):
+    """Linkage mode for global variable imports."""
+    DEFAULT = "default"
+    NATIVE = "native"        # C++ global import
+    NATIVE_C = "native_c"    # C global import (extern "C")
+
+
 @dataclass
 class TpyVarDecl(TpyStmt):
     """Variable declaration with optional initializer."""
     name: str
     type: Optional[TpyType]
     init: Optional[TpyExpr]
+    linkage: VarLinkage = VarLinkage.DEFAULT
+    native_name: str | None = None
 
 
 @dataclass

@@ -270,4 +270,16 @@ def init_module() -> BuiltinModule:
         ),
     ], special_handling=True)
 
+    # native_c_global() / native_global() — compile-time markers for importing C/C++ globals.
+    # Sema intercepts before overload matching; overloads just ensure the names are registered.
+    module.function("native_c_global", overloads=[
+        MethodDef(params=[ParamDef("name", STR)], returns=VOID, cpp=""),
+        MethodDef(params=[], returns=VOID, cpp=""),
+    ], special_handling=True)
+
+    module.function("native_global", overloads=[
+        MethodDef(params=[ParamDef("name", STR)], returns=VOID, cpp=""),
+        MethodDef(params=[], returns=VOID, cpp=""),
+    ], special_handling=True)
+
     return module

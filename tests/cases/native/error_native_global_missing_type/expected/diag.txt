@@ -1,0 +1,1 @@
+main.tp.py:3: error: native_c_global() requires a type annotation

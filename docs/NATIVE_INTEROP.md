@@ -30,9 +30,9 @@ TurboPython can import existing C/C++ functions and export its own functions wit
 | — | `@native` enum / constants | Open |
 | — | Auto-bindgen from C headers | Open |
 | — | Variadic C functions (`printf` etc.) | Open |
-| — | Native global variables | Open |
+| — | `native_c_global()` — import C global variable | **Done** |
+| — | `native_global()` — import C++ global variable | **Done** |
 | — | String/buffer marshaling | Open |
-| — | `pkg-config` integration | Open |
 | — | Conditional platform linking | Open |
 | — | Inline C/C++ escape hatch | Open |
 
@@ -171,6 +171,10 @@ Both `lib.hpp` and `main.hpp` get `extern "C"` declarations for `abs` and `clock
 | Two linkage decorators on same function | `cannot have both @X and @Y` |
 | Same native symbol declared twice | `Duplicate extern symbol 'name'` |
 | Non-string argument to decorator | `@native_c() requires a single string argument` |
+| `native_*_global()` inside a function | `can only be used at module level` |
+| `native_*_global()` without type annotation | `requires a type annotation` |
+| `native_*_global()` with non-string arg | `argument must be a string literal` |
+| `native_*_global()` with >1 args | `takes 0 or 1 arguments` |
 
 ## Supported types
 
@@ -486,19 +490,39 @@ Design considerations:
 
 ### Native global variables
 
-Import extern C/C++ global variables and constants, not just functions.
+Import extern C/C++ global variables. Two functions, imported from `tpy`:
 
 ```python
-from tpy import native_c, Int32
+from tpy import native_c_global, native_global, Int32
 
-@native_c
-SCREEN_WIDTH: Int32      # extern int32_t SCREEN_WIDTH;
+# C global (extern "C" linkage)
+frame_count: Int32 = native_c_global("DG_FrameCount")
 
-@native_c("stderr")
-err_stream: Ptr[FILE]    # extern FILE* stderr;
+# C global without rename (Python name = C name)
+tick: Int32 = native_c_global()
+
+# C++ global (regular linkage, possibly namespaced)
+score: Int32 = native_global("engine::score")
+
+# C++ global without rename
+lives: Int32 = native_global()
 ```
 
-This maps to `extern` variable declarations in C++. Read-only by default; mutation would require explicit opt-in.
+Generated C++ (header, before namespace):
+```cpp
+extern "C" int32_t DG_FrameCount;
+extern "C" int32_t tick;
+namespace engine { extern int32_t score; }
+extern int32_t lives;
+```
+
+References to these variables in TPy code emit the C/C++ name directly:
+```python
+print(frame_count)   # → std::cout << DG_FrameCount << "\n";
+print(score)         # → std::cout << engine::score << "\n";
+```
+
+Native global imports must be at module level (not inside functions) and require a type annotation. Unlike `@native`/`@native_c` decorators (hard-coded in the parser), these are regular functions registered in the `tpy` module and detected in sema via namespace resolution — shadowing works correctly.
 
 ### String and buffer marshaling
 
@@ -544,16 +568,6 @@ Design considerations:
 - Only `@extern_c` or plain functions can be used as callbacks (no closures capturing state)
 - Closures with state would need a `void* userdata` pattern (common in C APIs)
 
-### `pkg-config` integration
-
-Automatically discover include paths and linker flags from system packages, similar to Go's `#cgo pkg-config:` directive:
-
-```python
-# tpy: pkg-config("sdl2", "opengl")
-```
-
-This runs `pkg-config --cflags sdl2 opengl` and `pkg-config --libs sdl2 opengl` and passes the results to the C++ compiler and linker. Avoids hardcoding platform-specific paths.
-
 ### Conditional platform linking
 
 Different platforms need different libraries. A conditional directive selects the right one:
@@ -562,12 +576,6 @@ Different platforms need different libraries. A conditional directive selects th
 # tpy: link("ws2_32", platform="windows")
 # tpy: link("pthread", platform="linux")
 # tpy: link("pthread", platform="macos")
-```
-
-Or combined with pkg-config:
-```python
-# tpy: pkg-config("sdl2", platform="linux")
-# tpy: framework("SDL2", platform="macos")     # macOS framework
 ```
 
 ### Inline C/C++ escape hatch

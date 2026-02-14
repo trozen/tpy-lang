@@ -1,0 +1,1 @@
+main.tp.py:4: error: native_c_global() can only be used at module level

@@ -23,6 +23,8 @@ from ..parse import (
     TpyFieldAccess, TpyFunction,
 )
 from ..coercions import CoercionContext
+from ..namespace import BindingKind
+from ..parse.nodes import VarLinkage
 from .diagnostics import SemanticError
 from .narrowing import NarrowingTracker
 from .scope_tracker import ScopeTracker
@@ -381,6 +383,42 @@ class StatementAnalyzer:
                 f"Protocols are only valid for function parameters",
                 stmt
             )
+
+        # Detect native global import: x: T = native_c_global("name") / native_global("name")
+        if isinstance(stmt.init, TpyCall) and self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(stmt.init.func)
+            if (binding and binding.kind == BindingKind.IMPORTED_NAME
+                    and binding.import_source
+                    and binding.import_source[0] == "tpy"
+                    and binding.import_source[1] in ("native_c_global", "native_global")):
+                func_name = binding.import_source[1]
+                if not self.ctx.is_top_level:
+                    raise self.ctx.error(
+                        f"{func_name}() can only be used at module level",
+                        stmt
+                    )
+                if stmt.type is None:
+                    raise self.ctx.error(
+                        f"{func_name}() requires a type annotation",
+                        stmt
+                    )
+                native_name = None
+                if len(stmt.init.args) == 1:
+                    if not isinstance(stmt.init.args[0], TpyStrLiteral):
+                        raise self.ctx.error(
+                            f"{func_name}() argument must be a string literal",
+                            stmt
+                        )
+                    native_name = stmt.init.args[0].value
+                elif len(stmt.init.args) > 1:
+                    raise self.ctx.error(
+                        f"{func_name}() takes 0 or 1 arguments",
+                        stmt
+                    )
+                stmt.linkage = VarLinkage.NATIVE_C if func_name == "native_c_global" else VarLinkage.NATIVE
+                stmt.native_name = native_name
+                stmt.init = None
+                return
 
         # Handle `global x` declarations: treat as reassignment of the global variable
         is_global_declared = stmt.name in self.ctx.global_declarations

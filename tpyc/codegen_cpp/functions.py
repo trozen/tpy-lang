@@ -12,7 +12,7 @@ from ..typesys import (
     BIGINT, is_protocol_type, FunctionInfo,
     Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
 )
-from ..parse import TpyFunction, TpyVarDecl
+from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..namespace import Namespace
 from .context import module_to_cpp_namespace
 from .type_resolution import resolve_stmt_type_cascade
@@ -251,6 +251,8 @@ class FunctionGenerator:
         Value-type globals are plain T, non-value-type globals are T* (nullptr).
         Initialization happens in __tpy_init() to ensure proper execution order.
         """
+        if stmt.linkage != VarLinkage.DEFAULT:
+            return
         self.ctx.emit_preceding_comments(out, stmt.loc)
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)

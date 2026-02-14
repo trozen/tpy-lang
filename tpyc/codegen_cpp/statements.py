@@ -553,6 +553,9 @@ class StatementGenerator:
 
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
+        from ..parse.nodes import VarLinkage
+        if stmt.linkage != VarLinkage.DEFAULT:
+            return None
         # Global-declared vars: emit assignment to the existing global, not a local decl
         if stmt.name in self.ctx.global_declared_vars:
             if not stmt.init:

@@ -194,6 +194,9 @@ class CodeGenContext:
     top_level_decls: dict[str, int] = field(default_factory=dict)
     current_stmt_line: int = 0
 
+    # --- Native global variable imports ---
+    native_global_names: dict[str, str] = field(default_factory=dict)
+
     # --- Re-exports (from __init__.py) ---
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)

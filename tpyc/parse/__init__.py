@@ -6,7 +6,7 @@ All existing imports like ``from .parse import X`` continue to work.
 """
 
 from .nodes import (
-    ParseError, SourceLocation, RecordLinkage, FunctionLinkage,
+    ParseError, SourceLocation, RecordLinkage, FunctionLinkage, VarLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
@@ -26,7 +26,7 @@ from .parser import Parser
 
 __all__ = [
     # nodes
-    "ParseError", "SourceLocation", "RecordLinkage",
+    "ParseError", "SourceLocation", "RecordLinkage", "FunctionLinkage", "VarLinkage",
     "TpyExpr", "TpyIntLiteral", "TpyFloatLiteral", "TpyStrLiteral", "TpyBoolLiteral",
     "TpyNoneLiteral", "TpyName", "TpyBinOp", "TpyUnaryOp", "TpyCall", "TpyMethodCall",
     "TpyFieldAccess", "TpyArrayLiteral", "TpyListRepeat", "TpySubscript", "TpyCoerce",

@@ -143,6 +143,10 @@ class ExpressionGenerator:
             # self → (*this) only in instance methods (self is implicit receiver, not a param)
             if expr.name == "self" and self.ctx.in_method and "self" not in self.ctx.current_func_params:
                 return "(*this)"
+            # Native global name substitution (Python name → C/C++ name)
+            # Skip if shadowed by a local variable
+            if expr.name in self.ctx.native_global_names and expr.name not in self.ctx.local_scope_names:
+                return self.ctx.native_global_names[expr.name]
             # Check if this is an imported variable from a user module
             if expr.name in self.ctx.user_imported_variables:
                 # Don't qualify if shadowed by a local variable
