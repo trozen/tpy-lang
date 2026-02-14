@@ -32,21 +32,25 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # range(stop) - basic
   // 4: for i in range(5):
   for (tpy::BigInt i = 0; i < tpy::BigInt(5); ++i) {
     // 5:     print(i)
     std::cout << i << "\n";
   }
+  // 7: # range(start, stop)
   // 8: for i in range(2, 6):
   for (tpy::BigInt i = tpy::BigInt(2); i < tpy::BigInt(6); ++i) {
     // 9:     print(i)
     std::cout << i << "\n";
   }
+  // 11: # range(start, stop, step) - step of 2
   // 12: for i in range(0, 10, 2):
   for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(10); i += tpy::BigInt(2)) {
     // 13:     print(i)
     std::cout << i << "\n";
   }
+  // 15: # range(start, stop, step) - negative step (countdown)
   // 16: for i in range(10, 0, -2):
   for (tpy::BigInt i = tpy::BigInt(10); i > tpy::BigInt(0); i += -(tpy::BigInt(2))) {
     // 17:     print(i)
@@ -54,6 +58,7 @@ void __tpy_init() {
   }
   // 26: print(sum_range_step(0, 10, 3))  # 0 + 3 + 6 + 9 = 18
   std::cout << sum_range_step(0, 10, 3) << "\n";
+  // 28: # range with BigInt args (converted to Int32)
   // 29: n = 5
   n = tpy::BigInt(5);
   // 30: for i in range(n):

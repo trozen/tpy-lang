@@ -57,6 +57,7 @@ struct Dog : Animal {
 
   // 26:     def full_speak(self) -> str:
   std::string_view full_speak() {
+    // 27:         # Call overridden parent method via super()
     // 28:         parent_speak = super().speak()
     std::string_view parent_speak = Animal::speak();
     // 29:         return parent_speak

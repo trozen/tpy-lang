@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 8: def test_setitem_mutation():
 void test_setitem_mutation() {
+  // 9:     # Function-local: should resolve to list (not Array) because __setitem__ mutates
   // 10:     items = [Int32(1), Int32(2), Int32(3)]
   std::vector<int32_t> items = {1, 2, 3};
   // 11:     items.__setitem__(Int32(0), Int32(99))

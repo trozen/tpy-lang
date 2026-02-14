@@ -89,22 +89,27 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 59: # Test empty function
   // 60: empty_function()
   empty_function();
   // 61: print("empty_function called")
   std::cout << "empty_function called" << "\n";
+  // 63: # Test pass in branch
   // 64: print(function_with_pass_branch(5))
   std::cout << function_with_pass_branch(5) << "\n";
   // 65: print(function_with_pass_branch(-3))
   std::cout << function_with_pass_branch(-(3)) << "\n";
+  // 67: # Test pass in loop
   // 68: print(pass_in_loop())
   std::cout << pass_in_loop() << "\n";
+  // 70: # Test pass in elif
   // 71: print(pass_in_elif(-1))
   std::cout << pass_in_elif(-(1)) << "\n";
   // 72: print(pass_in_elif(0))
   std::cout << pass_in_elif(0) << "\n";
   // 73: print(pass_in_elif(1))
   std::cout << pass_in_elif(1) << "\n";
+  // 75: # Test class with pass method
   // 76: test_class_with_pass()
   test_class_with_pass();
 }

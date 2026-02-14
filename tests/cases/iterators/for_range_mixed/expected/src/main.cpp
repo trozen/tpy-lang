@@ -24,10 +24,12 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Mixed Int32/BigInt args should widen to BigInt (not truncate to Int32)
   // 4: start: Int32 = 0
   start = 0;
   // 5: big_end = 1 << 40
   big_end = ((tpy::BigInt(1)) << (tpy::BigInt(40)));
+  // 7: # 1. Int32 start, BigInt stop
   // 8: count: Int32 = 0
   count = 0;
   // 9: for i in range(start, big_end):
@@ -44,6 +46,7 @@ void __tpy_init() {
   }
   // 13: print(count)
   std::cout << count << "\n";
+  // 15: # 2. BigInt start, Int32 stop — stop widened to BigInt
   // 16: end: Int32 = 5
   end = 5;
   // 17: big_start = 1 << 40

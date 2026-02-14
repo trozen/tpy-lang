@@ -17,6 +17,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "mod_d";
+  // 3: # This print verifies D is only initialized once
   // 4: print("D init")
   std::cout << "D init" << "\n";
 }

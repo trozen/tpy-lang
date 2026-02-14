@@ -7,14 +7,17 @@ std::string_view __name__;
 
 // 3: def test_bool():
 void test_bool() {
+  // 4:     # Boolean literals with explicit type
   // 5:     a: bool = True
   bool a = true;
   // 6:     b: bool = False
   bool b = false;
+  // 8:     # Type inference for bool
   // 9:     inferred_true = True
   bool inferred_true = true;
   // 10:     inferred_false = False
   bool inferred_false = false;
+  // 12:     # Print bools (as 0/1 in if conditions)
   // 13:     if a:
   if (a) {
     // 14:         print(1)
@@ -31,6 +34,7 @@ void test_bool() {
     // 21:         print(0)
     std::cout << 0 << "\n";
   }
+  // 23:     # Inferred bools work the same
   // 24:     if inferred_true:
   if (inferred_true) {
     // 25:         print(1)
@@ -41,6 +45,7 @@ void test_bool() {
     // 27:         print(0)
     std::cout << 0 << "\n";
   }
+  // 29:     # Boolean in while condition (inferred type)
   // 30:     flag = True
   bool flag = true;
   // 31:     count: Int32 = 0

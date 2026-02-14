@@ -19,6 +19,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 2: # Import submodule - should execute parent __init__ first
   // 3: from mypackage.utils import helper
   tpy_user::mypackage::__tpy_init();
   tpy_user::mypackage::utils::__tpy_init();

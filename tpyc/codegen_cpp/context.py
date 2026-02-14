@@ -237,17 +237,97 @@ class CodeGenContext:
             source_line = self.source_lines[line_idx].rstrip()
             out.write(f"{indent}// {loc.line}: {source_line}\n")
 
-    def emit_preceding_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
-        """Emit comments and decorators preceding a definition as C++ comments.
+    def emit_inline_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
+        """Emit Python comment lines immediately preceding a statement.
 
         Walks backwards from the line before loc, skipping blank lines,
-        collecting decorator lines (@...) and comment lines (#...).
+        then collecting consecutive comment lines (#...) at the same or
+        shallower indentation as the current statement (deeper-indented
+        comments belong to inner blocks and are handled by
+        emit_block_trailing_comments).
         Emits them in source order.
         """
         if not self.options.emit_source_comments:
             return
         if loc is None:
             return
+        stmt_line = self.source_lines[loc.line - 1]
+        stmt_indent = len(stmt_line) - len(stmt_line.lstrip())
+        collected: list[tuple[int, str]] = []
+        idx = loc.line - 2  # 0-indexed line before current statement
+        # Skip blank lines
+        while idx >= 0 and not self.source_lines[idx].strip():
+            idx -= 1
+        # Collect consecutive comment lines at same or shallower indentation
+        while idx >= 0:
+            stripped = self.source_lines[idx].strip()
+            if stripped.startswith("#"):
+                line_indent = len(self.source_lines[idx]) - len(self.source_lines[idx].lstrip())
+                if line_indent > stmt_indent:
+                    break
+                collected.append((idx + 1, self.source_lines[idx].rstrip()))
+                idx -= 1
+            else:
+                break
+        # Emit in source order
+        for line_no, source_line in reversed(collected):
+            out.write(f"{indent}// {line_no}: {source_line}\n")
+
+    def emit_block_trailing_comments(self, out: TextIO, body: list, indent: str = "") -> None:
+        """Emit trailing comment lines after the last statement in a block.
+
+        Scans forward from the last statement's line, emitting Python comment
+        lines that maintain the same or deeper indentation. Stops at
+        non-comment code or dedented lines.
+        """
+        if not self.options.emit_source_comments:
+            return
+        if not body:
+            return
+        last_stmt = body[-1]
+        if not hasattr(last_stmt, 'loc') or last_stmt.loc is None:
+            return
+        last_line = last_stmt.loc.line
+        # Determine expected indentation from the last statement's source
+        ref_idx = last_line - 1
+        if ref_idx < 0 or ref_idx >= len(self.source_lines):
+            return
+        ref_line = self.source_lines[ref_idx]
+        block_indent = len(ref_line) - len(ref_line.lstrip())
+
+        line_no = last_line + 1
+        while line_no <= len(self.source_lines):
+            line_idx = line_no - 1
+            source_line = self.source_lines[line_idx]
+            stripped = source_line.strip()
+            if not stripped:
+                line_no += 1
+                continue
+            line_indent = len(source_line) - len(source_line.lstrip())
+            if line_indent < block_indent:
+                break
+            if stripped.startswith("#"):
+                out.write(f"{indent}// {line_no}: {source_line.rstrip()}\n")
+                line_no += 1
+            else:
+                break
+
+    def emit_preceding_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
+        """Emit comments and decorators preceding a definition as C++ comments.
+
+        Walks backwards from the line before loc, skipping blank lines,
+        collecting decorator lines (@...) and comment lines (#...) at the
+        same indentation as the definition. Deeper-indented comments belong
+        to the body of a preceding definition and are skipped.
+        Emits them in source order.
+        """
+        if not self.options.emit_source_comments:
+            return
+        if loc is None:
+            return
+        # Determine the definition's indentation
+        def_line = self.source_lines[loc.line - 1]
+        def_indent = len(def_line) - len(def_line.lstrip())
         collected: list[str] = []
         idx = loc.line - 2  # 0-indexed line before definition
         # Skip blank lines between definition and block above
@@ -264,10 +344,13 @@ class CodeGenContext:
         # Skip blank lines between decorators and comments
         while idx >= 0 and not self.source_lines[idx].strip():
             idx -= 1
-        # Collect comment lines
+        # Collect comment lines at same indentation as the definition
         while idx >= 0:
             stripped = self.source_lines[idx].strip()
             if stripped.startswith("#"):
+                line_indent = len(self.source_lines[idx]) - len(self.source_lines[idx].lstrip())
+                if line_indent > def_indent:
+                    break
                 collected.append(self.source_lines[idx].rstrip())
                 idx -= 1
             else:

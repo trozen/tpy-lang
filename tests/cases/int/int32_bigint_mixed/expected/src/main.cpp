@@ -101,6 +101,7 @@ void test_nested_literal_binop() {
   int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(1, 2), tpy::add_check<int32_t>(3, 4));
   // 67:     print(y)  # 21
   std::cout << y << "\n";
+  // 69:     # Assignment to existing Int32 variable
   // 70:     z: Int32 = 0
   int32_t z = 0;
   // 71:     z = 10 + (20 + 30)

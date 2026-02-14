@@ -15,6 +15,7 @@ void test_equality() {
   std::string_view b = "hello";
   // 9:     c: str = "world"
   std::string_view c = "world";
+  // 11:     # Equal strings
   // 12:     if a == b:
   if ((a == b)) {
     // 13:         print("hello == hello: yes")
@@ -23,6 +24,7 @@ void test_equality() {
     // 15:         print("hello == hello: no")
     std::cout << "hello == hello: no" << "\n";
   }
+  // 17:     # Unequal strings
   // 18:     if a == c:
   if ((a == c)) {
     // 19:         print("hello == world: yes")
@@ -31,6 +33,7 @@ void test_equality() {
     // 21:         print("hello == world: no")
     std::cout << "hello == world: no" << "\n";
   }
+  // 23:     # Not equal
   // 24:     if a != c:
   if ((a != c)) {
     // 25:         print("hello != world: yes")
@@ -58,6 +61,7 @@ void test_ordering() {
   std::string_view b = "banana";
   // 38:     c: str = "apple"
   std::string_view c = "apple";
+  // 40:     # Less than
   // 41:     if a < b:
   if ((a < b)) {
     // 42:         print("apple < banana: yes")
@@ -71,6 +75,7 @@ void test_ordering() {
     // 47:         print("banana < apple: no")
     std::cout << "banana < apple: no" << "\n";
   }
+  // 49:     # Less than or equal
   // 50:     if a <= c:
   if ((a <= c)) {
     // 51:         print("apple <= apple: yes")
@@ -81,11 +86,13 @@ void test_ordering() {
     // 54:         print("apple <= banana: yes")
     std::cout << "apple <= banana: yes" << "\n";
   }
+  // 56:     # Greater than
   // 57:     if b > a:
   if ((b > a)) {
     // 58:         print("banana > apple: yes")
     std::cout << "banana > apple: yes" << "\n";
   }
+  // 60:     # Greater than or equal
   // 61:     if c >= a:
   if ((c >= a)) {
     // 62:         print("apple >= apple: yes")
@@ -206,6 +213,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 125: # Run all tests
   // 126: print("=== equality ===")
   std::cout << "=== equality ===" << "\n";
   // 127: test_equality()

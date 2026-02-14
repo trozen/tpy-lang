@@ -72,43 +72,54 @@ bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
 
 // 106: def main() -> None:
 void main() {
+  // 107:     # Test 1: len() on list (builtin Sized)
   // 108:     items = [1, 2, 3, 4, 5]
   std::vector<tpy::BigInt> items = {1, 2, 3, 4, 5};
   // 109:     print(get_length(items))  # 5
   std::cout << get_length<std::vector<tpy::BigInt>>(items) << "\n";
+  // 111:     # Test 1b: len() on str (builtin Sized)
   // 112:     msg = "hello"
   std::string_view msg = "hello";
   // 113:     print(get_length(msg))  # 5
   std::cout << get_length<std::string_view>(msg) << "\n";
+  // 115:     # Test 2: User-defined protocol method
   // 116:     v = MyValue(42)
   MyValue v = MyValue(42);
   // 117:     print(stringify(v))  # value
   std::cout << stringify<MyValue>(v) << "\n";
+  // 119:     # Test 3: MyValue satisfies Sized too (has __len__)
   // 120:     print(get_length(v))  # 42
   std::cout << get_length<MyValue>(v) << "\n";
+  // 122:     # Test 4: Generic class calling method on bounded type param
   // 123:     printer = Printer[MyValue]()
   Printer<MyValue> printer = Printer<MyValue>();
   // 124:     print(printer.get_str(v))  # value
   std::cout << printer.get_str(v) << "\n";
+  // 126:     # Test 4b: Same generic class with different type
   // 127:     point_printer = Printer[Point]()
   Printer<Point> point_printer = Printer<Point>();
   // 128:     print(point_printer.get_str(Point(10, 20)))  # Point
   Point __tmp_1 = Point(10, 20);
   std::cout << point_printer.get_str(__tmp_1) << "\n";
+  // 130:     # Test 6: Multiple type params with different bounds
   // 131:     print(process_both(items, v))  # value, then 5
   std::cout << process_both<std::vector<tpy::BigInt>, MyValue>(items, v) << "\n";
+  // 133:     # Test 7: Protocol with multiple methods
   // 134:     w = Widget("test", 99)
   Widget w = Widget("test", 99);
   // 135:     use_multi(w)  # test, then 99
   use_multi<Widget>(w);
+  // 137:     # Test 8: Nested bounded calls
   // 138:     print(outer_len(items))  # 5
   std::cout << outer_len<std::vector<tpy::BigInt>>(items) << "\n";
+  // 140:     # Test 9: User protocol with Self - clone returns T (Box), not Clonable
   // 141:     box = Box(123)
   Box box = Box(123);
   // 142:     cloned = clone_it(box)  # cloned should be Box, not Clonable
   Box cloned = clone_it<Box>(box);
   // 143:     print(cloned.value)  # 123 - accessing Box.value proves type is Box
   std::cout << cloned.value << "\n";
+  // 145:     # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
   // 146:     print(is_less(1, 2))  # True
   tpy::BigInt __tmp_2 = tpy::BigInt(1);
   tpy::BigInt __tmp_3 = tpy::BigInt(2);

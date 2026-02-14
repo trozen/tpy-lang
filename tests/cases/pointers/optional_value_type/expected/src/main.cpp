@@ -67,6 +67,7 @@ void __tpy_init() {
   f = 3.14;
   // 21: print(f)
   std::cout << tpy::print_optional_val<tpy::print_float, double>(f) << "\n";
+  // 23: # 0 must be distinct from None (std::optional<int>(0) has a value)
   // 24: z: Int32 | None = 0
   z = 0;
   // 25: print(z is None)

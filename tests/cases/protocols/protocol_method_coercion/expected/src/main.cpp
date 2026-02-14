@@ -8,6 +8,7 @@ std::string_view __name__;
 // 21: def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
 void use_calc(T_c& c) {
+  // 22:     # Test: Literal coercion to Int32 in protocol method calls
   // 23:     result1 = c.add(10)
   int32_t result1 = c.add(10);
   // 24:     print(result1)
@@ -24,6 +25,7 @@ void main() {
   SimpleCalc calc = SimpleCalc(32);
   // 31:     use_calc(calc)
   use_calc(calc);
+  // 33:     # Also test passing constructor as rvalue
   // 34:     use_calc(SimpleCalc(0))
   auto __tmp_1 = SimpleCalc(0);
   use_calc(__tmp_1);

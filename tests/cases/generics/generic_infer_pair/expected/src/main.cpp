@@ -15,6 +15,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test type inference with multiple type parameters."""
+  // 13: # Inference from int, str -> Pair[int, str]
   // 14: pair = Pair(1, "hello")
   static Pair<tpy::BigInt, std::string_view> __global_slot_1 = Pair<tpy::BigInt, std::string_view>(1, "hello");
   pair = &__global_slot_1;

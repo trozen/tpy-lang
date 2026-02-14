@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 12: def test_value_types():
 void test_value_types() {
+  // 13:     # Value type - get_value (copy semantics)
   // 14:     nums: StaticList[Int32, 4] = StaticList[Int32, 4]()
   StaticList<int32_t, 4> nums = StaticList<int32_t, 4>();
   // 15:     nums.append(10)
@@ -17,10 +18,12 @@ void test_value_types() {
   int32_t val = tpy::get_item(nums, 0);
   // 18:     print(val)  # 10
   std::cout << val << "\n";
+  // 20:     # Modifying val doesn't affect nums[0] (value semantics)
   // 21:     val = 99
   val = 99;
   // 22:     print(nums[0])  # Still 10
   std::cout << tpy::get_item(nums, 0) << "\n";
+  // 24:     # Test with list[T] as well
   // 25:     int_list: list[Int32] = [5, 6, 7]
   std::vector<int32_t> int_list = {5, 6, 7};
   // 26:     v: Int32 = int_list[1]  # get_value for Int32 element
@@ -31,18 +34,22 @@ void test_value_types() {
 
 // 30: def test_object_types():
 void test_object_types() {
+  // 31:     # Object type - get_ref (reference semantics)
   // 32:     points: StaticList[Point, 4] = StaticList[Point, 4]()
   StaticList<Point, 4> points = StaticList<Point, 4>();
   // 33:     points.append(Point(1, 2))
   points.push_back(Point(1, 2));
   // 34:     points.append(Point(3, 4))
   points.push_back(Point(3, 4));
+  // 36:     # Accessing object field through subscript
   // 37:     print(points[0].x)  # 1
   std::cout << tpy::get_item(points, 0).x << "\n";
+  // 39:     # Modifying object through subscript reference
   // 40:     points[0].x = 100
   tpy::get_item(points, 0).x = 100;
   // 41:     print(points[0].x)  # 100
   std::cout << tpy::get_item(points, 0).x << "\n";
+  // 43:     # Test with list[Point] as well
   // 44:     obj_list: list[Point] = [Point(10, 20)]
   std::vector<Point> obj_list = {Point(10, 20)};
   // 45:     obj_list[0].y = 200  # get_ref for Point element

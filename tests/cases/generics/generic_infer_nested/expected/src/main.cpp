@@ -20,6 +20,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test type inference with nested generic classes."""
+  // 18: # Separate lines: Inner[int] explicit, then Outer inferred
   // 19: inner = Inner[int](42)
   static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(42);
   inner = &__global_slot_1;
@@ -28,6 +29,7 @@ void __tpy_init() {
   outer = &__global_slot_2;
   // 21: print(outer.inner.value)
   std::cout << outer->inner.value << "\n";
+  // 23: # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
   // 24: outer2 = Outer(Inner(42))
   static Outer<Inner<tpy::BigInt>> __global_slot_3 = Outer<Inner<tpy::BigInt>>(Inner<tpy::BigInt>(42));
   outer2 = &__global_slot_3;

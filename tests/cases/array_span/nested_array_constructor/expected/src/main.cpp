@@ -13,6 +13,7 @@ int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s) {
 
 // 11: def main() -> None:
 void main() {
+  // 12:     # Inline nested array constructor passed to Span parameter
   // 13:     result: Int32 = take_span_nested(Array[Array[Int32, 2], 2]([[1, 2], [3, 4]]))
   int32_t result = take_span_nested(tpy::as_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
   // 14:     print(result)  # 1 + 4 = 5

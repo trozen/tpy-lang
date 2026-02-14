@@ -11,6 +11,7 @@ void main() {
   Point pt = Point(10, 20);
   // 19:     r: Ref = Ref(pt)
   Ref r = Ref(pt);
+  // 20:     # Field access through user-defined __deref__
   // 21:     print(r.x)
   std::cout << r.__deref__().x << "\n";
   // 22:     print(r.y)

@@ -17,6 +17,7 @@ void test_subscript_oob() {
   items.push_back(20);
   // 10:     items.append(30)
   items.push_back(30);
+  // 12:     # Access index 10 via subscript - out of bounds (only 3 elements)
   // 13:     x: Int32 = items[10]
   int32_t x = tpy::get_item(items, 10);
   // 14:     print(x)

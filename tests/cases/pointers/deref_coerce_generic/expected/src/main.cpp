@@ -15,10 +15,12 @@ void print_point(Point& p) {
 void test() {
   // 21:     b: Box[Point] = Box(Point(5, 15))
   Box<Point> b = Box<Point>(Point(5, 15));
+  // 22:     # Field access through generic deref: Box[Point].__deref__() -> Point
   // 23:     print(b.x)
   std::cout << b.__deref__().x << "\n";
   // 24:     print(b.y)
   std::cout << b.__deref__().y << "\n";
+  // 25:     # Coercion: Box[Point] passed where Point expected
   // 26:     print_point(b)
   Point __tmp_1 = b.__deref__();
   print_point(__tmp_1);

@@ -16,6 +16,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Basic float operations
   // 2: x = 3.5
   x = 3.5;
   // 3: y = 2.0

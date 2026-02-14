@@ -13,6 +13,7 @@ void test_not_with_bool_literals() {
   bool a = true;
   // 8:     b: bool = False
   bool b = false;
+  // 10:     # Direct negation
   // 11:     if not a:
   if ((!(a))) {
     // 12:         print("not True: yes")
@@ -38,6 +39,7 @@ void test_not_with_comparisons() {
   int32_t x = 5;
   // 24:     y: Int32 = 10
   int32_t y = 10;
+  // 26:     # not with comparison
   // 27:     if not (x > y):
   if ((!((x > y)))) {
     // 28:         print("not (5 > 10): yes")
@@ -62,6 +64,7 @@ void test_not_in_conditions() {
   bool a = true;
   // 39:     b: bool = False
   bool b = false;
+  // 41:     # not with and
   // 42:     if not a and b:
   if (((!(a)) && b)) {
     // 43:         print("not True and False: yes")
@@ -70,11 +73,13 @@ void test_not_in_conditions() {
     // 45:         print("not True and False: no")
     std::cout << "not True and False: no" << "\n";
   }
+  // 47:     # not with or
   // 48:     if not b or a:
   if (((!(b)) || a)) {
     // 49:         print("not False or True: yes")
     std::cout << "not False or True: yes" << "\n";
   }
+  // 51:     # Parenthesized not
   // 52:     if not (a and b):
   if ((!((a && b)))) {
     // 53:         print("not (True and False): yes")
@@ -162,6 +167,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 98: # Run all tests
   // 99: test_not_with_bool_literals()
   test_not_with_bool_literals();
   // 100: test_not_with_comparisons()

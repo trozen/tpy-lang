@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 28: # Iterating via field access should preserve consumption semantics
   // 29: b = Box()
   static Box __global_slot_1 = Box();
   b = &__global_slot_1;

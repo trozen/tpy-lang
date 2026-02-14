@@ -12,14 +12,19 @@ void test_binary_ops() {
   int32_t a = 20;
   // 8:     b: Int32 = 7
   int32_t b = 7;
+  // 10:     # Addition
   // 11:     print(a + b)  # 27
   std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
+  // 13:     # Subtraction
   // 14:     print(a - b)  # 13
   std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
+  // 16:     # Multiplication
   // 17:     print(a * b)  # 140
   std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
+  // 19:     # Division (floor)
   // 20:     print(a // b)  # 2
   std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
+  // 22:     # Modulo
   // 23:     print(a % b)  # 6
   std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
 }
@@ -42,10 +47,13 @@ void test_mixed_literals() {
   // 36:     """Test Int32 with literal operands."""
   // 37:     x: Int32 = 10
   int32_t x = 10;
+  // 39:     # Int32 + literal
   // 40:     print(x + 5)  # 15
   std::cout << (tpy::add_check<int32_t>(x, 5)) << "\n";
+  // 42:     # literal + Int32 (less common but should work)
   // 43:     print(5 + x)  # 15
   std::cout << (tpy::add_check<int32_t>(5, x)) << "\n";
+  // 45:     # Chained operations
   // 46:     print(x * 2 + 3)  # 23
   std::cout << (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(x, 2)), 3)) << "\n";
 }
@@ -57,8 +65,10 @@ void test_negative_division() {
   int32_t a = -(17);
   // 52:     b: Int32 = 5
   int32_t b = 5;
+  // 54:     # Python floor division: -17 // 5 = -4 (not -3)
   // 55:     print(a // b)  # -4
   std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
+  // 57:     # Python modulo: -17 % 5 = 3 (not -2)
   // 58:     print(a % b)  # 3
   std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
 }

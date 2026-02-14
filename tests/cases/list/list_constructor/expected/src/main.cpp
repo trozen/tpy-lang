@@ -30,6 +30,7 @@ std::vector<int32_t>* from_arr{};
 
 // 4: def test_local_list() -> None:
 void test_local_list() {
+  // 5:     # Local list without annotation
   // 6:     local_nums = list[Int32]()
   std::vector<int32_t> local_nums = std::vector<int32_t>();
   // 7:     local_nums.append(100)
@@ -47,6 +48,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Tests list[T]() constructor syntax."""
+  // 18: # Constructor without LHS annotation - type inferred from constructor
   // 19: nums = list[Int32]()
   static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>();
   nums = &__global_slot_1;
@@ -56,6 +58,7 @@ void __tpy_init() {
   (*nums).push_back(2);
   // 22: print(len(nums))
   std::cout << tpy::__len__((*nums)) << "\n";
+  // 24: # Constructor with matching LHS annotation
   // 25: other: list[Int32] = list[Int32]()
   static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
   other = &__global_slot_2;
@@ -63,6 +66,7 @@ void __tpy_init() {
   (*other).push_back(3);
   // 27: print(len(other))
   std::cout << tpy::__len__((*other)) << "\n";
+  // 29: # List of records without annotation (tests header ordering)
   // 30: points = list[Point]()
   static std::vector<Point> __global_slot_3 = std::vector<Point>();
   points = &__global_slot_3;
@@ -72,6 +76,7 @@ void __tpy_init() {
   std::cout << tpy::__len__((*points)) << "\n";
   // 33: print(points[0].x)
   std::cout << tpy::get_item((*points), 0).x << "\n";
+  // 35: # Nested list of records (tests recursive record check)
   // 36: nested = list[list[Point]]()
   static std::vector<std::vector<Point>> __global_slot_4 = std::vector<std::vector<Point>>();
   nested = &__global_slot_4;
@@ -86,12 +91,15 @@ void __tpy_init() {
   std::cout << tpy::__len__((*nested)) << "\n";
   // 41: print(nested[0][0].x)
   std::cout << tpy::get_item(tpy::get_item((*nested), 0), 0).x << "\n";
+  // 43: # Test local list creation
   // 44: test_local_list()
   test_local_list();
+  // 46: # Direct print of empty list constructor (regression test for ListPrinter CTAD)
   // 47: print(list[Int32]())
   std::cout << tpy::ListPrinter(std::vector<int32_t>()) << "\n";
   // 48: print(list[int]())
   std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>()) << "\n";
+  // 50: # list(iterable) constructor - type inferred from argument
   // 51: print(list([1, 2, 3]))
   std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>({1, 2, 3})) << "\n";
   // 52: print(list([Int32(10), Int32(20)]))
@@ -110,6 +118,7 @@ void __tpy_init() {
   std::cout << tpy::__len__((*src)) << "\n";
   // 58: print(len(copy))
   std::cout << tpy::__len__((*copy)) << "\n";
+  // 60: # Array → list conversion
   // 61: arr: Array[Int32, 3] = [5, 6, 7]
   static std::array<int32_t, 3> __global_slot_8 = {5, 6, 7};
   arr = &__global_slot_8;

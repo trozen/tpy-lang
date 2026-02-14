@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 4: def main() -> None:
 void main() {
+  // 5:     # Constructors
   // 6:     a: UInt8 = UInt8(0)
   uint8_t a = 0;
   // 7:     b: UInt8 = UInt8(255)
@@ -19,6 +20,7 @@ void main() {
   std::cout << static_cast<int>(b) << "\n";
   // 12:     print(c)
   std::cout << static_cast<int>(c) << "\n";
+  // 14:     # Arithmetic
   // 15:     x: UInt8 = UInt8(100)
   uint8_t x = 100;
   // 16:     y: UInt8 = UInt8(50)
@@ -33,6 +35,7 @@ void main() {
   std::cout << static_cast<int>((tpy::div_check<uint8_t>(x, 3))) << "\n";
   // 21:     print(x % UInt8(7))
   std::cout << static_cast<int>((tpy::mod_check<uint8_t>(x, 7))) << "\n";
+  // 23:     # Bitwise
   // 24:     print(UInt8(0xFF) & UInt8(0x0F))
   std::cout << static_cast<int>((static_cast<uint8_t>(255 & 15))) << "\n";
   // 25:     print(UInt8(0xF0) | UInt8(0x0F))
@@ -41,10 +44,12 @@ void main() {
   std::cout << static_cast<int>((static_cast<uint8_t>(255 ^ 15))) << "\n";
   // 27:     print(~UInt8(0))
   std::cout << static_cast<int>(static_cast<uint8_t>(~(0))) << "\n";
+  // 29:     # Conversion to BigInt
   // 30:     n: int = int(c)
   tpy::BigInt n = tpy::BigInt(static_cast<uint64_t>(c));
   // 31:     print(n)
   std::cout << n << "\n";
+  // 33:     # Conversion to str
   // 34:     print(str(c))
   std::cout << tpy::fixed_to_str<uint8_t>(c) << "\n";
 }

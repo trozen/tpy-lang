@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 4: def main() -> None:
 void main() {
+  // 5:     # Int8 boundaries: -128 to 127
   // 6:     print(Int8(-128.0))
   std::cout << static_cast<int>(tpy::from_float_check<int8_t>(-(128.0))) << "\n";
   // 7:     print(Int8(127.0))
@@ -17,34 +18,41 @@ void main() {
   std::cout << static_cast<int>(tpy::from_float_check<int8_t>(-(1.9))) << "\n";
   // 10:     print(Int8(1.9))   # truncates to 1
   std::cout << static_cast<int>(tpy::from_float_check<int8_t>(1.9)) << "\n";
+  // 12:     # UInt8 boundaries: 0 to 255
   // 13:     print(UInt8(0.0))
   std::cout << static_cast<int>(tpy::from_float_check<uint8_t>(0.0)) << "\n";
   // 14:     print(UInt8(255.0))
   std::cout << static_cast<int>(tpy::from_float_check<uint8_t>(255.0)) << "\n";
   // 15:     print(UInt8(1.7))  # truncates to 1
   std::cout << static_cast<int>(tpy::from_float_check<uint8_t>(1.7)) << "\n";
+  // 17:     # Int16 boundaries: -32768 to 32767
   // 18:     print(Int16(-32768.0))
   std::cout << tpy::from_float_check<int16_t>(-(32768.0)) << "\n";
   // 19:     print(Int16(32767.0))
   std::cout << tpy::from_float_check<int16_t>(32767.0) << "\n";
+  // 21:     # UInt16 boundaries: 0 to 65535
   // 22:     print(UInt16(0.0))
   std::cout << tpy::from_float_check<uint16_t>(0.0) << "\n";
   // 23:     print(UInt16(65535.0))
   std::cout << tpy::from_float_check<uint16_t>(65535.0) << "\n";
+  // 25:     # Int32 boundaries: -2147483648 to 2147483647
   // 26:     print(Int32(-2147483648.0))
   std::cout << tpy::from_float_check<int32_t>(-(2147483648.0)) << "\n";
   // 27:     print(Int32(2147483647.0))
   std::cout << tpy::from_float_check<int32_t>(2147483647.0) << "\n";
+  // 29:     # UInt32 boundaries: 0 to 4294967295
   // 30:     print(UInt32(0.0))
   std::cout << tpy::from_float_check<uint32_t>(0.0) << "\n";
   // 31:     print(UInt32(4294967295.0))
   std::cout << tpy::from_float_check<uint32_t>(4294967295.0) << "\n";
+  // 33:     # Int64: large values representable by double
   // 34:     print(Int64(0.0))
   std::cout << tpy::from_float_check<int64_t>(0.0) << "\n";
   // 35:     print(Int64(-1000000000000.0))
   std::cout << tpy::from_float_check<int64_t>(-(1000000000000.0)) << "\n";
   // 36:     print(Int64(1000000000000.0))
   std::cout << tpy::from_float_check<int64_t>(1000000000000.0) << "\n";
+  // 38:     # UInt64: large values representable by double
   // 39:     print(UInt64(0.0))
   std::cout << tpy::from_float_check<uint64_t>(0.0) << "\n";
   // 40:     print(UInt64(1000000000000.0))

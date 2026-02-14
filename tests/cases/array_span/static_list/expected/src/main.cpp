@@ -16,14 +16,17 @@ StaticList<int32_t, 8>* filled{};
 // @noalloc
 // 10: def process_list(items: StaticList[Item, 16]) -> None:
 void process_list(StaticList<Item, 16>& items) {
+  // 11:     # append
   // 12:     items.append(Item(10))
   items.push_back(Item(10));
   // 13:     items.append(Item(20))
   items.push_back(Item(20));
+  // 15:     # push_empty returns Ptr (uses default constructor)
   // 16:     p: Ptr[Item] = items.push_empty()
   Item* p = items.push_empty();
   // 17:     p.value = 30
   tpy::deref_check(p).value = 30;
+  // 19:     # subscript access
   // 20:     first: Item = items[0]
   Item& first = tpy::get_item(items, 0);
   // 21:     items[1] = Item(first.value + 5)
@@ -58,6 +61,7 @@ void __tpy_init() {
   std::cout << tpy::__len__((*items)) << "\n";
   // 32: print_list(items)
   print_list((*items));
+  // 34: # Test initializer list constructor
   // 35: nums: StaticList[Int32, 8] = StaticList[Int32, 8]([100, 200, 300])
   static StaticList<int32_t, 8> __global_slot_2 = StaticList<int32_t, 8>({100, 200, 300});
   nums = &__global_slot_2;
@@ -67,6 +71,7 @@ void __tpy_init() {
   std::cout << tpy::get_item((*nums), 0) << "\n";
   // 38: print(nums[2])
   std::cout << tpy::get_item((*nums), 2) << "\n";
+  // 40: # Test fill constructor via list repetition
   // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
   static StaticList<int32_t, 8> __global_slot_3 = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(8, {0}));
   filled = &__global_slot_3;

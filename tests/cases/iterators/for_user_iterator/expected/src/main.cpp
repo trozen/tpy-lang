@@ -28,6 +28,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 18: # 1. Direct use in for-loop (structural detection)
   // 19: for x in Counter(5):
   auto __iter_0 = Counter(5);
   while (auto __opt_0 = __iter_0.__next_opt__()) {
@@ -38,6 +39,7 @@ void __tpy_init() {
   // 29: print(sum_iter(Counter(5)))
   auto __tmp_1 = Counter(5);
   std::cout << sum_iter(__tmp_1) << "\n";
+  // 31: # 3. Empty iterator
   // 32: for x in Counter(0):
   auto __iter_1 = Counter(0);
   while (auto __opt_1 = __iter_1.__next_opt__()) {

@@ -28,6 +28,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 27: # 1. for-loop over child inheriting next() from parent
   // 28: for x in DoubleCounter(3):
   auto __iter_0 = DoubleCounter(3);
   while (auto __opt_0 = __iter_0.__next_opt__()) {
@@ -38,6 +39,7 @@ void __tpy_init() {
   // 38: print(sum_iter(DoubleCounter(3)))
   auto __tmp_1 = DoubleCounter(3);
   std::cout << sum_iter(__tmp_1) << "\n";
+  // 40: # 3. Multi-level: for-loop + protocol param
   // 41: for x in GrandChild(2):
   auto __iter_1 = GrandChild(2);
   while (auto __opt_1 = __iter_1.__next_opt__()) {

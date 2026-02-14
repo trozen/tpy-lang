@@ -32,6 +32,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test generic functions with multiple type parameters."""
+  // 22: # Inference from arguments
   // 23: p1 = create_pair(10, "hello")
   tpy::BigInt __tmp_1 = tpy::BigInt(10);
   std::string_view __tmp_2 = "hello";
@@ -41,6 +42,7 @@ void __tpy_init() {
   std::cout << p1->first << "\n";
   // 25: print(p1.second)
   std::cout << p1->second << "\n";
+  // 27: # Swap pair
   // 28: p2 = swap_pair(p1)
   static Pair<std::string_view, tpy::BigInt> __global_slot_2 = swap_pair<tpy::BigInt, std::string_view>((*p1));
   p2 = &__global_slot_2;

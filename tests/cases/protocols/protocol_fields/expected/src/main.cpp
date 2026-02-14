@@ -44,14 +44,17 @@ int32_t get_item(tpy::param_val_or_ref_t<T> holder) {
 
 // 99: def main() -> None:
 void main() {
+  // 100:     # Test generic function with protocol field
   // 101:     p = Point(42)
   Point p = Point(42);
   // 102:     print(get_value(p))
   std::cout << get_value<Point>(p) << "\n";
+  // 104:     # Test protocol with multiple fields
   // 105:     v = Vec2(10, 20)
   Vec2 v = Vec2(10, 20);
   // 106:     print(sum_xy(v))
   std::cout << sum_xy<Vec2>(v) << "\n";
+  // 108:     # Test protocol with field + method
   // 109:     b1 = Box(5)
   Box b1 = Box(5);
   // 110:     b2 = Box(0)
@@ -60,10 +63,12 @@ void main() {
   std::cout << describe<Box>(b1) << "\n";
   // 112:     print(describe(b2))
   std::cout << describe<Box>(b2) << "\n";
+  // 114:     # Test generic class with protocol field bound
   // 115:     w = Wrapper(Point(100))
   Wrapper<Point> w = Wrapper<Point>(Point(100));
   // 116:     print(w.get_inner_value())
   std::cout << w.get_inner_value() << "\n";
+  // 118:     # Test generic protocol with type parameter in field
   // 119:     ih = IntHolder(77)
   IntHolder ih = IntHolder(77);
   // 120:     print(get_item(ih))

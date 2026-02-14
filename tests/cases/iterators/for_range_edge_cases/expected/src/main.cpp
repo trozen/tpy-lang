@@ -11,6 +11,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Empty ranges — body should never execute
   // 4: for i in range(0):
   for (tpy::BigInt i = 0; i < tpy::BigInt(0); ++i) {
     // 5:     print(i)
@@ -31,6 +32,7 @@ void __tpy_init() {
     // 14:     print(i)
     std::cout << i << "\n";
   }
+  // 16: # Single element
   // 17: for i in range(1):
   for (tpy::BigInt i = 0; i < tpy::BigInt(1); ++i) {
     // 18:     print(i)
@@ -41,11 +43,13 @@ void __tpy_init() {
     // 21:     print(i)
     std::cout << i << "\n";
   }
+  // 23: # Negative range
   // 24: for i in range(-3, 0):
   for (tpy::BigInt i = -(tpy::BigInt(3)); i < tpy::BigInt(0); ++i) {
     // 25:     print(i)
     std::cout << i << "\n";
   }
+  // 27: # Large step that overshoots
   // 28: for i in range(0, 10, 100):
   for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(10); i += tpy::BigInt(100)) {
     // 29:     print(i)

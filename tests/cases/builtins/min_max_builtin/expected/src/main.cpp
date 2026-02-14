@@ -32,6 +32,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test min() and max() builtin functions."""
+  // 4: # Test min/max with Int32
   // 5: a: Int32 = 10
   a = 10;
   // 6: b: Int32 = 20
@@ -44,6 +45,7 @@ void __tpy_init() {
   std::cout << std::min(b, a) << "\n";
   // 10: print(max(b, a))
   std::cout << std::max(b, a) << "\n";
+  // 12: # Test min/max with BigInt (default int)
   // 13: x = 100
   x = tpy::BigInt(100);
   // 14: y = -50
@@ -52,6 +54,7 @@ void __tpy_init() {
   std::cout << ((x) < (y) ? (x) : (y)) << "\n";
   // 16: print(max(x, y))
   std::cout << ((x) > (y) ? (x) : (y)) << "\n";
+  // 17: # Use int() for large values to avoid literal issues
   // 18: big1 = int(-1000000)
   big1 = tpy::BigInt(static_cast<int64_t>(-(1000000)));
   // 19: big2 = int(1000000)
@@ -60,6 +63,7 @@ void __tpy_init() {
   std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
   // 21: print(max(big1, big2))
   std::cout << ((big1) > (big2) ? (big1) : (big2)) << "\n";
+  // 23: # Test min/max with float
   // 24: f1: float = 3.14
   f1 = 3.14;
   // 25: f2: float = 2.71

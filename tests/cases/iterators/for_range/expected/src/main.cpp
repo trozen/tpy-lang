@@ -36,13 +36,16 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 13: # Single-arg range (0 to n)
   // 14: for i in range(5):
   for (tpy::BigInt i = 0; i < tpy::BigInt(5); ++i) {
     // 15:     print(i)
     std::cout << i << "\n";
   }
+  // 17: # Two-arg range (start to end)
   // 18: print_range(10, 15)
   print_range(10, 15);
+  // 20: # Sum using range
   // 21: print(sum_range(10))
   std::cout << sum_range(10) << "\n";
 }

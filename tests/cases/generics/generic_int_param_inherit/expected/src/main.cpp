@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 28: def main() -> None:
 void main() {
+  // 29:     # Test forwarding int param through inheritance chain
   // 30:     b: Base[str, 10] = Base[str, 10]("base")
   Base<std::string_view, 10> b = Base<std::string_view, 10>("base");
   // 31:     print(b.value)

@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 3: def test_break():
 void test_break() {
+  // 4:     # Break in while loop
   // 5:     i: Int32 = 0
   int32_t i = 0;
   // 6:     while i < 10:
@@ -25,6 +26,7 @@ void test_break() {
 
 // 12: def test_continue():
 void test_continue() {
+  // 13:     # Continue in for loop - skip even numbers
   // 14:     total: Int32 = 0
   int32_t total = 0;
   // 15:     for i in range(10):
@@ -43,6 +45,7 @@ void test_continue() {
 
 // 21: def test_nested_break():
 void test_nested_break() {
+  // 22:     # Break only exits innermost loop
   // 23:     count: Int32 = 0
   int32_t count = 0;
   // 24:     for i in range(3):
@@ -64,6 +67,7 @@ void test_nested_break() {
 
 // 31: def test_nested_continue():
 void test_nested_continue() {
+  // 32:     # Continue only affects innermost loop
   // 33:     count: Int32 = 0
   int32_t count = 0;
   // 34:     for i in range(3):

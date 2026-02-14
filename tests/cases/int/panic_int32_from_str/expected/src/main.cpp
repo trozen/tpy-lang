@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 2: # Invalid string for Int32 parsing
   // 3: x: Int32 = Int32("abc")
   x = tpy::from_str_check<int32_t>("abc");
   // 4: print(x)

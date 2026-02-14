@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 33: # Test that it works
   // 34: p = Person("Alice", 30)
   static Person __global_slot_1 = Person("Alice", 30);
   p = &__global_slot_1;

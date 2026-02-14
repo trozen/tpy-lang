@@ -13,12 +13,15 @@ void modify_list(std::vector<int32_t>& items) {
 
 // 21: def main() -> None:
 void main() {
+  // 22:     # Test 1: Box with value type (Int32) - param is const T&
   // 23:     box_int: Box[Int32] = Box[Int32](42)
   Box<int32_t> box_int = Box<int32_t>(42);
   // 24:     box_int.set(99)
   box_int.set(99);
   // 25:     print(box_int.get())
   std::cout << box_int.get() << "\n";
+  // 27:     # Test 2: Box with object type (list) - param is T&
+  // 28:     # Pass a literal - should create a temporary
   // 29:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
   Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
   // 30:     box_list.set([4, 5, 6])
@@ -29,6 +32,7 @@ void main() {
     // 32:         print(x)
     std::cout << x << "\n";
   }
+  // 34:     # Test 3: Direct list mutation through non-generic function
   // 35:     nums: list[Int32] = [10, 20]
   std::vector<int32_t> nums = {10, 20};
   // 36:     modify_list(nums)

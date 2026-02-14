@@ -17,6 +17,7 @@ void test() {
   Point pt = Point(10, 20);
   // 25:     r: Ref = Ref(pt)
   Ref r = Ref(pt);
+  // 26:     # Ref has __deref__() -> Point, so it should auto-coerce to Point
   // 27:     print_point(r)
   Point __tmp_1 = r.__deref__();
   print_point(__tmp_1);

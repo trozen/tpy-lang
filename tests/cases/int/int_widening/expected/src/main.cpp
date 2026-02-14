@@ -43,6 +43,7 @@ void print_u64(uint64_t x) {
 
 // 22: def main() -> None:
 void main() {
+  // 23:     # Signed widening: Int8 -> Int16 -> Int32 -> Int64
   // 24:     a: Int8 = Int8(42)
   int8_t a = 42;
   // 25:     print_i16(a)
@@ -61,6 +62,7 @@ void main() {
   int32_t c = 100000;
   // 34:     print_i64(c)
   print_i64(static_cast<int64_t>(c));
+  // 36:     # Unsigned widening: UInt8 -> UInt16 -> UInt32 -> UInt64
   // 37:     d: UInt8 = UInt8(200)
   uint8_t d = 200;
   // 38:     print_u16(d)
@@ -79,6 +81,7 @@ void main() {
   uint32_t f = 3000000000;
   // 47:     print_u64(f)
   print_u64(static_cast<uint64_t>(f));
+  // 49:     # Cross-sign widening: UInt8 -> Int16, UInt16 -> Int32, UInt32 -> Int64
   // 50:     print_i16(d)   # UInt8(200) -> Int16
   print_i16(static_cast<int16_t>(d));
   // 51:     print_i32(d)   # UInt8(200) -> Int32

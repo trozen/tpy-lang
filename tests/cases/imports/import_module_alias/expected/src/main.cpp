@@ -19,6 +19,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Test that import X as Y works
   // 2: import math as m
   // 8: main()
   main();

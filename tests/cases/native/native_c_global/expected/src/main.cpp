@@ -19,7 +19,9 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # C global import with rename
   // 4: frame_count: Int32 = native_c_global("g_frame_count")
+  // 6: # C global import without rename (Python name = C name)
   // 7: tick: Int32 = native_c_global()
   // 13: main()
   main();

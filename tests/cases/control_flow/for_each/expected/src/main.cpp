@@ -69,6 +69,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Test for-each over inferred list (no annotation needed)
   // 4: items = [1, 2, 3, 4, 5]
   static std::vector<tpy::BigInt> __global_slot_1 = {1, 2, 3, 4, 5};
   items = &__global_slot_1;
@@ -81,6 +82,7 @@ void __tpy_init() {
   }
   // 8: print(total)  # 15
   std::cout << total << "\n";
+  // 10: # Test for-each over Array
   // 11: arr: Array[Int32, 3] = [10, 20, 30]
   static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
   arr = &__global_slot_2;
@@ -93,6 +95,7 @@ void __tpy_init() {
   std::cout << sum_array() << "\n";
   // 30: print_span([7, 8, 9])
   print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
+  // 32: # Test for-each over string
   // 33: text = "AB"
   text = "AB";
   // 34: for c in text:

@@ -20,6 +20,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test that inference upgrades IntLiteralType to concrete int type."""
+  // 14: # Test order: literal first, Int32 second -> should infer Same[Int32]
   // 15: x: Int32 = 10
   x = 10;
   // 16: same1 = Same(1, x)
@@ -29,6 +30,7 @@ void __tpy_init() {
   std::cout << same1->a << "\n";
   // 18: print(same1.b)
   std::cout << same1->b << "\n";
+  // 20: # Test order: Int32 first, literal second -> should also infer Same[Int32]
   // 21: same2 = Same(x, 2)
   static Same<int32_t> __global_slot_2 = Same<int32_t>(x, 2);
   same2 = &__global_slot_2;

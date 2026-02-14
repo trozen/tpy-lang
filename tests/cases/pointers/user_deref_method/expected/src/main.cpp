@@ -11,6 +11,7 @@ void main() {
   Point pt = Point(10, 20);
   // 21:     r: Ref = Ref(pt)
   Ref r = Ref(pt);
+  // 22:     # Method call through user-defined __deref__
   // 23:     print(r.sum())
   std::cout << r.__deref__().sum() << "\n";
 }

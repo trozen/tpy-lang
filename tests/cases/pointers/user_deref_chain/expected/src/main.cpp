@@ -11,6 +11,7 @@ void main() {
   Point pt = Point(10, 20);
   // 28:     b: Box = Box(Ref(pt))
   Box b = Box(Ref(pt));
+  // 29:     # Multi-hop deref chain: Box -> Ref -> Point
   // 30:     print(b.x)
   std::cout << b.__deref__().__deref__().x << "\n";
   // 31:     print(b.y)

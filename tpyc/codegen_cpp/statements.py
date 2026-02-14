@@ -96,6 +96,7 @@ class StatementGenerator:
             self.ctx.in_method = True
 
         self._gen_buffered_body(out, body)
+        self.ctx.emit_block_trailing_comments(out, body, self.ctx.indent())
 
         if is_method:
             self.ctx.in_method = False
@@ -168,6 +169,7 @@ class StatementGenerator:
         if self.ctx.current_stmt_line > 0 and hasattr(stmt, 'loc') and stmt.loc:
             self.ctx.current_stmt_line = stmt.loc.line
 
+        self.ctx.emit_inline_comments(out, stmt.loc, indent)
         self.ctx.emit_source_comment(out, stmt.loc, indent)
 
         # Compound statements - delegate to handlers (they flush before their header)
@@ -796,6 +798,7 @@ class StatementGenerator:
         self.ctx.indent_level += 1
         for s in stmt.then_body:
             self.gen_stmt(out, s)
+        self.ctx.emit_block_trailing_comments(out, stmt.then_body, self.ctx.indent())
         self.ctx.indent_level -= 1
 
         if stmt.else_body:
@@ -803,6 +806,7 @@ class StatementGenerator:
             self.ctx.indent_level += 1
             for s in stmt.else_body:
                 self.gen_stmt(out, s)
+            self.ctx.emit_block_trailing_comments(out, stmt.else_body, self.ctx.indent())
             self.ctx.indent_level -= 1
 
         out.write(f"{indent}}}\n")
@@ -816,6 +820,7 @@ class StatementGenerator:
         self.ctx.indent_level += 1
         for s in stmt.body:
             self.gen_stmt(out, s)
+        self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
         self.ctx.indent_level -= 1
 
         out.write(f"{indent}}}\n")
@@ -839,6 +844,7 @@ class StatementGenerator:
         self.ctx.indent_level += 1
         for s in stmt.body:
             self.gen_stmt(out, s)
+        self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
         self.ctx.indent_level -= 1
         self.ctx.local_scope_names.discard(stmt.var)
         self.ctx.current_ns = old_ns

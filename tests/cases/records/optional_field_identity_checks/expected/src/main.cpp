@@ -16,6 +16,7 @@ void __tpy_init() {
   // 19: h = Holder()
   static Holder __global_slot_1 = Holder();
   h = &__global_slot_1;
+  // 21: # None field: all four combinations
   // 22: print(h.value is None)
   std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
   // 23: print(h.value is not None)
@@ -26,6 +27,7 @@ void __tpy_init() {
   std::cout << tpy::print_bool((h->value.has_value())) << "\n";
   // 27: h.value = copy(Point(1, 2))
   h->value = Point(1, 2);
+  // 29: # Non-None field: all four combinations
   // 30: print(h.value is None)
   std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
   // 31: print(h.value is not None)

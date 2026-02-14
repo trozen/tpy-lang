@@ -32,6 +32,7 @@ void print_all(T_items& items) {
 // 13: def process_and_sum(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
 int32_t process_and_sum(T_items& items) {
+  // 14:     # Test protocol-to-protocol passing: NativeIterable[T] -> NativeIterable[T]
   // 15:     print_all(items)
   print_all(items);
   // 16:     return sum_iter(items)
@@ -41,6 +42,7 @@ int32_t process_and_sum(T_items& items) {
 // 18: def nested_iteration(outer: NativeIterable[Int32], inner: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_outer, tpy::NativeIterable<int32_t> T_inner>
 int32_t nested_iteration(T_outer& outer, T_inner& inner) {
+  // 19:     # Test nested for loops over protocol-typed params
   // 20:     total: Int32 = 0
   int32_t total = 0;
   // 21:     for x in outer:
@@ -58,6 +60,7 @@ int32_t nested_iteration(T_outer& outer, T_inner& inner) {
 // 26: def contains_value(items: NativeIterable[Int32], target: Int32) -> bool:
 template<tpy::NativeIterable<int32_t> T_items>
 bool contains_value(T_items& items, int32_t target) {
+  // 27:     # Test "in" operator with NativeIterable-typed param
   // 28:     return target in items
   return (std::find(items.begin(), items.end(), target) != items.end());
 }
@@ -82,14 +85,17 @@ void main() {
   std::cout << sum_iter(sl) << "\n";
   // 42:     print_all(nums)  # 1, 2, 3
   print_all(nums);
+  // 44:     # Test protocol-to-protocol passing
   // 45:     print(process_and_sum(arr))  # prints 10, 20, 30 then 60
   std::cout << process_and_sum(arr) << "\n";
+  // 47:     # Test nested iteration
   // 48:     a: list[Int32] = [1, 2]
   std::vector<int32_t> a = {1, 2};
   // 49:     b: list[Int32] = [10, 20]
   std::vector<int32_t> b = {10, 20};
   // 50:     print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 30 + 60 = 90
   std::cout << nested_iteration(a, b) << "\n";
+  // 52:     # Test "in" operator with NativeIterable
   // 53:     print(contains_value(nums, 2))   # True
   std::cout << tpy::print_bool(contains_value(nums, 2)) << "\n";
   // 54:     print(contains_value(nums, 99))  # False

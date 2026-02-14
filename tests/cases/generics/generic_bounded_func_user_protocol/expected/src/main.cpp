@@ -8,6 +8,8 @@ std::string_view __name__;
 // 20: def print_item[T: Printable](item: T) -> None:
 template<Printable T>
 void print_item(tpy::param_val_or_ref_t<T> item) {
+  // 21:     # Note: Can't call item.to_string() inside generic yet
+  // 22:     # This tests that the bound is validated during inference
   // 23:     print("got printable")
   std::cout << "got printable" << "\n";
 }
@@ -16,6 +18,7 @@ void print_item(tpy::param_val_or_ref_t<T> item) {
 void main() {
   // 26:     p = Point(10, 20)
   Point p = Point(10, 20);
+  // 27:     # Point satisfies Printable, so inference should work
   // 28:     print_item(p)
   print_item<Point>(p);
 }

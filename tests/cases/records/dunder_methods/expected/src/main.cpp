@@ -21,6 +21,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test explicit dunder method calls on container types.
+  // 9: # Test list dunders
   // 10: items: list[Int32] = []
   static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
   items = &__global_slot_1;
@@ -30,16 +31,20 @@ void __tpy_init() {
   (*items).push_back(20);
   // 13: items.append(Int32(30))
   (*items).push_back(30);
+  // 15: # Explicit __len__
   // 16: print(items.__len__())  # 3
   std::cout << static_cast<int32_t>((*items).size()) << "\n";
+  // 18: # Explicit __getitem__
   // 19: print(items.__getitem__(Int32(0)))  # 10
   std::cout << tpy::get_item((*items), 0) << "\n";
   // 20: print(items.__getitem__(Int32(1)))  # 20
   std::cout << tpy::get_item((*items), 1) << "\n";
+  // 22: # Explicit __setitem__
   // 23: items.__setitem__(Int32(1), Int32(99))
   tpy::set_item((*items), 1, 99);
   // 24: print(items.__getitem__(Int32(1)))  # 99
   std::cout << tpy::get_item((*items), 1) << "\n";
+  // 27: # Test StaticList dunders
   // 28: sl = StaticList[Int32, 10]()
   static StaticList<int32_t, 10> __global_slot_2 = StaticList<int32_t, 10>();
   sl = &__global_slot_2;
@@ -47,19 +52,25 @@ void __tpy_init() {
   (*sl).push_back(100);
   // 30: sl.append(Int32(200))
   (*sl).push_back(200);
+  // 32: # Explicit __len__
   // 33: print(sl.__len__())  # 2
   std::cout << (*sl).size() << "\n";
+  // 35: # Explicit __getitem__
   // 36: print(sl.__getitem__(Int32(0)))  # 100
   std::cout << tpy::get_item((*sl), 0) << "\n";
+  // 38: # Explicit __setitem__
   // 39: sl.__setitem__(Int32(0), Int32(111))
   tpy::set_item((*sl), 0, 111);
   // 40: print(sl.__getitem__(Int32(0)))  # 111
   std::cout << tpy::get_item((*sl), 0) << "\n";
+  // 43: # Test Array dunders
   // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
   static std::array<int32_t, 3> __global_slot_3 = {1, 2, 3};
   arr = &__global_slot_3;
+  // 46: # Explicit __len__
   // 47: print(arr.__len__())  # 3
   std::cout << static_cast<int32_t>((*arr).size()) << "\n";
+  // 49: # Explicit __getitem__
   // 50: print(arr.__getitem__(Int32(0)))  # 1
   std::cout << (*arr)[0] << "\n";
   // 51: print(arr.__getitem__(Int32(2)))  # 3

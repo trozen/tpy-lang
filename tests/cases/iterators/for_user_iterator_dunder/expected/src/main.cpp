@@ -11,6 +11,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 22: # 1. Direct use in for-loop
   // 23: for x in Counter(5):
   auto __iter_0 = Counter(5);
   while (auto __opt_0 = __iter_0.__next_opt__()) {
@@ -18,6 +19,7 @@ void __tpy_init() {
     // 24:     print(x)
     std::cout << x << "\n";
   }
+  // 26: # 2. Empty iterator
   // 27: for x in Counter(0):
   auto __iter_1 = Counter(0);
   while (auto __opt_1 = __iter_1.__next_opt__()) {

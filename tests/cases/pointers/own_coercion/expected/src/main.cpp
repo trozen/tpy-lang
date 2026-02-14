@@ -21,10 +21,12 @@ int32_t take_owned_int32(int32_t x) {
 
 // 14: def main() -> None:
 void main() {
+  // 15:     # Test return coercion
   // 16:     result1: Int32 = return_owned_int32()
   int32_t result1 = return_owned_int32();
   // 17:     print(result1)  # 42
   std::cout << result1 << "\n";
+  // 19:     # Test argument coercion
   // 20:     big: int = 100
   tpy::BigInt big = tpy::BigInt(100);
   // 21:     result2: Int32 = take_owned_int32(big)

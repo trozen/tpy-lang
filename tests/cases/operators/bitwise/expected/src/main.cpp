@@ -35,24 +35,32 @@ void __tpy_init() {
   a = 12;
   // 4: b: Int32 = 10      # 0b1010
   b = 10;
+  // 6: # Bitwise AND
   // 7: print(a & b)       # 8 (0b1000)
   std::cout << (static_cast<int32_t>(a & b)) << "\n";
+  // 9: # Bitwise OR
   // 10: print(a | b)       # 14 (0b1110)
   std::cout << (static_cast<int32_t>(a | b)) << "\n";
+  // 12: # Bitwise XOR
   // 13: print(a ^ b)       # 6 (0b0110)
   std::cout << (static_cast<int32_t>(a ^ b)) << "\n";
+  // 15: # Bitwise NOT
   // 16: c: Int32 = 0
   c = 0;
   // 17: print(~c)          # -1
   std::cout << static_cast<int32_t>(~(c)) << "\n";
+  // 19: # Left shift
   // 20: print(1 << 4)      # 16
   std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(4))) << "\n";
+  // 22: # Right shift
   // 23: print(32 >> 2)     # 8
   std::cout << ((tpy::BigInt(32)) >> (tpy::BigInt(2))) << "\n";
+  // 25: # Large shift (Python semantics - arbitrary precision)
   // 26: print(1 << 100)    # 1267650600228229401496703205376
   std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(100))) << "\n";
   // 27: print((1 << 100) >> 90)  # 1024
   std::cout << ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) >> (tpy::BigInt(90))) << "\n";
+  // 29: # BigInt bitwise operators
   // 30: x = 12  # BigInt
   x = tpy::BigInt(12);
   // 31: y = 10  # BigInt
@@ -63,6 +71,7 @@ void __tpy_init() {
   std::cout << ((x) | (y)) << "\n";
   // 34: print(x ^ y)       # 6
   std::cout << ((x) ^ (y)) << "\n";
+  // 36: # BigInt bitwise NOT (Python: ~x = -(x+1))
   // 37: z = 0
   z = tpy::BigInt(0);
   // 38: print(~z)          # -1
@@ -71,6 +80,7 @@ void __tpy_init() {
   z = tpy::BigInt(5);
   // 40: print(~z)          # -6
   std::cout << ~(z) << "\n";
+  // 42: # Large BigInt bitwise
   // 43: big1 = (1 << 100) | (1 << 50)
   big1 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | (((tpy::BigInt(1)) << (tpy::BigInt(50)))));
   // 44: big2 = (1 << 100) | (1 << 25)

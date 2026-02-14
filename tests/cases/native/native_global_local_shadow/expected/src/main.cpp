@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 5: def main() -> None:
 void main() {
+  // 6:     # Local should shadow the native global
   // 7:     score: Int32 = Int32(42)
   int32_t score = 42;
   // 8:     print(score)

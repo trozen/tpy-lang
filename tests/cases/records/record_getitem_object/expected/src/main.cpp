@@ -15,10 +15,12 @@ void main() {
   std::vector<Point> pts = {p1, p2};
   // 28:     plist: PointList = PointList(pts)
   PointList plist = PointList(pts);
+  // 30:     # Access via __getitem__ (returns const Point& in C++)
   // 31:     print(plist[0].x)   # 10
   std::cout << plist[0].x << "\n";
   // 32:     print(plist[1].y)   # 40
   std::cout << plist[1].y << "\n";
+  // 34:     # Access via operator[] (also returns const Point&)
   // 35:     print(plist[-1].x)  # 30
   std::cout << plist[static_cast<int32_t>(tpy::__len__(plist) - 1)].x << "\n";
 }

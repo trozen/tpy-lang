@@ -23,10 +23,12 @@ int32_t count_chars(T_s& s) {
 void main() {
   // 11:     text: str = "hello"
   std::string_view text = "hello";
+  // 13:     # str conforms to Sequence[Char]
   // 14:     print(first_char(text))    # h
   std::cout << first_char(text) << "\n";
   // 15:     print(count_chars(text))   # 5
   std::cout << count_chars(text) << "\n";
+  // 17:     # Direct indexing on str
   // 18:     print(text[0])             # h
   std::cout << tpy::get_char(text, 0) << "\n";
   // 19:     print(text[-1])            # o

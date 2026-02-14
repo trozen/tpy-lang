@@ -18,6 +18,7 @@ void main() {
   Value v = Value(21);
   // 22:     double_it(v)
   double_it(v);
+  // 24:     # Direct call to verify it works
   // 25:     v2 = v.duplicate()
   Value v2 = v.duplicate();
   // 26:     print(v2.x)

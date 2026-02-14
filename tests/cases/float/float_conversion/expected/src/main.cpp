@@ -18,6 +18,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Type conversions
   // 2: a = float(5)
   a = static_cast<double>(5);
   // 3: b = float(3.14)

@@ -15,6 +15,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test type inference with list argument."""
+  // 11: # Inference from list literal -> Box[list[int]]
   // 12: box = Box([1, 2, 3])
   static Box<std::vector<tpy::BigInt>> __global_slot_1 = Box<std::vector<tpy::BigInt>>({1, 2, 3});
   box = &__global_slot_1;

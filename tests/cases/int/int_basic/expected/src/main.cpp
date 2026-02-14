@@ -25,6 +25,7 @@ void test_arithmetic() {
   tpy::BigInt a = tpy::BigInt(10);
   // 12:     b = 3
   tpy::BigInt b = tpy::BigInt(3);
+  // 14:     # Basic arithmetic
   // 15:     print(a + b)  # 13
   std::cout << ((a) + (b)) << "\n";
   // 16:     print(a - b)  # 7
@@ -35,6 +36,7 @@ void test_arithmetic() {
   std::cout << ((a) / (b)) << "\n";
   // 19:     print(a % b)  # 1
   std::cout << ((a) % (b)) << "\n";
+  // 21:     # Negative division (Python semantics)
   // 22:     c = -7
   tpy::BigInt c = -(tpy::BigInt(7));
   // 23:     d = 3
@@ -75,6 +77,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test basic int (BigInt) operations."""
+  // 42: # Top-level execution
   // 43: print(factorial(10))  # 3628800
   std::cout << factorial(tpy::BigInt(10)) << "\n";
   // 44: print(factorial(20))  # 2432902008176640000 (fits in 63 bits)
@@ -83,6 +86,7 @@ void __tpy_init() {
   test_arithmetic();
   // 47: test_comparison()
   test_comparison();
+  // 49: # Unary negation
   // 50: neg = -42
   neg = -(tpy::BigInt(42));
   // 51: print(neg)

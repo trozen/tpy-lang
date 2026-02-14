@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Invalid string for float parsing
   // 2: x: float = float("not_a_number")
   x = tpy::float_from_str("not_a_number");
   // 3: print(x)

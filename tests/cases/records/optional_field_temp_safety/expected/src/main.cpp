@@ -19,6 +19,7 @@ Holder make_holder(Point& p) {
 void test_init_from_temp() {
   // 26:     p = Point(1, 2)
   Point p = Point(1, 2);
+  // 27:     # Field access on Own[Holder] return (temporary) — must not dangle
   // 28:     v: Point | None = make_holder(p).value
   std::optional<Point> __slot_1 = make_holder(p).value;
   Point* v = tpy::optional_to_ptr(__slot_1);
@@ -37,6 +38,7 @@ void test_rebind_from_temp() {
   Point* v = nullptr;
   // 36:     p = Point(3, 4)
   Point p = Point(3, 4);
+  // 37:     # Rebind pointer-local from field of temporary
   // 38:     v = make_holder(p).value
   v = tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
   // 39:     print(v is not None)
@@ -52,11 +54,13 @@ void test_rebind_in_block() {
   Point* v = nullptr;
   // 45:     p = Point(5, 6)
   Point p = Point(5, 6);
+  // 46:     # Rebind inside if-block — slot must survive block exit
   // 47:     if True:
   if (true) {
     // 48:         v = make_holder(p).value
     v = tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
   }
+  // 49:     # v must still be valid here (slot hoisted to function scope)
   // 50:     print(v is not None)
   std::cout << tpy::print_bool((v != nullptr)) << "\n";
   // 51:     print(v.x)

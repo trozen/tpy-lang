@@ -20,11 +20,13 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test basic type inference for user-defined generic classes."""
+  // 12: # Inference from int literal -> Box[int]
   // 13: box = Box(42)
   static Box<tpy::BigInt> __global_slot_1 = Box<tpy::BigInt>(42);
   box = &__global_slot_1;
   // 14: print(box.value)
   std::cout << box->value << "\n";
+  // 16: # Inference from Int32 -> Box[Int32]
   // 17: x: Int32 = 10
   x = 10;
   // 18: box32 = Box(x)

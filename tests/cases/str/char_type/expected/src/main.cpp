@@ -55,6 +55,7 @@ void test_char_comparison() {
   char b = 'b';
   // 33:     a2: Char = "a"
   char a2 = 'a';
+  // 35:     # Equality
   // 36:     if a == a2:
   if ((a == a2)) {
     // 37:         print("a == a: yes")
@@ -68,11 +69,13 @@ void test_char_comparison() {
     // 42:         print("a == b: no")
     std::cout << "a == b: no" << "\n";
   }
+  // 44:     # Inequality
   // 45:     if a != b:
   if ((a != b)) {
     // 46:         print("a != b: yes")
     std::cout << "a != b: yes" << "\n";
   }
+  // 48:     # Ordering (lexicographic by ASCII)
   // 49:     if a < b:
   if ((a < b)) {
     // 50:         print("a < b: yes")
@@ -239,6 +242,7 @@ void test_chr_function() {
   std::cout << c65 << "\n";
   // 133:     print(c97)
   std::cout << c97 << "\n";
+  // 135:     # Compare chr result
   // 136:     if c65 == "A":
   if ((c65 == 'A')) {
     // 137:         print("chr(65) == A: yes")
@@ -261,12 +265,15 @@ void accepts_str(std::string_view s) {
 // 164: def test_char_to_str_coercion() -> None:
 void test_char_to_str_coercion() {
   // 165:     """Test single-char literal -> str coercion (works for literals only)."""
+  // 166:     # Assign single-char literal to str variable
   // 167:     s1: str = "x"
   std::string_view s1 = "x";
   // 168:     print(s1)
   std::cout << s1 << "\n";
+  // 170:     # Pass single-char literal to str parameter
   // 171:     accepts_str("w")
   accepts_str("w");
+  // 173:     # Multiple single-char str variables
   // 174:     a: str = "a"
   std::string_view a = "a";
   // 175:     b: str = "b"
@@ -284,6 +291,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 142: # Run all tests
   // 143: print("=== literals ===")
   std::cout << "=== literals ===" << "\n";
   // 144: test_char_literals()

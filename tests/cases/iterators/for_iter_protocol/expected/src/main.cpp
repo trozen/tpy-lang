@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 29: # 1. Container with __iter__ in for-loop
   // 30: for x in NumberRange(0, 5):
   auto __obj_0 = NumberRange(0, 5);
   auto __iter_0 = __obj_0.__iter__();
@@ -22,6 +23,7 @@ void __tpy_init() {
     // 31:     print(x)
     std::cout << x << "\n";
   }
+  // 33: # 2. Can iterate again (fresh iterator each time)
   // 34: nums = NumberRange(10, 13)
   static NumberRange __global_slot_1 = NumberRange(10, 13);
   nums = &__global_slot_1;

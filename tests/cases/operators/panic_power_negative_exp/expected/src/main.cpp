@@ -18,6 +18,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Test that negative exponent panics at runtime
   // 2: x = 2
   x = tpy::BigInt(2);
   // 3: y = -1

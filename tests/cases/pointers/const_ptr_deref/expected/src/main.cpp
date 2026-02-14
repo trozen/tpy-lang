@@ -21,6 +21,7 @@ void main() {
   std::cout << tpy::deref_check(cpp).x << "\n";
   // 18:     print(cpp.__deref__().y)
   std::cout << tpy::deref_check(cpp).y << "\n";
+  // 19:     # Field access through ConstPtr auto-deref
   // 20:     print(cpp.x)
   std::cout << cpp->x << "\n";
   // 21:     print(cpp.y)

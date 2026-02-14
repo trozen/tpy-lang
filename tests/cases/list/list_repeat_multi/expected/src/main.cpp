@@ -23,6 +23,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Multi-element list repetition with StaticList
   // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
   static StaticList<int32_t, 8> __global_slot_1 = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(3, {1, 2}));
   sl = &__global_slot_1;
@@ -34,6 +35,7 @@ void __tpy_init() {
     // 7:     print(sl[i])
     std::cout << tpy::get_item((*sl), i) << "\n";
   }
+  // 9: # Multi-element with std::vector (list)
   // 10: nums: list[Int32] = [10, 20] * 2
   static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(2, {10, 20}));
   nums = &__global_slot_2;
@@ -45,11 +47,13 @@ void __tpy_init() {
     // 13:     print(nums[i])
     std::cout << tpy::get_item((*nums), i) << "\n";
   }
+  // 15: # Empty list repetition (always produces empty list)
   // 16: empty: list[Int32] = [] * 100
   static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>{};
   empty = &__global_slot_3;
   // 17: print(len(empty))
   std::cout << tpy::__len__((*empty)) << "\n";
+  // 19: # Negative repeat count (Python semantics: produces empty list)
   // 20: neg: list[Int32] = [1, 2, 3] * -5
   static std::vector<int32_t> __global_slot_4 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(-(5), {1, 2, 3}));
   neg = &__global_slot_4;

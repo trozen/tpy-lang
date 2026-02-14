@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 22: # Iterator stored in a list, accessed by subscript
   // 23: items: list[Counter] = [Counter(3)]
   static std::vector<Counter> __global_slot_1 = {Counter(3)};
   items = &__global_slot_1;

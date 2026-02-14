@@ -23,6 +23,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Test converting large floats to int (requires GMP, not int64)
   // 2: a = int(1e18)  # Within int64 range
   a = tpy::BigInt::from_float(1e+18);
   // 3: b = int(1e50)  # Way beyond int64 range
@@ -35,6 +36,7 @@ void __tpy_init() {
   std::cout << b << "\n";
   // 8: print(c)
   std::cout << c << "\n";
+  // 10: # Also test that truncation toward zero works
   // 11: d = int(1.9e20)
   d = tpy::BigInt::from_float(1.9e+20);
   // 12: e = int(-1.9e20)

@@ -16,6 +16,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   static std::optional<Point> __global_slot_2;
+  // 10: # Top-level (module scope) escape: same detection should work
+  // 11: # outside of function bodies.
   // 12: saved: Point = Point(0, 0)
   static Point __global_slot_1 = Point(0, 0);
   saved = &__global_slot_1;

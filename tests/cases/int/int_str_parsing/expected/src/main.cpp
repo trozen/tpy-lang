@@ -31,6 +31,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 4: # Basic parsing
   // 5: a: int = int("42")
   a = tpy::BigInt::from_str("42");
   // 6: print(a)  # 42
@@ -43,10 +44,12 @@ void __tpy_init() {
   c = tpy::BigInt::from_str("+456");
   // 12: print(c)  # 456
   std::cout << c << "\n";
+  // 14: # Zero
   // 15: d: int = int("0")
   d = tpy::BigInt::from_str("0");
   // 16: print(d)  # 0
   std::cout << d << "\n";
+  // 18: # Leading/trailing whitespace
   // 19: e: int = int("  789  ")
   e = tpy::BigInt::from_str("  789  ");
   // 20: print(e)  # 789
@@ -55,6 +58,7 @@ void __tpy_init() {
   f = tpy::BigInt::from_str("  -99  ");
   // 23: print(f)  # -99
   std::cout << f << "\n";
+  // 25: # Large numbers
   // 26: g: int = int("12345678901234567890")
   g = tpy::BigInt::from_str("12345678901234567890");
   // 27: print(g)  # 12345678901234567890

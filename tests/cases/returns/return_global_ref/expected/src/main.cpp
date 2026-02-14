@@ -34,6 +34,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 7: # Global variable - lives for the duration of the program
   // 8: ORIGIN: Point = Point()
   static Point __global_slot_1 = Point();
   ORIGIN = &__global_slot_1;

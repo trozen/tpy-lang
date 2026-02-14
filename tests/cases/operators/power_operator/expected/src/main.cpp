@@ -16,6 +16,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Basic powers
   // 4: print(2 ** 0)   # 1
   std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(0))) << "\n";
   // 5: print(2 ** 1)   # 2
@@ -24,20 +25,24 @@ void __tpy_init() {
   std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(10))) << "\n";
   // 7: print(3 ** 3)   # 27
   std::cout << ((tpy::BigInt(3)).pow(tpy::BigInt(3))) << "\n";
+  // 9: # Large exponents (arbitrary precision)
   // 10: print(2 ** 32)   # 4294967296
   std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(32))) << "\n";
   // 11: print(2 ** 64)   # 18446744073709551616
   std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(64))) << "\n";
   // 12: print(10 ** 20)  # 100000000000000000000
   std::cout << ((tpy::BigInt(10)).pow(tpy::BigInt(20))) << "\n";
+  // 14: # Negative base with even/odd exponents
   // 15: print((-2) ** 3)  # -8
   std::cout << ((-(tpy::BigInt(2))).pow(tpy::BigInt(3))) << "\n";
   // 16: print((-2) ** 4)  # 16
   std::cout << ((-(tpy::BigInt(2))).pow(tpy::BigInt(4))) << "\n";
+  // 18: # Zero base
   // 19: print(0 ** 5)  # 0
   std::cout << ((tpy::BigInt(0)).pow(tpy::BigInt(5))) << "\n";
   // 20: print(0 ** 0)  # 1 (by convention)
   std::cout << ((tpy::BigInt(0)).pow(tpy::BigInt(0))) << "\n";
+  // 22: # Power with variables
   // 23: x = 5
   x = tpy::BigInt(5);
   // 24: y = 3

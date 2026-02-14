@@ -14,6 +14,7 @@ void __tpy_init() {
   // 1: """Test importing non-value-type globals from another module."""
   // 2: from config import Settings, DEFAULT
   tpy_user::config::__tpy_init();
+  // 5: # Use imported record global — field access, method call
   // 6: print(DEFAULT.width)
   std::cout << tpy_user::config::DEFAULT->width << "\n";
   // 7: print(DEFAULT.height)

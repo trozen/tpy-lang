@@ -16,8 +16,10 @@ void __tpy_init() {
   __name__ = "__main__";
   // 2: from utils import MAX
   tpy_user::utils::__tpy_init();
+  // 4: # Redefine the imported MAX - this should work and be used
   // 5: MAX: Int32 = Int32(42)
   MAX = 42;
+  // 7: # Top-level print uses the redefined MAX
   // 8: print(MAX)  # Should print 42
   std::cout << MAX << "\n";
 }

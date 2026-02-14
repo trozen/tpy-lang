@@ -18,6 +18,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Mixed int/float operations (auto-promotion to float)
   // 2: a = 1 + 2.0
   a = (static_cast<double>(tpy::BigInt(1)) + (2.0));
   // 3: b = 3.14 * 2

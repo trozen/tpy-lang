@@ -9,12 +9,14 @@ std::string_view __name__;
 void main() {
   // 18:     b: Buffer[Int32, 3] = Buffer[Int32, 3]()
   Buffer<int32_t, 3> b = Buffer<int32_t, 3>();
+  // 20:     # Set values
   // 21:     b.set(Int32(0), Int32(10))
   b.set(0, 10);
   // 22:     b.set(Int32(1), Int32(20))
   b.set(1, 20);
   // 23:     b.set(Int32(2), Int32(30))
   b.set(2, 30);
+  // 25:     # Get values
   // 26:     print(b.get(Int32(0)))
   std::cout << b.get(0) << "\n";
   // 27:     print(b.get(Int32(1)))

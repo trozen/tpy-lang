@@ -15,6 +15,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test type inference with same type param used twice."""
+  // 13: # Both args are int -> Same[int]
   // 14: same = Same(1, 2)
   static Same<tpy::BigInt> __global_slot_1 = Same<tpy::BigInt>(1, 2);
   same = &__global_slot_1;

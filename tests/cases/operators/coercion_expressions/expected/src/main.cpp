@@ -26,26 +26,32 @@ void test_bigint_expr_to_int32() {
   tpy::BigInt a = tpy::BigInt(10);
   // 60:     b: int = 20
   tpy::BigInt b = tpy::BigInt(20);
+  // 62:     # Binary op result in return
   // 63:     result: Int32 = return_expr_as_int32(a, b)
   int32_t result = return_expr_as_int32(a, b);
   // 64:     print(result)  # 30
   std::cout << result << "\n";
+  // 66:     # Binary op result in function argument
   // 67:     print(take_int32(a + b))  # 60
   std::cout << take_int32((((a) + (b))).to_fixed_check<int32_t>()) << "\n";
+  // 69:     # Binary op result in variable declaration
   // 70:     sum_val: Int32 = a + b + 5
   int32_t sum_val = (((((a) + (b))) + (tpy::BigInt(5)))).to_fixed_check<int32_t>();
   // 71:     print(sum_val)  # 35
   std::cout << sum_val << "\n";
+  // 73:     # Binary op result in assignment
   // 74:     sum_val = a * b
   sum_val = (((a) * (b))).to_fixed_check<int32_t>();
   // 75:     print(sum_val)  # 200
   std::cout << sum_val << "\n";
+  // 77:     # Method call result -> Int32
   // 78:     c: Counter = Counter(100)
   Counter c = Counter(100);
   // 79:     val: Int32 = c.get()
   int32_t val = (c.get()).to_fixed_check<int32_t>();
   // 80:     print(val)  # 100
   std::cout << val << "\n";
+  // 82:     # Method call with arg result -> Int32
   // 83:     val = c.add(50)
   val = (c.add(50)).to_fixed_check<int32_t>();
   // 84:     print(val)  # 150
@@ -71,10 +77,12 @@ void test_field_access_to_ptr() {
   std::cout << "Field access -> Ptr:" << "\n";
   // 99:     cont: Container = Container(5, 10)
   Container cont = Container(5, 10);
+  // 101:     # Field access -> Ptr in function call
   // 102:     modify_via_ptr(cont.pt)
   modify_via_ptr(&cont.pt);
   // 103:     print(cont.pt.x)  # 105
   std::cout << cont.pt.x << "\n";
+  // 105:     # Field access -> ConstPtr in function call
   // 106:     print(read_via_const_ptr(cont.pt))  # 115
   std::cout << read_via_const_ptr(&cont.pt) << "\n";
 }
@@ -85,10 +93,12 @@ void test_nested_field_to_ptr() {
   std::cout << "Nested field -> Ptr:" << "\n";
   // 112:     outer: Outer = Outer(7, 8)
   Outer outer = Outer(7, 8);
+  // 114:     # Nested field access -> Ptr
   // 115:     modify_via_ptr(outer.inner.pt)
   modify_via_ptr(&outer.inner.pt);
   // 116:     print(outer.inner.pt.x)  # 107
   std::cout << outer.inner.pt.x << "\n";
+  // 118:     # Nested field access -> ConstPtr
   // 119:     print(read_via_const_ptr(outer.inner.pt))  # 115
   std::cout << read_via_const_ptr(&outer.inner.pt) << "\n";
 }
@@ -97,14 +107,17 @@ void test_nested_field_to_ptr() {
 void test_literal_expr_to_int32() {
   // 123:     print("Literal expressions -> Int32:")
   std::cout << "Literal expressions -> Int32:" << "\n";
+  // 125:     # Literal arithmetic assigned to Int32 (should use Int32 ops)
   // 126:     x: Int32 = 10 + 20 + 30
   int32_t x = tpy::add_check<int32_t>(tpy::add_check<int32_t>(10, 20), 30);
   // 127:     print(x)  # 60
   std::cout << x << "\n";
+  // 129:     # Nested literal expression
   // 130:     y: Int32 = (5 + 5) * (2 + 3)
   int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(5, 5), tpy::add_check<int32_t>(2, 3));
   // 131:     print(y)  # 50
   std::cout << y << "\n";
+  // 133:     # Mixed literal and variable
   // 134:     aa: Int32 = 100
   int32_t aa = 100;
   // 135:     bb: Int32 = aa + 50  # Int32 + literal -> Int32
@@ -120,6 +133,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Tests type coercions with expressions (not just simple variables).
+  // 139: # --- Run all tests ---
   // 141: test_bigint_expr_to_int32()
   test_bigint_expr_to_int32();
   // 142: test_field_access_to_ptr()

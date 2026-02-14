@@ -21,14 +21,17 @@ int32_t read_point(const Point* p) {
 void test_coercion() {
   // 18:     pt: Point = Point(10, 20)
   Point pt = Point(10, 20);
+  // 20:     # Record -> Ptr coercion in function call
   // 21:     modify_point(pt)
   modify_point(&pt);
   // 22:     print(pt.x)  # Should print 999
   std::cout << pt.x << "\n";
+  // 24:     # Record -> ConstPtr coercion in function call
   // 25:     result: Int32 = read_point(pt)
   int32_t result = read_point(&pt);
   // 26:     print(result)  # Should print 999
   std::cout << result << "\n";
+  // 28:     # Explicit Ptr -> ConstPtr also works
   // 29:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 30:     result2: Int32 = read_point(ptr)
@@ -43,6 +46,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 33: # Run test
   // 34: test_coercion()
   test_coercion();
 }

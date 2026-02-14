@@ -35,12 +35,15 @@ void __tpy_init() {
   points = &__global_slot_1;
   // 21: points.append(Point(3, 4))
   (*points).push_back(Point(3, 4));
+  // 23: # Print Optional from function return
   // 24: print(find(points, 3))
   std::cout << tpy::print_optional(find((*points), 3)) << "\n";
   // 25: print(find(points, 99))
   std::cout << tpy::print_optional(find((*points), 99)) << "\n";
+  // 27: # Print None literal
   // 28: print(None)
   std::cout << "None" << "\n";
+  // 30: # Print Optional local
   // 31: p: Point | None = None
   p = nullptr;
   // 32: print(p)

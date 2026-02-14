@@ -9,50 +9,60 @@ std::string_view __name__;
 void test_aug_assign() {
   // 4:     x: Int32 = 10
   int32_t x = 10;
+  // 6:     # Addition
   // 7:     x += 5
   x = tpy::add_check<int32_t>(x, 5);
   // 8:     print(x)  # 15
   std::cout << x << "\n";
+  // 10:     # Subtraction
   // 11:     x -= 3
   x = tpy::sub_check<int32_t>(x, 3);
   // 12:     print(x)  # 12
   std::cout << x << "\n";
+  // 14:     # Multiplication
   // 15:     x *= 2
   x = tpy::mul_check<int32_t>(x, 2);
   // 16:     print(x)  # 24
   std::cout << x << "\n";
+  // 18:     # Division (floor division for integer semantics)
   // 19:     x //= 4
   x = tpy::div_check<int32_t>(x, 4);
   // 20:     print(x)  # 6
   std::cout << x << "\n";
+  // 22:     # Modulo
   // 23:     x %= 4
   x = tpy::mod_check<int32_t>(x, 4);
   // 24:     print(x)  # 2
   std::cout << x << "\n";
+  // 26:     # Bitwise AND
   // 27:     x = 15
   x = 15;
   // 28:     x &= 9   # 0b1111 & 0b1001 = 0b1001
   x = static_cast<int32_t>(x & 9);
   // 29:     print(x)  # 9
   std::cout << x << "\n";
+  // 31:     # Bitwise OR
   // 32:     x = 9
   x = 9;
   // 33:     x |= 6   # 0b1001 | 0b0110 = 0b1111
   x = static_cast<int32_t>(x | 6);
   // 34:     print(x)  # 15
   std::cout << x << "\n";
+  // 36:     # Bitwise XOR
   // 37:     x = 15
   x = 15;
   // 38:     x ^= 6   # 0b1111 ^ 0b0110 = 0b1001
   x = static_cast<int32_t>(x ^ 6);
   // 39:     print(x)  # 9
   std::cout << x << "\n";
+  // 41:     # Left shift
   // 42:     x = 1
   x = 1;
   // 43:     x <<= 4
   x = tpy::lshift_check<int32_t>(x, 4);
   // 44:     print(x)  # 16
   std::cout << x << "\n";
+  // 46:     # Right shift
   // 47:     x = 32
   x = 32;
   // 48:     x >>= 2

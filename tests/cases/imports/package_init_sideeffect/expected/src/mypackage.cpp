@@ -11,6 +11,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "mypackage";
+  // 1: # Package init with side effect
   // 2: print("init executed")
   std::cout << "init executed" << "\n";
 }

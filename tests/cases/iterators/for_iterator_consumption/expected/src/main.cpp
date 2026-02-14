@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 22: # First loop consumes the iterator
   // 23: c = Counter(3)
   static Counter __global_slot_1 = Counter(3);
   c = &__global_slot_1;
@@ -26,6 +27,7 @@ void __tpy_init() {
     // 26:     print(x)
     std::cout << x << "\n";
   }
+  // 28: # Second loop over same iterator should produce nothing
   // 29: print("second:")
   std::cout << "second:" << "\n";
   // 30: for x in c:

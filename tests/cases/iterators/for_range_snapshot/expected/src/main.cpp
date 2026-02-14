@@ -86,6 +86,7 @@ void __tpy_init() {
   }
   // 33: print(count)  # 3 (get_stop prints "3" once, then loop runs 3 times)
   std::cout << count << "\n";
+  // 35: # 4. BigInt stop mutated — .to_int32() captured once
   // 36: n = 4
   n = tpy::BigInt(4);
   // 37: count2: Int32 = 0

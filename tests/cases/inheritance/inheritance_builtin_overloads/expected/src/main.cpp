@@ -35,20 +35,25 @@ void __tpy_init() {
   (*ml).push_back(30);
   // 19: ml.append(40)
   (*ml).push_back(40);
+  // 21: # Test pop() with no args - should remove and return last element
   // 22: last: Int32 = ml.pop()
   last = (*ml).pop_back();
   // 23: print(last)  # 40
   std::cout << last << "\n";
+  // 25: # Test pop(index) - should remove and return element at index
+  // 26: # This was failing before the fix: "expects 0 arguments, got 1"
   // 27: first: Int32 = ml.pop(0)
   first = tpy::staticlist_pop_at((*ml), 0);
   // 28: print(first)  # 10
   std::cout << first << "\n";
+  // 30: # Remaining elements should be [20, 30]
   // 31: print(ml[0])  # 20
   std::cout << (*ml)[0] << "\n";
   // 32: print(ml[1])  # 30
   std::cout << (*ml)[1] << "\n";
   // 33: print(len(ml))  # 2
   std::cout << tpy::__len__((*ml)) << "\n";
+  // 35: # Also test that regular list pop overloads work (sanity check)
   // 36: items: list[Int32] = [1, 2, 3, 4, 5]
   static std::vector<int32_t> __global_slot_2 = {1, 2, 3, 4, 5};
   items = &__global_slot_2;

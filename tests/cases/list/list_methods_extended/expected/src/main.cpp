@@ -45,18 +45,21 @@ void test_pop_at_index() {
   // 25:     """Test pop(index) - remove and return element at index."""
   // 26:     nums: list[Int32] = [10, 20, 30, 40, 50]
   std::vector<int32_t> nums = {10, 20, 30, 40, 50};
+  // 28:     # Pop from middle
   // 29:     val: Int32 = nums.pop(2)
   int32_t val = tpy::list_pop_at(nums, 2);
   // 30:     print(val)
   std::cout << val << "\n";
   // 31:     print_list(nums)
   print_list(nums);
+  // 33:     # Pop from beginning
   // 34:     val = nums.pop(0)
   val = tpy::list_pop_at(nums, 0);
   // 35:     print(val)
   std::cout << val << "\n";
   // 36:     print_list(nums)
   print_list(nums);
+  // 38:     # Pop with negative index (-1 = last)
   // 39:     val = nums.pop(-1)
   val = tpy::list_pop_at(nums, -(1));
   // 40:     print(val)
@@ -104,6 +107,7 @@ void test_reverse() {
   tpy::list_reverse(nums);
   // 65:     print_list(nums)
   print_list(nums);
+  // 67:     # Reverse again
   // 68:     nums.reverse()
   tpy::list_reverse(nums);
   // 69:     print_list(nums)
@@ -117,8 +121,10 @@ void test_copy() {
   std::vector<int32_t> nums = {1, 2, 3};
   // 74:     copy: list[Int32] = nums.copy()
   std::vector<int32_t> copy = tpy::list_copy(nums);
+  // 76:     # Modify original
   // 77:     nums.append(4)
   nums.push_back(4);
+  // 79:     # Copy should be unaffected
   // 80:     print(len(nums))   # 4
   std::cout << tpy::__len__(nums) << "\n";
   // 81:     print(len(copy))   # 3
@@ -138,6 +144,7 @@ void test_setitem() {
   tpy::set_item(nums, 2, 300);
   // 90:     print_list(nums)
   print_list(nums);
+  // 92:     # Negative index
   // 93:     nums[-1] = 999
   tpy::set_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1), 999);
   // 94:     print_list(nums)
@@ -158,6 +165,7 @@ void test_staticlist_extend() {
   tpy::staticlist_extend(sl, {3, 4, 5});
   // 105:     print_staticlist(sl)
   print_staticlist(sl);
+  // 107:     # Extend from another list
   // 108:     more: list[Int32] = [6, 7]
   std::vector<int32_t> more = {6, 7};
   // 109:     sl.extend(more)
@@ -175,10 +183,12 @@ void test_staticlist_insert() {
   sl.push_back(10);
   // 116:     sl.append(30)
   sl.push_back(30);
+  // 118:     # Insert at beginning
   // 119:     sl.insert(0, 5)
   tpy::staticlist_insert(sl, 0, 5);
   // 120:     print_staticlist(sl)
   print_staticlist(sl);
+  // 122:     # Insert in middle
   // 123:     sl.insert(2, 20)
   tpy::staticlist_insert(sl, 2, 20);
   // 124:     print_staticlist(sl)
@@ -194,10 +204,12 @@ void test_staticlist_insert_no_default_ctor() {
   items.push_back(Item(10));
   // 130:     items.append(Item(30))
   items.push_back(Item(30));
+  // 132:     # Insert in middle - this verifies T{} is not required
   // 133:     items.insert(1, Item(20))
   tpy::staticlist_insert(items, 1, Item(20));
   // 134:     print_item_list(items)
   print_item_list(items);
+  // 136:     # Insert at beginning
   // 137:     items.insert(0, Item(5))
   tpy::staticlist_insert(items, 0, Item(5));
   // 138:     print_item_list(items)
@@ -347,6 +359,7 @@ void test_staticlist_clear() {
   sl.clear();
   // 222:     print(len(sl))  # 0
   std::cout << tpy::__len__(sl) << "\n";
+  // 224:     # Can append after clear
   // 225:     sl.append(100)
   sl.push_back(100);
   // 226:     print(len(sl))  # 1
@@ -382,6 +395,7 @@ void test_staticlist_get_mut() {
   items.push_back(Item(20));
   // 248:     items.append(Item(30))
   items.push_back(Item(30));
+  // 250:     # Modify via pointer
   // 251:     p: Ptr[Item] = items.get_mut(1)
   Item* p = tpy::get_mut(items, 1);
   // 252:     p.value = 200
@@ -396,6 +410,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 256: # Run all tests
   // 257: print("=== list pop(index) ===")
   std::cout << "=== list pop(index) ===" << "\n";
   // 258: test_pop_at_index()

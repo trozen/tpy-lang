@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 3: def main():
 void main() {
+  // 4:     # Just verify the alias works - don't print actual time (varies between runs)
   // 5:     t: float = get_time()
   double t = tpy::time_time();
   // 6:     if t > 0.0:

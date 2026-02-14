@@ -35,10 +35,12 @@ tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> values) {
 
 // 18: def main() -> None:
 void main() {
+  // 19:     # Array coerces to Span
   // 20:     arr: Array[Int32, 4] = [1, 2, 3, 4]
   std::array<int32_t, 4> arr = {1, 2, 3, 4};
   // 21:     print(sum_span(arr))  # 10
   std::cout << sum_span(tpy::as_span(arr)) << "\n";
+  // 23:     # StaticList coerces to Span
   // 24:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
   StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
   // 25:     sl.append(10)
@@ -49,16 +51,21 @@ void main() {
   sl.push_back(30);
   // 28:     print(sum_span(sl))  # 60
   std::cout << sum_span(tpy::as_span(sl)) << "\n";
+  // 30:     # list coerces to Span
   // 31:     lst: list[Int32] = [100, 200, 300, 400]
   std::vector<int32_t> lst = {100, 200, 300, 400};
   // 32:     print(sum_span(lst))  # 1000
   std::cout << sum_span(tpy::as_span(lst)) << "\n";
+  // 34:     # Literal array coerces to Span (via PendingListType)
   // 35:     print(sum_span([5, 5, 5, 5, 5]))  # 25
   std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{5, 5, 5, 5, 5})) << "\n";
+  // 37:     # BigInt tests - IntLiteral elements coerce to BigInt
+  // 38:     # list[int] coerces to Span[int]
   // 39:     bigint_list: list[int] = [1000, 2000, 3000]
   std::vector<tpy::BigInt> bigint_list = {1000, 2000, 3000};
   // 40:     print(sum_span_bigint(bigint_list))  # 6000
   std::cout << sum_span_bigint(tpy::as_span(bigint_list)) << "\n";
+  // 42:     # PendingListType with IntLiteral → Span[int] (BigInt)
   // 43:     print(sum_span_bigint([100, 200, 300]))  # 600
   std::cout << sum_span_bigint(tpy::as_span(std::array<tpy::BigInt, 3>{tpy::BigInt(100), tpy::BigInt(200), tpy::BigInt(300)})) << "\n";
 }

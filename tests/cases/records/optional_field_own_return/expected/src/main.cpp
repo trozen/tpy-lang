@@ -43,6 +43,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 22: # Global-scope field assignment from Own[T] | None
   // 23: h = Holder()
   static Holder __global_slot_1 = Holder();
   h = &__global_slot_1;

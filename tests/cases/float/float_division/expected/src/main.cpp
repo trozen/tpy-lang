@@ -11,12 +11,14 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # True division (/) always returns float
   // 2: print(10 / 4)
   std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(4)))) << "\n";
   // 3: print(10 / 2)
   std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(2)))) << "\n";
   // 4: print(9 / 3)
   std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(9)) / static_cast<double>(tpy::BigInt(3)))) << "\n";
+  // 6: # Floor division (//) preserves type
   // 7: print(10 // 4)
   std::cout << ((tpy::BigInt(10)) / (tpy::BigInt(4))) << "\n";
   // 8: print(10.0 // 4.0)

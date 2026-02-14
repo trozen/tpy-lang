@@ -23,6 +23,7 @@ void test() {
   Point pt = Point(3, 7);
   // 19:     p: Ptr[Point] = pt
   Point* p = &pt;
+  // 20:     # Overload resolution should pick describe(Point) via Ptr[T] -> T deref coercion
   // 21:     describe(p)
   describe(tpy::deref_check(p));
 }

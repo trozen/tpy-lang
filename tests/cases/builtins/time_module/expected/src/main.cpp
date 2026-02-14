@@ -9,6 +9,8 @@ std::string_view __name__;
 void main() {
   // 4:     t = time.time()
   double t = tpy::time_time();
+  // 5:     # Verify timestamp is reasonable (after 2024: 1704067200)
+  // 6:     # This avoids exact output comparison that would fail due to timing
   // 7:     if t > 1704067200:
   if ((t > 1704067200)) {
     // 8:         print("ok")

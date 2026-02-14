@@ -15,6 +15,7 @@ void main() {
   double end = tpy::time_time();
   // 7:     elapsed = end - start
   double elapsed = ((end) - (start));
+  // 8:     # Check that at least 0.05 seconds passed (allowing for timer variance)
   // 9:     if elapsed >= 0.05:
   if ((elapsed >= 0.05)) {
     // 10:         print("ok")

@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 3: def main():
 void main() {
+  // 4:     # Test math.log (natural log)
   // 5:     x = math.log(2.718281828)
   double x = std::log(2.718281828);
   // 6:     if x > 0.99 and x < 1.01:
@@ -17,6 +18,7 @@ void main() {
     // 9:         print("log(e) error")
     std::cout << "log(e) error" << "\n";
   }
+  // 11:     # Test math.log with base
   // 12:     y = math.log(8.0, 2.0)
   double y = (std::log(8.0) / std::log(2.0));
   // 13:     if y > 2.99 and y < 3.01:
@@ -27,6 +29,7 @@ void main() {
     // 16:         print("log(8,2) error")
     std::cout << "log(8,2) error" << "\n";
   }
+  // 18:     # Test math.sqrt
   // 19:     z = math.sqrt(4.0)
   double z = std::sqrt(4.0);
   // 20:     if z > 1.99 and z < 2.01:
@@ -37,6 +40,7 @@ void main() {
     // 23:         print("sqrt error")
     std::cout << "sqrt error" << "\n";
   }
+  // 25:     # Test math.sin/cos
   // 26:     s = math.sin(0.0)
   double s = std::sin(0.0);
   // 27:     c = math.cos(0.0)
@@ -49,6 +53,7 @@ void main() {
     // 31:         print("sin/cos error")
     std::cout << "sin/cos error" << "\n";
   }
+  // 33:     # Test math.floor/ceil
   // 34:     f = math.floor(3.7)
   double f = std::floor(3.7);
   // 35:     ce = math.ceil(3.2)

@@ -9,12 +9,14 @@ Point* global_pt{};
 
 // 13: def addr_param(p: Point) -> Ptr[Point]:
 Point* addr_param(Point& p) {
+  // 14:     # Returning pointer to parameter should be allowed (safe lifetime)
   // 15:     return p
   return &p;
 }
 
 // 17: def addr_global() -> Ptr[Point]:
 Point* addr_global() {
+  // 18:     # Returning pointer to global should be allowed
   // 19:     return global_pt
   return &(*global_pt);
 }

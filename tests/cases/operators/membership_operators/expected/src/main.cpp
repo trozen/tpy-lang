@@ -11,6 +11,7 @@ void test_list_membership() {
   // 6:     """Test membership for list[Int32]."""
   // 7:     nums: list[Int32] = [10, 20, 30, 40, 50]
   std::vector<int32_t> nums = {10, 20, 30, 40, 50};
+  // 9:     # 'in' operator
   // 10:     if 30 in nums:
   if ((std::find(nums.begin(), nums.end(), 30) != nums.end())) {
     // 11:         print("30 in list: yes")
@@ -24,6 +25,7 @@ void test_list_membership() {
     // 15:         print("99 in list: no")
     std::cout << "99 in list: no" << "\n";
   }
+  // 17:     # 'not in' operator
   // 18:     if 99 not in nums:
   if ((!(std::find(nums.begin(), nums.end(), 99) != nums.end()))) {
     // 19:         print("99 not in list: yes")
@@ -96,6 +98,7 @@ void test_string_membership() {
   // 55:     """Test membership for str (character in string)."""
   // 56:     text: str = "hello world"
   std::string_view text = "hello world";
+  // 58:     # Single character 'in' string
   // 59:     if "o" in text:
   if ((std::string_view(text).find("o") != std::string_view::npos)) {
     // 60:         print("'o' in string: yes")
@@ -109,6 +112,7 @@ void test_string_membership() {
     // 64:         print("'z' in string: no")
     std::cout << "'z' in string: no" << "\n";
   }
+  // 66:     # 'not in' for string
   // 67:     if "z" not in text:
   if ((!(std::string_view(text).find("z") != std::string_view::npos))) {
     // 68:         print("'z' not in string: yes")
@@ -129,16 +133,19 @@ void test_membership_in_conditions() {
   // 75:     """Test membership operators in complex conditions."""
   // 76:     nums: list[Int32] = [1, 2, 3, 4, 5]
   std::vector<int32_t> nums = {1, 2, 3, 4, 5};
+  // 78:     # Combined with 'and'
   // 79:     if 2 in nums and 4 in nums:
   if (((std::find(nums.begin(), nums.end(), 2) != nums.end()) && (std::find(nums.begin(), nums.end(), 4) != nums.end()))) {
     // 80:         print("both 2 and 4 in list")
     std::cout << "both 2 and 4 in list" << "\n";
   }
+  // 82:     # Combined with 'or'
   // 83:     if 10 in nums or 3 in nums:
   if (((std::find(nums.begin(), nums.end(), 10) != nums.end()) || (std::find(nums.begin(), nums.end(), 3) != nums.end()))) {
     // 84:         print("10 or 3 in list")
     std::cout << "10 or 3 in list" << "\n";
   }
+  // 86:     # Negation combined
   // 87:     if 1 in nums and 99 not in nums:
   if (((std::find(nums.begin(), nums.end(), 1) != nums.end()) && (!(std::find(nums.begin(), nums.end(), 99) != nums.end())))) {
     // 88:         print("1 in and 99 not in list")
@@ -173,6 +180,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 101: # Run all tests
   // 102: test_list_membership()
   test_list_membership();
   // 103: test_array_membership()

@@ -80,6 +80,7 @@ void main() {
   Point& best = find_max(pts);
   // 51:     print(best.x)
   std::cout << best.x << "\n";
+  // 53:     # Mutation through returned reference is visible
   // 54:     best.x = 99
   best.x = 99;
   // 55:     print(pts[1].x)

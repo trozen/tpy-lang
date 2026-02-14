@@ -14,19 +14,24 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 54: # Test combined inheritance with multiple protocols
   // 55: c = Car("Toyota", 2023, "Camry", 1500)
   static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);
   c = &__global_slot_1;
+  // 57: # Access inherited fields
   // 58: print(c.brand)
   std::cout << c->brand << "\n";
   // 59: print(c.year)
   std::cout << c->year << "\n";
+  // 61: # Access own fields
   // 62: print(c.model)
   std::cout << c->model << "\n";
   // 63: print(c.car_weight)
   std::cout << c->car_weight << "\n";
+  // 65: # Call inherited method
   // 66: print(c.get_brand())
   std::cout << c->get_brand() << "\n";
+  // 68: # Call protocol methods
   // 69: print(c.__str__())
   std::cout << c->__str__() << "\n";
   // 70: print(c.weight())

@@ -31,6 +31,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 30: # Global `p` — must get its own __global_slot, not reuse stale __slot from foo/pick
   // 31: p = Point(10, 20)
   static Point __global_slot_1 = Point(10, 20);
   p = &__global_slot_1;

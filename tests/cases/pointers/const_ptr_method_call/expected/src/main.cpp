@@ -11,6 +11,7 @@ void main() {
   Counter c = Counter(42);
   // 12:     cp: ConstPtr[Counter] = ConstPtr(c)
   const Counter* cp = &c;
+  // 13:     # Const-safe dunder method call through ConstPtr auto-deref
   // 14:     print(cp.__len__())
   std::cout << cp->__len__() << "\n";
 }

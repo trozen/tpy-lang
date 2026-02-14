@@ -65,9 +65,11 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 32: # Global empty list
   // 33: global_list: list[int] = []
   static std::vector<tpy::BigInt> __global_slot_1 = std::vector<tpy::BigInt>{};
   global_list = &__global_slot_1;
+  // 35: # Global with list() constructor
   // 36: global_list2: list[Int32] = list()
   static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
   global_list2 = &__global_slot_2;

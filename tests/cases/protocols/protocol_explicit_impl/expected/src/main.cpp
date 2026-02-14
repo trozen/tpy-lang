@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 23: # Test explicit protocol implementation
   // 24: p = Person("Alice", 30)
   static Person __global_slot_1 = Person("Alice", 30);
   p = &__global_slot_1;

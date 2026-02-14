@@ -17,19 +17,25 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 29: # Test creating a Dog (child class)
   // 30: d = Dog("Buddy", 3, "Golden Retriever")
   static Dog __global_slot_1 = Dog("Buddy", 3, "Golden Retriever");
   d = &__global_slot_1;
+  // 32: # Access child field
   // 33: print(d.breed)
   std::cout << d->breed << "\n";
+  // 35: # Access inherited fields
   // 36: print(d.name)
   std::cout << d->name << "\n";
   // 37: print(d.age)
   std::cout << d->age << "\n";
+  // 39: # Call overridden method
   // 40: print(d.speak())
   std::cout << d->speak() << "\n";
+  // 42: # Call inherited method
   // 43: print(d.describe())
   std::cout << d->describe() << "\n";
+  // 45: # Test creating an Animal (parent class)
   // 46: a = Animal("Generic", 5)
   static Animal __global_slot_2 = Animal("Generic", 5);
   a = &__global_slot_2;

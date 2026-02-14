@@ -8,6 +8,7 @@ std::string_view __name__;
 // 19: def add_points(a: Addable, b: Addable) -> None:
 template<Addable T_a, Addable T_b>
 void add_points(T_a& a, T_b& b) {
+  // 20:     # Verify that a + b compiles (the protocol constraint allows it)
   // 21:     result = a + b
   auto result = (a + b);
 }
@@ -18,8 +19,10 @@ void main() {
   Point p1 = Point(1, 2);
   // 25:     p2 = Point(3, 4)
   Point p2 = Point(3, 4);
+  // 26:     # Call through protocol-typed parameter
   // 27:     add_points(p1, p2)
   add_points(p1, p2);
+  // 29:     # Directly verify the addition works and print result
   // 30:     p3 = p1 + p2
   Point p3 = ((p1) + (p2));
   // 31:     print(p3.x)

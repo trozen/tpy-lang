@@ -27,6 +27,7 @@ void modify_point(Point& p) {
 
 // 21: def deref_and_return(ptr: Ptr[Point]) -> Point:
 Point& deref_and_return(Point* ptr) {
+  // 22:     # Ptr -> Point coercion in return statement
   // 23:     return ptr
   return tpy::deref_check(ptr);
 }
@@ -37,12 +38,14 @@ void test_ptr_to_value() {
   Point pt = Point(10, 20);
   // 27:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
+  // 29:     # Ptr[Point] -> Point coercion in function call
   // 30:     print_point(ptr)
   print_point(tpy::deref_check(ptr));
   // 32:     result: Int32 = get_sum(ptr)
   int32_t result = get_sum(tpy::deref_check(ptr));
   // 33:     print(result)
   std::cout << result << "\n";
+  // 35:     # Modification through coerced pointer affects original
   // 36:     modify_point(ptr)
   modify_point(tpy::deref_check(ptr));
   // 37:     print(pt.x)
@@ -55,6 +58,7 @@ void test_ptr_to_value_assign() {
   Point pt = Point(5, 7);
   // 41:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
+  // 43:     # Ptr[Point] -> Point coercion in assignment
   // 44:     p2: Point = ptr
   Point& p2 = tpy::deref_check(ptr);
   // 45:     print(p2.x)
@@ -69,6 +73,7 @@ void test_ptr_to_value_return() {
   Point pt = Point(100, 200);
   // 50:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
+  // 52:     # Ptr -> Point coercion in return
   // 53:     p2: Point = deref_and_return(ptr)
   Point& p2 = deref_and_return(ptr);
   // 54:     print(p2.x)
@@ -81,6 +86,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 56: # Run tests
   // 57: print("=== call ===")
   std::cout << "=== call ===" << "\n";
   // 58: test_ptr_to_value()

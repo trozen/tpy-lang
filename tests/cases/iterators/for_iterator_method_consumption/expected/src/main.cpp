@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 31: # Method call returns by reference — consumption must be preserved
   // 32: b = Box()
   static Box __global_slot_1 = Box();
   b = &__global_slot_1;

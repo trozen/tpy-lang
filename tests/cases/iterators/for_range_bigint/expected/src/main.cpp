@@ -14,8 +14,10 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Big integers that exceed Int32 range — forces BigInt path
   // 2: base = 1 << 100
   base = ((tpy::BigInt(1)) << (tpy::BigInt(100)));
+  // 4: # 1. BigInt range with start/stop
   // 5: for i in range(base, base + 5):
   tpy::BigInt __start_0 = base;
   tpy::BigInt __stop_0 = ((base) + (tpy::BigInt(5)));
@@ -23,6 +25,7 @@ void __tpy_init() {
     // 6:     print(i)
     std::cout << i << "\n";
   }
+  // 8: # 2. BigInt range with step
   // 9: for i in range(base, base + 10, 3):
   tpy::BigInt __start_1 = base;
   tpy::BigInt __stop_1 = ((base) + (tpy::BigInt(10)));
@@ -30,6 +33,7 @@ void __tpy_init() {
     // 10:     print(i)
     std::cout << i << "\n";
   }
+  // 12: # 3. Negative BigInt step
   // 13: for i in range(base + 4, base - 1, -1):
   tpy::BigInt __start_2 = ((base) + (tpy::BigInt(4)));
   tpy::BigInt __stop_2 = ((base) - (tpy::BigInt(1)));
@@ -37,6 +41,7 @@ void __tpy_init() {
     // 14:     print(i)
     std::cout << i << "\n";
   }
+  // 16: # 4. Empty BigInt range
   // 17: for i in range(base + 5, base):
   tpy::BigInt __start_3 = ((base) + (tpy::BigInt(5)));
   tpy::BigInt __stop_3 = base;

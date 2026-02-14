@@ -18,6 +18,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test valid Int32 operations at boundary values."""
+  // 4: # INT32_MAX operations that don't overflow
   // 5: x: Int32 = 2147483647
   x = 2147483647;
   // 6: print(x)
@@ -26,6 +27,7 @@ void __tpy_init() {
   std::cout << (tpy::sub_check<int32_t>(x, 1)) << "\n";
   // 8: print(x // 2)
   std::cout << (tpy::div_check<int32_t>(x, 2)) << "\n";
+  // 10: # INT32_MIN operations that don't overflow
   // 11: y: Int32 = -2147483648
   y = -(2147483648);
   // 12: print(y)

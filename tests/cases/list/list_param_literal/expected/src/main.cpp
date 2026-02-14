@@ -41,24 +41,29 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 18: # Empty list literals
   // 19: takes_list([])
   std::vector<tpy::BigInt> __tmp_1 = std::vector<tpy::BigInt>{};
   takes_list(__tmp_1);
   // 20: takes_list_int32([])
   std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
   takes_list_int32(__tmp_2);
+  // 22: # Empty list constructors
   // 23: takes_list(list())
   std::vector<tpy::BigInt> __tmp_3 = std::vector<tpy::BigInt>();
   takes_list(__tmp_3);
   // 24: takes_list_int32(list())
   std::vector<int32_t> __tmp_4 = std::vector<int32_t>();
   takes_list_int32(__tmp_4);
+  // 26: # Non-empty list literals
   // 27: takes_list([1, 2, 3])
   std::vector<tpy::BigInt> __tmp_5 = {1, 2, 3};
   takes_list(__tmp_5);
+  // 29: # Array literals
   // 30: takes_array([Int32(10), Int32(20), Int32(30)])
   std::array<int32_t, 3> __tmp_6 = {10, 20, 30};
   takes_array(__tmp_6);
+  // 32: # StaticList constructors
   // 33: takes_static(StaticList[Int32, 10]())
   StaticList<int32_t, 10> __tmp_7 = StaticList<int32_t, 10>();
   takes_static(__tmp_7);

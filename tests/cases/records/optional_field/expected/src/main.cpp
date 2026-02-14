@@ -41,6 +41,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 30: # Basic: init to None, check, set, access
   // 31: line = Line(Point(1, 2))
   static Line __global_slot_1 = Line(Point(1, 2));
   line = &__global_slot_1;
@@ -59,6 +60,7 @@ void __tpy_init() {
   std::cout << tpy::deref_optional_check(line->end).x << "\n";
   // 38: print(line.end.y)
   std::cout << tpy::deref_optional_check(line->end).y << "\n";
+  // 40: # Return optional field from method (std::optional<T> → T*)
   // 41: result = line.get_end()
   result = line->get_end();
   // 42: print(result is not None)
@@ -89,6 +91,7 @@ void __tpy_init() {
   line2->end = tpy::ptr_to_optional(find_point((*pts), 99));
   // 62: print(line2.end is None)
   std::cout << tpy::print_bool((!line2->end.has_value())) << "\n";
+  // 64: # Field-to-field optional assignment (std::optional<T> → std::optional<T>)
   // 65: line3 = Line(Point(10, 20))
   static Line __global_slot_5 = Line(Point(10, 20));
   line3 = &__global_slot_5;

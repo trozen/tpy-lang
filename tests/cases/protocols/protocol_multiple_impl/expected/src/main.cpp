@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 39: # Test multiple protocol implementation
   // 40: b = Box(5, 3)
   static Box __global_slot_1 = Box(5, 3);
   b = &__global_slot_1;

@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 2: # Float value exceeds Int32 range
   // 3: x: Int32 = Int32(3000000000.0)
   x = tpy::from_float_check<int32_t>(3000000000.0);
   // 4: print(x)

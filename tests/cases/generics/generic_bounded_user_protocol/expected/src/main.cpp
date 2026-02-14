@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 27: def main() -> None:
 void main() {
+  // 28:     # MyNumber satisfies Addable protocol
   // 29:     h = Holder[MyNumber](MyNumber(10))
   Holder<MyNumber> h = Holder<MyNumber>(MyNumber(10));
   // 30:     num = h.get_item()

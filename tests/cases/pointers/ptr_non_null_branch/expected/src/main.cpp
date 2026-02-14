@@ -17,6 +17,7 @@ void main() {
   Point a = Point(1, 2);
   // 15:     b: Point = Point(Int32(3), Int32(4))
   Point b = Point(3, 4);
+  // 17:     # --- Branch: both sides non-null → intersection keeps non-null ---
   // 18:     p: Ptr[Point] = Ptr(a)
   Point* p = &a;
   // 19:     if a.x > Int32(0):
@@ -27,8 +28,10 @@ void main() {
     // 22:         p = Ptr(a)
     p = &a;
   }
+  // 23:     # Both branches assign from Ptr(lvalue), so p is still non-null
   // 24:     print(p.x)  # tpyc: ok
   std::cout << p->x << "\n";
+  // 26:     # --- Branch: one side unknown → intersection clears ---
   // 27:     q: Ptr[Point] = Ptr(a)
   Point* q = &a;
   // 28:     if a.x > Int32(0):
@@ -36,8 +39,11 @@ void main() {
     // 29:         q = get_ptr(q)
     q = get_ptr(q);
   }
+  // 30:     # Then-branch: unknown. Else-branch (implicit): still non-null.
+  // 31:     # Intersection → cleared.
   // 32:     print(q.x)  # tpyc: ok
   std::cout << tpy::deref_check(q).x << "\n";
+  // 34:     # --- Loop: non-null before loop, not reassigned inside → preserved ---
   // 35:     r: Ptr[Point] = Ptr(a)
   Point* r = &a;
   // 36:     i: Int32 = Int32(0)
@@ -49,6 +55,7 @@ void main() {
     // 39:         i = i + Int32(1)
     i = (tpy::add_check<int32_t>(i, 1));
   }
+  // 41:     # --- Loop: reassigned from unknown inside → cleared ---
   // 42:     s: Ptr[Point] = Ptr(a)
   Point* s = &a;
   // 43:     j: Int32 = Int32(0)
@@ -62,6 +69,7 @@ void main() {
     // 47:         j = j + Int32(1)
     j = (tpy::add_check<int32_t>(j, 1));
   }
+  // 48:     # After loop: s was reassigned from unknown inside body
   // 49:     print(s.x)  # tpyc: ok
   std::cout << tpy::deref_check(s).x << "\n";
 }

@@ -32,28 +32,33 @@ int32_t sum_all(T_items& items) {
 
 // 15: def use_span(s: Span[Int32]) -> Int32:
 int32_t use_span(std::span<const int32_t> s) {
+  // 16:     # Pass Span to Sequence-accepting function
   // 17:     return sum_all(s)
   return sum_all(s);
 }
 
 // 19: def main() -> None:
 void main() {
+  // 20:     # Test with list[Int32]
   // 21:     nums: list[Int32] = [1, 2, 3, 4, 5]
   std::vector<int32_t> nums = {1, 2, 3, 4, 5};
   // 22:     print(first(nums))     # 1
   std::cout << first(nums) << "\n";
   // 23:     print(sum_all(nums))   # 15
   std::cout << sum_all(nums) << "\n";
+  // 25:     # Test with Array[Int32, N]
   // 26:     arr: Array[Int32, 3] = [10, 20, 30]
   std::array<int32_t, 3> arr = {10, 20, 30};
   // 27:     print(first(arr))      # 10
   std::cout << first(arr) << "\n";
   // 28:     print(sum_all(arr))    # 60
   std::cout << sum_all(arr) << "\n";
+  // 30:     # Test with Span[Int32]
   // 31:     print(use_span(arr))   # 60 (Span from Array)
   std::cout << use_span(tpy::as_span(arr)) << "\n";
   // 32:     print(use_span(nums))  # 15 (Span from list)
   std::cout << use_span(tpy::as_span(nums)) << "\n";
+  // 34:     # Test with StaticList[Int32, N]
   // 35:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
   StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
   // 36:     sl.append(100)

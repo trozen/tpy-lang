@@ -15,22 +15,26 @@ void main() {
   p.y = 2;
   // 11:     items: list[Point] = []
   std::vector<Point> items = std::vector<Point>{};
+  // 13:     # lvalue into container — warns
   // 14:     items.append(p)           # tpyc: warning(/copies Point into owned storage/)
   items.push_back(p);
   // 15:     items[0] = p              # tpyc: warning(/copies Point into container/)
   tpy::set_item(items, 0, p);
   // 16:     items.insert(0, p)        # tpyc: warning(/copies Point into owned storage/)
   tpy::list_insert(items, 0, p);
+  // 18:     # copy() silences the warning
   // 19:     items.append(copy(p))     # tpyc: ok
   items.push_back(p);
   // 20:     items[0] = copy(p)        # tpyc: ok
   tpy::set_item(items, 0, p);
   // 21:     items.insert(0, copy(p))  # tpyc: ok
   tpy::list_insert(items, 0, p);
+  // 23:     # rvalue — no warning needed
   // 24:     items.append(Point())     # tpyc: ok
   items.push_back(Point());
   // 25:     items[0] = Point()        # tpyc: ok
   tpy::set_item(items, 0, Point());
+  // 27:     # value types — no warning
   // 28:     nums: list[Int32] = []
   std::vector<int32_t> nums = std::vector<int32_t>{};
   // 29:     x: Int32 = 42

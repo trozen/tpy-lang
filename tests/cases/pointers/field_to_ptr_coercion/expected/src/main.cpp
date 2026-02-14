@@ -21,6 +21,7 @@ int32_t read_inner(const Inner* p) {
 void test_field_to_ptr() {
   // 20:     outer: Outer = Outer(42)
   Outer outer = Outer(42);
+  // 21:     # obj.field -> Ptr coercion
   // 22:     modify_inner(outer.inner)
   modify_inner(&outer.inner);
   // 23:     print(outer.inner.x)
@@ -31,6 +32,7 @@ void test_field_to_ptr() {
 void test_field_to_const_ptr() {
   // 26:     outer: Outer = Outer(100)
   Outer outer = Outer(100);
+  // 27:     # obj.field -> ConstPtr coercion
   // 28:     result: Int32 = read_inner(outer.inner)
   int32_t result = read_inner(&outer.inner);
   // 29:     print(result)
@@ -41,6 +43,7 @@ void test_field_to_const_ptr() {
 void test_subscript_to_ptr() {
   // 32:     arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
   std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
+  // 33:     # arr[i] -> Ptr coercion
   // 34:     modify_inner(arr[1])
   modify_inner(&arr[1]);
   // 35:     print(arr[1].x)
@@ -53,6 +56,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 37: # Run tests
   // 38: print("=== field to ptr ===")
   std::cout << "=== field to ptr ===" << "\n";
   // 39: test_field_to_ptr()

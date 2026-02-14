@@ -40,6 +40,7 @@ void __tpy_init() {
   points = &__global_slot_1;
   // 23: points.append(Point(3, 4))
   (*points).push_back(Point(3, 4));
+  // 31: # Safe at runtime because we know the value exists
   // 32: print(use_without_check(find(points, 3)))
   std::cout << use_without_check(find((*points), 3)) << "\n";
 }

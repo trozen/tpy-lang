@@ -29,13 +29,17 @@ std::array<int32_t, 3>& get_global_array() {
 void main() {
   // 32:     b: Buffer[Int32, 3] = Buffer[Int32, 3]()
   Buffer<int32_t, 3> b = Buffer<int32_t, 3>();
+  // 34:     # Test 1: Pass concrete array to generic method
   // 35:     concrete: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
   std::array<int32_t, 3> concrete = {1, 2, 3};
   // 36:     b.set_data(concrete)
   b.set_data(concrete);
+  // 38:     # Test 2: Pass generic return type to concrete function
+  // 39:     # get_data() returns Array[T, N], which should substitute to Array[Int32, 3]
   // 40:     use_array(b.get_data())
   std::array<int32_t, 3> __tmp_1 = b.get_data();
   use_array(__tmp_1);
+  // 42:     # Test 3: Assign concrete return to generic field via method
   // 43:     b.set_data(get_global_array())
   b.set_data(get_global_array());
   // 44:     use_array(b.get_data())

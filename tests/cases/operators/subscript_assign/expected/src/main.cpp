@@ -17,6 +17,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Array subscript assignment
   // 4: arr: Array[Int32, 3] = [1, 2, 3]
   static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
   arr = &__global_slot_1;
@@ -32,6 +33,7 @@ void __tpy_init() {
   std::cout << (*arr)[1] << "\n";
   // 10: print(arr[2])
   std::cout << (*arr)[2] << "\n";
+  // 12: # StaticList subscript assignment
   // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
   static StaticList<int32_t, 4> __global_slot_2 = StaticList<int32_t, 4>();
   items = &__global_slot_2;

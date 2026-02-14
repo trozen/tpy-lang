@@ -11,6 +11,7 @@ void main() {
   Point pt = Point(10, 20);
   // 16:     p: Ptr[Point] = Ptr(pt)
   Point* p = &pt;
+  // 17:     # Method call through Ptr auto-deref
   // 18:     print(p.sum())
   std::cout << p->sum() << "\n";
   // 19:     print(p.describe())

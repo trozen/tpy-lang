@@ -12,12 +12,16 @@ void test_list_negative_indexing() {
   // 7:     """Test negative indexing on list."""
   // 8:     nums: list[Int32] = [10, 20, 30, 40, 50]
   std::vector<int32_t> nums = {10, 20, 30, 40, 50};
+  // 10:     # Last element
   // 11:     print(nums[-1])
   std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)) << "\n";
+  // 13:     # Second to last
   // 14:     print(nums[-2])
   std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2)) << "\n";
+  // 16:     # Third to last
   // 17:     print(nums[-3])
   std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 3)) << "\n";
+  // 19:     # First element via negative (should be same as nums[0])
   // 20:     print(nums[-5])
   std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 5)) << "\n";
 }
@@ -40,10 +44,13 @@ void test_string_negative_indexing() {
   // 31:     """Test negative indexing on string."""
   // 32:     text: str = "hello"
   std::string_view text = "hello";
+  // 34:     # Last character
   // 35:     print(text[-1])
   std::cout << tpy::get_char(text, static_cast<int32_t>(tpy::__len__(text) - 1)) << "\n";
+  // 37:     # Second to last
   // 38:     print(text[-2])
   std::cout << tpy::get_char(text, static_cast<int32_t>(tpy::__len__(text) - 2)) << "\n";
+  // 40:     # First character via negative
   // 41:     print(text[-5])
   std::cout << tpy::get_char(text, static_cast<int32_t>(tpy::__len__(text) - 5)) << "\n";
 }
@@ -53,14 +60,17 @@ void test_negative_index_assignment() {
   // 44:     """Test assignment using negative index."""
   // 45:     nums: list[Int32] = [1, 2, 3, 4, 5]
   std::vector<int32_t> nums = {1, 2, 3, 4, 5};
+  // 47:     # Modify last element
   // 48:     nums[-1] = 50
   tpy::set_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1), 50);
   // 49:     print(nums[-1])
   std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)) << "\n";
+  // 51:     # Modify second to last
   // 52:     nums[-2] = 40
   tpy::set_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2), 40);
   // 53:     print(nums[-2])
   std::cout << tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2)) << "\n";
+  // 55:     # Verify list contents
   // 56:     print(nums[3])
   std::cout << tpy::get_item(nums, 3) << "\n";
   // 57:     print(nums[4])
@@ -72,10 +82,12 @@ void test_negative_index_in_expression() {
   // 60:     """Test negative index used in expressions."""
   // 61:     nums: list[Int32] = [5, 10, 15, 20]
   std::vector<int32_t> nums = {5, 10, 15, 20};
+  // 63:     # Arithmetic with negative indexed values
   // 64:     total: Int32 = nums[-1] + nums[-2]
   int32_t total = (tpy::add_check<int32_t>(tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)), tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2))));
   // 65:     print(total)
   std::cout << total << "\n";
+  // 67:     # Comparison with negative indexed values
   // 68:     if nums[-1] > nums[-2]:
   if ((tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1)) > tpy::get_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 2)))) {
     // 69:         print("last > second_last")
@@ -111,6 +123,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 85: # Run all tests
   // 86: print("=== list ===")
   std::cout << "=== list ===" << "\n";
   // 87: test_list_negative_indexing()

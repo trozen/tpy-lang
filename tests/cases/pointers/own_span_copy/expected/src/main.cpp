@@ -17,8 +17,10 @@ void main() {
   std::vector<int32_t> nums = {1, 2, 3};
   // 8:     span: Span[Int32] = get_span(nums)
   std::span<const int32_t> span = get_span(nums);
+  // 10:     # copy() on a Span should work (creates a view)
   // 11:     span_copy: Span[Int32] = copy(span)
   std::span<const int32_t> span_copy = span;
+  // 13:     # Both spans can access the same data
   // 14:     print(span[0])
   std::cout << span[0] << "\n";
   // 15:     print(span_copy[0])

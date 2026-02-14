@@ -32,14 +32,17 @@ void main() {
   MyInt y = MyInt(20);
   // 32:     z = MyInt(10)
   MyInt z = MyInt(10);
+  // 34:     # Test comparison via Comparable bound
   // 35:     print(is_less(x, y))  # True
   std::cout << tpy::print_bool(is_less<MyInt>(x, y)) << "\n";
   // 36:     print(is_less(y, x))  # False
   std::cout << tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
+  // 38:     # Test returning bounded type
   // 39:     result = find_min(x, y)
   MyInt& result = find_min<MyInt>(x, y);
   // 40:     print(result.value)  # 10
   std::cout << result.value << "\n";
+  // 42:     # Test equality
   // 43:     print(x == z)  # True
   std::cout << tpy::print_bool((x == z)) << "\n";
   // 44:     print(x == y)  # False

@@ -33,10 +33,12 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 4: # Default value
   // 5: b0: bool = bool()
   b0 = false;
   // 6: print(b0)  # False
   std::cout << tpy::print_bool(b0) << "\n";
+  // 8: # From bool
   // 9: b1: bool = bool(True)
   b1 = true;
   // 10: print(b1)  # True
@@ -45,6 +47,7 @@ void __tpy_init() {
   b2 = false;
   // 12: print(b2)  # False
   std::cout << tpy::print_bool(b2) << "\n";
+  // 14: # From Int32
   // 15: b3: bool = bool(Int32(0))
   b3 = (0 != 0);
   // 16: print(b3)  # False
@@ -57,6 +60,7 @@ void __tpy_init() {
   b5 = (-(5) != 0);
   // 20: print(b5)  # True
   std::cout << tpy::print_bool(b5) << "\n";
+  // 22: # From int (BigInt)
   // 23: b6: bool = bool(0)
   b6 = (0 != 0);
   // 24: print(b6)  # False

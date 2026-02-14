@@ -19,7 +19,9 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # C++ global import with namespace-qualified name
   // 4: score: Int32 = native_global("engine::score")
+  // 6: # C++ global import without rename
   // 7: lives: Int32 = native_global()
   // 13: main()
   main();

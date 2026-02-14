@@ -111,6 +111,8 @@ void param_reused_as_loop_var(Point& p) {
     // 60:         saved = p  # tpyc: ok
     saved = &(p);
   }
+  // 61:     # After loop, p's depth is restored to param depth (1).
+  // 62:     # Assigning param to saved is safe (same depth).
   // 63:     saved = p  # tpyc: ok
   saved = &(p);
   // 64:     print(saved.x, saved.y)
@@ -282,6 +284,7 @@ void __tpy_init() {
   value_type_ok();
   // 141: foreach_shadow_safe()
   foreach_shadow_safe();
+  // 142: # param_reused_as_loop_var: compile-only test (CPython scoping divergence)
   // 143: sequential_loops_same_var()
   sequential_loops_same_var();
   // 144: same_scope_ok()

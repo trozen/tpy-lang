@@ -19,6 +19,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 40: # Test method override
   // 41: s = Square(5)
   static Square __global_slot_1 = Square(5);
   s = &__global_slot_1;
@@ -33,6 +34,7 @@ void __tpy_init() {
   std::cout << r->describe() << "\n";
   // 47: print(r.area())
   std::cout << r->area() << "\n";
+  // 49: # Test parent class still works
   // 50: base = Shape("Base")
   static Shape __global_slot_3 = Shape("Base");
   base = &__global_slot_3;

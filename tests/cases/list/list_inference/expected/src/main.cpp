@@ -67,22 +67,30 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Global with annotation -> vector (ListType)
   // 4: global_list: list[Int32] = [1, 2, 3]
   static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
   global_list = &__global_slot_1;
+  // 6: # Global without annotation -> also vector (ListType)
   // 7: global_inferred = [10, 20, 30]
   static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
   global_inferred = &__global_slot_2;
+  // 36: # Test global list with annotation
   // 37: print(global_list[0])  # 1
   std::cout << tpy::get_item((*global_list), 0) << "\n";
+  // 39: # Test global list without annotation
   // 40: print(global_inferred[1])  # 20
   std::cout << tpy::get_item((*global_inferred), 1) << "\n";
+  // 42: # Test no mutation (uses array)
   // 43: print(test_no_mutation())  # 1
   std::cout << test_no_mutation() << "\n";
+  // 45: # Test mutation (uses vector)
   // 46: print(test_mutation())  # 4
   std::cout << test_mutation() << "\n";
+  // 48: # Test list param
   // 49: test_list_param()
   test_list_param();
+  // 51: # Test span param
   // 52: print(test_span_param())  # 10
   std::cout << test_span_param() << "\n";
 }

@@ -26,6 +26,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Tests single-element list repeat with repeat_range codegen."""
+  // 4: # Single element repeat - list
   // 5: zeros: list[Int32] = [0] * 5
   static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(5, {0}));
   zeros = &__global_slot_1;
@@ -35,6 +36,7 @@ void __tpy_init() {
   std::cout << tpy::get_item((*zeros), 0) << "\n";
   // 8: print(zeros[4])
   std::cout << tpy::get_item((*zeros), 4) << "\n";
+  // 10: # Single element repeat - StaticList (via constructor)
   // 11: filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
   static StaticList<int32_t, 10> __global_slot_2 = tpy::from_range<StaticList<int32_t, 10>>(tpy::repeat_range<int32_t>(10, {42}));
   filled = &__global_slot_2;
@@ -44,11 +46,13 @@ void __tpy_init() {
   std::cout << tpy::get_item((*filled), 0) << "\n";
   // 14: print(filled[9])
   std::cout << tpy::get_item((*filled), 9) << "\n";
+  // 16: # Zero count repeat - produces empty list
   // 17: empty: list[Int32] = [99] * 0
   static std::vector<int32_t> __global_slot_3 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(0, {99}));
   empty = &__global_slot_3;
   // 18: print(len(empty))
   std::cout << tpy::__len__((*empty)) << "\n";
+  // 20: # Variable count
   // 21: n: Int32 = 3
   n = 3;
   // 22: dynamic: list[Int32] = [7] * n

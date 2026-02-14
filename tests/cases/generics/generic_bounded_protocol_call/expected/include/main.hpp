@@ -44,6 +44,7 @@ struct Printer {
 
   // 20:     def get_str(self, item: T) -> str:
   std::string_view get_str(tpy::param_val_or_ref_t<T> item) {
+    // 21:         # Call protocol method on bounded type parameter inside generic class method
     // 22:         return item.to_str()
     return item.to_str();
   }

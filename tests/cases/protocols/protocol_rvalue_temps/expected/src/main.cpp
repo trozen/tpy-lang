@@ -14,14 +14,17 @@ void show(T_h& h) {
 
 // 32: def main() -> None:
 void main() {
+  // 33:     # Test 1: Constructor call (rvalue)
   // 34:     show(IntBox(42))
   auto __tmp_1 = IntBox(42);
   show(__tmp_1);
+  // 44:     # Test 4: Record subscript (rvalue - __getitem__ returns by value)
   // 45:     container = BoxContainer()
   BoxContainer container = BoxContainer();
   // 46:     show(container[1])  # Should create temp for subscript result
   auto __tmp_2 = container[1];
   show(__tmp_2);
+  // 48:     # Test 5: Multiple temps in one call sequence
   // 49:     show(IntBox(100))
   auto __tmp_3 = IntBox(100);
   show(__tmp_3);

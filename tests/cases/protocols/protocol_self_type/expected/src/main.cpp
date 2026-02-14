@@ -8,6 +8,7 @@ std::string_view __name__;
 // 7: def add_values(x: Addable, y: Addable) -> None:
 template<Addable T_x, Addable T_y>
 void add_values(T_x& x, T_y& y) {
+  // 8:     # Just verifies that x + y is valid for Addable types
   // 9:     result = x + y
   auto result = (x + y);
   // 10:     print(result)

@@ -19,12 +19,14 @@ Point make_point(int32_t x, int32_t y) {
 
 // 16: def take_point(p: Own[Point]) -> Int32:
 int32_t take_point(Point p) {
+  // 17:     # Field access on Own[T] should work - unwraps to the underlying type
   // 18:     return p.x + p.y
   return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 21: def main():
 void main() {
+  // 22:     # Pass Own[Point] directly to Own[Point] param - should work
   // 23:     result: Int32 = take_point(make_point(10, 20))
   int32_t result = take_point(make_point(10, 20));
   // 24:     print(result)

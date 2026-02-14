@@ -37,18 +37,22 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 11: # Test 1: Array literal passed directly to Span parameter
   // 12: print(sum_span([1, 2, 3, 4, 5]))
   std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
+  // 14: # Test 2: Array literal assigned to variable with explicit type, then passed
   // 15: nums: Array[Int32, 3] = [10, 20, 30]
   static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
   nums = &__global_slot_1;
   // 16: print(sum_span(nums))
   std::cout << sum_span(tpy::as_span((*nums))) << "\n";
+  // 18: # Test 3: Array with explicit type annotation
   // 19: arr: Array[Int32, 3] = [100, 200, 300]
   static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
   arr = &__global_slot_2;
   // 20: print(sum_span(arr))
   std::cout << sum_span(tpy::as_span((*arr))) << "\n";
+  // 22: # Test 4: StaticList -> Span conversion
   // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
   static StaticList<int32_t, 4> __global_slot_3 = StaticList<int32_t, 4>();
   items = &__global_slot_3;

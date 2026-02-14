@@ -35,10 +35,12 @@ void __tpy_init() {
   pt->x = 10;
   // 26: pt.y = 20
   pt->y = 20;
+  // 28: # Create explicitly-typed pointer variables
   // 29: ptr: Ptr[Point] = pt
   ptr = &(*pt);
   // 30: cptr: ConstPtr[Point] = pt
   cptr = &(*pt);
+  // 32: # Inference from Ptr[Point] -> PtrHolder[Point]
   // 33: holder = PtrHolder(ptr)
   static PtrHolder<Point> __global_slot_2 = PtrHolder<Point>(ptr);
   holder = &__global_slot_2;
@@ -46,11 +48,13 @@ void __tpy_init() {
   tpy::deref_check(holder->ptr).x = 100;
   // 35: print(pt.x)
   std::cout << pt->x << "\n";
+  // 37: # Inference from ConstPtr[Point] -> ConstPtrHolder[Point]
   // 38: const_holder = ConstPtrHolder(cptr)
   static ConstPtrHolder<Point> __global_slot_3 = ConstPtrHolder<Point>(cptr);
   const_holder = &__global_slot_3;
   // 39: print(const_holder.ptr.y)
   std::cout << tpy::deref_check(const_holder->ptr).y << "\n";
+  // 41: # Inference from Ptr[Point] -> ConstPtrHolder[Point] (Ptr coerces to ConstPtr)
   // 42: const_holder2 = ConstPtrHolder(ptr)
   static ConstPtrHolder<Point> __global_slot_4 = ConstPtrHolder<Point>(ptr);
   const_holder2 = &__global_slot_4;

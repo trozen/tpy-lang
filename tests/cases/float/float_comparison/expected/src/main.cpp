@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 1: # Comparisons
   // 2: x = 3.14
   x = 3.14;
   // 3: print(x > 3.0)

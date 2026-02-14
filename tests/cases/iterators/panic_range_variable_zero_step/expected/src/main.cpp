@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 3: # Variable zero-step should panic, same as literal zero-step
   // 4: step: Int32 = 0
   step = 0;
   // 5: for i in range(1, 5, step):

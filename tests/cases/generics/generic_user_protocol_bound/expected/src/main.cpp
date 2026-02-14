@@ -28,6 +28,7 @@ std::string_view extract_str(tpy::param_val_or_ref_t<C> c) {
 
 // 53: def main() -> None:
 void main() {
+  // 54:     # Test with IntBox
   // 55:     box = IntBox(42)
   IntBox box = IntBox(42);
   // 56:     print(extract(box))
@@ -36,6 +37,7 @@ void main() {
   update<IntBox>(box, 100);
   // 59:     print(extract(box))
   std::cout << extract<IntBox>(box) << "\n";
+  // 61:     # Test with StrBox
   // 62:     sbox = StrBox("hello")
   StrBox sbox = StrBox("hello");
   // 63:     print(extract_str(sbox))

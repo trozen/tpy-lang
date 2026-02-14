@@ -14,6 +14,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
+  // 24: # Test with generic parent
   // 25: lc = LabeledContainer("count", 42)
   static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);
   lc = &__global_slot_1;

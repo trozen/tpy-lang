@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 19: def main() -> None:
 void main() {
+  // 20:     # Narrowed Optional — flow analysis proves non-None
   // 21:     r: Ref | None = Ref(Point(10, 20))
   Ref __slot_1 = Ref(Point(10, 20));
   Ref* r = &__slot_1;

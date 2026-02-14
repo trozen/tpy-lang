@@ -13,18 +13,22 @@ int32_t sum_array(std::array<int32_t, 3>& arr) {
 
 // 17: def main():
 void main() {
+  // 18:     # List literal assigned to Array variable
   // 19:     arr1: Array[Int32, 3] = [1, 2, 3]
   std::array<int32_t, 3> arr1 = {1, 2, 3};
   // 20:     print(sum_array(arr1))  # 6
   std::cout << sum_array(arr1) << "\n";
+  // 22:     # List literal passed directly to Array parameter
   // 23:     print(sum_array([10, 20, 30]))  # 60
   std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
   std::cout << sum_array(__tmp_1) << "\n";
+  // 25:     # List literal in variable initializer
   // 26:     result: Int32 = sum_array([100, 200, 300])
   std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
   int32_t result = sum_array(__tmp_2);
   // 27:     print(result)  # 600
   std::cout << result << "\n";
+  // 29:     # List literal in condition
   // 30:     if sum_array([1, 1, 1]) > 0:
   std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
   if ((sum_array(__tmp_3) > 0)) {
@@ -34,6 +38,7 @@ void main() {
     // 33:         print(0)
     std::cout << 0 << "\n";
   }
+  // 35:     # List literal in while condition (edge case)
   // 36:     count: Int32 = 0
   int32_t count = 0;
   // 37:     while sum_array([1, 0, 0]) > count:

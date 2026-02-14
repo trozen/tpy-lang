@@ -33,6 +33,7 @@ void main() {
   r.corner = Point();
   // 56:     r.width = 10                  # tpyc: ok
   r.width = 10;
+  // 58:     # Optional field: function returning T | None
   // 59:     h: OptHolder = OptHolder()
   OptHolder h = OptHolder();
   // 60:     pts: list[Point] = list()
@@ -41,6 +42,7 @@ void main() {
   h.value = tpy::ptr_to_optional(find_point(pts, 1));
   // 62:     h.value = copy(find_point(pts, 1))  # tpyc: ok
   h.value = tpy::ptr_to_optional(find_point(pts, 1));
+  // 63:     # Optional field: field-to-field (lvalue)
   // 64:     h.value = h.value             # tpyc: warning(/copies Point | None into field/)
   h.value = h.value;
   // 65:     h.value = copy(h.value)       # tpyc: ok

@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 3: def classify(x: Int32) -> Int32:
 int32_t classify(int32_t x) {
+  // 4:     # Test elif
   // 5:     if x < 0:
   if ((x < 0)) {
     // 6:         return -1
@@ -25,6 +26,7 @@ int32_t classify(int32_t x) {
 
 // 12: def check_range(x: Int32) -> Int32:
 int32_t check_range(int32_t x) {
+  // 13:     # Test and/or
   // 14:     if x >= 0 and x <= 10:
   if (((x >= 0) && (x <= 10))) {
     // 15:         return 1
@@ -36,6 +38,7 @@ int32_t check_range(int32_t x) {
 
 // 18: def check_bounds(x: Int32) -> Int32:
 int32_t check_bounds(int32_t x) {
+  // 19:     # Test or
   // 20:     if x < 0 or x > 100:
   if (((x < 0) || (x > 100))) {
     // 21:         return 1
@@ -47,6 +50,7 @@ int32_t check_bounds(int32_t x) {
 
 // 24: def complex_condition(a: Int32, b: Int32) -> Int32:
 int32_t complex_condition(int32_t a, int32_t b) {
+  // 25:     # Test combined and/or with elif
   // 26:     if a > 0 and b > 0:
   if (((a > 0) && (b > 0))) {
     // 27:         return 1

@@ -36,14 +36,17 @@ void main() {
   std::vector<int32_t> nums = {10, 20, 30, 40};
   // 29:     wrapper: IntWrapper = IntWrapper(nums)
   IntWrapper wrapper = IntWrapper(nums);
+  // 31:     # Direct indexing on user record
   // 32:     print(wrapper[0])      # 10
   std::cout << wrapper[0] << "\n";
   // 33:     print(wrapper[-1])     # 40
   std::cout << wrapper[static_cast<int32_t>(tpy::__len__(wrapper) - 1)] << "\n";
+  // 35:     # User record conforms to Sequence[Int32]
   // 36:     print(sum_seq(wrapper))  # 100
   std::cout << sum_seq(wrapper) << "\n";
   // 37:     print(first(wrapper))    # 10
   std::cout << first(wrapper) << "\n";
+  // 39:     # Same functions work with regular list
   // 40:     print(sum_seq(nums))     # 100
   std::cout << sum_seq(nums) << "\n";
   // 41:     print(first(nums))       # 10

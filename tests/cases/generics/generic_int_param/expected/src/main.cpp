@@ -7,6 +7,7 @@ std::string_view __name__;
 
 // 11: def main() -> None:
 void main() {
+  // 12:     # Test basic integer type parameter
   // 13:     c1: Container[str, 10] = Container[str, 10]("hello")
   Container<std::string_view, 10> c1 = Container<std::string_view, 10>("hello");
   // 14:     print(c1.value)

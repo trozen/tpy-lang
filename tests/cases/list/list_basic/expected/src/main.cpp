@@ -47,6 +47,7 @@ void __tpy_init() {
   std::cout << sum_list((*mem)) << "\n";
   // 15: print(len(mem))
   std::cout << tpy::__len__((*mem)) << "\n";
+  // 17: # Unannotated list repetition (should infer BigInt)
   // 18: data = [0] * 5
   static std::vector<tpy::BigInt> __global_slot_2 = tpy::from_range<std::vector<tpy::BigInt>>(tpy::repeat_range<tpy::BigInt>(5, {tpy::BigInt(0)}));
   data = &__global_slot_2;
@@ -54,6 +55,7 @@ void __tpy_init() {
   tpy::set_item((*data), 0, 100);
   // 20: print(data[0])
   std::cout << tpy::get_item((*data), 0) << "\n";
+  // 22: # chr() with BigInt element from list
   // 23: chars = [72, 73]  # 'H', 'I'
   static std::vector<tpy::BigInt> __global_slot_3 = {72, 73};
   chars = &__global_slot_3;

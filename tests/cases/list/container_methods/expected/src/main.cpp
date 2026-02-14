@@ -32,6 +32,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Tests that methods work on all container types via unified module lookup."""
+  // 4: # StaticList methods (append, len, subscript)
   // 5: sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
   static StaticList<int32_t, 8> __global_slot_1 = StaticList<int32_t, 8>();
   sl = &__global_slot_1;
@@ -47,6 +48,7 @@ void __tpy_init() {
   std::cout << tpy::get_item((*sl), 0) << "\n";
   // 11: print(sl[2])
   std::cout << tpy::get_item((*sl), 2) << "\n";
+  // 13: # Array methods (subscript, len)
   // 14: arr: Array[Int32, 3] = [100, 200, 300]
   static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
   arr = &__global_slot_2;
@@ -62,6 +64,7 @@ void __tpy_init() {
   std::cout << (*arr)[1] << "\n";
   // 27: span_ops(arr)
   span_ops(tpy::as_span((*arr)));
+  // 29: # list methods
   // 30: nums: list[Int32] = [1, 2, 3]
   static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
   nums = &__global_slot_3;

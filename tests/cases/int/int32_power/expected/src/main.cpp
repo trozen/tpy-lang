@@ -24,20 +24,25 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: """Test Int32 power operator."""
+  // 4: # Basic power
   // 5: x: Int32 = 2
   x = 2;
   // 6: print(x ** 10)  # 1024
   std::cout << (tpy::pow_check<int32_t>(x, 10)) << "\n";
+  // 8: # Power with literal exponent
   // 9: y: Int32 = 3
   y = 3;
   // 10: print(y ** 4)   # 81
   std::cout << (tpy::pow_check<int32_t>(y, 4)) << "\n";
+  // 12: # Power of 0
   // 13: z: Int32 = 5
   z = 5;
   // 14: print(z ** 0)   # 1
   std::cout << (tpy::pow_check<int32_t>(z, 0)) << "\n";
+  // 16: # Power of 1
   // 17: print(x ** 1)   # 2
   std::cout << (tpy::pow_check<int32_t>(x, 1)) << "\n";
+  // 19: # Negative base
   // 20: n: Int32 = -2
   n = -(2);
   // 21: print(n ** 3)   # -8
