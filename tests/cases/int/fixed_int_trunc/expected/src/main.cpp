@@ -38,6 +38,13 @@ void __tpy_init() {
   std::cout << static_cast<int>(static_cast<uint8_t>(42)) << "\n";
   // 23: print(Int8.trunc(Int16(-100)))  # -100
   std::cout << static_cast<int>(static_cast<int8_t>(-(100))) << "\n";
+  // 25: # BigInt truncation
+  // 26: print(UInt8.trunc(300))    # 44
+  std::cout << static_cast<int>(static_cast<uint8_t>(300)) << "\n";
+  // 27: print(UInt8.trunc(-1))     # 255
+  std::cout << static_cast<int>(static_cast<uint8_t>(-(1))) << "\n";
+  // 28: print(Int8.trunc(-129))    # 127
+  std::cout << static_cast<int>(static_cast<int8_t>(-(129))) << "\n";
 }
 
 } // namespace tpy_user::main

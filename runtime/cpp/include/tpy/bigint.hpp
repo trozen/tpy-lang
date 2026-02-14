@@ -313,6 +313,24 @@ public:
         tpy_panic(msg.c_str());
     }
 
+    // Truncating conversion to any fixed-width integer type (modular reduction, never panics)
+    template<typename T>
+    T to_fixed_trunc() const {
+        constexpr int bits = sizeof(T) * 8;
+        if (is_small()) {
+            // Small path: just truncate the int64_t value
+            return static_cast<T>(small_value());
+        }
+        // GMP path: extract low N bits via mpz_get_ui / mpz_tdiv_r_2exp
+        mpz_t tmp;
+        mpz_init(tmp);
+        mpz_tdiv_r_2exp(tmp, gmp_ptr(), bits);
+        // mpz_tdiv_r_2exp result is always non-negative
+        uint64_t low_bits = mpz_get_ui(tmp);
+        mpz_clear(tmp);
+        return static_cast<T>(low_bits);
+    }
+
     // Conversion to double (for float operations)
     double to_double() const {
         if (is_small()) {

@@ -21,3 +21,8 @@ print(Int8.trunc(UInt8(200)))  # -56
 # In-range values pass through unchanged
 print(UInt8.trunc(Int32(42)))   # 42
 print(Int8.trunc(Int16(-100)))  # -100
+
+# BigInt truncation
+print(UInt8.trunc(300))    # 44
+print(UInt8.trunc(-1))     # 255
+print(Int8.trunc(-129))    # 127
