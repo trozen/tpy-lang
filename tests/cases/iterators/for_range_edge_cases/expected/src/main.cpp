@@ -60,7 +60,14 @@ void __tpy_init() {
     // 32:     print(i)
     std::cout << i << "\n";
   }
-  // 34: print("done")
+  // 34: # Compound expression -- value unknown, should use BigInt fallback
+  // 35: for i in range(1 + 2):
+  tpy::BigInt __stop_9 = ((tpy::BigInt(1)) + (tpy::BigInt(2)));
+  for (tpy::BigInt i = 0; i < __stop_9; ++i) {
+    // 36:     print(i)
+    std::cout << i << "\n";
+  }
+  // 38: print("done")
   std::cout << "done" << "\n";
 }
 

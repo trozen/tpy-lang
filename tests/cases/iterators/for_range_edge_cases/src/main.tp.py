@@ -31,4 +31,8 @@ for i in range(0, 10, 100):
 for i in range(10, 0, -100):
     print(i)
 
+# Compound expression -- value unknown, should use BigInt fallback
+for i in range(1 + 2):
+    print(i)
+
 print("done")

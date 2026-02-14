@@ -1255,13 +1255,15 @@ def sum_iter(it: OptIterator[Int32]) -> Int32:
 print(sum_iter(Counter(5)))        # 10
 ```
 
-**Codegen**: `for i in range(...)` is optimized to a C-style counter loop. `range()` accepts all fixed-width integer types (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64) as well as BigInt, preserving the element type in the loop variable:
+**Codegen**: `for i in range(...)` is optimized to a C-style counter loop. `range()` accepts all fixed-width integer types (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64) as well as BigInt, preserving the element type in the loop variable.
+
+Bare integer literals default to BigInt (`range(10)` uses `Range<BigInt>`). For Int32 ranges, use explicit typed arguments: `range(Int32(10))` or pass Int32 variables.
 
 ```cpp
-// range(Int8(0), Int8(10)) → int8_t loop
+// range(Int8(0), Int8(10)) -> int8_t loop
 for (int8_t i = 0; i < 10; ++i) { ... }
 
-// range(Int32(0), Int32(100), Int32(3)) → int32_t loop with upfront overflow check
+// range(Int32(0), Int32(100), Int32(3)) -> int32_t loop with upfront overflow check
 tpy::range_check_overflow<int32_t>(0, 100, 3);
 for (int32_t i = 0; i < 100; i += 3) { ... }
 ```

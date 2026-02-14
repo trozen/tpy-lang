@@ -42,7 +42,7 @@ class ReassignmentInference:
     def record_write(self, name: str, rhs_expr: TpyExpr, rhs_type: TpyType) -> None:
         """Record assignment history for potential later retro-validation."""
         self.ctx.write_history.setdefault(name, []).append((rhs_type, rhs_expr))
-        if isinstance(rhs_type, IntLiteralType):
+        if isinstance(rhs_type, IntLiteralType) and rhs_type.value is not None:
             self.ctx.literal_values.setdefault(name, []).append(rhs_type.value)
         elif name in self.ctx.literal_values:
             # Non-literal write ends literal-only tracking for narrowing decisions.

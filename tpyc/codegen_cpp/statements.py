@@ -82,7 +82,13 @@ class StatementGenerator:
         self.ctx.var_types = {pname: ptype for pname, ptype in params}
         self.ctx.local_scope_names = {pname for pname, _ in params}
         self.ctx.global_declared_vars = self.ctx.analyzer.function_global_decls.get(id(func), set())
-        self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.scan_reassigned_vars(body)
+        scan = self.ctx.analyzer.function_scan_results.get(id(func))
+        if scan:
+            self.ctx.reassigned_vars = scan.reassigned - self.ctx.global_declared_vars
+            self.ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - self.ctx.global_declared_vars
+        else:
+            self.ctx.reassigned_vars = set()
+            self.ctx.rvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
         # Optional non-value params are T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
@@ -103,62 +109,6 @@ class StatementGenerator:
         self.ctx.local_scope_names = set()
         self.ctx.indent_level = 0
         self.ctx.current_ns = None
-
-    def scan_reassigned_vars(self, stmts: list[TpyStmt]) -> tuple[set[str], set[str]]:
-        """Pre-scan a function body to find variables that are reassigned after first declaration.
-
-        Returns (reassigned, rvalue_reassigned) where rvalue_reassigned is the
-        subset that has at least one rvalue reassignment (call, constructor, etc.).
-        """
-        declared: set[str] = set()
-        reassigned: set[str] = set()
-        rvalue_reassigned: set[str] = set()
-        self._scan_stmts(stmts, declared, reassigned, rvalue_reassigned)
-        # Global-declared vars are not local reassignments
-        reassigned -= self.ctx.global_declared_vars
-        rvalue_reassigned -= self.ctx.global_declared_vars
-        return reassigned, rvalue_reassigned
-
-    @staticmethod
-    def _is_scan_rvalue(expr: TpyExpr | None) -> bool:
-        """Conservative rvalue check for pre-scan (no type registry needed)."""
-        if expr is None:
-            return False
-        from ..parse import (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
-                             TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                             TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat,
-                             TpyCoerce)
-        if isinstance(expr, TpyCoerce):
-            return StatementGenerator._is_scan_rvalue(expr.expr)
-        if isinstance(expr, (TpyName, TpySubscript)):
-            return False
-        from ..parse import TpyFieldAccess
-        if isinstance(expr, TpyFieldAccess):
-            return StatementGenerator._is_scan_rvalue(expr.obj)
-        return isinstance(expr, (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
-                                 TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                                 TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat))
-
-    def _scan_stmts(self, stmts: list[TpyStmt], declared: set[str],
-                    reassigned: set[str], rvalue_reassigned: set[str]) -> None:
-        for stmt in stmts:
-            if isinstance(stmt, TpyVarDecl):
-                if stmt.name in declared:
-                    reassigned.add(stmt.name)
-                    if self._is_scan_rvalue(stmt.init):
-                        rvalue_reassigned.add(stmt.name)
-                else:
-                    declared.add(stmt.name)
-            elif isinstance(stmt, TpyAssign):
-                if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
-                    reassigned.add(stmt.target.name)
-                    if self._is_scan_rvalue(stmt.value):
-                        rvalue_reassigned.add(stmt.target.name)
-            if isinstance(stmt, TpyIf):
-                self._scan_stmts(stmt.then_body, declared, reassigned, rvalue_reassigned)
-                self._scan_stmts(stmt.else_body, declared, reassigned, rvalue_reassigned)
-            elif isinstance(stmt, (TpyWhile, TpyForEach)):
-                self._scan_stmts(stmt.body, declared, reassigned, rvalue_reassigned)
 
     def gen_stmt(self, out: TextIO, stmt: TpyStmt) -> None:
         """Generate a statement."""

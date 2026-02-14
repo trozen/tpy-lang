@@ -52,7 +52,8 @@ def type_matches_numeric(
         return True
     if isinstance(arg_type, IntLiteralType):
         if isinstance(param_type, FixedIntType):
-            # Range-check: literal must fit in the target fixed-int type
+            if arg_type.value is None:
+                return True  # Unknown value -- can't range-check, allow match
             return param_type.min_value <= arg_type.value <= param_type.max_value
         if isinstance(param_type, (BigIntType, IntLiteralType)):
             return True
@@ -127,15 +128,15 @@ def resolve_overload(
             candidates.append((score, narrowing, overload))
 
     if candidates:
-        # When return types vary across candidates, IntLiteral->Int32 is also
+        # When return types vary across candidates, IntLiteral->FixedInt is
         # narrowing (Python's default int is BigInt, so prefer that).
-        # When return types are identical (e.g. Char(97)), Int32 is fine.
+        # When return types are identical (e.g. Char(97)), FixedInt is fine.
         if len(candidates) > 1 and not all(
             c[2].return_type == candidates[0][2].return_type for c in candidates[1:]
         ):
             for i, (score, narrowing, overload) in enumerate(candidates):
                 extra = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
-                            if isinstance(ptype, Int32Type) and isinstance(arg_t, IntLiteralType))
+                            if isinstance(ptype, FixedIntType) and isinstance(arg_t, IntLiteralType))
                 candidates[i] = (score, narrowing + extra, overload)
         # Best: most numeric matches, then fewest narrowing conversions
         candidates.sort(key=lambda x: (-x[0], x[1]))

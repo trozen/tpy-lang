@@ -113,7 +113,7 @@ COERCIONS: list[Coercion] = [
         name="int_literal_to_fixed_int",
         from_type=IntLiteralType,
         to_type=FixedIntType,
-        check_range=lambda lit, target: target.min_value <= lit.value <= target.max_value,
+        check_range=lambda lit, target: lit.value is None or (target.min_value <= lit.value <= target.max_value),
     ),
 
     # Widening between fixed-width integers (e.g. Int8 -> Int32, UInt8 -> Int16)

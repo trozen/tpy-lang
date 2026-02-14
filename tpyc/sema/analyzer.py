@@ -25,6 +25,7 @@ from .calls import CallAnalyzer
 from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
+from ..prescan import ScanResult, scan_reassigned_vars
 from tpyc import modules as builtin_modules
 
 
@@ -77,6 +78,10 @@ class SemanticAnalyzer:
         self.methods.set_cross_deps(self.expr, self.calls)
         self.stmts.set_cross_deps(self.expr)
         self.narrowing.set_readonly_check(StatementAnalyzer._is_readonly_call_expr)
+
+        # Per-function/method pre-scan results (shared with codegen)
+        self.function_scan_results: dict[int, ScanResult] = {}
+        self.top_level_scan_result: ScanResult | None = None
 
         # Per-function/method hoisted vars (scope escape phase 2)
         self.function_hoisted_vars: dict[int, set[str]] = {}
@@ -274,6 +279,9 @@ class SemanticAnalyzer:
             local_ns.bind_variable(pname, resolved_ptype)
         self.ctx.current_ns = local_ns
 
+        # Pre-scan for reassigned variables (shared with codegen)
+        scan = scan_reassigned_vars(func.body)
+
         # Analyze body
         for stmt in func.body:
             self.stmts.analyze_stmt(stmt)
@@ -282,6 +290,7 @@ class SemanticAnalyzer:
         # Resolve pending list types after analyzing the full function
         self.list_tracker.resolve_pending_list_types()
 
+        self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
             self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
         if self.ctx.global_declarations:
@@ -341,6 +350,9 @@ class SemanticAnalyzer:
                     method
                 )
 
+            # Pre-scan for reassigned variables (shared with codegen)
+            scan = scan_reassigned_vars(method.body)
+
             # Analyze body
             for stmt in method.body:
                 self.stmts.analyze_stmt(stmt)
@@ -361,6 +373,7 @@ class SemanticAnalyzer:
             # Resolve pending list types after analyzing the full method
             self.list_tracker.resolve_pending_list_types()
 
+            self.function_scan_results[id(method)] = scan
             if self.ctx.hoisted_vars:
                 self.function_hoisted_vars[id(method)] = self.ctx.hoisted_vars.copy()
             if self.ctx.global_declarations:
@@ -387,6 +400,9 @@ class SemanticAnalyzer:
         # Set up namespace - use global_ns for top-level (globals are visible)
         # New local variables will be added to global_ns as they're declared
         self.ctx.current_ns = self.ctx.global_ns
+
+        # Pre-scan for codegen
+        self.top_level_scan_result = scan_reassigned_vars(stmts)
 
         for stmt in stmts:
             self.stmts.analyze_stmt(stmt)

@@ -307,7 +307,13 @@ class FunctionGenerator:
                 if typ and not typ.is_value_type()
             }
         self.ctx.slots.reset(global_scope=True)
-        self.ctx.reassigned_vars, self.ctx.rvalue_reassigned_vars = self.statements.scan_reassigned_vars(stmts)
+        scan = self.ctx.analyzer.top_level_scan_result
+        if scan:
+            self.ctx.reassigned_vars = scan.reassigned - self.ctx.global_declared_vars
+            self.ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - self.ctx.global_declared_vars
+        else:
+            self.ctx.reassigned_vars = set()
+            self.ctx.rvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.top_level_hoisted_vars.copy()
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1

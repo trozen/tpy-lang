@@ -334,7 +334,7 @@ class ExpressionAnalyzer:
             # Still resolve for codegen (bitwise ops need the cpp template)
             if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
                 expr.resolved_binop = result
-            return IntLiteralType(0)  # Value not tracked for compound expressions
+            return IntLiteralType()  # Value not tracked for compound expressions
 
         # Protocol-typed operands - look up the dunder method in the protocol
         # For Self in protocols, Self binds to the protocol itself when used as a value type
@@ -402,7 +402,8 @@ class ExpressionAnalyzer:
                 # Still resolve for codegen (needs cpp template)
                 if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
-                return IntLiteralType(-effective_type.value)
+                neg = -effective_type.value if effective_type.value is not None else None
+                return IntLiteralType(neg)
             if expr.op == "~":
                 # Bitwise not on literal - treat as Int32
                 # Still resolve for codegen

@@ -502,7 +502,7 @@ class CallAnalyzer:
                         and isinstance(arg_types[0], IntLiteralType)):
                     lit = arg_types[0]
                     target = ctor.return_type
-                    if not (target.min_value <= lit.value <= target.max_value):
+                    if lit.value is not None and not (target.min_value <= lit.value <= target.max_value):
                         raise self.ctx.error(
                             f"{target} overflow: {lit.value} is outside range "
                             f"[{target.min_value}, {target.max_value}]",

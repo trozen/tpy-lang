@@ -330,14 +330,21 @@ class IntLiteralType(TpyType):
     - Int32 + IntLiteral -> Int32
     - BigInt + IntLiteral -> BigInt
     - IntLiteral + IntLiteral -> BigInt (Python default)
+
+    value is None for compound expressions (e.g. 2+3) where the result
+    isn't tracked. A concrete int (including 0) means a known literal value.
     """
-    value: int = 0  # Store value for potential range checking
+    value: int | None = None
 
     def to_cpp(self) -> str:
         # Should be resolved before codegen; fallback to literal value
+        if self.value is None:
+            return "0"
         return str(self.value)
 
     def __str__(self) -> str:
+        if self.value is None:
+            return "IntLiteral"
         return f"IntLiteral({self.value})"
 
     def is_value_type(self) -> bool:
