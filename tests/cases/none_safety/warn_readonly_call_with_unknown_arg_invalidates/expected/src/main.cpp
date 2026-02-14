@@ -12,7 +12,7 @@ int32_t mutate_and_get(Box& b) {
     // 13:         b.value = b.value + 1
     b.value = (tpy::int32_add((*b.value), 1));
     // 14:         return b.value + 0
-    return (tpy::int32_add(tpy::deref_optional(b.value), 0));
+    return (tpy::int32_add(tpy::deref_optional_check(b.value), 0));
   }
   // 15:     return 0
   return 0;
@@ -32,7 +32,7 @@ int32_t use(Box& b) {
     // 25:         observe(mutate_and_get(b))
     observe(mutate_and_get(b));
     // 26:         return b.value + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::int32_add(tpy::deref_optional(b.value), 1));
+    return (tpy::int32_add(tpy::deref_optional_check(b.value), 1));
   }
   // 27:     return 0
   return 0;

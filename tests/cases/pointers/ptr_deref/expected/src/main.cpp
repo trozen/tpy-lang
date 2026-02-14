@@ -12,15 +12,15 @@ void main() {
   // 12:     p: Ptr[Int32] = Ptr(x)
   int32_t* p = &x;
   // 13:     print(p.__deref__())
-  std::cout << tpy::deref_ptr(p) << "\n";
+  std::cout << tpy::deref_check(p) << "\n";
   // 15:     pt: Point = Point(10, 20)
   Point pt = Point(10, 20);
   // 16:     pp: Ptr[Point] = Ptr(pt)
   Point* pp = &pt;
   // 17:     print(pp.__deref__().x)
-  std::cout << tpy::deref_ptr(pp).x << "\n";
+  std::cout << tpy::deref_check(pp).x << "\n";
   // 18:     print(pp.__deref__().y)
-  std::cout << tpy::deref_ptr(pp).y << "\n";
+  std::cout << tpy::deref_check(pp).y << "\n";
 }
 
 void __tpy_init() {

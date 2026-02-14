@@ -10,7 +10,7 @@ int32_t f(std::optional<int32_t> a, std::optional<int32_t> b) {
   // 5:     assert a is not None
   if (!((a.has_value()))) tpy::tpy_panic("assertion failed");
   // 6:     return a + b  # tpyc: warning(/Potential None access/)
-  return (tpy::int32_add((*a), tpy::deref_optional(b)));
+  return (tpy::int32_add((*a), tpy::deref_optional_check(b)));
 }
 
 void __tpy_init() {

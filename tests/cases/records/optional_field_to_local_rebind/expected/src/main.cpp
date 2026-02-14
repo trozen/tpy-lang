@@ -20,7 +20,7 @@ void test(Holder& h) {
   // 25:     print(p is None)
   std::cout << tpy::print_bool((p == nullptr)) << "\n";
   // 26:     print(p.x)
-  std::cout << tpy::deref_ptr(p).x << "\n";
+  std::cout << tpy::deref_check(p).x << "\n";
   // 28:     p = None
   p = nullptr;
   // 29:     print(p is None)
@@ -30,7 +30,7 @@ void test(Holder& h) {
   // 32:     p = h.value
   p = tpy::optional_to_ptr(h.value);
   // 33:     print(p.y)
-  std::cout << tpy::deref_ptr(p).y << "\n";
+  std::cout << tpy::deref_check(p).y << "\n";
 }
 
 void __tpy_init() {

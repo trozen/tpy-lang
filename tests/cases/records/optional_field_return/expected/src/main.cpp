@@ -29,9 +29,9 @@ void __tpy_init() {
   // 31: print(r is not None)
   std::cout << tpy::print_bool((r != nullptr)) << "\n";
   // 32: print(r.x)
-  std::cout << tpy::deref_ptr(r).x << "\n";
+  std::cout << tpy::deref_check(r).x << "\n";
   // 33: print(r.y)
-  std::cout << tpy::deref_ptr(r).y << "\n";
+  std::cout << tpy::deref_check(r).y << "\n";
 }
 
 } // namespace tpy_user::main

@@ -75,7 +75,7 @@ class ExpressionGenerator:
             if proven_optional_expr:
                 result = f"(*{result})"
             elif isinstance(analyzed_type, OptionalType):
-                result = f"tpy::deref_optional({result})"
+                result = f"tpy::deref_optional_check({result})"
             else:
                 result = f"(*{result})"
         return result
@@ -276,7 +276,7 @@ class ExpressionGenerator:
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
             # Optional value operands in comparisons must be unwrapped:
             # - narrowed/proven: unchecked (*x)
-            # - unproven: checked tpy::deref_optional(x)
+            # - unproven: checked tpy::deref_optional_check(x)
             left_target = None
             right_target = None
             if isinstance(left_type, OptionalType) and left_type.inner.is_value_type():
@@ -691,10 +691,10 @@ class ExpressionGenerator:
         # Optional with runtime null check — must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional({obj}){deref_chain}.{expr.method}({args})"
+                return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.method}({args})"
             # For pointer-globals with wrapper storage, this yields raw `T*`.
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_ptr({ptr_expr}){deref_chain}.{expr.method}({args})"
+            return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}({args})"
         # User-defined Deref: emit .__deref__() calls before method call
         if deref_chain and obj_type and not obj_type.is_pointer():
             is_indirect = self.ctx.is_indirect_name(expr.obj)
@@ -704,7 +704,7 @@ class ExpressionGenerator:
         if obj_type and obj_type.is_pointer():
             if expr.ptr_non_null:
                 return f"{obj}->{expr.method}({args})"
-            return f"tpy::deref_ptr({obj}).{expr.method}({args})"
+            return f"tpy::deref_check({obj}).{expr.method}({args})"
         use_arrow = self.ctx.is_indirect_name(expr.obj) or is_optional_ptr
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{expr.method}({args})"
@@ -738,9 +738,9 @@ class ExpressionGenerator:
         # Optional with runtime null check — must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional({obj}){deref_chain}.{expr.field}"
+                return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.field}"
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_ptr({ptr_expr}){deref_chain}.{expr.field}"
+            return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.field}"
         # User-defined Deref: emit .__deref__() calls before field access
         if deref_chain and obj_type and not obj_type.is_pointer():
             if is_indirect or is_optional_ptr:
@@ -753,7 +753,7 @@ class ExpressionGenerator:
                 return f"(*{obj})->{expr.field}"
             if expr.ptr_non_null:
                 return f"{obj}->{expr.field}"
-            return f"tpy::deref_ptr({obj}).{expr.field}"
+            return f"tpy::deref_check({obj}).{expr.field}"
         if is_indirect or is_optional_ptr:
             return f"{obj}->{expr.field}"
         return f"{obj}.{expr.field}"
@@ -825,11 +825,11 @@ class ExpressionGenerator:
             and not analyzed_obj_type.inner.is_value_type()
         ):
             if isinstance(expr.obj, TpyFieldAccess):
-                subscript_obj = f"tpy::deref_optional({obj})"
+                subscript_obj = f"tpy::deref_optional_check({obj})"
             else:
                 # For pointer-globals with wrapper storage, this yields raw `T*`.
                 ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-                subscript_obj = f"tpy::deref_ptr({ptr_expr})"
+                subscript_obj = f"tpy::deref_check({ptr_expr})"
         index_expr = self.gen_index_expr(subscript_obj, expr.index, index_type)
 
         # Use registry lookup for __getitem__

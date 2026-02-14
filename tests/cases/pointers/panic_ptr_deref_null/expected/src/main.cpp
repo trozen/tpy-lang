@@ -10,7 +10,7 @@ void main() {
   // 4:     p: Ptr[Int32] = Ptr[Int32]()
   int32_t* p = nullptr;
   // 5:     print(p.__deref__())
-  std::cout << tpy::deref_ptr(p) << "\n";
+  std::cout << tpy::deref_check(p) << "\n";
 }
 
 void __tpy_init() {

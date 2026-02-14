@@ -385,7 +385,7 @@ void test_staticlist_get_mut() {
   // 251:     p: Ptr[Item] = items.get_mut(1)
   Item* p = tpy::get_mut(items, 1);
   // 252:     p.value = 200
-  tpy::deref_ptr(p).value = 200;
+  tpy::deref_check(p).value = 200;
   // 254:     print_item_list(items)
   print_item_list(items);
 }

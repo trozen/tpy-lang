@@ -15,13 +15,13 @@ int32_t take_int32(int32_t n) {
 // 27: def take_ptr(p: Ptr[Point]) -> None:
 void take_ptr(Point* p) {
   // 28:     p.x = p.x + 1
-  tpy::deref_ptr(p).x = (tpy::int32_add(tpy::deref_ptr(p).x, 1));
+  tpy::deref_check(p).x = (tpy::int32_add(tpy::deref_check(p).x, 1));
 }
 
 // 30: def take_const_ptr(p: ConstPtr[Point]) -> Int32:
 int32_t take_const_ptr(const Point* p) {
   // 31:     return p.x + p.y
-  return (tpy::int32_add(tpy::deref_ptr(p).x, tpy::deref_ptr(p).y));
+  return (tpy::int32_add(tpy::deref_check(p).x, tpy::deref_check(p).y));
 }
 
 // 33: def take_point(p: Point) -> Int32:
@@ -92,13 +92,13 @@ void test_record_to_ptr() {
   // 82:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 83:     print(ptr.x)  # 10
-  std::cout << tpy::deref_ptr(ptr).x << "\n";
+  std::cout << tpy::deref_check(ptr).x << "\n";
   // 86:     pt2: Point = Point(30, 40)
   Point pt2 = Point(30, 40);
   // 87:     ptr = pt2
   ptr = &pt2;
   // 88:     print(ptr.x)  # 30
-  std::cout << tpy::deref_ptr(ptr).x << "\n";
+  std::cout << tpy::deref_check(ptr).x << "\n";
   // 91:     pt3: Point = Point(50, 60)
   Point pt3 = Point(50, 60);
   // 92:     take_ptr(pt3)
@@ -117,13 +117,13 @@ void test_record_to_const_ptr() {
   // 104:     cptr: ConstPtr[Point] = pt
   const Point* cptr = &pt;
   // 105:     print(cptr.x)  # 5
-  std::cout << tpy::deref_ptr(cptr).x << "\n";
+  std::cout << tpy::deref_check(cptr).x << "\n";
   // 108:     pt2: Point = Point(25, 35)
   Point pt2 = Point(25, 35);
   // 109:     cptr = pt2
   cptr = &pt2;
   // 110:     print(cptr.x)  # 25
-  std::cout << tpy::deref_ptr(cptr).x << "\n";
+  std::cout << tpy::deref_check(cptr).x << "\n";
   // 113:     pt3: Point = Point(100, 200)
   Point pt3 = Point(100, 200);
   // 114:     print(take_const_ptr(pt3))  # 300
@@ -134,7 +134,7 @@ void test_record_to_const_ptr() {
 // 119: def return_record_from_ptr(p: Ptr[Point]) -> Point:
 Point& return_record_from_ptr(Point* p) {
   // 120:     return p  # Ptr -> Record in return
-  return tpy::deref_ptr(p);
+  return tpy::deref_check(p);
 }
 
 // 123: def test_ptr_to_record() -> None:
@@ -146,7 +146,7 @@ void test_ptr_to_record() {
   // 127:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 130:     copy: Point = ptr
-  Point* copy = &(tpy::deref_ptr(ptr));
+  Point* copy = &(tpy::deref_check(ptr));
   // 131:     print(copy.x)  # 7
   std::cout << copy->x << "\n";
   // 134:     pt2: Point = Point(9, 10)
@@ -154,7 +154,7 @@ void test_ptr_to_record() {
   // 135:     ptr2: Ptr[Point] = pt2
   Point* ptr2 = &pt2;
   // 136:     copy = ptr2
-  copy = &(tpy::deref_ptr(ptr2));
+  copy = &(tpy::deref_check(ptr2));
   // 137:     print(copy.x)  # 9
   std::cout << copy->x << "\n";
   // 140:     pt3: Point = Point(11, 12)
@@ -168,14 +168,14 @@ void test_ptr_to_record() {
   // 146:     ptr4: Ptr[Point] = pt4
   Point* ptr4 = &pt4;
   // 147:     print(take_point(ptr4))  # 27
-  std::cout << take_point(tpy::deref_ptr(ptr4)) << "\n";
+  std::cout << take_point(tpy::deref_check(ptr4)) << "\n";
 }
 
 // # --- Ptr -> ConstPtr coercion ---
 // 152: def take_const_ptr_val(p: ConstPtr[Point]) -> Int32:
 int32_t take_const_ptr_val(const Point* p) {
   // 153:     return p.x
-  return tpy::deref_ptr(p).x;
+  return tpy::deref_check(p).x;
 }
 
 // 156: def test_ptr_to_const_ptr() -> None:
@@ -189,7 +189,7 @@ void test_ptr_to_const_ptr() {
   // 163:     cptr: ConstPtr[Point] = ptr
   const Point* cptr = ptr;
   // 164:     print(cptr.x)  # 3
-  std::cout << tpy::deref_ptr(cptr).x << "\n";
+  std::cout << tpy::deref_check(cptr).x << "\n";
   // 167:     pt2: Point = Point(5, 6)
   Point pt2 = Point(5, 6);
   // 168:     ptr2: Ptr[Point] = pt2
@@ -197,7 +197,7 @@ void test_ptr_to_const_ptr() {
   // 169:     cptr = ptr2
   cptr = ptr2;
   // 170:     print(cptr.x)  # 5
-  std::cout << tpy::deref_ptr(cptr).x << "\n";
+  std::cout << tpy::deref_check(cptr).x << "\n";
   // 173:     pt3: Point = Point(7, 8)
   Point pt3 = Point(7, 8);
   // 174:     ptr3: Ptr[Point] = pt3

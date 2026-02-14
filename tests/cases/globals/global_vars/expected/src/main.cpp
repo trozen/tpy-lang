@@ -142,9 +142,9 @@ void __tpy_init() {
   // 59: global_ptr: Ptr[Point] = local_pt
   global_ptr = &(*local_pt);
   // 60: print(global_ptr.a)
-  std::cout << tpy::deref_ptr(global_ptr).a << "\n";
+  std::cout << tpy::deref_check(global_ptr).a << "\n";
   // 61: print(global_ptr.b)
-  std::cout << tpy::deref_ptr(global_ptr).b << "\n";
+  std::cout << tpy::deref_check(global_ptr).b << "\n";
   // 64: counter: Int32 = 10
   counter = 10;
   // 65: increment = 5

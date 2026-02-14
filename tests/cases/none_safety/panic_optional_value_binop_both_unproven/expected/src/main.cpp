@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def add_pair(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
   // 5:     return a + b  # tpyc: warning(/Potential None access/)
-  return (tpy::int32_add(tpy::deref_optional(a), tpy::deref_optional(b)));
+  return (tpy::int32_add(tpy::deref_optional_check(a), tpy::deref_optional_check(b)));
 }
 
 void __tpy_init() {

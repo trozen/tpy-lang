@@ -70,7 +70,7 @@ print(w.x)  # Wrapper has no x → deref to Ptr[Point] → deref to Point → fo
 
 ### C++ mapping
 
-- `Ptr[T].__deref__()` → `tpy::deref_ptr(ptr)` (checked null deref, returns `T&`)
+- `Ptr[T].__deref__()` → `tpy::deref_check(ptr)` (checked null deref, returns `T&`)
 - User types: `obj.__deref__()` → literal `obj.__deref__()` call in C++
 - Field/method access through Ptr keeps the `->` optimization in codegen
 
@@ -99,15 +99,15 @@ Two strategies based on type:
 
 Codegen also handles the interaction with Optional receivers:
 - **Narrowed Optional** (`Ref | None` proven non-null): C++ var is still `Ref*`, so codegen emits `r->__deref__().field` (arrow for pointer deref, then user deref chain).
-- **Runtime null check**: Emits `tpy::deref_ptr(r).__deref__().field`.
+- **Runtime null check**: Emits `tpy::deref_check(r).__deref__().field`.
 
 ### Stage 4: Deref coercion — Done
 
 Replaced the hardcoded `ptr_to_record` coercion with a generic deref fallback in `check_type_compatible()`. When `resolve_coercion()` finds no match, the compatibility checker looks up `__deref__() -> T` via `TypeOperations.get_deref_target_type()` and applies a `DEREF_COERCION` sentinel if the target matches.
 
-- `Ptr[T]` → `T`: codegen emits `tpy::deref_ptr(expr)` (null-checked)
+- `Ptr[T]` → `T`: codegen emits `tpy::deref_check(expr)` (null-checked)
 - User Deref types → `T`: codegen emits `expr.__deref__()`
-- `ConstPtr[T]` → `T`: excluded for now — C++ generates record params as `T&` (mutable ref) but `deref_ptr(const T*)` returns `const T&`, causing const-correctness errors. Requires parameter codegen changes (`const T&` for read-only params).
+- `ConstPtr[T]` → `T`: excluded for now — C++ generates record params as `T&` (mutable ref) but `deref_check(const T*)` returns `const T&`, causing const-correctness errors. Requires parameter codegen changes (`const T&` for read-only params).
 
 ### Stage 5: ConstPtr, mutability — Partial
 
@@ -118,7 +118,7 @@ Replaced the hardcoded `ptr_to_record` coercion with a generic deref fallback in
 
 ### Stage 6: Null-safety for Ptr/ConstPtr auto-deref — Done
 
-Replaced unchecked `ptr->field` / `ptr->method()` with `tpy::deref_ptr(ptr).field` / `tpy::deref_ptr(ptr).method()` in codegen for `PtrType` and `ConstPtrType`. Every auto-deref through a pointer is now null-checked via the existing `tpy::deref_ptr()` runtime function, which panics with "null pointer dereference" on null. This matches the behavior of explicit `.__deref__()` calls.
+Replaced unchecked `ptr->field` / `ptr->method()` with `tpy::deref_check(ptr).field` / `tpy::deref_check(ptr).method()` in codegen for `PtrType` and `ConstPtrType`. Every auto-deref through a pointer is now null-checked via the existing `tpy::deref_check()` runtime function, which panics with "null pointer dereference" on null. This matches the behavior of explicit `.__deref__()` calls.
 
 The C++ optimizer can elide redundant null checks on the same pointer in release builds (`-O2`/`-O3`).
 
@@ -136,7 +136,7 @@ Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `
 
 **AST flag**: `ptr_non_null: bool` on `TpyFieldAccess` and `TpyMethodCall`, set by sema when the receiver is a `TpyName` in `non_null_ptr_vars` and the receiver type is `PtrType`/`ConstPtrType`.
 
-**Codegen**: When `ptr_non_null` is set, emits `ptr->field` / `ptr->method()` instead of `tpy::deref_ptr(ptr).field` / `tpy::deref_ptr(ptr).method()`.
+**Codegen**: When `ptr_non_null` is set, emits `ptr->field` / `ptr->method()` instead of `tpy::deref_check(ptr).field` / `tpy::deref_check(ptr).method()`.
 
 **Scope**: Field access and method calls only. Deref coercion (`DEREF_COERCION`) remains always null-checked. Function parameters have unknown provenance (caller might pass null).
 

@@ -8,17 +8,17 @@ std::string_view __name__;
 // 10: def read_via_ptr(p: Ptr[Point]) -> None:
 void read_via_ptr(Point* p) {
   // 11:     print(p.x)
-  std::cout << tpy::deref_ptr(p).x << "\n";
+  std::cout << tpy::deref_check(p).x << "\n";
   // 12:     print(p.y)
-  std::cout << tpy::deref_ptr(p).y << "\n";
+  std::cout << tpy::deref_check(p).y << "\n";
 }
 
 // 14: def read_via_constptr(p: ConstPtr[Point]) -> None:
 void read_via_constptr(const Point* p) {
   // 15:     print(p.x)
-  std::cout << tpy::deref_ptr(p).x << "\n";
+  std::cout << tpy::deref_check(p).x << "\n";
   // 16:     print(p.y)
-  std::cout << tpy::deref_ptr(p).y << "\n";
+  std::cout << tpy::deref_check(p).y << "\n";
 }
 
 // 18: def test_null_constructors() -> None:

@@ -37,7 +37,7 @@ void main() {
     q = get_ptr(q);
   }
   // 32:     print(q.x)  # tpyc: ok
-  std::cout << tpy::deref_ptr(q).x << "\n";
+  std::cout << tpy::deref_check(q).x << "\n";
   // 35:     r: Ptr[Point] = Ptr(a)
   Point* r = &a;
   // 36:     i: Int32 = Int32(0)
@@ -63,7 +63,7 @@ void main() {
     j = (tpy::int32_add(j, 1));
   }
   // 49:     print(s.x)  # tpyc: ok
-  std::cout << tpy::deref_ptr(s).x << "\n";
+  std::cout << tpy::deref_check(s).x << "\n";
 }
 
 void __tpy_init() {

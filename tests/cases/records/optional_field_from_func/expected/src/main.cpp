@@ -44,9 +44,9 @@ void __tpy_init() {
   // 32: print(h.value is None)
   std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
   // 33: print(h.value.x)
-  std::cout << tpy::deref_optional(h->value).x << "\n";
+  std::cout << tpy::deref_optional_check(h->value).x << "\n";
   // 34: print(h.value.y)
-  std::cout << tpy::deref_optional(h->value).y << "\n";
+  std::cout << tpy::deref_optional_check(h->value).y << "\n";
   // 36: h.value = copy(find(pts, 99))
   h->value = tpy::ptr_to_optional(find((*pts), 99));
   // 37: print(h.value is None)

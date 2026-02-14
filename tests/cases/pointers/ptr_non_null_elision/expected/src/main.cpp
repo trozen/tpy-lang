@@ -15,9 +15,9 @@ Point* get_ptr(Point* p) {
 // 16: def read_via_param(p: Ptr[Point]) -> None:
 void read_via_param(Point* p) {
   // 17:     print(p.x)
-  std::cout << tpy::deref_ptr(p).x << "\n";
+  std::cout << tpy::deref_check(p).x << "\n";
   // 18:     print(p.sum())
-  std::cout << tpy::deref_ptr(p).sum() << "\n";
+  std::cout << tpy::deref_check(p).sum() << "\n";
 }
 
 // 20: def main() -> None:
@@ -47,11 +47,11 @@ void main() {
   // 37:     r: Ptr[Point] = get_ptr(p)
   Point* r = get_ptr(p);
   // 38:     print(r.x)
-  std::cout << tpy::deref_ptr(r).x << "\n";
+  std::cout << tpy::deref_check(r).x << "\n";
   // 40:     p = get_ptr(q)
   p = get_ptr(q);
   // 41:     print(p.x)
-  std::cout << tpy::deref_ptr(p).x << "\n";
+  std::cout << tpy::deref_check(p).x << "\n";
   // 43:     pt2: Point = Point(Int32(30), Int32(40))
   Point pt2 = Point(30, 40);
   // 44:     p = Ptr(pt2)

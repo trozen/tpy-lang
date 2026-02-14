@@ -10,7 +10,7 @@ void main() {
   // 11:     p: ConstPtr[Counter] = ConstPtr[Counter]()
   const Counter* p = nullptr;
   // 12:     print(p.__len__())
-  std::cout << tpy::deref_ptr(p).__len__() << "\n";
+  std::cout << tpy::deref_check(p).__len__() << "\n";
 }
 
 void __tpy_init() {

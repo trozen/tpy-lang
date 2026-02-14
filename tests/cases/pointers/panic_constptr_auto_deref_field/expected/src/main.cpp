@@ -10,7 +10,7 @@ void main() {
   // 11:     p: ConstPtr[Point] = ConstPtr[Point]()
   const Point* p = nullptr;
   // 12:     print(p.x)
-  std::cout << tpy::deref_ptr(p).x << "\n";
+  std::cout << tpy::deref_check(p).x << "\n";
 }
 
 void __tpy_init() {

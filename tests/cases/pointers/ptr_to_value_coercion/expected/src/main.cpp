@@ -28,7 +28,7 @@ void modify_point(Point& p) {
 // 21: def deref_and_return(ptr: Ptr[Point]) -> Point:
 Point& deref_and_return(Point* ptr) {
   // 23:     return ptr
-  return tpy::deref_ptr(ptr);
+  return tpy::deref_check(ptr);
 }
 
 // 25: def test_ptr_to_value() -> None:
@@ -38,13 +38,13 @@ void test_ptr_to_value() {
   // 27:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 30:     print_point(ptr)
-  print_point(tpy::deref_ptr(ptr));
+  print_point(tpy::deref_check(ptr));
   // 32:     result: Int32 = get_sum(ptr)
-  int32_t result = get_sum(tpy::deref_ptr(ptr));
+  int32_t result = get_sum(tpy::deref_check(ptr));
   // 33:     print(result)
   std::cout << result << "\n";
   // 36:     modify_point(ptr)
-  modify_point(tpy::deref_ptr(ptr));
+  modify_point(tpy::deref_check(ptr));
   // 37:     print(pt.x)
   std::cout << pt.x << "\n";
 }
@@ -56,7 +56,7 @@ void test_ptr_to_value_assign() {
   // 41:     ptr: Ptr[Point] = pt
   Point* ptr = &pt;
   // 44:     p2: Point = ptr
-  Point& p2 = tpy::deref_ptr(ptr);
+  Point& p2 = tpy::deref_check(ptr);
   // 45:     print(p2.x)
   std::cout << p2.x << "\n";
   // 46:     print(p2.y)

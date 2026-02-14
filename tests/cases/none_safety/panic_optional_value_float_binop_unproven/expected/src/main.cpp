@@ -8,7 +8,7 @@ std::string_view __name__;
 // 1: def add_offset(x: float | None) -> float:
 double add_offset(std::optional<double> x) {
   // 2:     return x + 1.0  # tpyc: warning(/Potential None access/)
-  return ((tpy::deref_optional(x)) + (1.0));
+  return ((tpy::deref_optional_check(x)) + (1.0));
 }
 
 void __tpy_init() {

@@ -208,7 +208,7 @@ def resolve_coercion(actual: TpyType, expected: TpyType, ctx: CoercionContext) -
 
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: str) -> str:
     if isinstance(actual, (PtrType, ConstPtrType)):
-        return f"tpy::deref_ptr({e})"
+        return f"tpy::deref_check({e})"
     return f"{e}.__deref__()"
 
 

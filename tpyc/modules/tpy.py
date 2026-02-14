@@ -107,7 +107,7 @@ def init_module() -> BuiltinModule:
                     MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
                 ],
                 methods={
-                    "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_ptr({self})")],
+                    "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
                 })
 
     # ConstPtr[T]: Read-only pointer
@@ -120,7 +120,7 @@ def init_module() -> BuiltinModule:
                     MethodDef(params=[ParamDef("x", T, requires_lvalue=True)], returns=T, cpp="&{0}"),
                 ],
                 methods={
-                    "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_ptr({self})")],
+                    "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
                 })
 
     # StaticList[T, N]: Fixed-capacity container

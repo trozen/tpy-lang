@@ -24,7 +24,7 @@ void test() {
   // 19:     p: Ptr[Point] = pt
   Point* p = &pt;
   // 21:     describe(p)
-  describe(tpy::deref_ptr(p));
+  describe(tpy::deref_check(p));
 }
 
 void __tpy_init() {

@@ -174,7 +174,7 @@ concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
 /**
  * Deref concept — types that can be dereferenced via operator* or __deref__().
  *
- * Ptr[T] and ConstPtr[T] use tpy::deref_ptr() which dereferences raw pointers.
+ * Ptr[T] and ConstPtr[T] use tpy::deref_check() which dereferences raw pointers.
  * User types implementing Deref[T] provide __deref__() -> T& directly.
  */
 template<typename T, typename TargetT>

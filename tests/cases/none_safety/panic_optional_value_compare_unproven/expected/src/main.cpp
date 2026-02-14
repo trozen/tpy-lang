@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def cmp_score(x: Int32 | None) -> Int32:
 int32_t cmp_score(std::optional<int32_t> x) {
   // 5:     if x > 0:
-  if ((tpy::deref_optional(x) > 0)) {
+  if ((tpy::deref_optional_check(x) > 0)) {
     // 6:         return 1
     return 1;
   }

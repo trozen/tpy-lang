@@ -10,7 +10,7 @@ void main() {
   // 11:     p: Ptr[Counter] = Ptr[Counter]()
   Counter* p = nullptr;
   // 12:     print(p.get_value())
-  std::cout << tpy::deref_ptr(p).get_value() << "\n";
+  std::cout << tpy::deref_check(p).get_value() << "\n";
 }
 
 void __tpy_init() {

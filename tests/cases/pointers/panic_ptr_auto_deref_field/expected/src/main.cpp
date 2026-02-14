@@ -10,7 +10,7 @@ void main() {
   // 11:     p: Ptr[Point] = Ptr[Point]()
   Point* p = nullptr;
   // 12:     print(p.x)
-  std::cout << tpy::deref_ptr(p).x << "\n";
+  std::cout << tpy::deref_check(p).x << "\n";
 }
 
 void __tpy_init() {

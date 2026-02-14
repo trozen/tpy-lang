@@ -12,15 +12,15 @@ void main() {
   // 12:     cp: ConstPtr[Int32] = ConstPtr(x)
   const int32_t* cp = &x;
   // 13:     print(cp.__deref__())
-  std::cout << tpy::deref_ptr(cp) << "\n";
+  std::cout << tpy::deref_check(cp) << "\n";
   // 15:     pt: Point = Point(10, 20)
   Point pt = Point(10, 20);
   // 16:     cpp: ConstPtr[Point] = ConstPtr(pt)
   const Point* cpp = &pt;
   // 17:     print(cpp.__deref__().x)
-  std::cout << tpy::deref_ptr(cpp).x << "\n";
+  std::cout << tpy::deref_check(cpp).x << "\n";
   // 18:     print(cpp.__deref__().y)
-  std::cout << tpy::deref_ptr(cpp).y << "\n";
+  std::cout << tpy::deref_check(cpp).y << "\n";
   // 20:     print(cpp.x)
   std::cout << cpp->x << "\n";
   // 21:     print(cpp.y)

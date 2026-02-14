@@ -629,7 +629,7 @@ class TypeOperations:
         """Get the deref target for coercion purposes.
 
         Like get_deref_target_type() but excludes ConstPtr — record params
-        are T& (mutable ref) but deref_ptr(const T*) returns const T&.
+        are T& (mutable ref) but deref_check(const T*) returns const T&.
         """
         if isinstance(typ, ConstPtrType):
             return None

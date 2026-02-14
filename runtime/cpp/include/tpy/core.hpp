@@ -25,7 +25,7 @@ namespace tpy {
  * Used for implicit Ptr[T] -> T coercion.
  */
 template <typename T>
-T& deref_ptr(T* ptr) {
+T& deref_check(T* ptr) {
     if (ptr == nullptr) {
         tpy_panic("null pointer dereference");
     }
@@ -33,7 +33,7 @@ T& deref_ptr(T* ptr) {
 }
 
 template <typename T>
-const T& deref_ptr(const T* ptr) {
+const T& deref_check(const T* ptr) {
     if (ptr == nullptr) {
         tpy_panic("null pointer dereference");
     }
@@ -44,7 +44,7 @@ const T& deref_ptr(const T* ptr) {
  * Checked optional dereference - panics if optional is empty.
  */
 template <typename T>
-T& deref_optional(std::optional<T>& opt) {
+T& deref_optional_check(std::optional<T>& opt) {
     if (!opt.has_value()) {
         tpy_panic("null optional dereference");
     }
@@ -52,7 +52,7 @@ T& deref_optional(std::optional<T>& opt) {
 }
 
 template <typename T>
-const T& deref_optional(const std::optional<T>& opt) {
+const T& deref_optional_check(const std::optional<T>& opt) {
     if (!opt.has_value()) {
         tpy_panic("null optional dereference");
     }
