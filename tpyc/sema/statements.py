@@ -526,7 +526,7 @@ class StatementAnalyzer:
                         f"{func_name} requires matching type annotation, got {stmt.type}", stmt
                     )
             else:
-                init_type = self.expr.analyze_expr(stmt.init)
+                init_type = self.expr.analyze_expr_with_hint(stmt.init, stmt.type)
             self._enforce_readonly_expr(stmt.init)
 
             # Track list literal to variable mapping for mutation detection

@@ -80,13 +80,14 @@ class Namespace:
 
         Args:
             module_name: The canonical module name (e.g., "mypackage.utils").
-            alias: Optional local name (e.g., "utils"). If None, uses module_name.
+            alias: Optional local name (e.g., "utils"). If None, uses
+                   module_name as the local name.
         """
-        local_name = alias or module_name
+        local_name = alias if alias else module_name
         self.bind(NameBinding(
             kind=BindingKind.MODULE,
             name=local_name,
-            import_source=(module_name, local_name) if alias else None
+            import_source=(module_name, local_name) if local_name != module_name else None
         ))
 
     def bind_imported_name(self, name: str, module: str, original_name: str) -> None:

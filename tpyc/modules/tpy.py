@@ -114,11 +114,6 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="{self}[{0}] = {1}",
         )],
-        "unsafe_ptr": [MethodDef(
-            params=[],
-            returns=PtrType(T),
-            cpp="{self}.data()",
-        )],
     })
 
     # Span[T]: Non-owning read-only view
@@ -155,16 +150,6 @@ def init_module() -> BuiltinModule:
                 ],
                 methods={
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
-                    "unsafe_load": [MethodDef(
-                        params=[ParamDef("index", INT32)],
-                        returns=T,
-                        cpp="{self}[{0}]",
-                    )],
-                    "unsafe_store": [MethodDef(
-                        params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
-                        returns=VOID,
-                        cpp="{self}[{0}] = {1}",
-                    )],
                 })
 
     # ConstPtr[T]: Read-only pointer
@@ -178,11 +163,6 @@ def init_module() -> BuiltinModule:
                 ],
                 methods={
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
-                    "unsafe_load": [MethodDef(
-                        params=[ParamDef("index", INT32)],
-                        returns=T,
-                        cpp="{self}[{0}]",
-                    )],
                 })
 
     # StaticList[T, N]: Fixed-capacity container

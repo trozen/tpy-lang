@@ -1,6 +1,7 @@
-from tpy import ConstPtr, Int32
+from tpy import ConstPtr, Int32, UInt32
+from tpy.mem import unsafe_store
 
 def test() -> None:
     x: Int32 = Int32(5)
     cp: ConstPtr[Int32] = ConstPtr(x)
-    cp.unsafe_store(Int32(0), Int32(99))  # tpyc: error(/Cannot call method 'unsafe_store'/)
+    unsafe_store(cp, UInt32(0), Int32(99))  # tpyc: error(/requires a mutable Ptr/)

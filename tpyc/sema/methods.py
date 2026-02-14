@@ -13,7 +13,7 @@ from ..typesys import (
     PtrType, ConstPtrType,
 )
 from ..parse import (
-    TpyCall, TpyMethodCall, TpyName, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt
+    TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -124,6 +124,21 @@ class MethodAnalyzer:
             if result is not None:
                 return result
 
+        # Dotted module access: X.Y.func(), X.Y.Z.func(), etc.
+        if isinstance(expr.obj, TpyFieldAccess):
+            dotted_name = self._try_resolve_dotted_module(expr.obj)
+            if dotted_name:
+                flat_obj = TpyName(name=dotted_name, loc=expr.obj.loc)
+                flat_expr = TpyMethodCall(
+                    obj=flat_obj, method=expr.method, args=expr.args, loc=expr.loc,
+                )
+                result = self._analyze_module_method_call(flat_expr, module_name=dotted_name)
+                if result is not None:
+                    expr.builtin_module_call = flat_expr.builtin_module_call
+                    expr.user_module_call = flat_expr.user_module_call
+                    expr.resolved_function_info = flat_expr.resolved_function_info
+                    return result
+
         obj_type = self.expr.analyze_expr(expr.obj)
 
         if isinstance(obj_type, OwnType):
@@ -219,13 +234,20 @@ class MethodAnalyzer:
         expr.is_static_call = True
         return resolved.return_type
 
-    def _analyze_module_method_call(self, expr: TpyMethodCall) -> TpyType | None:
-        """Check for module.function() pattern. Returns type or None if not a module call."""
+    def _analyze_module_method_call(
+        self, expr: TpyMethodCall, module_name: str | None = None,
+    ) -> TpyType | None:
+        """Check for module.function() pattern. Returns type or None if not a module call.
+
+        If module_name is provided, skips namespace resolution (used for dotted
+        module access like tpy.mem.func() where the module is already known).
+        """
         assert isinstance(expr.obj, TpyName)
 
-        module_name = self._resolve_module_name(expr.obj.name)
         if module_name is None:
-            return None
+            module_name = self._resolve_module_name(expr.obj.name)
+            if module_name is None:
+                return None
 
         module_info = self.ctx.registry.get_module(module_name)
         if module_info and module_info.functions and expr.method in module_info.functions:
@@ -233,7 +255,10 @@ class MethodAnalyzer:
             if module_info.is_builtin:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
-                result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
+                if overloads[0].special_handling:
+                    result = self.calls._analyze_special_builtin(temp_call, expr.method, overloads)
+                else:
+                    result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
                 expr.resolved_function_info = temp_call.resolved_function_info
                 return result
             else:
@@ -250,6 +275,35 @@ class MethodAnalyzer:
                 return result
 
         raise self.ctx.error(f"Module '{module_name}' has no function '{expr.method}'", expr)
+
+    def _try_resolve_dotted_module(self, obj: TpyFieldAccess) -> str | None:
+        """Try to resolve nested field access as a dotted module name.
+
+        Walks the TpyFieldAccess chain to collect segments (e.g.,
+        a.b.c -> ["a", "b", "c"]), then checks the registry.
+        Returns None if the base name is shadowed (bound as anything other
+        than MODULE).
+        """
+        segments: list[str] = []
+        current = obj
+        while isinstance(current, TpyFieldAccess):
+            segments.append(current.field)
+            current = current.obj
+        if not isinstance(current, TpyName):
+            return None
+
+        # Only resolve as module if base name is unbound or bound as MODULE
+        if self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(current.name)
+            if binding and binding.kind != BindingKind.MODULE:
+                return None
+
+        segments.append(current.name)
+        segments.reverse()
+        dotted_name = ".".join(segments)
+        if self.ctx.registry.get_module(dotted_name):
+            return dotted_name
+        return None
 
     def _resolve_module_name(self, name: str) -> str | None:
         """Resolve a name to a module name if it refers to a module. Returns None otherwise."""

@@ -8,7 +8,7 @@ std::string_view __name__;
 // 10: def main() -> None:
 void main() {
   // 11:     p: ConstPtr[Counter] = ConstPtr[Counter]()
-  const Counter* p = nullptr;
+  const Counter* p = static_cast<const Counter*>(nullptr);
   // 12:     print(p.__len__())
   std::cout << tpy::deref_check(p).__len__() << "\n";
 }

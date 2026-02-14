@@ -8,7 +8,7 @@ std::string_view __name__;
 // 3: def main() -> None:
 void main() {
   // 4:     p: Ptr[Int32] = Ptr[Int32]()
-  int32_t* p = nullptr;
+  int32_t* p = static_cast<int32_t*>(nullptr);
   // 5:     print(p.__deref__())
   std::cout << tpy::deref_check(p) << "\n";
 }

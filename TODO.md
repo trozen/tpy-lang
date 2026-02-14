@@ -40,8 +40,9 @@
 - argument default values
 
 ## Hard Problems
+- generic method calls via dotted access: `tpy.mem.unsafe_cast[Int32](p)` fails parser ("Unsupported generic call target") because `Subscript(Attribute(...))` isn't handled as a call func. Requires adding `type_args` to `TpyMethodCall` and extending the parser. Workaround: `from tpy.mem import unsafe_cast; unsafe_cast[Int32](p)`.
 - handling cyclic imports
-- allow method overloads?
+- user-defined function/method overloads via `@overload` decorator (from `typing`). Each `@overload` body is the real implementation (unlike CPython where bodies are stubs). Maps directly to C++ overloads. Infrastructure already exists (overload resolution, type-checked params).
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)

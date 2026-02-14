@@ -130,6 +130,9 @@ class SemanticContext:
     param_provenance_vars: set[str] = field(default_factory=set)
     non_null_ptr_vars: set[str] = field(default_factory=set)
 
+    # --- Expression type hint (for context-dependent functions like unsafe_cast) ---
+    expr_type_hint: TpyType | None = None
+
     # --- Branch-declared variable tracking ---
     # Variables first declared inside if-branches that need pre-declaration.
     # Keyed by id(TpyIf), value is {var_name: var_type}.

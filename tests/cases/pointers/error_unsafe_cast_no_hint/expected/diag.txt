@@ -1,0 +1,1 @@
+main.tp.py:6: error: unsafe_cast() requires a type argument or target type annotation (e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))

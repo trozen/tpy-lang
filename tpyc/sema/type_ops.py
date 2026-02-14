@@ -364,6 +364,11 @@ class TypeOperations:
                 return self.match_type_with_inference(
                     param_type.wrapped, arg_type.wrapped, inferred
                 )
+            # Value types are implicitly owned
+            if arg_type.is_value_type():
+                return self.match_type_with_inference(
+                    param_type.wrapped, arg_type, inferred
+                )
             return False
 
         # Concrete type -- check compatibility

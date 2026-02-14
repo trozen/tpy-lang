@@ -48,6 +48,11 @@ def _has_type_param_ref(t: TpyType) -> bool:
     return any(isinstance(a, TypeParamRef) for a in t.inner_types())
 
 
+def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
+    """Check if any parameter type in a FunctionInfo contains TypeParamRef."""
+    return any(_has_type_param_ref(p.type) for p in func.params)
+
+
 class CallAnalyzer:
     """Function and constructor call analysis."""
 
@@ -184,6 +189,8 @@ class CallAnalyzer:
                     # Check for module function (e.g., math.sqrt)
                     from .registration import TypeRegistrar
                     if overloads := self._get_module_function_overloads(module_name, func_name):
+                        if overloads[0].special_handling:
+                            return self._analyze_special_builtin(expr, func_name, overloads)
                         return self._analyze_builtin_function_overloads(expr, overloads)
                     # Check for type constructor (e.g., Int32 from tpy, int from builtins)
                     qname = f"{module_name}.{func_name}"
@@ -284,6 +291,89 @@ class CallAnalyzer:
             )
 
         raise self.ctx.error(f"Unknown function or type: '{expr.func}'", expr)
+
+    def _analyze_special_builtin(
+        self, expr: TpyCall, func_name: str, overloads: list[FunctionInfo],
+    ) -> TpyType:
+        """Handle builtin functions with special_handling=True."""
+        if func_name == "unsafe_cast":
+            return self._analyze_unsafe_cast(expr)
+        if func_name == "copy":
+            return self._analyze_tpy_copy(expr)
+        if func_name == "print":
+            for arg in expr.args:
+                self.expr.analyze_expr(arg)
+            expr.resolved_function_info = FunctionInfo(
+                name="print",
+                params=[],
+                return_type=VOID,
+                is_readonly=False,
+                is_builtin_function=True,
+                special_handling=True,
+            )
+            return VOID
+        raise self.ctx.error(f"Unknown special builtin: '{func_name}'", expr)
+
+    def _analyze_unsafe_cast(self, expr: TpyCall) -> TpyType:
+        """Analyze unsafe_cast[T](ptr) or unsafe_cast(ptr) with annotation hint.
+
+        Target type is determined by:
+        1. Explicit type arg: unsafe_cast[UInt32](p) -> preserves pointer kind from arg
+        2. Variable annotation: q: Ptr[UInt32] = unsafe_cast(p) -> uses full annotation type
+        """
+        if len(expr.args) != 1:
+            raise self.ctx.error("unsafe_cast() takes exactly 1 argument", expr)
+
+        arg_type = self.expr.analyze_expr(expr.args[0])
+        if not isinstance(arg_type, (PtrType, ConstPtrType)):
+            raise self.ctx.error(
+                f"unsafe_cast() requires a Ptr or ConstPtr argument, got {arg_type}", expr
+            )
+
+        target_type: PtrType | ConstPtrType | None = None
+
+        # 1. Explicit type arg: unsafe_cast[T](p)
+        if expr.type_args:
+            if len(expr.type_args) != 1:
+                raise self.ctx.error("unsafe_cast() takes exactly 1 type argument", expr)
+            pointee = expr.type_args[0]
+            # Preserve pointer kind from arg
+            if isinstance(arg_type, ConstPtrType):
+                target_type = ConstPtrType(pointee)
+            else:
+                target_type = PtrType(pointee)
+
+        # 2. Fall back to variable annotation hint
+        if target_type is None:
+            hint = self.ctx.expr_type_hint
+            if hint is None:
+                raise self.ctx.error(
+                    "unsafe_cast() requires a type argument or target type annotation "
+                    "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr
+                )
+            if not isinstance(hint, (PtrType, ConstPtrType)):
+                raise self.ctx.error(
+                    f"unsafe_cast() target must be Ptr[T] or ConstPtr[T], got {hint}", expr
+                )
+            target_type = hint
+
+        # reinterpret_cast cannot drop const -- use unsafe_const_cast first
+        if isinstance(arg_type, ConstPtrType) and isinstance(target_type, PtrType):
+            raise self.ctx.error(
+                "unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)", expr
+            )
+
+        # Build cpp template: reinterpret_cast<target_cpp*>(arg)
+        target_cpp = target_type.to_cpp()
+        expr.resolved_function_info = FunctionInfo(
+            name="unsafe_cast",
+            params=[ParamInfo("p", arg_type)],
+            return_type=target_type,
+            is_builtin_function=True,
+            special_handling=True,
+            cpp_template=f"reinterpret_cast<{target_cpp}>({{0}})",
+        )
+        return target_type
 
     def _get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
@@ -435,23 +525,60 @@ class CallAnalyzer:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.
 
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
+        For generic overloads (with type_params), uses type inference.
         """
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
         protocol_checker = self.protocols.type_conforms_to_protocol
 
-        matched = resolve_overload(overloads, arg_types, protocol_checker,
-                                   deref_checker=self.type_ops.get_deref_coercion_target)
-        if matched is not None:
-            expr.resolved_function_info = matched
-            # Apply coercions to arguments where needed
-            for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
-                if arg_t != ptype:
-                    expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
-                                                            f"argument '{pname}'",
-                                                            coercion_ctx=CoercionContext.ARG)
-            return matched.return_type
+        # Split overloads: non-generic use standard resolution, generic use inference
+        non_generic = [o for o in overloads if not _has_type_param_ref_in_params(o)]
+        generic = [o for o in overloads if _has_type_param_ref_in_params(o)]
 
-        # No matching overload found - build error message
+        # Try non-generic overloads first (standard two-pass resolution)
+        if non_generic:
+            matched = resolve_overload(non_generic, arg_types, protocol_checker,
+                                       deref_checker=self.type_ops.get_deref_coercion_target)
+            if matched is not None:
+                expr.resolved_function_info = matched
+                for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
+                    if arg_t != ptype:
+                        expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
+                                                                f"argument '{pname}'",
+                                                                coercion_ctx=CoercionContext.ARG)
+                return matched.return_type
+
+        # Try generic overloads with type inference
+        for overload in generic:
+            type_subst = self.type_ops.infer_type_params_for_function(
+                overload, arg_types, protocol_checker
+            )
+            if type_subst is not None:
+                resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
+                # Resolve type param placeholders in cpp_template (e.g. {T} -> int32_t)
+                if resolved.cpp_template and "{" in resolved.cpp_template:
+                    for name, typ in type_subst.items():
+                        placeholder = f"{{{name}}}"
+                        if placeholder in resolved.cpp_template and hasattr(typ, "to_cpp"):
+                            resolved.cpp_template = resolved.cpp_template.replace(
+                                placeholder, typ.to_cpp()
+                            )
+                expr.resolved_function_info = resolved
+                expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
+                for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, resolved.params)):
+                    if arg_t != ptype:
+                        expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
+                                                                f"argument '{pname}'",
+                                                                coercion_ctx=CoercionContext.ARG)
+                return resolved.return_type
+
+        # No matching overload found - try to give a specific hint
+        # Check for ConstPtr passed where Ptr is required
+        for overload in overloads:
+            for arg_t, param in zip(arg_types, overload.params):
+                if isinstance(arg_t, ConstPtrType) and isinstance(param.type, PtrType):
+                    raise self.ctx.error(
+                        f"{expr.func}() requires a mutable Ptr, got {arg_t}", expr
+                    )
         arg_type_strs = ", ".join(str(t) for t in arg_types)
         raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
 

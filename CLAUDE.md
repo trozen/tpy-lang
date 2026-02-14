@@ -261,6 +261,7 @@ TurboPython Source (.tp.py) -> Parser -> Semantic Analyzer -> Code Generator -> 
 | `helpers.py` | Helper utilities for type definitions |
 | `typing.py` | `typing` module (type annotations) |
 | `tpy.py` | TurboPython-specific types and decorators |
+| `mem.py` | `tpy.mem` module -- unsafe pointer operations |
 | `math.py` | `math` module |
 | `sys.py` | `sys` module |
 | `time.py` | `time` module |

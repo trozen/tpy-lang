@@ -165,8 +165,14 @@ class ExpressionAnalyzer:
                     self.ctx.set_expr_type(expr, type_hint)
                     return type_hint
 
-        # Fall back to regular analysis
-        return self.analyze_expr(expr)
+        # Fall back to regular analysis, propagating hint through context
+        # for functions that need it (e.g. unsafe_cast)
+        old_hint = self.ctx.expr_type_hint
+        self.ctx.expr_type_hint = type_hint
+        try:
+            return self.analyze_expr(expr)
+        finally:
+            self.ctx.expr_type_hint = old_hint
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""

@@ -5,31 +5,31 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 3: def test_array_to_ptr() -> None:
+// 4: def test_array_to_ptr() -> None:
 void test_array_to_ptr() {
-  // 4:     arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+  // 5:     arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
   std::array<int32_t, 4> arr = {10, 20, 30, 40};
-  // 5:     p: Ptr[Int32] = arr.unsafe_ptr()
+  // 6:     p: Ptr[Int32] = unsafe_ptr(arr)
   int32_t* p = arr.data();
-  // 6:     print(p.unsafe_load(Int32(0)))
+  // 7:     print(unsafe_load(p, UInt32(0)))
   std::cout << p[0] << "\n";
-  // 7:     print(p.unsafe_load(Int32(1)))
+  // 8:     print(unsafe_load(p, UInt32(1)))
   std::cout << p[1] << "\n";
-  // 8:     print(p.unsafe_load(Int32(2)))
+  // 9:     print(unsafe_load(p, UInt32(2)))
   std::cout << p[2] << "\n";
-  // 9:     print(p.unsafe_load(Int32(3)))
+  // 10:     print(unsafe_load(p, UInt32(3)))
   std::cout << p[3] << "\n";
 }
 
-// 11: def test_write_through_array_ptr() -> None:
+// 12: def test_write_through_array_ptr() -> None:
 void test_write_through_array_ptr() {
-  // 12:     arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+  // 13:     arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
   std::array<int32_t, 3> arr = {1, 2, 3};
-  // 13:     p: Ptr[Int32] = arr.unsafe_ptr()
+  // 14:     p: Ptr[Int32] = unsafe_ptr(arr)
   int32_t* p = arr.data();
-  // 14:     p.unsafe_store(Int32(1), Int32(99))
+  // 15:     unsafe_store(p, UInt32(1), Int32(99))
   p[1] = 99;
-  // 15:     print(arr[Int32(1)])
+  // 16:     print(arr[Int32(1)])
   std::cout << arr[1] << "\n";
 }
 
@@ -39,9 +39,10 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 17: test_array_to_ptr()
+  // 2: from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+  // 18: test_array_to_ptr()
   test_array_to_ptr();
-  // 18: test_write_through_array_ptr()
+  // 19: test_write_through_array_ptr()
   test_write_through_array_ptr();
 }
 

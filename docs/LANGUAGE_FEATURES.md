@@ -435,11 +435,12 @@ Key features:
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
 
 ### Pointers/References
-- **Working**: `Ptr[T]` → `T*`
-- **Working**: `ConstPtr[T]` → `const T*`
-- **Working**: `Own[T]` → `T` (ownership transfer for return values)
-- **Planned**: `Ref[T]` → `T&` (explicit reference)
-- **Planned**: `ConstRef[T]` → `const T&`
+- **Working**: `Ptr[T]` -> `T*`
+- **Working**: `ConstPtr[T]` -> `const T*`
+- **Working**: `Own[T]` -> `T` (ownership transfer for return values)
+- **Working**: `tpy.mem` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_cast`, `unsafe_const_cast`)
+- **Planned**: `Ref[T]` -> `T&` (explicit reference)
+- **Planned**: `ConstRef[T]` -> `const T&`
 
 #### Pointer Coercions (Working)
 
@@ -735,6 +736,88 @@ def main():
 This is because functions returning `Own[T]` create temporaries (rvalues) that cannot bind to non-const references.
 
 **Note**: `Own[T]` is only valid for function parameters and return types, not for variable declarations. Use `T` for variables.
+
+#### Unsafe Memory Operations -- `tpy.mem` (Working)
+
+The `tpy.mem` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.
+
+```python
+from tpy import Ptr, ConstPtr, Int32, UInt32, Array
+from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+```
+
+Import styles supported:
+- `from tpy.mem import unsafe_ptr, unsafe_load` -- import specific functions
+- `import tpy.mem` -- use as `tpy.mem.unsafe_ptr(...)`
+- `import tpy.mem as m` -- use as `m.unsafe_ptr(...)`
+
+**`unsafe_ptr`** -- get a raw pointer to the underlying data of a container or string:
+
+```python
+arr: Array[Int32, 4] = [Int32(1), Int32(2), Int32(3), Int32(4)]
+p: Ptr[Int32] = unsafe_ptr(arr)          # Array[T, N] -> Ptr[T]
+
+lst: list[Int32] = [Int32(10), Int32(20)]
+q: Ptr[Int32] = unsafe_ptr(lst)          # list[T] -> Ptr[T]
+
+s: str = "hello"
+cp: ConstPtr[Char] = unsafe_ptr(s)       # str -> ConstPtr[Char]
+```
+
+The element type `T` is inferred from the argument. All three variants generate `.data()` in C++.
+
+**`unsafe_load`** -- read through a pointer at an offset (no bounds checking):
+
+```python
+val: Int32 = unsafe_load(p, UInt32(0))   # Ptr[T], UInt32 -> T
+val2: Int32 = unsafe_load(cp, UInt32(1)) # ConstPtr[T], UInt32 -> T
+```
+
+Generates `p[offset]` in C++.
+
+**`unsafe_store`** -- write through a pointer at an offset (no bounds checking):
+
+```python
+unsafe_store(p, UInt32(0), Int32(99))    # Ptr[T], UInt32, Own[T] -> None
+```
+
+Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `ConstPtr[T]`).
+
+**`unsafe_copy_n`** -- copy N elements from a source pointer to a destination pointer:
+
+```python
+from tpy.mem import unsafe_copy_n
+
+src: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+dst: Array[Int32, 3] = [Int32(0), Int32(0), Int32(0)]
+unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), UInt32(3))  # Ptr[T], Ptr[T]|ConstPtr[T], UInt32 -> None
+```
+
+Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[T]` or `ConstPtr[T]`.
+
+**`unsafe_const_cast`** -- remove const from a pointer:
+
+```python
+from tpy.mem import unsafe_const_cast
+
+cp: ConstPtr[Int32] = ...
+p: Ptr[Int32] = unsafe_const_cast(cp)    # ConstPtr[T] -> Ptr[T]
+```
+
+Generates `const_cast<T*>(p)` in C++.
+
+**`unsafe_cast`** -- reinterpret a pointer as pointing to a different type:
+
+```python
+from tpy.mem import unsafe_cast
+
+p: Ptr[Int32] = ...
+q: Ptr[UInt32] = unsafe_cast[UInt32](p)  # explicit type arg (preferred)
+q: Ptr[UInt32] = unsafe_cast(p)          # target inferred from annotation
+print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
+```
+
+Generates `reinterpret_cast<U*>(p)` in C++. The target pointee type can be specified via explicit type argument (`unsafe_cast[T](p)`) or inferred from the variable annotation. The pointer kind (`Ptr`/`ConstPtr`) is preserved from the argument. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
 
 ### User-Defined
 - **Working**: Classes → C++ structs

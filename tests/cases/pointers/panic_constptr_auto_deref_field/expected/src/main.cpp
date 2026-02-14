@@ -8,7 +8,7 @@ std::string_view __name__;
 // 10: def main() -> None:
 void main() {
   // 11:     p: ConstPtr[Point] = ConstPtr[Point]()
-  const Point* p = nullptr;
+  const Point* p = static_cast<const Point*>(nullptr);
   // 12:     print(p.x)
   std::cout << tpy::deref_check(p).x << "\n";
 }

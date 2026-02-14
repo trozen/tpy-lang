@@ -5,31 +5,31 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 3: def test_store_and_load() -> None:
+// 4: def test_store_and_load() -> None:
 void test_store_and_load() {
-  // 4:     x: Int32 = Int32(5)
+  // 5:     x: Int32 = Int32(5)
   int32_t x = 5;
-  // 5:     p: Ptr[Int32] = Ptr(x)
+  // 6:     p: Ptr[Int32] = Ptr(x)
   int32_t* p = &x;
-  // 6:     p.unsafe_store(Int32(0), Int32(99))
+  // 7:     unsafe_store(p, UInt32(0), Int32(99))
   p[0] = 99;
-  // 7:     val: Int32 = p.unsafe_load(Int32(0))
+  // 8:     val: Int32 = unsafe_load(p, UInt32(0))
   int32_t val = p[0];
-  // 8:     print(val)
+  // 9:     print(val)
   std::cout << val << "\n";
-  // 9:     print(x)
+  // 10:     print(x)
   std::cout << x << "\n";
 }
 
-// 11: def test_constptr_load() -> None:
+// 12: def test_constptr_load() -> None:
 void test_constptr_load() {
-  // 12:     x: Int32 = Int32(42)
+  // 13:     x: Int32 = Int32(42)
   int32_t x = 42;
-  // 13:     cp: ConstPtr[Int32] = ConstPtr(x)
+  // 14:     cp: ConstPtr[Int32] = ConstPtr(x)
   const int32_t* cp = &x;
-  // 14:     val: Int32 = cp.unsafe_load(Int32(0))
+  // 15:     val: Int32 = unsafe_load(cp, UInt32(0))
   int32_t val = cp[0];
-  // 15:     print(val)
+  // 16:     print(val)
   std::cout << val << "\n";
 }
 
@@ -39,9 +39,10 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 17: test_store_and_load()
+  // 2: from tpy.mem import unsafe_load, unsafe_store
+  // 18: test_store_and_load()
   test_store_and_load();
-  // 18: test_constptr_load()
+  // 19: test_constptr_load()
   test_constptr_load();
 }
 

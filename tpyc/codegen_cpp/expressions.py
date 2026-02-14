@@ -508,9 +508,10 @@ class ExpressionGenerator:
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
         if expr.call_type is not None:
-            # Pointer null constructors: Ptr[T]() / ConstPtr[T]() -> nullptr
+            # Pointer null constructors: Ptr[T]() / ConstPtr[T]() -> typed nullptr
             if isinstance(expr.call_type, (PtrType, ConstPtrType)) and not expr.args:
-                return "nullptr"
+                cpp_type = self.types.type_to_cpp(expr.call_type)
+                return f"static_cast<{cpp_type}>(nullptr)"
             # List repeat already generates the target type via from_range
             if len(expr.args) == 1 and isinstance(expr.args[0], TpyListRepeat):
                 return self.gen_expr(expr.args[0], expr.call_type)
@@ -596,10 +597,24 @@ class ExpressionGenerator:
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:
             module_name = expr.builtin_module_call
+            # copy() from tpy -- deref the argument to get the value
+            if module_name == "tpy" and expr.method == "copy":
+                arg = expr.args[0]
+                arg_type = self.ctx.analyzer.get_expr_type(arg)
+                if isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
+                    return self.gen_expr(arg)
+                return self.gen_expr_deref(arg)
+            # Special-handling functions with cpp_template resolved by sema
+            fi = expr.resolved_function_info
+            if fi and fi.special_handling and fi.cpp_template:
+                gen_args = [self.gen_expr_deref(arg, p.type)
+                            for arg, p in zip(expr.args, fi.params)]
+                return fi.cpp_template.format(*gen_args)
             module_info = self.ctx.analyzer.registry.get_module(module_name)
             if module_info and expr.method in module_info.functions:
                 from ..parse import TpyCall
                 temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                temp_call.resolved_function_info = expr.resolved_function_info
                 return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
             # Check for type constructor (e.g., tpy.Int32)
             qname = f"{module_name}.{expr.method}"

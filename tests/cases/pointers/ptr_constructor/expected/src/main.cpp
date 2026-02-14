@@ -24,13 +24,13 @@ void read_via_constptr(const Point* p) {
 // 18: def test_null_constructors() -> None:
 void test_null_constructors() {
   // 19:     p1: Ptr[None] = Ptr[None]()
-  void* p1 = nullptr;
+  void* p1 = static_cast<void*>(nullptr);
   // 20:     p2: ConstPtr[None] = ConstPtr[None]()
-  const void* p2 = nullptr;
+  const void* p2 = static_cast<const void*>(nullptr);
   // 21:     p3: Ptr[Int32] = Ptr[Int32]()
-  int32_t* p3 = nullptr;
+  int32_t* p3 = static_cast<int32_t*>(nullptr);
   // 22:     p4: ConstPtr[Int32] = ConstPtr[Int32]()
-  const int32_t* p4 = nullptr;
+  const int32_t* p4 = static_cast<const int32_t*>(nullptr);
   // 23:     print("null ok")
   std::cout << "null ok" << "\n";
 }

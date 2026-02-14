@@ -43,6 +43,7 @@ class BuiltinFunctionDef:
     name: str
     overloads: list[MethodDef]
     special_handling: bool = False  # True if sema/codegen handle this specially (skip overload matching)
+    type_params: list[str] = field(default_factory=list)  # Generic type params (e.g., ["T"])
 
 
 @dataclass
@@ -90,15 +91,20 @@ class BuiltinModule:
         self.protocols: dict[str, ProtocolDef] = {}  # protocol_name -> ProtocolDef
         self.variables: dict[str, ModuleVarDef] = {}  # var_name -> ModuleVarDef
 
-    def function(self, name: str, overloads: list[MethodDef], special_handling: bool = False):
+    def function(self, name: str, overloads: list[MethodDef], special_handling: bool = False,
+                 type_params: list[str] | None = None):
         """Register a built-in function.
 
         Args:
             name: Function name
             overloads: List of overload signatures
             special_handling: If True, sema/codegen handle this specially (skip overload matching)
+            type_params: Generic type parameter names (e.g., ["T"])
         """
-        self.functions[name] = BuiltinFunctionDef(name=name, overloads=overloads, special_handling=special_handling)
+        self.functions[name] = BuiltinFunctionDef(
+            name=name, overloads=overloads, special_handling=special_handling,
+            type_params=type_params or [],
+        )
 
     def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str,
                  type_params: list[str] | None = None):
@@ -177,11 +183,13 @@ from tpyc.modules import math as _math_mod
 from tpyc.modules import time as _time_mod
 from tpyc.modules import sys as _sys_mod
 from tpyc.modules import typing as _typing_mod
+from tpyc.modules import mem as _mem_mod
 
 # Map module name -> factory function
 _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
     _builtins_mod.NAME: _builtins_mod.init_module,
     _tpy_mod.NAME: _tpy_mod.init_module,
+    _mem_mod.NAME: _mem_mod.init_module,
     _math_mod.NAME: _math_mod.init_module,
     _time_mod.NAME: _time_mod.init_module,
     _sys_mod.NAME: _sys_mod.init_module,
@@ -365,6 +373,7 @@ def builtin_function_to_info(fn_def: BuiltinFunctionDef) -> list["FunctionInfo"]
             cpp_template=overload.cpp,
             is_builtin_function=True,
             special_handling=fn_def.special_handling,
+            type_params=fn_def.type_params,
         ))
     return result
 

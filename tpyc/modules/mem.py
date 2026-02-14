@@ -1,0 +1,112 @@
+"""
+TurboPython memory operations (tpy.mem module).
+
+Unsafe pointer operations that require explicit import.
+"""
+
+from tpyc.modules import BuiltinModule, MethodDef, ParamDef
+from tpyc.typesys import (
+    STR, CHAR, VOID, UINT32,
+    ArrayType, ListType, TypeParamRef, PtrType, ConstPtrType, OwnType,
+)
+
+T = TypeParamRef("T")
+
+NAME = "tpy.mem"
+
+
+def init_module() -> BuiltinModule:
+    module = BuiltinModule(NAME)
+
+    # unsafe_ptr: get a raw pointer from a container or string
+    module.function("unsafe_ptr", type_params=["T"], overloads=[
+        # str -> ConstPtr[Char] (non-generic; str is string_view, need .data())
+        MethodDef(
+            params=[ParamDef("s", STR)],
+            returns=ConstPtrType(CHAR),
+            cpp="{0}.data()",
+        ),
+        # Array[T, N] -> Ptr[T]
+        MethodDef(
+            params=[ParamDef("a", ArrayType(T, TypeParamRef("N")))],
+            returns=PtrType(T),
+            cpp="{0}.data()",
+        ),
+        # list[T] -> Ptr[T]
+        MethodDef(
+            params=[ParamDef("l", ListType(T))],
+            returns=PtrType(T),
+            cpp="{0}.data()",
+        ),
+    ])
+
+    # unsafe_load: read a value through a pointer at offset
+    module.function("unsafe_load", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(T)), ParamDef("offset", UINT32)],
+            returns=T,
+            cpp="{0}[{1}]",
+        ),
+        MethodDef(
+            params=[ParamDef("p", ConstPtrType(T)), ParamDef("offset", UINT32)],
+            returns=T,
+            cpp="{0}[{1}]",
+        ),
+    ])
+
+    # unsafe_store: write a value through a pointer at offset
+    module.function("unsafe_store", type_params=["T"], overloads=[
+        MethodDef(
+            params=[
+                ParamDef("p", PtrType(T)),
+                ParamDef("offset", UINT32),
+                ParamDef("value", OwnType(T)),
+            ],
+            returns=VOID,
+            cpp="{0}[{1}] = {2}",
+        ),
+    ])
+
+    # unsafe_copy_n: copy N elements between pointers
+    module.function("unsafe_copy_n", type_params=["T"], overloads=[
+        MethodDef(
+            params=[
+                ParamDef("dest", PtrType(T)),
+                ParamDef("src", PtrType(T)),
+                ParamDef("count", UINT32),
+            ],
+            returns=VOID,
+            cpp="std::copy_n({1}, {2}, {0})",
+        ),
+        MethodDef(
+            params=[
+                ParamDef("dest", PtrType(T)),
+                ParamDef("src", ConstPtrType(T)),
+                ParamDef("count", UINT32),
+            ],
+            returns=VOID,
+            cpp="std::copy_n({1}, {2}, {0})",
+        ),
+    ])
+
+    # unsafe_const_cast: remove const from a pointer (ConstPtr[T] -> Ptr[T])
+    module.function("unsafe_const_cast", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p", ConstPtrType(T))],
+            returns=PtrType(T),
+            cpp="const_cast<{T}*>({0})",
+        ),
+    ])
+
+    # unsafe_cast: reinterpret a pointer as a different pointee type
+    # Target type comes from context (variable annotation).
+    # Handled specially in sema (not normal overload resolution).
+    module.function("unsafe_cast", special_handling=True, overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(T))],
+            returns=PtrType(T),
+            cpp="",
+        ),
+    ])
+
+    return module
