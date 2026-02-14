@@ -531,6 +531,9 @@ class PtrType(TpyType):
     def __str__(self) -> str:
         return f"Ptr[{self.pointee}]"
 
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.Ptr"
+
     def is_value_type(self) -> bool:
         # Pointers are small values, passed/returned by value
         return True
@@ -558,6 +561,9 @@ class ConstPtrType(TpyType):
 
     def __str__(self) -> str:
         return f"ConstPtr[{self.pointee}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.ConstPtr"
 
     def is_value_type(self) -> bool:
         # Pointers are small values, passed/returned by value

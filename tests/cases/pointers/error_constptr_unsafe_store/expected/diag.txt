@@ -1,0 +1,1 @@
+main.tp.py:6: error: Cannot call method 'unsafe_store' on type ConstPtr[Int32]

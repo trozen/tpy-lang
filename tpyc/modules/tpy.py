@@ -72,6 +72,11 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="{self}[{0}] = {1}",
         )],
+        "unsafe_ptr": [MethodDef(
+            params=[],
+            returns=PtrType(T),
+            cpp="{self}.data()",
+        )],
     })
 
     # Span[T]: Non-owning read-only view
@@ -104,7 +109,19 @@ def init_module() -> BuiltinModule:
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
                     MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
-                ])
+                ],
+                methods={
+        "unsafe_load": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="{self}[{0}]",
+        )],
+        "unsafe_store": [MethodDef(
+            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
+            returns=VOID,
+            cpp="{self}[{0}] = {1}",
+        )],
+    })
 
     # ConstPtr[T]: Read-only pointer
     module.type("ConstPtr", cpp_type="const {T}*", type_params=["T"],
@@ -113,7 +130,14 @@ def init_module() -> BuiltinModule:
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
                     MethodDef(params=[ParamDef("x", T, requires_lvalue=True)], returns=T, cpp="&{0}"),
-                ])
+                ],
+                methods={
+        "unsafe_load": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="{self}[{0}]",
+        )],
+    })
 
     # StaticList[T, N]: Fixed-capacity container
     # Python interface (append/pop/clear), C++ uses std::vector-like names (push_back/pop_back)
