@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def negate(x: Int32 | None) -> Int32:
 int32_t negate(std::optional<int32_t> x) {
   // 5:     return -x
-  return tpy::int32_neg(tpy::deref_optional(x));
+  return tpy::int32_neg(tpy::deref_optional_check(x));
 }
 
 void __tpy_init() {

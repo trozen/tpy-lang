@@ -411,6 +411,41 @@ class ExpressionAnalyzer:
 
         raise self.ctx.error(f"Invalid operand type for unary '{expr.op}': {operand_type}", expr)
 
+    def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
+        """If typ has __deref__(), return resolved return type. Else None."""
+        return self.type_ops.get_deref_target_type(typ)
+
+    def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
+        """Try to find a field on typ. Returns field type or None."""
+        if isinstance(typ, NamedType) and typ.is_record:
+            record = self.ctx.registry.get_record(typ.name)
+            if not record:
+                return None
+            type_subst = self.type_ops.build_type_substitution(typ)
+            field_info = self.protocols.lookup_record_field(record, expr.field)
+            if field_info:
+                field_type = field_info.type
+                if type_subst:
+                    field_type = self.type_ops.substitute_type_params(field_type, type_subst)
+                return self.narrowing.narrow_optional_expr_type(expr, field_type)
+            return None
+
+        if isinstance(typ, TypeParamRef):
+            bound = self.type_ops.get_type_param_bound(typ.name)
+            if bound is not None and is_protocol_type(bound):
+                protocol_info = self.ctx.registry.get_protocol(bound.name)
+                if protocol_info:
+                    for field_name, field_type in protocol_info.fields or []:
+                        if field_name == expr.field:
+                            type_subst: dict[str, TpyType] = {"Self": typ}
+                            if protocol_info.type_params and bound.type_args:
+                                type_subst.update(dict(zip(protocol_info.type_params, bound.type_args)))
+                            resolved = self.type_ops.substitute_types(field_type, type_subst)
+                            return self.narrowing.narrow_optional_expr_type(expr, resolved)
+                    raise self.ctx.error(f"Protocol '{bound.name}' has no field '{expr.field}'", expr)
+
+        return None
+
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
         # Check for module variable access (e.g., sys.argv)
@@ -428,13 +463,9 @@ class ExpressionAnalyzer:
 
         obj_type = self.analyze_expr(expr.obj)
 
-        # Handle pointer types - dereference to get the pointee
-        # Handle Own[T] - unwrap to get the owned type
-        # Optional[T] uses runtime null checks for unproven access.
+        # Unwrap transparent wrappers
         actual_type = obj_type
-        if isinstance(obj_type, (PtrType, ConstPtrType)):
-            actual_type = obj_type.pointee
-        elif isinstance(obj_type, OwnType):
+        if isinstance(obj_type, OwnType):
             actual_type = obj_type.wrapped
         elif isinstance(obj_type, OptionalType):
             if obj_type.inner.is_value_type():
@@ -443,37 +474,28 @@ class ExpressionAnalyzer:
             expr.needs_optional_runtime_check = True
             actual_type = obj_type.inner
 
+        # Deref chain loop — resolves through Ptr, ConstPtr, and any Deref[T] type
+        current_type = actual_type
+        deref_depth = 0
+        while deref_depth <= 8:
+            result = self._try_find_field(current_type, expr)
+            if result is not None:
+                expr.deref_depth = deref_depth
+                if (deref_depth > 0
+                        and isinstance(actual_type, (PtrType, ConstPtrType))
+                        and isinstance(expr.obj, TpyName)
+                        and expr.obj.name in self.ctx.non_null_ptr_vars):
+                    expr.ptr_non_null = True
+                return result
+
+            deref_target = self.get_deref_target_type(current_type)
+            if deref_target is None:
+                break
+            current_type = deref_target
+            deref_depth += 1
+
         if isinstance(actual_type, NamedType) and actual_type.is_record:
-            record = self.ctx.registry.get_record(actual_type.name)
-            if not record:
-                raise self.ctx.error(f"Unknown record type: '{actual_type.name}'", expr)
-            # Build type substitution for generic records
-            type_subst = self.type_ops.build_type_substitution(actual_type)
-            # Look up field (including inherited fields)
-            field_info = self.protocols.lookup_record_field(record, expr.field)
-            if field_info:
-                field_type = field_info.type
-                if type_subst:
-                    field_type = self.type_ops.substitute_type_params(field_type, type_subst)
-                return self.narrowing.narrow_optional_expr_type(expr, field_type)
             raise self.ctx.error(f"Record '{actual_type.name}' has no field '{expr.field}'", expr)
-
-        # Bounded type parameter - access field from protocol bound
-        if isinstance(actual_type, TypeParamRef):
-            bound = self.type_ops.get_type_param_bound(actual_type.name)
-            if bound is not None and is_protocol_type(bound):
-                protocol_info = self.ctx.registry.get_protocol(bound.name)
-                if protocol_info:
-                    for field_name, field_type in protocol_info.fields or []:
-                        if field_name == expr.field:
-                            # Substitute type params (Self -> T, protocol params)
-                            type_subst: dict[str, TpyType] = {"Self": actual_type}
-                            if protocol_info.type_params and bound.type_args:
-                                type_subst.update(dict(zip(protocol_info.type_params, bound.type_args)))
-                            typ = self.type_ops.substitute_types(field_type, type_subst)
-                            return self.narrowing.narrow_optional_expr_type(expr, typ)
-                    raise self.ctx.error(f"Protocol '{bound.name}' has no field '{expr.field}'", expr)
-
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
 
     def _analyze_array_literal(self, expr: TpyArrayLiteral) -> TpyType:

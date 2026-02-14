@@ -428,7 +428,8 @@ class CallAnalyzer:
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
         protocol_checker = self.protocols.type_conforms_to_protocol
 
-        matched = resolve_overload(overloads, arg_types, protocol_checker)
+        matched = resolve_overload(overloads, arg_types, protocol_checker,
+                                   deref_checker=self.type_ops.get_deref_coercion_target)
         if matched is not None:
             expr.resolved_function_info = matched
             # Apply coercions to arguments where needed

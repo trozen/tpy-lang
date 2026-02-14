@@ -16,7 +16,7 @@ void prove() {
 // 10: def use() -> Int32:
 int32_t use() {
   // 11:     return x + 1  # tpyc: warning(/Potential None access/)
-  return (tpy::int32_add(tpy::deref_optional(x), 1));
+  return (tpy::int32_add(tpy::deref_optional_check(x), 1));
 }
 
 void __tpy_init() {

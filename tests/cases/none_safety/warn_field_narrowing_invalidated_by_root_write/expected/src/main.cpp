@@ -14,7 +14,7 @@ int32_t use_after_rebind(Box& a, Box& b) {
     // 14:         local = b
     local = &(b);
     // 15:         return local.value + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::int32_add(tpy::deref_optional(local->value), 1));
+    return (tpy::int32_add(tpy::deref_optional_check(local->value), 1));
   }
   // 16:     return 0
   return 0;

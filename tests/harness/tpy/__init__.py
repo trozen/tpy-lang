@@ -69,6 +69,9 @@ class _Ptr(Generic[T]):
     def __init__(self, obj: T):
         self._obj = obj
 
+    def __deref__(self) -> T:
+        return self._obj
+
     def __getattr__(self, name: str):
         return getattr(self._obj, name)
 
@@ -92,6 +95,9 @@ class _ConstPtr(Generic[T]):
 
     def __init__(self, obj: T):
         self._obj = obj
+
+    def __deref__(self) -> T:
+        return self._obj
 
     @property
     def value(self):
@@ -487,6 +493,12 @@ class OptIterator(_Protocol[T]):
     The TurboPython compiler uses this for types with a next() -> Optional[T] method.
     """
     def __iter__(self): ...
+
+
+@_runtime_checkable
+class Deref(_Protocol[T]):
+    """Types that can be dereferenced to yield T."""
+    def __deref__(self): ...
 
 
 @_runtime_checkable

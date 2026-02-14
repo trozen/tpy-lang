@@ -16,7 +16,7 @@ void __tpy_init() {
   // 3: x: Int32 | None = None
   x = std::nullopt;
   // 4: print(x + 1)
-  std::cout << (tpy::int32_add(tpy::deref_optional(x), 1)) << "\n";
+  std::cout << (tpy::int32_add(tpy::deref_optional_check(x), 1)) << "\n";
 }
 
 } // namespace tpy_user::main

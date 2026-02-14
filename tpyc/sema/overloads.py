@@ -16,6 +16,7 @@ from ..coercions import resolve_coercion, CoercionContext
 
 if TYPE_CHECKING:
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
+    DerefChecker = Callable[[TpyType], TpyType | None]
 
 
 def type_matches_strict(
@@ -62,6 +63,7 @@ def type_matches_with_coercion(
     arg_type: TpyType,
     param_type: TpyType,
     protocol_checker: ProtocolChecker | None = None,
+    deref_checker: DerefChecker | None = None,
 ) -> bool:
     """Type matching allowing IntLiteral flexibility, protocols, and registered coercions.
 
@@ -73,6 +75,10 @@ def type_matches_with_coercion(
         return protocol_checker(arg_type, param_type)
     if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
         return True
+    if deref_checker:
+        deref_target = deref_checker(arg_type)
+        if deref_target is not None and deref_target == param_type:
+            return True
     return False
 
 
@@ -80,6 +86,7 @@ def resolve_overload(
     overloads: list[FunctionInfo],
     arg_types: list[TpyType],
     protocol_checker: ProtocolChecker | None = None,
+    deref_checker: DerefChecker | None = None,
 ) -> FunctionInfo | None:
     """Two-pass overload resolution: exact match first, then with coercions.
 
@@ -88,6 +95,8 @@ def resolve_overload(
         arg_types: Already-analyzed argument types.
         protocol_checker: Optional callback (arg_type, param_type) -> bool
                           for protocol conformance checking.
+        deref_checker: Optional callback (type) -> deref target or None,
+                       for Deref[T] coercion in overload matching.
 
     Returns:
         The matching FunctionInfo, or None if no match found.
@@ -106,7 +115,7 @@ def resolve_overload(
     for overload in overloads:
         if len(overload.params) != len(arg_types):
             continue
-        if all(type_matches_with_coercion(arg_t, ptype, protocol_checker)
+        if all(type_matches_with_coercion(arg_t, ptype, protocol_checker, deref_checker)
                for arg_t, (_, ptype) in zip(arg_types, overload.params)):
             score = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
                         if type_matches_numeric(arg_t, ptype))

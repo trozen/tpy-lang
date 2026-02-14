@@ -26,11 +26,11 @@ void main() {
   // 23:     p1: Ptr[Point] = addr_param(local)
   Point* p1 = addr_param(local);
   // 24:     print(p1.x)
-  std::cout << p1->x << "\n";
+  std::cout << tpy::deref_check(p1).x << "\n";
   // 25:     p2: Ptr[Point] = addr_global()
   Point* p2 = addr_global();
   // 26:     print(p2.y)
-  std::cout << p2->y << "\n";
+  std::cout << tpy::deref_check(p2).y << "\n";
 }
 
 void __tpy_init() {

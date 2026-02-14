@@ -16,7 +16,7 @@ int32_t stale_after_write(std::vector<std::optional<int32_t>>& items, int32_t i)
     // 7:         if i < 0:
     if ((i < 0)) {
       // 8:             return items[i] + 1  # tpyc: warning(/Potential None access/)
-      return (tpy::int32_add(tpy::deref_optional(tpy::get_item(items, i)), 1));
+      return (tpy::int32_add(tpy::deref_optional_check(tpy::get_item(items, i)), 1));
     }
     // 9:         break
     break;

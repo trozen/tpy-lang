@@ -43,19 +43,19 @@ void __tpy_init() {
   static PtrHolder<Point> __global_slot_2 = PtrHolder<Point>(ptr);
   holder = &__global_slot_2;
   // 34: holder.ptr.x = 100
-  holder->ptr->x = 100;
+  tpy::deref_check(holder->ptr).x = 100;
   // 35: print(pt.x)
   std::cout << pt->x << "\n";
   // 38: const_holder = ConstPtrHolder(cptr)
   static ConstPtrHolder<Point> __global_slot_3 = ConstPtrHolder<Point>(cptr);
   const_holder = &__global_slot_3;
   // 39: print(const_holder.ptr.y)
-  std::cout << const_holder->ptr->y << "\n";
+  std::cout << tpy::deref_check(const_holder->ptr).y << "\n";
   // 42: const_holder2 = ConstPtrHolder(ptr)
   static ConstPtrHolder<Point> __global_slot_4 = ConstPtrHolder<Point>(ptr);
   const_holder2 = &__global_slot_4;
   // 43: print(const_holder2.ptr.x)
-  std::cout << const_holder2->ptr->x << "\n";
+  std::cout << tpy::deref_check(const_holder2->ptr).x << "\n";
 }
 
 } // namespace tpy_user::main

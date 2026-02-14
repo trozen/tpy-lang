@@ -158,6 +158,13 @@ class TypeCompatibility:
         ctx = coercion_ctx or context
         coercion = resolve_coercion(actual, expected, ctx)
         if coercion is None:
+            # Generic deref coercion: any type with __deref__() -> T coerces to T
+            if self.type_ops:
+                deref_target = self.type_ops.get_deref_coercion_target(actual)
+                if deref_target is not None and deref_target == expected:
+                    from ..coercions import DEREF_COERCION
+                    coercion = DEREF_COERCION
+        if coercion is None:
             raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
 
         if isinstance(actual, PendingListType) and isinstance(expected, SpanType):
