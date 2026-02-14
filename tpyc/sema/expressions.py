@@ -481,6 +481,11 @@ class ExpressionAnalyzer:
             result = self._try_find_field(current_type, expr)
             if result is not None:
                 expr.deref_depth = deref_depth
+                if (deref_depth > 0
+                        and isinstance(actual_type, (PtrType, ConstPtrType))
+                        and isinstance(expr.obj, TpyName)
+                        and expr.obj.name in self.ctx.non_null_ptr_vars):
+                    expr.ptr_non_null = True
                 return result
 
             deref_target = self.get_deref_target_type(current_type)

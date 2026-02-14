@@ -12,7 +12,7 @@ void main() {
   // 12:     cp: ConstPtr[Counter] = ConstPtr(c)
   const Counter* cp = &c;
   // 14:     print(cp.__len__())
-  std::cout << tpy::deref_ptr(cp).__len__() << "\n";
+  std::cout << cp->__len__() << "\n";
 }
 
 void __tpy_init() {

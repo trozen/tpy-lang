@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
+    PtrType, ConstPtrType,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt
@@ -149,6 +150,11 @@ class MethodAnalyzer:
             result = self._try_resolve_method(expr, current_type)
             if result is not None:
                 expr.deref_depth = deref_depth
+                if (deref_depth > 0
+                        and isinstance(original_type, (PtrType, ConstPtrType))
+                        and isinstance(expr.obj, TpyName)
+                        and expr.obj.name in self.ctx.non_null_ptr_vars):
+                    expr.ptr_non_null = True
                 return result
 
             deref_target = self.expr.get_deref_target_type(current_type)

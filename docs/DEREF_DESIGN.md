@@ -11,7 +11,7 @@
 | 5 | ConstPtr `__deref__`, mutability enforcement | Partial |
 | 6 | Null-safety for Ptr/ConstPtr auto-deref | Done |
 | 7 | Generate `operator*` for types with `__deref__` | Done |
-| 8 | Provenance-based null-check elision | TODO |
+| 8 | Provenance-based null-check elision | Done |
 
 ## Motivation
 
@@ -128,15 +128,17 @@ User-defined records with `__deref__()` now get `operator*()` generated in the C
 
 **Known limitation**: `operator*()` is non-const only, since `__deref__()` is generated as non-const. A const overload requires const method generation for `__deref__`, which depends on the broader const method system (Stage 5).
 
-### Stage 8: Provenance-based null-check elision — TODO
+### Stage 8: Provenance-based null-check elision — Done
 
-Currently all Ptr/ConstPtr auto-deref emits `tpy::deref_ptr()` unconditionally. Pointers with known non-null provenance could skip the null check and use direct `->` access:
+Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `param_provenance_vars` and `non_none_vars`). The set tracks pointer variables with known non-null provenance through the same save/restore/merge infrastructure used by definite assignment and Optional narrowing.
 
-- `Ptr(var)` — constructed from a valid lvalue, always non-null
-- Implicit record-to-ptr coercion — always non-null
-- Already checked in the same basic block — redundant check
+**Tracking**: When a variable is assigned from `Ptr(x)` or `ConstPtr(x)` (constructor with an argument), it's marked non-null. Assignment from another known non-null variable propagates the fact. Reassignment to unknown source (function return, null constructor, etc.) clears it. Branch merges use intersection (conservative).
 
-The compiler already tracks pointer provenance for escape analysis — extending it with a "known non-null" flag and threading that to codegen would eliminate unnecessary checks.
+**AST flag**: `ptr_non_null: bool` on `TpyFieldAccess` and `TpyMethodCall`, set by sema when the receiver is a `TpyName` in `non_null_ptr_vars` and the receiver type is `PtrType`/`ConstPtrType`.
+
+**Codegen**: When `ptr_non_null` is set, emits `ptr->field` / `ptr->method()` instead of `tpy::deref_ptr(ptr).field` / `tpy::deref_ptr(ptr).method()`.
+
+**Scope**: Field access and method calls only. Deref coercion (`DEREF_COERCION`) remains always null-checked. Function parameters have unknown provenance (caller might pass null).
 
 ## Deref[T] Protocol Definition
 

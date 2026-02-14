@@ -82,7 +82,7 @@ void test_ptr_write() {
   // 47:     pp: Ptr[Point] = Ptr(pt)
   Point* pp = &pt;
   // 48:     pp.x = Int32(99)
-  tpy::deref_ptr(pp).x = 99;
+  pp->x = 99;
   // 49:     print(pt.x)
   std::cout << pt.x << "\n";
 }

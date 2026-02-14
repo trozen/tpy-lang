@@ -141,6 +141,7 @@ class TpyMethodCall(TpyExpr):
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
+    ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr/ConstPtr
 
 
 @dataclass
@@ -150,6 +151,7 @@ class TpyFieldAccess(TpyExpr):
     field: str
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
+    ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr/ConstPtr
 
 
 @dataclass

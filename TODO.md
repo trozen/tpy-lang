@@ -10,6 +10,7 @@
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc). Also: `n = 4` currently defaults to BigInt — should default to Int32 when the literal fits, so `for i in range(n)` loops over int32_t instead of BigInt
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
+- Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - readonly effects on protocols: mark read contracts like `Sized.__len__` / `Sequence.__getitem__` as readonly, enforce conformance (impl must be readonly), and satisfy via conservative readonly inference when provable so existing code usually keeps working
 - list literal contextual typing: when LHS has explicit annotation like `list[Int32 | None]`, allow compatible literals (`[]`, `[Int32(1)]`, `[None]`) via contextual element-type widening instead of strict inferred-list mismatch
 - const/mutability design: how to handle const methods (`__len__`, `__getitem__`), method qualifiers (like `const` in C++), and the `mutation_methods` set — unify into a coherent constness model

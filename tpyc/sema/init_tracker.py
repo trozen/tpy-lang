@@ -14,8 +14,10 @@ from .narrowing import ExprIdentity
 if TYPE_CHECKING:
     from .context import SemanticContext
 
-# (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars, non_none_vars, non_none_exprs)
-FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str], frozenset[str], frozenset[ExprIdentity]]
+# (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars,
+#  non_none_vars, non_none_exprs, non_null_ptr_vars)
+FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str],
+                  frozenset[str], frozenset[ExprIdentity], frozenset[str]]
 
 
 class InitTracker:
@@ -30,7 +32,8 @@ class InitTracker:
                 frozenset(self.ctx.rvalue_vars),
                 frozenset(self.ctx.param_provenance_vars),
                 frozenset(self.ctx.non_none_vars),
-                frozenset(self.ctx.non_none_exprs))
+                frozenset(self.ctx.non_none_exprs),
+                frozenset(self.ctx.non_null_ptr_vars))
 
     def restore(self, state: FlowState) -> None:
         self.ctx.definitely_assigned = set(state[0])
@@ -39,6 +42,7 @@ class InitTracker:
         self.ctx.param_provenance_vars = set(state[3])
         self.ctx.non_none_vars = set(state[4])
         self.ctx.non_none_exprs = set(state[5])
+        self.ctx.non_null_ptr_vars = set(state[6])
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -52,6 +56,13 @@ class InitTracker:
             self.ctx.param_provenance_vars.add(name)
         else:
             self.ctx.param_provenance_vars.discard(name)
+
+    def mark_non_null_ptr(self, name: str, is_non_null: bool) -> None:
+        """Track whether a pointer variable is provably non-null."""
+        if is_non_null:
+            self.ctx.non_null_ptr_vars.add(name)
+        else:
+            self.ctx.non_null_ptr_vars.discard(name)
 
     def add_loop_var_provenance(self, name: str) -> None:
         self.ctx.param_provenance_vars.add(name)
@@ -85,10 +96,11 @@ class InitTracker:
             self.ctx.non_none_exprs = set()
         else:
             self.ctx.non_none_exprs = set(condition_non_none_exprs)
+        self.ctx.non_null_ptr_vars = set(before[6])
 
     def merge_branches(self, then_state: FlowState, else_state: FlowState) -> None:
-        then_assigned, then_term, then_rvalue, then_prov, then_non_none, then_non_none_exprs = then_state
-        else_assigned, else_term, else_rvalue, else_prov, else_non_none, else_non_none_exprs = else_state
+        then_assigned, then_term, then_rvalue, then_prov, then_non_none, then_non_none_exprs, then_nn_ptr = then_state
+        else_assigned, else_term, else_rvalue, else_prov, else_non_none, else_non_none_exprs, else_nn_ptr = else_state
         if then_term and else_term:
             self.ctx.definitely_assigned = set(then_assigned | else_assigned)
             self.ctx.init_terminated = True
@@ -138,3 +150,12 @@ class InitTracker:
             self.ctx.non_none_exprs = set(then_non_none_exprs)
         else:
             self.ctx.non_none_exprs = set(then_non_none_exprs & else_non_none_exprs)
+        # Non-null pointer merge: intersection when both branches live.
+        if then_term and else_term:
+            self.ctx.non_null_ptr_vars = set(then_nn_ptr | else_nn_ptr)
+        elif then_term:
+            self.ctx.non_null_ptr_vars = set(else_nn_ptr)
+        elif else_term:
+            self.ctx.non_null_ptr_vars = set(then_nn_ptr)
+        else:
+            self.ctx.non_null_ptr_vars = set(then_nn_ptr & else_nn_ptr)

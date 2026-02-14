@@ -503,7 +503,7 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 
 **Deref coercion:** Types with `__deref__() -> T` also coerce to `T` in assignment, argument, and return contexts. For example, a user `Ref` with `__deref__() -> Point` can be passed where `Point` is expected — the compiler inserts `ref.__deref__()` automatically. `Ptr[T]` uses `tpy::deref_ptr()` for null-checked coercion.
 
-**Null-safety:** All auto-deref through `Ptr[T]`/`ConstPtr[T]` is null-checked at runtime via `tpy::deref_ptr()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior.
+**Null-safety:** Auto-deref through `Ptr[T]`/`ConstPtr[T]` is null-checked at runtime via `tpy::deref_ptr()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance (e.g., `Ptr(x)` constructed from a local variable) skip the null check and use direct `->` access.
 
 **C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
 

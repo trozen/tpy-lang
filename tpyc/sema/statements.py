@@ -244,7 +244,10 @@ class StatementAnalyzer:
                 )
                 for s in stmt.body:
                     self.analyze_stmt(s)
+            # Vars reassigned from unknown inside the body lose non-null provenance
+            body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
             self.init.restore(before)
+            self.ctx.non_null_ptr_vars &= body_end_nn_ptr
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
             self._enforce_readonly_expr(stmt.iterable)
@@ -277,7 +280,9 @@ class StatementAnalyzer:
                         self.analyze_stmt(s)
                 if track_loop_prov:
                     self.init.remove_loop_var_provenance(stmt.var)
+            body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
             self.init.restore(before)
+            self.ctx.non_null_ptr_vars &= body_end_nn_ptr
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
@@ -615,6 +620,17 @@ class StatementAnalyzer:
         # (pointers are value types but carry address provenance)
         if stmt.init and (not var_type.is_value_type() or isinstance(var_type, (PtrType, ConstPtrType))):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
+        # Track non-null pointer provenance for null-check elision
+        if stmt.init and isinstance(var_type, (PtrType, ConstPtrType)):
+            # Unwrap coercion (e.g. Ptr[T] -> ConstPtr[T]) to find the source expression
+            init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+            is_non_null = (isinstance(init_inner, TpyCall)
+                           and init_inner.call_type is not None
+                           and init_inner.call_type.is_pointer()
+                           and len(init_inner.args) > 0)
+            if not is_non_null and isinstance(init_inner, TpyName):
+                is_non_null = init_inner.name in self.ctx.non_null_ptr_vars
+            self.init.mark_non_null_ptr(stmt.name, is_non_null)
 
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
@@ -716,6 +732,17 @@ class StatementAnalyzer:
         # Track provenance for non-value-type and pointer-type name targets
         if isinstance(stmt.target, TpyName) and (not target_type.is_value_type() or isinstance(target_type, (PtrType, ConstPtrType))):
             self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
+        # Track non-null pointer provenance for null-check elision
+        if isinstance(stmt.target, TpyName) and isinstance(target_type, (PtrType, ConstPtrType)):
+            # Unwrap coercion (e.g. Ptr[T] -> ConstPtr[T]) to find the source expression
+            val_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
+            is_non_null = (isinstance(val_inner, TpyCall)
+                           and val_inner.call_type is not None
+                           and val_inner.call_type.is_pointer()
+                           and len(val_inner.args) > 0)
+            if not is_non_null and isinstance(val_inner, TpyName):
+                is_non_null = val_inner.name in self.ctx.non_null_ptr_vars
+            self.init.mark_non_null_ptr(stmt.target.name, is_non_null)
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):

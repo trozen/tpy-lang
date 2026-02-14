@@ -128,6 +128,7 @@ class SemanticContext:
 
     # --- Pointer provenance tracking ---
     param_provenance_vars: set[str] = field(default_factory=set)
+    non_null_ptr_vars: set[str] = field(default_factory=set)
 
     # --- Branch-declared variable tracking ---
     # Variables first declared inside if-branches that need pre-declaration.
@@ -183,3 +184,4 @@ class SemanticContext:
         self.authoritative_types.clear()
         self.global_declarations.clear()
         self.param_provenance_vars.clear()
+        self.non_null_ptr_vars.clear()
