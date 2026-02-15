@@ -29,7 +29,7 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Conservative effect inference for missing annotations | Todo | Infer readonly where provable; default unknown to unsafe |
 | Temporary single-evaluation auto-rewrite for unstable reads | Deferred (intentional) | Keep explicit/user-authored for now; compiler should warn instead |
 | REPL-specific None-safety regression suite | Postponed | Defer to a future generic REPL regression effort (not None-safety-specific) |
-| Mixed Optional/non-Optional equality & ordering semantics | Todo | Current behavior is conservative; broader policy still open |
+| Mixed Optional/non-Optional equality & ordering semantics | Partial | `==`/`!=` are None-safe (no warning, no panic); `<`/`>`/`<=`/`>=` still warn + runtime check |
 | Custom truthiness semantics policy | Todo | Future user-defined/overridden truthiness behavior not specified |
 | Rich assert messages (non-literal expressions) | Todo | Currently string-literal-only |
 
@@ -136,9 +136,8 @@ Unproven optional access emits:
 - Arbitrary expression identities (for example `f().x`, complex index expressions) are not tracked.
 - There is no concurrency-aware gating yet for expression-identity narrowing.
 - Effect contract support is partial: `@readonly` exists, but full effect lattice/inference is not implemented.
-- Equality/ordering rules across mixed Optional/non-Optional values are still conservative.
-  - Current focus is safety (runtime checks) and explicit `is`/`is not` for None identity.
-  - Broader Python-compat comparison semantics remain open.
+- Ordering operators (`<`, `>`, `<=`, `>=`) across mixed Optional/non-Optional values are still conservative (warning + runtime check), matching Python 3 which raises TypeError for `None < 5`.
+- `==`/`!=` with Optional value-type operands are None-safe: no warning, no runtime panic. `None == 5` evaluates to `False`, `None != 5` to `True` (delegated to C++ `std::optional` comparison).
 
 ## Design Decisions (Locked)
 

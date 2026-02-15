@@ -1444,6 +1444,10 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 - **Working**: Optional-aware operator checks for value-consuming expressions (e.g., `x + 1` where `x: Int32 | None`)
   - Unproven use emits warning and inserts runtime null checks
   - Proven non-None paths (guard/assert narrowed) emit unchecked unwraps
+- **Working**: None-safe `==`/`!=` for Optional value types
+  - `Optional[T] == T`, `Optional[T] != T`, `Optional[T] == Optional[T]` work without warnings or runtime panics
+  - `None == 5` -> `False`, `None != 5` -> `True` (matches Python semantics)
+  - Ordering operators (`<`, `>`, `<=`, `>=`) still use conservative runtime checks
 - **Open**: `T | U` → templates with `if constexpr`, or overloads
 
 For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).

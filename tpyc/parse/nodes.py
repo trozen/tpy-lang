@@ -100,6 +100,7 @@ class TpyBinOp(TpyExpr):
     op: str  # '+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>='
     right: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
+    optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
 
 
 @dataclass

@@ -277,7 +277,7 @@ class ExpressionAnalyzer:
         left_effective = left_type
         right_effective = right_type
         warned_optional_operator = False
-        if expr.op not in ("is", "is not", "&&", "||", "in", "not in"):
+        if expr.op not in ("is", "is not", "&&", "||", "in", "not in", "==", "!="):
             if isinstance(left_effective, OptionalType) and left_effective.inner.is_value_type():
                 left_effective = left_effective.inner
                 warned_optional_operator = True
@@ -286,6 +286,16 @@ class ExpressionAnalyzer:
                 warned_optional_operator = True
             if warned_optional_operator:
                 self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
+
+        # For ==/!=, unwrap Optional value-types only for operator resolution
+        # (no warning -- C++ std::optional handles None comparison natively)
+        if expr.op in ("==", "!="):
+            if isinstance(left_effective, OptionalType) and left_effective.inner.is_value_type():
+                left_effective = left_effective.inner
+                expr.optional_safe_eq = True
+            if isinstance(right_effective, OptionalType) and right_effective.inner.is_value_type():
+                right_effective = right_effective.inner
+                expr.optional_safe_eq = True
 
         # Helper to check if type is any numeric type
         def is_numeric_type(t: TpyType) -> bool:
