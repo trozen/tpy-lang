@@ -1511,8 +1511,8 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)
 - **Working**: `@readonly` ("doesn't mutate its arguments" contract on functions/methods)
-  - Enforcement: parameter-rooted mutation checks (field/subscript writes, non-readonly method calls on params, passing params to non-readonly functions)
-  - Local alias tracking: `alias = param` propagates parameter-rooted status through locals
+  - Type-based enforcement: `ReadonlyType` wraps non-value params; field access, subscript, and method calls propagate readonly through expressions
+  - Local alias deduction: `alias = param` preserves `ReadonlyType` through variable assignments
   - Constructors, `print`, I/O, and global writes are generally allowed; constructors follow the same call rule when passed param-derived mutable refs
   - Value-type arguments are copies and can be freely passed to any function
   - Implicit readonly on dunders: `__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.

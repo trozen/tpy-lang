@@ -282,7 +282,8 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `static_list.hpp` | `StaticList<T, N>` fixed-capacity container |
 | `bigint.hpp` | `BigInt` arbitrary precision integer (GMP-based) |
 | `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |
-| `protocols.hpp` | `__len__`, `Sized`, `Sequence` concepts |
+| `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`) |
+| `protocols.hpp` | `Sized`, `Sequence` concepts |
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
 | `system.hpp` | `time_*`, `sys_argv` |
 

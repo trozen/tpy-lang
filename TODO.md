@@ -1,15 +1,12 @@
 # TODO
 
 ## Next
-- readonly type-embedded redesign: move readonly tracking from side-channel sets (`_readonly_vars`, `_param_rooted_locals`) into the type system. `@readonly` wraps non-value params with `ReadonlyType`, variable type deduction preserves `ReadonlyType` from init expressions, field/subscript access on `readonly[T]` propagates to `readonly[FieldType]`. Eliminates fragile manual save/restore across control flow (if-branches, while, for-each, shadowing). See research prompt at `/tmp/readonly_research_prompt.md`.
 - protocol @readonly enforcement (e.g. `__len__`)
-- auto-detect readonly from method body analysis (bottom-up inference) -- currently dunders in IMPLICIT_READONLY_METHODS are implicitly readonly, but regular methods need explicit `@readonly`; auto-inference could remove the need for annotations in most cases
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
 - DECIDE WHAT TO DO WITH INTEGERS! - should they be int, Int32 by default? configurable? `# tpy:` annotation? -- configurable default int literal deduction: compiler flag (e.g. `--default-int=Int32`) to resolve ambiguous integer literals as Int32 instead of BigInt, for performance-oriented code
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling
 - constant global variables
-- ~~implicitly @readonly for CONST_METHODS~~ DONE: dunders in IMPLICIT_READONLY_METHODS are now implicitly @readonly in sema, dual const/non-const overloads in codegen
 - "@native_c, @native, @extern_c, @readonly, @noalloc are all hard-coded parser keywords" -- should be handled like normal functions eventually (maybe in tpy.extern package?)
 - move native_c_global and native_global to tpy.extern package?
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc). Also: `n = 4` currently defaults to BigInt — should default to Int32 when the literal fits, so `for i in range(n)` loops over int32_t instead of BigInt
@@ -18,13 +15,13 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - readonly effects on protocols: mark read contracts like `Sized.__len__` / `Sequence.__getitem__` as readonly, enforce conformance (impl must be readonly), and satisfy via conservative readonly inference when provable so existing code usually keeps working
 - list literal contextual typing: when LHS has explicit annotation like `list[Int32 | None]`, allow compatible literals (`[]`, `[Int32(1)]`, `[None]`) via contextual element-type widening instead of strict inferred-list mismatch
-- const/mutability design: extend readonly model -- protocol conformance checking (impl must be readonly if protocol method is), readonly inference for regular methods, `@readonly(False)` documentation
+- const/mutability design: extend readonly model -- protocol conformance checking (impl must be readonly if protocol method is), readonly inference for regular methods
 - type containing an allocated object (e.g. `Box[T]`)
 - type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - `type()` function / compile-time type info
 - extract c++ compiler interface
-- `tpy::__len__()` -- consider changing semantics, so that `__len__()` method is generated in C++ as `size()` member function
+- ~~`tpy::__len__()`~~ PARTIAL: `__len__`, `__getitem__`, `__setitem__` are now free functions in `dunder.hpp`. Consider also generating `__len__()` as `size()` member function for STL compatibility.
 - template function implementation should be in some specific header file
 - `DeRef` protocol?
 - allow type annotation to use "" (forward decl)
@@ -41,6 +38,7 @@
 - argument default values
 
 ## Hard Problems
+- auto-detect readonly from method body analysis (bottom-up inference) -- currently dunders in IMPLICIT_READONLY_METHODS are implicitly readonly, but regular methods need explicit `@readonly`; auto-inference could remove the need for annotations in most cases
 - generic method calls via dotted access: `tpy.mem.unsafe_cast[Int32](p)` fails parser ("Unsupported generic call target") because `Subscript(Attribute(...))` isn't handled as a call func. Requires adding `type_args` to `TpyMethodCall` and extending the parser. Workaround: `from tpy.mem import unsafe_cast; unsafe_cast[Int32](p)`.
 - handling cyclic imports
 - @readonly container-mediated alias tracking: parameter refs routed through containers/iterators bypass mutation checks (e.g. `items: list[Box] = [b]; for x in items: mutate(x)`). Fixing properly requires taint-tracking through data structures -- essentially a lightweight borrow checker. See READONLY_DESIGN.md Known Limitation #3.
@@ -96,7 +94,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - C++ header ordering: inline method bodies in structs (constructors, methods) can't call free functions declared later in the header. Affects cases like `self.value = func()` when func is defined before the class in Python but its C++ forward declaration is emitted after the struct. Fix: emit function forward declarations before struct definitions, or move method bodies out-of-line.
 - investigate other backends than c++
 - panic show line number?
-- ~~generate const function variants for @readonly functions~~ DONE: @readonly methods now generate both const and non-const overloads
 - properly import annotations from tpy module (readonly, noalloc etc); should not be accessible without it; also, should support @tpy.readonly
 - @extern_c/@extern_cpp functions/classes etc
 - `# tpy: range-check=off`

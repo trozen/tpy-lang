@@ -268,21 +268,31 @@ Allowed:
 - Builtins marked readonly: `len`, `chr`, `abs`, `min`, `max`, `range`,
   `copy`, `print`
 
-### Phase 2: `readonly[T]` type modifier (per-parameter)
+### Phase 2: `readonly[T]` type modifier + type-embedded refactor
 
 - `ReadonlyType` wrapper in type system (like `OwnType`)
 - `readonly[T]` parsed in type annotations (subscript syntax)
 - Maps to `const T&` in C++ for non-value types, `T` for value types
-- Per-parameter enforcement via `_readonly_vars` set in sema:
-  - Field/subscript write rejection on readonly-rooted expressions
-  - Non-readonly method call rejection on readonly-rooted receivers
-  - Passing readonly-rooted non-value-type args to mutable params rejected
-- Local alias deduction: `alias = readonly_param` inherits readonly status
+- Type-embedded enforcement (ReadonlyType carried in scope types):
+  - `@readonly` wraps all non-value params with `ReadonlyType` at scope
+    registration time; `readonly[T]` params carry it from annotation
+  - Expression propagation: `readonly[T].field` -> `readonly[FieldType]` for
+    non-value fields; `readonly[list[T]][i]` -> `readonly[T]`
+  - Method resolution checks `is_readonly` on resolved function info when
+    receiver carries `ReadonlyType`
+  - Assignment target enforcement: `isinstance(obj_type, ReadonlyType)` check
+    on field/subscript write targets
+  - Type compatibility rejects `readonly[T]` -> `T` for non-value types
+  - Passing readonly arg to mutable param caught by `check_type_compatible()`
+- Local alias deduction: `alias = readonly_param` inherits `ReadonlyType` for
+  non-value types through variable type deduction
+- Control flow merging: if/else and while use scope type snapshots; readonly
+  on either branch -> readonly after join (conservative union)
 - `readonly[T]` rejected as variable type annotation (deduced from init)
 - `readonly[T | None]` and `readonly[T] | None` canonicalized to
   `ReadonlyType(OptionalType(T))` in parser
 - `readonly[Protocol]` generates `const T_name&` template params in codegen
-- Scope stores unwrapped types (enforcement is separate from type resolution)
+- Codegen strips `ReadonlyType` (C++ handles const via method signatures)
 
 ### Known Limitations
 
