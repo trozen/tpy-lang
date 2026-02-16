@@ -302,15 +302,18 @@ Allowed:
 2. **No automatic inference** -- regular (non-dunder) methods require explicit
    `@readonly`. Future: bottom-up inference from method body analysis.
 
-3. **Container-mediated aliases not tracked** -- readonly tracking covers
-   direct aliases (`alias = param`) and field/subscript chains, but not cases
-   where a readonly reference is routed through a container or iterator before
-   mutation.
+3. **Container-mediated aliases** -- resolved by type-embedded refactor.
+   ReadonlyType propagates through subscript (`readonly[list[T]][i]` ->
+   `readonly[T]`), field access chains, and iteration. List literals with
+   readonly elements infer `PendingList[readonly[T]]` which rejects assignment
+   to `list[T]`. Passing `readonly[list[T]]` to `list[T]` param is caught by
+   type compatibility. No taint-tracking needed for these cases.
 
 4. **Narrowing preservation is best-effort** -- readonly calls are treated as
-   safe for narrowing fact preservation, but global writes and
-   container-mediated aliases can still invalidate facts without detection.
-   Full soundness requires escape analysis.
+   safe for narrowing fact preservation, but non-readonly calls conservatively
+   clear subscript narrowing facts even when the container isn't passed as an
+   argument (global aliasing scenario). Full soundness for all edge cases
+   requires escape analysis.
 
 6. **No explicit `readonly[T]` return type** -- `@readonly` affects parameter
    enforcement only. Return-type constness comes from C++ method const

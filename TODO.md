@@ -40,7 +40,6 @@
 - auto-detect readonly from method body analysis (bottom-up inference) -- currently dunders in IMPLICIT_READONLY_METHODS are implicitly readonly, but regular methods need explicit `@readonly`; auto-inference could remove the need for annotations in most cases
 - generic method calls via dotted access: `tpy.mem.unsafe_cast[Int32](p)` fails parser ("Unsupported generic call target") because `Subscript(Attribute(...))` isn't handled as a call func. Requires adding `type_args` to `TpyMethodCall` and extending the parser. Workaround: `from tpy.mem import unsafe_cast; unsafe_cast[Int32](p)`.
 - handling cyclic imports
-- @readonly container-mediated alias tracking: parameter refs routed through containers/iterators bypass mutation checks (e.g. `items: list[Box] = [b]; for x in items: mutate(x)`). Fixing properly requires taint-tracking through data structures -- essentially a lightweight borrow checker. See READONLY_DESIGN.md Known Limitation #3.
 - user-defined function/method overloads via `@overload` decorator (from `typing`). Each `@overload` body is the real implementation (unlike CPython where bodies are stubs). Maps directly to C++ overloads. Infrastructure already exists (overload resolution, type-checked params).
 
 ## Polymorphism
