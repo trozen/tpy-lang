@@ -223,7 +223,7 @@ class StatementAnalyzer:
             if not self.ctx.init_terminated:
                 branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
                 newly_assigned = self.ctx.definitely_assigned - assigned_before
-                predecl = branch_new & newly_assigned
+                predecl = (branch_new & newly_assigned) - self.ctx.global_declarations
             else:
                 predecl = set()
             if predecl:

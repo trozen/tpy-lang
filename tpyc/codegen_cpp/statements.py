@@ -514,7 +514,8 @@ class StatementGenerator:
                 return None
             var_type = self.ctx.analyzer.get_expr_type(stmt.init)
             init_expr = self.expressions.gen_expr(stmt.init, var_type)
-            return f"{indent}{stmt.name} = {init_expr};\n"
+            target_name = self.ctx.native_global_names.get(stmt.name, stmt.name)
+            return f"{indent}{target_name} = {init_expr};\n"
 
         # Check if variable is already declared (reassignment)
         if stmt.name in self.ctx.declared_vars:
@@ -719,7 +720,9 @@ class StatementGenerator:
         # Pre-declare variables first declared inside branches
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
         for name, var_type in branch_decls.items():
-            if name not in self.ctx.declared_vars:
+            if (name not in self.ctx.declared_vars
+                    and name not in self.ctx.global_declared_vars
+                    and name not in self.ctx.native_global_names):
                 # OptionalType uses inner type (pointer-local adds T*)
                 resolve_type = var_type
                 if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():

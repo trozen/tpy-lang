@@ -195,6 +195,8 @@ class CodeGenContext:
     current_stmt_line: int = 0
 
     # --- Native global variable imports ---
+    # TODO: replace with dict[str, NativeGlobalInfo] holding c_name, linkage, var_type
+    # instead of a flat name->name mapping (the TpyVarDecl nodes already carry this)
     native_global_names: dict[str, str] = field(default_factory=dict)
 
     # --- Re-exports (from __init__.py) ---
