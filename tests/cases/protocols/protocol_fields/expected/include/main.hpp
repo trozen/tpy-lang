@@ -8,14 +8,14 @@ namespace tpy_user::main {
 // # Protocol with a single field
 // 6: class HasValue(Protocol):
 template<typename T>
-concept HasValue = requires(T& t) {
+concept HasValue = requires(const T& t) {
     { t.value } -> std::convertible_to<int32_t>;
 };
 
 // # Protocol with multiple fields
 // 11: class HasXY(Protocol):
 template<typename T>
-concept HasXY = requires(T& t) {
+concept HasXY = requires(const T& t) {
     { t.x } -> std::convertible_to<int32_t>;
     { t.y } -> std::convertible_to<int32_t>;
 };
@@ -31,7 +31,7 @@ concept Container = requires(T& t) {
 // # Generic protocol with field using type parameter
 // 25: class Holder[T](Protocol):
 template<typename T, typename _T0>
-concept Holder = requires(T& t) {
+concept Holder = requires(const T& t) {
     { t.item } -> std::convertible_to<_T0>;
 };
 

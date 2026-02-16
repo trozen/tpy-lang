@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, VoidType, ParamInfo, is_protocol_type,
+    IMPLICIT_READONLY_METHODS,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
 from .diagnostics import SemanticError
@@ -21,17 +22,6 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from tpyc import modules as builtin_modules
-
-# Dunders that are implicitly @readonly (don't mutate self).
-# Matches the former CONST_METHODS set from codegen; now sema is the source of truth.
-IMPLICIT_READONLY_METHODS = frozenset({
-    "__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
-    "__lt__", "__le__", "__gt__", "__ge__",
-    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
-    "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
-    "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
-    "__neg__", "__pos__", "__invert__",
-})
 
 
 class TypeRegistrar:
@@ -443,10 +433,22 @@ class TypeRegistrar:
 
     def register_protocol(self, protocol: TpyProtocol) -> None:
         """Register a protocol type (without validating parents yet)."""
-        from ..typesys import ProtocolInfo
+        from ..typesys import MethodSignature, ProtocolInfo
+        # Resolve implicit readonly on protocol methods (same logic as records)
+        resolved_methods = []
+        for msig in protocol.methods:
+            resolved_readonly = msig.is_readonly or (
+                msig.name in IMPLICIT_READONLY_METHODS and not msig.readonly_opt_out
+            )
+            resolved_methods.append(MethodSignature(
+                name=msig.name,
+                params=msig.params,
+                return_type=msig.return_type,
+                is_readonly=resolved_readonly,
+            ))
         info = ProtocolInfo(
             name=protocol.name,
-            methods=protocol.methods,
+            methods=resolved_methods,
             fields=protocol.fields,
             type_params=protocol.type_params,
             parent_protocols=protocol.parent_protocols

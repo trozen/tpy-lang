@@ -337,6 +337,24 @@ class Parser:
 
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
+                # Parse @readonly decorator
+                is_readonly = False
+                readonly_opt_out = False
+                for dec in item.decorator_list:
+                    if isinstance(dec, ast.Name) and dec.id == "readonly":
+                        is_readonly = True
+                    elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "readonly":
+                        if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, bool):
+                            if dec.args[0].value:
+                                is_readonly = True
+                            else:
+                                readonly_opt_out = True
+                        else:
+                            raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
+                    else:
+                        dec_name = dec.id if isinstance(dec, ast.Name) else type(dec).__name__
+                        raise ParseError(f"Unknown decorator '{dec_name}' on protocol method '{item.name}'", dec)
+
                 # Parse method signature (body should be ... or pass)
                 params = []
                 for i, arg in enumerate(item.args.args):
@@ -356,7 +374,9 @@ class Parser:
                 methods.append(MethodSignature(
                     name=item.name,
                     params=params,
-                    return_type=return_type
+                    return_type=return_type,
+                    is_readonly=is_readonly,
+                    readonly_opt_out=readonly_opt_out,
                 ))
             elif isinstance(item, ast.AnnAssign):
                 # Field declaration: name: Type

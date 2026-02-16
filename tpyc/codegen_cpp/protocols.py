@@ -225,7 +225,20 @@ class ProtocolGenerator:
             type_param_map[tp] = cpp_param
 
         out.write(f"template<{', '.join(template_params)}>\n")
-        out.write(f"concept {protocol.name} = requires(T& t) {{\n")
+
+        # Collect all methods including inherited ones
+        all_methods = self.collect_concept_methods(protocol.name)
+
+        # Use const T& unless any method is non-readonly
+        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        has_mutable_method = any(
+            not m.is_readonly and not (protocol_info is not None and protocol_info.is_readonly)
+            for m in all_methods
+        )
+        if not has_mutable_method:
+            out.write(f"concept {protocol.name} = requires(const T& t) {{\n")
+        else:
+            out.write(f"concept {protocol.name} = requires(T& t) {{\n")
 
 
         def subst_type(typ: TpyType) -> TpyType:
@@ -239,8 +252,6 @@ class ProtocolGenerator:
             """Convert type to C++, substituting protocol type params."""
             return subst_type(typ).to_cpp()
 
-        # Collect all methods including inherited ones
-        all_methods = self.collect_concept_methods(protocol.name)
         for method_sig in all_methods:
             # Generate requirement for each method
             # SelfType.to_cpp() returns "T", so this handles Self -> T substitution

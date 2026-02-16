@@ -294,7 +294,11 @@ def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
     methods = []
     for name, method_def in pdef.methods.items():
         params = [ParamInfo(p.name, p.type) for p in method_def.params]
-        methods.append(MethodSignature(name=name, params=params, return_type=method_def.returns))
+        method_readonly = method_def.is_readonly or pdef.is_readonly
+        methods.append(MethodSignature(
+            name=name, params=params, return_type=method_def.returns,
+            is_readonly=method_readonly,
+        ))
 
     return ProtocolInfo(
         name=pdef.name,
@@ -313,10 +317,11 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
     This creates a RecordInfo that represents the builtin type's interface
     (methods with cpp_template) while preserving type parameter information.
     """
-    from tpyc.typesys import RecordInfo, FunctionInfo
+    from tpyc.typesys import RecordInfo, FunctionInfo, IMPLICIT_READONLY_METHODS
 
     methods = {}
     for method_name, overloads in type_def.methods.items():
+        resolved_readonly = method_name in IMPLICIT_READONLY_METHODS
         # Store all overloads as list of FunctionInfo
         methods[method_name] = [
             FunctionInfo(
@@ -326,7 +331,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
                 is_method=True,
                 is_staticmethod=method.is_static,
                 is_noalloc=method.is_noalloc,
-                is_readonly=method.is_readonly,
+                is_readonly=method.is_readonly or resolved_readonly,
                 cpp_template=method.cpp,
             )
             for method in overloads

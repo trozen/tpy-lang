@@ -1172,12 +1172,24 @@ class ResolvedUnaryop:
     method: FunctionInfo
 
 
+IMPLICIT_READONLY_METHODS = frozenset({
+    "__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
+    "__lt__", "__le__", "__gt__", "__ge__",
+    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
+    "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
+    "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
+    "__neg__", "__pos__", "__invert__",
+})
+
+
 @dataclass
 class MethodSignature:
     """Method signature required by a protocol."""
     name: str
     params: list[tuple[str, TpyType]]  # (param_name, param_type)
     return_type: TpyType
+    is_readonly: bool = False
+    readonly_opt_out: bool = False
 
 
 @dataclass

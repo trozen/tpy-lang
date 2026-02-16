@@ -898,7 +898,7 @@ def count(items: Measurable) -> Int32:
 Generated C++:
 ```cpp
 template<typename T>
-concept Measurable = requires(T& t) {
+concept Measurable = requires(const T& t) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
@@ -907,6 +907,44 @@ int32_t count(T_items& items) {
     return tpy::__len__(items);
 }
 ```
+
+**Readonly concept generation**: When all methods in a user-defined protocol are readonly (either explicitly via `@readonly` or implicitly for dunders like `__len__`, `__getitem__`, etc.), the concept uses `const T&` instead of `T&`. This allows the concept to accept const references and is consistent with how builtin protocols like `Sized` and `Sequence` work.
+
+**`@readonly` on protocol methods**: Protocol methods can be annotated with `@readonly` to require that implementing methods are also readonly. This is enforced during conformance checking -- if a protocol method is readonly, the record's method must also be readonly (explicitly or implicitly):
+
+```python
+from typing import Protocol
+from tpy import Int32, readonly
+
+class Readable(Protocol):
+    @readonly
+    def read(self) -> Int32: ...
+
+class GoodReader:
+    value: Int32
+    def __init__(self, value: Int32) -> None:
+        self.value = value
+
+    @readonly
+    def read(self) -> Int32:
+        return self.value
+
+class BadReader:
+    value: Int32
+    def __init__(self, value: Int32) -> None:
+        self.value = value
+
+    def read(self) -> Int32:  # Not readonly
+        return self.value
+
+def use(r: Readable) -> Int32:
+    return r.read()
+
+use(GoodReader(1))  # OK
+use(BadReader(1))   # ERROR: BadReader does not conform to Readable
+```
+
+Dunders in the implicit readonly set (`__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.) are automatically treated as readonly in protocol signatures, matching the behavior for record methods. Use `@readonly(False)` to opt out.
 
 #### Working: Protocol Inheritance
 
@@ -946,12 +984,12 @@ class Container[T: PrintableAndSized]:
 Generated C++:
 ```cpp
 template<typename T>
-concept Printable = requires(T& t) {
+concept Printable = requires(const T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
 template<typename T>
-concept PrintableAndSized = requires(T& t) {
+concept PrintableAndSized = requires(const T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
@@ -1003,7 +1041,7 @@ print(get_value(p))  # Output: 42
 Generated C++ concept:
 ```cpp
 template<typename T>
-concept HasValue = requires(T& t) {
+concept HasValue = requires(const T& t) {
     { t.value } -> std::convertible_to<int32_t>;
 };
 ```
@@ -1049,7 +1087,7 @@ add_values(a, b)  # Int32 conforms: __add__(Int32) -> Int32
 Generated C++:
 ```cpp
 template<typename T>
-concept Addable = requires(T& t) {
+concept Addable = requires(const T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
 };
 
@@ -1115,7 +1153,7 @@ def double_it(d: Duplicable) -> None:
 double_it(Value(21))  # OK: temporaries work via auto-generated temp vars
 ```
 
-**Note on temporaries**: When passing a constructor expression (like `Value(21)`) to a protocol-typed parameter, the compiler generates a temporary variable. This is necessary because protocol parameters use mutable references (`T&`) in C++, which cannot bind directly to temporaries.
+**Note on temporaries**: When passing a constructor expression (like `Value(21)`) to a protocol-typed parameter, the compiler generates a temporary variable. This is necessary because protocol parameters may use mutable references (`T&`) in C++, which cannot bind directly to temporaries.
 
 #### Working: Generic Protocol `Sequence[T]`
 
@@ -1169,7 +1207,7 @@ def bad(items: Sequence) -> Int32:  # ERROR: Generic protocol 'Sequence' require
 - `str` conforms to `Sequence[Char]` - strings are sequences of characters
 - User records with `__len__` and `__getitem__` methods (see below)
 
-**Temporaries**: Passing temporaries (list literals, constructor calls) to protocol-typed parameters works. The compiler generates temporary variables automatically since protocol parameters use mutable references (`T&`) in C++.
+**Temporaries**: Passing temporaries (list literals, constructor calls) to protocol-typed parameters works. The compiler generates temporary variables automatically since protocol parameters may use mutable references (`T&`) in C++.
 
 **User records as Sequence**: Records with `__len__` and `__getitem__` automatically conform to `Sequence[T]`. The compiler generates `operator[]` from `__getitem__`:
 ```python
@@ -1540,6 +1578,8 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Implicit readonly on dunders: `__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.
   - `@readonly(False)` opts out of implicit readonly (e.g., `__getitem__` that caches)
   - Readonly methods returning references get both const and non-const C++ overloads; value returns get const only
+  - Protocol method readonly: `@readonly` on protocol methods enforces that implementations are also readonly; conformance fails at sema time if a record's method is not readonly when the protocol requires it
+  - Protocol concept generation: user-defined protocols where all methods are readonly generate `const T&` in C++ concepts
   - Limitation: container-mediated aliases not tracked (e.g., `[param]` into list then iterate)
 - **Working**: `readonly[T]` type modifier (per-parameter constness)
   - `readonly[T]` on a parameter means "immutable reference to T", maps to `const T&` in C++

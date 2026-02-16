@@ -10,7 +10,7 @@ namespace tpy_user::main {
 // # is defined after the class, but CPython doesn't allow this.
 // 7: class Printable(Protocol):
 template<typename T>
-concept Printable = requires(T& t) {
+concept Printable = requires(const T& t) {
     { t.__str__() } -> std::convertible_to<std::string_view>;
 };
 

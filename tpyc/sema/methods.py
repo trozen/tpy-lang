@@ -12,7 +12,6 @@ from ..typesys import (
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ConstPtrType, ReadonlyType,
 )
-from .registration import IMPLICIT_READONLY_METHODS
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt
 )
@@ -433,6 +432,22 @@ class MethodAnalyzer:
                 expr,
             )
 
+    def _is_protocol_method_readonly(self, protocol_name: str, method_name: str) -> bool:
+        """Check if a protocol method is readonly (per-method or protocol-level).
+
+        Searches inherited methods too, so a @readonly method from a parent
+        protocol is correctly recognized.
+        """
+        proto_info = self.ctx.registry.get_protocol(protocol_name)
+        if proto_info is None:
+            return False
+        if proto_info.is_readonly:
+            return True
+        for msig in self.protocols.collect_protocol_methods(protocol_name):
+            if msig.name == method_name:
+                return msig.is_readonly
+        return False
+
     def _analyze_protocol_or_bound_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
         """Analyze method calls on protocol-typed values or bounded type parameters."""
         if is_protocol_type(obj_type):
@@ -442,12 +457,13 @@ class MethodAnalyzer:
 
             raw_params, return_type = method_sig
             params = [ParamInfo(n, t) for n, t in raw_params]
+            method_readonly = self._is_protocol_method_readonly(obj_type.name, expr.method)
             expr.resolved_function_info = FunctionInfo(
                 name=expr.method,
                 params=params,
                 return_type=return_type,
                 is_method=True,
-                is_readonly=expr.method in IMPLICIT_READONLY_METHODS,
+                is_readonly=method_readonly,
             )
             if len(expr.args) != len(params):
                 raise self.ctx.error(
@@ -470,12 +486,13 @@ class MethodAnalyzer:
 
                 raw_params, return_type = method_sig
                 params = [ParamInfo(n, t) for n, t in raw_params]
+                method_readonly = self._is_protocol_method_readonly(bound.name, expr.method)
                 expr.resolved_function_info = FunctionInfo(
                     name=expr.method,
                     params=params,
                     return_type=return_type,
                     is_method=True,
-                    is_readonly=expr.method in IMPLICIT_READONLY_METHODS,
+                    is_readonly=method_readonly,
                 )
                 if len(expr.args) != len(params):
                     raise self.ctx.error(

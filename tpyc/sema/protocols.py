@@ -89,9 +89,11 @@ class ProtocolChecker:
                 for _, ptype in method_sig.params
             ]
             expected_return = self.type_ops.substitute_types(method_sig.return_type, type_subst)
+            method_readonly = method_sig.is_readonly or protocol_info.is_readonly
 
             if not self.type_has_method_with_signature(
-                actual, method_sig.name, expected_params, expected_return
+                actual, method_sig.name, expected_params, expected_return,
+                require_readonly=method_readonly,
             ):
                 return False
 
@@ -110,6 +112,7 @@ class ProtocolChecker:
         method_name: str,
         expected_params: list[TpyType],
         expected_return: TpyType,
+        require_readonly: bool = False,
     ) -> bool:
         """Check if a type has a method with the expected signature.
 
@@ -133,6 +136,8 @@ class ProtocolChecker:
 
             for method_sig in protocol_info.methods:
                 if method_sig.name == method_name:
+                    if require_readonly and not (method_sig.is_readonly or protocol_info.is_readonly):
+                        return False
                     # Resolve types with substitution
                     resolved_return = self.type_ops.substitute_types(method_sig.return_type, type_subst) if type_subst else method_sig.return_type
                     if resolved_return != expected_return:
@@ -168,6 +173,9 @@ class ProtocolChecker:
             # Check if any overload matches the expected signature
             for method in overloads:
                 resolved = self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
+                # Check readonly requirement
+                if require_readonly and not resolved.is_readonly:
+                    continue
                 # Check return type
                 if resolved.return_type != expected_return:
                     continue
@@ -202,6 +210,9 @@ class ProtocolChecker:
                 else:
                     resolved = method_info
 
+                # Check readonly requirement
+                if require_readonly and not resolved.is_readonly:
+                    continue
                 # Check return type (allow coercions like IntLiteral -> Int32)
                 if not self.types_compatible_for_protocol(resolved.return_type, expected_return):
                     continue
@@ -559,9 +570,11 @@ class ProtocolChecker:
                 for _, ptype in method_sig.params
             ]
             expected_return = self.type_ops.substitute_types(method_sig.return_type, type_subst)
+            method_readonly = method_sig.is_readonly or protocol_info.is_readonly
 
             if not self.type_has_method_with_signature(
-                record_type, method_sig.name, expected_params, expected_return
+                record_type, method_sig.name, expected_params, expected_return,
+                require_readonly=method_readonly,
             ):
                 missing.append(method_sig.name)
 
