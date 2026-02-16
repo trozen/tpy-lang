@@ -11,7 +11,7 @@ Inner<tpy::BigInt>* inner{};
 Outer<Inner<tpy::BigInt>>* outer{};
 // # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
 // 24: outer2 = Outer(Inner(42))
-Outer<Inner<tpy::BigInt>>* outer2{};
+Outer<Inner<int32_t>>* outer2{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -31,7 +31,7 @@ void __tpy_init() {
   std::cout << outer->inner.value << "\n";
   // 23: # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
   // 24: outer2 = Outer(Inner(42))
-  static Outer<Inner<tpy::BigInt>> __global_slot_3 = Outer<Inner<tpy::BigInt>>(Inner<tpy::BigInt>(42));
+  static Outer<Inner<int32_t>> __global_slot_3 = Outer<Inner<int32_t>>(Inner<int32_t>(42));
   outer2 = &__global_slot_3;
   // 25: print(outer2.inner.value)
   std::cout << outer2->inner.value << "\n";

@@ -44,7 +44,7 @@ void __tpy_init() {
   std::cout << (tpy::pow_check<int32_t>(x, 1)) << "\n";
   // 19: # Negative base
   // 20: n: Int32 = -2
-  n = -(2);
+  n = -2;
   // 21: print(n ** 3)   # -8
   std::cout << (tpy::pow_check<int32_t>(n, 3)) << "\n";
   // 22: print(n ** 4)   # 16

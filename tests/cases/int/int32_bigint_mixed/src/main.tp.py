@@ -1,18 +1,19 @@
-"""Test mixed Int32 and BigInt operations."""
+# Mixed Int32 and BigInt arithmetic: explicit Int32 combined with
+# unannotated default-int or out-of-range literals.
 from tpy import Int32
 
 
 def test_int32_plus_bigint():
     """Int32 + BigInt should promote to BigInt."""
     x: Int32 = 5
-    y = 10  # BigInt
+    y = 10  # default int (Int32)
     z = x + y  # Should be BigInt(15)
     print(z)
 
 
 def test_bigint_plus_int32():
     """BigInt + Int32 should be BigInt."""
-    x = 10  # BigInt
+    x = 10  # default int (Int32)
     y: Int32 = 5
     z = x + y  # Should be BigInt(15)
     print(z)
@@ -21,7 +22,7 @@ def test_bigint_plus_int32():
 def test_mixed_arithmetic():
     """Various mixed operations."""
     a: Int32 = 20
-    b = 3  # BigInt
+    b = 3  # default int (Int32)
 
     print(a - b)   # 17
     print(a * b)   # 60
@@ -32,7 +33,7 @@ def test_mixed_arithmetic():
 def test_large_bigint():
     """Int32 + large BigInt must not overflow."""
     x: Int32 = 5
-    y = 10 ** 20  # Way larger than Int32 max
+    y = 10 ** 20  # tpyc: warning(/outside default Int32 range/)
     z = x + y     # Must promote to BigInt, not panic
     print(z)
 
@@ -40,7 +41,7 @@ def test_large_bigint():
 def test_augmented_assign_mixed():
     """Int32 augmented assignment with BigInt converts to Int32."""
     x: Int32 = 100
-    b = 7  # BigInt
+    b = 7  # default int (Int32)
 
     x += b
     print(x)  # 107

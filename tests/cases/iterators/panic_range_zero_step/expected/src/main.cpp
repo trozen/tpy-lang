@@ -12,7 +12,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: for i in range(1, 10, 0):
-  for (tpy::BigInt i : tpy::Range<tpy::BigInt>(tpy::BigInt(1), tpy::BigInt(10), tpy::BigInt(0))) {
+  for (int32_t i : tpy::Range<int32_t>(1, 10, 0)) {
     // 4:     print(i)
     std::cout << i << "\n";
   }

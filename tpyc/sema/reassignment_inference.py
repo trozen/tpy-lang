@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt
 from ..typesys import (
-    BIGINT,
     BigIntType,
+    FixedIntType,
     IntLiteralType,
     NoneType,
     OptionalType,
@@ -35,8 +35,6 @@ class ReassignmentInference:
         """Normalize expression type to variable base type for inference."""
         if isinstance(typ, OwnType):
             return typ.wrapped
-        if isinstance(typ, IntLiteralType):
-            return BIGINT
         return typ
 
     def record_write(self, name: str, rhs_expr: TpyExpr, rhs_type: TpyType) -> None:
@@ -82,7 +80,13 @@ class ReassignmentInference:
                     )
                 raise SemanticError(msg, e.loc) from e
 
-    def resolve_reassignment_target_type(self, name: str, existing_type: TpyType, init_type: TpyType) -> TpyType:
+    def resolve_reassignment_target_type(
+        self,
+        name: str,
+        existing_type: TpyType,
+        init_type: TpyType,
+        init_expr: TpyExpr | None = None,
+    ) -> TpyType:
         """Resolve target type for an unannotated reassignment write."""
         if name in self.ctx.authoritative_types:
             return self.ctx.authoritative_types[name]
@@ -90,6 +94,8 @@ class ReassignmentInference:
         # None-seeded inference: None + T => Optional[T]
         if isinstance(existing_type, NoneType):
             base = self._normalize_inferred_base(init_type)
+            if isinstance(base, IntLiteralType):
+                base = self.ctx.default_int_for_literal(base, warn_node=init_expr)
             if isinstance(base, NoneType):
                 return existing_type
             self.ctx.unresolved_none_vars.discard(name)
@@ -99,10 +105,23 @@ class ReassignmentInference:
         if isinstance(existing_type, OptionalType):
             return existing_type
 
-        # Literal-seeded default (BigInt) may narrow to Int32 when explicitly anchored.
-        if name in self.ctx.literal_default_vars and isinstance(existing_type, BigIntType):
-            merged = merge_literal_seed_target(init_type, self.ctx.literal_values.get(name, []))
+        # Literal-seeded default (ctx.default_int_type) may be refined by
+        # explicit later writes (e.g., BigInt/Int64/Float anchors).
+        if name in self.ctx.literal_default_vars:
+            merged = merge_literal_seed_target(existing_type, init_type, self.ctx.literal_values.get(name, []))
             if merged is not None:
+                if (
+                    isinstance(existing_type, FixedIntType)
+                    and isinstance(init_type, IntLiteralType)
+                    and isinstance(merged, BigIntType)
+                    and init_expr is not None
+                    and init_type.value is not None
+                ):
+                    self.ctx.warning(
+                        f"Integer literal {init_type.value} is outside default {existing_type} range; "
+                        "promoting variable to int (BigInt).",
+                        init_expr,
+                    )
                 if not isinstance(init_type, IntLiteralType):
                     self.ctx.literal_default_vars.discard(name)
                 return merged

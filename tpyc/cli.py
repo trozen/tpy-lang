@@ -23,7 +23,9 @@ from pathlib import Path
 from .parse import ParseError
 from .sema import SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenOptions, CodeGenError
-from .compiler import Compiler, CompileError, BuildLayout, CppCompilerConfig
+from .compiler import (
+    Compiler, CompileError, BuildLayout, CppCompilerConfig, DEFAULT_INT_CHOICES
+)
 
 
 def get_runtime_dir() -> Path:
@@ -59,6 +61,12 @@ def main() -> int:
     parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
     parser.add_argument("--print-types", action="store_true", help="Print documentation for all builtin types")
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
+    parser.add_argument(
+        "--default-int",
+        choices=DEFAULT_INT_CHOICES,
+        default="Int32",
+        help="Default type for unannotated integer literals (default: Int32)",
+    )
 
     args = parser.parse_args()
 
@@ -125,9 +133,9 @@ def main() -> int:
 
         # Create compiler (unified for both stdin and file input)
         if reading_from_stdin:
-            compiler = Compiler.from_source(source, module_name)
+            compiler = Compiler.from_source(source, module_name, default_int=args.default_int)
         else:
-            compiler = Compiler(input_path)
+            compiler = Compiler(input_path, default_int=args.default_int)
 
         compiled_modules = compiler.compile()
 

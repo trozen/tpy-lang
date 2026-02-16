@@ -42,21 +42,28 @@ def fixed_int_range_contains(typ: FixedIntType, value: int) -> bool:
     return typ.min_value <= value <= typ.max_value
 
 
-def merge_literal_seed_target(init_type: TpyType, literal_values: list[int]) -> TpyType | None:
+def merge_literal_seed_target(
+    existing_type: TpyType,
+    init_type: TpyType,
+    literal_values: list[int],
+) -> TpyType | None:
     """Infer target type for a literal-seeded variable.
 
-    A literal-seeded variable starts as BigInt (`x = 0`) and may be narrowed
-    by later writes if safe.
+    A literal-seeded variable starts as ctx.default_int_type (`x = 0`) and may
+    be refined by later writes if safe.
     """
-    info = numeric_info(init_type)
-    if info is None:
-        return None
-    if info.family == "int_literal":
-        return BIGINT
+    if isinstance(init_type, IntLiteralType):
+        if (
+            isinstance(existing_type, FixedIntType)
+            and init_type.value is not None
+            and not fixed_int_range_contains(existing_type, init_type.value)
+        ):
+            return BIGINT
+        return existing_type
     if isinstance(init_type, FixedIntType):
         if all(fixed_int_range_contains(init_type, v) for v in literal_values):
             return init_type
-        return BIGINT
+        return existing_type
     if isinstance(init_type, BigIntType):
         return BIGINT
     if isinstance(init_type, FloatType):

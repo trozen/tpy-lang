@@ -8,7 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..typesys import (
-    TpyType, TypeRegistry, ListLiteralInfo, TypeParamKind
+    TpyType, TypeRegistry, ListLiteralInfo, TypeParamKind, IntLiteralType,
+    FixedIntType, INT32, BIGINT,
 )
 from ..namespace import Namespace
 from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall
@@ -47,6 +48,8 @@ class SemanticContext:
     # --- Core ---
     registry: TypeRegistry
     global_scope: Scope
+    # Default concrete type used for unannotated integer literal deduction.
+    default_int_type: TpyType = field(default_factory=lambda: INT32)
 
     # --- Analysis state ---
     current_scope: Scope | None = None
@@ -109,8 +112,8 @@ class SemanticContext:
     non_none_exprs: set[tuple[str, ...]] = field(default_factory=set)
 
     # --- Reassignment inference tracking ---
-    # Vars initialized from int literals without annotation (defaulted to BigInt)
-    # and still eligible for narrowing to Int32.
+    # Vars initialized from int literals without annotation (defaulted to
+    # default_int_type) and still eligible for reassignment-based refinement.
     literal_default_vars: set[str] = field(default_factory=set)
     # Tracks values of literal writes for range checks during potential narrowing.
     literal_values: dict[str, list[int]] = field(default_factory=dict)
@@ -166,6 +169,28 @@ class SemanticContext:
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""
         self.expr_types[id(expr)] = typ
+
+    def default_int_for_literal(
+        self,
+        typ: TpyType,
+        warn_node: TpyExpr | TpyStmt | None = None,
+    ) -> TpyType:
+        """Resolve configured default-int, with range-safe fallback for literals."""
+        if not isinstance(typ, IntLiteralType):
+            return self.default_int_type
+        if (
+            isinstance(self.default_int_type, FixedIntType)
+            and typ.value is not None
+            and not (self.default_int_type.min_value <= typ.value <= self.default_int_type.max_value)
+        ):
+            if warn_node is not None:
+                self.warning(
+                    f"Integer literal {typ.value} is outside default {self.default_int_type} range; "
+                    "inferring int (BigInt).",
+                    warn_node,
+                )
+            return BIGINT
+        return self.default_int_type
 
     def reset_function_tracking(self) -> None:
         """Reset per-function tracking state between function analyses."""

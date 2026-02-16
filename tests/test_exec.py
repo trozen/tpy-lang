@@ -12,6 +12,7 @@ from conftest import (
     UPDATE_EXPECTED,
     get_module_name,
     compile_with_diagnostics,
+    get_case_default_int,
     build_and_run,
     find_extra_src_files,
     find_extra_include_dirs,
@@ -38,7 +39,7 @@ def test_exec(case_dir, main_src):
                 f.unlink()
 
     # Compile TurboPython → C++
-    result = compile_with_diagnostics(main_src, build_dir)
+    result = compile_with_diagnostics(main_src, build_dir, default_int=get_case_default_int(case_dir))
 
     if not result.success:
         pytest.skip("Compilation failed")

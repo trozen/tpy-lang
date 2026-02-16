@@ -15,7 +15,7 @@ void rvalue_restored() {
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 14:     for i in range(3):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
+  for (int32_t i = 0; i < 3; ++i) {
     // 15:         items: list[Point] = [Point(99, 99)]
     std::vector<Point> items = {Point(99, 99)};
     // 16:         p: Point = Point(0, 0)
@@ -23,7 +23,7 @@ void rvalue_restored() {
     // 17:         p = items[0]
     p = &(tpy::get_item(items, 0));
     // 18:         p = Point(i, i + 10)
-    p = &*(__slot_3 = Point((i).to_fixed_check<int32_t>(), (((i) + (tpy::BigInt(10)))).to_fixed_check<int32_t>()));
+    p = &*(__slot_3 = Point(i, (tpy::add_check<int32_t>(i, 10))));
     // 19:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

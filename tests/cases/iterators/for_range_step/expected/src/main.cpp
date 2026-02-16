@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
-// # range with BigInt args (converted to Int32)
+// # range with unannotated default-int args
 // 29: n = 5
-tpy::BigInt n;
+int32_t n{};
 
 // # range with Int32 variables
 // 20: def sum_range_step(start: Int32, stop: Int32, step: Int32) -> Int32:
@@ -35,36 +35,38 @@ void __tpy_init() {
   __name__ = "__main__";
   // 3: # range(stop) - basic
   // 4: for i in range(5):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(5); ++i) {
+  for (int32_t i = 0; i < 5; ++i) {
     // 5:     print(i)
     std::cout << i << "\n";
   }
   // 7: # range(start, stop)
   // 8: for i in range(2, 6):
-  for (tpy::BigInt i = tpy::BigInt(2); i < tpy::BigInt(6); ++i) {
+  for (int32_t i = 2; i < 6; ++i) {
     // 9:     print(i)
     std::cout << i << "\n";
   }
   // 11: # range(start, stop, step) - step of 2
   // 12: for i in range(0, 10, 2):
-  for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(10); i += tpy::BigInt(2)) {
+  tpy::range_check_overflow<int32_t>(0, 10, 2);
+  for (int32_t i = 0; i < 10; i += 2) {
     // 13:     print(i)
     std::cout << i << "\n";
   }
   // 15: # range(start, stop, step) - negative step (countdown)
   // 16: for i in range(10, 0, -2):
-  for (tpy::BigInt i = tpy::BigInt(10); i > tpy::BigInt(0); i += -(tpy::BigInt(2))) {
+  tpy::range_check_overflow<int32_t>(10, 0, -2);
+  for (int32_t i = 10; i > 0; i += -2) {
     // 17:     print(i)
     std::cout << i << "\n";
   }
   // 26: print(sum_range_step(0, 10, 3))  # 0 + 3 + 6 + 9 = 18
   std::cout << sum_range_step(0, 10, 3) << "\n";
-  // 28: # range with BigInt args (converted to Int32)
+  // 28: # range with unannotated default-int args
   // 29: n = 5
-  n = tpy::BigInt(5);
+  n = 5;
   // 30: for i in range(n):
-  tpy::BigInt __stop_4 = n;
-  for (tpy::BigInt i = 0; i < __stop_4; ++i) {
+  int32_t __stop_4 = n;
+  for (int32_t i = 0; i < __stop_4; ++i) {
     // 31:     print(i)
     std::cout << i << "\n";
   }

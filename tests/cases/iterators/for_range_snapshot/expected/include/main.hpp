@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 extern int32_t count;
-extern tpy::BigInt n;
+extern int32_t n;
 extern int32_t count2;
 
 void test_stop_snapshot();

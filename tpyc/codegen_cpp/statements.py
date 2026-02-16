@@ -276,21 +276,23 @@ class StatementGenerator:
             if isinstance(target_type, OwnType):
                 target_type = target_type.wrapped
             if isinstance(target_type, IntLiteralType):
-                target_type = BIGINT
+                target_type = self.ctx.analyzer.ctx.default_int_for_literal(target_type)
             elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
-                target_type = ArrayType(BIGINT, target_type.size)
+                elem = self.ctx.analyzer.ctx.default_int_for_literal(target_type.element_type)
+                target_type = ArrayType(elem, target_type.size)
         return target_type
 
     def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
         """Normalize declaration type before C++ emission."""
         if isinstance(var_type, IntLiteralType):
-            var_type = BIGINT
+            var_type = self.ctx.analyzer.ctx.default_int_for_literal(var_type)
         elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
-            var_type = ArrayType(BIGINT, var_type.size)
+            elem = self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type)
+            var_type = ArrayType(elem, var_type.size)
         elif isinstance(var_type, (ListType, PendingListType)):
             elem = getattr(var_type, "element_type", None)
             if isinstance(elem, IntLiteralType):
-                var_type = ListType(BIGINT)
+                var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(elem))
         # Optional non-value types use inner type (pointer-local adds T*)
         if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
             var_type = var_type.inner
@@ -1101,9 +1103,9 @@ class StatementGenerator:
         else:
             elem_type = iterable_type.get_element_type()
 
-        # Resolve IntLiteralType to BigInt (Python default for int lists)
+        # Resolve IntLiteralType to configured default integer type.
         if isinstance(elem_type, IntLiteralType):
-            elem_type = BIGINT
+            elem_type = self.ctx.analyzer.ctx.default_int_type
 
         # For strings, wrap in std::string_view for range-based for
         if isinstance(iterable_type, StrType):

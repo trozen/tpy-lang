@@ -133,10 +133,11 @@ class CodeGenerator:
                     var_type = resolve_stmt_type_cascade(stmt, self.analyzer, self.types)
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
+                    default_int = self.analyzer.ctx.default_int_type
                     if isinstance(var_type, ListType) and isinstance(var_type.element_type, IntLiteralType):
-                        var_type = ListType(BIGINT)
+                        var_type = ListType(default_int)
                     elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
-                        var_type = ArrayType(BIGINT, var_type.size)
+                        var_type = ArrayType(default_int, var_type.size)
                     seen_globals[stmt.name] = var_type
                     if stmt.linkage != VarLinkage.DEFAULT:
                         native_globals.append(stmt)

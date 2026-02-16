@@ -8,9 +8,9 @@ std::string_view __name__;
 // 4: def main() -> None:
 void main() {
   // 5:     x = 0
-  tpy::BigInt x = tpy::BigInt(0);
+  int32_t x = 0;
   // 6:     x += Int32(5)
-  x = (x) + (tpy::BigInt(5));
+  x = tpy::add_check<int32_t>(x, 5);
   // 7:     print(x)
   std::cout << x << "\n";
 }

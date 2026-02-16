@@ -8,7 +8,7 @@ namespace tpy_user::main {
 template<typename T> struct Box;
 
 extern std::string_view __name__;
-extern Box<std::vector<tpy::BigInt>>* box;
+extern Box<std::vector<int32_t>>* box;
 
 // 4: class Box[T]:
 template<typename T>

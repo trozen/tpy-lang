@@ -8,7 +8,7 @@ namespace tpy_user::main {
 template<typename T> struct Same;
 
 extern std::string_view __name__;
-extern Same<tpy::BigInt>* same;
+extern Same<int32_t>* same;
 
 // 4: class Same[T]:
 template<typename T>

@@ -6,8 +6,8 @@
 namespace tpy_user::main {
 
 extern std::string_view __name__;
-extern tpy::BigInt x;
-extern tpy::BigInt y;
+extern int32_t x;
+extern int32_t y;
 
 
 void __tpy_init();

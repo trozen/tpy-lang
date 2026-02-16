@@ -1,6 +1,6 @@
 from tpy import Int32
 
-# Empty ranges — body should never execute
+# Empty ranges -- body should never execute
 for i in range(0):
     print(i)
 
@@ -31,7 +31,7 @@ for i in range(0, 10, 100):
 for i in range(10, 0, -100):
     print(i)
 
-# Compound expression -- value unknown, should use BigInt fallback
+# Compound expression -- constant-folded to Int32
 for i in range(1 + 2):
     print(i)
 

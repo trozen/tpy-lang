@@ -6,7 +6,7 @@ namespace tpy_user::main {
 std::string_view __name__;
 // # Case 1: Pure literals (BigInt by default)
 // 4: pure_literals = [1, 2, 3]
-std::vector<tpy::BigInt>* pure_literals{};
+std::vector<int32_t>* pure_literals{};
 // # Case 2: Int32 constructor in list forces Int32 element type
 // 8: mixed_int32 = [Int32(1), 2, 3]
 std::vector<int32_t>* mixed_int32{};
@@ -79,7 +79,7 @@ void __tpy_init() {
   __name__ = "__main__";
   // 3: # Case 1: Pure literals (BigInt by default)
   // 4: pure_literals = [1, 2, 3]
-  static std::vector<tpy::BigInt> __global_slot_1 = {1, 2, 3};
+  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
   pure_literals = &__global_slot_1;
   // 5: print(pure_literals[0])
   std::cout << tpy::get_item((*pure_literals), 0) << "\n";

@@ -18,7 +18,7 @@ struct CachingContainer {
 
   // 9:     def __init__(self, data: Int32) -> None:
   CachingContainer() = default;
-  explicit CachingContainer(int32_t data) : data(data), last_access(-(1)) {}
+  explicit CachingContainer(int32_t data) : data(data), last_access(-1) {}
 
   //     @readonly(False)
   // 14:     def __getitem__(self, index: Int32) -> Int32:

@@ -2,7 +2,11 @@
 
 from pathlib import Path
 
+import pytest
+
 from .compiler import Compiler, BuildLayout
+from .sema.diagnostics import SemanticError
+from .typesys import INT32, INT64, BIGINT
 
 
 class TestCompilerFromSource:
@@ -38,12 +42,37 @@ class TestCompilerFromSource:
         assert len(file_ast.functions) == len(source_ast.functions)
         assert len(file_ast.top_level_stmts) == len(source_ast.top_level_stmts)
 
+    @pytest.mark.parametrize(
+        ("default_int", "expected"),
+        [
+            ("Int32", INT32),
+            ("Int64", INT64),
+            ("BigInt", BIGINT),
+        ],
+    )
+    def test_default_int_setting_controls_unannotated_literals(self, default_int, expected):
+        source = "x = 1\n"
+        compiler = Compiler.from_source(source, default_int=default_int)
+        modules = compiler.compile()
+        hpp, _ = compiler.generate_code_to_strings(modules[0])
+        expected_cpp = expected.to_cpp()
+        assert f"extern {expected_cpp} x;" in hpp
+
+    def test_reassignment_from_bigint_widens_default_int(self):
+        source = "x = 0\nx = int(5)\n"
+        compiler = Compiler.from_source(source, default_int="Int32")
+        modules = compiler.compile()
+        hpp, _ = compiler.generate_code_to_strings(modules[0])
+        assert "extern tpy::BigInt x;" in hpp
+
+    def test_invalid_default_int_setting_rejected(self):
+        with pytest.raises(ValueError, match="Unsupported default int type"):
+            Compiler.from_source("x = 1\n", default_int="Int128")
+
 
 class TestCodegenRegression:
     def test_generic_ctor_invalid_arg_rejected(self):
         """Invalid generic constructor arg (Int32 for Span[T] param) must be rejected by sema."""
-        import pytest
-        from .sema.diagnostics import SemanticError
         source = (
             'from tpy import StaticList, Int32\n'
             'x: StaticList[Int32, 4] = StaticList[Int32, 4](Int32(1))\n'

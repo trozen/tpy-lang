@@ -267,9 +267,9 @@ class CallAnalyzer:
                             # Use type_factory to create the result type
                             elem_type = inferred_params.get("T")
                             if elem_type and type_def.type_factory:
-                                # Resolve IntLiteralType to BigInt (Python semantics)
+                                # Resolve IntLiteralType using configured default.
                                 if isinstance(elem_type, IntLiteralType):
-                                    elem_type = BIGINT
+                                    elem_type = self.ctx.default_int_for_literal(elem_type)
                                 result_type = type_def.type_factory(elem_type)
                                 expr.call_type = result_type
                                 if isinstance(result_type, (PtrType, ConstPtrType)):
@@ -553,7 +553,8 @@ class CallAnalyzer:
         # Try non-generic overloads first (standard two-pass resolution)
         if non_generic:
             matched = resolve_overload(non_generic, arg_types, protocol_checker,
-                                       deref_checker=self.type_ops.get_deref_coercion_target)
+                                       deref_checker=self.type_ops.get_deref_coercion_target,
+                                       default_int_type=self.ctx.default_int_type)
             if matched is not None:
                 expr.resolved_function_info = matched
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
@@ -836,15 +837,15 @@ class CallAnalyzer:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
                 inferred = self.type_ops.infer_type_params_for_record(record, arg_types)
                 if inferred:
-                    # Resolve pending types for codegen (Python semantics)
+                    # Resolve pending types for codegen.
                     for k, v in list(inferred.items()):
                         if isinstance(v, IntLiteralType):
-                            inferred[k] = BIGINT
+                            inferred[k] = self.ctx.default_int_for_literal(v)
                         elif isinstance(v, PendingListType):
                             # Resolve PendingListType to ListType
                             elem_type = v.element_type
                             if isinstance(elem_type, IntLiteralType):
-                                elem_type = BIGINT
+                                elem_type = self.ctx.default_int_for_literal(elem_type)
                             inferred[k] = ListType(elem_type)
                     # Validate type parameter bounds
                     for param_name, type_arg in inferred.items():

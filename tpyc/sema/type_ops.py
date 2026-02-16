@@ -511,15 +511,15 @@ class TypeOperations:
             if not self.match_type_with_inference(ptype, arg_type, inferred):
                 return None
 
-        # Resolve pending types for codegen (Python semantics)
+        # Resolve pending types for codegen.
         for k, v in list(inferred.items()):
             if isinstance(v, IntLiteralType):
-                inferred[k] = BIGINT
+                inferred[k] = self.ctx.default_int_for_literal(v)
             elif isinstance(v, PendingListType):
                 # Resolve PendingListType to ListType
                 elem_type = v.element_type
                 if isinstance(elem_type, IntLiteralType):
-                    elem_type = BIGINT
+                    elem_type = self.ctx.default_int_for_literal(elem_type)
                 inferred[k] = ListType(elem_type)
 
         # Check all type params were inferred

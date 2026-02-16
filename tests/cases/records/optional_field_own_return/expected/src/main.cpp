@@ -32,7 +32,7 @@ void test() {
   // 38:     print(h2.value.x)
   std::cout << tpy::deref_optional_check(h2.value).x << "\n";
   // 40:     h2.value = maybe_make(-1)  # tpyc: ok
-  h2.value = maybe_make(-(1));
+  h2.value = maybe_make(-1);
   // 41:     print(h2.value is None)
   std::cout << tpy::print_bool((!h2.value.has_value())) << "\n";
 }
@@ -56,7 +56,7 @@ void __tpy_init() {
   // 27: print(h.value.y)
   std::cout << tpy::deref_optional_check(h->value).y << "\n";
   // 29: h.value = maybe_make(-1)  # tpyc: ok
-  h->value = maybe_make(-(1));
+  h->value = maybe_make(-1);
   // 30: print(h.value is None)
   std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
   // 43: test()

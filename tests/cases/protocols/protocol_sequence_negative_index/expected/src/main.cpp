@@ -24,15 +24,15 @@ void main() {
   // 13:     a: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
   std::array<int32_t, 3> a = {10, 20, 30};
   // 14:     print(seq_at(a, Int32(-1)))
-  std::cout << seq_at(a, -(1)) << "\n";
+  std::cout << seq_at(a, -1) << "\n";
   // 15:     print(seq_at(a, Int32(0)))
   std::cout << seq_at(a, 0) << "\n";
   // 17:     sp: Span[Int32] = a
   std::span<const int32_t> sp = tpy::as_span(a);
   // 18:     print(seq_at(sp, Int32(-1)))
-  std::cout << seq_at(sp, -(1)) << "\n";
+  std::cout << seq_at(sp, -1) << "\n";
   // 19:     print(seq_at(sp, Int32(-2)))
-  std::cout << seq_at(sp, -(2)) << "\n";
+  std::cout << seq_at(sp, -2) << "\n";
 }
 
 void __tpy_init() {

@@ -9,22 +9,22 @@ std::string_view __name__;
 std::vector<int32_t>* global_list{};
 // # Global without annotation -> also vector (ListType)
 // 7: global_inferred = [10, 20, 30]
-std::vector<tpy::BigInt>* global_inferred{};
+std::vector<int32_t>* global_inferred{};
 
 // # Local no mutation -> array (ArrayType)
 // 10: def test_no_mutation() -> Int32:
 int32_t test_no_mutation() {
   // 11:     local = [1, 2, 3]
-  std::array<tpy::BigInt, 3> local = {tpy::BigInt(1), tpy::BigInt(2), tpy::BigInt(3)};
+  std::array<int32_t, 3> local = {1, 2, 3};
   // 12:     return local[0]
-  return (local[0]).to_fixed_check<int32_t>();
+  return local[0];
 }
 
 // # Local with mutation -> vector (ListType)
 // 15: def test_mutation() -> Int32:
 int32_t test_mutation() {
   // 16:     items = [1, 2, 3]
-  std::vector<tpy::BigInt> items = {1, 2, 3};
+  std::vector<int32_t> items = {1, 2, 3};
   // 17:     items.append(4)
   items.push_back(4);
   // 18:     return len(items)
@@ -73,7 +73,7 @@ void __tpy_init() {
   global_list = &__global_slot_1;
   // 6: # Global without annotation -> also vector (ListType)
   // 7: global_inferred = [10, 20, 30]
-  static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
+  static std::vector<int32_t> __global_slot_2 = {10, 20, 30};
   global_inferred = &__global_slot_2;
   // 36: # Test global list with annotation
   // 37: print(global_list[0])  # 1

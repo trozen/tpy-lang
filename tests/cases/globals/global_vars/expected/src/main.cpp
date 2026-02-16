@@ -4,58 +4,58 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
-// # Test 1: Global BigInt used in range bounds
+// # Test 1: Global int used in range bounds
 // 4: start = 0
-tpy::BigInt start;
+int32_t start{};
 // 5: end = 3
-tpy::BigInt end;
-// # Test 2: Global BigInt used as list index
+int32_t end{};
+// # Test 2: Global int used as list index
 // 10: items: list[Int32] = [10, 20, 30]
 std::vector<int32_t>* items{};
 // 11: idx = 1
-tpy::BigInt idx;
-// # Test 3: Global BigInt used in list repeat count
+int32_t idx{};
+// # Test 3: Global int used in list repeat count
 // 15: count = 3
-tpy::BigInt count;
+int32_t count{};
 // 16: repeated: list[Int32] = [0] * count
 std::vector<int32_t>* repeated{};
-// # Test 4: Global BigInt reassignment (z = 0; z = 5 pattern)
+// # Test 4: Global int reassignment (z = 0; z = 5 pattern)
 // 20: z = 0
-tpy::BigInt z;
+int32_t z{};
 // # Test 5: Membership operator on global list
 // 26: global_list: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* global_list{};
 // # Test 6: Loop variable shadows global
 // 37: i = 100
-tpy::BigInt i;
+int32_t i{};
 // # Test 7: For-each loop variable shadows global
 // 43: x = 999
-tpy::BigInt x;
+int32_t x{};
 // 45: nums: list[Int32] = [7, 8]
 std::vector<int32_t>* nums{};
 // 58: local_pt: Point = Point(42, 99)
 Point* local_pt{};
 // 59: global_ptr: Ptr[Point] = local_pt
 Point* global_ptr{};
-// # Test 9: Int32 += BigInt with global BigInt value
+// # Test 9: Int32 += with global default-int value
 // 64: counter: Int32 = 10
 int32_t counter{};
 // 65: increment = 5
-tpy::BigInt increment;
-// # Test 10: Global in binop with method template (BigInt operations)
+int32_t increment{};
+// # Test 10: Global in binop with method template
 // 70: a = 10
-tpy::BigInt a;
+int32_t a{};
 // 71: b = 3
-tpy::BigInt b;
+int32_t b{};
 // 89: val = 999  # Global that's shadowed by __init__ param
-tpy::BigInt val;
+int32_t val{};
 // 90: c: Counter = Counter(50)
 Counter* c{};
-// # Test 12: Augmented subscript assignment with global BigInt RHS
+// # Test 12: Augmented subscript assignment with global default-int RHS
 // 95: arr: list[Int32] = [100, 200, 300]
 std::vector<int32_t>* arr{};
 // 96: delta = 5
-tpy::BigInt delta;
+int32_t delta{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -63,41 +63,41 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 3: # Test 1: Global BigInt used in range bounds
+  // 3: # Test 1: Global int used in range bounds
   // 4: start = 0
-  start = tpy::BigInt(0);
+  start = 0;
   // 5: end = 3
-  end = tpy::BigInt(3);
+  end = 3;
   // 6: for i in range(start, end):
-  tpy::BigInt __start_0 = start;
-  tpy::BigInt __stop_0 = end;
-  for (tpy::BigInt i = __start_0; i < __stop_0; ++i) {
+  int32_t __start_0 = start;
+  int32_t __stop_0 = end;
+  for (int32_t i = __start_0; i < __stop_0; ++i) {
     // 7:     print(i)
     std::cout << i << "\n";
   }
-  // 9: # Test 2: Global BigInt used as list index
+  // 9: # Test 2: Global int used as list index
   // 10: items: list[Int32] = [10, 20, 30]
   static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
   items = &__global_slot_1;
   // 11: idx = 1
-  idx = tpy::BigInt(1);
+  idx = 1;
   // 12: print(items[idx])
-  std::cout << tpy::get_item((*items), idx.to_fixed_check<int32_t>()) << "\n";
-  // 14: # Test 3: Global BigInt used in list repeat count
+  std::cout << tpy::get_item((*items), idx) << "\n";
+  // 14: # Test 3: Global int used in list repeat count
   // 15: count = 3
-  count = tpy::BigInt(3);
+  count = 3;
   // 16: repeated: list[Int32] = [0] * count
-  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count.to_fixed_check<int32_t>(), {0}));
+  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count, {0}));
   repeated = &__global_slot_2;
   // 17: print(len(repeated))
   std::cout << tpy::__len__((*repeated)) << "\n";
-  // 19: # Test 4: Global BigInt reassignment (z = 0; z = 5 pattern)
+  // 19: # Test 4: Global int reassignment (z = 0; z = 5 pattern)
   // 20: z = 0
-  z = tpy::BigInt(0);
+  z = 0;
   // 21: print(z)
   std::cout << z << "\n";
   // 22: z = 5
-  z = tpy::BigInt(5);
+  z = 5;
   // 23: print(z)
   std::cout << z << "\n";
   // 25: # Test 5: Membership operator on global list
@@ -126,13 +126,13 @@ void __tpy_init() {
   // 38: print(i)
   std::cout << i << "\n";
   // 39: for i in range(0, 2):
-  for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(2); ++i) {
+  for (int32_t i = 0; i < 2; ++i) {
     // 40:     print(i)
     std::cout << i << "\n";
   }
   // 42: # Test 7: For-each loop variable shadows global
   // 43: x = 999
-  x = tpy::BigInt(999);
+  x = 999;
   // 44: print(x)
   std::cout << x << "\n";
   // 45: nums: list[Int32] = [7, 8]
@@ -152,30 +152,30 @@ void __tpy_init() {
   std::cout << tpy::deref_check(global_ptr).a << "\n";
   // 61: print(global_ptr.b)
   std::cout << tpy::deref_check(global_ptr).b << "\n";
-  // 63: # Test 9: Int32 += BigInt with global BigInt value
+  // 63: # Test 9: Int32 += with global default-int value
   // 64: counter: Int32 = 10
   counter = 10;
   // 65: increment = 5
-  increment = tpy::BigInt(5);
+  increment = 5;
   // 66: counter += increment
-  counter = tpy::add_check<int32_t>(counter, (increment).to_fixed_check<int32_t>());
+  counter = tpy::add_check<int32_t>(counter, increment);
   // 67: print(counter)
   std::cout << counter << "\n";
-  // 69: # Test 10: Global in binop with method template (BigInt operations)
+  // 69: # Test 10: Global in binop with method template
   // 70: a = 10
-  a = tpy::BigInt(10);
+  a = 10;
   // 71: b = 3
-  b = tpy::BigInt(3);
+  b = 3;
   // 72: print(a + b)
-  std::cout << ((a) + (b)) << "\n";
+  std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
   // 73: print(a - b)
-  std::cout << ((a) - (b)) << "\n";
+  std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
   // 74: print(a * b)
-  std::cout << ((a) * (b)) << "\n";
+  std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
   // 75: print(a // b)
-  std::cout << ((a) / (b)) << "\n";
+  std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
   // 89: val = 999  # Global that's shadowed by __init__ param
-  val = tpy::BigInt(999);
+  val = 999;
   // 90: c: Counter = Counter(50)
   static Counter __global_slot_6 = Counter(50);
   c = &__global_slot_6;
@@ -183,14 +183,14 @@ void __tpy_init() {
   std::cout << c->val << "\n";
   // 92: print(c.add(7))
   std::cout << c->add(7) << "\n";
-  // 94: # Test 12: Augmented subscript assignment with global BigInt RHS
+  // 94: # Test 12: Augmented subscript assignment with global default-int RHS
   // 95: arr: list[Int32] = [100, 200, 300]
   static std::vector<int32_t> __global_slot_7 = {100, 200, 300};
   arr = &__global_slot_7;
   // 96: delta = 5
-  delta = tpy::BigInt(5);
+  delta = 5;
   // 97: arr[0] += delta  # global BigInt on RHS needs deref before .to_int32()
-  tpy::set_item((*arr), 0, tpy::add_check<int32_t>(tpy::get_item((*arr), 0), (delta).to_fixed_check<int32_t>()));
+  tpy::set_item((*arr), 0, tpy::add_check<int32_t>(tpy::get_item((*arr), 0), delta));
   // 98: print(arr[0])
   std::cout << tpy::get_item((*arr), 0) << "\n";
 }

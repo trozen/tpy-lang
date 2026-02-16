@@ -17,7 +17,7 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: """Test Int32 negation overflow panic at runtime."""
   // 4: x: Int32 = -2147483648  # INT32_MIN
-  x = -(2147483648);
+  x = -2147483648;
   // 5: y: Int32 = -x           # -INT32_MIN overflows, should panic
   y = tpy::neg_check<int32_t>(x);
   // 6: print(y)

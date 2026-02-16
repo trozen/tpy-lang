@@ -29,7 +29,7 @@ void __tpy_init() {
   std::cout << (tpy::div_check<int32_t>(x, 2)) << "\n";
   // 10: # INT32_MIN operations that don't overflow
   // 11: y: Int32 = -2147483648
-  y = -(2147483648);
+  y = -2147483648;
   // 12: print(y)
   std::cout << y << "\n";
   // 13: print(y + 1)

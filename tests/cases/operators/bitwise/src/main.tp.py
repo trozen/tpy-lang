@@ -40,8 +40,8 @@ z = 5
 print(~z)          # -6
 
 # Large BigInt bitwise
-big1 = (1 << 100) | (1 << 50)
-big2 = (1 << 100) | (1 << 25)
+big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
+big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
 print((big1 & big2) >> 100)         # 1 - only bit 100 in common
 print((big1 | big2) >> 100)         # 1 - bit 100 is set
 print((big1 ^ big2) >> 50)          # 1 - bit 50 differs (in big1 only)

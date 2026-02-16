@@ -72,10 +72,10 @@ void __tpy_init() {
   std::cout << count_iter(__tmp_4) << "\n";
   // 42: print(first_or_fallback(Counter(0, 3), -1))   # 0
   auto __tmp_5 = Counter(0, 3);
-  std::cout << first_or_fallback(__tmp_5, -(1)) << "\n";
+  std::cout << first_or_fallback(__tmp_5, -1) << "\n";
   // 43: print(first_or_fallback(Counter(0, 0), -1))   # -1 (empty, returns fallback)
   auto __tmp_6 = Counter(0, 0);
-  std::cout << first_or_fallback(__tmp_6, -(1)) << "\n";
+  std::cout << first_or_fallback(__tmp_6, -1) << "\n";
 }
 
 } // namespace tpy_user::main

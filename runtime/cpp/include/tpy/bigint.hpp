@@ -286,7 +286,7 @@ public:
                 }
             }
         } else {
-            // GMP path for large values — only int64_t/uint64_t might fit
+            // GMP path for large values -- only int64_t/uint64_t might fit
             if constexpr (std::is_same_v<T, int64_t>) {
                 if (mpz_fits_slong_p(gmp_ptr())) {
                     return static_cast<int64_t>(mpz_get_si(gmp_ptr()));

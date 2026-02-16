@@ -14,9 +14,9 @@ void conditional_hoist() {
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 14:     for i in range(5):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(5); ++i) {
+  for (int32_t i = 0; i < 5; ++i) {
     // 15:         p: Point = Point(i, i * 3)
-    Point* p = &*(__slot_2 = Point((i).to_fixed_check<int32_t>(), (((i) * (tpy::BigInt(3)))).to_fixed_check<int32_t>()));
+    Point* p = &*(__slot_2 = Point(i, (tpy::mul_check<int32_t>(i, 3))));
     // 16:         if i > 2:
     if ((i > 2)) {
       // 17:             saved = p  # tpyc: warning(/hoisted to function scope/)

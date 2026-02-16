@@ -10,7 +10,7 @@ int32_t describe(std::optional<int32_t> x) {
   // 5:     if x is None:
   if ((!x.has_value())) {
     // 6:         return -1
-    return -(1);
+    return -1;
   } else {
     // 8:         return x + 1
     return (tpy::add_check<int32_t>((*x), 1));

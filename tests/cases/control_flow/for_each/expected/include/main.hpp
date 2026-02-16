@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 extern std::string_view __name__;
-extern std::vector<tpy::BigInt>* items;
+extern std::vector<int32_t>* items;
 extern int32_t total;
 extern std::array<int32_t, 3>* arr;
 extern std::string_view text;

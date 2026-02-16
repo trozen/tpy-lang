@@ -18,7 +18,7 @@ int32_t function_with_pass_branch(int32_t x) {
     // 10:         pass
   } else {
     // 12:         return -1
-    return -(1);
+    return -1;
   }
   // 13:     return x * 2
   return (tpy::mul_check<int32_t>(x, 2));
@@ -51,7 +51,7 @@ int32_t pass_in_elif(int32_t x) {
   // 27:     if x < 0:
   if ((x < 0)) {
     // 28:         return -1
-    return -(1);
+    return -1;
   } else {
     // 29:     elif x == 0:
     if ((x == 0)) {
@@ -98,13 +98,13 @@ void __tpy_init() {
   // 64: print(function_with_pass_branch(5))
   std::cout << function_with_pass_branch(5) << "\n";
   // 65: print(function_with_pass_branch(-3))
-  std::cout << function_with_pass_branch(-(3)) << "\n";
+  std::cout << function_with_pass_branch(-3) << "\n";
   // 67: # Test pass in loop
   // 68: print(pass_in_loop())
   std::cout << pass_in_loop() << "\n";
   // 70: # Test pass in elif
   // 71: print(pass_in_elif(-1))
-  std::cout << pass_in_elif(-(1)) << "\n";
+  std::cout << pass_in_elif(-1) << "\n";
   // 72: print(pass_in_elif(0))
   std::cout << pass_in_elif(0) << "\n";
   // 73: print(pass_in_elif(1))

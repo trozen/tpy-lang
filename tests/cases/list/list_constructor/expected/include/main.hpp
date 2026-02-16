@@ -13,8 +13,8 @@ extern std::vector<int32_t>* other;
 extern std::vector<Point>* points;
 extern std::vector<std::vector<Point>>* nested;
 extern std::vector<Point>* inner;
-extern std::vector<tpy::BigInt>* src;
-extern std::vector<tpy::BigInt>* copy;
+extern std::vector<int32_t>* src;
+extern std::vector<int32_t>* copy;
 extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* from_arr;
 

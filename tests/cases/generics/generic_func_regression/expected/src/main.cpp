@@ -6,7 +6,7 @@ namespace tpy_user::main {
 std::string_view __name__;
 // # Test 1: Uppercase generic function (inferred) - critical for routing test
 // 20: nums = [10, 20, 30]
-std::vector<tpy::BigInt>* nums{};
+std::vector<int32_t>* nums{};
 // # Test 2: Builtin type constructor in same file (tests routing still works)
 // 24: sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
 StaticList<int32_t, 3>* sl{};
@@ -23,12 +23,12 @@ std::vector<Point>* points{};
 Point* p{};
 // # Test 6: Chained generic calls
 // 42: first_num = First([10, 20, 30])
-tpy::BigInt first_num;
+int32_t first_num{};
 // 43: second_num = First([first_num, 40, 50])
-tpy::BigInt second_num;
+int32_t second_num{};
 // # Test 7: Generic function in expression context
 // 47: result = First([5, 6, 7]) + 10
-tpy::BigInt result;
+int32_t result{};
 
 // # Uppercase generic function (tests routing: function vs type)
 // 5: def First[T](items: list[T]) -> T:
@@ -54,10 +54,10 @@ void __tpy_init() {
   // 1: """Regression tests for generic functions with various edge cases."""
   // 19: # Test 1: Uppercase generic function (inferred) - critical for routing test
   // 20: nums = [10, 20, 30]
-  static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
+  static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
   nums = &__global_slot_1;
   // 21: print(First(nums))
-  std::cout << First<tpy::BigInt>((*nums)) << "\n";
+  std::cout << First<int32_t>((*nums)) << "\n";
   // 23: # Test 2: Builtin type constructor in same file (tests routing still works)
   // 24: sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
   static StaticList<int32_t, 3> __global_slot_2 = StaticList<int32_t, 3>({1, 2, 3});
@@ -88,17 +88,17 @@ void __tpy_init() {
   std::cout << p->x << "\n";
   // 41: # Test 6: Chained generic calls
   // 42: first_num = First([10, 20, 30])
-  std::vector<tpy::BigInt> __tmp_1 = {10, 20, 30};
-  first_num = First<tpy::BigInt>(__tmp_1);
+  std::vector<int32_t> __tmp_1 = {10, 20, 30};
+  first_num = First<int32_t>(__tmp_1);
   // 43: second_num = First([first_num, 40, 50])
-  std::vector<tpy::BigInt> __tmp_2 = {first_num, 40, 50};
-  second_num = First<tpy::BigInt>(__tmp_2);
+  std::vector<int32_t> __tmp_2 = {first_num, 40, 50};
+  second_num = First<int32_t>(__tmp_2);
   // 44: print(second_num)
   std::cout << second_num << "\n";
   // 46: # Test 7: Generic function in expression context
   // 47: result = First([5, 6, 7]) + 10
-  std::vector<tpy::BigInt> __tmp_3 = {5, 6, 7};
-  result = ((First<tpy::BigInt>(__tmp_3)) + (tpy::BigInt(10)));
+  std::vector<int32_t> __tmp_3 = {5, 6, 7};
+  result = (tpy::add_check<int32_t>(First<int32_t>(__tmp_3), 10));
   // 48: print(result)
   std::cout << result << "\n";
 }

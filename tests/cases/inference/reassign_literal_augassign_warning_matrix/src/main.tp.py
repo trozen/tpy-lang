@@ -1,3 +1,5 @@
+# Augmented assignment type promotion matrix: reassigning with different
+# int types (Int32, BigInt, float) and the resulting widening/warnings.
 from tpy import Int32
 
 
@@ -7,11 +9,11 @@ def ret_i32() -> Int32:
 
 def main() -> None:
     x = 0
-    x += Int32(5)  # tpyc: warning(/does not narrow 'x' from int to Int32/)
+    x += Int32(5)  # tpyc: ok
     print(x)
 
     y = 0
-    y += ret_i32()  # tpyc: warning(/does not narrow 'y' from int to Int32/)
+    y += ret_i32()  # tpyc: ok
     print(y)
 
     z: int = 0

@@ -9,7 +9,7 @@ struct Point;
 
 extern std::string_view __name__;
 extern Point* p;
-extern std::optional<tpy::BigInt> n;
+extern std::optional<int32_t> n;
 extern int32_t z;
 extern double f;
 extern std::optional<bool> flag;

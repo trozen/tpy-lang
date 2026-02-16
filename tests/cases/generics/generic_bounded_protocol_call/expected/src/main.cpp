@@ -74,9 +74,9 @@ bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
 void main() {
   // 107:     # Test 1: len() on list (builtin Sized)
   // 108:     items = [1, 2, 3, 4, 5]
-  std::vector<tpy::BigInt> items = {1, 2, 3, 4, 5};
+  std::vector<int32_t> items = {1, 2, 3, 4, 5};
   // 109:     print(get_length(items))  # 5
-  std::cout << get_length<std::vector<tpy::BigInt>>(items) << "\n";
+  std::cout << get_length<std::vector<int32_t>>(items) << "\n";
   // 111:     # Test 1b: len() on str (builtin Sized)
   // 112:     msg = "hello"
   std::string_view msg = "hello";
@@ -103,7 +103,7 @@ void main() {
   std::cout << point_printer.get_str(__tmp_1) << "\n";
   // 130:     # Test 6: Multiple type params with different bounds
   // 131:     print(process_both(items, v))  # value, then 5
-  std::cout << process_both<std::vector<tpy::BigInt>, MyValue>(items, v) << "\n";
+  std::cout << process_both<std::vector<int32_t>, MyValue>(items, v) << "\n";
   // 133:     # Test 7: Protocol with multiple methods
   // 134:     w = Widget("test", 99)
   Widget w = Widget("test", 99);
@@ -111,7 +111,7 @@ void main() {
   use_multi<Widget>(w);
   // 137:     # Test 8: Nested bounded calls
   // 138:     print(outer_len(items))  # 5
-  std::cout << outer_len<std::vector<tpy::BigInt>>(items) << "\n";
+  std::cout << outer_len<std::vector<int32_t>>(items) << "\n";
   // 140:     # Test 9: User protocol with Self - clone returns T (Box), not Clonable
   // 141:     box = Box(123)
   Box box = Box(123);
@@ -121,13 +121,13 @@ void main() {
   std::cout << cloned.value << "\n";
   // 145:     # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
   // 146:     print(is_less(1, 2))  # True
-  tpy::BigInt __tmp_2 = tpy::BigInt(1);
-  tpy::BigInt __tmp_3 = tpy::BigInt(2);
-  std::cout << tpy::print_bool(is_less<tpy::BigInt>(__tmp_2, __tmp_3)) << "\n";
+  int32_t __tmp_2 = 1;
+  int32_t __tmp_3 = 2;
+  std::cout << tpy::print_bool(is_less<int32_t>(__tmp_2, __tmp_3)) << "\n";
   // 147:     print(is_less(5, 3))  # False
-  tpy::BigInt __tmp_4 = tpy::BigInt(5);
-  tpy::BigInt __tmp_5 = tpy::BigInt(3);
-  std::cout << tpy::print_bool(is_less<tpy::BigInt>(__tmp_4, __tmp_5)) << "\n";
+  int32_t __tmp_4 = 5;
+  int32_t __tmp_5 = 3;
+  std::cout << tpy::print_bool(is_less<int32_t>(__tmp_4, __tmp_5)) << "\n";
 }
 
 void __tpy_init() {

@@ -34,14 +34,14 @@ void __tpy_init() {
   std::cout << count << "\n";
   // 15: # Negative step at INT32_MIN boundary, step=-1
   // 16: for i in range(Int32(-2147483647), Int32(-2147483648), Int32(-1)):
-  for (int32_t i = -(2147483647); i > -(2147483648); --i) {
+  for (int32_t i = -2147483647; i > -2147483648; --i) {
     // 17:     print(i)
     std::cout << i << "\n";
   }
   // 19: # Large negative step, one iteration
   // 20: for i in range(Int32(0), Int32(-1), Int32(-2147483648)):
-  tpy::range_check_overflow<int32_t>(0, -(1), -(2147483648));
-  for (int32_t i = 0; i > -(1); i += -(2147483648)) {
+  tpy::range_check_overflow<int32_t>(0, -1, -2147483648);
+  for (int32_t i = 0; i > -1; i += -2147483648) {
     // 21:     print(i)
     std::cout << i << "\n";
   }
@@ -68,8 +68,8 @@ void __tpy_init() {
   }
   // 35: # Int8: negative step at boundary
   // 36: for i in range(Int8(0), Int8(-1), Int8(-128)):
-  tpy::range_check_overflow<int8_t>(0, -(1), -(128));
-  for (int8_t i = 0; i > -(1); i += -(128)) {
+  tpy::range_check_overflow<int8_t>(0, -1, -128);
+  for (int8_t i = 0; i > -1; i += -128) {
     // 37:     print(i)
     std::cout << static_cast<int>(i) << "\n";
   }

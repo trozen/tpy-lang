@@ -11,59 +11,61 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 3: # Empty ranges — body should never execute
+  // 3: # Empty ranges -- body should never execute
   // 4: for i in range(0):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(0); ++i) {
+  for (int32_t i = 0; i < 0; ++i) {
     // 5:     print(i)
     std::cout << i << "\n";
   }
   // 7: for i in range(5, 5):
-  for (tpy::BigInt i = tpy::BigInt(5); i < tpy::BigInt(5); ++i) {
+  for (int32_t i = 5; i < 5; ++i) {
     // 8:     print(i)
     std::cout << i << "\n";
   }
   // 10: for i in range(5, 0):
-  for (tpy::BigInt i = tpy::BigInt(5); i < tpy::BigInt(0); ++i) {
+  for (int32_t i = 5; i < 0; ++i) {
     // 11:     print(i)
     std::cout << i << "\n";
   }
   // 13: for i in range(0, 10, -1):
-  for (tpy::BigInt i = tpy::BigInt(0); i > tpy::BigInt(10); --i) {
+  for (int32_t i = 0; i > 10; --i) {
     // 14:     print(i)
     std::cout << i << "\n";
   }
   // 16: # Single element
   // 17: for i in range(1):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(1); ++i) {
+  for (int32_t i = 0; i < 1; ++i) {
     // 18:     print(i)
     std::cout << i << "\n";
   }
   // 20: for i in range(3, 4):
-  for (tpy::BigInt i = tpy::BigInt(3); i < tpy::BigInt(4); ++i) {
+  for (int32_t i = 3; i < 4; ++i) {
     // 21:     print(i)
     std::cout << i << "\n";
   }
   // 23: # Negative range
   // 24: for i in range(-3, 0):
-  for (tpy::BigInt i = -(tpy::BigInt(3)); i < tpy::BigInt(0); ++i) {
+  for (int32_t i = -3; i < 0; ++i) {
     // 25:     print(i)
     std::cout << i << "\n";
   }
   // 27: # Large step that overshoots
   // 28: for i in range(0, 10, 100):
-  for (tpy::BigInt i = tpy::BigInt(0); i < tpy::BigInt(10); i += tpy::BigInt(100)) {
+  tpy::range_check_overflow<int32_t>(0, 10, 100);
+  for (int32_t i = 0; i < 10; i += 100) {
     // 29:     print(i)
     std::cout << i << "\n";
   }
   // 31: for i in range(10, 0, -100):
-  for (tpy::BigInt i = tpy::BigInt(10); i > tpy::BigInt(0); i += -(tpy::BigInt(100))) {
+  tpy::range_check_overflow<int32_t>(10, 0, -100);
+  for (int32_t i = 10; i > 0; i += -100) {
     // 32:     print(i)
     std::cout << i << "\n";
   }
-  // 34: # Compound expression -- value unknown, should use BigInt fallback
+  // 34: # Compound expression -- constant-folded to Int32
   // 35: for i in range(1 + 2):
-  tpy::BigInt __stop_9 = ((tpy::BigInt(1)) + (tpy::BigInt(2)));
-  for (tpy::BigInt i = 0; i < __stop_9; ++i) {
+  int32_t __stop_9 = tpy::add_check<int32_t>(1, 2);
+  for (int32_t i = 0; i < __stop_9; ++i) {
     // 36:     print(i)
     std::cout << i << "\n";
   }

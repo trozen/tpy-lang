@@ -61,9 +61,20 @@ Options:
   -i, --repl        Start interactive REPL
   -o <dir>          Output directory (default: __tpyc__/ next to source)
   --dump-code       Print generated C++ to stdout (no build)
+  --default-int     Default type for unannotated integer literals: Int32|Int64|BigInt (default: Int32)
   --emit-source     Embed Python source lines as comments in generated C++
   -v                Verbose output
   -vv               Show compilation commands
+```
+
+Examples:
+
+```bash
+# Performance-first default (same as implicit default)
+tpyc -x --default-int=Int32 examples/hello.tp.py
+
+# CPython-like unbounded integer behavior for unannotated literals
+tpyc -x --default-int=BigInt examples/hello.tp.py
 ```
 
 ## Testing

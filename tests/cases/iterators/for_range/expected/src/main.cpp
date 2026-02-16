@@ -38,7 +38,7 @@ void __tpy_init() {
   __name__ = "__main__";
   // 13: # Single-arg range (0 to n)
   // 14: for i in range(5):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(5); ++i) {
+  for (int32_t i = 0; i < 5; ++i) {
     // 15:     print(i)
     std::cout << i << "\n";
   }

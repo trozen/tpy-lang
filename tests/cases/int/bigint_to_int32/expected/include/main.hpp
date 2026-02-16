@@ -11,7 +11,7 @@ extern int32_t b;
 extern int32_t c;
 extern int32_t d;
 extern int32_t e;
-extern tpy::BigInt n;
+extern int32_t n;
 extern int32_t result1;
 extern int32_t result2;
 extern int32_t result3;

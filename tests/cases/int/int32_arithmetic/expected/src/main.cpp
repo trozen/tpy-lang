@@ -37,7 +37,7 @@ void test_unary_neg() {
   // 29:     print(-x)  # -42
   std::cout << tpy::neg_check<int32_t>(x) << "\n";
   // 31:     y: Int32 = -100
-  int32_t y = -(100);
+  int32_t y = -100;
   // 32:     print(-y)  # 100
   std::cout << tpy::neg_check<int32_t>(y) << "\n";
 }
@@ -62,7 +62,7 @@ void test_mixed_literals() {
 void test_negative_division() {
   // 50:     """Test division with negative numbers (Python floor semantics)."""
   // 51:     a: Int32 = -17
-  int32_t a = -(17);
+  int32_t a = -17;
   // 52:     b: Int32 = 5
   int32_t b = 5;
   // 54:     # Python floor division: -17 // 5 = -4 (not -3)

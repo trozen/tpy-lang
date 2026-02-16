@@ -17,7 +17,7 @@ int32_t d{};
 int32_t e{};
 // # Test all conversions
 // 56: n = 5
-tpy::BigInt n;
+int32_t n{};
 // # Function param
 // 59: result1 = takes_int32(n)
 int32_t result1{};
@@ -122,10 +122,10 @@ void __tpy_init() {
   e = tpy::pow_check<int32_t>(2, 10);
   // 55: # Test all conversions
   // 56: n = 5
-  n = tpy::BigInt(5);
+  n = 5;
   // 58: # Function param
   // 59: result1 = takes_int32(n)
-  result1 = takes_int32((n).to_fixed_check<int32_t>());
+  result1 = takes_int32(n);
   // 60: print(result1)
   std::cout << result1 << "\n";
   // 62: # Return as Int32

@@ -150,10 +150,32 @@ Possible syntax options:
 ## Types
 
 ### Numeric
-- **Working**: `int` (Python's int → `tpy::BigInt` arbitrary precision using GMP)
-- **Working**: `float` (Python's float → `double`, 64-bit IEEE 754)
+- **Working**: `int` (Python's int -> `tpy::BigInt` arbitrary precision using GMP)
+- **Working**: `float` (Python's float -> `double`, 64-bit IEEE 754)
 - **Working**: `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `bool`, `Char`
 - **Planned**: `Float32`
+
+#### Default Integer Type for Unannotated Literals (Working)
+
+Unannotated integer literals (`x = 42`) use the configured default integer type, controlled by `--default-int` (default: `Int32`). Explicit `int` annotations always mean `BigInt`:
+
+```python
+x = 42          # Int32 (default), or Int64/BigInt with --default-int
+y: int = 42     # always BigInt (explicit annotation)
+```
+
+The compiler performs range-safe fallback: if a literal's value exceeds the configured type's range, it automatically falls back to `BigInt` with a warning:
+
+```python
+a = 2147483647   # Int32 (fits)
+b = 2147483648   # BigInt with warning (exceeds Int32 range)
+c = -2147483648  # Int32 (exactly Int32 min)
+d = -2147483649  # BigInt with warning (below Int32 min)
+```
+
+Constant-folded expressions (`1 << 100`, `2 ** 40`) are evaluated at compile time and use the same range check on the result.
+
+See `docs/INTEGER_INFERENCE_DESIGN.md` for the full design rationale.
 
 #### Mixed Arithmetic and Type Promotion (Working)
 
@@ -161,7 +183,7 @@ All fixed-width integer types use checked arithmetic (panics on overflow). Opera
 
 ```python
 x: Int32 = 5
-y = 10          # int (BigInt)
+y: int = 10     # explicit int (BigInt)
 z = x + y       # Result is int (BigInt), not Int32
 ```
 
@@ -1257,7 +1279,7 @@ print(sum_iter(Counter(5)))        # 10
 
 **Codegen**: `for i in range(...)` is optimized to a C-style counter loop. `range()` accepts all fixed-width integer types (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64) as well as BigInt, preserving the element type in the loop variable.
 
-Bare integer literals default to BigInt (`range(10)` uses `Range<BigInt>`). For Int32 ranges, use explicit typed arguments: `range(Int32(10))` or pass Int32 variables.
+Bare integer literals use the configured default integer type (`--default-int`, default: `Int32`), so `range(10)` uses `Range<Int32>` by default. For CPython-like behavior, use `--default-int=BigInt`.
 
 ```cpp
 // range(Int8(0), Int8(10)) -> int8_t loop
@@ -1432,7 +1454,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Conflicting explicit annotations are an error.
   - `None` seeds optional inference: `x = None; x = T(...)` infers `T | None`.
   - Bare `x = None` with no later concrete anchor is an error.
-  - Literal-seeded variables default to `int` (`BigInt`) and may narrow via compatible literal anchoring (for example to `Int32`).
+  - Literal-seeded variables default to the configured default integer type (`--default-int`, default: `Int32`) and may be refined by later writes.
   - `bool` does not auto-merge with numeric families during inference.
   - Augmented assignment currently does not perform literal anchoring (`x = 0; x += Int32(5)` remains `int`/`BigInt`).
   - For `x = 0` style literal-seeded vars, `x += Int32(...)` emits a warning that augmented assignment does not narrow the variable type.

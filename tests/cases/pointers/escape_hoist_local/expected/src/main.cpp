@@ -12,9 +12,9 @@ void loop_escape() {
   Point __slot_1 = Point(0, 0);
   Point* saved = &__slot_1;
   // 12:     for i in range(3):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
+  for (int32_t i = 0; i < 3; ++i) {
     // 13:         p: Point = Point(i, i)
-    Point* p = &*(__slot_2 = Point((i).to_fixed_check<int32_t>(), (i).to_fixed_check<int32_t>()));
+    Point* p = &*(__slot_2 = Point(i, i));
     // 14:         saved = p  # tpyc: warning(/hoisted to function scope/)
     saved = p;
   }

@@ -13,7 +13,7 @@ void main() {
   // 7:     print(a)
   std::cout << a << "\n";
   // 9:     b: Int64 = Int64(-9223372036854775808)  # Min Int64
-  int64_t b = -(9223372036854775808);
+  int64_t b = -9223372036854775808;
   // 10:     print(b)
   std::cout << b << "\n";
   // 12:     # Int64 arithmetic

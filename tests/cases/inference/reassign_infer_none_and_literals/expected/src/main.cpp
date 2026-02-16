@@ -7,7 +7,7 @@ std::string_view __name__;
 // 19: p = None
 Point* p{};
 // 23: n = None
-std::optional<tpy::BigInt> n;
+std::optional<int32_t> n;
 // 27: z = 0
 int32_t z{};
 // 31: f = 0

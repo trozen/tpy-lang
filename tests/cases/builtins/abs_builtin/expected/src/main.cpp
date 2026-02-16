@@ -9,7 +9,7 @@ std::string_view __name__;
 int32_t x{};
 // # Test abs with BigInt (default int)
 // 11: y = -100
-tpy::BigInt y;
+int32_t y{};
 // # Large BigInt
 // 15: big = int(-1000000)
 tpy::BigInt big;
@@ -26,7 +26,7 @@ void __tpy_init() {
   // 1: """Test abs() builtin function for Int32, BigInt, and float."""
   // 4: # Test abs with Int32
   // 5: x: Int32 = -42
-  x = -(42);
+  x = -42;
   // 6: print(abs(x))
   std::cout << std::abs(x) << "\n";
   // 7: print(abs(Int32(10)))
@@ -35,14 +35,14 @@ void __tpy_init() {
   std::cout << std::abs(0) << "\n";
   // 10: # Test abs with BigInt (default int)
   // 11: y = -100
-  y = -(tpy::BigInt(100));
+  y = -100;
   // 12: print(abs(y))
-  std::cout << tpy::BigInt::abs(y) << "\n";
+  std::cout << std::abs(y) << "\n";
   // 13: print(abs(99))
-  std::cout << tpy::BigInt::abs(tpy::BigInt(99)) << "\n";
+  std::cout << std::abs(99) << "\n";
   // 14: # Large BigInt
   // 15: big = int(-1000000)
-  big = tpy::BigInt(static_cast<int64_t>(-(1000000)));
+  big = tpy::BigInt(static_cast<int64_t>(-1000000));
   // 16: print(abs(big))
   std::cout << tpy::BigInt::abs(big) << "\n";
   // 18: # Test abs with float

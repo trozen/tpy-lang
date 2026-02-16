@@ -1,5 +1,6 @@
 """Shared fixtures and utilities for TurboPython tests."""
 
+import json
 import os
 import re
 import subprocess
@@ -65,7 +66,50 @@ class CompileResult:
     all_modules: list[tuple[str, Path, Path]] = field(default_factory=list)
 
 
-def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
+def _validate_default_int_name(name: str) -> str:
+    allowed = {"Int32", "Int64", "BigInt"}
+    if name not in allowed:
+        pytest.fail(
+            f"Invalid default int '{name}'. Expected one of: {', '.join(sorted(allowed))}"
+        )
+    return name
+
+
+def load_case_options(case_dir: Path) -> dict[str, str]:
+    """Load and validate optional per-case test options.json."""
+    options_path = case_dir / "options.json"
+    if not options_path.exists():
+        return {}
+
+    try:
+        raw = json.loads(options_path.read_text())
+    except json.JSONDecodeError as e:
+        pytest.fail(f"{options_path}: invalid JSON ({e.msg})")
+
+    if not isinstance(raw, dict):
+        pytest.fail(f"{options_path}: expected JSON object")
+
+    allowed_keys = {"default_int"}
+    unknown = sorted(k for k in raw.keys() if k not in allowed_keys)
+    if unknown:
+        pytest.fail(f"{options_path}: unsupported keys: {', '.join(unknown)}")
+
+    if "default_int" in raw:
+        value = raw["default_int"]
+        if not isinstance(value, str):
+            pytest.fail(f"{options_path}: 'default_int' must be a string")
+        _validate_default_int_name(value)
+
+    return raw
+
+
+def get_case_default_int(case_dir: Path) -> str:
+    """Resolve default integer mode for a test case."""
+    options = load_case_options(case_dir)
+    return _validate_default_int_name(options.get("default_int", "Int32"))
+
+
+def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str | None = None) -> CompileResult:
     """Compile a TurboPython file and capture diagnostics.
 
     Returns CompileResult with success status, diagnostics, and output paths.
@@ -73,10 +117,11 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path) -> CompileResult:
     Uses Compiler for multi-module support.
     """
     module_name = get_module_name(src_file)
+    default_int = _validate_default_int_name(default_int or "Int32")
 
     try:
         # Use Compiler for multi-module support
-        compiler = Compiler(src_file)
+        compiler = Compiler(src_file, default_int=default_int)
         compiled_modules = compiler.compile()
 
         # Collect warnings from all analyzers

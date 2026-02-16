@@ -19,9 +19,9 @@ std::vector<std::vector<Point>>* nested{};
 // 37: inner = list[Point]()
 std::vector<Point>* inner{};
 // 53: src = [100, 200, 300]
-std::vector<tpy::BigInt>* src{};
+std::vector<int32_t>* src{};
 // 54: copy = list(src)
-std::vector<tpy::BigInt>* copy{};
+std::vector<int32_t>* copy{};
 // # Array → list conversion
 // 61: arr: Array[Int32, 3] = [5, 6, 7]
 std::array<int32_t, 3>* arr{};
@@ -101,14 +101,14 @@ void __tpy_init() {
   std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>()) << "\n";
   // 50: # list(iterable) constructor - type inferred from argument
   // 51: print(list([1, 2, 3]))
-  std::cout << tpy::ListPrinter(std::vector<tpy::BigInt>({1, 2, 3})) << "\n";
+  std::cout << tpy::ListPrinter(std::vector<int32_t>({1, 2, 3})) << "\n";
   // 52: print(list([Int32(10), Int32(20)]))
   std::cout << tpy::ListPrinter(std::vector<int32_t>({10, 20})) << "\n";
   // 53: src = [100, 200, 300]
-  static std::vector<tpy::BigInt> __global_slot_6 = {100, 200, 300};
+  static std::vector<int32_t> __global_slot_6 = {100, 200, 300};
   src = &__global_slot_6;
   // 54: copy = list(src)
-  static std::vector<tpy::BigInt> __global_slot_7 = tpy::from_range<std::vector<tpy::BigInt>>((*src));
+  static std::vector<int32_t> __global_slot_7 = tpy::from_range<std::vector<int32_t>>((*src));
   copy = &__global_slot_7;
   // 55: print(copy)
   std::cout << tpy::ListPrinter((*copy)) << "\n";

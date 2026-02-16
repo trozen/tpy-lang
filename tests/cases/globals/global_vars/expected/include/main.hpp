@@ -9,27 +9,27 @@ struct Point;
 struct Counter;
 
 extern std::string_view __name__;
-extern tpy::BigInt start;
-extern tpy::BigInt end;
+extern int32_t start;
+extern int32_t end;
 extern std::vector<int32_t>* items;
-extern tpy::BigInt idx;
-extern tpy::BigInt count;
+extern int32_t idx;
+extern int32_t count;
 extern std::vector<int32_t>* repeated;
-extern tpy::BigInt z;
+extern int32_t z;
 extern std::vector<int32_t>* global_list;
-extern tpy::BigInt i;
-extern tpy::BigInt x;
+extern int32_t i;
+extern int32_t x;
 extern std::vector<int32_t>* nums;
 extern Point* local_pt;
 extern Point* global_ptr;
 extern int32_t counter;
-extern tpy::BigInt increment;
-extern tpy::BigInt a;
-extern tpy::BigInt b;
-extern tpy::BigInt val;
+extern int32_t increment;
+extern int32_t a;
+extern int32_t b;
+extern int32_t val;
 extern Counter* c;
 extern std::vector<int32_t>* arr;
-extern tpy::BigInt delta;
+extern int32_t delta;
 
 // # Test 8: Global pointer field access
 // 50: class Point:

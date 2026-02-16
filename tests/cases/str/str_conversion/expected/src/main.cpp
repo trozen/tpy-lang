@@ -38,14 +38,14 @@ void __tpy_init() {
   // 19: print(str(Int32(42)))    # 42
   std::cout << tpy::fixed_to_str<int32_t>(42) << "\n";
   // 20: print(str(Int32(-123)))  # -123
-  std::cout << tpy::fixed_to_str<int32_t>(-(123)) << "\n";
+  std::cout << tpy::fixed_to_str<int32_t>(-123) << "\n";
   // 21: print(str(Int32(0)))     # 0
   std::cout << tpy::fixed_to_str<int32_t>(0) << "\n";
   // 23: # From int/BigInt (inline usage - safe)
   // 24: print(str(12345))         # 12345
   std::cout << tpy::fixed_to_str<int16_t>(12345) << "\n";
   // 25: print(str(-99999))        # -99999
-  std::cout << tpy::fixed_to_str<int32_t>(-(99999)) << "\n";
+  std::cout << tpy::fixed_to_str<int32_t>(-99999) << "\n";
   // 27: # From float (inline usage - safe)
   // 28: # Note: exact output format may vary
   // 29: x: float = 3.14

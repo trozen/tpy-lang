@@ -27,7 +27,7 @@ std::optional<double> z;
 // 38: def print_range() -> None:
 void print_range() {
   // 39:     r = range(3)
-  tpy::Range<tpy::BigInt> r = tpy::Range<tpy::BigInt>(tpy::BigInt(3));
+  tpy::Range<int32_t> r = tpy::Range<int32_t>(3);
   // 40:     print(r)
   std::cout << r << "\n";
 }
@@ -82,11 +82,11 @@ void __tpy_init() {
   std::cout << tpy::ListPrinter((*sl)) << "\n";
   // 33: # Range (has its own operator<<, not ListPrinter)
   // 34: print(range(5))
-  std::cout << tpy::Range<tpy::BigInt>(tpy::BigInt(5)) << "\n";
+  std::cout << tpy::Range<int32_t>(5) << "\n";
   // 35: print(range(2, 7))
-  std::cout << tpy::Range<tpy::BigInt>(tpy::BigInt(2), tpy::BigInt(7)) << "\n";
+  std::cout << tpy::Range<int32_t>(2, 7) << "\n";
   // 36: print(range(0, 10, 3))
-  std::cout << tpy::Range<tpy::BigInt>(tpy::BigInt(0), tpy::BigInt(10), tpy::BigInt(3)) << "\n";
+  std::cout << tpy::Range<int32_t>(0, 10, 3) << "\n";
   // 42: print_range()
   print_range();
   // 44: # Multiple args

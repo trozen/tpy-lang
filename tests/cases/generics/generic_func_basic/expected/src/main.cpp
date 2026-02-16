@@ -6,7 +6,7 @@ namespace tpy_user::main {
 std::string_view __name__;
 // # Inference from list[int]
 // 14: nums = [10, 20, 30]
-std::vector<tpy::BigInt>* nums{};
+std::vector<int32_t>* nums{};
 // # Inference from list[str]
 // 19: words = ["hello", "world"]
 std::vector<std::string_view>* words{};
@@ -37,12 +37,12 @@ void __tpy_init() {
   // 1: """Test basic generic functions with type inference."""
   // 13: # Inference from list[int]
   // 14: nums = [10, 20, 30]
-  static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
+  static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
   nums = &__global_slot_1;
   // 15: print(first(nums))
-  std::cout << first<tpy::BigInt>((*nums)) << "\n";
+  std::cout << first<int32_t>((*nums)) << "\n";
   // 16: print(last(nums))
-  std::cout << last<tpy::BigInt>((*nums)) << "\n";
+  std::cout << last<int32_t>((*nums)) << "\n";
   // 18: # Inference from list[str]
   // 19: words = ["hello", "world"]
   static std::vector<std::string_view> __global_slot_2 = {"hello", "world"};

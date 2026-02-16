@@ -9,9 +9,9 @@ extern std::string_view __name__;
 extern int32_t a;
 extern int32_t b;
 extern int32_t c;
-extern tpy::BigInt x;
-extern tpy::BigInt y;
-extern tpy::BigInt z;
+extern int32_t x;
+extern int32_t y;
+extern int32_t z;
 extern tpy::BigInt big1;
 extern tpy::BigInt big2;
 

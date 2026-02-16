@@ -15,6 +15,7 @@ from conftest import (
     UPDATE_EXPECTED,
     get_module_name,
     compile_with_diagnostics,
+    get_case_default_int,
     validate_annotations,
     parse_annotations,
     check_or_update,
@@ -61,7 +62,7 @@ def test_comp(case_dir, main_src, tmp_path):
                 shutil.rmtree(d)
 
     # Compile
-    result = compile_with_diagnostics(main_src, tmp_path)
+    result = compile_with_diagnostics(main_src, tmp_path, default_int=get_case_default_int(case_dir))
 
     # Check/update diagnostics
     expected_diag = expected_dir / "diag.txt"

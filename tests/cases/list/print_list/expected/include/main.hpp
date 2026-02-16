@@ -6,8 +6,8 @@
 namespace tpy_user::main {
 
 extern std::string_view __name__;
-extern std::vector<tpy::BigInt>* nums;
-extern std::vector<std::vector<tpy::BigInt>>* nested;
+extern std::vector<int32_t>* nums;
+extern std::vector<std::vector<int32_t>>* nested;
 
 
 void __tpy_init();

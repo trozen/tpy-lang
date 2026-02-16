@@ -347,10 +347,23 @@ class ExpressionAnalyzer:
 
         # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
         if isinstance(left_effective, IntLiteralType) and isinstance(right_effective, IntLiteralType):
-            # Still resolve for codegen (bitwise ops need the cpp template)
-            if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
+            # Keep Python-style true division semantics for all-literal integer
+            # expressions regardless of default-int setting.
+            if expr.op == "div":
+                if result := self.operators.resolve_binop(BIGINT, expr.op, BIGINT):
+                    expr.resolved_binop = result
+                    return result.method.return_type
+                return FLOAT
+            literal_result = self._try_eval_int_literal_binop(expr.op, left_effective.value, right_effective.value)
+            resolved_int = (
+                self.ctx.default_int_for_literal(IntLiteralType(literal_result))
+                if literal_result is not None
+                else self.ctx.default_int_type
+            )
+            # Still resolve for codegen (bitwise ops need cpp template).
+            if result := self.operators.resolve_binop(resolved_int, expr.op, resolved_int):
                 expr.resolved_binop = result
-            return IntLiteralType()  # Value not tracked for compound expressions
+            return IntLiteralType(literal_result)
 
         # Protocol-typed operands - look up the dunder method in the protocol
         # For Self in protocols, Self binds to the protocol itself when used as a value type
@@ -386,6 +399,47 @@ class ExpressionAnalyzer:
             f"Invalid operand types for '{expr.op}': {left_type} and {right_type}",
             expr.loc,
         )
+
+    def _try_eval_int_literal_binop(self, op: str, left: int | None, right: int | None) -> int | None:
+        """Best-effort constant evaluation for int literal binops."""
+        if left is None or right is None:
+            return None
+        try:
+            if op == "+":
+                return left + right
+            if op == "-":
+                return left - right
+            if op == "*":
+                return left * right
+            if op == "//":
+                if right == 0:
+                    return None
+                return left // right
+            if op == "%":
+                if right == 0:
+                    return None
+                return left % right
+            if op == "**":
+                if right < 0 or right > 10000:
+                    return None
+                return left ** right
+            if op == "<<":
+                if right < 0 or right > 10000:
+                    return None
+                return left << right
+            if op == ">>":
+                if right < 0:
+                    return None
+                return left >> right
+            if op == "&":
+                return left & right
+            if op == "|":
+                return left | right
+            if op == "^":
+                return left ^ right
+        except (OverflowError, ValueError):
+            return None
+        return None
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""

@@ -65,7 +65,7 @@ void __tpy_init() {
   std::cout << static_cast<int>(tpy::int_cast_check<uint8_t>(d)) << "\n";
   // 30: # Negative signed -> larger signed
   // 31: e: Int8 = Int8(-42)
-  e = -(42);
+  e = -42;
   // 32: print(Int16(e))
   std::cout << tpy::int_cast_check<int16_t>(e) << "\n";
   // 33: print(Int32(e))

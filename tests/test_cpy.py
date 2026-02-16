@@ -1,7 +1,7 @@
 """CPython compatibility tests for the TurboPython compiler.
 
 Runs each test case's source with CPython and compares stdout to expected/output.txt.
-Only covers cases/ (not errors/ or panics/). Skips cases with no_cpython.txt marker.
+Only covers success cases (not error_ or panic_). Skips cases with no_cpython.txt marker.
 
 This is read-only verification — output.txt is never written by this test.
 """

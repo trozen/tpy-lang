@@ -249,11 +249,12 @@ class FunctionGenerator:
         # Optional non-value types use inner type (pointer-global adds T*)
         elif isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
             var_type = var_type.inner
-        # Preserve legacy global normalization: int literals default to BigInt.
+        # Normalize unresolved int literals to configured default integer type.
+        default_int = self.ctx.analyzer.ctx.default_int_type
         if isinstance(var_type, ListType) and isinstance(var_type.element_type, IntLiteralType):
-            var_type = ListType(BIGINT)
+            var_type = ListType(default_int)
         elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
-            var_type = ArrayType(BIGINT, var_type.size)
+            var_type = ArrayType(default_int, var_type.size)
         return var_type
 
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:

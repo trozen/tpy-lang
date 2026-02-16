@@ -55,7 +55,7 @@ void __tpy_init() {
   std::cout << tpy::__len__((*empty)) << "\n";
   // 19: # Negative repeat count (Python semantics: produces empty list)
   // 20: neg: list[Int32] = [1, 2, 3] * -5
-  static std::vector<int32_t> __global_slot_4 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(-(5), {1, 2, 3}));
+  static std::vector<int32_t> __global_slot_4 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(-5, {1, 2, 3}));
   neg = &__global_slot_4;
   // 21: print(len(neg))
   std::cout << tpy::__len__((*neg)) << "\n";

@@ -13,7 +13,7 @@ void main() {
   // 7:     print(Int8(1) << Int8(6))    # 64
   std::cout << static_cast<int>((tpy::lshift_check<int8_t>(1, 6))) << "\n";
   // 8:     print(Int8(-1) << Int8(0))   # -1
-  std::cout << static_cast<int>((tpy::lshift_check<int8_t>(-(1), 0))) << "\n";
+  std::cout << static_cast<int>((tpy::lshift_check<int8_t>(-1, 0))) << "\n";
   // 10:     # UInt8 shifts
   // 11:     print(UInt8(1) << UInt8(7))  # 128
   std::cout << static_cast<int>((tpy::lshift_check<uint8_t>(1, 7))) << "\n";

@@ -6,11 +6,11 @@ namespace tpy_user::main {
 std::string_view __name__;
 // # Test that negative exponent panics at runtime
 // 2: x = 2
-tpy::BigInt x;
+int32_t x{};
 // 3: y = -1
-tpy::BigInt y;
+int32_t y{};
 // 4: z = x ** y  # Should panic
-tpy::BigInt z;
+int32_t z{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -20,11 +20,11 @@ void __tpy_init() {
   __name__ = "__main__";
   // 1: # Test that negative exponent panics at runtime
   // 2: x = 2
-  x = tpy::BigInt(2);
+  x = 2;
   // 3: y = -1
-  y = -(tpy::BigInt(1));
+  y = -1;
   // 4: z = x ** y  # Should panic
-  z = ((x).pow(y));
+  z = (tpy::pow_check<int32_t>(x, y));
 }
 
 } // namespace tpy_user::main

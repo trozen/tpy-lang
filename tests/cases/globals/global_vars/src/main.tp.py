@@ -1,22 +1,22 @@
 from tpy import Int32, Ptr
 
-# Test 1: Global BigInt used in range bounds
+# Test 1: Global int used in range bounds
 start = 0
 end = 3
 for i in range(start, end):
     print(i)
 
-# Test 2: Global BigInt used as list index
+# Test 2: Global int used as list index
 items: list[Int32] = [10, 20, 30]
 idx = 1
 print(items[idx])
 
-# Test 3: Global BigInt used in list repeat count
+# Test 3: Global int used in list repeat count
 count = 3
 repeated: list[Int32] = [0] * count
 print(len(repeated))
 
-# Test 4: Global BigInt reassignment (z = 0; z = 5 pattern)
+# Test 4: Global int reassignment (z = 0; z = 5 pattern)
 z = 0
 print(z)
 z = 5
@@ -60,13 +60,13 @@ global_ptr: Ptr[Point] = local_pt
 print(global_ptr.a)
 print(global_ptr.b)
 
-# Test 9: Int32 += BigInt with global BigInt value
+# Test 9: Int32 += with global default-int value
 counter: Int32 = 10
 increment = 5
 counter += increment
 print(counter)
 
-# Test 10: Global in binop with method template (BigInt operations)
+# Test 10: Global in binop with method template
 a = 10
 b = 3
 print(a + b)
@@ -91,7 +91,7 @@ c: Counter = Counter(50)
 print(c.val)
 print(c.add(7))
 
-# Test 12: Augmented subscript assignment with global BigInt RHS
+# Test 12: Augmented subscript assignment with global default-int RHS
 arr: list[Int32] = [100, 200, 300]
 delta = 5
 arr[0] += delta  # global BigInt on RHS needs deref before .to_int32()

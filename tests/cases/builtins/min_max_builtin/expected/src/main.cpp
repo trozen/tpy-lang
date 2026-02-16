@@ -11,9 +11,9 @@ int32_t a{};
 int32_t b{};
 // # Test min/max with BigInt (default int)
 // 13: x = 100
-tpy::BigInt x;
+int32_t x{};
 // 14: y = -50
-tpy::BigInt y;
+int32_t y{};
 // # Use int() for large values to avoid literal issues
 // 18: big1 = int(-1000000)
 tpy::BigInt big1;
@@ -47,16 +47,16 @@ void __tpy_init() {
   std::cout << std::max(b, a) << "\n";
   // 12: # Test min/max with BigInt (default int)
   // 13: x = 100
-  x = tpy::BigInt(100);
+  x = 100;
   // 14: y = -50
-  y = -(tpy::BigInt(50));
+  y = -50;
   // 15: print(min(x, y))
-  std::cout << ((x) < (y) ? (x) : (y)) << "\n";
+  std::cout << std::min(x, y) << "\n";
   // 16: print(max(x, y))
-  std::cout << ((x) > (y) ? (x) : (y)) << "\n";
+  std::cout << std::max(x, y) << "\n";
   // 17: # Use int() for large values to avoid literal issues
   // 18: big1 = int(-1000000)
-  big1 = tpy::BigInt(static_cast<int64_t>(-(1000000)));
+  big1 = tpy::BigInt(static_cast<int64_t>(-1000000));
   // 19: big2 = int(1000000)
   big2 = tpy::BigInt(static_cast<int64_t>(1000000));
   // 20: print(min(big1, big2))

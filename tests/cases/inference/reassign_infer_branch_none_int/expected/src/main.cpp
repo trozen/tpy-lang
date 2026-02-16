@@ -8,7 +8,7 @@ std::string_view __name__;
 // 1: def pick(cond: bool) -> None:
 void pick(bool cond) {
   // 2:     if cond:
-  std::optional<tpy::BigInt> x;
+  std::optional<int32_t> x;
   if (cond) {
     // 3:         x = None
     x = std::nullopt;

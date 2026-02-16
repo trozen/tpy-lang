@@ -5,37 +5,37 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def ret_i32() -> Int32:
+// 6: def ret_i32() -> Int32:
 int32_t ret_i32() {
-  // 5:     return Int32(7)
+  // 7:     return Int32(7)
   return 7;
 }
 
-// 8: def main() -> None:
+// 10: def main() -> None:
 void main() {
-  // 9:     x = 0
-  tpy::BigInt x = tpy::BigInt(0);
-  // 10:     x += Int32(5)  # tpyc: warning(/does not narrow 'x' from int to Int32/)
-  x = (x) + (tpy::BigInt(5));
-  // 11:     print(x)
+  // 11:     x = 0
+  int32_t x = 0;
+  // 12:     x += Int32(5)  # tpyc: ok
+  x = tpy::add_check<int32_t>(x, 5);
+  // 13:     print(x)
   std::cout << x << "\n";
-  // 13:     y = 0
-  tpy::BigInt y = tpy::BigInt(0);
-  // 14:     y += ret_i32()  # tpyc: warning(/does not narrow 'y' from int to Int32/)
-  y = (y) + (tpy::BigInt(ret_i32()));
-  // 15:     print(y)
+  // 15:     y = 0
+  int32_t y = 0;
+  // 16:     y += ret_i32()  # tpyc: ok
+  y = tpy::add_check<int32_t>(y, ret_i32());
+  // 17:     print(y)
   std::cout << y << "\n";
-  // 17:     z: int = 0
+  // 19:     z: int = 0
   tpy::BigInt z = tpy::BigInt(0);
-  // 18:     z += Int32(5)  # tpyc: ok
+  // 20:     z += Int32(5)  # tpyc: ok
   z = (z) + (tpy::BigInt(5));
-  // 19:     print(z)
+  // 21:     print(z)
   std::cout << z << "\n";
-  // 21:     w = int(0)
+  // 23:     w = int(0)
   tpy::BigInt w = tpy::BigInt(static_cast<int64_t>(0));
-  // 22:     w += Int32(5)  # tpyc: ok
+  // 24:     w += Int32(5)  # tpyc: ok
   w = (w) + (tpy::BigInt(5));
-  // 23:     print(w)
+  // 25:     print(w)
   std::cout << w << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 26: main()
+  // 28: main()
   main();
 }
 

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 std::string_view __name__;
 // # Power with variables
 // 23: x = 5
-tpy::BigInt x;
+int32_t x{};
 // 24: y = 3
-tpy::BigInt y;
+int32_t y{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -18,37 +18,37 @@ void __tpy_init() {
   __name__ = "__main__";
   // 3: # Basic powers
   // 4: print(2 ** 0)   # 1
-  std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(0))) << "\n";
+  std::cout << 1 << "\n";
   // 5: print(2 ** 1)   # 2
-  std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(1))) << "\n";
+  std::cout << 2 << "\n";
   // 6: print(2 ** 10)  # 1024
-  std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(10))) << "\n";
+  std::cout << 1024 << "\n";
   // 7: print(3 ** 3)   # 27
-  std::cout << ((tpy::BigInt(3)).pow(tpy::BigInt(3))) << "\n";
+  std::cout << 27 << "\n";
   // 9: # Large exponents (arbitrary precision)
   // 10: print(2 ** 32)   # 4294967296
-  std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(32))) << "\n";
+  std::cout << tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
   // 11: print(2 ** 64)   # 18446744073709551616
-  std::cout << ((tpy::BigInt(2)).pow(tpy::BigInt(64))) << "\n";
+  std::cout << tpy::BigInt::from_str("18446744073709551616") << "\n";
   // 12: print(10 ** 20)  # 100000000000000000000
-  std::cout << ((tpy::BigInt(10)).pow(tpy::BigInt(20))) << "\n";
+  std::cout << tpy::BigInt::from_str("100000000000000000000") << "\n";
   // 14: # Negative base with even/odd exponents
   // 15: print((-2) ** 3)  # -8
-  std::cout << ((-(tpy::BigInt(2))).pow(tpy::BigInt(3))) << "\n";
+  std::cout << -8 << "\n";
   // 16: print((-2) ** 4)  # 16
-  std::cout << ((-(tpy::BigInt(2))).pow(tpy::BigInt(4))) << "\n";
+  std::cout << 16 << "\n";
   // 18: # Zero base
   // 19: print(0 ** 5)  # 0
-  std::cout << ((tpy::BigInt(0)).pow(tpy::BigInt(5))) << "\n";
+  std::cout << 0 << "\n";
   // 20: print(0 ** 0)  # 1 (by convention)
-  std::cout << ((tpy::BigInt(0)).pow(tpy::BigInt(0))) << "\n";
+  std::cout << 1 << "\n";
   // 22: # Power with variables
   // 23: x = 5
-  x = tpy::BigInt(5);
+  x = 5;
   // 24: y = 3
-  y = tpy::BigInt(3);
+  y = 3;
   // 25: print(x ** y)  # 125
-  std::cout << ((x).pow(y)) << "\n";
+  std::cout << (tpy::pow_check<int32_t>(x, y)) << "\n";
 }
 
 } // namespace tpy_user::main

@@ -189,7 +189,7 @@ int32_t find_string(std::vector<std::string_view>& items, std::string_view targe
     i = tpy::add_check<int32_t>(i, 1);
   }
   // 113:     return -1
-  return -(1);
+  return -1;
 }
 
 // 115: def test_comparison_in_loop() -> None:

@@ -329,10 +329,10 @@ class IntLiteralType(TpyType):
     concrete type. It coerces to Int32 or BigInt based on context:
     - Int32 + IntLiteral -> Int32
     - BigInt + IntLiteral -> BigInt
-    - IntLiteral + IntLiteral -> BigInt (Python default)
+    - IntLiteral + IntLiteral -> configured default (Int32 by default)
 
-    value is None for compound expressions (e.g. 2+3) where the result
-    isn't tracked. A concrete int (including 0) means a known literal value.
+    value tracks the known literal value (including computed results from
+    constant-folded binops like 2+3). None means the value is unknown.
     """
     value: int | None = None
 

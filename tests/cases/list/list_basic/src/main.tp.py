@@ -14,7 +14,7 @@ mem[1] = 8
 print(sum_list(mem))
 print(len(mem))
 
-# Unannotated list repetition (should infer BigInt)
+# Unannotated list repetition (infers default int)
 data = [0] * 5
 data[0] = 100
 print(data[0])

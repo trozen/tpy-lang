@@ -126,7 +126,7 @@ tpyc/
 
 ```
 tests/
-├── cases/                    # All tests, grouped by feature
+├── cases/                    # Main test suite
 │   ├── array_span/           # Array, Span, StaticList
 │   ├── assert/               # assert statements, narrowing integration
 │   ├── bool/                 # bool type and conversion
@@ -176,12 +176,21 @@ tests/
    - `{name}/` - normal tests that compile and run
    - `error_{name}/` - tests for compilation errors
    - `panic_{name}/` - tests for runtime panics
-2. Add source file: `src/main.tp.py`
+2. Add source file: `src/main.tp.py` with a short comment (1-2 lines) at the very top explaining what the test covers -- test names alone are often not enough context
 3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
    - `# tpyc: ok` - line should compile without error
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs
 5. Run `uv run pytest -k {name}` to verify
+
+Per-case compiler options can be set with optional `options.json` at the case root.
+Currently supported:
+
+```json
+{
+  "default_int": "Int32 | Int64 | BigInt"
+}
+```
 
 ## Code Style
 

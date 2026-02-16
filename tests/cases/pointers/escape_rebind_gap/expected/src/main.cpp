@@ -19,9 +19,9 @@ void rebind_gap() {
   Point __slot_3 = Point(0, 0);
   Point* saved = &__slot_3;
   // 17:     for i in range(3):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
+  for (int32_t i = 0; i < 3; ++i) {
     // 18:         p = Point(i, i)
-    p = &*(__slot_2 = Point((i).to_fixed_check<int32_t>(), (i).to_fixed_check<int32_t>()));
+    p = &*(__slot_2 = Point(i, i));
     // 19:         saved = p
     saved = p;
   }

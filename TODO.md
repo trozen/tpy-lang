@@ -3,13 +3,12 @@
 ## Next
 - protocol @readonly enforcement (e.g. `__len__`)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
-- DECIDE WHAT TO DO WITH INTEGERS! - should they be int, Int32 by default? configurable? `# tpy:` annotation? -- configurable default int literal deduction: compiler flag (e.g. `--default-int=Int32`) to resolve ambiguous integer literals as Int32 instead of BigInt, for performance-oriented code
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
-- `# tpy:` directives handling
+- `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
 - constant global variables
 - "@native_c, @native, @extern_c, @readonly, @noalloc are all hard-coded parser keywords" -- should be handled like normal functions eventually (maybe in tpy.extern package?)
 - move native_c_global and native_global to tpy.extern package?
-- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc). Also: `n = 4` currently defaults to BigInt — should default to Int32 when the literal fits, so `for i in range(n)` loops over int32_t instead of BigInt
+- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
@@ -71,7 +70,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - option to change divide semantics (negative): Python vs C++
 - do not stop at first error, generate source with special Invalid() type, that would be ignored in further lines, so that we get all errors from compilation
 - better handling of tpy_panic -- exceptions in first version (later generation policy)
-- c++ generation profiles: utf8 strings vs char strings; int literal default to int or Int32 (per module, function, build options?)
+- c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
 - support augmented arithmetic operators, like `__iadd__` for `+=` etc.

@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 extern std::string_view __name__;
-extern std::vector<tpy::BigInt>* nums;
+extern std::vector<int32_t>* nums;
 extern std::vector<std::string_view>* words;
 extern std::vector<int32_t>* vals;
 

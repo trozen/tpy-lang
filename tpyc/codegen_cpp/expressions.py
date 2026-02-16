@@ -95,9 +95,7 @@ class ExpressionGenerator:
                 elif -2**63 <= expr.value <= 2**63 - 1:
                     # Use static_cast for portability (int64_t is long on Linux, long long on macOS)
                     return f"tpy::BigInt(static_cast<int64_t>({expr.value}LL))"
-                else:
-                    # TODO: support arbitrary precision literals via string parsing
-                    raise ValueError(f"Integer literal {expr.value} exceeds int64 range")
+                return f'tpy::BigInt::from_str("{expr.value}")'
             return str(expr.value)
 
         elif isinstance(expr, TpyFloatLiteral):
@@ -124,8 +122,6 @@ class ExpressionGenerator:
                 return self._gen_span_coercion(expr.expr, expr.expected_type, gen_inner)
             # IntLiteralType may be runtime BigInt; sema records this on the coercion.
             if expr.coercion.name == "int_literal_to_fixed_int":
-                if expr.runtime_bigint:
-                    return f"({gen_inner}).to_fixed_check<{expr.expected_type.to_cpp()}>()"
                 return gen_inner
             # Coercions that call methods on the inner expression need dereferencing for globals
             if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr", "bigint_to_fixed_int"):
@@ -211,6 +207,25 @@ class ExpressionGenerator:
 
     def _gen_binop(self, expr: TpyBinOp, target_type: TpyType | None) -> str:
         """Generate binary operation code."""
+        # For pure literal binops without a fixed-int context, emit the computed
+        # literal directly to preserve Python semantics for large intermediates.
+        analyzed_type = self.ctx.analyzer.get_expr_type(expr)
+        if (
+            target_type is None
+            and isinstance(analyzed_type, IntLiteralType)
+            and analyzed_type.value is not None
+            and not self.types.involves_variables(expr)
+        ):
+            resolved = self.types.get_resolved_type(expr)
+            if isinstance(resolved, BigIntType):
+                v = analyzed_type.value
+                if -2**31 <= v <= 2**31 - 1:
+                    return f"tpy::BigInt({v})"
+                if -2**63 <= v <= 2**63 - 1:
+                    return f"tpy::BigInt(static_cast<int64_t>({v}LL))"
+                return f'tpy::BigInt::from_str("{v}")'
+            return str(analyzed_type.value)
+
         # First pass: get raw types to detect fixed-int operands
         left_raw = self.types.get_resolved_type(expr.left)
         right_raw = self.types.get_resolved_type(expr.right)
@@ -367,11 +382,12 @@ class ExpressionGenerator:
             # Wrap in parens to avoid precedence issues with cout << and other operators
             return f"({result})"
 
-        # Fallback for IntLiteral + IntLiteral -> BigInt (arbitrary precision)
-        # (Int32 case is handled earlier as an optimization)
+        # Fallback for IntLiteral + IntLiteral using configured default int type
+        # (explicit fixed-int contexts are handled earlier).
         if isinstance(left_type, IntLiteralType) and isinstance(right_type, IntLiteralType):
-            left = self.gen_expr(expr.left, BIGINT)
-            right = self.gen_expr(expr.right, BIGINT)
+            default_int = self.ctx.analyzer.ctx.default_int_type
+            left = self.gen_expr(expr.left, default_int)
+            right = self.gen_expr(expr.right, default_int)
             cpp_op = "/" if expr.op == "//" else expr.op
             return f"({left} {cpp_op} {right})"
 
@@ -405,6 +421,14 @@ class ExpressionGenerator:
             return f"(!({self.gen_truthy_expr(expr.operand)}))"
 
         operand_type = self.ctx.analyzer.get_expr_type(expr.operand)
+        if (
+            expr.op == "-"
+            and isinstance(operand_type, IntLiteralType)
+            and isinstance(expr.operand, TpyIntLiteral)
+        ):
+            # Keep literal negation as a plain constant to avoid emitting
+            # checked fixed-int runtime helpers for compile-time literals.
+            return str(-expr.operand.value)
         resolved_operand_type = self.types.get_resolved_type(expr.operand)
         unary_target = target_type
         if isinstance(resolved_operand_type, OptionalType) and resolved_operand_type.inner.is_value_type():
@@ -856,11 +880,11 @@ class ExpressionGenerator:
             result_type = self.ctx.get_expr_type(expr)
             elem_type = result_type.get_element_type() if result_type else None
 
-        # Resolve IntLiteralType to BigInt (Python semantics)
+        # Resolve IntLiteralType to configured default integer type.
         if isinstance(elem_type, IntLiteralType):
-            elem_type = BIGINT
+            elem_type = self.ctx.analyzer.ctx.default_int_type
             if isinstance(result_type, ListType):
-                result_type = ListType(BIGINT)
+                result_type = ListType(elem_type)
 
         # Use repeat_range for all list repeats (handles negative counts internally)
         elements = ", ".join(self.gen_expr_deref(e, elem_type) for e in expr.elements)
@@ -910,6 +934,8 @@ class ExpressionGenerator:
             return f"static_cast<int32_t>(tpy::__len__({obj}) - {abs_val})"
 
         index_expr = self.gen_expr_deref(index)
+        if isinstance(index, TpyIntLiteral):
+            return index_expr
         if self.types.is_runtime_bigint(index, index_type):
             index_expr = f"{index_expr}.to_fixed_check<int32_t>()"
         return index_expr
@@ -955,7 +981,10 @@ class ExpressionGenerator:
         if isinstance(expected_type, FixedIntType):
             cpp_t = expected_type.to_cpp()
             if isinstance(actual_type, BigIntType):
+                if isinstance(expr, TpyIntLiteral):
+                    return gen_expr
                 return f"({gen_expr}).to_fixed_check<{cpp_t}>()"
             if isinstance(actual_type, IntLiteralType) and self.types.is_runtime_bigint(expr, actual_type):
-                return f"({gen_expr}).to_fixed_check<{cpp_t}>()"
+                # IntLiterals are emitted as plain C++ integers, not BigInt objects
+                return gen_expr
         return gen_expr

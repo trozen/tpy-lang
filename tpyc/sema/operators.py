@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32, BIGINT
+    INT32
 )
 from .overloads import type_matches_numeric
 from tpyc import modules as builtin_modules
@@ -63,9 +63,9 @@ class OperatorResolver:
         self.ctx = ctx
 
     def get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
-        """Get the effective type for binop resolution, treating IntLiteralType as BigInt."""
+        """Get the effective type for binop resolution for integer literals."""
         if isinstance(tpy_type, IntLiteralType):
-            return BIGINT
+            return self.ctx.default_int_for_literal(tpy_type)
         # INT TypeParamRef (e.g., N: int) treated as Int32 for arithmetic
         if isinstance(tpy_type, TypeParamRef) and tpy_type.kind == TypeParamKind.INT:
             return INT32
@@ -97,7 +97,7 @@ class OperatorResolver:
         if not method_name:
             return None
 
-        # Get effective types (IntLiteralType -> BigInt)
+        # Get effective types (IntLiteralType -> configured default int type)
         left_effective = self.get_effective_type_for_binop(left_type)
         right_effective = self.get_effective_type_for_binop(right_type)
 

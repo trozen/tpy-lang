@@ -549,7 +549,9 @@ class StatementAnalyzer:
                 # coercion -- this is a binding, not passing by reference.
                 inner_existing = unwrap_readonly(existing_type)
                 inner_init = unwrap_readonly(init_type)
-                var_type = self.reassign.resolve_reassignment_target_type(stmt.name, inner_existing, inner_init)
+                var_type = self.reassign.resolve_reassignment_target_type(
+                    stmt.name, inner_existing, inner_init, init_expr=stmt.init
+                )
                 # Reassignment: check if we need to upgrade IntLiteralType
                 if isinstance(inner_existing, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
                     # Upgrade from IntLiteralType to concrete type
@@ -573,7 +575,7 @@ class StatementAnalyzer:
             else:
                 # New variable: resolve IntLiteralType.
                 if isinstance(init_type, IntLiteralType):
-                    var_type = BIGINT
+                    var_type = self.ctx.default_int_for_literal(init_type, warn_node=stmt.init)
                     self.ctx.literal_default_vars.add(stmt.name)
                 # Unwrap OwnType - Own[T] indicates ownership transfer, not variable type
                 elif isinstance(init_type, OwnType):
@@ -687,7 +689,9 @@ class StatementAnalyzer:
             # binding, not passing by reference.
             inner_target = unwrap_readonly(target_type)
             inner_value = unwrap_readonly(value_type)
-            target_type = self.reassign.resolve_reassignment_target_type(stmt.target.name, inner_target, inner_value)
+            target_type = self.reassign.resolve_reassignment_target_type(
+                stmt.target.name, inner_target, inner_value, init_expr=stmt.value
+            )
             # Readonly status flows from the value expression
             if isinstance(value_type, ReadonlyType) and not target_type.is_value_type():
                 target_type = ReadonlyType(target_type)

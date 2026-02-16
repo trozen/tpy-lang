@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, TypeParamRef,
-    TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
+    TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
+    TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -95,6 +95,7 @@ def resolve_overload(
     arg_types: list[TpyType],
     protocol_checker: ProtocolChecker | None = None,
     deref_checker: DerefChecker | None = None,
+    default_int_type: TpyType | None = None,
 ) -> FunctionInfo | None:
     """Two-pass overload resolution: exact match first, then with coercions.
 
@@ -132,15 +133,37 @@ def resolve_overload(
             candidates.append((score, narrowing, overload))
 
     if candidates:
-        # When return types vary across candidates, IntLiteral->FixedInt is
-        # narrowing (Python's default int is BigInt, so prefer that).
-        # When return types are identical (e.g. Char(97)), FixedInt is fine.
-        if len(candidates) > 1 and not all(
-            c[2].return_type == candidates[0][2].return_type for c in candidates[1:]
-        ):
+        if default_int_type is None:
+            default_int_type = BIGINT
+
+        def _int_literal_penalty(arg_t: TpyType, ptype: TpyType) -> int:
+            if not isinstance(arg_t, IntLiteralType):
+                return 0
+            # Prefer the configured default integer type for integer literals.
+            if ptype == default_int_type:
+                return 0
+            if isinstance(default_int_type, FixedIntType):
+                if isinstance(ptype, FixedIntType):
+                    # Keep preference stable around configured width/signedness.
+                    width_gap = abs(ptype.bits - default_int_type.bits) // 8
+                    sign_penalty = 1 if ptype.signed != default_int_type.signed else 0
+                    return 1 + width_gap + sign_penalty
+                if isinstance(ptype, BigIntType):
+                    return 8
+            if isinstance(default_int_type, BigIntType):
+                if isinstance(ptype, FixedIntType):
+                    return 2
+            return 1
+
+        # Apply literal penalty to break ties deterministically.
+        # Covers both same-return (e.g. range(IntLiteral) over many fixed-int
+        # overloads) and different-return cases (IntLiteral->FixedInt narrowing).
+        if len(candidates) > 1:
             for i, (score, narrowing, overload) in enumerate(candidates):
-                extra = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
-                            if isinstance(ptype, FixedIntType) and isinstance(arg_t, IntLiteralType))
+                extra = sum(
+                    _int_literal_penalty(arg_t, ptype)
+                    for arg_t, (_, ptype) in zip(arg_types, overload.params)
+                )
                 candidates[i] = (score, narrowing + extra, overload)
         # Best: most numeric matches, then fewest narrowing conversions
         candidates.sort(key=lambda x: (-x[0], x[1]))

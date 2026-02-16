@@ -14,9 +14,9 @@ void field_access_escape() {
   Inner __slot_1 = Inner(0);
   Inner* saved = &__slot_1;
   // 17:     for i in range(3):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
+  for (int32_t i = 0; i < 3; ++i) {
     // 18:         o: Outer = Outer(Inner(i))
-    Outer* o = &*(__slot_2 = Outer(Inner((i).to_fixed_check<int32_t>())));
+    Outer* o = &*(__slot_2 = Outer(Inner(i)));
     // 19:         saved = o.inner  # tpyc: warning(/hoisted to function scope/)
     saved = &(o->inner);
   }

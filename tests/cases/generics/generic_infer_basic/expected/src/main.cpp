@@ -6,7 +6,7 @@ namespace tpy_user::main {
 std::string_view __name__;
 // # Inference from int literal -> Box[int]
 // 13: box = Box(42)
-Box<tpy::BigInt>* box{};
+Box<int32_t>* box{};
 // # Inference from Int32 -> Box[Int32]
 // 17: x: Int32 = 10
 int32_t x{};
@@ -22,7 +22,7 @@ void __tpy_init() {
   // 1: """Test basic type inference for user-defined generic classes."""
   // 12: # Inference from int literal -> Box[int]
   // 13: box = Box(42)
-  static Box<tpy::BigInt> __global_slot_1 = Box<tpy::BigInt>(42);
+  static Box<int32_t> __global_slot_1 = Box<int32_t>(42);
   box = &__global_slot_1;
   // 14: print(box.value)
   std::cout << box->value << "\n";

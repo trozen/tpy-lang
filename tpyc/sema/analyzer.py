@@ -7,7 +7,7 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType, VoidType, ReadonlyType, unwrap_readonly
+from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType, VoidType, INT32, ReadonlyType, unwrap_readonly
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
 
@@ -32,11 +32,12 @@ from tpyc import modules as builtin_modules
 class SemanticAnalyzer:
     """Semantic analyzer for TurboPython."""
 
-    def __init__(self):
+    def __init__(self, default_int_type: TpyType = INT32):
         # Create shared context
         self.ctx = SemanticContext(
             registry=TypeRegistry(),
             global_scope=Scope(),
+            default_int_type=default_int_type,
             builtins_ns=Namespace(),
             global_ns=None,  # Set below
         )

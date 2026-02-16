@@ -21,9 +21,27 @@ from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace
+from .typesys import TpyType, INT32, INT64, BIGINT
 
 if TYPE_CHECKING:
-    from .typesys import TpyType, FunctionInfo, RecordInfo, ProtocolInfo, ModuleInfo, ModuleVarInfo
+    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, ModuleInfo, ModuleVarInfo
+
+
+DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
+
+
+def parse_default_int_type(name: str) -> TpyType:
+    """Parse CLI/compiler default-int setting into a concrete semantic type."""
+    if name == "Int32":
+        return INT32
+    if name == "Int64":
+        return INT64
+    if name == "BigInt":
+        return BIGINT
+    raise ValueError(
+        f"Unsupported default int type '{name}'. Expected one of: "
+        f"{', '.join(DEFAULT_INT_CHOICES)}"
+    )
 
 
 @dataclass
@@ -231,14 +249,16 @@ class Compiler:
     Handles module discovery, dependency resolution, and compilation order.
     """
 
-    def __init__(self, entry_point: Path):
+    def __init__(self, entry_point: Path, default_int: str = "Int32"):
         """Initialize compiler with entry point path.
 
         Args:
             entry_point: Path to the main .tp.py file.
+            default_int: Unannotated integer literal default type.
         """
         self.entry_point = entry_point.resolve()
         self.resolver = ModuleResolver(self.entry_point.parent)
+        self.default_int_type = parse_default_int_type(default_int)
         self._init_shared()
 
     def _init_shared(self) -> None:
@@ -249,11 +269,17 @@ class Compiler:
         self._source_input: tuple[str, str] | None = None
 
     @classmethod
-    def from_source(cls, source: str, module_name: str = "main") -> "Compiler":
+    def from_source(
+        cls,
+        source: str,
+        module_name: str = "main",
+        default_int: str = "Int32",
+    ) -> "Compiler":
         """Create a compiler for a single module from source code (e.g., stdin)."""
         compiler = cls.__new__(cls)
         compiler.entry_point = Path("<stdin>")
         compiler.resolver = None
+        compiler.default_int_type = parse_default_int_type(default_int)
         compiler._init_shared()
         compiler._source_input = (source, module_name)
         return compiler
@@ -543,7 +569,7 @@ class Compiler:
             compiled: The compiled module to analyze.
         """
         # Create analyzer
-        analyzer = SemanticAnalyzer()
+        analyzer = SemanticAnalyzer(default_int_type=self.default_int_type)
 
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them

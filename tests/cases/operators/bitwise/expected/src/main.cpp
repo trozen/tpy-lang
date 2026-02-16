@@ -13,16 +13,16 @@ int32_t b{};
 int32_t c{};
 // # BigInt bitwise operators
 // 30: x = 12  # BigInt
-tpy::BigInt x;
+int32_t x{};
 // 31: y = 10  # BigInt
-tpy::BigInt y;
+int32_t y{};
 // # BigInt bitwise NOT (Python: ~x = -(x+1))
 // 37: z = 0
-tpy::BigInt z;
+int32_t z{};
 // # Large BigInt bitwise
-// 43: big1 = (1 << 100) | (1 << 50)
+// 43: big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
 tpy::BigInt big1;
-// 44: big2 = (1 << 100) | (1 << 25)
+// 44: big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
 tpy::BigInt big2;
 
 void __tpy_init() {
@@ -51,40 +51,40 @@ void __tpy_init() {
   std::cout << static_cast<int32_t>(~(c)) << "\n";
   // 19: # Left shift
   // 20: print(1 << 4)      # 16
-  std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(4))) << "\n";
+  std::cout << 16 << "\n";
   // 22: # Right shift
   // 23: print(32 >> 2)     # 8
-  std::cout << ((tpy::BigInt(32)) >> (tpy::BigInt(2))) << "\n";
+  std::cout << 8 << "\n";
   // 25: # Large shift (Python semantics - arbitrary precision)
   // 26: print(1 << 100)    # 1267650600228229401496703205376
-  std::cout << ((tpy::BigInt(1)) << (tpy::BigInt(100))) << "\n";
+  std::cout << tpy::BigInt::from_str("1267650600228229401496703205376") << "\n";
   // 27: print((1 << 100) >> 90)  # 1024
-  std::cout << ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) >> (tpy::BigInt(90))) << "\n";
+  std::cout << 1024 << "\n";
   // 29: # BigInt bitwise operators
   // 30: x = 12  # BigInt
-  x = tpy::BigInt(12);
+  x = 12;
   // 31: y = 10  # BigInt
-  y = tpy::BigInt(10);
+  y = 10;
   // 32: print(x & y)       # 8
-  std::cout << ((x) & (y)) << "\n";
+  std::cout << (static_cast<int32_t>(x & y)) << "\n";
   // 33: print(x | y)       # 14
-  std::cout << ((x) | (y)) << "\n";
+  std::cout << (static_cast<int32_t>(x | y)) << "\n";
   // 34: print(x ^ y)       # 6
-  std::cout << ((x) ^ (y)) << "\n";
+  std::cout << (static_cast<int32_t>(x ^ y)) << "\n";
   // 36: # BigInt bitwise NOT (Python: ~x = -(x+1))
   // 37: z = 0
-  z = tpy::BigInt(0);
+  z = 0;
   // 38: print(~z)          # -1
-  std::cout << ~(z) << "\n";
+  std::cout << static_cast<int32_t>(~(z)) << "\n";
   // 39: z = 5
-  z = tpy::BigInt(5);
+  z = 5;
   // 40: print(~z)          # -6
-  std::cout << ~(z) << "\n";
+  std::cout << static_cast<int32_t>(~(z)) << "\n";
   // 42: # Large BigInt bitwise
-  // 43: big1 = (1 << 100) | (1 << 50)
+  // 43: big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
   big1 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | (((tpy::BigInt(1)) << (tpy::BigInt(50)))));
-  // 44: big2 = (1 << 100) | (1 << 25)
-  big2 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | (((tpy::BigInt(1)) << (tpy::BigInt(25)))));
+  // 44: big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
+  big2 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | ((tpy::lshift_check<int32_t>(1, 25))));
   // 45: print((big1 & big2) >> 100)         # 1 - only bit 100 in common
   std::cout << ((((big1) & (big2))) >> (tpy::BigInt(100))) << "\n";
   // 46: print((big1 | big2) >> 100)         # 1 - bit 100 is set

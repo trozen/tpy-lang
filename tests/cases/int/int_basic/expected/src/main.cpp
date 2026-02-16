@@ -6,7 +6,7 @@ namespace tpy_user::main {
 std::string_view __name__;
 // # Unary negation
 // 50: neg = -42
-tpy::BigInt neg;
+int32_t neg{};
 
 // 4: def factorial(n: int) -> int:
 tpy::BigInt factorial(const tpy::BigInt& n) {
@@ -22,37 +22,37 @@ tpy::BigInt factorial(const tpy::BigInt& n) {
 // 10: def test_arithmetic():
 void test_arithmetic() {
   // 11:     a = 10
-  tpy::BigInt a = tpy::BigInt(10);
+  int32_t a = 10;
   // 12:     b = 3
-  tpy::BigInt b = tpy::BigInt(3);
+  int32_t b = 3;
   // 14:     # Basic arithmetic
   // 15:     print(a + b)  # 13
-  std::cout << ((a) + (b)) << "\n";
+  std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
   // 16:     print(a - b)  # 7
-  std::cout << ((a) - (b)) << "\n";
+  std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
   // 17:     print(a * b)  # 30
-  std::cout << ((a) * (b)) << "\n";
+  std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
   // 18:     print(a // b)  # 3 (floor division)
-  std::cout << ((a) / (b)) << "\n";
+  std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
   // 19:     print(a % b)  # 1
-  std::cout << ((a) % (b)) << "\n";
+  std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
   // 21:     # Negative division (Python semantics)
   // 22:     c = -7
-  tpy::BigInt c = -(tpy::BigInt(7));
+  int32_t c = -7;
   // 23:     d = 3
-  tpy::BigInt d = tpy::BigInt(3);
+  int32_t d = 3;
   // 24:     print(c // d)  # -3 (not -2!)
-  std::cout << ((c) / (d)) << "\n";
+  std::cout << (tpy::div_check<int32_t>(c, d)) << "\n";
   // 25:     print(c % d)   # 2 (not -1!)
-  std::cout << ((c) % (d)) << "\n";
+  std::cout << (tpy::mod_check<int32_t>(c, d)) << "\n";
 }
 
 // 28: def test_comparison():
 void test_comparison() {
   // 29:     x = 42
-  tpy::BigInt x = tpy::BigInt(42);
+  int32_t x = 42;
   // 30:     y = 100
-  tpy::BigInt y = tpy::BigInt(100);
+  int32_t y = 100;
   // 32:     if x < y:
   if ((x < y)) {
     // 33:         print("x < y")
@@ -88,7 +88,7 @@ void __tpy_init() {
   test_comparison();
   // 49: # Unary negation
   // 50: neg = -42
-  neg = -(tpy::BigInt(42));
+  neg = -42;
   // 51: print(neg)
   std::cout << neg << "\n";
 }

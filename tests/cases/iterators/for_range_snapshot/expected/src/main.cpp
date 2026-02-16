@@ -8,7 +8,7 @@ std::string_view __name__;
 int32_t count{};
 // # 4. BigInt stop mutated — .to_int32() captured once
 // 36: n = 4
-tpy::BigInt n;
+int32_t n{};
 // 37: count2: Int32 = 0
 int32_t count2{};
 
@@ -89,14 +89,14 @@ void __tpy_init() {
   std::cout << count << "\n";
   // 35: # 4. BigInt stop mutated — .to_int32() captured once
   // 36: n = 4
-  n = tpy::BigInt(4);
+  n = 4;
   // 37: count2: Int32 = 0
   count2 = 0;
   // 38: for i in range(n):
-  tpy::BigInt __stop_1 = n;
-  for (tpy::BigInt i = 0; i < __stop_1; ++i) {
+  int32_t __stop_1 = n;
+  for (int32_t i = 0; i < __stop_1; ++i) {
     // 39:     n = 0
-    n = tpy::BigInt(0);
+    n = 0;
     // 40:     count2 += 1
     count2 = tpy::add_check<int32_t>(count2, 1);
   }

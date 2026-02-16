@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 extern std::vector<int32_t>* mem;
-extern std::vector<tpy::BigInt>* data;
-extern std::vector<tpy::BigInt>* chars;
+extern std::vector<int32_t>* data;
+extern std::vector<int32_t>* chars;
 
 int32_t sum_list(std::vector<int32_t>& nums);
 

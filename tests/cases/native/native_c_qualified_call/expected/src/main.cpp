@@ -18,7 +18,7 @@ void __tpy_init() {
   // 2: import lib
   tpy_user::lib::__tpy_init();
   // 4: x: Int32 = lib.abs(Int32(-5))
-  x = tpy_user::lib::abs(-(5));
+  x = tpy_user::lib::abs(-5);
   // 5: print(x)
   std::cout << x << "\n";
   // 6: y: Int32 = lib.get_clock()

@@ -8,8 +8,8 @@ namespace tpy_user::main {
 template<typename A, typename B> struct Pair;
 
 extern std::string_view __name__;
-extern Pair<tpy::BigInt, std::string_view>* p1;
-extern Pair<std::string_view, tpy::BigInt>* p2;
+extern Pair<int32_t, std::string_view>* p1;
+extern Pair<std::string_view, int32_t>* p2;
 
 // 5: class Pair[A, B]:
 template<typename A, typename B>

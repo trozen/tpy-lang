@@ -419,6 +419,7 @@ class MethodAnalyzer:
                 resolved_overloads, arg_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 deref_checker=self.type_ops.get_deref_coercion_target,
+                default_int_type=self.ctx.default_int_type,
             )
             if resolved is not None:
                 expr.resolved_function_info = resolved
@@ -601,6 +602,7 @@ class MethodAnalyzer:
             resolved_overloads, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
             deref_checker=self.type_ops.get_deref_coercion_target,
+            default_int_type=self.ctx.default_int_type,
         )
         if resolved is not None:
             # Coerce arguments
@@ -649,6 +651,7 @@ class MethodAnalyzer:
             resolved_overloads, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
             deref_checker=self.type_ops.get_deref_coercion_target,
+            default_int_type=self.ctx.default_int_type,
         )
 
     def _analyze_user_module_function_call(

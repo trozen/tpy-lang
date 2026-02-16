@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 extern std::string_view __name__;
-extern tpy::BigInt n;
+extern int32_t n;
 
 int32_t sum_range_step(int32_t start, int32_t stop, int32_t step);
 

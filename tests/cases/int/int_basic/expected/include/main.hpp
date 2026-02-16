@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 extern std::string_view __name__;
-extern tpy::BigInt neg;
+extern int32_t neg;
 
 tpy::BigInt factorial(const tpy::BigInt& n);
 void test_arithmetic();

@@ -16,8 +16,8 @@ tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item) {
 void main() {
   // 9:     # list[int] satisfies Sized, so inference should work
   // 10:     items = identity([1, 2, 3])
-  std::vector<tpy::BigInt> __tmp_1 = {1, 2, 3};
-  std::vector<tpy::BigInt>& items = identity<std::vector<tpy::BigInt>>(__tmp_1);
+  std::vector<int32_t> __tmp_1 = {1, 2, 3};
+  std::vector<int32_t>& items = identity<std::vector<int32_t>>(__tmp_1);
   // 11:     print(len(items))  # Should print 3
   std::cout << tpy::__len__(items) << "\n";
   // 13:     # str satisfies Sized too

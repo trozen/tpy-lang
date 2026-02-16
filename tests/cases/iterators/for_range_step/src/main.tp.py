@@ -25,7 +25,7 @@ def sum_range_step(start: Int32, stop: Int32, step: Int32) -> Int32:
 
 print(sum_range_step(0, 10, 3))  # 0 + 3 + 6 + 9 = 18
 
-# range with BigInt args (converted to Int32)
+# range with unannotated default-int args
 n = 5
 for i in range(n):
     print(i)

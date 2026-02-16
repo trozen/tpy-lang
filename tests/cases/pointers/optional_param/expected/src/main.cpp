@@ -17,7 +17,7 @@ int32_t describe(Point* p) {
     return p->mag();
   }
   // 19:     return -1
-  return -(1);
+  return -1;
 }
 
 // 22: def find(points: list[Point], target: Int32) -> Point | None:

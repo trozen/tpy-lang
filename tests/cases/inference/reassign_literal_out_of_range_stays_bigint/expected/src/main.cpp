@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 std::string_view __name__;
-// 3: x = 2_147_483_648
+// 3: x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
 tpy::BigInt x;
 
 void __tpy_init() {
@@ -13,7 +13,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 3: x = 2_147_483_648
+  // 3: x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
   x = tpy::BigInt(static_cast<int64_t>(2147483648LL));
   // 4: x = Int32(1)
   x = tpy::BigInt(1);

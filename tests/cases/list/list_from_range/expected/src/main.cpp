@@ -5,9 +5,9 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 // 1: nums = list(range(5))
-std::vector<tpy::BigInt>* nums{};
+std::vector<int32_t>* nums{};
 // 3: nums2 = list(range(2, 7))
-std::vector<tpy::BigInt>* nums2{};
+std::vector<int32_t>* nums2{};
 
 void __tpy_init() {
   static bool initialized = false;
@@ -16,12 +16,12 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: nums = list(range(5))
-  static std::vector<tpy::BigInt> __global_slot_1 = tpy::from_range<std::vector<tpy::BigInt>>(tpy::Range<tpy::BigInt>(tpy::BigInt(5)));
+  static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
   nums = &__global_slot_1;
   // 2: print(nums)
   std::cout << tpy::ListPrinter((*nums)) << "\n";
   // 3: nums2 = list(range(2, 7))
-  static std::vector<tpy::BigInt> __global_slot_2 = tpy::from_range<std::vector<tpy::BigInt>>(tpy::Range<tpy::BigInt>(tpy::BigInt(2), tpy::BigInt(7)));
+  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(2, 7));
   nums2 = &__global_slot_2;
   // 4: print(nums2)
   std::cout << tpy::ListPrinter((*nums2)) << "\n";

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, ListType, ArrayType, PendingListType, SpanType, IntLiteralType,
-    StrType, NamedType, BIGINT, CHAR, is_protocol_type,
+    StrType, NamedType, CHAR, is_protocol_type,
 )
 from ..parse import TpyExpr, TpyName, TpyCoerce
 from .diagnostics import SemanticError
@@ -69,7 +69,7 @@ class ListLiteralTracker:
 
         Element type resolution:
         - If passed to typed param (list[T] or Span[T]), use T
-        - IntLiteralType defaults to Int32 for containers
+        - IntLiteralType defaults to ctx.default_int_type for containers
         """
         for literal_id in self.ctx.pending_resolutions:
             if literal_id not in self.ctx.list_literals:
@@ -92,8 +92,8 @@ class ListLiteralTracker:
                     # Use element type from typed parameter (list[T] or Span[T])
                     elem_type = info.coerced_element_type
                 else:
-                    # Default to BigInt (Python semantics)
-                    elem_type = BIGINT
+                    # Use configured integer default when no stronger context exists.
+                    elem_type = self.ctx.default_int_for_literal(elem_type)
 
             # Determine resolved type
             if info.has_explicit_annotation and info.explicit_type:

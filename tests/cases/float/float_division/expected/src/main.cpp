@@ -20,7 +20,7 @@ void __tpy_init() {
   std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(9)) / static_cast<double>(tpy::BigInt(3)))) << "\n";
   // 6: # Floor division (//) preserves type
   // 7: print(10 // 4)
-  std::cout << ((tpy::BigInt(10)) / (tpy::BigInt(4))) << "\n";
+  std::cout << 2 << "\n";
   // 8: print(10.0 // 4.0)
   std::cout << tpy::print_float((std::floor((10.0) / (4.0)))) << "\n";
 }
