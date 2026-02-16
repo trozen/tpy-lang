@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
     TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, TypeParamRef,
-    TypeParamKind, FunctionInfo, is_protocol_type,
+    TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -28,10 +28,13 @@ def type_matches_strict(
 
     Used for first-pass overload resolution where no coercions are desired.
     """
-    if arg_type == param_type:
+    # Unwrap ReadonlyType -- readonly values can match mutable params
+    # (type compatibility will catch unsafe cases separately)
+    arg_inner = unwrap_readonly(arg_type)
+    if arg_inner == param_type:
         return True
     if protocol_checker and is_protocol_type(param_type):
-        return protocol_checker(arg_type, param_type)
+        return protocol_checker(arg_inner, param_type)
     return False
 
 
@@ -73,14 +76,15 @@ def type_matches_with_coercion(
 
     Used for overload resolution second pass and constructor matching.
     """
-    if type_matches_numeric(arg_type, param_type):
+    arg_inner = unwrap_readonly(arg_type)
+    if type_matches_numeric(arg_inner, param_type):
         return True
     if protocol_checker and is_protocol_type(param_type):
-        return protocol_checker(arg_type, param_type)
-    if resolve_coercion(arg_type, param_type, CoercionContext.ARG) is not None:
+        return protocol_checker(arg_inner, param_type)
+    if resolve_coercion(arg_inner, param_type, CoercionContext.ARG) is not None:
         return True
     if deref_checker:
-        deref_target = deref_checker(arg_type)
+        deref_target = deref_checker(arg_inner)
         if deref_target is not None and deref_target == param_type:
             return True
     return False

@@ -1,92 +1,22 @@
 /**
  * TurboPython Runtime - Protocols
  *
- * Protocol free functions and C++ concepts for structural typing.
+ * C++ concepts for structural typing, mapping Python protocols to
+ * compile-time constraints.
  */
 
 #pragma once
 
-#include <array>
-#include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <optional>
 #include <ranges>
-#include <span>
-#include <string_view>
 #include <type_traits>
-#include <vector>
 
-#include "static_list.hpp"
+#include "dunder.hpp"
 #include "ranges.hpp"
 
 namespace tpy {
-
-// =============================================
-// Protocol free functions - unified interface for dunder methods
-// =============================================
-
-/**
- * tpy::__len__ - Protocol-based length accessor
- *
- * Enables len() to work uniformly across all container types:
- * - User types: calls x.__len__() method
- * - std types: overloads call .size()
- *
- * This allows functions with protocol-typed parameters to work with
- * both user-defined and standard library types.
- */
-
-// Overload: std::vector (most specific, checked first)
-template<typename T>
-int32_t __len__(const std::vector<T>& x) {
-    return static_cast<int32_t>(x.size());
-}
-
-// Overload: std::array
-template<typename T, std::size_t N>
-int32_t __len__(const std::array<T, N>& x) {
-    return static_cast<int32_t>(x.size());
-}
-
-// Overload: std::span (const and non-const)
-template<typename T>
-int32_t __len__(std::span<const T> x) {
-    return static_cast<int32_t>(x.size());
-}
-
-template<typename T>
-int32_t __len__(std::span<T> x) {
-    return static_cast<int32_t>(x.size());
-}
-
-// Overload: std::string_view
-inline int32_t __len__(std::string_view x) {
-    return static_cast<int32_t>(x.size());
-}
-
-// Overload: const char* (string literals)
-inline int32_t __len__(const char* x) {
-    return static_cast<int32_t>(std::string_view(x).size());
-}
-
-// Overload: StaticList
-template<typename T, std::size_t N>
-int32_t __len__(const StaticList<T, N>& x) {
-    return x.size();  // StaticList::size() already returns int32_t
-}
-
-// Default template: user types that define __len__() method
-// This is checked last due to the requires clause
-template<typename T>
-    requires requires(const T& t) { { t.__len__() } -> std::convertible_to<int32_t>; }
-int32_t __len__(const T& x) {
-    return x.__len__();
-}
-
-// =============================================
-// Concepts for structural typing
-// =============================================
 
 /**
  * Sized concept - types that support tpy::__len__()
@@ -100,15 +30,15 @@ concept Sized = requires(const T& t) {
 };
 
 /**
- * Sequence concept - types that support tpy::__len__() and indexing
+ * Sequence concept - types that support tpy::__len__() and tpy::__getitem__()
  *
  * Generic protocol parameterized by element type ElemT.
- * A type is Sequence<ElemT> if it has len() and operator[](int32_t) -> ElemT.
+ * A type is Sequence<ElemT> if it has len() and __getitem__(i) -> ElemT.
  */
 template<typename T, typename ElemT>
 concept Sequence = requires(const T& t, int32_t i) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
-    { t[i] } -> std::convertible_to<ElemT>;
+    { tpy::__getitem__(t, i) } -> std::convertible_to<ElemT>;
 };
 
 /**
@@ -153,11 +83,11 @@ concept NativeContiguous = std::ranges::contiguous_range<T> &&
  * MutableSequence concept - types that support len(), read indexing, and write indexing
  *
  * A type is MutableSequence<ElemT> if it satisfies Sequence<ElemT> and additionally
- * supports assignment via subscript operator (t[i] = v).
+ * supports element assignment via tpy::__setitem__().
  */
 template<typename T, typename ElemT>
 concept MutableSequence = Sequence<T, ElemT> && requires(T& t, int32_t i, ElemT v) {
-    { t[i] = v };
+    { tpy::__setitem__(t, i, std::move(v)) };
 };
 
 /**
@@ -172,7 +102,7 @@ concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
 };
 
 /**
- * Deref concept — types that can be dereferenced via operator* or __deref__().
+ * Deref concept -- types that can be dereferenced via operator* or __deref__().
  *
  * Ptr[T] and ConstPtr[T] use tpy::deref_check() which dereferences raw pointers.
  * User types implementing Deref[T] provide __deref__() -> T& directly.

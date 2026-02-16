@@ -97,11 +97,13 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
+            is_readonly=True,
         )],
         "get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
+            is_readonly=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
@@ -126,16 +128,19 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
+            is_readonly=True,
         )],
         "get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
+            is_readonly=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
+            is_readonly=True,
         )],
     })
 
@@ -179,6 +184,7 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=INT32,
             cpp="{self}.size()",
+            is_readonly=True,
         )],
         "append": [MethodDef(
             params=[ParamDef("value", OwnType(T))],
@@ -242,11 +248,13 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("value", T)],
             returns=INT32,
             cpp="tpy::staticlist_index({self}, {0})",
+            is_readonly=True,
         )],
         "count": [MethodDef(
             params=[ParamDef("value", T)],
             returns=INT32,
             cpp="tpy::staticlist_count({self}, {0})",
+            is_readonly=True,
         )],
         "reverse": [MethodDef(
             params=[],

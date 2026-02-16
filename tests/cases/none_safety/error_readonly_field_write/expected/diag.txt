@@ -1,1 +1,0 @@
-main.tp.py:13: error: Cannot assign to fields inside @readonly function

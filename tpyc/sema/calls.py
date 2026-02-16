@@ -37,6 +37,7 @@ def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
         name="__init__",
         params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in m.params],
         return_type=m.returns,
+        is_readonly=m.is_readonly,
         cpp_template=m.cpp,
     )
 
@@ -92,11 +93,11 @@ class CallAnalyzer:
                 name=record.name,
                 params=resolved_ctor.params,
                 return_type=return_type,
-                is_readonly=resolved_ctor.is_readonly,
+                is_readonly=False,
             )
             return
 
-        # Implicit default constructor has unknown effect; keep conservative.
+        # Implicit default constructor (no user __init__)
         expr.resolved_function_info = FunctionInfo(
             name=record.name,
             params=[],
@@ -136,6 +137,15 @@ class CallAnalyzer:
                                 expr.resolved_function_info = _method_def_to_function_info(ctor)
                                 break
                     self._validate_lvalue_params(expr)
+                # Builtin type constructors -- not readonly (constructor calls
+                # are not allowed in readonly contexts; see READONLY_DESIGN.md)
+                if expr.resolved_function_info is None:
+                    expr.resolved_function_info = FunctionInfo(
+                        name="__init__",
+                        params=[],
+                        return_type=expr.call_type,
+                        is_readonly=False,
+                    )
                 return expr.call_type
             # Otherwise fall through to function handling (type_args will be used)
 
@@ -168,12 +178,11 @@ class CallAnalyzer:
                         if func_name == "print":
                             for arg in expr.args:
                                 self.expr.analyze_expr(arg)
-                            # Explicitly model print as non-readonly (observable I/O side effects).
                             expr.resolved_function_info = FunctionInfo(
                                 name="print",
                                 params=[],
                                 return_type=VOID,
-                                is_readonly=False,
+                                is_readonly=True,
                                 is_builtin_function=True,
                                 special_handling=True,
                             )
@@ -307,7 +316,7 @@ class CallAnalyzer:
                 name="print",
                 params=[],
                 return_type=VOID,
-                is_readonly=False,
+                is_readonly=True,
                 is_builtin_function=True,
                 special_handling=True,
             )
@@ -395,6 +404,13 @@ class CallAnalyzer:
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        expr.resolved_function_info = FunctionInfo(
+            name="copy",
+            params=[ParamInfo("x", arg_type)],
+            return_type=OwnType(arg_type),
+            is_readonly=True,
+            is_builtin_function=True,
+        )
         return OwnType(arg_type)
 
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:

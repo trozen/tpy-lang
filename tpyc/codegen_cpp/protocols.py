@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, TypeParamKind,
-    MethodSignature, is_protocol_type,
+    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType,
+    MethodSignature, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyProtocol, TpyRecord
 from .context import DUNDER_TO_BINARY_OP, module_to_cpp_namespace
@@ -38,10 +38,11 @@ class ProtocolGenerator:
         return typ
 
     def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType]]:
-        """Get list of protocol-typed parameters."""
+        """Get list of protocol-typed parameters (unwraps readonly[protocol])."""
         result = []
         for pname, ptype in params:
-            resolved = self.resolve_type_for_codegen(ptype)
+            unwrapped = unwrap_readonly(ptype)
+            resolved = self.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved):
                 result.append((pname, resolved))
         return result

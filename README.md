@@ -1,6 +1,6 @@
-# TurboPython
+# TurboPython (TPy)
 
-A proof-of-concept compiler that translates Python to C++.
+A proof-of-concept compiler (tpyc) that translates Python to C++.
 
 **Goals:**
 

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
     PendingListType, ListType, ArrayType, TypeParamRef, NamedType,
+    unwrap_readonly,
     INT32, BIGINT, FLOAT
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
@@ -96,6 +97,8 @@ class TypeResolver:
                 return BIGINT
 
         typ = self.ctx.analyzer.get_expr_type(expr)
+        # Strip ReadonlyType -- C++ doesn't use it
+        typ = unwrap_readonly(typ) if typ else typ
         if isinstance(typ, PendingListType):
             # Look up the resolved type from the literal info
             literal_id = typ.literal_id

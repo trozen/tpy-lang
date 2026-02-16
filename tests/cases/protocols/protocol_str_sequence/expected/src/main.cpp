@@ -9,7 +9,7 @@ std::string_view __name__;
 template<tpy::Sequence<char> T_s>
 char first_char(T_s& s) {
   // 5:     return s[0]
-  return s[0];
+  return tpy::__getitem__(s, 0);
 }
 
 // 7: def count_chars(s: Sequence[Char]) -> Int32:

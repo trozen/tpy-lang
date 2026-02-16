@@ -55,7 +55,17 @@ struct BoxContainer {
     return tpy::get_item(this->items, i);
   }
 
+  // 26:     def __getitem__(self, i: Int32) -> IntBox:
+  IntBox& __getitem__(int32_t i) {
+    // 27:         return self.items[i]
+    return tpy::get_item(this->items, i);
+  }
+
   const IntBox& operator[](int32_t i) const {
+    return __getitem__(i);
+  }
+
+  IntBox& operator[](int32_t i) {
     return __getitem__(i);
   }
 };

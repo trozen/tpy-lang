@@ -12,6 +12,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
+    ReadonlyType, unwrap_readonly,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -90,9 +91,10 @@ class StatementGenerator:
             self.ctx.reassigned_vars = set()
             self.ctx.rvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
-        # Optional non-value params are T* in C++ -- need pointer-local treatment (->)
+        # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
-            if isinstance(ptype, OptionalType) and not ptype.inner.is_value_type():
+            actual = unwrap_readonly(ptype)
+            if isinstance(actual, OptionalType) and not actual.inner.is_value_type():
                 self.ctx.pointer_locals.add(pname)
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
@@ -171,7 +173,7 @@ class StatementGenerator:
                         return f"{indent}return {ret_expr};\n"
                     # Field access with non-value Optional produces std::optional<T>, convert to T*
                     if isinstance(stmt.value, TpyFieldAccess):
-                        val_type = self.ctx.analyzer.get_expr_type(stmt.value)
+                        val_type = self.ctx.get_expr_type(stmt.value)
                         if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
                             return f"{indent}return tpy::optional_to_ptr({ret_expr});\n"
                     # Take address of lvalue
@@ -269,6 +271,8 @@ class StatementGenerator:
         if target_type is None and stmt.init:
             target_type = self.ctx.analyzer.get_expr_type(stmt.init)
         if target_type is not None:
+            # Strip ReadonlyType -- C++ doesn't need it on locals
+            target_type = unwrap_readonly(target_type)
             if isinstance(target_type, OwnType):
                 target_type = target_type.wrapped
             if isinstance(target_type, IntLiteralType):
@@ -310,7 +314,7 @@ class StatementGenerator:
                 include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
             )
             if resolved_type is None or isinstance(resolved_type, PendingListType):
-                resolved_type = self.ctx.analyzer.get_expr_type(stmt.init)
+                resolved_type = self.ctx.get_expr_type(stmt.init)
             if resolved_type is None:
                 raise CodeGenError(
                     f"Could not infer type for variable '{stmt.name}'", loc=stmt.loc
@@ -371,7 +375,7 @@ class StatementGenerator:
                     rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
             return f"{rebind_decl}{indent}{cpp_type}* {name} = nullptr;\n"
 
-        init_type = self.ctx.analyzer.get_expr_type(init)
+        init_type = self.ctx.get_expr_type(init)
         # Optional non-value field on lvalue object -> optional_to_ptr directly
         # Optional non-value non-field source -> T* pass-through
         # Optional non-value field on rvalue -> falls through to rvalue path
@@ -455,7 +459,7 @@ class StatementGenerator:
         if isinstance(init, TpyNoneLiteral):
             return f"{indent}{name} = nullptr;\n"
 
-        init_type = self.ctx.analyzer.get_expr_type(init)
+        init_type = self.ctx.get_expr_type(init)
         # Optional non-value field on lvalue -> optional_to_ptr directly
         # Optional non-value non-field source -> T* pass-through
         # Optional non-value field on rvalue -> falls through to rvalue path
@@ -512,7 +516,7 @@ class StatementGenerator:
         if stmt.name in self.ctx.global_declared_vars:
             if not stmt.init:
                 return None
-            var_type = self.ctx.analyzer.get_expr_type(stmt.init)
+            var_type = self.ctx.get_expr_type(stmt.init)
             init_expr = self.expressions.gen_expr(stmt.init, var_type)
             target_name = self.ctx.native_global_names.get(stmt.name, stmt.name)
             return f"{indent}{target_name} = {init_expr};\n"
@@ -574,9 +578,9 @@ class StatementGenerator:
         # Special handling for subscript assignment
         if isinstance(stmt.target, TpySubscript):
             obj = self.expressions.gen_expr(stmt.target.obj)
-            target_type = self.ctx.analyzer.get_expr_type(stmt.target)
+            target_type = self.ctx.get_expr_type(stmt.target)
             value = self.expressions.gen_expr(stmt.value, target_type)
-            obj_type = self.ctx.analyzer.get_expr_type(stmt.target.obj)
+            obj_type = self.ctx.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
@@ -588,7 +592,7 @@ class StatementGenerator:
                 code = expand_cpp_template(cpp_template, subscript_obj, index_expr, value)
                 return f"{indent}{code};\n"
             else:
-                return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
+                return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {value});\n"
 
         # Pointer-local rebinding (e.g., x.field = ... where x is pointer-local handled by field access)
         if isinstance(stmt.target, TpyName) and stmt.target.name in self.ctx.pointer_locals:
@@ -598,14 +602,14 @@ class StatementGenerator:
 
         # Assignment to optional field: std::optional<T> storage needs boundary conversion
         if isinstance(stmt.target, TpyFieldAccess):
-            target_type = self.ctx.analyzer.get_expr_type(stmt.target)
+            target_type = self.ctx.get_expr_type(stmt.target)
             if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
                 target = self.expressions.gen_expr(stmt.target)
                 # Value source is T* (pointer-local, function returning Optional) -> wrap
                 if self.ctx.is_indirect_name(stmt.value):
                     value = self.expressions.gen_expr(stmt.value)
                     return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
-                raw_val_type = self.ctx.analyzer.get_expr_type(stmt.value)
+                raw_val_type = self.ctx.get_expr_type(stmt.value)
                 val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
                 source = self.ctx.unwrap_copy(stmt.value)
                 if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
@@ -623,7 +627,7 @@ class StatementGenerator:
 
         # Default: simple assignment
         target = self.expressions.gen_expr(stmt.target)
-        target_type = self.ctx.analyzer.get_expr_type(stmt.target)
+        target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr_deref(stmt.value, target_type)
         return f"{indent}{target} = {value};\n"
 
@@ -634,7 +638,7 @@ class StatementGenerator:
             return self._gen_aug_assign_subscript_code(stmt, indent)
 
         target = self.expressions.gen_expr(stmt.target)
-        target_type = self.ctx.analyzer.get_expr_type(stmt.target)
+        target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr(stmt.value, target_type)
         value_type = self.types.get_resolved_type(stmt.value, target_type)
 
@@ -667,7 +671,7 @@ class StatementGenerator:
         subscript = stmt.target
         obj = self.expressions.gen_expr(subscript.obj)
         obj_type = self.types.get_resolved_type(subscript.obj)
-        index_type = self.ctx.analyzer.get_expr_type(subscript.index)
+        index_type = self.ctx.get_expr_type(subscript.index)
         # Dereference globals for subscript access
         subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(subscript.obj) else obj
         index_expr = self.expressions.gen_index_expr(subscript_obj, subscript.index, index_type or INT32)
@@ -713,7 +717,7 @@ class StatementGenerator:
             code = expand_cpp_template(set_template, subscript_obj, index_expr, result_expr)
             return f"{indent}{code};\n"
         else:
-            return f"{indent}{subscript_obj}[{index_expr}] = {result_expr};\n"
+            return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""

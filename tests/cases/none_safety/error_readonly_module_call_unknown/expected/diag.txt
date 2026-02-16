@@ -1,1 +1,0 @@
-main.tp.py:7: error: Call to non-readonly or unknown-effect method 'mutate' is not allowed in @readonly function

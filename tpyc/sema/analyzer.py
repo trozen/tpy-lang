@@ -7,7 +7,7 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType, VoidType
+from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType, VoidType, ReadonlyType, unwrap_readonly
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
 
@@ -255,6 +255,19 @@ class SemanticAnalyzer:
         for func in module.functions:
             self._analyze_function(func)
 
+    def _normalize_param_type(self, ptype: TpyType, is_readonly_ctx: bool) -> TpyType:
+        """Normalize a parameter type for readonly context.
+
+        Strips ReadonlyType from value types (copies are always safe).
+        Wraps non-value types with ReadonlyType in @readonly contexts.
+        """
+        if isinstance(ptype, ReadonlyType) and ptype.wrapped.is_value_type():
+            return ptype.wrapped
+        if is_readonly_ctx and not isinstance(ptype, ReadonlyType):
+            if not ptype.is_value_type():
+                return ReadonlyType(ptype)
+        return ptype
+
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
@@ -262,20 +275,19 @@ class SemanticAnalyzer:
             return
 
         self.ctx.reset_function_tracking()
+
         self.ctx.current_function = func
         self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
 
-        # Add parameters to scope (resolve types to handle imported protocols)
+        # Add parameters to scope and namespace. ReadonlyType is kept for
+        # type-based enforcement; @readonly wraps all non-value params.
+        local_ns = Namespace(parent=self.ctx.global_ns)
         for pname, ptype in func.params:
-            resolved_ptype = self.type_ops.resolve_type(ptype)
+            resolved_ptype = self._normalize_param_type(
+                self.type_ops.resolve_type(ptype), func.is_readonly)
             self.ctx.current_scope.define(pname, resolved_ptype)
             self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
             self.ctx.definitely_assigned.add(pname)
-
-        # Set up local namespace
-        local_ns = Namespace(parent=self.ctx.global_ns)
-        for pname, ptype in func.params:
-            resolved_ptype = self.type_ops.resolve_type(ptype)
             local_ns.bind_variable(pname, resolved_ptype)
         self.ctx.current_ns = local_ns
 
@@ -320,27 +332,26 @@ class SemanticAnalyzer:
 
         for method in record.methods:
             self.ctx.reset_function_tracking()
+    
             self.ctx.current_function = method
             self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
 
-            # Add 'self' as the record type (skip for static methods)
-            if not method.is_staticmethod:
-                self.ctx.current_scope.define("self", NamedType(record.name))
-                self.ctx.var_scope_depth["self"] = self.ctx.current_scope.depth
-                self.ctx.definitely_assigned.add("self")
-
-            # Add parameters
-            for pname, ptype in method.params:
-                self.ctx.current_scope.define(pname, ptype)
-                self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
-                self.ctx.definitely_assigned.add(pname)
-
-            # Set up local namespace
+            # Add self/params to scope and namespace. @readonly wraps non-value types.
             local_ns = Namespace(parent=self.ctx.global_ns)
             if not method.is_staticmethod:
-                local_ns.bind_variable("self", NamedType(record.name))
+                self_type = self._normalize_param_type(
+                    NamedType(record.name), method.is_readonly)
+                self.ctx.current_scope.define("self", self_type)
+                self.ctx.var_scope_depth["self"] = self.ctx.current_scope.depth
+                self.ctx.definitely_assigned.add("self")
+                local_ns.bind_variable("self", self_type)
+
             for pname, ptype in method.params:
-                local_ns.bind_variable(pname, ptype)
+                resolved_ptype = self._normalize_param_type(ptype, method.is_readonly)
+                self.ctx.current_scope.define(pname, resolved_ptype)
+                self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
+                self.ctx.definitely_assigned.add(pname)
+                local_ns.bind_variable(pname, resolved_ptype)
             self.ctx.current_ns = local_ns
 
             # __next__ must have an explicit non-void return type annotation

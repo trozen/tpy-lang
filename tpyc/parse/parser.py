@@ -10,7 +10,7 @@ import ast
 from typing import Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, ConstPtrType, OwnType, TypeParamRef,
+    TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, TypeParamRef,
     OptionalType, VoidType,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -393,6 +393,7 @@ class Parser:
         # Check decorators (@staticmethod, @readonly, @native("cpp_name"))
         is_staticmethod = False
         is_readonly = False
+        readonly_opt_out = False
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -400,6 +401,14 @@ class Parser:
                 is_staticmethod = True
             elif isinstance(dec, ast.Name) and dec.id == "readonly":
                 is_readonly = True
+            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "readonly":
+                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, bool):
+                    if dec.args[0].value:
+                        is_readonly = True
+                    else:
+                        readonly_opt_out = True
+                else:
+                    raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
             elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id in self._METHOD_LINKAGE_DECORATORS:
                 method_linkage = self._METHOD_LINKAGE_DECORATORS[dec.func.id]
                 if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
@@ -443,6 +452,7 @@ class Parser:
             is_method=True,
             is_staticmethod=is_staticmethod,
             is_readonly=is_readonly,
+            readonly_opt_out=readonly_opt_out,
             is_stub=is_stub,
             linkage=method_linkage,
             native_name=native_name,
@@ -466,6 +476,7 @@ class Parser:
         """Parse a function definition."""
         is_noalloc = False
         is_readonly = False
+        readonly_opt_out = False
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -473,6 +484,14 @@ class Parser:
                 is_noalloc = True
             elif isinstance(dec, ast.Name) and dec.id == "readonly":
                 is_readonly = True
+            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "readonly":
+                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, bool):
+                    if dec.args[0].value:
+                        is_readonly = True
+                    else:
+                        readonly_opt_out = True
+                else:
+                    raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
             elif isinstance(dec, ast.Name) and dec.id in self._LINKAGE_DECORATORS:
                 new_linkage = self._LINKAGE_DECORATORS[dec.id]
                 if linkage != FunctionLinkage.DEFAULT:
@@ -555,6 +574,7 @@ class Parser:
             body=body,
             is_noalloc=is_noalloc,
             is_readonly=is_readonly,
+            readonly_opt_out=readonly_opt_out,
             linkage=linkage,
             native_name=native_name,
             is_stub=is_stub,
@@ -655,6 +675,9 @@ class Parser:
                 elif resolved_container == "Own":
                     inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return OwnType(inner)
+                elif resolved_container == "readonly":
+                    inner = self._parse_type_annotation(node.slice, type_param_scope)
+                    return ReadonlyType(inner)
 
                 # Generic protocols (e.g., Sequence[Int32])
                 if protocol_def := lookup_builtin_protocol(resolved_container):
@@ -687,8 +710,13 @@ class Parser:
             left = self._parse_type_annotation(node.left, type_param_scope)
             right = self._parse_type_annotation(node.right, type_param_scope)
             if isinstance(right, VoidType):
+                # Normalize readonly[T] | None -> readonly[T | None]
+                if isinstance(left, ReadonlyType):
+                    return ReadonlyType(OptionalType(left.wrapped))
                 return OptionalType(left)
             elif isinstance(left, VoidType):
+                if isinstance(right, ReadonlyType):
+                    return ReadonlyType(OptionalType(right.wrapped))
                 return OptionalType(right)
             else:
                 raise ParseError("Union types not yet supported; only T | None is allowed", node)

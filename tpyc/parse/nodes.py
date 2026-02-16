@@ -384,6 +384,7 @@ class TpyFunction:
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_readonly: bool = False
+    readonly_opt_out: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT

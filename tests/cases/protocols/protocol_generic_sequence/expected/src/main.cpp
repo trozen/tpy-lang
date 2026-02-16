@@ -9,7 +9,7 @@ std::string_view __name__;
 template<tpy::Sequence<int32_t> T_items>
 int32_t first(T_items& items) {
   // 5:     return items[0]
-  return items[0];
+  return tpy::__getitem__(items, 0);
 }
 
 // 7: def sum_all(items: Sequence[Int32]) -> Int32:
@@ -22,7 +22,7 @@ int32_t sum_all(T_items& items) {
   // 10:     while i < len(items):
   while ((i < tpy::__len__(items))) {
     // 11:         total += items[i]
-    total = tpy::add_check<int32_t>(total, items[i]);
+    total = tpy::add_check<int32_t>(total, tpy::__getitem__(items, i));
     // 12:         i += 1
     i = tpy::add_check<int32_t>(i, 1);
   }

@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
-    BIGINT, is_protocol_type, FunctionInfo,
+    TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
+    BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly,
     Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -23,16 +23,6 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
     from .statements import StatementGenerator
 
-
-# Methods that should be const (don't mutate self)
-CONST_METHODS = frozenset({
-    "__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
-    "__lt__", "__le__", "__gt__", "__ge__",
-    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
-    "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
-    "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
-    "__neg__", "__pos__", "__invert__",
-})
 
 
 class FunctionGenerator:
@@ -78,10 +68,13 @@ class FunctionGenerator:
         result = []
         for pname, ptype in params:
             # Resolve type in case it's a NamedType that's actually a protocol
-            resolved = self.protocols.resolve_type_for_codegen(ptype)
+            unwrapped = unwrap_readonly(ptype)
+            resolved = self.protocols.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved):
-                # Protocol param: T_name& name (mutable ref, no const methods required)
-                result.append(f"T_{pname}& {pname}")
+                if isinstance(ptype, ReadonlyType):
+                    result.append(f"const T_{pname}& {pname}")
+                else:
+                    result.append(f"T_{pname}& {pname}")
             else:
                 result.append(ptype.to_cpp_param(pname))
         return ", ".join(result)
@@ -190,29 +183,20 @@ class FunctionGenerator:
         if is_dunder_next:
             cpp_return_type = OptionalType(method.return_type)
 
-        is_const = method.name in CONST_METHODS
+        is_const = method.is_readonly
         is_static = method.is_staticmethod
-        ret_type = cpp_return_type.to_cpp_return_const() if is_const else cpp_return_type.to_cpp_return()
-        if is_const:
-            params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
+
+        if is_const and not is_static:
+            # Readonly method: const overload always.
+            # Dual overload (+ non-const) only when the return could be a
+            # reference -- value-type returns are copies so const alone suffices.
+            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=True)
+            needs_dual = not cpp_return_type.is_value_type() or isinstance(cpp_return_type, TypeParamRef)
+            if needs_dual:
+                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False)
         else:
-            params = self.gen_params(method.params)
-        const_suffix = " const" if is_const and not is_static else ""
-        static_prefix = "static " if is_static else ""
-        out.write("\n")
-        self.ctx.emit_preceding_comments(out, method.loc, indent="  ")
-        self.ctx.emit_source_comment(out, method.loc, indent="  ")
-        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix} {{\n")
-
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        if not is_static:
-            local_ns.bind_variable("self", NamedType(record_name))
-        for pname, ptype in method.params:
-            local_ns.bind_variable(pname, ptype)
-        self.statements.gen_body(out, method.body, method.params, method.return_type,
-                                 method, local_ns, indent_level=2, is_method=True)
-
-        out.write("  }\n")
+            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
+                                      static=is_static)
 
         # Also emit a __next__() panic stub so direct calls compile but fail at runtime
         if is_dunder_next:
@@ -220,6 +204,33 @@ class FunctionGenerator:
             out.write(f"\n  {orig_ret} __next__() {{\n")
             out.write(f'    tpy::tpy_panic("__next__() is not directly callable; use a for-loop");\n')
             out.write("  }\n")
+
+    def _gen_method_overload(
+        self, out: TextIO, method: TpyFunction, record_name: str,
+        cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
+    ) -> None:
+        """Emit a single method overload (const or non-const)."""
+        ret_type = cpp_return_type.to_cpp_return_const() if const else cpp_return_type.to_cpp_return()
+        if const:
+            params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
+        else:
+            params = self.gen_params(method.params)
+        const_suffix = " const" if const else ""
+        static_prefix = "static " if static else ""
+        out.write("\n")
+        self.ctx.emit_preceding_comments(out, method.loc, indent="  ")
+        self.ctx.emit_source_comment(out, method.loc, indent="  ")
+        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix} {{\n")
+
+        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+        if not static:
+            local_ns.bind_variable("self", NamedType(record_name))
+        for pname, ptype in method.params:
+            local_ns.bind_variable(pname, ptype)
+        self.statements.gen_body(out, method.body, method.params, method.return_type,
+                                 method, local_ns, indent_level=2, is_method=True)
+
+        out.write("  }\n")
 
     def gen_body(self, *args, **kwargs) -> None:
         """Delegate to StatementGenerator.gen_body()."""

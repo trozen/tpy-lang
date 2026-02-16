@@ -1,0 +1,1 @@
+main.tp.py:15: error: Cannot call non-readonly method 'set_x' on readonly reference

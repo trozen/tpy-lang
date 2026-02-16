@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TurboPython (tpyc) is a proof-of-concept compiler that translates Python to C++.
+TurboPython (TPy) is a proof-of-concept compiler (tpyc) that translates Python to C++.
 
 **Goals:**
 
@@ -22,14 +22,14 @@ uv run tpyc -x examples/hello.tp.py
 uv run tpyc -xO examples/hello.tp.py
 
 # Compile and run a snippet from stdin
-uv run tpyc -x <<'EOF'
+uv run tpyc -x <<EOF
 def greet(name: str) -> None:
     print("Hello, " + name)
 greet("world")
 EOF
 
 # Print generated C++ to stdout
-uv run tpyc --dump-code <<'EOF'
+uv run tpyc --dump-code <<EOF
 def add(a: int, b: int) -> int:
     return a + b
 print(add(1, 2))
@@ -58,21 +58,20 @@ uv sync
 
 Always use `uv run` to invoke Python/tpyc (never bare `python` or `tpyc`). Use the Read/Grep/Glob tools instead of `cat`/`head`/`tail`/`grep`/`rg`/`find`.
 
-To inspect generated C++, use `--dump-code` with a small snippet:
+**For snippets**, write to a file under `/tmp/agents/` (any filename or subdirectory) and run from there. Do NOT use heredocs (`<<EOF`) as they trigger permission prompts for multi-line commands.
+
+To inspect generated C++:
 
 ```bash
-uv run tpyc --dump-code <<'EOF'
-x: int = 42
-print(x)
-EOF
+# Write snippet to /tmp/agents/, then dump
+uv run tpyc --dump-code /tmp/agents/scratch.tp.py
 ```
 
 To run a snippet quickly:
 
 ```bash
-uv run tpyc -x <<'EOF'
-print("hello")
-EOF
+# Write snippet to /tmp/agents/, then run
+uv run tpyc -x /tmp/agents/scratch.tp.py
 ```
 
 ## Testing
@@ -142,10 +141,11 @@ tests/
 │   ├── int/                  # int, Int8-64, UInt8-64, BigInt
 │   ├── iterators/            # Iterators, range, __iter__/__next__, NativeIterable
 │   ├── list/                 # List, container methods
-│   ├── none_safety/          # Optional types, narrowing, @readonly
+│   ├── none_safety/          # Optional types, narrowing
 │   ├── operators/            # Operators, coercion, assignment, subscript
 │   ├── pointers/             # Ptr, ConstPtr, Own, dangling references
 │   ├── protocols/            # Protocol definition and implementation
+│   ├── readonly/             # @readonly decorator, readonly[T] type modifier
 │   ├── records/              # Class/record methods, dunder, staticmethod
 │   ├── returns/              # Return value semantics
 │   └── str/                  # str, Char, string operations
@@ -333,6 +333,7 @@ See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language 
 ## Development Guidelines
 
 When implementing new features:
+- **Never make design decisions autonomously.** If during implementation you discover that the plan needs to change (e.g., a new concept, a split in behavior, a workaround for an unforeseen constraint), **stop and consult the user** before proceeding. Do not invent new design concepts or alter the agreed-upon design without explicit approval.
 - If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
 - Check `TODO.md` for current priorities
 - Run `uv run pytest -n auto` to verify no regressions after changes

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
-    SpanType, TypeParamRef,
+    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
     ResolvedBinop
 )
@@ -60,7 +60,7 @@ class ExpressionGenerator:
         # Value optionals are represented as std::optional<T> and must be
         # unwrapped when a concrete value is required.
         expr_type = self.types.get_resolved_type(expr)
-        analyzed_type = self.ctx.analyzer.get_expr_type(expr)
+        analyzed_type = self.ctx.get_expr_type(expr)
         proven_optional_expr = expr.narrowed_optional_proven
         if (
             target_type is not None
@@ -286,13 +286,15 @@ class ExpressionGenerator:
             if expr.optional_safe_eq:
                 # None-safe ==/!=: let C++ std::optional<T> handle None comparison.
                 # Only unwrap operands that flow analysis has proven non-None.
+                left_analyzed = self.ctx.get_expr_type(expr.left)
+                right_analyzed = self.ctx.get_expr_type(expr.right)
                 if isinstance(left_type, OptionalType) and left_type.inner.is_value_type():
-                    if not isinstance(self.ctx.analyzer.get_expr_type(expr.left), OptionalType):
+                    if not isinstance(left_analyzed, OptionalType):
                         left_target = left_type.inner
                     elif not (isinstance(right_type, OptionalType) and right_type.inner.is_value_type()):
                         right_target = left_type.inner
                 if isinstance(right_type, OptionalType) and right_type.inner.is_value_type():
-                    if not isinstance(self.ctx.analyzer.get_expr_type(expr.right), OptionalType):
+                    if not isinstance(right_analyzed, OptionalType):
                         right_target = right_type.inner
                     elif not (isinstance(left_type, OptionalType) and left_type.inner.is_value_type()):
                         left_target = right_type.inner
@@ -446,7 +448,7 @@ class ExpressionGenerator:
                 # copy(x) from tpy - dereference pointer-locals to get the value
                 if module_name == "tpy" and func_name == "copy":
                     arg = expr.args[0]
-                    arg_type = self.ctx.analyzer.get_expr_type(arg)
+                    arg_type = self.ctx.get_expr_type(arg)
                     # Optional non-value: keep native representation (T* or std::optional<T>)
                     if isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
                         return self.gen_expr(arg)
@@ -473,14 +475,15 @@ class ExpressionGenerator:
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
-                # Optional non-value params are T* -- pass raw pointer
-                if isinstance(resolved_ptype, OptionalType) and not resolved_ptype.inner.is_value_type():
+                # Optional non-value params are T* / const T* -- pass raw pointer
+                actual_ptype = unwrap_readonly(resolved_ptype)
+                if isinstance(actual_ptype, OptionalType) and not actual_ptype.inner.is_value_type():
                     if isinstance(arg, TpyNoneLiteral):
                         gen_args.append("nullptr")
                     elif self.ctx.is_indirect_name(arg):
                         # Already a T* pointer-local/global -- pass as-is
                         gen_args.append(self.gen_expr(arg, resolved_ptype))
-                    elif isinstance(self.ctx.analyzer.get_expr_type(arg), OptionalType):
+                    elif isinstance(self.ctx.get_expr_type(arg), OptionalType):
                         arg_gen = self.gen_expr(arg, resolved_ptype)
                         if isinstance(arg, TpyFieldAccess):
                             # Field access produces std::optional<T>, convert to T*
@@ -556,13 +559,14 @@ class ExpressionGenerator:
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
-                # Optional non-value params are T* -- same logic as function calls
-                if isinstance(ptype, OptionalType) and not ptype.inner.is_value_type():
+                # Optional non-value params are T* / const T* -- same logic as function calls
+                actual_ptype = unwrap_readonly(ptype) if ptype else ptype
+                if isinstance(actual_ptype, OptionalType) and not actual_ptype.inner.is_value_type():
                     if isinstance(a, TpyNoneLiteral):
                         gen_args.append("nullptr")
                     elif self.ctx.is_indirect_name(a):
                         gen_args.append(self.gen_expr(a, ptype))
-                    elif isinstance(self.ctx.analyzer.get_expr_type(a), OptionalType):
+                    elif isinstance(self.ctx.get_expr_type(a), OptionalType):
                         arg_gen = self.gen_expr(a, ptype)
                         if isinstance(a, TpyFieldAccess):
                             gen_args.append(f"tpy::optional_to_ptr({arg_gen})")
@@ -616,7 +620,7 @@ class ExpressionGenerator:
             # copy() from tpy -- deref the argument to get the value
             if module_name == "tpy" and expr.method == "copy":
                 arg = expr.args[0]
-                arg_type = self.ctx.analyzer.get_expr_type(arg)
+                arg_type = self.ctx.get_expr_type(arg)
                 if isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
                     return self.gen_expr(arg)
                 return self.gen_expr_deref(arg)
@@ -741,7 +745,7 @@ class ExpressionGenerator:
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions
         # (OptionalType non-value expressions like function calls return T*)
-        obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
+        obj_type = self.ctx.get_expr_type(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
@@ -789,7 +793,7 @@ class ExpressionGenerator:
         if expr.obj.narrowed_optional_proven:
             obj = f"(*{obj})"
         # Check if obj is a pointer type or global - use -> instead of .
-        obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
+        obj_type = self.ctx.get_expr_type(expr.obj)
         is_indirect = self.ctx.is_indirect_name(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         deref_chain = ".__deref__()" * expr.deref_depth
@@ -849,7 +853,7 @@ class ExpressionGenerator:
             result_type = target_type
             elem_type = target_type.get_element_type()
         else:
-            result_type = self.ctx.analyzer.get_expr_type(expr)
+            result_type = self.ctx.get_expr_type(expr)
             elem_type = result_type.get_element_type() if result_type else None
 
         # Resolve IntLiteralType to BigInt (Python semantics)
@@ -876,7 +880,7 @@ class ExpressionGenerator:
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access
         subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
-        analyzed_obj_type = self.ctx.analyzer.get_expr_type(expr.obj)
+        analyzed_obj_type = self.ctx.get_expr_type(expr.obj)
         if (
             expr.needs_optional_runtime_check
             and isinstance(analyzed_obj_type, OptionalType)
@@ -894,7 +898,7 @@ class ExpressionGenerator:
         cpp_template = self.builtins.get_type_method_template(obj_type, "__getitem__")
         if cpp_template:
             return expand_cpp_template(cpp_template, subscript_obj, index_expr)
-        # Fallback for types without __getitem__ (e.g., str)
+        # Fallback: operator[] (user records generate const operator[] from __getitem__)
         return f"{subscript_obj}[{index_expr}]"
 
     def gen_index_expr(self, obj: str, index: TpyExpr, index_type: TpyType) -> str:

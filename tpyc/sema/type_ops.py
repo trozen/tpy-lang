@@ -8,10 +8,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType,
+    TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType,
     ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
-    RecordInfo, FunctionInfo, ParamInfo, is_protocol_type,
+    RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
 )
 from .diagnostics import SemanticError
 
@@ -61,6 +61,10 @@ class TypeOperations:
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped != typ.wrapped:
                 return OwnType(resolved_wrapped)
+        elif isinstance(typ, ReadonlyType):
+            resolved_wrapped = self.resolve_type(typ.wrapped)
+            if resolved_wrapped != typ.wrapped:
+                return ReadonlyType(resolved_wrapped)
         return typ
 
     def validate_type(
@@ -105,6 +109,8 @@ class TypeOperations:
                 )
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
+        elif isinstance(typ, ReadonlyType):
+            self.validate_type(typ.wrapped, allow_type_param_ref, loc)
         elif isinstance(typ, (PtrType, ConstPtrType)):
             self.validate_type(typ.pointee, allow_type_param_ref, loc)
             if is_protocol_type(typ.pointee):
@@ -250,6 +256,8 @@ class TypeOperations:
             return self.is_type_param_ref(typ.pointee)
         if isinstance(typ, OwnType):
             return self.is_type_param_ref(typ.wrapped)
+        if isinstance(typ, ReadonlyType):
+            return self.is_type_param_ref(typ.wrapped)
         if isinstance(typ, ArrayType):
             if self.is_type_param_ref(typ.element_type):
                 return True
@@ -278,6 +286,8 @@ class TypeOperations:
         if isinstance(typ, (PtrType, ConstPtrType)):
             return self.is_forwarded_type_param(typ.pointee, type_params)
         if isinstance(typ, OwnType):
+            return self.is_forwarded_type_param(typ.wrapped, type_params)
+        if isinstance(typ, ReadonlyType):
             return self.is_forwarded_type_param(typ.wrapped, type_params)
         if isinstance(typ, (ListType, SpanType, ArrayType)):
             return self.is_forwarded_type_param(typ.element_type, type_params)
@@ -310,6 +320,11 @@ class TypeOperations:
 
         Returns True if types match (with inference), False otherwise.
         """
+        # ReadonlyType wrapper: unwrap for matching (readonly[T] accepts T and readonly[T])
+        if isinstance(param_type, ReadonlyType):
+            arg_unwrapped = unwrap_readonly(arg_type)
+            return self.match_type_with_inference(param_type.wrapped, arg_unwrapped, inferred)
+
         # TypeParamRef -- infer or check consistency
         if isinstance(param_type, TypeParamRef):
             if param_type.name in inferred:

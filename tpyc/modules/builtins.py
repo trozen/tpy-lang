@@ -34,6 +34,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", SIZED)],
             returns=INT32,
             cpp="tpy::__len__({0})",
+            is_readonly=True,
         ),
     ])
 
@@ -42,11 +43,13 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("i", INT32)],
             returns=CHAR,
             cpp="static_cast<char>({0})",
+            is_readonly=True,
         ),
         MethodDef(
             params=[ParamDef("i", BIGINT)],
             returns=CHAR,
             cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())",
+            is_readonly=True,
         ),
     ])
 
@@ -55,16 +58,19 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", INT32)],
             returns=INT32,
             cpp="std::abs({0})",
+            is_readonly=True,
         ),
         MethodDef(
             params=[ParamDef("x", BIGINT)],
             returns=BIGINT,
             cpp="tpy::BigInt::abs({0})",
+            is_readonly=True,
         ),
         MethodDef(
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::fabs({0})",
+            is_readonly=True,
         ),
     ])
 
@@ -73,16 +79,19 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("a", INT32), ParamDef("b", INT32)],
             returns=INT32,
             cpp="std::min({0}, {1})",
+            is_readonly=True,
         ),
         MethodDef(
             params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
             returns=BIGINT,
             cpp="(({0}) < ({1}) ? ({0}) : ({1}))",
+            is_readonly=True,
         ),
         MethodDef(
             params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
             returns=FLOAT,
             cpp="std::fmin({0}, {1})",
+            is_readonly=True,
         ),
     ])
 
@@ -91,16 +100,19 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("a", INT32), ParamDef("b", INT32)],
             returns=INT32,
             cpp="std::max({0}, {1})",
+            is_readonly=True,
         ),
         MethodDef(
             params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
             returns=BIGINT,
             cpp="(({0}) > ({1}) ? ({0}) : ({1}))",
+            is_readonly=True,
         ),
         MethodDef(
             params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
             returns=FLOAT,
             cpp="std::fmax({0}, {1})",
+            is_readonly=True,
         ),
     ])
 
@@ -115,6 +127,7 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
+            is_readonly=True,
         )],
         "append": [MethodDef(
             params=[ParamDef("value", OwnType(T))],
@@ -168,11 +181,13 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("value", T)],
             returns=INT32,
             cpp="tpy::list_index({self}, {0})",
+            is_readonly=True,
         )],
         "count": [MethodDef(
             params=[ParamDef("value", T)],
             returns=INT32,
             cpp="tpy::list_count({self}, {0})",
+            is_readonly=True,
         )],
         "reverse": [MethodDef(
             params=[],
@@ -183,6 +198,7 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=ListType(T),
             cpp="tpy::list_copy({self})",
+            is_readonly=True,
         )],
     }, constructors=[
         # list(iterable) - create list from any iterable, inferring element type
@@ -190,12 +206,14 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", NamedType("NativeIterable", (T,), is_protocol=True))],
             returns=T,  # Placeholder - sema infers actual list[T] from argument
             cpp="tpy::from_range<std::vector<{T}>>({0})",
+            is_readonly=True,
         ),
         # list(iterator) - create list from OptIterator (user-defined iterators)
         MethodDef(
             params=[ParamDef("x", NamedType("OptIterator", (T,), is_protocol=True))],
             returns=T,
             cpp="tpy::collect<std::vector<{T}>>({0})",
+            is_readonly=True,
         ),
     ])
 
@@ -217,11 +235,13 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
+            is_readonly=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=CHAR,
             cpp="tpy::get_char({self}, {0})",
+            is_readonly=True,
         )],
     })
 
@@ -386,14 +406,14 @@ def init_module() -> BuiltinModule:
         cpp_t = fixed_type.to_cpp()
         rt = RangeType(fixed_type)
         range_overloads += [
-            MethodDef(params=[ParamDef("stop", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}})"),
-            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}}, {{1}})"),
-            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type), ParamDef("step", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}}, {{1}}, {{2}})"),
+            MethodDef(params=[ParamDef("stop", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}})", is_readonly=True),
+            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}}, {{1}})", is_readonly=True),
+            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type), ParamDef("step", fixed_type)], returns=rt, cpp=f"tpy::Range<{cpp_t}>({{0}}, {{1}}, {{2}})", is_readonly=True),
         ]
     range_overloads += [
-        MethodDef(params=[ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0})"),
-        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1})"),
-        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT), ParamDef("step", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1}, {2})"),
+        MethodDef(params=[ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0})", is_readonly=True),
+        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1})", is_readonly=True),
+        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT), ParamDef("step", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1}, {2})", is_readonly=True),
     ]
     module.function("range", overloads=range_overloads)
 

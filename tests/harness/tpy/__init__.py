@@ -453,13 +453,19 @@ def noalloc(func):
     return func
 
 
-def readonly(func):
-    """Decorator marking a function/method as readonly.
+class readonly:
+    """Decorator and type modifier for readonly references.
 
-    In CPython simulation, this is a no-op.
-    The compiler enforces this constraint at compile time.
+    Supports @readonly decorator and readonly[T] subscript syntax.
+    In CPython simulation, both forms are no-ops.
     """
-    return func
+    def __class_getitem__(cls, item):
+        return item
+
+    def __new__(cls, func_or_flag=None):
+        if func_or_flag is None or isinstance(func_or_flag, bool):
+            return lambda func: func
+        return func_or_flag
 
 
 class _ExternLinkage:

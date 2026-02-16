@@ -1510,11 +1510,23 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)
-- **Working**: `@readonly` (conservative contract enforcement on functions/methods)
-  - Disallows field/subscript/global writes inside readonly bodies
-  - Disallows calls to unknown/non-readonly functions inside readonly bodies
-  - `print` remains non-readonly by design (observable I/O side effects)
-  - Current form: `@readonly` (bare name). `@tpy.readonly` is not yet supported.
+- **Working**: `@readonly` ("doesn't mutate its arguments" contract on functions/methods)
+  - Enforcement: parameter-rooted mutation checks (field/subscript writes, non-readonly method calls on params, passing params to non-readonly functions)
+  - Local alias tracking: `alias = param` propagates parameter-rooted status through locals
+  - Constructors, `print`, I/O, and global writes are generally allowed; constructors follow the same call rule when passed param-derived mutable refs
+  - Value-type arguments are copies and can be freely passed to any function
+  - Implicit readonly on dunders: `__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.
+  - `@readonly(False)` opts out of implicit readonly (e.g., `__getitem__` that caches)
+  - Readonly methods returning references get both const and non-const C++ overloads; value returns get const only
+  - Limitation: container-mediated aliases not tracked (e.g., `[param]` into list then iterate)
+- **Working**: `readonly[T]` type modifier (per-parameter constness)
+  - `readonly[T]` on a parameter means "immutable reference to T", maps to `const T&` in C++
+  - Prevents: field writes, subscript writes, non-readonly method calls, passing to mutable `T` param
+  - Local alias deduction: `alias = readonly_param` inherits readonly status for non-value types
+  - `readonly[Int32]` (value types) is a no-op -- copies are always safe
+  - `readonly[T | None]` and `readonly[T] | None` normalize to the same C++ type (`const T*`)
+  - `readonly[Protocol]` generates `const T_name&` for template protocol params
+  - See `docs/READONLY_DESIGN.md` for full design rationale
 - **Open**: Custom decorators → compile-time transforms
 
 ### Type Polymorphism

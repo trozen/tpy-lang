@@ -22,6 +22,7 @@ def init_module() -> BuiltinModule:
     module.protocol("Sized",
         methods={"__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})")},
         cpp_concept="tpy::Sized",
+        is_readonly=True,
     )
 
     # Sequence[T] protocol: types that support len() and indexing
@@ -30,9 +31,10 @@ def init_module() -> BuiltinModule:
         type_params=["T"],
         methods={
             "__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})"),
-            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="{self}[{0}]"),
+            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="tpy::__getitem__({self}, {0})"),
         },
         cpp_concept="tpy::Sequence",
+        is_readonly=True,
     )
 
     # MutableSequence[T] protocol: types that support len(), read indexing, and write indexing
@@ -41,8 +43,8 @@ def init_module() -> BuiltinModule:
         type_params=["T"],
         methods={
             "__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})"),
-            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="{self}[{0}]"),
-            "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="{self}[{0}] = {1}"),
+            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="tpy::__getitem__({self}, {0})"),
+            "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="tpy::__setitem__({self}, {0}, {1})"),
         },
         cpp_concept="tpy::MutableSequence",
     )

@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, PtrType, ConstPtrType, OwnType, OptionalType, NamedType, SelfType,
-    BigIntType, IntLiteralType, TypeParamRef, is_protocol_type,
+    TpyType, PtrType, ConstPtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
+    BigIntType, IntLiteralType, TypeParamRef, is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -411,6 +411,15 @@ class CodeGenContext:
         """
         return self._is_pointer_global(expr) or self.is_pointer_local(expr)
 
+    def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
+        """Get the sema-analyzed type of an expression, unwrapping ReadonlyType.
+
+        Codegen doesn't need ReadonlyType (C++ handles const via signatures),
+        so this always strips it.
+        """
+        typ = self.analyzer.get_expr_type(expr)
+        return unwrap_readonly(typ) if typ is not None else None
+
     def pointer_value_expr(self, expr: TpyExpr, rendered: str) -> str:
         """Return expression yielding raw pointer value for pointer names.
 
@@ -420,7 +429,7 @@ class CodeGenContext:
         """
         if not self._is_pointer_global(expr):
             return rendered
-        expr_type = self.analyzer.get_expr_type(expr)
+        expr_type = self.get_expr_type(expr)
         if isinstance(expr_type, (PtrType, ConstPtrType)):
             return rendered
         if isinstance(expr_type, OptionalType) and not expr_type.inner.is_value_type():
@@ -513,7 +522,7 @@ class CodeGenContext:
         # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
         if isinstance(expr, TpySubscript):
             from .types import TypeResolver
-            container_type = self.analyzer.get_expr_type(expr.obj)
+            container_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj)) if self.analyzer.get_expr_type(expr.obj) is not None else None
             if isinstance(container_type, NamedType) and container_type.is_record:
                 return True
         # Function calls
@@ -558,6 +567,8 @@ class CodeGenContext:
         if is_protocol_type(typ):
             return True
         elif isinstance(typ, OwnType):
+            return self.contains_protocol_type(typ.wrapped)
+        elif isinstance(typ, ReadonlyType):
             return self.contains_protocol_type(typ.wrapped)
         elif isinstance(typ, (PtrType, ConstPtrType)):
             return self.contains_protocol_type(typ.pointee)

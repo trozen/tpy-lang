@@ -8,9 +8,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, PtrType, ConstPtrType, NoneType, OptionalType,
+    unwrap_readonly,
     INT32, VOID, BIGINT, is_protocol_type,
 )
 from ..parse import (
@@ -18,7 +19,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyGlobal,
-    TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp, TpyArrayLiteral, TpyListRepeat, TpyCoerce,
+    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName,
     TpyFieldAccess, TpyFunction,
 )
@@ -70,100 +71,46 @@ class StatementAnalyzer:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
 
-    def _in_readonly_context(self) -> bool:
-        return isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.is_readonly
-
-    def _is_local_name_binding(self, name: str) -> bool:
-        scope = self.ctx.current_scope
-        while scope is not None and scope is not self.ctx.global_scope:
-            if name in scope.bindings:
-                return True
-            scope = scope.parent
-        return False
-
     @staticmethod
     def _is_readonly_call_expr(expr: TpyExpr) -> bool:
+        """Check if a call expression is known to be readonly (for narrowing)."""
         if isinstance(expr, TpyCall) and expr.func == "super":
-            # super() itself is a pure dispatch helper.
             return True
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             info = expr.resolved_function_info
             return info is not None and info.is_readonly
         return False
 
-    def _readonly_violation_call(self, expr: TpyExpr) -> TpyExpr | None:
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            if not self._is_readonly_call_expr(expr):
-                return expr
-            for arg in expr.args:
-                bad = self._readonly_violation_call(arg)
-                if bad is not None:
-                    return bad
-            if isinstance(expr, TpyCall):
-                for kwarg in expr.kwargs.values():
-                    bad = self._readonly_violation_call(kwarg)
-                    if bad is not None:
-                        return bad
-            if isinstance(expr, TpyMethodCall):
-                bad = self._readonly_violation_call(expr.obj)
-                if bad is not None:
-                    return bad
-            return None
-        if isinstance(expr, TpyBinOp):
-            return self._readonly_violation_call(expr.left) or self._readonly_violation_call(expr.right)
-        if isinstance(expr, TpyUnaryOp):
-            return self._readonly_violation_call(expr.operand)
-        if isinstance(expr, TpyFieldAccess):
-            return self._readonly_violation_call(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self._readonly_violation_call(expr.obj) or self._readonly_violation_call(expr.index)
-        if isinstance(expr, TpyArrayLiteral):
-            for e in expr.elements:
-                bad = self._readonly_violation_call(e)
-                if bad is not None:
-                    return bad
-            return None
-        if isinstance(expr, TpyListRepeat):
-            for e in expr.elements:
-                bad = self._readonly_violation_call(e)
-                if bad is not None:
-                    return bad
-            return self._readonly_violation_call(expr.count)
-        if isinstance(expr, TpyCoerce):
-            return self._readonly_violation_call(expr.expr)
-        return None
+    def _save_ns_var_types(self) -> dict[str, TpyType]:
+        """Save namespace variable types for later restoration."""
+        result: dict[str, TpyType] = {}
+        if self.ctx.current_ns:
+            for name, binding in self.ctx.current_ns.all_bindings().items():
+                if binding.kind == BindingKind.VARIABLE:
+                    result[name] = binding.type
+        return result
 
-    def _enforce_readonly_expr(self, expr: TpyExpr) -> None:
-        if not self._in_readonly_context():
-            return
-        bad = self._readonly_violation_call(expr)
-        if bad is None:
-            return
-        if isinstance(bad, TpyCall):
-            name = bad.func
-            raise self.ctx.error(
-                f"Call to non-readonly or unknown-effect function '{name}' is not allowed in @readonly function",
-                bad,
-            )
-        if isinstance(bad, TpyMethodCall):
-            raise self.ctx.error(
-                f"Call to non-readonly or unknown-effect method '{bad.method}' is not allowed in @readonly function",
-                bad,
-            )
+    def _restore_ns_var_types(self, saved: dict[str, TpyType]) -> None:
+        """Restore namespace variable types from a saved snapshot."""
+        if self.ctx.current_ns:
+            for name, typ in saved.items():
+                self.ctx.current_ns.update_variable_type(name, typ)
+
+    def _sync_ns_var_type(self, name: str, typ: TpyType) -> None:
+        """Sync a single variable's namespace type to match scope."""
+        if self.ctx.current_ns:
+            self.ctx.current_ns.update_variable_type(name, typ)
 
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
-        if not self._in_readonly_context():
-            return
-        if isinstance(target, TpyFieldAccess):
-            raise self.ctx.error("Cannot assign to fields inside @readonly function", target)
-        if isinstance(target, TpySubscript):
-            raise self.ctx.error("Cannot assign through subscript inside @readonly function", target)
-        if isinstance(target, TpyName):
-            if not self._is_local_name_binding(target.name) and self.ctx.global_scope.lookup(target.name) is not None:
-                raise self.ctx.error(
-                    f"Cannot assign to global '{target.name}' inside @readonly function",
-                    target,
-                )
+        """Reject assignments through readonly references (type-based check)."""
+        if isinstance(target, (TpyFieldAccess, TpySubscript)):
+            obj_type = self.ctx.get_expr_type(target.obj)
+            if obj_type is not None:
+                check_type = obj_type
+                if isinstance(check_type, OptionalType):
+                    check_type = check_type.inner
+                if isinstance(check_type, ReadonlyType):
+                    raise self.ctx.error("Cannot mutate readonly reference", target)
 
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
@@ -175,13 +122,11 @@ class StatementAnalyzer:
             self._analyze_aug_assign(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
-            self._enforce_readonly_expr(stmt.expr)
             if self.narrowing.expr_has_unknown_call(stmt.expr):
                 self.ctx.non_none_exprs.clear()
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
                 ret_type = self.expr.analyze_expr(stmt.value)
-                self._enforce_readonly_expr(stmt.value)
                 expected = self.ctx.current_function.return_type if self.ctx.current_function else VOID
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
@@ -198,25 +143,47 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
-            self._enforce_readonly_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_facts, else_facts = self.narrowing.condition_name_facts(stmt.condition)
             then_expr_facts, else_expr_facts = self.narrowing.condition_expr_facts(stmt.condition)
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
+            # Save binding types for ReadonlyType merge after branches
+            bindings_before = dict(self.ctx.current_scope.bindings)
+            ns_types_before = self._save_ns_var_types()
             self.ctx.non_none_vars.update(then_facts)
             self.ctx.non_none_exprs.update(then_expr_facts)
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
+            bindings_after_then = dict(self.ctx.current_scope.bindings)
+            # Restore bindings for else branch
+            self.ctx.current_scope.bindings.update(bindings_before)
+            self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
             self.ctx.non_none_vars.update(else_facts)
             self.ctx.non_none_exprs.update(else_expr_facts)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()
+            bindings_after_else = dict(self.ctx.current_scope.bindings)
             self.init.merge_branches(then_state, else_state)
+            # Merge ReadonlyType: if readonly on EITHER branch, keep readonly
+            for name in set(bindings_after_then) | set(bindings_after_else):
+                then_type = bindings_after_then.get(name)
+                else_type = bindings_after_else.get(name)
+                if then_type is not None and else_type is not None:
+                    then_is_ro = isinstance(then_type, ReadonlyType)
+                    else_is_ro = isinstance(else_type, ReadonlyType)
+                    if then_is_ro and not else_is_ro:
+                        merged = ReadonlyType(unwrap_readonly(else_type))
+                        self.ctx.current_scope.define(name, merged)
+                        self._sync_ns_var_type(name, merged)
+                    elif else_is_ro and not then_is_ro:
+                        merged = ReadonlyType(unwrap_readonly(then_type))
+                        self.ctx.current_scope.define(name, merged)
+                        self._sync_ns_var_type(name, merged)
             # Detect variables first declared inside branches that need
             # pre-declaration. Skip when both branches terminate (no code
             # after the if needs the variable).
@@ -233,11 +200,13 @@ class StatementAnalyzer:
                 }
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
-            self._enforce_readonly_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_facts, _ = self.narrowing.condition_name_facts(stmt.condition)
             then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             before = self.init.save()
+            # Save namespace types -- loop_scope() restores scope bindings
+            # automatically, but namespace mutations inside the loop persist.
+            ns_types_before_while = self._save_ns_var_types()
             with self.scopes.loop_scope():
                 self.init.apply_loop_entry_facts(
                     before,
@@ -250,16 +219,24 @@ class StatementAnalyzer:
             body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
             self.init.restore(before)
             self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+            # Restore namespace to pre-loop state (scope was already restored
+            # by loop_scope context manager)
+            self._restore_ns_var_types(ns_types_before_while)
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
-            self._enforce_readonly_expr(stmt.iterable)
-            elem_type = self.list_tracker.get_iterable_element_type(iterable_type, loc=stmt.loc)
+            is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
+            inner_iterable_type = unwrap_readonly(iterable_type)
+            elem_type = self.list_tracker.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
+            # Elements from a readonly iterable inherit readonly status
+            if is_readonly_iterable and not elem_type.is_value_type():
+                elem_type = ReadonlyType(unwrap_readonly(elem_type))
             before = self.init.save()
+            ns_types_before_foreach = self._save_ns_var_types()
             with self.scopes.loop_scope() as inner_scope:
                 self.init.apply_loop_entry_facts(before)
                 # OptIterator and __iter__-based types produce fresh values each iteration
-                is_native_iterator = builtin_modules.get_native_iterator_element_type(iterable_type, registry=self.ctx.registry) is not None
-                is_iter_based = builtin_modules.get_iter_element_type(iterable_type, registry=self.ctx.registry) is not None
+                is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 if is_native_iterator or is_iter_based:
                     iter_depth = inner_scope.depth
                 elif self.compat.is_lvalue(stmt.iterable):
@@ -272,7 +249,7 @@ class StatementAnalyzer:
                     iter_depth = inner_scope.depth
                 # Track provenance for non-value-type loop vars from param-derived iterables
                 track_loop_prov = (
-                    not elem_type.is_value_type()
+                    not unwrap_readonly(elem_type).is_value_type()
                     and self.compat.is_param_derived_expr(stmt.iterable)
                 )
                 if track_loop_prov:
@@ -285,6 +262,7 @@ class StatementAnalyzer:
             body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
             self.init.restore(before)
             self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+            self._restore_ns_var_types(ns_types_before_foreach)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
@@ -295,11 +273,9 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyAssert):
             self.expr.analyze_expr(stmt.condition)
-            self._enforce_readonly_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             if stmt.message is not None:
                 self.expr.analyze_expr(stmt.message)
-                self._enforce_readonly_expr(stmt.message)
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
             then_facts, _ = self.narrowing.condition_name_facts(stmt.condition)
@@ -337,15 +313,15 @@ class StatementAnalyzer:
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param, loop variable, or global."""
         existing_type = self.ctx.current_scope.lookup(name)
-        if existing_type is None or existing_type.is_value_type():
+        if existing_type is None or unwrap_readonly(existing_type).is_value_type():
             return
         # Check function parameters
         func = self.ctx.current_function
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:
-                if pname == name and not ptype.is_value_type():
+                if pname == name and not unwrap_readonly(ptype).is_value_type():
                     raise self.ctx.error(
-                        f"Cannot reassign parameter '{name}' of type '{ptype}'; "
+                        f"Cannot reassign parameter '{name}' of type '{unwrap_readonly(ptype)}'; "
                         f"assign to a new local variable instead",
                         node
                     )
@@ -378,6 +354,14 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"Own[{stmt.type.wrapped}] cannot be used as a variable type. "
                 f"Use '{stmt.type.wrapped}' instead (Own[T] is for parameters and return types only)",
+                stmt
+            )
+
+        # readonly[T] is only valid for function parameters, not variables
+        if stmt.type and isinstance(stmt.type, ReadonlyType):
+            raise self.ctx.error(
+                f"readonly[{stmt.type.wrapped}] cannot be used as a variable type. "
+                f"Readonly on locals is deduced from initialization",
                 stmt
             )
 
@@ -451,17 +435,6 @@ class StatementAnalyzer:
             if is_preregistered_global_write:
                 existing_type = None
 
-        if (
-            self._in_readonly_context()
-            and existing_type is not None
-            and not self._is_local_name_binding(stmt.name)
-            and self.ctx.global_scope.lookup(stmt.name) is not None
-        ):
-            raise self.ctx.error(
-                f"Cannot assign to global '{stmt.name}' inside @readonly function",
-                stmt,
-            )
-
         # Disallow reassignment of non-value-type params and loop vars
         if existing_type is not None:
             self._check_nonvalue_rebinding(stmt.name, stmt)
@@ -527,7 +500,7 @@ class StatementAnalyzer:
                     )
             else:
                 init_type = self.expr.analyze_expr_with_hint(stmt.init, stmt.type)
-            self._enforce_readonly_expr(stmt.init)
+
 
             # Track list literal to variable mapping for mutation detection
             if isinstance(init_type, PendingListType):
@@ -556,19 +529,29 @@ class StatementAnalyzer:
                     isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
                     pass  # Allow str literal -> Char
                 else:
-                    stmt.init = self.compat.coerce_expr(stmt.init, init_type, stmt.type,
+                    # Unwrap ReadonlyType for coercion -- readonly is tracked
+                    # via type deduction, not the compatibility check.
+                    inner_init = unwrap_readonly(init_type)
+                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, stmt.type,
                                                          f"variable '{stmt.name}'",
                                                          coercion_ctx=CoercionContext.INIT)
                 var_type = stmt.type
+                # Inherit ReadonlyType from init expression
+                if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
+                    var_type = ReadonlyType(var_type)
                 self.reassign.set_authoritative_annotation(
                     stmt.name,
                     stmt.type,
                     line=(stmt.loc.line if stmt.loc else None),
                 )
             elif existing_type:
-                var_type = self.reassign.resolve_reassignment_target_type(stmt.name, existing_type, init_type)
+                # Unwrap ReadonlyType for reassignment type resolution and
+                # coercion -- this is a binding, not passing by reference.
+                inner_existing = unwrap_readonly(existing_type)
+                inner_init = unwrap_readonly(init_type)
+                var_type = self.reassign.resolve_reassignment_target_type(stmt.name, inner_existing, inner_init)
                 # Reassignment: check if we need to upgrade IntLiteralType
-                if isinstance(existing_type, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
+                if isinstance(inner_existing, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
                     # Upgrade from IntLiteralType to concrete type
                     # Update var_types so codegen knows the resolved type
                     orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
@@ -576,14 +559,17 @@ class StatementAnalyzer:
                         self.ctx.var_types[id(orig_decl)] = var_type
                 else:
                     # Normal reassignment: use existing type, check compatibility
-                    stmt.init = self.compat.coerce_expr(stmt.init, init_type, var_type,
+                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
                                                          f"reassignment to '{stmt.name}'",
                                                          coercion_ctx=CoercionContext.ASSIGN)
+                # Readonly status flows from the value expression
+                if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
+                    var_type = ReadonlyType(var_type)
                 if var_type != existing_type:
                     # Keep original declaration's resolved type in sync for codegen.
                     orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
                     if orig_decl:
-                        self.ctx.var_types[id(orig_decl)] = var_type
+                        self.ctx.var_types[id(orig_decl)] = unwrap_readonly(var_type)
             else:
                 # New variable: resolve IntLiteralType.
                 if isinstance(init_type, IntLiteralType):
@@ -683,11 +669,9 @@ class StatementAnalyzer:
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
-        self._enforce_readonly_assignment_target(stmt.target)
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
-        self._enforce_readonly_expr(stmt.target)
-        self._enforce_readonly_expr(stmt.value)
+        self._enforce_readonly_assignment_target(stmt.target)
         value_has_unknown_call = self.narrowing.expr_has_unknown_call(stmt.value)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
@@ -699,15 +683,22 @@ class StatementAnalyzer:
             declared_target_type = self.ctx.current_scope.lookup(stmt.target.name)
             if declared_target_type is not None:
                 target_type = declared_target_type
-            target_type = self.reassign.resolve_reassignment_target_type(stmt.target.name, target_type, value_type)
+            # Unwrap ReadonlyType for reassignment type resolution -- this is a
+            # binding, not passing by reference.
+            inner_target = unwrap_readonly(target_type)
+            inner_value = unwrap_readonly(value_type)
+            target_type = self.reassign.resolve_reassignment_target_type(stmt.target.name, inner_target, inner_value)
+            # Readonly status flows from the value expression
+            if isinstance(value_type, ReadonlyType) and not target_type.is_value_type():
+                target_type = ReadonlyType(target_type)
             self.ctx.current_scope.define(stmt.target.name, target_type)
             if self.ctx.current_ns:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
-            self.reassign.record_write(stmt.target.name, stmt.value, value_type)
+            self.reassign.record_write(stmt.target.name, stmt.value, inner_value)
             var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
             if var_decl:
-                self.ctx.var_types[id(var_decl)] = target_type
+                self.ctx.var_types[id(var_decl)] = unwrap_readonly(target_type)
 
         # Disallow reassignment of non-value-type params and loop vars
         if isinstance(stmt.target, TpyName):
@@ -787,11 +778,9 @@ class StatementAnalyzer:
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         from .operators import OperatorResolver
-        self._enforce_readonly_assignment_target(stmt.target)
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
-        self._enforce_readonly_expr(stmt.target)
-        self._enforce_readonly_expr(stmt.value)
+        self._enforce_readonly_assignment_target(stmt.target)
         self.narrowing.kill_facts_for_target(stmt.target)
         if (
             isinstance(stmt.target, TpyName)

@@ -71,6 +71,7 @@ class ProtocolDef:
     methods: dict[str, MethodDef]  # method_name -> signature
     cpp_concept: str  # C++ concept name (e.g., "tpy::Sized")
     type_params: list[str] = field(default_factory=list)
+    is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
 
 
 @dataclass
@@ -107,13 +108,14 @@ class BuiltinModule:
         )
 
     def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str,
-                 type_params: list[str] | None = None):
+                 type_params: list[str] | None = None, is_readonly: bool = False):
         """Register a protocol definition."""
         self.protocols[name] = ProtocolDef(
             name=name,
             methods=methods,
             cpp_concept=cpp_concept,
-            type_params=type_params or []
+            type_params=type_params or [],
+            is_readonly=is_readonly,
         )
 
     def variable(self, name: str, var_type: "TpyType", cpp_expr: str):
@@ -300,7 +302,8 @@ def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
         fields=[],
         type_params=pdef.type_params,
         cpp_concept=pdef.cpp_concept,
-        is_marker=len(pdef.methods) == 0
+        is_marker=len(pdef.methods) == 0,
+        is_readonly=pdef.is_readonly,
     )
 
 
@@ -329,7 +332,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
             for method in overloads
         ]
 
-    # Convert constructors
+    # Convert constructors -- builtin type constructors are always readonly
     constructors = []
     for ctor in type_def.constructors:
         constructors.append(FunctionInfo(

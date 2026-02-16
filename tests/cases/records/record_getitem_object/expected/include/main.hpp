@@ -52,7 +52,17 @@ struct PointList {
     return tpy::get_item(this->data, index);
   }
 
+  // 20:     def __getitem__(self, index: Int32) -> Point:
+  Point& __getitem__(int32_t index) {
+    // 21:         return self.data[index]
+    return tpy::get_item(this->data, index);
+  }
+
   const Point& operator[](int32_t index) const {
+    return __getitem__(index);
+  }
+
+  Point& operator[](int32_t index) {
     return __getitem__(index);
   }
 };

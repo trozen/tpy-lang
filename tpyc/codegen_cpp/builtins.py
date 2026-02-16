@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    ListType, ArrayType, SpanType, ModuleType, is_protocol_type,
+    ListType, ArrayType, SpanType, ModuleType, is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -57,6 +57,12 @@ class BuiltinGenerator:
                 )
             if overloads and overloads[0].cpp_template:
                 return overloads[0].cpp_template
+        # Check builtin protocol method templates (e.g., Sequence.__getitem__)
+        if is_protocol_type(tpy_type):
+            from ..modules import lookup_protocol
+            proto_def = lookup_protocol(tpy_type.name)
+            if proto_def and method_name in proto_def.methods:
+                return proto_def.methods[method_name].cpp
         return None
 
     def gen_method_from_function_info(self, obj: str, args: list[TpyExpr],
@@ -83,7 +89,7 @@ class BuiltinGenerator:
 
         # Fallback for synthetic calls (e.g. module-aliased constructors like t.Int32(42))
         args = expr.args
-        arg_types = [self.ctx.analyzer.get_expr_type(arg) for arg in args]
+        arg_types = [self.ctx.get_expr_type(arg) for arg in args]
         for ctor in record_info.constructors:
             if len(ctor.params) != len(args):
                 continue
@@ -115,7 +121,7 @@ class BuiltinGenerator:
         Returns (matched_overload, gen_args). Raises RuntimeError if no match.
         """
         args = expr.args
-        arg_types = [self.ctx.analyzer.get_expr_type(arg) for arg in args]
+        arg_types = [self.ctx.get_expr_type(arg) for arg in args]
 
         for overload in overloads:
             if len(overload.params) != len(args):
@@ -193,7 +199,7 @@ class BuiltinGenerator:
             if i > 0:
                 parts.append('" "')  # Space separator between args
 
-            arg_type = self.types.get_resolved_type(arg)
+            arg_type = unwrap_readonly(self.types.get_resolved_type(arg))
 
             if isinstance(arg, TpyNoneLiteral):
                 parts.append('"None"')

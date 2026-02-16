@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind
+    NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -187,7 +187,7 @@ class RecordGenerator:
                 continue
             self.functions.gen_method_def(out, method, record.name)
 
-        # Generate operator[] if __getitem__ exists (enables Sequence protocol conformance)
+        # Generate const operator[] for subscript read syntax (obj[i])
         self._gen_subscript_operators(out, record)
 
         # Generate binary operators from dunder methods (enables protocol conformance)
@@ -301,7 +301,7 @@ class RecordGenerator:
                             value = self.expressions.gen_expr(stmt.value, fld_type)
                             # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't
                             if isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type():
-                                raw_val_type = self.ctx.analyzer.get_expr_type(stmt.value)
+                                raw_val_type = self.ctx.get_expr_type(stmt.value)
                                 val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
                                 source = self.ctx.unwrap_copy(stmt.value)
                                 if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
@@ -339,34 +339,43 @@ class RecordGenerator:
         return non_init
 
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate operator[] if __getitem__/__setitem__ exist.
+        """Generate operator[] for subscript read syntax.
 
-        This enables user records to conform to C++ concepts like tpy::Sequence
-        which use t[i] syntax rather than t.__getitem__(i).
+        For readonly __getitem__: dual overloads (const + non-const) matching
+        the method itself. Writes go through tpy::__setitem__.
+        For non-readonly __getitem__: non-const only (method mutates self).
         """
         getitem = None
-        setitem = None
         for method in record.methods:
             if method.name == "__getitem__":
                 getitem = method
-            elif method.name == "__setitem__":
-                setitem = method
+                break
 
         if getitem is None:
             return
 
-        # Get the index parameter type and return type
         if not getitem.params:
-            return  # __getitem__ needs at least an index param
+            return
         index_param_name, index_type = getitem.params[0]
         index_cpp = index_type.to_cpp()
-        # Use to_cpp_return_const() since operator[] is const (returns const ref for objects)
-        ret_cpp = getitem.return_type.to_cpp_return_const()
 
-        # Generate const operator[] that delegates to __getitem__
-        out.write(f"\n  {ret_cpp} operator[]({index_cpp} {index_param_name}) const {{\n")
-        out.write(f"    return __getitem__({index_param_name});\n")
-        out.write("  }\n")
+        if getitem.is_readonly:
+            ret_const = getitem.return_type.to_cpp_return_const()
+            out.write(f"\n  {ret_const} operator[]({index_cpp} {index_param_name}) const {{\n")
+            out.write(f"    return __getitem__({index_param_name});\n")
+            out.write("  }\n")
+            # Non-const overload only when return could be a reference
+            needs_dual = not getitem.return_type.is_value_type() or isinstance(getitem.return_type, TypeParamRef)
+            if needs_dual:
+                ret_mut = getitem.return_type.to_cpp_return()
+                out.write(f"\n  {ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
+                out.write(f"    return __getitem__({index_param_name});\n")
+                out.write("  }\n")
+        else:
+            ret_mut = getitem.return_type.to_cpp_return()
+            out.write(f"\n  {ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
+            out.write(f"    return __getitem__({index_param_name});\n")
+            out.write("  }\n")
 
     def _gen_binary_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate C++ operators from dunder methods (arithmetic and comparison).

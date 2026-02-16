@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
-    PendingListType, SpanType, StrType, OwnType, VoidType, PtrType, ConstPtrType,
+    PendingListType, SpanType, StrType, OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
     NamedType, TypeParamRef, NoneType, OptionalType,
-    is_protocol_type,
+    is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -58,6 +58,33 @@ class TypeCompatibility:
         """
         if actual == expected:
             return None
+
+        # readonly[T] -> readonly[T]: unwrap and check inner types
+        # T -> readonly[T]: always OK (adding const is safe)
+        if isinstance(expected, ReadonlyType):
+            actual_inner = unwrap_readonly(actual)
+            return self.check_type_compatible(
+                actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx
+            )
+
+        # readonly[T] -> T: error for non-value types (stripping const is unsafe)
+        # Exceptions: value types (copies), readonly protocols (Sized, Sequence),
+        # return values (C++ const method handles safety via const propagation)
+        if isinstance(actual, ReadonlyType) and not isinstance(expected, ReadonlyType):
+            if not expected.is_value_type() and not is_return:
+                allow = False
+                if is_protocol_type(expected) and self.protocols:
+                    proto_info = self.ctx.registry.get_protocol(expected.name)
+                    if proto_info and proto_info.is_readonly:
+                        allow = True
+                if not allow:
+                    raise SemanticError(
+                        f"Cannot pass readonly[{actual.wrapped}] as mutable {expected} in {context}",
+                        loc,
+                    )
+            return self.check_type_compatible(
+                actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx
+            )
 
         # None -> Optional[T]: always compatible
         if isinstance(actual, NoneType) and isinstance(expected, OptionalType):

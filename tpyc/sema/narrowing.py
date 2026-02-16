@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Callable
 from ..typesys import (
     TpyType, OptionalType, NoneType, PtrType, ConstPtrType, OwnType, NamedType,
     TypeParamRef, ListType, ArrayType, SpanType, PendingListType, StrType, ModuleType,
+    ReadonlyType, unwrap_readonly,
     is_protocol_type,
 )
 from ..parse import (
@@ -56,6 +57,9 @@ class NarrowingTracker:
         """Narrow Optional name type using flow facts."""
         if isinstance(typ, OptionalType) and name in self.ctx.non_none_vars:
             return typ.inner
+        # Handle ReadonlyType(OptionalType(T)) -> ReadonlyType(T)
+        if isinstance(typ, ReadonlyType) and isinstance(typ.wrapped, OptionalType) and name in self.ctx.non_none_vars:
+            return ReadonlyType(typ.wrapped.inner)
         return typ
 
     def declared_type_for_name(self, name: str) -> TpyType | None:
@@ -70,6 +74,7 @@ class NarrowingTracker:
 
     def _is_builtin_stable_subscript_type(self, typ: TpyType) -> bool:
         """Whether subscript identities for this type are safe to track."""
+        typ = unwrap_readonly(typ)
         if isinstance(typ, (ListType, ArrayType, SpanType, PendingListType, StrType)):
             return True
         if isinstance(typ, ModuleType):
@@ -94,7 +99,7 @@ class NarrowingTracker:
             obj_type = self.declared_type_for_expr(expr.obj)
             if obj_type is None:
                 return None
-            actual_type = obj_type
+            actual_type = unwrap_readonly(obj_type)
             if isinstance(actual_type, (PtrType, ConstPtrType)):
                 actual_type = actual_type.pointee
             elif isinstance(actual_type, OwnType):
@@ -133,7 +138,7 @@ class NarrowingTracker:
             obj_type = self.declared_type_for_expr(expr.obj)
             if obj_type is None:
                 return None
-            actual_type = obj_type
+            actual_type = unwrap_readonly(obj_type)
             if isinstance(actual_type, OptionalType):
                 if actual_type.inner.is_value_type():
                     return None
@@ -213,11 +218,20 @@ class NarrowingTracker:
 
     # -- Condition fact extraction --------------------------------------
 
+    @staticmethod
+    def _is_optional_type(typ: TpyType | None) -> bool:
+        """Check if type is Optional (possibly wrapped in ReadonlyType)."""
+        if typ is None:
+            return False
+        if isinstance(typ, ReadonlyType):
+            typ = typ.wrapped
+        return isinstance(typ, OptionalType)
+
     def _name_none_facts(self, expr: TpyExpr) -> tuple[set[str], set[str]]:
         """Return (facts_if_true, facts_if_false) for Optional None-check conditions."""
         if isinstance(expr, TpyName):
             declared = self.declared_type_for_name(expr.name)
-            if isinstance(declared, OptionalType):
+            if self._is_optional_type(declared):
                 return {expr.name}, set()
 
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
@@ -233,7 +247,7 @@ class NarrowingTracker:
                     name = expr.right.name
                 if name is not None:
                     declared = self.declared_type_for_name(name)
-                    if isinstance(declared, OptionalType):
+                    if self._is_optional_type(declared):
                         if expr.op == "is not":
                             return {name}, set()
                         return set(), {name}
@@ -256,7 +270,7 @@ class NarrowingTracker:
         if isinstance(expr, (TpyName, TpyFieldAccess, TpySubscript)):
             identity = self.expr_identity(expr)
             declared = self.declared_type_for_expr(expr)
-            if identity is not None and isinstance(declared, OptionalType):
+            if identity is not None and self._is_optional_type(declared):
                 return {identity}, set()
 
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
@@ -273,7 +287,7 @@ class NarrowingTracker:
                 if identity_expr is not None:
                     identity = self.expr_identity(identity_expr)
                     declared = self.declared_type_for_expr(identity_expr)
-                    if identity is not None and isinstance(declared, OptionalType):
+                    if identity is not None and self._is_optional_type(declared):
                         if expr.op == "is not":
                             return {identity}, set()
                         return set(), {identity}
@@ -299,7 +313,7 @@ class NarrowingTracker:
         """Collect Optional variable names used in truthiness contexts."""
         if isinstance(expr, TpyName):
             declared = self.declared_type_for_name(expr.name)
-            if isinstance(declared, OptionalType):
+            if self._is_optional_type(declared):
                 return {expr.name}
             return set()
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
@@ -314,7 +328,8 @@ class NarrowingTracker:
         result: set[str] = set()
         for name in names:
             declared = self.declared_type_for_name(name)
-            if isinstance(declared, OptionalType) and declared.inner.is_value_type():
+            inner = unwrap_readonly(declared) if declared else None
+            if isinstance(inner, OptionalType) and inner.inner.is_value_type():
                 result.add(name)
         return result
 
@@ -337,7 +352,9 @@ class NarrowingTracker:
         rhs_expr: TpyExpr | None = None,
     ) -> None:
         """Update flow facts after assigning/writing a variable."""
-        if not isinstance(target_type, OptionalType):
+        # Unwrap ReadonlyType for Optional checks
+        inner_target = unwrap_readonly(target_type)
+        if not isinstance(inner_target, OptionalType):
             self.ctx.non_none_vars.discard(name)
             return
         if isinstance(rhs_type, NoneType) or isinstance(rhs_expr, TpyNoneLiteral):

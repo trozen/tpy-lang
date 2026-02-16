@@ -646,6 +646,52 @@ class OwnType(TpyType):
 
 
 @dataclass(frozen=True)
+class ReadonlyType(TpyType):
+    """Readonly reference -- immutable view of T. Maps to const T& in C++."""
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        return self.wrapped.to_cpp()
+
+    def is_value_type(self) -> bool:
+        return self.wrapped.is_value_type()
+
+    def to_cpp_param(self, name: str) -> str:
+        return self.wrapped.to_cpp_const_param(name)
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return self.wrapped.to_cpp_const_param(name)
+
+    def to_cpp_return(self) -> str:
+        return self.wrapped.to_cpp_return_const()
+
+    def to_cpp_return_const(self) -> str:
+        return self.wrapped.to_cpp_return_const()
+
+    def is_ref_param(self) -> bool:
+        return False
+
+    def get_element_type(self) -> Optional['TpyType']:
+        return self.wrapped.get_element_type()
+
+    def __str__(self) -> str:
+        return f"readonly[{self.wrapped}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return ReadonlyType(types[0])
+
+
+def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
+    """Strip ReadonlyType wrapper if present, returning the inner type."""
+    if isinstance(typ, ReadonlyType):
+        return typ.wrapped
+    return typ
+
+
+@dataclass(frozen=True)
 class NoneType(TpyType):
     """The type of the None literal (distinct from VoidType which is for return types)."""
 
@@ -1155,6 +1201,7 @@ class ProtocolInfo:
     parent_protocols: list[str] = field(default_factory=list)
     cpp_concept: str | None = None  # C++ concept name for builtin protocols
     is_marker: bool = False  # Marker protocols require explicit extends
+    is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
 
 
 @dataclass

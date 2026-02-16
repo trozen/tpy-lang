@@ -15,7 +15,7 @@ int32_t sum_seq(T_s& s) {
   // 19:     while i < len(s):
   while ((i < tpy::__len__(s))) {
     // 20:         total += s[i]
-    total = tpy::add_check<int32_t>(total, s[i]);
+    total = tpy::add_check<int32_t>(total, tpy::__getitem__(s, i));
     // 21:         i += 1
     i = tpy::add_check<int32_t>(i, 1);
   }
@@ -27,7 +27,7 @@ int32_t sum_seq(T_s& s) {
 template<tpy::Sequence<int32_t> T_s>
 int32_t first(T_s& s) {
   // 25:     return s[0]
-  return s[0];
+  return tpy::__getitem__(s, 0);
 }
 
 // 27: def main() -> None:

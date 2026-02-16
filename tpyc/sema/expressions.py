@@ -11,6 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType,
+    ReadonlyType, unwrap_readonly,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
@@ -121,23 +122,25 @@ class ExpressionAnalyzer:
         is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements
 
         if is_generic_constructor or is_empty_literal:
+            # Unwrap ReadonlyType so readonly[list[T]] hint works for list() inference
+            inner_hint = unwrap_readonly(type_hint)
             # Check if type_hint matches the constructor's generic type
             hint_matches = False
             if is_generic_constructor:
                 lookup = builtin_modules.lookup_generic_type(expr.func)  # type: ignore
                 hint_matches = (lookup is not None and
-                                type_hint.qualified_name() == lookup.qualified_name)
+                                inner_hint.qualified_name() == lookup.qualified_name)
             else:
                 # Empty literal [] can match list[T] hint
-                hint_matches = isinstance(type_hint, ListType)
+                hint_matches = isinstance(inner_hint, ListType)
 
             if hint_matches:
-                if isinstance(type_hint, ListType):
+                if isinstance(inner_hint, ListType):
                     # list[T]: Use PendingListType for potential Array optimization
-                    elem_type = type_hint.element_type
+                    elem_type = inner_hint.element_type
                     # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
                     if is_generic_constructor:
-                        expr.call_type = type_hint  # type: ignore
+                        expr.call_type = inner_hint  # type: ignore
                     if self.ctx.current_function is None:
                         typ = ListType(elem_type)
                     else:
@@ -150,7 +153,7 @@ class ExpressionAnalyzer:
                             size=0,
                             is_global=self.ctx.is_top_level,
                             has_explicit_annotation=True,
-                            explicit_type=type_hint
+                            explicit_type=inner_hint
                         )
                         self.ctx.list_literals[literal_id] = info
                         self.ctx.pending_resolutions.append(literal_id)
@@ -161,9 +164,9 @@ class ExpressionAnalyzer:
                     # Other generic types (Array, etc.): use hint directly
                     # Set call_type so codegen knows the concrete template type
                     if is_generic_constructor:
-                        expr.call_type = type_hint  # type: ignore
-                    self.ctx.set_expr_type(expr, type_hint)
-                    return type_hint
+                        expr.call_type = inner_hint  # type: ignore
+                    self.ctx.set_expr_type(expr, inner_hint)
+                    return inner_hint
 
         # Fall back to regular analysis, propagating hint through context
         # for functions that need it (e.g. unsafe_cast)
@@ -273,9 +276,9 @@ class ExpressionAnalyzer:
                 )
 
         # Value optionals in operator expressions use runtime null checks unless
-        # flow already proved non-None for the specific expression.
         left_effective = left_type
         right_effective = right_type
+        # flow already proved non-None for the specific expression.
         warned_optional_operator = False
         if expr.op not in ("is", "is not", "&&", "||", "in", "not in", "==", "!="):
             if isinstance(left_effective, OptionalType) and left_effective.inner.is_value_type():
@@ -303,11 +306,14 @@ class ExpressionAnalyzer:
 
         # Identity operators (is / is not) -- only valid with None
         if expr.op in ("is", "is not"):
-            if isinstance(left_type, NoneType) and isinstance(right_type, OptionalType):
+            # Unwrap ReadonlyType for Optional checks (readonly[T | None] is still Optional)
+            left_check = unwrap_readonly(left_type)
+            right_check = unwrap_readonly(right_type)
+            if isinstance(left_check, NoneType) and isinstance(right_check, OptionalType):
                 return BOOL
-            if isinstance(right_type, NoneType) and isinstance(left_type, OptionalType):
+            if isinstance(right_check, NoneType) and isinstance(left_check, OptionalType):
                 return BOOL
-            if isinstance(left_type, NoneType) and isinstance(right_type, NoneType):
+            if isinstance(left_check, NoneType) and isinstance(right_check, NoneType):
                 return BOOL
             raise self.ctx.error(
                 f"'is' / 'is not' can only compare Optional types with None, "
@@ -481,15 +487,18 @@ class ExpressionAnalyzer:
         obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers
+        is_readonly_obj = isinstance(obj_type, ReadonlyType)
         actual_type = obj_type
-        if isinstance(obj_type, OwnType):
-            actual_type = obj_type.wrapped
-        elif isinstance(obj_type, OptionalType):
-            if obj_type.inner.is_value_type():
+        if isinstance(actual_type, ReadonlyType):
+            actual_type = actual_type.wrapped
+        if isinstance(actual_type, OwnType):
+            actual_type = actual_type.wrapped
+        elif isinstance(actual_type, OptionalType):
+            if actual_type.inner.is_value_type():
                 raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
             expr.needs_optional_runtime_check = True
-            actual_type = obj_type.inner
+            actual_type = actual_type.inner
 
         # Deref chain loop -- resolves through Ptr, ConstPtr, and any Deref[T] type
         current_type = actual_type
@@ -503,6 +512,10 @@ class ExpressionAnalyzer:
                         and isinstance(expr.obj, TpyName)
                         and expr.obj.name in self.ctx.non_null_ptr_vars):
                     expr.ptr_non_null = True
+                # Propagate readonly: accessing a non-value field through a
+                # readonly reference yields a readonly result.
+                if is_readonly_obj and not result.is_value_type():
+                    result = ReadonlyType(unwrap_readonly(result))
                 return result
 
             deref_target = self.get_deref_target_type(current_type)
@@ -622,18 +635,23 @@ class ExpressionAnalyzer:
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)
 
+        # Unwrap ReadonlyType, remember the flag
+        is_readonly_obj = isinstance(obj_type, ReadonlyType)
+        actual_type = unwrap_readonly(obj_type)
+
         # Optional[T] index access uses runtime null checks for unproven access.
-        actual_type = obj_type
-        if isinstance(obj_type, OptionalType):
-            if obj_type.inner.is_value_type():
+        if isinstance(actual_type, OptionalType):
+            if actual_type.inner.is_value_type():
                 raise self.ctx.error(f"Cannot index type {obj_type}", expr)
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
             expr.needs_optional_runtime_check = True
-            actual_type = obj_type.inner
+            actual_type = actual_type.inner
 
         # Use get_element_type() trait for containers and strings
         elem_type = actual_type.get_element_type()
         if elem_type is not None:
+            if is_readonly_obj and not elem_type.is_value_type():
+                elem_type = ReadonlyType(unwrap_readonly(elem_type))
             return self.narrowing.narrow_optional_expr_type(expr, elem_type)
 
         # Protocol types - lookup __getitem__ return type
@@ -641,6 +659,8 @@ class ExpressionAnalyzer:
             ret = self.narrowing._get_protocol_getitem_type(actual_type)
             if ret is None:
                 raise self.ctx.error(f"Protocol {actual_type.name} does not support indexing", expr)
+            if is_readonly_obj and not ret.is_value_type():
+                ret = ReadonlyType(unwrap_readonly(ret))
             return self.narrowing.narrow_optional_expr_type(expr, ret)
 
         # User records with __getitem__ method
@@ -648,6 +668,8 @@ class ExpressionAnalyzer:
             ret = self.narrowing._get_record_getitem_type(actual_type)
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
+            if is_readonly_obj and not ret.is_value_type():
+                ret = ReadonlyType(unwrap_readonly(ret))
             return self.narrowing.narrow_optional_expr_type(expr, ret)
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)

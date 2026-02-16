@@ -10,8 +10,9 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
-    PtrType, ConstPtrType,
+    PtrType, ConstPtrType, ReadonlyType,
 )
+from .registration import IMPLICIT_READONLY_METHODS
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt
 )
@@ -141,6 +142,11 @@ class MethodAnalyzer:
 
         obj_type = self.expr.analyze_expr(expr.obj)
 
+        # Unwrap ReadonlyType, remembering the flag for enforcement
+        is_readonly_receiver = isinstance(obj_type, ReadonlyType)
+        if isinstance(obj_type, ReadonlyType):
+            obj_type = obj_type.wrapped
+
         if isinstance(obj_type, OwnType):
             obj_type = obj_type.wrapped
         elif isinstance(obj_type, OptionalType):
@@ -170,6 +176,13 @@ class MethodAnalyzer:
                         and isinstance(expr.obj, TpyName)
                         and expr.obj.name in self.ctx.non_null_ptr_vars):
                     expr.ptr_non_null = True
+                # Enforce readonly: cannot call non-readonly method on readonly receiver
+                if is_readonly_receiver:
+                    info = expr.resolved_function_info
+                    if info is not None and not info.is_readonly:
+                        raise self.ctx.error(
+                            f"Cannot call non-readonly method '{expr.method}' on readonly reference",
+                            expr)
                 return result
 
             deref_target = self.expr.get_deref_target_type(current_type)
@@ -433,7 +446,7 @@ class MethodAnalyzer:
                 params=params,
                 return_type=return_type,
                 is_method=True,
-                is_readonly=False,
+                is_readonly=expr.method in IMPLICIT_READONLY_METHODS,
             )
             if len(expr.args) != len(params):
                 raise self.ctx.error(
@@ -461,7 +474,7 @@ class MethodAnalyzer:
                     params=params,
                     return_type=return_type,
                     is_method=True,
-                    is_readonly=False,
+                    is_readonly=expr.method in IMPLICIT_READONLY_METHODS,
                 )
                 if len(expr.args) != len(params):
                     raise self.ctx.error(
@@ -528,6 +541,12 @@ class MethodAnalyzer:
                 expr.super_parent_type = parent_type
                 return VOID
 
+        # Check readonly constraint: super() in @readonly method inherits readonly
+        is_readonly_context = (
+            isinstance(self.ctx.current_function, TpyFunction)
+            and self.ctx.current_function.is_readonly
+        )
+
         # Look up the method in the parent class
         # For __init__, we already have init_overloads; for other methods, look up
         if expr.method == "__init__":
@@ -561,6 +580,12 @@ class MethodAnalyzer:
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
 
+            # Check readonly constraint on super() calls
+            if is_readonly_context and not resolved.is_readonly:
+                raise self.ctx.error(
+                    f"Cannot call non-readonly method '{expr.method}' on readonly reference",
+                    expr)
+
             # Store parent type for codegen
             expr.resolved_function_info = resolved
             expr.super_parent_type = parent_type
@@ -582,6 +607,12 @@ class MethodAnalyzer:
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
                 expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
+            # Check readonly constraint on super() calls
+            if is_readonly_context and not resolved.is_readonly:
+                raise self.ctx.error(
+                    f"Cannot call non-readonly method '{expr.method}' on readonly reference",
+                    expr)
+
             # Store parent type for codegen
             expr.resolved_function_info = resolved
             expr.super_parent_type = parent_type

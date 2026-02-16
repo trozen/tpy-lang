@@ -22,6 +22,17 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 
+# Dunders that are implicitly @readonly (don't mutate self).
+# Matches the former CONST_METHODS set from codegen; now sema is the source of truth.
+IMPLICIT_READONLY_METHODS = frozenset({
+    "__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
+    "__lt__", "__le__", "__gt__", "__ge__",
+    "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
+    "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
+    "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
+    "__neg__", "__pos__", "__invert__",
+})
+
 
 class TypeRegistrar:
     """Registers builtin types, records, protocols, and functions."""
@@ -159,11 +170,15 @@ class TypeRegistrar:
                     f"Protocols are only valid for free function parameters",
                     record.loc,
                 )
+            resolved_readonly = method.is_readonly or (
+                method.name in IMPLICIT_READONLY_METHODS and not method.readonly_opt_out
+            )
+            method.is_readonly = resolved_readonly
             methods[method.name] = [FunctionInfo(
                 name=method.name,
                 params=[ParamInfo(n, t) for n, t in method.params],
                 return_type=method.return_type,
-                is_readonly=method.is_readonly,
+                is_readonly=resolved_readonly,
                 is_method=True,
                 is_staticmethod=method.is_staticmethod,
                 linkage=method.linkage,
