@@ -152,6 +152,12 @@ class BuiltinGenerator:
             gen_args = [self._gen_expr_deref(arg, ptype)
                         for arg, (_, ptype) in zip(expr.args, fi.params)]
             return fi.cpp_template.format(*gen_args)
+        # unsafe_cast: build reinterpret_cast at codegen time so native type
+        # names (_native_cpp_names) are resolved correctly across modules.
+        if fi and fi.name == "unsafe_cast":
+            target_cpp = fi.return_type.to_cpp()
+            arg = self._gen_expr_deref(expr.args[0], fi.params[0].type)
+            return f"reinterpret_cast<{target_cpp}>({arg})"
         # Fallback: re-resolve (shouldn't normally be needed)
         overload, gen_args = self._match_overload_args(expr, overloads)
         return overload.cpp_template.format(*gen_args)

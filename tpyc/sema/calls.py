@@ -372,15 +372,14 @@ class CallAnalyzer:
                 "unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)", expr
             )
 
-        # Build cpp template: reinterpret_cast<target_cpp*>(arg)
-        target_cpp = target_type.to_cpp()
+        # cpp_template is built at codegen time so that native type names
+        # (from _native_cpp_names) are resolved correctly across modules.
         expr.resolved_function_info = FunctionInfo(
             name="unsafe_cast",
             params=[ParamInfo("p", arg_type)],
             return_type=target_type,
             is_builtin_function=True,
             special_handling=True,
-            cpp_template=f"reinterpret_cast<{target_cpp}>({{0}})",
         )
         return target_type
 
