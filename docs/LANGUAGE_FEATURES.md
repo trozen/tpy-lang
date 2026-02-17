@@ -460,7 +460,7 @@ Key features:
 - **Working**: `Ptr[T]` -> `T*`
 - **Working**: `ConstPtr[T]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
-- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_cast`, `unsafe_const_cast`)
+- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`)
 - **Planned**: `Ref[T]` -> `T&` (explicit reference)
 - **Planned**: `ConstRef[T]` -> `const T&`
 
@@ -816,6 +816,27 @@ unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), UInt32(3))  # Ptr[T], Ptr[T]|Con
 ```
 
 Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[T]` or `ConstPtr[T]`.
+
+**`unsafe_ptr_add`** -- advance a pointer by a signed element offset:
+
+```python
+from tpy.unsafe import unsafe_ptr_add
+
+p: Ptr[Int32] = unsafe_ptr(arr)
+q: Ptr[Int32] = unsafe_ptr_add(p, Int64(3))   # Ptr[T], Int64 -> Ptr[T]
+```
+
+Generates `(p + 3)` in C++. The offset is in elements (not bytes). Negative offsets move the pointer backward. Works with both `Ptr[T]` and `ConstPtr[T]`.
+
+**`unsafe_ptr_diff`** -- compute the element distance between two pointers:
+
+```python
+from tpy.unsafe import unsafe_ptr_diff
+
+d: Int64 = unsafe_ptr_diff(p2, p1)   # Ptr[T], Ptr[T] -> Int64
+```
+
+Generates `static_cast<int64_t>(p2 - p1)` in C++. Returns the number of elements between the two pointers (negative if `p2` precedes `p1`). Both pointers must point into the same allocation. Works with both `Ptr[T]` and `ConstPtr[T]`.
 
 **`unsafe_const_cast`** -- remove const from a pointer:
 

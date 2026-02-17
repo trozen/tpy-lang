@@ -6,7 +6,7 @@ Unsafe pointer operations that require explicit import.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
 from tpyc.typesys import (
-    STR, CHAR, VOID, UINT32,
+    STR, CHAR, VOID, UINT32, INT64,
     ArrayType, ListType, TypeParamRef, PtrType, ConstPtrType, OwnType,
 )
 
@@ -95,6 +95,37 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("p", ConstPtrType(T))],
             returns=PtrType(T),
             cpp="const_cast<{T}*>({0})",
+        ),
+    ])
+
+    # unsafe_ptr_add: advance a pointer by a signed element offset
+    module.function("unsafe_ptr_add", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(T)), ParamDef("delta", INT64)],
+            returns=PtrType(T),
+            cpp="({0} + {1})",
+        ),
+        MethodDef(
+            params=[ParamDef("p", ConstPtrType(T)), ParamDef("delta", INT64)],
+            returns=ConstPtrType(T),
+            cpp="({0} + {1})",
+        ),
+    ])
+
+    # unsafe_ptr_diff: distance between two pointers in elements
+    # Returns Int64 (maps to int64_t). In the future this could become a
+    # configurable platform type alias (e.g. PtrDiffType) similar to how
+    # default_int works for integer literals.
+    module.function("unsafe_ptr_diff", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p1", PtrType(T)), ParamDef("p2", PtrType(T))],
+            returns=INT64,
+            cpp="static_cast<int64_t>({0} - {1})",
+        ),
+        MethodDef(
+            params=[ParamDef("p1", ConstPtrType(T)), ParamDef("p2", ConstPtrType(T))],
+            returns=INT64,
+            cpp="static_cast<int64_t>({0} - {1})",
         ),
     ])
 
