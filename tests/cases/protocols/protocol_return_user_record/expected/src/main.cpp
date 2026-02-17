@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 19: def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
-template<PointFactory T>
-Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {
-  // 20:     return factory.create_point(x, y)
-  return factory.create_point(x, y);
-}
-
 // 22: def main() -> None:
 void main() {
   // 23:     factory = DefaultFactory()

@@ -7,21 +7,6 @@ std::string_view __name__;
 // 42: obj = Impl(42)
 Impl* obj{};
 
-// @readonly
-// 34: def read_via_child(x: Child) -> Int32:
-template<Child T_x>
-int32_t read_via_child(T_x& x) {
-  // 35:     return x.read()
-  return x.read();
-}
-
-// 38: def read_via_bound[T: Child](x: readonly[T]) -> Int32:
-template<Child T>
-int32_t read_via_bound(const T& x) {
-  // 39:     return x.read()
-  return x.read();
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

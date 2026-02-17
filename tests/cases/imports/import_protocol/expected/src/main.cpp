@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 13: def show(p: Printable) -> None:
-template<tpy_user::traits::Printable T_p>
-void show(T_p& p) {
-  // 14:     print(p.to_string())
-  std::cout << p.to_string() << "\n";
-}
-
 // 16: def main() -> Int32:
 int32_t main() {
   // 17:     m = Message("Hello")

@@ -32,8 +32,14 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
   return os;
 }
 
+// 15: def get_length[T: Sized](item: T) -> Int32:
 template<tpy::Sized T>
-int32_t get_length(tpy::param_val_or_ref_t<T> item);
+int32_t get_length(tpy::param_val_or_ref_t<T> item) {
+  // 16:     # Note: Can't call len(item) here yet - returning fixed value
+  // 17:     # This tests that the bound is validated during inference
+  // 18:     return 42
+  return 42;
+}
 void main();
 
 void __tpy_init();

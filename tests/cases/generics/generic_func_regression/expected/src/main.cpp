@@ -30,21 +30,6 @@ int32_t second_num{};
 // 47: result = First([5, 6, 7]) + 10
 int32_t result{};
 
-// # Uppercase generic function (tests routing: function vs type)
-// 5: def First[T](items: list[T]) -> T:
-template<typename T>
-tpy::return_val_or_ref_t<T> First(std::vector<T>& items) {
-  // 6:     return items[0]
-  return tpy::get_item(items, 0);
-}
-
-// 16: def get_item[T](items: list[T], idx: Int32) -> T:
-template<typename T>
-tpy::return_val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
-  // 17:     return items[idx]
-  return tpy::get_item(items, idx);
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

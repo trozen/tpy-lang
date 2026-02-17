@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 25: def create_pair[T: PairFactory](factory: T, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
-template<PairFactory T>
-SortedPair<int32_t> create_pair(tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b) {
-  // 26:     return factory.make_pair(a, b)
-  return factory.make_pair(a, b);
-}
-
 // 28: def main() -> None:
 void main() {
   // 29:     factory = DefaultPairFactory()

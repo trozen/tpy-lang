@@ -151,14 +151,39 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
   return os;
 }
 
+// # Function using protocol field
+// 78: def get_value[T: HasValue](item: T) -> Int32:
 template<HasValue T>
-int32_t get_value(tpy::param_val_or_ref_t<T> item);
+int32_t get_value(tpy::param_val_or_ref_t<T> item) {
+  // 79:     return item.value
+  return item.value;
+}
+// # Function using protocol with multiple fields
+// 83: def sum_xy[T: HasXY](item: T) -> Int32:
 template<HasXY T>
-int32_t sum_xy(tpy::param_val_or_ref_t<T> item);
+int32_t sum_xy(tpy::param_val_or_ref_t<T> item) {
+  // 84:     return item.x + item.y
+  return (tpy::add_check<int32_t>(item.x, item.y));
+}
+// # Function using protocol with field and method
+// 88: def describe[T: Container](item: T) -> Int32:
 template<Container T>
-int32_t describe(tpy::param_val_or_ref_t<T> item);
+int32_t describe(tpy::param_val_or_ref_t<T> item) {
+  // 89:     if item.is_empty():
+  if (item.is_empty()) {
+    // 90:         return 0
+    return 0;
+  }
+  // 91:     return item.count
+  return item.count;
+}
+// # Function using generic protocol with field
+// 95: def get_item[T: Holder[Int32]](holder: T) -> Int32:
 template<Holder<int32_t> T>
-int32_t get_item(tpy::param_val_or_ref_t<T> holder);
+int32_t get_item(tpy::param_val_or_ref_t<T> holder) {
+  // 96:     return holder.item
+  return holder.item;
+}
 void main();
 
 void __tpy_init();

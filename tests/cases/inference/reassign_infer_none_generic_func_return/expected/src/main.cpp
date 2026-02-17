@@ -7,13 +7,6 @@ std::string_view __name__;
 // 8: x = None
 std::optional<int32_t> x;
 
-// 4: def first[T](items: list[T]) -> T:
-template<typename T>
-tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
-  // 5:     return items[0]
-  return tpy::get_item(items, 0);
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

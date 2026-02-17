@@ -5,15 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 20: def print_item[T: Printable](item: T) -> None:
-template<Printable T>
-void print_item(tpy::param_val_or_ref_t<T> item) {
-  // 21:     # Note: Can't call item.to_string() inside generic yet
-  // 22:     # This tests that the bound is validated during inference
-  // 23:     print("got printable")
-  std::cout << "got printable" << "\n";
-}
-
 // 25: def main() -> None:
 void main() {
   // 26:     p = Point(10, 20)

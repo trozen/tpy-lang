@@ -5,27 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 41: def extract[C: Container[Int32]](c: C) -> Int32:
-template<Container<int32_t> C>
-int32_t extract(tpy::param_val_or_ref_t<C> c) {
-  // 42:     return c.get()
-  return c.get();
-}
-
-// 45: def update[C: Container[Int32]](c: C, v: Int32) -> None:
-template<Container<int32_t> C>
-void update(tpy::param_val_or_ref_t<C> c, int32_t v) {
-  // 46:     c.set(v)
-  c.set(v);
-}
-
-// 49: def extract_str[C: Container[str]](c: C) -> str:
-template<Container<std::string_view> C>
-std::string_view extract_str(tpy::param_val_or_ref_t<C> c) {
-  // 50:     return c.get()
-  return c.get();
-}
-
 // 53: def main() -> None:
 void main() {
   // 54:     # Test with IntBox

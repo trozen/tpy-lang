@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 5: def identity[T: Sized](item: T) -> T:
-template<tpy::Sized T>
-tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item) {
-  // 6:     return item
-  return item;
-}
-
 // 8: def main() -> None:
 void main() {
   // 9:     # list[int] satisfies Sized, so inference should work

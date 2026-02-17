@@ -5,31 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 16: def sum_seq(s: Sequence[Int32]) -> Int32:
-template<tpy::Sequence<int32_t> T_s>
-int32_t sum_seq(T_s& s) {
-  // 17:     total: Int32 = 0
-  int32_t total = 0;
-  // 18:     i: Int32 = 0
-  int32_t i = 0;
-  // 19:     while i < len(s):
-  while ((i < tpy::__len__(s))) {
-    // 20:         total += s[i]
-    total = tpy::add_check<int32_t>(total, tpy::__getitem__(s, i));
-    // 21:         i += 1
-    i = tpy::add_check<int32_t>(i, 1);
-  }
-  // 22:     return total
-  return total;
-}
-
-// 24: def first(s: Sequence[Int32]) -> Int32:
-template<tpy::Sequence<int32_t> T_s>
-int32_t first(T_s& s) {
-  // 25:     return s[0]
-  return tpy::__getitem__(s, 0);
-}
-
 // 27: def main() -> None:
 void main() {
   // 28:     nums: list[Int32] = [10, 20, 30, 40]

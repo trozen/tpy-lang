@@ -5,23 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// # 2. Pass to function taking OptIterator[Int32] (structural conformance)
-// 23: def sum_iter(it: OptIterator[Int32]) -> Int32:
-template<tpy::OptIterator<int32_t> T_it>
-int32_t sum_iter(T_it& it) {
-  // 24:     total: Int32 = 0
-  int32_t total = 0;
-  // 25:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 26:         total += x
-    total = tpy::add_check<int32_t>(total, x);
-  }
-  // 27:     return total
-  return total;
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

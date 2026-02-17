@@ -7,23 +7,6 @@ std::string_view __name__;
 // 40: obj = Impl(42)
 Impl* obj{};
 
-// @readonly
-// 31: def safe_read(m: Mixed) -> Int32:
-template<Mixed T_m>
-int32_t safe_read(T_m& m) {
-  // 32:     return m.read()
-  return m.read();
-}
-
-// 35: def use_both(m: Mixed) -> Int32:
-template<Mixed T_m>
-int32_t use_both(T_m& m) {
-  // 36:     m.write(10)
-  m.write(10);
-  // 37:     return m.read()
-  return m.read();
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

@@ -47,10 +47,21 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
   return os;
 }
 
+// @readonly
+// 31: def safe_read(m: Mixed) -> Int32:
 template<Mixed T_m>
-int32_t safe_read(T_m& m);
+int32_t safe_read(T_m& m) {
+  // 32:     return m.read()
+  return m.read();
+}
+// 35: def use_both(m: Mixed) -> Int32:
 template<Mixed T_m>
-int32_t use_both(T_m& m);
+int32_t use_both(T_m& m) {
+  // 36:     m.write(10)
+  m.write(10);
+  // 37:     return m.read()
+  return m.read();
+}
 
 void __tpy_init();
 } // namespace tpy_user::main

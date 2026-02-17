@@ -40,10 +40,19 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// # Uppercase generic function (tests routing: function vs type)
+// 5: def First[T](items: list[T]) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> First(std::vector<T>& items);
+tpy::return_val_or_ref_t<T> First(std::vector<T>& items) {
+  // 6:     return items[0]
+  return tpy::get_item(items, 0);
+}
+// 16: def get_item[T](items: list[T], idx: Int32) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx);
+tpy::return_val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
+  // 17:     return items[idx]
+  return tpy::get_item(items, idx);
+}
 
 void __tpy_init();
 } // namespace tpy_user::main

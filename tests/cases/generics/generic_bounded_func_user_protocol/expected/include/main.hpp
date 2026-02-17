@@ -42,8 +42,14 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// 20: def print_item[T: Printable](item: T) -> None:
 template<Printable T>
-void print_item(tpy::param_val_or_ref_t<T> item);
+void print_item(tpy::param_val_or_ref_t<T> item) {
+  // 21:     # Note: Can't call item.to_string() inside generic yet
+  // 22:     # This tests that the bound is validated during inference
+  // 23:     print("got printable")
+  std::cout << "got printable" << "\n";
+}
 void main();
 
 void __tpy_init();

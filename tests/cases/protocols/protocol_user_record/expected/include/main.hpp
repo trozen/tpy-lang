@@ -32,8 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
   return os;
 }
 
+// 13: def count(items: Sized) -> Int32:
 template<tpy::Sized T_items>
-int32_t count(T_items& items);
+int32_t count(T_items& items) {
+  // 14:     return len(items)
+  return tpy::__len__(items);
+}
 void main();
 
 void __tpy_init();

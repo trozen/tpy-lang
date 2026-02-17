@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 29: def show(h: HasValue) -> None:
-template<HasValue T_h>
-void show(T_h& h) {
-  // 30:     print(h.get())
-  std::cout << h.get() << "\n";
-}
-
 // 32: def main() -> None:
 void main() {
   // 33:     # Test 1: Constructor call (rvalue)

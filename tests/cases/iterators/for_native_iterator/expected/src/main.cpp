@@ -5,52 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 18: def sum_iter(it: OptIterator[Int32]) -> Int32:
-template<tpy::OptIterator<int32_t> T_it>
-int32_t sum_iter(T_it& it) {
-  // 19:     total: Int32 = 0
-  int32_t total = 0;
-  // 20:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 21:         total += x
-    total = tpy::add_check<int32_t>(total, x);
-  }
-  // 22:     return total
-  return total;
-}
-
-// 24: def count_iter(it: OptIterator[Int32]) -> Int32:
-template<tpy::OptIterator<int32_t> T_it>
-int32_t count_iter(T_it& it) {
-  // 25:     n: Int32 = 0
-  int32_t n = 0;
-  // 26:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 27:         n += 1
-    n = tpy::add_check<int32_t>(n, 1);
-  }
-  // 28:     return n
-  return n;
-}
-
-// 30: def first_or_fallback(it: OptIterator[Int32], fallback: Int32) -> Int32:
-template<tpy::OptIterator<int32_t> T_it>
-int32_t first_or_fallback(T_it& it, int32_t fallback) {
-  // 31:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 32:         return x
-    return x;
-  }
-  // 33:     return fallback
-  return fallback;
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

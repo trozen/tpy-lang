@@ -53,10 +53,19 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
   return os;
 }
 
+// @readonly
+// 34: def read_via_child(x: Child) -> Int32:
 template<Child T_x>
-int32_t read_via_child(T_x& x);
+int32_t read_via_child(T_x& x) {
+  // 35:     return x.read()
+  return x.read();
+}
+// 38: def read_via_bound[T: Child](x: readonly[T]) -> Int32:
 template<Child T>
-int32_t read_via_bound(const T& x);
+int32_t read_via_bound(const T& x) {
+  // 39:     return x.read()
+  return x.read();
+}
 
 void __tpy_init();
 } // namespace tpy_user::main

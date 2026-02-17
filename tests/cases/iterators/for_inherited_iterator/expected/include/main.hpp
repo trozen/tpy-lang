@@ -76,8 +76,22 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {
   return os;
 }
 
+// # 2. Pass inherited iterator to OptIterator[Int32] param
+// 32: def sum_iter(it: OptIterator[Int32]) -> Int32:
 template<tpy::OptIterator<int32_t> T_it>
-int32_t sum_iter(T_it& it);
+int32_t sum_iter(T_it& it) {
+  // 33:     total: Int32 = 0
+  int32_t total = 0;
+  // 34:     for x in it:
+  auto& __iter_0 = it;
+  while (auto __opt_0 = __iter_0.__next_opt__()) {
+    int32_t x = *__opt_0;
+    // 35:         total += x
+    total = tpy::add_check<int32_t>(total, x);
+  }
+  // 36:     return total
+  return total;
+}
 
 void __tpy_init();
 } // namespace tpy_user::main

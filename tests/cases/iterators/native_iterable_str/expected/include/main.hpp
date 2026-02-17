@@ -7,12 +7,46 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+// 4: def count_chars(text: NativeIterable[Char]) -> Int32:
 template<tpy::NativeIterable<char> T_text>
-int32_t count_chars(T_text& text);
+int32_t count_chars(T_text& text) {
+  // 5:     """Function accepting NativeIterable[Char] - str should work."""
+  // 6:     count: Int32 = 0
+  int32_t count = 0;
+  // 7:     for c in text:
+  for (char c : text) {
+    // 8:         count += 1
+    count = tpy::add_check<int32_t>(count, 1);
+  }
+  // 9:     return count
+  return count;
+}
+// 11: def first_char(text: NativeIterable[Char]) -> Char:
 template<tpy::NativeIterable<char> T_text>
-char first_char(T_text& text);
+char first_char(T_text& text) {
+  // 12:     """Get first character via iteration."""
+  // 13:     for c in text:
+  for (char c : text) {
+    // 14:         return c
+    return c;
+  }
+  // 15:     return chr(0)
+  return static_cast<char>(0);
+}
+// 17: def sum_span(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
-int32_t sum_span(T_items& items);
+int32_t sum_span(T_items& items) {
+  // 18:     """Test that Span also conforms to NativeIterable via extends."""
+  // 19:     total: Int32 = 0
+  int32_t total = 0;
+  // 20:     for x in items:
+  for (int32_t x : items) {
+    // 21:         total += x
+    total = tpy::add_check<int32_t>(total, x);
+  }
+  // 22:     return total
+  return total;
+}
 void main();
 
 void __tpy_init();

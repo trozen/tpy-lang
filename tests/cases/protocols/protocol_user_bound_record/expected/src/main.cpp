@@ -5,14 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// # Generic function using the factory protocol
-// 38: def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
-template<ContainerFactory F>
-Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text) {
-  // 39:     return factory.make(text)
-  return factory.make(text);
-}
-
 // 41: def main() -> None:
 void main() {
   // 42:     factory = DefaultFactory()

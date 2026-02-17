@@ -77,8 +77,12 @@ inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
   return os;
 }
 
+// 29: def show(h: HasValue) -> None:
 template<HasValue T_h>
-void show(T_h& h);
+void show(T_h& h) {
+  // 30:     print(h.get())
+  std::cout << h.get() << "\n";
+}
 void main();
 
 void __tpy_init();

@@ -46,10 +46,23 @@ inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
   return os;
 }
 
+// 19: def is_less[T: Comparable](a: T, b: T) -> bool:
 template<tpy::Comparable T>
-bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+  // 20:     return a < b
+  return (a < b);
+}
+// 23: def find_min[T: Comparable](a: T, b: T) -> T:
 template<tpy::Comparable T>
-tpy::return_val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+tpy::return_val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+  // 24:     if a < b:
+  if ((a < b)) {
+    // 25:         return a
+    return a;
+  }
+  // 26:     return b
+  return b;
+}
 void main();
 
 void __tpy_init();

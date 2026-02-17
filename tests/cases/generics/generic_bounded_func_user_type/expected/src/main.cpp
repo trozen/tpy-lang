@@ -5,15 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 15: def get_length[T: Sized](item: T) -> Int32:
-template<tpy::Sized T>
-int32_t get_length(tpy::param_val_or_ref_t<T> item) {
-  // 16:     # Note: Can't call len(item) here yet - returning fixed value
-  // 17:     # This tests that the bound is validated during inference
-  // 18:     return 42
-  return 42;
-}
-
 // 20: def main() -> None:
 void main() {
   // 21:     c = MyContainer([1, 2, 3, 4, 5])

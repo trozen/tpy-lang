@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 7: def count(items: Measurable) -> Int32:
-template<Measurable T_items>
-int32_t count(T_items& items) {
-  // 8:     return len(items)
-  return tpy::__len__(items);
-}
-
 // 10: def main() -> None:
 void main() {
   // 11:     nums: list[Int32] = [1, 2, 3]

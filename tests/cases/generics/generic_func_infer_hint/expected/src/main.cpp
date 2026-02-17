@@ -15,13 +15,6 @@ std::vector<tpy::BigInt>* nums{};
 // 16: result2: int = first(nums)
 tpy::BigInt result2;
 
-// 5: def first[T](items: list[T]) -> T:
-template<typename T>
-tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
-  // 6:     return items[0]
-  return tpy::get_item(items, 0);
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

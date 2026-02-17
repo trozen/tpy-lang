@@ -7,16 +7,61 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+// 3: def sum_iter(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
-int32_t sum_iter(T_items& items);
+int32_t sum_iter(T_items& items) {
+  // 4:     total: Int32 = 0
+  int32_t total = 0;
+  // 5:     for x in items:
+  for (int32_t x : items) {
+    // 6:         total += x
+    total = tpy::add_check<int32_t>(total, x);
+  }
+  // 7:     return total
+  return total;
+}
+// 9: def print_all(items: NativeIterable[Int32]) -> None:
 template<tpy::NativeIterable<int32_t> T_items>
-void print_all(T_items& items);
+void print_all(T_items& items) {
+  // 10:     for x in items:
+  for (int32_t x : items) {
+    // 11:         print(x)
+    std::cout << x << "\n";
+  }
+}
+// 13: def process_and_sum(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
-int32_t process_and_sum(T_items& items);
+int32_t process_and_sum(T_items& items) {
+  // 14:     # Test protocol-to-protocol passing: NativeIterable[T] -> NativeIterable[T]
+  // 15:     print_all(items)
+  print_all(items);
+  // 16:     return sum_iter(items)
+  return sum_iter(items);
+}
+// 18: def nested_iteration(outer: NativeIterable[Int32], inner: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_outer, tpy::NativeIterable<int32_t> T_inner>
-int32_t nested_iteration(T_outer& outer, T_inner& inner);
+int32_t nested_iteration(T_outer& outer, T_inner& inner) {
+  // 19:     # Test nested for loops over protocol-typed params
+  // 20:     total: Int32 = 0
+  int32_t total = 0;
+  // 21:     for x in outer:
+  for (int32_t x : outer) {
+    // 22:         for y in inner:
+    for (int32_t y : inner) {
+      // 23:             total += x * y
+      total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(x, y)));
+    }
+  }
+  // 24:     return total
+  return total;
+}
+// 26: def contains_value(items: NativeIterable[Int32], target: Int32) -> bool:
 template<tpy::NativeIterable<int32_t> T_items>
-bool contains_value(T_items& items, int32_t target);
+bool contains_value(T_items& items, int32_t target) {
+  // 27:     # Test "in" operator with NativeIterable-typed param
+  // 28:     return target in items
+  return (std::find(items.begin(), items.end(), target) != items.end());
+}
 void main();
 
 void __tpy_init();

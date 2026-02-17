@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 13: def count(items: Sized) -> Int32:
-template<tpy::Sized T_items>
-int32_t count(T_items& items) {
-  // 14:     return len(items)
-  return tpy::__len__(items);
-}
-
 // 16: def main() -> None:
 void main() {
   // 17:     c: MyContainer = MyContainer(42)

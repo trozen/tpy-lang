@@ -5,20 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 4: def first_char(s: Sequence[Char]) -> Char:
-template<tpy::Sequence<char> T_s>
-char first_char(T_s& s) {
-  // 5:     return s[0]
-  return tpy::__getitem__(s, 0);
-}
-
-// 7: def count_chars(s: Sequence[Char]) -> Int32:
-template<tpy::Sequence<char> T_s>
-int32_t count_chars(T_s& s) {
-  // 8:     return len(s)
-  return tpy::__len__(s);
-}
-
 // 10: def main() -> None:
 void main() {
   // 11:     text: str = "hello"

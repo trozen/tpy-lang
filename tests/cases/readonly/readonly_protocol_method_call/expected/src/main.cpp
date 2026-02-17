@@ -7,14 +7,6 @@ std::string_view __name__;
 // 11: items: list[Int32] = []
 std::vector<int32_t>* items{};
 
-// @readonly
-// 7: def get_len(s: Sized) -> Int32:
-template<tpy::Sized T_s>
-int32_t get_len(T_s& s) {
-  // 8:     return len(s)  # tpyc: ok
-  return tpy::__len__(s);
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

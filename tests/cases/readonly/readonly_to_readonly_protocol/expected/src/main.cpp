@@ -5,20 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 5: def get_len(s: Sized) -> Int32:
-template<tpy::Sized T_s>
-int32_t get_len(T_s& s) {
-  // 6:     return Int32(len(s))
-  return tpy::__len__(s);
-}
-
-// 8: def get_first(s: Sequence[Int32]) -> Int32:
-template<tpy::Sequence<int32_t> T_s>
-int32_t get_first(T_s& s) {
-  // 9:     return s[0]
-  return tpy::__getitem__(s, 0);
-}
-
 // 11: def observe(items: readonly[list[Int32]]) -> None:
 void observe(const std::vector<int32_t>& items) {
   // 12:     print(get_len(items))

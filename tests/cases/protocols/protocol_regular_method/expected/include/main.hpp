@@ -38,8 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
   return os;
 }
 
+// 17: def double_it(d: Duplicable) -> None:
 template<Duplicable T_d>
-void double_it(T_d& d);
+void double_it(T_d& d) {
+  // 18:     result = d.duplicate()
+  auto result = d.duplicate();
+}
 void main();
 
 void __tpy_init();

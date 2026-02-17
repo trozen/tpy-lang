@@ -5,13 +5,6 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 17: def double_it(d: Duplicable) -> None:
-template<Duplicable T_d>
-void double_it(T_d& d) {
-  // 18:     result = d.duplicate()
-  auto result = d.duplicate();
-}
-
 // 20: def main() -> None:
 void main() {
   // 21:     v = Value(21)

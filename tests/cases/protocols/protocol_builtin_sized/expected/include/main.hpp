@@ -7,8 +7,12 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+// 4: def count(items: Sized) -> Int32:
 template<tpy::Sized T_items>
-int32_t count(T_items& items);
+int32_t count(T_items& items) {
+  // 5:     return len(items)
+  return tpy::__len__(items);
+}
 void main();
 
 void __tpy_init();

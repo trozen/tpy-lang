@@ -183,8 +183,10 @@ class CodeGenerator:
             self.functions.gen_global_decl(cpp, stmt)
         cpp.write("\n")
 
-        # Generate function definitions
+        # Generate function definitions (skip template functions -- defined in header)
         for func in module.functions:
+            if self.functions.is_template_function(func):
+                continue
             self.functions.gen_function_def(cpp, func)
             cpp.write("\n")
 

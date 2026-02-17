@@ -46,8 +46,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// 19: def add_points(a: Addable, b: Addable) -> None:
 template<Addable T_a, Addable T_b>
-void add_points(T_a& a, T_b& b);
+void add_points(T_a& a, T_b& b) {
+  // 20:     # Verify that a + b compiles (the protocol constraint allows it)
+  // 21:     result = a + b
+  auto result = (a + b);
+}
 void main();
 
 void __tpy_init();

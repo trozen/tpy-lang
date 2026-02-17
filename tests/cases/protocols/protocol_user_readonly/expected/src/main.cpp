@@ -7,13 +7,6 @@ std::string_view __name__;
 // 28: g = GoodReader(42)
 GoodReader* g{};
 
-// 24: def use_readable(r: Readable) -> Int32:
-template<Readable T_r>
-int32_t use_readable(T_r& r) {
-  // 25:     return r.read()
-  return r.read();
-}
-
 void __tpy_init() {
   static bool initialized = false;
   if (initialized) return;

@@ -94,8 +94,13 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
   return os;
 }
 
+// # Generic function using the factory protocol
+// 38: def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>
-Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text);
+Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text) {
+  // 39:     return factory.make(text)
+  return factory.make(text);
+}
 void main();
 
 void __tpy_init();

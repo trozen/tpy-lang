@@ -45,8 +45,19 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
   return os;
 }
 
+// 21: def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
-void use_calc(T_c& c);
+void use_calc(T_c& c) {
+  // 22:     # Test: Literal coercion to Int32 in protocol method calls
+  // 23:     result1 = c.add(10)
+  int32_t result1 = c.add(10);
+  // 24:     print(result1)
+  std::cout << result1 << "\n";
+  // 26:     result2 = c.multiply(6, 7)
+  int32_t result2 = c.multiply(6, 7);
+  // 27:     print(result2)
+  std::cout << result2 << "\n";
+}
 void main();
 
 void __tpy_init();
