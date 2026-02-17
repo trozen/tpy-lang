@@ -197,8 +197,9 @@ class TpyStmt:
 class VarLinkage(Enum):
     """Linkage mode for global variable imports."""
     DEFAULT = "default"
-    NATIVE = "native"        # C++ global import
-    NATIVE_C = "native_c"    # C global import (extern "C")
+    NATIVE = "native"           # C++ global import
+    NATIVE_C = "native_c"       # C global import (extern "C")
+    NATIVE_C_ARRAY = "native_c_array"  # C array global (extern "C" T name[])
 
 
 @dataclass

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, BIGINT, clear_native_cpp_names, register_native_cpp_name
+from ..typesys import TpyType, NamedType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, ConstPtrType, BIGINT, clear_native_cpp_names, register_native_cpp_name
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace
@@ -561,10 +561,19 @@ class CodeGenerator:
             for stmt in native_globals:
                 cpp_name = stmt.native_name or stmt.name
                 var_type = resolve_stmt_type_cascade(stmt, self.analyzer, self.types)
-                cpp_type = var_type.to_cpp()
-                if stmt.linkage == VarLinkage.NATIVE_C:
+                if stmt.linkage == VarLinkage.NATIVE_C_ARRAY:
+                    # C array global: Ptr[T] -> extern "C" T name[];
+                    # The incomplete array type decays to T* when used.
+                    if isinstance(var_type, (PtrType, ConstPtrType)):
+                        elem_cpp = var_type.pointee.to_cpp()
+                    else:
+                        elem_cpp = var_type.to_cpp()
+                    out.write(f'extern "C" {elem_cpp} {cpp_name}[];\n')
+                elif stmt.linkage == VarLinkage.NATIVE_C:
+                    cpp_type = var_type.to_cpp()
                     out.write(f'extern "C" {cpp_type} {cpp_name};\n')
                 else:
+                    cpp_type = var_type.to_cpp()
                     ns, bare = FunctionGenerator._split_native_name(cpp_name)
                     if ns:
                         out.write(f"namespace {ns} {{ extern {cpp_type} {bare}; }}\n")

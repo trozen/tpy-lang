@@ -321,13 +321,18 @@ def init_module() -> BuiltinModule:
         ),
     ], special_handling=True)
 
-    # native_c_global() / native_global()
+    # native_c_global() / native_global() / native_c_global_array()
     module.function("native_c_global", overloads=[
         MethodDef(params=[ParamDef("name", STR)], returns=VOID, cpp=""),
         MethodDef(params=[], returns=VOID, cpp=""),
     ], special_handling=True)
 
     module.function("native_global", overloads=[
+        MethodDef(params=[ParamDef("name", STR)], returns=VOID, cpp=""),
+        MethodDef(params=[], returns=VOID, cpp=""),
+    ], special_handling=True)
+
+    module.function("native_c_global_array", overloads=[
         MethodDef(params=[ParamDef("name", STR)], returns=VOID, cpp=""),
         MethodDef(params=[], returns=VOID, cpp=""),
     ], special_handling=True)

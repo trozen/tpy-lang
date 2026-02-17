@@ -2778,7 +2778,7 @@ Generated C++:
 Import extern C/C++ global variables:
 
 ```python
-from tpy import native_c_global, native_global, Int32
+from tpy import native_c_global, native_c_global_array, native_global, Int32, Ptr, Int16
 
 # C global (extern "C")
 frame_count: Int32 = native_c_global("DG_FrameCount")
@@ -2786,12 +2786,17 @@ frame_count: Int32 = native_c_global("DG_FrameCount")
 # C global without rename (Python name = C name)
 tick: Int32 = native_c_global()
 
+# C array global (extern "C" T name[]) -- for C arrays that decay to pointers
+# Use this instead of native_c_global when the C symbol is an array (T name[N]),
+# not a pointer (T* name). The type annotation should be Ptr[T].
+scores: Ptr[Int16] = native_c_global_array("g_scores")
+
 # C++ global (possibly namespaced)
 score: Int32 = native_global("engine::score")
 lives: Int32 = native_global()
 ```
 
-Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation.
+Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_c_global_array` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
 
 **Not yet supported:**
 - `# tpy: include()` header directives (planned)

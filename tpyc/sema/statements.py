@@ -379,7 +379,7 @@ class StatementAnalyzer:
             if (binding and binding.kind == BindingKind.IMPORTED_NAME
                     and binding.import_source
                     and binding.import_source[0] == "tpy"
-                    and binding.import_source[1] in ("native_c_global", "native_global")):
+                    and binding.import_source[1] in ("native_c_global", "native_global", "native_c_global_array")):
                 func_name = binding.import_source[1]
                 if not self.ctx.is_top_level:
                     raise self.ctx.error(
@@ -404,7 +404,12 @@ class StatementAnalyzer:
                         f"{func_name}() takes 0 or 1 arguments",
                         stmt
                     )
-                stmt.linkage = VarLinkage.NATIVE_C if func_name == "native_c_global" else VarLinkage.NATIVE
+                if func_name == "native_c_global":
+                    stmt.linkage = VarLinkage.NATIVE_C
+                elif func_name == "native_c_global_array":
+                    stmt.linkage = VarLinkage.NATIVE_C_ARRAY
+                else:
+                    stmt.linkage = VarLinkage.NATIVE
                 stmt.native_name = native_name
                 stmt.init = None
                 return
