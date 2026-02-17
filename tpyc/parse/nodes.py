@@ -434,6 +434,7 @@ class TpyRecord:
     bases: list[TpyType] = field(default_factory=list)
     linkage: RecordLinkage = RecordLinkage.DEFAULT
     native_name: str | None = None
+    is_nocopy: bool = False
     loc: SourceLocation | None = None
 
     @property

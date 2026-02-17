@@ -1,0 +1,1 @@
+main.tp.py:12: error: Cannot copy @nocopy type 'Handle'. @nocopy values can only be moved (pass directly at last use).

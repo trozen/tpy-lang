@@ -841,6 +841,50 @@ def wrapper[T](x: Own[T]) -> None:
 
 Generated C++: `template<typename T> void wrapper(T&& x) { sink<T>(std::forward<T>(x)); }`
 
+#### @nocopy Types (Working)
+
+Types decorated with `@nocopy` have their copy constructor and copy assignment deleted
+in C++. Values can only be moved (via auto-move at last use), never copied:
+
+```python
+from tpy import Int32, Own, nocopy
+
+@nocopy
+class Handle:
+    fd: Int32
+
+def close(h: Own[Handle]) -> Int32:
+    return h.fd
+
+def main():
+    h = Handle()
+    h.fd = 42
+    print(close(h))    # last use -> auto-move (std::move)
+```
+
+**Key rules for @nocopy types:**
+- `copy(h)` is a compile error -- copying is not available
+- Passing to `Own[T]` parameter works at last use (auto-moved)
+- Passing to `Own[T]` when NOT at last use is a compile error with a clear message
+- Non-consuming uses (field access, method calls, pass by reference) work normally
+- `alias = h` creates a `T&` reference (borrow), but aliases cannot be consumed
+- Returning a @nocopy local at last use works (C++ NRVO/implicit move)
+- **Known limitation**: auto-move does not yet check whether T& aliases are still live;
+  using an alias after the owner is moved is undefined behavior (planned fix: Phase 5)
+- `Own[T]` parameter forwarding works at last use
+
+Generated C++ for @nocopy records includes:
+```cpp
+struct Handle {
+  int32_t fd;
+  Handle() = default;
+  Handle(const Handle&) = delete;
+  Handle& operator=(const Handle&) = delete;
+  Handle(Handle&&) = default;
+  Handle& operator=(Handle&&) = default;
+};
+```
+
 #### Unsafe Memory Operations -- `tpy.unsafe` (Working)
 
 The `tpy.unsafe` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.

@@ -115,6 +115,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - @extern_c/@extern_cpp functions/classes etc
 - `# tpy: range-check=off`
 - warn on mutable globals
+- dead code detection
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
@@ -129,7 +130,6 @@ Random items that may or may not be implemented in the future, but putting them 
 
 ## Known Limitations
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
-- Own[T] local variable optimization: allow `return local_var` without copy() since C++ uses NRVO (Named Return Value Optimization). Currently requires explicit copy() for all lvalues.
 - Pointer-local slot reuse: reassigned T* pointer-locals allocate a fresh `std::optional<T>` slot per assignment. The initial slot could be reused after reassignment instead of allocating a new one.
 - Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope. (Note: `if`/`else` in functions is fixed — branch-declared vars are pre-declared before the if-statement.)
 - Generic Optional codegen mismatch: for generic records, `T | None` generates `T*`/`nullptr` instead of `std::optional<T>`. This breaks C++ concepts that expect `std::optional<ElemT>` (e.g., `tpy::OptIterator`). Value-type Optional (`Int32 | None` → `std::optional<int32_t>`) works fine.

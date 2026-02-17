@@ -260,41 +260,81 @@ For copyable types, `append` of a last-use variable auto-moves instead of copyin
 
 ## Implementation Phases
 
-### Phase 1: Liveness analysis
+### Phase 1: Liveness analysis -- DONE
 
-Add a last-use analysis pass. For each local variable / Own parameter, compute
-at each use site whether it is the last use. This is a backward dataflow analysis
-on the control flow -- no type information needed.
+Backward dataflow last-use analysis in `tpyc/liveness.py`. Handles linear code,
+branching (both/one branch), loops (conservative fixpoint), per-iteration variables.
+Output: `set[int]` of TpyName node IDs at their last use, stored in `ctx.all_last_uses`.
 
-Output: a set of AST nodes (or source locations) that are last-use sites.
+### Phase 2: Auto-move emission -- DONE
 
-Can potentially be integrated with the existing `prescan.py` reassignment scan, since
-both are pure AST walks. Alternatively, a separate pass that runs after prescan.
+Codegen emits `std::move(name)` at last-use sites for Tier 1 locals and `Own[T]`
+params. Generic `Own[T]` with type param T uses `std::forward<T>()`. Sema relaxes
+the lvalue-to-Own[T] error when the arg is at last use. Return sites allow
+`return p` without `copy()` when p is at last use (C++ NRVO/implicit move handles it).
 
-### Phase 2: Auto-move emission
+### Phase 3: Unnecessary copy() warnings -- DONE
 
-In codegen, when emitting a variable reference at a last-use site:
-- If the variable is Tier 1 local or Own parameter: emit `std::move(name)`
-- Otherwise: emit as today
+Warns when `copy(x)` is used at function call args or return sites where x is at
+last use. Uses `resolved_function_info.is_builtin_function` + `name == "copy"` to
+identify tpy.copy (handles aliases, ignores user-defined shadowing).
 
-This gives immediate benefit -- existing code gets faster without any user changes.
+Note: builtin type method args (e.g. `list.append(copy(x))`) don't yet trigger
+the warning since they bypass CallAnalyzer.
 
-### Phase 3: Unnecessary copy() warnings
+### Phase 4: @nocopy types -- DONE
 
-When a `copy()` call wraps a variable at a last-use site, warn that the copy is
-unnecessary (auto-move would suffice). Purely diagnostic, no codegen change.
+`@nocopy` decorator on records deletes copy ctor/assignment and defaults move ops.
+Consumption model uses existing liveness analysis: consuming uses (Own[T] param, return)
+at last use are auto-moved; not at last use produces a @nocopy-specific error.
+`copy()` on @nocopy type is a compile error. T& aliases work for borrowing but can't
+be consumed. Tier 3 (T* pointer-local) works for reassigned @nocopy since it uses
+`std::optional::emplace()` (no copy needed). No Tier 4 needed.
 
-### Phase 4: @nocopy types
+### Phase 5: Alias-aware liveness (borrow safety)
 
-- `@nocopy` decorator recognized by parser/sema
-- Deleted copy constructor/assignment in codegen
-- Consumption tracking in sema (error on double-consume)
-- `copy()` on @nocopy type is a compile error
-- Tier 4 variable model for reassigned @nocopy locals
+Auto-move currently checks that the variable *name* is dead after the move point, but
+doesn't check whether T& aliases pointing to the same storage are still live. This can
+cause use-after-move through a dangling reference:
 
-### Phase 5: Box[T] as library type
+```python
+alias = h        # T& reference to h
+close(h)         # auto-move h (alias is still live!)
+print(alias.fd)  # dangling reference -- UB
+```
+
+**Fix**: build an alias map (`source_var -> set[alias_var]`) during sema for Tier 2
+(T& reference) locals. After computing `all_last_uses`, check: for each auto-move
+candidate `h`, are any aliases of `h` live after the move point? If so, suppress the
+auto-move (remove from `all_last_uses`). For copyable types this falls back to copy;
+for @nocopy types it becomes an error telling the user to remove the alias or
+restructure.
+
+Transitive aliases (`a = h; b = a`) require transitive closure of the alias map.
+
+### Phase 6: Box[T] as library type
 
 - Define `Box[T]` in std lib (.tp.py file with native backing)
 - `@nocopy`, implements `Deref[T]`
 - Wraps `std::unique_ptr<T>`
 - Integrates with dynamic dispatch (Phase 9 of protocol design)
+
+## Future Optimizations
+
+### Move-through for lvalue assignment at last use
+
+Currently `alias = h` (lvalue-init, non-reassigned) always creates a T& reference.
+When `h` is at its last use, the compiler could instead move `h` into `alias`, making
+`alias` a Tier 1 owned value. This enables chained moves:
+
+```python
+def transfer() -> Own[Handle]:
+    h = Handle()
+    alias = h       # last use of h -- could move instead of T& ref
+    return alias    # last use of alias -- NRVO
+```
+
+Today this errors for @nocopy types (alias is T& ref, can't be consumed) and produces
+an unnecessary copy for copyable types. With move-through, both cases would be optimal.
+
+See test: `tests/cases/auto_move/error_nocopy_return_alias/`

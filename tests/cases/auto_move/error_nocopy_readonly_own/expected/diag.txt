@@ -1,0 +1,1 @@
+main.tp.py:15: error: @nocopy type 'readonly[Handle]' cannot be copied into 'h: Own[Handle]'. Only the original owner can be moved at its last use.

@@ -179,9 +179,10 @@ class Parser:
             if has_protocol:
                 return self._parse_protocol(node)
 
-        # Parse record linkage decorators (@native, @native_c)
+        # Parse record decorators (@native, @native_c, @nocopy)
         linkage = RecordLinkage.DEFAULT
         native_name: str | None = None
+        is_nocopy = False
         for dec in node.decorator_list:
             if isinstance(dec, ast.Name) and dec.id in self._RECORD_LINKAGE_DECORATORS:
                 new_linkage = self._RECORD_LINKAGE_DECORATORS[dec.id]
@@ -199,6 +200,8 @@ class Parser:
                     native_name = dec.args[0].value
                 else:
                     raise ParseError(f"@{dec.func.id}() requires a single string argument", dec)
+            elif isinstance(dec, ast.Name) and dec.id == "nocopy":
+                is_nocopy = True
             elif isinstance(dec, ast.Name):
                 raise ParseError(f"Unknown decorator '{dec.id}' on class '{node.name}'", dec)
             else:
@@ -296,7 +299,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, loc=self._loc(node))
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""

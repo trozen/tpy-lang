@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
-    VOID, BIGINT, is_protocol_type,
+    VOID, BIGINT, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName
 from ..namespace import BindingKind
@@ -403,6 +403,16 @@ class CallAnalyzer:
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        # @nocopy types cannot be copied (unwrap readonly to catch readonly[Handle])
+        inner_type = unwrap_readonly(arg_type)
+        if isinstance(inner_type, NamedType):
+            record_info = self.ctx.registry.get_record(inner_type.name)
+            if record_info and record_info.is_nocopy:
+                raise self.ctx.error(
+                    f"Cannot copy @nocopy type '{inner_type}'. "
+                    f"@nocopy values can only be moved (pass directly at last use).",
+                    expr,
+                )
         expr.resolved_function_info = FunctionInfo(
             name="copy",
             params=[ParamInfo("x", arg_type)],
@@ -411,6 +421,48 @@ class CallAnalyzer:
             is_builtin_function=True,
         )
         return OwnType(arg_type)
+
+    def _is_nocopy_type(self, typ: TpyType) -> bool:
+        """Check if a type is @nocopy (move-only, copy deleted).
+
+        Unwraps ReadonlyType so readonly[Handle] is detected as @nocopy.
+        """
+        inner = unwrap_readonly(typ)
+        if isinstance(inner, NamedType):
+            record_info = self.ctx.registry.get_record(inner.name)
+            return record_info is not None and record_info.is_nocopy
+        return False
+
+    def _check_own_param_arg(self, arg: TpyExpr, arg_type: TpyType,
+                              pname: str, ptype: OwnType) -> None:
+        """Check lvalue passed to Own[T] param -- auto-move at last use or error."""
+        is_last_use_movable = (isinstance(arg, TpyName)
+                               and id(arg) in self.ctx.all_last_uses
+                               and self.compat._is_movable_var(arg.name))
+        if not is_last_use_movable:
+            if self._is_nocopy_type(arg_type):
+                is_movable = (isinstance(arg, TpyName)
+                              and self.compat._is_movable_var(arg.name))
+                if is_movable:
+                    # Movable owner, but not at last use (used later)
+                    raise self.ctx.error(
+                        f"@nocopy type '{arg_type}' is used after this point "
+                        f"and cannot be moved into '{pname}: Own[{ptype.wrapped}]'. "
+                        f"Remove later uses or restructure the code.",
+                        arg
+                    )
+                # Not movable (T& alias, readonly param, etc.)
+                raise self.ctx.error(
+                    f"@nocopy type '{arg_type}' cannot be copied into "
+                    f"'{pname}: Own[{ptype.wrapped}]'. "
+                    f"Only the original owner can be moved at its last use.",
+                    arg
+                )
+            raise self.ctx.error(
+                f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
+                f"(would be implicit copy)",
+                arg
+            )
 
     def _warn_unnecessary_copy(self, arg: TpyExpr) -> None:
         """Warn when copy(x) is passed to Own[T] param but x is at last use."""
@@ -675,15 +727,7 @@ class CallAnalyzer:
 
             # Check for T passed to Own[T] parameter - would be implicit copy
             if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                is_last_use_movable = (isinstance(arg, TpyName)
-                                       and id(arg) in self.ctx.all_last_uses
-                                       and self.compat._is_movable_var(arg.name))
-                if not is_last_use_movable:
-                    raise self.ctx.error(
-                        f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
-                        f"(would be implicit copy)",
-                        arg
-                    )
+                self._check_own_param_arg(arg, arg_type, pname, ptype)
 
             if isinstance(ptype, OwnType):
                 self._warn_unnecessary_copy(arg)
@@ -786,15 +830,7 @@ class CallAnalyzer:
 
             # Check for T passed to Own[T] parameter - would be implicit copy
             if isinstance(resolved_ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                is_last_use_movable = (isinstance(arg, TpyName)
-                                       and id(arg) in self.ctx.all_last_uses
-                                       and self.compat._is_movable_var(arg.name))
-                if not is_last_use_movable:
-                    raise self.ctx.error(
-                        f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{resolved_ptype.wrapped}]' "
-                        f"(would be implicit copy)",
-                        arg
-                    )
+                self._check_own_param_arg(arg, arg_type, pname, resolved_ptype)
 
             if isinstance(resolved_ptype, OwnType):
                 self._warn_unnecessary_copy(arg)
@@ -949,15 +985,7 @@ class CallAnalyzer:
 
             # Check for T passed to Own[T] parameter - would be implicit copy
             if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                is_last_use_movable = (isinstance(arg, TpyName)
-                                       and id(arg) in self.ctx.all_last_uses
-                                       and self.compat._is_movable_var(arg.name))
-                if not is_last_use_movable:
-                    raise self.ctx.error(
-                        f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
-                        f"(would be implicit copy)",
-                        arg
-                    )
+                self._check_own_param_arg(arg, arg_type, pname, ptype)
 
             if isinstance(ptype, OwnType):
                 self._warn_unnecessary_copy(arg)

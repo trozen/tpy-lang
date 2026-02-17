@@ -1048,6 +1048,7 @@ class RecordInfo:
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
+    is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""

@@ -181,6 +181,13 @@ class RecordGenerator:
             # No __init__, use default constructor
             out.write(f"  {record.name}() = default;\n")
 
+        # @nocopy: delete copy, default move
+        if record_info and record_info.is_nocopy:
+            out.write(f"  {record.name}(const {record.name}&) = delete;\n")
+            out.write(f"  {record.name}& operator=(const {record.name}&) = delete;\n")
+            out.write(f"  {record.name}({record.name}&&) = default;\n")
+            out.write(f"  {record.name}& operator=({record.name}&&) = default;\n")
+
         # Generate methods (excluding __init__)
         for method in record.methods:
             if method.name == "__init__":

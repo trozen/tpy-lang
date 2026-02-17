@@ -1,0 +1,1 @@
+main.tp.py:17: error: @nocopy type 'Handle' cannot be copied into 'h: Own[Handle]'. Only the original owner can be moved at its last use.

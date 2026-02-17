@@ -213,6 +213,7 @@ class TypeRegistrar:
             native_name=record.native_name,
             is_native=is_native,
             is_native_c=is_native_c,
+            is_nocopy=record.is_nocopy,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
