@@ -1,6 +1,9 @@
 # TODO
 
 ## Next
+- update goals: C++ interop (but C++ code must follow certial rules, not arbitrary types); familiar synytax to non programmers, warn when semantic differs from cpython
+- dynamic protocols and dynamic dispatch
+- extend int type configuration to AddressType/SizeType/PtrDiff (e.g. UInt32, Int32, Int32)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
@@ -33,6 +36,16 @@
 - REPL: arr=[1,2,3]; arr[-4]
 - better C++ code formatting? 4 space indentation (or tab?)
 - argument default values
+- ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
+
+## Investigate
+- zig language: what it is, how is it different from C, what useful patterns can we learn
+- Go: channels is a nice concept (for our needs fixed size channels would be great)
+
+## Builtins
+- type(); (in future `T = type(x); z = T()`)
+- tpy.ctypes.CInt32
+- deref()
 
 ## Hard Problems
 - auto-detect readonly from method body analysis (bottom-up inference) -- currently dunders in IMPLICIT_READONLY_METHODS are implicitly readonly, but regular methods need explicit `@readonly`; auto-inference could remove the need for annotations in most cases

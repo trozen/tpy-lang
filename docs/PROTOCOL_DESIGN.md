@@ -401,6 +401,14 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Compiler optimization: detect StopIteration pattern → efficient has_next codegen
    - `Iterable[T]` with `__iter__() -> Iterator[T]` for user-extensible iteration
    - Requires: either exceptions or `Optional[T]` type support
+9. **Phase 9**: Dynamic protocol dispatch (future)
+   - `@dynamic` decorator on protocol definitions
+   - Object-safety validation at definition site
+   - Abstract base class + adapter template generation
+   - `Dyn[P]` builtin type -- non-nullable borrowed dynamic reference
+   - Implicit wrapping: concrete type -> adapter when assigned to dynamic context
+   - Integration with `Box[P]`, `Rc[P]`, `Ptr[P]`
+   - Requires: `Box[T]` type, move semantics
 
 ## 11. Iteration Protocol Design
 
@@ -536,3 +544,175 @@ Both are currently marked "Open" in LANGUAGE_FEATURES.md.
 | `NativeIterable[T]` | `tpy` | No | ✅ | No | ✅ Phase 4 |
 | `Iterable[T]` | `typing` | Yes | ✅ | Yes | Phase 8 |
 | `Iterator[T]` | `typing` | Yes | N/A | Yes | Phase 8 |
+
+## 12. Dynamic Protocol Dispatch (Design -- Not Implemented)
+
+Static protocols (C++20 concepts) are zero-cost but monomorphized -- each concrete type
+produces a separate template instantiation. Dynamic protocols add runtime dispatch via
+vtables, enabling type-erased storage and heterogeneous collections.
+
+### `@dynamic` Annotation
+
+A protocol must be explicitly marked `@dynamic` to enable runtime dispatch:
+
+```python
+from typing import Protocol
+from tpy import dynamic
+
+@dynamic
+class Speakable(Protocol):
+    def speak(self) -> None: ...
+
+@dynamic
+class Drawable(Protocol):
+    def draw(self, x: Int32, y: Int32) -> None: ...
+```
+
+Without `@dynamic`, using a protocol in `Box[P]`, `Dyn[P]`, or `Ptr[P]` is a compile error.
+
+`@dynamic` means "this protocol **can** be dispatched dynamically" -- it is a capability
+declaration, not a mandate. Static dispatch remains the default for bare parameter types.
+
+### Dispatch Modes by Usage Context
+
+The same `@dynamic` protocol supports both static and dynamic dispatch depending on how
+it is used:
+
+| Usage | Dispatch | Owns? | Nullable? | C++ |
+|-------|----------|-------|-----------|-----|
+| `animal: Speakable` | static | -- | -- | `template<tpy::Speakable T> f(const T&)` |
+| `animal: Dyn[Speakable]` | dynamic | no | no | `const SpeakableBase&` |
+| `animal: Ptr[Speakable]` | dynamic | no | yes | `SpeakableBase*` |
+| `animal: Box[Speakable]` | dynamic | yes (unique) | no | `unique_ptr<SpeakableBase>` |
+| `animal: Rc[Speakable]` | dynamic | yes (shared) | no | `shared_ptr<SpeakableBase>` |
+
+- **`Speakable` (bare)** -- template with concept constraint, monomorphized (current behavior).
+- **`Dyn[Speakable]`** -- non-nullable borrowed reference to a type-erased object. Valid as
+  parameter or local variable only (not as a field -- storing a reference in a struct is
+  problematic in C++).
+- **`Ptr[Speakable]`** -- nullable pointer to a type-erased object.
+- **`Box[Speakable]`** -- heap-owned type-erased object (move-only). Suitable for fields
+  and containers (`list[Box[Speakable]]`).
+- **`Rc[Speakable]`** -- shared-ownership type-erased object (copyable via refcount).
+
+### Implicit Wrapping
+
+The compiler automatically wraps concrete types when assigned to a dynamic protocol context:
+
+```python
+@dynamic
+class Speakable(Protocol):
+    def speak(self) -> None: ...
+
+class Dog:
+    def speak(self) -> None:
+        print("Woof")
+
+class Cat:
+    def speak(self) -> None:
+        print("Meow")
+
+# Implicit wrapping -- compiler inserts adapter
+dog = Dog()
+box: Box[Speakable] = Box(dog)        # Dog -> SpeakableAdapter<Dog>
+box2: Box[Speakable] = Box(Cat())     # Cat -> SpeakableAdapter<Cat>
+
+# Explicit type arg also works
+box3 = Box[Speakable](Dog())
+
+# Passing to a function expecting Dyn[Speakable]
+def make_speak(animal: Dyn[Speakable]) -> None:
+    animal.speak()
+
+make_speak(dog)                        # implicit wrap + borrow
+
+# Heterogeneous container
+animals: list[Box[Speakable]] = [Box(Dog()), Box(Cat())]
+for animal in animals:
+    animal.speak()                     # dynamic dispatch via vtable
+```
+
+### C++ Code Generation
+
+For each `@dynamic` protocol, the compiler generates three things:
+
+**1. C++20 concept (static dispatch -- same as non-dynamic protocols):**
+```cpp
+template<typename T>
+concept Speakable = requires(T& t) {
+    { t.speak() } -> std::same_as<void>;
+};
+```
+
+**2. Abstract base class (dynamic dispatch target):**
+```cpp
+struct SpeakableBase {
+    virtual void speak() = 0;
+    virtual ~SpeakableBase() = default;
+};
+```
+
+**3. Adapter template (bridges concrete types to the abstract base):**
+```cpp
+template<Speakable T>
+struct SpeakableAdapter : SpeakableBase {
+    T inner;
+
+    template<typename... Args>
+    SpeakableAdapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+
+    void speak() override { inner.speak(); }
+};
+```
+
+Usage in generated code:
+
+```cpp
+// Box[Speakable] = Box(Dog())
+auto box = std::unique_ptr<SpeakableBase>(
+    std::make_unique<SpeakableAdapter<Dog>>(Dog())
+);
+
+// Dyn[Speakable] parameter
+void make_speak(const SpeakableBase& animal) {
+    animal.speak();
+}
+
+// Ptr[Speakable]
+SpeakableBase* ptr = ...;
+```
+
+### Object Safety
+
+Not all protocols can be `@dynamic`. The compiler validates that a `@dynamic` protocol
+is object-safe:
+
+- All methods must have concrete (non-generic) signatures
+- No `Self` type in parameter positions (return position is also problematic --
+  the vtable can't know the concrete return size)
+- No static methods (they have no receiver to dispatch on)
+
+A non-object-safe protocol with `@dynamic` is a compile error at definition site.
+
+### Relationship to `Deref[T]`
+
+`Box[T]` and `Rc[T]` implement `Deref[T]`, so the existing auto-deref mechanism
+handles transparent method access:
+
+```python
+box: Box[Speakable] = Box(Dog())
+box.speak()    # auto-deref: box.__deref__().speak()
+```
+
+For `Box[Speakable]`, `__deref__()` returns `Dyn[Speakable]` (a reference to the
+abstract base), and `speak()` dispatches through the vtable.
+
+### Phase 9 Implementation Steps
+
+1. **`@dynamic` annotation** -- parser recognizes decorator, sema stores flag on ProtocolInfo
+2. **Object-safety validation** -- check protocol methods are vtable-compatible
+3. **Abstract base + adapter codegen** -- generate SpeakableBase and SpeakableAdapter<T>
+4. **`Dyn[P]` type** -- new builtin type wrapper, parameter/local only, maps to `const PBase&`
+5. **Implicit wrapping** -- coercion from `T` to `Dyn[P]`/`Box[P]` where T conforms to P
+6. **Integration with Box/Rc** -- Box/Rc with protocol type args use dynamic dispatch
+7. **Heterogeneous containers** -- `list[Box[P]]` works naturally once Box works
