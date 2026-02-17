@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly,
+    ReadonlyType, unwrap_readonly, TypeParamRef,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -87,15 +87,23 @@ class StatementGenerator:
         if scan:
             self.ctx.reassigned_vars = scan.reassigned - self.ctx.global_declared_vars
             self.ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - self.ctx.global_declared_vars
+            self.ctx.lvalue_reassigned_vars = scan.lvalue_reassigned - self.ctx.global_declared_vars
         else:
             self.ctx.reassigned_vars = set()
             self.ctx.rvalue_reassigned_vars = set()
+            self.ctx.lvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             actual = unwrap_readonly(ptype)
             if isinstance(actual, OptionalType) and not actual.inner.is_value_type():
                 self.ctx.pointer_locals.add(pname)
+            # Own[T] params are movable (caller gave up ownership)
+            if isinstance(actual, OwnType) and not actual.wrapped.is_value_type():
+                self.ctx.movable_locals.add(pname)
+                # Generic Own[T] uses forwarding refs (T&&) for perfect forwarding
+                if isinstance(actual.wrapped, TypeParamRef):
+                    self.ctx.forwarding_params[pname] = actual.wrapped.name
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
@@ -559,6 +567,13 @@ class StatementGenerator:
             if is_optional or stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
                 # T* pointer-local -- needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
+                # Reassigned pointer-locals are movable at last use only when
+                # ALL bindings are rvalue (owned storage, no borrowed aliases)
+                if (stmt.init is not None
+                        and stmt.name in self.ctx.reassigned_vars
+                        and stmt.name not in self.ctx.lvalue_reassigned_vars
+                        and self.ctx.is_rvalue_source(stmt.init)):
+                    self.ctx.movable_locals.add(stmt.name)
                 if stmt.init:
                     return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
                 else:
@@ -568,6 +583,10 @@ class StatementGenerator:
                 # T& reference -- alias without rebinding
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
                 return f"{indent}{cpp_type}& {stmt.name} = {init_expr};\n"
+
+        # Tier 1 non-value-type locals are eligible for auto-move at last use
+        if target_type and not target_type.is_value_type():
+            self.ctx.movable_locals.add(stmt.name)
 
         if stmt.init:
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
@@ -741,6 +760,9 @@ class StatementGenerator:
                     self.ctx.current_ns.bind_variable(name, var_type)
                 if self._needs_indirection(var_type, name, None):
                     self.ctx.pointer_locals.add(name)
+                    if (name in self.ctx.reassigned_vars
+                            and name not in self.ctx.lvalue_reassigned_vars):
+                        self.ctx.movable_locals.add(name)
                     if name in self.ctx.rvalue_reassigned_vars:
                         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
                         slot = self.ctx.slots.next_slot()

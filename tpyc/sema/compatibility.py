@@ -122,10 +122,16 @@ class TypeCompatibility:
         if isinstance(expected, OwnType):
             # Warn when lvalue is implicitly copied into owned storage
             # (returns are handled separately as errors in statements.py)
+            # Skip warning when auto-move applies (last use of an owned variable).
+            # Only locals and Own[T] params are movable -- regular params are borrowed.
+            is_auto_moved = False
+            if isinstance(source_expr, TpyName) and id(source_expr) in self.ctx.all_last_uses:
+                is_auto_moved = self._is_movable_var(source_expr.name)
             if (not is_return and source_expr is not None
                     and not expected.wrapped.is_value_type()
                     and self.is_lvalue(source_expr)
-                    and not self.is_copy_call(source_expr)):
+                    and not self.is_copy_call(source_expr)
+                    and not is_auto_moved):
                 value_type = self.ctx.get_expr_type(source_expr)
                 if isinstance(expected.wrapped, TypeParamRef):
                     self.ctx.warning(
@@ -314,6 +320,40 @@ class TypeCompatibility:
                 return True
             scope = scope.parent
         return False
+
+    def _is_movable_var(self, name: str) -> bool:
+        """Check if a variable is eligible for auto-move (owned, not borrowed).
+
+        Must match codegen's movable_locals population to avoid silent copies.
+        Movable: Own[T] params, Tier 1 locals (rvalue-init, not hoisted,
+        not Optional non-value), and reassigned locals (T* pointer-locals).
+        NOT movable: T& reference locals (lvalue-init, not reassigned),
+        hoisted locals, Optional non-value locals.
+        """
+        func = self.ctx.current_function
+        if isinstance(func, TpyFunction):
+            for pname, ptype in func.params:
+                if pname == name:
+                    return isinstance(unwrap_readonly(ptype), OwnType)
+            if name in self.ctx.hoisted_vars:
+                return False  # Hoisted -> T* pointer-local
+            var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
+            if var_type and isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+                return False  # Optional non-value -> T* pointer-local
+            # Reassigned locals are T* pointer-locals -- movable only when
+            # ALL bindings are rvalue (owned storage). If any binding is lvalue,
+            # the pointer might alias borrowed/global storage at use time.
+            if name in self.ctx.current_reassigned_vars:
+                return (name in self.ctx.rvalue_vars
+                        and name not in self.ctx.current_lvalue_reassigned)
+            if name not in self.ctx.rvalue_vars:
+                return False  # Lvalue-init -> T& reference, not owned
+            return True
+        # Top-level: non-value-type vars become pointer-globals, can't be moved
+        var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
+        if var_type and not var_type.is_value_type():
+            return False
+        return True
 
     def is_param_derived_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression's root storage derives from parameters or globals."""

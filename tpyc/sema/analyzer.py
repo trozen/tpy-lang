@@ -26,6 +26,7 @@ from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars
+from ..liveness import analyze_last_uses
 from tpyc import modules as builtin_modules
 
 
@@ -294,6 +295,10 @@ class SemanticAnalyzer:
 
         # Pre-scan for reassigned variables (shared with codegen)
         scan = scan_reassigned_vars(func.body)
+        # Last-use analysis for auto-move (shared with codegen)
+        self.ctx.all_last_uses |= analyze_last_uses(func.body)
+        self.ctx.current_reassigned_vars = scan.reassigned.copy()
+        self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
 
         # Analyze body
         for stmt in func.body:
@@ -364,6 +369,10 @@ class SemanticAnalyzer:
 
             # Pre-scan for reassigned variables (shared with codegen)
             scan = scan_reassigned_vars(method.body)
+            # Last-use analysis for auto-move (shared with codegen)
+            self.ctx.all_last_uses |= analyze_last_uses(method.body)
+            self.ctx.current_reassigned_vars = scan.reassigned.copy()
+            self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
 
             # Analyze body
             for stmt in method.body:
@@ -415,6 +424,10 @@ class SemanticAnalyzer:
 
         # Pre-scan for codegen
         self.top_level_scan_result = scan_reassigned_vars(stmts)
+        # Last-use analysis for auto-move (shared with codegen)
+        self.ctx.all_last_uses |= analyze_last_uses(stmts)
+        self.ctx.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
+        self.ctx.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()
 
         for stmt in stmts:
             self.stmts.analyze_stmt(stmt)

@@ -1,8 +1,11 @@
 # TODO
 
 ## Next
+- type inference through `Own[T]`: calling `wrapper(b)` where wrapper takes `Own[T]` fails to infer T from the argument type. Workaround: explicit type args `wrapper[Box](b)`.
+- forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
+- auto-move phase 3: extend auto-move to return sites (`return p` where return type is `Own[T]`), unnecessary `copy()` warning
+- update goals: C++ interop (but C++ code must follow certial rules, not arbitrary types); familiar synytax to non programmers, warn when semantic differs from cpython
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
-- move semantics
 - dynamic protocols and dynamic dispatch
 - failed tests show source of test harness, not very useful; I would like it to show the source diff or change in output etc
 - type deduction usability - the following don't work: `p: Ptr[int]; p = None; p = Ptr()`, `l: list[int]; l = list()`
@@ -128,6 +131,7 @@ Random items that may or may not be implemented in the future, but putting them 
 ## Known Limitations
 - `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
 - Own[T] local variable optimization: allow `return local_var` without copy() since C++ uses NRVO (Named Return Value Optimization). Currently requires explicit copy() for all lvalues.
+- Pointer-local slot reuse: reassigned T* pointer-locals allocate a fresh `std::optional<T>` slot per assignment. The initial slot could be reused after reassignment instead of allocating a new one.
 - Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope. (Note: `if`/`else` in functions is fixed — branch-declared vars are pre-declared before the if-statement.)
 - Generic Optional codegen mismatch: for generic records, `T | None` generates `T*`/`nullptr` instead of `std::optional<T>`. This breaks C++ concepts that expect `std::optional<ElemT>` (e.g., `tpy::OptIterator`). Value-type Optional (`Int32 | None` → `std::optional<int32_t>`) works fine.
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.

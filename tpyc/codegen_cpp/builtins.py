@@ -33,11 +33,13 @@ class BuiltinGenerator:
         # Will be set by expressions module to avoid circular import
         self._gen_expr = None
         self._gen_expr_deref = None
+        self._gen_call_arg = None
 
-    def set_expr_generator(self, gen_expr, gen_expr_deref):
+    def set_expr_generator(self, gen_expr, gen_expr_deref, gen_call_arg):
         """Set expression generator functions (to break circular dependency)."""
         self._gen_expr = gen_expr
         self._gen_expr_deref = gen_expr_deref
+        self._gen_call_arg = gen_call_arg
 
     def get_type_method_template(self, tpy_type: TpyType, method_name: str) -> str | None:
         """Look up a method's cpp_template from the registry.
@@ -73,10 +75,8 @@ class BuiltinGenerator:
         """
         if method.cpp_template is None:
             raise CodeGenError(f"Method '{method.name}' has no C++ template")
-        gen_args: list[str] = []
-        for i, arg in enumerate(args):
-            ptype = method.params[i].type if i < len(method.params) else None
-            gen_args.append(self._gen_expr_deref(arg, ptype))
+        gen_args = [self._gen_call_arg(arg, method.params[i].type if i < len(method.params) else None)
+                    for i, arg in enumerate(args)]
         return expand_cpp_template(method.cpp_template, obj, *gen_args)
 
     def gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:

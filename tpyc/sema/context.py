@@ -103,6 +103,13 @@ class SemanticContext:
     hoisted_vars: set[str] = field(default_factory=set)
     rvalue_vars: set[str] = field(default_factory=set)
 
+    # --- Last-use tracking for auto-move ---
+    all_last_uses: set[int] = field(default_factory=set)
+    # Prescan reassigned vars for current function (needed by _is_movable_var)
+    current_reassigned_vars: set[str] = field(default_factory=set)
+    # Reassigned vars with at least one lvalue (non-rvalue) reassignment
+    current_lvalue_reassigned: set[str] = field(default_factory=set)
+
     # --- Definite-assignment tracking ---
     definitely_assigned: set[str] = field(default_factory=set)
     init_terminated: bool = False
@@ -201,6 +208,8 @@ class SemanticContext:
         self.var_scope_depth.clear()
         self.hoisted_vars.clear()
         self.rvalue_vars.clear()
+        self.current_reassigned_vars.clear()
+        self.current_lvalue_reassigned.clear()
         self.definitely_assigned.clear()
         self.init_terminated = False
         self.non_none_vars.clear()

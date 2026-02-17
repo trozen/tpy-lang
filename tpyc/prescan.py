@@ -23,6 +23,7 @@ class ScanResult:
     """Result of pre-scanning a function body for reassigned variables."""
     reassigned: set[str] = field(default_factory=set)
     rvalue_reassigned: set[str] = field(default_factory=set)
+    lvalue_reassigned: set[str] = field(default_factory=set)
     aug_assigned: set[str] = field(default_factory=set)
 
 
@@ -32,6 +33,7 @@ def scan_reassigned_vars(stmts: list[TpyStmt]) -> ScanResult:
     Returns a ScanResult with:
     - reassigned: variables with a second TpyVarDecl or TpyAssign after first declaration
     - rvalue_reassigned: subset of reassigned with at least one rvalue reassignment
+    - lvalue_reassigned: subset of reassigned with at least one lvalue reassignment
     - aug_assigned: variables targeted by augmented assignment (+=, -=, etc.)
     """
     declared: set[str] = set()
@@ -63,6 +65,8 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result.reassigned.add(stmt.name)
                 if is_scan_rvalue(stmt.init):
                     result.rvalue_reassigned.add(stmt.name)
+                else:
+                    result.lvalue_reassigned.add(stmt.name)
             else:
                 declared.add(stmt.name)
         elif isinstance(stmt, TpyAssign):
@@ -70,6 +74,8 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result.reassigned.add(stmt.target.name)
                 if is_scan_rvalue(stmt.value):
                     result.rvalue_reassigned.add(stmt.target.name)
+                else:
+                    result.lvalue_reassigned.add(stmt.target.name)
         elif isinstance(stmt, TpyAugAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.aug_assigned.add(stmt.target.name)

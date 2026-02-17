@@ -659,11 +659,15 @@ class CallAnalyzer:
 
             # Check for T passed to Own[T] parameter - would be implicit copy
             if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                raise self.ctx.error(
-                    f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
-                    f"(would be implicit copy)",
-                    arg
-                )
+                is_last_use_movable = (isinstance(arg, TpyName)
+                                       and id(arg) in self.ctx.all_last_uses
+                                       and self.compat._is_movable_var(arg.name))
+                if not is_last_use_movable:
+                    raise self.ctx.error(
+                        f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
+                        f"(would be implicit copy)",
+                        arg
+                    )
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
@@ -763,11 +767,15 @@ class CallAnalyzer:
 
             # Check for T passed to Own[T] parameter - would be implicit copy
             if isinstance(resolved_ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                raise self.ctx.error(
-                    f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{resolved_ptype.wrapped}]' "
-                    f"(would be implicit copy)",
-                    arg
-                )
+                is_last_use_movable = (isinstance(arg, TpyName)
+                                       and id(arg) in self.ctx.all_last_uses
+                                       and self.compat._is_movable_var(arg.name))
+                if not is_last_use_movable:
+                    raise self.ctx.error(
+                        f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{resolved_ptype.wrapped}]' "
+                        f"(would be implicit copy)",
+                        arg
+                    )
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(resolved_ptype, CharType) and isinstance(arg_type, StrType) and
@@ -919,11 +927,15 @@ class CallAnalyzer:
 
             # Check for T passed to Own[T] parameter - would be implicit copy
             if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                raise self.ctx.error(
-                    f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
-                    f"(would be implicit copy)",
-                    arg
-                )
+                is_last_use_movable = (isinstance(arg, TpyName)
+                                       and id(arg) in self.ctx.all_last_uses
+                                       and self.compat._is_movable_var(arg.name))
+                if not is_last_use_movable:
+                    raise self.ctx.error(
+                        f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
+                        f"(would be implicit copy)",
+                        arg
+                    )
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and

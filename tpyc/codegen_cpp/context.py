@@ -172,6 +172,12 @@ class CodeGenContext:
     rebind_slots: dict[str, str] = field(default_factory=dict)
     reassigned_vars: set[str] = field(default_factory=set)
     rvalue_reassigned_vars: set[str] = field(default_factory=set)
+    lvalue_reassigned_vars: set[str] = field(default_factory=set)
+
+    # --- Auto-move tracking (last-use -> std::move) ---
+    movable_locals: set[str] = field(default_factory=set)
+    # Generic Own[T] params: name -> type param name (for std::forward)
+    forwarding_params: dict[str, str] = field(default_factory=dict)
 
     # --- Hoisted variable tracking (scope escape phase 2) ---
     hoisted_vars: set[str] = field(default_factory=set)
@@ -215,6 +221,9 @@ class CodeGenContext:
         self.rebind_slots = {}
         self.reassigned_vars = set()
         self.rvalue_reassigned_vars = set()
+        self.lvalue_reassigned_vars = set()
+        self.movable_locals = set()
+        self.forwarding_params = {}
         self.hoisted_vars = set()
         self.pending_hoist_decls = []
         self.current_ns = None

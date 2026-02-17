@@ -1,0 +1,1 @@
+main.tp.py:13: warning: copies Own[Inner] into field; use copy() to make this explicit

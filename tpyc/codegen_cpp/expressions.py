@@ -46,7 +46,7 @@ class ExpressionGenerator:
         self.builtins = builtins
         self.protocols = protocols
         # Wire up builtins to use our gen_expr methods
-        self.builtins.set_expr_generator(self.gen_expr, self.gen_expr_deref)
+        self.builtins.set_expr_generator(self.gen_expr, self.gen_expr_deref, self.gen_call_arg)
 
     def gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression, dereferencing globals.
@@ -79,6 +79,24 @@ class ExpressionGenerator:
             else:
                 result = f"(*{result})"
         return result
+
+    def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
+        """Wrap in std::move() or std::forward() if expr is a last-use of a movable local."""
+        if (isinstance(expr, TpyName)
+                and expr.name in self.ctx.movable_locals
+                and id(expr) in self.ctx.analyzer.ctx.all_last_uses):
+            tp_name = self.ctx.forwarding_params.get(expr.name)
+            if tp_name is not None:
+                return f"std::forward<{tp_name}>({gen_code})"
+            return f"std::move({gen_code})"
+        return gen_code
+
+    def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None) -> str:
+        """Generate a call argument with deref and auto-move for Own[T] params."""
+        gen_arg = self.gen_expr_deref(arg, ptype)
+        if ptype is not None and isinstance(unwrap_readonly(ptype), OwnType):
+            gen_arg = self._maybe_move(arg, gen_arg)
+        return gen_arg
 
     def gen_expr(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression.
@@ -526,10 +544,7 @@ class ExpressionGenerator:
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
                     gen_args.append(temp_name)
                 else:
-                    # Pass param type for BigInt promotion
-                    # Dereference globals for function arguments
-                    gen_arg = self.gen_expr_deref(arg, resolved_ptype)
-                    gen_args.append(gen_arg)
+                    gen_args.append(self.gen_call_arg(arg, resolved_ptype))
 
             # Determine function name
             func_cpp_name = expr.func
@@ -599,7 +614,10 @@ class ExpressionGenerator:
                     else:
                         gen_args.append(f"&({self.gen_expr(a, ptype)})")
                 else:
-                    gen_args.append(self.gen_expr_deref(a))
+                    gen_arg = self.gen_expr_deref(a)
+                    if isinstance(actual_ptype, OwnType):
+                        gen_arg = self._maybe_move(a, gen_arg)
+                    gen_args.append(gen_arg)
             args = ", ".join(gen_args)
             # Native records: use native C++ name
             if record_info.is_native:
@@ -621,10 +639,8 @@ class ExpressionGenerator:
         """Generate method call code."""
         if expr.resolved_function_info:
             params = expr.resolved_function_info.params
-            gen_args = []
-            for i, arg in enumerate(expr.args):
-                ptype = params[i].type if i < len(params) else None
-                gen_args.append(self.gen_expr_deref(arg, ptype))
+            gen_args = [self.gen_call_arg(arg, params[i].type if i < len(params) else None)
+                        for i, arg in enumerate(expr.args)]
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)

@@ -143,6 +143,7 @@ tests/
 │   ├── list/                 # List, container methods
 │   ├── none_safety/          # Optional types, narrowing
 │   ├── operators/            # Operators, coercion, assignment, subscript
+│   ├── auto_move/            # Auto-move at last use, forwarding refs
 │   ├── pointers/             # Ptr, ConstPtr, Own, dangling references
 │   ├── protocols/            # Protocol definition and implementation
 │   ├── readonly/             # @readonly decorator, readonly[T] type modifier

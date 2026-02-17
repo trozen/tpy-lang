@@ -46,7 +46,14 @@ class FunctionGenerator:
 
     def gen_params(self, params: list[tuple[str, TpyType]]) -> str:
         """Generate function parameter list."""
-        return ", ".join(ptype.to_cpp_param(pname) for pname, ptype in params)
+        parts = []
+        for pname, ptype in params:
+            own = unwrap_readonly(ptype)
+            if isinstance(own, OwnType) and isinstance(own.wrapped, TypeParamRef):
+                parts.append(f"{own.wrapped.name}&& {pname}")
+            else:
+                parts.append(ptype.to_cpp_param(pname))
+        return ", ".join(parts)
 
     def gen_c_params(self, params: list[tuple[str, TpyType]]) -> str:
         """Generate parameter list for extern \"C\" declarations.
@@ -69,14 +76,17 @@ class FunctionGenerator:
         for pname, ptype in params:
             # Resolve type in case it's a NamedType that's actually a protocol
             unwrapped = unwrap_readonly(ptype)
-            resolved = self.protocols.resolve_type_for_codegen(unwrapped)
-            if is_protocol_type(resolved):
-                if isinstance(ptype, ReadonlyType):
-                    result.append(f"const T_{pname}& {pname}")
-                else:
-                    result.append(f"T_{pname}& {pname}")
+            if isinstance(unwrapped, OwnType) and isinstance(unwrapped.wrapped, TypeParamRef):
+                result.append(f"{unwrapped.wrapped.name}&& {pname}")
             else:
-                result.append(ptype.to_cpp_param(pname))
+                resolved = self.protocols.resolve_type_for_codegen(unwrapped)
+                if is_protocol_type(resolved):
+                    if isinstance(ptype, ReadonlyType):
+                        result.append(f"const T_{pname}& {pname}")
+                    else:
+                        result.append(f"T_{pname}& {pname}")
+                else:
+                    result.append(ptype.to_cpp_param(pname))
         return ", ".join(result)
 
     def is_template_function(self, func: TpyFunction) -> bool:
@@ -334,9 +344,11 @@ class FunctionGenerator:
         if scan:
             self.ctx.reassigned_vars = scan.reassigned - self.ctx.global_declared_vars
             self.ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - self.ctx.global_declared_vars
+            self.ctx.lvalue_reassigned_vars = scan.lvalue_reassigned - self.ctx.global_declared_vars
         else:
             self.ctx.reassigned_vars = set()
             self.ctx.rvalue_reassigned_vars = set()
+            self.ctx.lvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.top_level_hoisted_vars.copy()
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1

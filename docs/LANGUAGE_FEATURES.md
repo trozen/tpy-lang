@@ -765,6 +765,65 @@ This is because functions returning `Own[T]` create temporaries (rvalues) that c
 
 **Note**: `Own[T]` is only valid for function parameters and return types, not for variable declarations. Use `T` for variables.
 
+#### Auto-Move at Last Use (Working)
+
+When a local variable or `Own[T]` parameter is passed to an `Own[T]` parameter and it is the **last use** of that variable (not read again on any subsequent execution path), the compiler automatically emits `std::move()` instead of requiring `copy()`:
+
+```python
+def consume(p: Own[Point]) -> Int32:
+    return p.x + p.y
+
+def main():
+    p = Point()
+    p.x = 10
+    p.y = 32
+    # p is at its last use -- auto-moved, no copy() needed
+    result = consume(p)
+    print(result)
+```
+
+Generated C++: `consume(std::move(p))`
+
+Auto-move applies to:
+- **Tier 1 locals** (rvalue-initialized, not reassigned)
+- **`Own[T]` parameters** (caller gave up ownership)
+- **Reassigned locals** when all assignments are rvalue (emits `std::move((*p))` through the pointer)
+
+Auto-move does NOT apply to:
+- Regular parameters (borrowed by reference)
+- T& reference locals (lvalue-initialized aliases)
+- Reassigned locals with any lvalue assignment (may alias borrowed storage)
+- Field accesses (`self.x`)
+- Top-level (module scope) non-value-type variables
+- Variables used across loop iterations
+
+The analysis is conservative: if unsure whether a variable is at its last use (e.g., used inside a loop body that may iterate multiple times), the compiler does NOT auto-move and requires explicit `copy()` as before.
+
+**Branch handling**: If a variable is used in both branches of an if/else and not used after, both branches get auto-move:
+
+```python
+if cond:
+    consume(p)  # auto-move on this path
+else:
+    consume(p)  # auto-move on this path
+```
+
+**Own[T] param forwarding**: An `Own[T]` parameter can be forwarded to another `Own[T]` parameter at its last use:
+
+```python
+def forward(p: Own[Point]) -> Int32:
+    return consume(p)  # auto-move of Own param
+```
+
+**Generic forwarding refs**: When a generic function takes `Own[T]` where `T` is a type parameter, the compiler generates C++ forwarding references (`T&&`) with `std::forward<T>()` for perfect forwarding -- zero-copy pass-through for rvalue arguments:
+
+```python
+def wrapper[T](x: Own[T]) -> None:
+    sink(x)  # std::forward<T>(x) at last use
+```
+
+Generated C++: `template<typename T> void wrapper(T&& x) { sink<T>(std::forward<T>(x)); }`
+
 #### Unsafe Memory Operations -- `tpy.unsafe` (Working)
 
 The `tpy.unsafe` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.
