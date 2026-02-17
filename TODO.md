@@ -1,8 +1,11 @@
 # TODO
 
 ## Next
-- update goals: C++ interop (but C++ code must follow certial rules, not arbitrary types); familiar synytax to non programmers, warn when semantic differs from cpython
+- fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
+- move semantics
 - dynamic protocols and dynamic dispatch
+- failed tests show source of test harness, not very useful; I would like it to show the source diff or change in output etc
+- type deduction usability - the following don't work: `p: Ptr[int]; p = None; p = Ptr()`, `l: list[int]; l = list()`
 - extend int type configuration to AddressType/SizeType/PtrDiff (e.g. UInt32, Int32, Int32)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
@@ -37,6 +40,7 @@
 - better C++ code formatting? 4 space indentation (or tab?)
 - argument default values
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
+- coerce int32 -> uint32?
 
 ## Investigate
 - zig language: what it is, how is it different from C, what useful patterns can we learn
@@ -46,6 +50,7 @@
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32
 - deref()
+- ptr() function?
 
 ## Hard Problems
 - auto-detect readonly from method body analysis (bottom-up inference) -- currently dunders in IMPLICIT_READONLY_METHODS are implicitly readonly, but regular methods need explicit `@readonly`; auto-inference could remove the need for annotations in most cases
@@ -68,6 +73,7 @@
 - make sure docstrings work in every context
 - list/StaticList operator (+=, *, +, in), sort
 - bytes type
+- list(str)
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:

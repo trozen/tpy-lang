@@ -4,9 +4,12 @@ A proof-of-concept compiler (tpyc) that translates Python to C++.
 
 **Goals:**
 
-1. **Performance** — Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`).
-2. **Idiomatic Python** — Standard Python should work out of the box, with minimal restrictions (e.g. type annotations on functions).
-3. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
+1. **Performance** — Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`). If the goals below conflict, performance wins.
+2. **Regular Python compatibility** — We aim to compile and run regular Python code whenever possible, with clear diagnostics when a feature is unsupported or when semantics differ from CPython.
+3. **Constrained C++ interop** — Easy integration with existing C/C++ code, but only through explicitly supported interop shapes and rules (not arbitrary native types/signatures).
+4. **Familiar syntax** — Keep the language readable for non-programmers and close to regular Python where possible.
+5. **Semantic transparency** — Warn when TurboPython behavior differs from CPython so differences are explicit during development.
+6. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
 
 ## Dependencies
 

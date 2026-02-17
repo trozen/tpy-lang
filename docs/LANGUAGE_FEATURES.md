@@ -11,7 +11,13 @@ Status legend:
 
 **Performance**: Low-latency compiled output. Most code uses standard Python constructs freely, while hot paths can opt into stricter constraints (e.g. `@noalloc`). No garbage collection, no interpreter overhead.
 
-**Idiomatic Python**: Standard Python should work out of the box. The everyday constructs (`int`, `str`, `list`, `dict`, functions, classes) should just work with minimal restrictions — type annotations on function signatures are the main requirement.
+**Regular Python compatibility**: TurboPython aims to compile and run regular Python code wherever practical. When a feature is unsupported, or semantics differ from CPython (for example, inline field storage vs Python object references), diagnostics should explain the gap clearly.
+
+**Constrained C++ interop**: Easy integration with existing C/C++ code, but only through explicit interop rules. TurboPython does not aim to accept arbitrary native C++ types or signatures without declared compatibility.
+
+**Familiar syntax**: Keep the language approachable for non-programmers and close to regular Python. The everyday constructs (`int`, `str`, `list`, `dict`, functions, classes) should feel familiar, with minimal required annotations.
+
+**Semantic transparency**: When TurboPython behavior intentionally differs from CPython, the compiler should warn so differences are visible during development and testing.
 
 **Tooling-friendly**: Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins or language server protocols. Development uses the same tools as regular Python.
 
@@ -3017,6 +3023,15 @@ Key difference from Python Pydantic:
 4. **C++ interop**
    - Generated code should be readable and idiomatic
    - Easy to call C++ from TurboPython and vice versa
+   - Interop is intentionally constrained to declared, supported native shapes
+
+5. **CPython semantic clarity**
+   - Keep CPython behavior when practical
+   - Emit warnings when TurboPython semantics diverge
+
+6. **Regular Python compatibility**
+   - Prefer behavior that keeps normal Python code runnable
+   - If unsupported, or if semantics differ from CPython, emit clear diagnostics
 
 ## Implementation Notes
 
