@@ -1,5 +1,5 @@
 """
-TurboPython memory operations (tpy.mem module).
+TurboPython unsafe pointer operations (tpy.unsafe module).
 
 Unsafe pointer operations that require explicit import.
 """
@@ -12,7 +12,7 @@ from tpyc.typesys import (
 
 T = TypeParamRef("T")
 
-NAME = "tpy.mem"
+NAME = "tpy.unsafe"
 
 
 def init_module() -> BuiltinModule:

@@ -1,5 +1,5 @@
 from tpy import Ptr, Int32, UInt32, Array
-from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 def test_array_to_ptr() -> None:
     arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]

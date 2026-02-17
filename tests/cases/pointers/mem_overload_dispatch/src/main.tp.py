@@ -1,5 +1,5 @@
 from tpy import Ptr, ConstPtr, Int32, UInt32, Char, Array, copy
-from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 def test_array_overload() -> None:
     arr: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]

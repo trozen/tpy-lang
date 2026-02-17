@@ -1,5 +1,5 @@
 from tpy import ConstPtr, Char, UInt32
-from tpy.mem import unsafe_ptr, unsafe_load
+from tpy.unsafe import unsafe_ptr, unsafe_load
 
 def test_str_ptr() -> None:
     s: str = "hello"

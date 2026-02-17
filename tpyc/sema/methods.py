@@ -252,7 +252,7 @@ class MethodAnalyzer:
         """Check for module.function() pattern. Returns type or None if not a module call.
 
         If module_name is provided, skips namespace resolution (used for dotted
-        module access like tpy.mem.func() where the module is already known).
+        module access like tpy.unsafe.func() where the module is already known).
         """
         assert isinstance(expr.obj, TpyName)
 

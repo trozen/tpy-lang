@@ -39,7 +39,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 2: from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+  // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
   // 18: test_array_to_ptr()
   test_array_to_ptr();
   // 19: test_write_through_array_ptr()

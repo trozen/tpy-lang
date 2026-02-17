@@ -39,7 +39,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 2: from tpy.mem import unsafe_load, unsafe_store
+  // 2: from tpy.unsafe import unsafe_load, unsafe_store
   // 18: test_store_and_load()
   test_store_and_load();
   // 19: test_constptr_load()

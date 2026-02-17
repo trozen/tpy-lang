@@ -1,4 +1,4 @@
-import tpy.mem as m
+import tpy.unsafe as m
 from tpy import Ptr, Int32, UInt32, Array
 
 arr: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]

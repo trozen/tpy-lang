@@ -57,7 +57,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 2: from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+  // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
   // 27: test_array_overload()
   test_array_overload();
   // 28: test_list_overload()

@@ -17,7 +17,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 2: from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
+  // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
   // 4: s: str = "hello"
   s = "hello";
   // 5: cp: ConstPtr[Char] = unsafe_ptr(s)

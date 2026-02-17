@@ -1,5 +1,5 @@
 from tpy import ConstPtr, Int32, UInt32
-from tpy.mem import unsafe_store
+from tpy.unsafe import unsafe_store
 
 def test() -> None:
     x: Int32 = Int32(5)

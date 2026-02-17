@@ -1,3 +1,3 @@
-import tpy.mem
+import tpy.unsafe
 
-tpy.mem.no_such_func()  # tpyc: error(/has no function/)
+tpy.unsafe.no_such_func()  # tpyc: error(/has no function/)

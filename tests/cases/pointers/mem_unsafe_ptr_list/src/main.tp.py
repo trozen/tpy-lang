@@ -1,5 +1,5 @@
 from tpy import Ptr, Int32, UInt32
-from tpy.mem import unsafe_ptr, unsafe_load
+from tpy.unsafe import unsafe_ptr, unsafe_load
 
 def test_list_ptr() -> None:
     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]

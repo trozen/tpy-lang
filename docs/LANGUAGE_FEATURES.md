@@ -460,7 +460,7 @@ Key features:
 - **Working**: `Ptr[T]` -> `T*`
 - **Working**: `ConstPtr[T]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
-- **Working**: `tpy.mem` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_cast`, `unsafe_const_cast`)
+- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_cast`, `unsafe_const_cast`)
 - **Planned**: `Ref[T]` -> `T&` (explicit reference)
 - **Planned**: `ConstRef[T]` -> `const T&`
 
@@ -759,19 +759,19 @@ This is because functions returning `Own[T]` create temporaries (rvalues) that c
 
 **Note**: `Own[T]` is only valid for function parameters and return types, not for variable declarations. Use `T` for variables.
 
-#### Unsafe Memory Operations -- `tpy.mem` (Working)
+#### Unsafe Memory Operations -- `tpy.unsafe` (Working)
 
-The `tpy.mem` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.
+The `tpy.unsafe` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.
 
 ```python
 from tpy import Ptr, ConstPtr, Int32, UInt32, Array
-from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 ```
 
 Import styles supported:
-- `from tpy.mem import unsafe_ptr, unsafe_load` -- import specific functions
-- `import tpy.mem` -- use as `tpy.mem.unsafe_ptr(...)`
-- `import tpy.mem as m` -- use as `m.unsafe_ptr(...)`
+- `from tpy.unsafe import unsafe_ptr, unsafe_load` -- import specific functions
+- `import tpy.unsafe` -- use as `tpy.unsafe.unsafe_ptr(...)`
+- `import tpy.unsafe as m` -- use as `m.unsafe_ptr(...)`
 
 **`unsafe_ptr`** -- get a raw pointer to the underlying data of a container or string:
 
@@ -808,7 +808,7 @@ Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `ConstPtr[T
 **`unsafe_copy_n`** -- copy N elements from a source pointer to a destination pointer:
 
 ```python
-from tpy.mem import unsafe_copy_n
+from tpy.unsafe import unsafe_copy_n
 
 src: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
 dst: Array[Int32, 3] = [Int32(0), Int32(0), Int32(0)]
@@ -820,7 +820,7 @@ Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[
 **`unsafe_const_cast`** -- remove const from a pointer:
 
 ```python
-from tpy.mem import unsafe_const_cast
+from tpy.unsafe import unsafe_const_cast
 
 cp: ConstPtr[Int32] = ...
 p: Ptr[Int32] = unsafe_const_cast(cp)    # ConstPtr[T] -> Ptr[T]
@@ -831,7 +831,7 @@ Generates `const_cast<T*>(p)` in C++.
 **`unsafe_cast`** -- reinterpret a pointer as pointing to a different type:
 
 ```python
-from tpy.mem import unsafe_cast
+from tpy.unsafe import unsafe_cast
 
 p: Ptr[Int32] = ...
 q: Ptr[UInt32] = unsafe_cast[UInt32](p)  # explicit type arg (preferred)

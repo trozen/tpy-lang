@@ -1,5 +1,5 @@
 from tpy import Ptr, ConstPtr, Int32, UInt32, Char, Array
-from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
+from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
 
 s: str = "hello"
 cp: ConstPtr[Char] = unsafe_ptr(s)

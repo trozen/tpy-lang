@@ -1,5 +1,5 @@
 from tpy import Ptr, Int32, UInt32, Array, copy
-from tpy.mem import unsafe_ptr, unsafe_load, unsafe_store
+from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 class Point:
     x: Int32

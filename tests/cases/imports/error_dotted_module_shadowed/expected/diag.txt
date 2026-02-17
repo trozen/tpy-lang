@@ -1,1 +1,1 @@
-main.tp.py:6: error: Cannot access field 'mem' on type Int32
+main.tp.py:6: error: Cannot access field 'unsafe' on type Int32

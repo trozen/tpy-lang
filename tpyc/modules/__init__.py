@@ -185,13 +185,13 @@ from tpyc.modules import math as _math_mod
 from tpyc.modules import time as _time_mod
 from tpyc.modules import sys as _sys_mod
 from tpyc.modules import typing as _typing_mod
-from tpyc.modules import mem as _mem_mod
+from tpyc.modules import unsafe as _unsafe_mod
 
 # Map module name -> factory function
 _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
     _builtins_mod.NAME: _builtins_mod.init_module,
     _tpy_mod.NAME: _tpy_mod.init_module,
-    _mem_mod.NAME: _mem_mod.init_module,
+    _unsafe_mod.NAME: _unsafe_mod.init_module,
     _math_mod.NAME: _math_mod.init_module,
     _time_mod.NAME: _time_mod.init_module,
     _sys_mod.NAME: _sys_mod.init_module,

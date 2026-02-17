@@ -6,11 +6,11 @@ namespace tpy_user::main {
 std::string_view __name__;
 // 4: arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
 std::array<int32_t, 4>* arr{};
-// 5: p: Ptr[Int32] = tpy.mem.unsafe_ptr(arr)
+// 5: p: Ptr[Int32] = tpy.unsafe.unsafe_ptr(arr)
 int32_t* p{};
-// 6: val: Int32 = tpy.mem.unsafe_load(p, UInt32(0))
+// 6: val: Int32 = tpy.unsafe.unsafe_load(p, UInt32(0))
 int32_t val{};
-// 9: val2: Int32 = tpy.mem.unsafe_load(p, UInt32(1))
+// 9: val2: Int32 = tpy.unsafe.unsafe_load(p, UInt32(1))
 int32_t val2{};
 
 void __tpy_init() {
@@ -19,19 +19,19 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 1: import tpy.mem
+  // 1: import tpy.unsafe
   // 4: arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
   static std::array<int32_t, 4> __global_slot_1 = {10, 20, 30, 40};
   arr = &__global_slot_1;
-  // 5: p: Ptr[Int32] = tpy.mem.unsafe_ptr(arr)
+  // 5: p: Ptr[Int32] = tpy.unsafe.unsafe_ptr(arr)
   p = (*arr).data();
-  // 6: val: Int32 = tpy.mem.unsafe_load(p, UInt32(0))
+  // 6: val: Int32 = tpy.unsafe.unsafe_load(p, UInt32(0))
   val = p[0];
   // 7: print(val)
   std::cout << val << "\n";
-  // 8: tpy.mem.unsafe_store(p, UInt32(1), Int32(99))
+  // 8: tpy.unsafe.unsafe_store(p, UInt32(1), Int32(99))
   p[1] = 99;
-  // 9: val2: Int32 = tpy.mem.unsafe_load(p, UInt32(1))
+  // 9: val2: Int32 = tpy.unsafe.unsafe_load(p, UInt32(1))
   val2 = p[1];
   // 10: print(val2)
   std::cout << val2 << "\n";

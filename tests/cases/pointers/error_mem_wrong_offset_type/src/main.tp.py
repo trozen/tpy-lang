@@ -1,5 +1,5 @@
 from tpy import Ptr, Int32
-from tpy.mem import unsafe_load
+from tpy.unsafe import unsafe_load
 
 def test() -> None:
     x: Int32 = Int32(5)

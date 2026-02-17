@@ -17,7 +17,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 1: import tpy.mem as m
+  // 1: import tpy.unsafe as m
   // 4: arr: Array[Int32, 2] = [Int32(1), Int32(2)]
   static std::array<int32_t, 2> __global_slot_1 = {1, 2};
   arr = &__global_slot_1;

@@ -1,5 +1,5 @@
 from tpy import Ptr, ConstPtr, Int32, UInt32, Array
-from tpy.mem import unsafe_ptr, unsafe_load, unsafe_copy_n
+from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_copy_n
 
 def test_copy_mutable() -> None:
     src: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
