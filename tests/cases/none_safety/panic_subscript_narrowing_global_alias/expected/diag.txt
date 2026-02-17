@@ -1,1 +1,2 @@
+main.tp.py:8: warning: unnecessary copy() -- 'result' is at its last use and would be moved automatically
 main.tp.py:19: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.

@@ -1,10 +1,9 @@
 # TODO
 
 ## Next
+- qualified name on `FunctionInfo`: add a `module` or `qualified_name` field so resolved functions can be identified by their source module (e.g. `tpy.copy` vs user-defined `copy`). Currently `is_builtin_function` + `name` is used as a proxy, which is fragile.
 - type inference through `Own[T]`: calling `wrapper(b)` where wrapper takes `Own[T]` fails to infer T from the argument type. Workaround: explicit type args `wrapper[Box](b)`.
 - forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
-- auto-move phase 3: extend auto-move to return sites (`return p` where return type is `Own[T]`), unnecessary `copy()` warning
-- update goals: C++ interop (but C++ code must follow certial rules, not arbitrary types); familiar synytax to non programmers, warn when semantic differs from cpython
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
 - dynamic protocols and dynamic dispatch
 - failed tests show source of test harness, not very useful; I would like it to show the source diff or change in output etc

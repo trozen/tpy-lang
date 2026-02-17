@@ -71,6 +71,22 @@ class StatementAnalyzer:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
 
+    def _warn_unnecessary_return_copy(self, value: TpyExpr) -> None:
+        """Warn when return copy(x) is used but x is at last use (auto-move suffices)."""
+        if not (isinstance(value, TpyCall) and len(value.args) == 1
+                and value.resolved_function_info
+                and value.resolved_function_info.name == "copy"
+                and value.resolved_function_info.is_builtin_function):
+            return
+        inner = value.args[0]
+        if (isinstance(inner, TpyName)
+                and id(inner) in self.ctx.all_last_uses
+                and self.compat._is_movable_var(inner.name)):
+            self.ctx.warning(
+                f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
+                value,
+            )
+
     @staticmethod
     def _is_readonly_call_expr(expr: TpyExpr) -> bool:
         """Check if a call expression is known to be readonly (for narrowing)."""
@@ -131,13 +147,19 @@ class StatementAnalyzer:
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
                 # Check for lvalue returned as Own[T] without explicit copy()
-                if isinstance(expected, OwnType) and self.compat.is_lvalue(stmt.value):
-                    if not self.compat.is_copy_call(stmt.value):
-                        raise self.ctx.error(
-                            f"Cannot return lvalue as Own[{expected.wrapped}] without explicit copy(). "
-                            f"Use 'return copy(...)' instead.",
-                            stmt.value
-                        )
+                if isinstance(expected, OwnType):
+                    if self.compat.is_copy_call(stmt.value):
+                        self._warn_unnecessary_return_copy(stmt.value)
+                    elif self.compat.is_lvalue(stmt.value):
+                        is_auto_moved = (isinstance(stmt.value, TpyName)
+                                         and id(stmt.value) in self.ctx.all_last_uses
+                                         and self.compat._is_movable_var(stmt.value.name))
+                        if not is_auto_moved:
+                            raise self.ctx.error(
+                                f"Cannot return lvalue as Own[{expected.wrapped}] without explicit copy(). "
+                                f"Use 'return copy(...)' instead.",
+                                stmt.value
+                            )
                 # Check for dangling reference (returning local/temporary as reference)
                 self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
             self.init.mark_terminated()

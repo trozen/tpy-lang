@@ -10,7 +10,7 @@ def make_point(x: Int32, y: Int32) -> Own[Point]:
     p: Point = Point()
     p.x = x
     p.y = y
-    return copy(p)
+    return copy(p)  # tpyc: warning(/unnecessary copy/)
 
 
 def take_point(p: Own[Point]) -> Int32:

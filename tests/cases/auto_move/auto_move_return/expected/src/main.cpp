@@ -5,25 +5,25 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 9: def create_point(x: Int32, y: Int32) -> Own[Point]:
-Point create_point(int32_t x, int32_t y) {
-  // 10:     p: Point = Point()
+// 10: def make_point(x: Int32, y: Int32) -> Own[Point]:
+Point make_point(int32_t x, int32_t y) {
+  // 11:     p = Point()
   Point p = Point();
-  // 11:     p.x = x
+  // 12:     p.x = x
   p.x = x;
-  // 12:     p.y = y
+  // 13:     p.y = y
   p.y = y;
-  // 13:     return copy(p)  # tpyc: warning(/unnecessary copy/)
+  // 14:     return p  # last use of p -> auto-move (no copy needed)
   return p;
 }
 
-// 16: def main():
+// 17: def main():
 void main() {
-  // 17:     pt: Point = create_point(10, 20)
-  Point pt = create_point(10, 20);
-  // 18:     print(pt.x)
+  // 18:     pt = make_point(10, 20)
+  Point pt = make_point(10, 20);
+  // 19:     print(pt.x)
   std::cout << pt.x << "\n";
-  // 19:     print(pt.y)
+  // 20:     print(pt.y)
   std::cout << pt.y << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 22: main()
+  // 23: main()
   main();
 }
 

@@ -13,7 +13,7 @@ std::vector<std::optional<int32_t>> make_list() {
   std::vector<std::optional<int32_t>> result = std::vector<std::optional<int32_t>>{};
   // 7:     result.append(Int32(1))
   result.push_back(1);
-  // 8:     return copy(result)
+  // 8:     return copy(result)  # tpyc: warning(/unnecessary copy/)
   return result;
 }
 

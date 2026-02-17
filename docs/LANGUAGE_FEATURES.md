@@ -808,6 +808,23 @@ else:
     consume(p)  # auto-move on this path
 ```
 
+**Return site auto-move**: When a function returns `Own[T]` and the return value is a local variable at its last use, `copy()` is not needed -- the compiler allows it directly (C++ NRVO/implicit move handles the rest):
+
+```python
+def make_point(x: Int32, y: Int32) -> Own[Point]:
+    p = Point()
+    p.x = x
+    p.y = y
+    return p  # last use -> allowed without copy()
+```
+
+**Unnecessary copy() warning**: When `copy(x)` is used but `x` is at its last use and would be auto-moved, the compiler warns:
+
+```python
+return copy(p)      # warning: unnecessary copy()
+consume(copy(b))    # warning: unnecessary copy()
+```
+
 **Own[T] param forwarding**: An `Own[T]` parameter can be forwarded to another `Own[T]` parameter at its last use:
 
 ```python

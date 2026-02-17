@@ -1,0 +1,1 @@
+main.tp.py:13: warning: unnecessary copy() -- 'p' is at its last use and would be moved automatically

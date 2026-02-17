@@ -19,7 +19,7 @@ class Holder:
 def make_holder(p: Point) -> Own[Holder]:
     h = Holder()
     h.value = copy(p)
-    return copy(h)
+    return copy(h)  # tpyc: warning(/unnecessary copy/)
 
 
 def test_init_from_temp() -> None:

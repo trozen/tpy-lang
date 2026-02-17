@@ -1,0 +1,2 @@
+main.tp.py:16: warning: unnecessary copy() -- 'b' is at its last use and would be moved automatically
+main.tp.py:23: warning: unnecessary copy() -- 'b' is at its last use and would be moved automatically

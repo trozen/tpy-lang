@@ -5,7 +5,7 @@ from tpy import Int32, Own, copy
 def make_list() -> Own[list[Int32 | None]]:
     result: list[Int32 | None] = []
     result.append(Int32(1))
-    return copy(result)
+    return copy(result)  # tpyc: warning(/unnecessary copy/)
 
 l: list[Int32 | None] = make_list()
 

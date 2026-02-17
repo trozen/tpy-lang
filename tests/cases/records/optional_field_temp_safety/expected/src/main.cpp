@@ -11,7 +11,7 @@ Holder make_holder(Point& p) {
   Holder h = Holder();
   // 21:     h.value = copy(p)
   h.value = p;
-  // 22:     return copy(h)
+  // 22:     return copy(h)  # tpyc: warning(/unnecessary copy/)
   return h;
 }
 

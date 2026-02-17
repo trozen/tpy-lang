@@ -412,6 +412,22 @@ class CallAnalyzer:
         )
         return OwnType(arg_type)
 
+    def _warn_unnecessary_copy(self, arg: TpyExpr) -> None:
+        """Warn when copy(x) is passed to Own[T] param but x is at last use."""
+        if not (isinstance(arg, TpyCall) and len(arg.args) == 1
+                and arg.resolved_function_info
+                and arg.resolved_function_info.name == "copy"
+                and arg.resolved_function_info.is_builtin_function):
+            return
+        inner = arg.args[0]
+        if (isinstance(inner, TpyName)
+                and id(inner) in self.ctx.all_last_uses
+                and self.compat._is_movable_var(inner.name)):
+            self.ctx.warning(
+                f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
+                arg,
+            )
+
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
         """Validate and resolve generic type constructor calls.
 
@@ -669,6 +685,9 @@ class CallAnalyzer:
                         arg
                     )
 
+            if isinstance(ptype, OwnType):
+                self._warn_unnecessary_copy(arg)
+
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
@@ -776,6 +795,9 @@ class CallAnalyzer:
                         f"(would be implicit copy)",
                         arg
                     )
+
+            if isinstance(resolved_ptype, OwnType):
+                self._warn_unnecessary_copy(arg)
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(resolved_ptype, CharType) and isinstance(arg_type, StrType) and
@@ -936,6 +958,9 @@ class CallAnalyzer:
                         f"(would be implicit copy)",
                         arg
                     )
+
+            if isinstance(ptype, OwnType):
+                self._warn_unnecessary_copy(arg)
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and

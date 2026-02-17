@@ -13,7 +13,7 @@ Point make_point(int32_t x, int32_t y) {
   p.x = x;
   // 12:     p.y = y
   p.y = y;
-  // 13:     return copy(p)
+  // 13:     return copy(p)  # tpyc: warning(/unnecessary copy/)
   return p;
 }
 
