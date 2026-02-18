@@ -290,7 +290,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `ranges.hpp` | `repeat_range`, `to_vector`, `from_range` utilities |
 | `range.hpp` | `Range<T>` Python-style range with upfront overflow checking |
 | `static_list.hpp` | `StaticList<T, N>` fixed-capacity container |
-| `bigint.hpp` | `BigInt` arbitrary precision integer (GMP-based) |
+| `bigint.hpp` | `BigInt` arbitrary precision integer (custom runtime implementation) |
 | `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |
 | `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`) |
 | `protocols.hpp` | `Sized`, `Sequence` concepts |

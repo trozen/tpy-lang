@@ -13,28 +13,7 @@ A proof-of-concept compiler (tpyc) that translates Python to C++.
 
 ## Dependencies
 
-Install GMP (GNU Multiple Precision Arithmetic Library):
-
-**Ubuntu/Debian:**
-
-```bash
-sudo apt install libgmp-dev
-```
-
-**macOS:**
-
-```bash
-brew install gmp
-```
-
-For Apple Silicon Macs, add these to your shell profile (`.zshrc` or `.bashrc`):
-
-```bash
-export CPLUS_INCLUDE_PATH="/opt/homebrew/include:$CPLUS_INCLUDE_PATH"
-export LIBRARY_PATH="/opt/homebrew/lib:$LIBRARY_PATH"
-```
-
-For Intel Macs, use `/usr/local` instead of `/opt/homebrew`.
+No external C/C++ libraries are required by the runtime. A C++23 compiler is enough.
 
 ## Quick Start
 
@@ -104,6 +83,6 @@ If you need to compile the generated C++ manually:
 
 ```bash
 tpyc examples/hello.tp.py -o out/
-g++ -std=c++23 -I runtime -o out/program out/hello.d/hello.cpp -lgmp
+g++ -std=c++23 -I runtime -o out/program out/hello.d/hello.cpp
 ./out/program
 ```

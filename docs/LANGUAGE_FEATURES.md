@@ -156,7 +156,7 @@ Possible syntax options:
 ## Types
 
 ### Numeric
-- **Working**: `int` (Python's int -> `tpy::BigInt` arbitrary precision using GMP)
+- **Working**: `int` (Python's int -> `tpy::BigInt` arbitrary precision, custom runtime implementation)
 - **Working**: `float` (Python's float -> `double`, 64-bit IEEE 754)
 - **Working**: `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `bool`, `Char`
 - **Planned**: `Float32`

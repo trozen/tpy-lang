@@ -16,7 +16,7 @@ def add(a: int, b: int) -> int:
 
 ### Numeric types
 
-`int` is arbitrary-precision (backed by GMP), like in Python. For performance-critical code, use fixed-width types -- they use checked arithmetic and panic on overflow.
+`int` is arbitrary-precision (custom runtime implementation), like in Python. For performance-critical code, use fixed-width types -- they use checked arithmetic and panic on overflow.
 
 ```python
 from tpy import Int32, UInt8

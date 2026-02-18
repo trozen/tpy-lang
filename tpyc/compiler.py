@@ -50,7 +50,7 @@ class CppCompilerConfig:
     compiler: str = "g++"
     std: str = "c++23"
     extra_flags: list[str] = field(default_factory=list)
-    link_flags: list[str] = field(default_factory=lambda: ["-lgmp"])
+    link_flags: list[str] = field(default_factory=list)
     ccache: bool = False
 
     @classmethod
