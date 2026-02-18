@@ -1,11 +1,9 @@
 # TODO
 
 ## Next
-- forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
-- fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
+- Type params in generic function bodies: `list[T]` as local variable annotation fails ("Type parameter 'T' used outside of generic context"), and `return []` can't infer element type from return type when it contains a type param
 - dynamic protocols and dynamic dispatch
-- bi-directional contextual call inference: docs/BIDIRECTIONAL_CALL_INFERENCE_PROPOSAL.md
-- type deduction usability - the following don't work: `p: Ptr[int]; p = Ptr()`, `l: list[int]; l = list()` (reassignment context; var-decl `list[int] = list()` works, `p = None` fixed)
+- bi-directional contextual type inference (Phase 2): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top? (differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
@@ -32,6 +30,7 @@
 - coerce int32 -> uint32?
 
 ## Bugs
+- Reassigning a non-value-type pointer global produces invalid C++ (`c2 = &*(__global_slot_1 = Container<int32_t>())` dereferences a non-pointer value)
 - `buf: Array[Int16, 320] = [0] * 320`
 
 ## Investigate
@@ -71,6 +70,7 @@
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
+- handling user object copy via __copy__ (e.g. heap allocated)
 - language restriction documentation
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
 - Char type location: currently in `builtins` module but feels like a tpy type. Python doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.

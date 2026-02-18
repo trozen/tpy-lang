@@ -641,7 +641,8 @@ class CallAnalyzer:
         # Try generic overloads with type inference
         for overload in generic:
             type_subst = self.type_ops.infer_type_params_for_function(
-                overload, arg_types, protocol_checker
+                overload, arg_types, protocol_checker,
+                expected_return_type=self.ctx.expr_type_hint,
             )
             if type_subst is not None:
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
@@ -808,7 +809,8 @@ class CallAnalyzer:
             # Infer from arguments
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
             type_subst = self.type_ops.infer_type_params_for_function(
-                func, arg_types, self.protocols.type_conforms_to_protocol
+                func, arg_types, self.protocols.type_conforms_to_protocol,
+                expected_return_type=self.ctx.expr_type_hint,
             )
             if type_subst is None:
                 raise self.ctx.error(
@@ -867,27 +869,26 @@ class CallAnalyzer:
             # Validate type arguments
             if record.is_generic():
                 if not expr.call_type.type_args:
-                    raise self.ctx.error(
-                        f"Generic record '{record.name}' requires type arguments: "
-                        f"{record.name}[{', '.join(record.type_params)}]",
-                        expr
-                    )
-                if len(expr.call_type.type_args) != len(record.type_params):
-                    raise self.ctx.error(
-                        f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
-                        f"got {len(expr.call_type.type_args)}",
-                        expr
-                    )
-                # Validate type parameter bounds
-                for param_name, type_arg in zip(record.type_params, expr.call_type.type_args):
-                    if param_name in record.type_param_bounds:
-                        bound = record.type_param_bounds[param_name]
-                        if not self.protocols.type_conforms_to_protocol(type_arg, bound):
-                            raise self.ctx.error(
-                                f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
-                                f"for type parameter '{param_name}' of '{record.name}'",
-                                expr
-                            )
+                    # No explicit type args -- fall through to inference section
+                    expr.call_type = None
+                else:
+                    if len(expr.call_type.type_args) != len(record.type_params):
+                        raise self.ctx.error(
+                            f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
+                            f"got {len(expr.call_type.type_args)}",
+                            expr
+                        )
+                    # Validate type parameter bounds
+                    for param_name, type_arg in zip(record.type_params, expr.call_type.type_args):
+                        if param_name in record.type_param_bounds:
+                            bound = record.type_param_bounds[param_name]
+                            if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                                raise self.ctx.error(
+                                    f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
+                                    f"for type parameter '{param_name}' of '{record.name}'",
+                                    expr
+                                )
+        if expr.call_type is not None and isinstance(expr.call_type, NamedType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
             if record.has_init:
@@ -911,7 +912,9 @@ class CallAnalyzer:
         if record.is_generic():
             if record.has_init:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                inferred = self.type_ops.infer_type_params_for_record(record, arg_types)
+                inferred = self.type_ops.infer_type_params_for_record(
+                    record, arg_types, expected_type=self.ctx.expr_type_hint,
+                )
                 if inferred:
                     # Resolve pending types for codegen.
                     for k, v in list(inferred.items()):
@@ -947,6 +950,35 @@ class CallAnalyzer:
                         )
                     self._set_record_constructor_info(expr, record, inferred_type, type_subst)
                     return inferred_type
+            else:
+                # No __init__ -- try contextual inference only
+                if self.ctx.expr_type_hint is not None:
+                    inferred: dict[str, TpyType] = {}
+                    exp = self.ctx.expr_type_hint
+                    if isinstance(exp, OwnType):
+                        exp = exp.wrapped
+                    record_pattern = NamedType(record.name, tuple(
+                        TypeParamRef(tp) for tp in record.type_params
+                    ))
+                    if self.type_ops.match_type_with_inference(record_pattern, exp, inferred):
+                        if all(tp in inferred for tp in record.type_params):
+                            # Validate type parameter bounds
+                            for param_name, type_arg in inferred.items():
+                                if param_name in record.type_param_bounds:
+                                    bound = record.type_param_bounds[param_name]
+                                    if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                                        raise self.ctx.error(
+                                            f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
+                                            f"for type parameter '{param_name}' of '{record.name}'",
+                                            expr
+                                        )
+                            type_args = tuple(inferred[p] for p in record.type_params)
+                            inferred_type = NamedType(expr.func, type_args)
+                            expr.call_type = inferred_type
+                            self._set_record_constructor_info(expr, record, inferred_type, inferred)
+                            for arg in expr.args:
+                                self.expr.analyze_expr(arg)
+                            return inferred_type
             # Inference failed - require explicit type args
             raise self.ctx.error(
                 f"Cannot infer type arguments for '{record.name}'. "

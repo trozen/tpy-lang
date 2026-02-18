@@ -141,8 +141,8 @@ class StatementAnalyzer:
                 self.ctx.non_none_exprs.clear()
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
-                ret_type = self.expr.analyze_expr(stmt.value)
                 expected = self.ctx.current_function.return_type if self.ctx.current_function else VOID
+                ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
                 # Check for lvalue returned as Own[T] without explicit copy()
@@ -548,7 +548,9 @@ class StatementAnalyzer:
                         f"{func_name} requires matching type annotation, got {stmt.type}", stmt
                     )
             else:
-                init_type = self.expr.analyze_expr_with_hint(stmt.init, stmt.type)
+                # Use annotation as hint, or existing type for reassignments
+                type_hint = stmt.type if stmt.type else existing_type
+                init_type = self.expr.analyze_expr_with_hint(stmt.init, type_hint)
 
 
             # Track list literal to variable mapping for mutation detection

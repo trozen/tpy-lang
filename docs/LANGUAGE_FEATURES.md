@@ -1784,6 +1784,37 @@ parameters are inferred from other arguments. Example: if a generic function
 has `delta: Int64`, passing `Int32` for `delta` is accepted via normal
 argument coercion.
 
+**Contextual Type Inference**: When arguments don't fully determine all type
+parameters, the expected type from context (assignment annotation, return type,
+reassignment) fills in the remaining params:
+
+```python
+class Container[T]:
+    val: T
+
+def make_box[T]() -> Own[Container[T]]:
+    return Container[T]()
+
+# Assignment context: T inferred from annotation
+b: Container[Int32] = make_box()     # T = Int32
+
+# Record constructor context: T inferred from annotation
+c: Container[Int32] = Container()    # T = Int32
+
+# Return context: T inferred from enclosing function return type
+def get_box() -> Own[Container[Int32]]:
+    return make_box()                # T = Int32
+```
+
+Contextual inference also unwraps `Own[T]` on both sides, so `Own[Container[T]]`
+matches `Container[Int32]` correctly. If no context is available, inference
+still fails and explicit type arguments are required.
+
+**Not yet supported**: inference from field assignment targets (`self.field = expr`),
+subscript targets (`items[i] = expr`), or function argument context (passing a
+generic call as an argument to another function). See
+`docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` for the full design.
+
 **Explicit Type Arguments**: When inference isn't possible or you want explicit control:
 
 ```python
@@ -1957,8 +1988,9 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 ```
 
 **Type Inference**:
-- Type arguments can be inferred from constructor arguments: `Box(42)` → `Box[int]`
+- Type arguments can be inferred from constructor arguments: `Box(42)` -> `Box[int]`
 - Inference works when all type parameters can be determined from arguments
+- Contextual inference from assignment annotation, return type, or reassignment context fills unresolved params
 - If inference fails, explicit type arguments are required
 - When mixing int literals with `Int32`, inference upgrades to `Int32`: `Same(1, x: Int32)` → `Same[Int32]`
 - Supports inference through wrapper types: `Ptr[T]`, `ConstPtr[T]`, `Own[T]`, `list[T]`
@@ -2948,7 +2980,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 
 - **Working**: Local variables (inferred and annotated)
 - **Working**: Global variables (typed)
-- **Planned**: Type inference from function returns
+- **Working**: Contextual type inference from assignment/return context for generic functions and record constructors
 - **Open**: `global` → explicit global mutation from functions (attempted and reverted; may revisit)
 - **Open**: `:=` walrus → if useful pattern emerges
 

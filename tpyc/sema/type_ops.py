@@ -498,11 +498,13 @@ class TypeOperations:
         self,
         func: FunctionInfo,
         arg_types: list[TpyType],
-        type_conforms_to_protocol: callable
+        type_conforms_to_protocol: callable,
+        expected_return_type: TpyType | None = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        If expected_return_type is provided, unresolved params are matched against the return type.
         """
         if len(arg_types) != len(func.params):
             return None
@@ -511,6 +513,14 @@ class TypeOperations:
         for (pname, ptype), arg_type in zip(func.params, arg_types):
             if not self.match_type_with_inference(ptype, arg_type, inferred):
                 return None
+
+        # Fallback: infer remaining params from expected return type
+        if expected_return_type is not None:
+            unresolved = [tp for tp in func.type_params if tp not in inferred]
+            if unresolved:
+                ret = func.return_type.wrapped if isinstance(func.return_type, OwnType) else func.return_type
+                exp = expected_return_type.wrapped if isinstance(expected_return_type, OwnType) else expected_return_type
+                self.match_type_with_inference(ret, exp, inferred)
 
         # Resolve pending types for codegen.
         for k, v in list(inferred.items()):
@@ -541,11 +551,13 @@ class TypeOperations:
     def infer_type_params_for_record(
         self,
         record: RecordInfo,
-        arg_types: list[TpyType]
+        arg_types: list[TpyType],
+        expected_type: TpyType | None = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from constructor arguments for user-defined generic record.
 
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
+        If expected_type is provided, unresolved params are matched against the record type pattern.
         """
         if len(arg_types) != len(record.init_params):
             return None
@@ -554,6 +566,14 @@ class TypeOperations:
         for (pname, ptype, _), arg_type in zip(record.init_params, arg_types):
             if not self.match_type_with_inference(ptype, arg_type, inferred):
                 return None
+
+        # Fallback: infer remaining params from expected type
+        if expected_type is not None:
+            unresolved = [tp for tp in record.type_params if tp not in inferred]
+            if unresolved:
+                exp = expected_type.wrapped if isinstance(expected_type, OwnType) else expected_type
+                record_pattern = NamedType(record.name, tuple(TypeParamRef(tp) for tp in record.type_params))
+                self.match_type_with_inference(record_pattern, exp, inferred)
 
         # Verify all type params were inferred
         for tp in record.type_params:
