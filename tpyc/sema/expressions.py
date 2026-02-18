@@ -270,6 +270,12 @@ class ExpressionAnalyzer:
                         "(not '==' / '!=')",
                         expr,
                     )
+                if isinstance(other, (PtrType, ConstPtrType)):
+                    raise self.ctx.error(
+                        "Use 'is None' / 'is not None' for pointer None checks "
+                        "(not '==' / '!=')",
+                        expr,
+                    )
                 raise self.ctx.error(
                     f"Cannot compare {left_type} and {right_type} with '{expr.op}'",
                     expr,
@@ -306,17 +312,18 @@ class ExpressionAnalyzer:
 
         # Identity operators (is / is not) -- only valid with None
         if expr.op in ("is", "is not"):
-            # Unwrap ReadonlyType for Optional checks (readonly[T | None] is still Optional)
+            # Unwrap ReadonlyType for nullable checks.
             left_check = unwrap_readonly(left_type)
             right_check = unwrap_readonly(right_type)
-            if isinstance(left_check, NoneType) and isinstance(right_check, OptionalType):
+            nullable_types = (OptionalType, PtrType, ConstPtrType)
+            if isinstance(left_check, NoneType) and isinstance(right_check, nullable_types):
                 return BOOL
-            if isinstance(right_check, NoneType) and isinstance(left_check, OptionalType):
+            if isinstance(right_check, NoneType) and isinstance(left_check, nullable_types):
                 return BOOL
             if isinstance(left_check, NoneType) and isinstance(right_check, NoneType):
                 return BOOL
             raise self.ctx.error(
-                f"'is' / 'is not' can only compare Optional types with None, "
+                f"'is' / 'is not' can only compare Optional/Ptr types with None, "
                 f"got {left_type} and {right_type}",
                 expr,
             )

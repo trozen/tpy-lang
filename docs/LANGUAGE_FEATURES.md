@@ -564,6 +564,12 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 
 **Deref coercion:** Types with `__deref__() -> T` also coerce to `T` in assignment, argument, and return contexts. For example, a user `Ref` with `__deref__() -> Point` can be passed where `Point` is expected — the compiler inserts `ref.__deref__()` automatically. `Ptr[T]` uses `tpy::deref_check()` for null-checked coercion.
 
+**Pointer None semantics:**
+
+- `None` can be assigned to `Ptr[T]` and `ConstPtr[T]` (represents `nullptr`)
+- `p is None` / `p is not None` work for `Ptr[T]` and `ConstPtr[T]`
+- `p == None` / `p != None` are rejected; use identity checks (`is` / `is not`)
+
 **Null-safety:** Auto-deref through `Ptr[T]`/`ConstPtr[T]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance (e.g., `Ptr(x)` constructed from a local variable) skip the null check and use direct `->` access.
 
 **C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
@@ -988,7 +994,7 @@ q: Ptr[UInt32] = unsafe_cast(p)          # target inferred from annotation
 print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
 ```
 
-Generates `reinterpret_cast<U*>(p)` in C++. The target pointee type can be specified via explicit type argument (`unsafe_cast[T](p)`) or inferred from the variable annotation. The pointer kind (`Ptr`/`ConstPtr`) is preserved from the argument. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
+Generates `reinterpret_cast<U*>(p)` in C++. The target pointee type can be specified via explicit type argument (`unsafe_cast[T](p)`) or inferred from context. Context includes variable annotation and known argument type in nested calls (for example `sink(unsafe_cast(p))` where `sink` expects `Ptr[U]` or `ConstPtr[U]`). The pointer kind (`Ptr`/`ConstPtr`) is preserved from the argument. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
 
 ### User-Defined
 - **Working**: Classes → C++ structs
@@ -1773,6 +1779,10 @@ s = first(strs)        # T inferred as str from list[str]
 points = [Point(1, 2)]
 p = first(points)      # T inferred as Point from list[Point]
 ```
+Inference also accepts coercible concrete arguments on generic calls when type
+parameters are inferred from other arguments. Example: if a generic function
+has `delta: Int64`, passing `Int32` for `delta` is accepted via normal
+argument coercion.
 
 **Explicit Type Arguments**: When inference isn't possible or you want explicit control:
 

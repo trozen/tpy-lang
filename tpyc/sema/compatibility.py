@@ -86,8 +86,8 @@ class TypeCompatibility:
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx
             )
 
-        # None -> Optional[T]: always compatible
-        if isinstance(actual, NoneType) and isinstance(expected, OptionalType):
+        # None -> Optional[T] / Ptr[T] / ConstPtr[T]: always compatible
+        if isinstance(actual, NoneType) and isinstance(expected, (OptionalType, PtrType, ConstPtrType)):
             return None
 
         # T -> Optional[T]: implicit wrapping
