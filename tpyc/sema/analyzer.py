@@ -296,7 +296,7 @@ class SemanticAnalyzer:
         # Pre-scan for reassigned variables (shared with codegen)
         scan = scan_reassigned_vars(func.body)
         # Last-use analysis for auto-move (shared with codegen)
-        self.ctx.all_last_uses |= analyze_last_uses(func.body)
+        self.ctx.all_last_uses |= analyze_last_uses(func.body, scan.alias_sources)
         self.ctx.current_reassigned_vars = scan.reassigned.copy()
         self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
 
@@ -370,7 +370,7 @@ class SemanticAnalyzer:
             # Pre-scan for reassigned variables (shared with codegen)
             scan = scan_reassigned_vars(method.body)
             # Last-use analysis for auto-move (shared with codegen)
-            self.ctx.all_last_uses |= analyze_last_uses(method.body)
+            self.ctx.all_last_uses |= analyze_last_uses(method.body, scan.alias_sources)
             self.ctx.current_reassigned_vars = scan.reassigned.copy()
             self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
 
@@ -425,7 +425,8 @@ class SemanticAnalyzer:
         # Pre-scan for codegen
         self.top_level_scan_result = scan_reassigned_vars(stmts)
         # Last-use analysis for auto-move (shared with codegen)
-        self.ctx.all_last_uses |= analyze_last_uses(stmts)
+        self.ctx.all_last_uses |= analyze_last_uses(
+            stmts, self.top_level_scan_result.alias_sources)
         self.ctx.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
         self.ctx.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()
 

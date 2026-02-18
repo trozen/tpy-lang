@@ -291,26 +291,27 @@ at last use are auto-moved; not at last use produces a @nocopy-specific error.
 be consumed. Tier 3 (T* pointer-local) works for reassigned @nocopy since it uses
 `std::optional::emplace()` (no copy needed). No Tier 4 needed.
 
-### Phase 5: Alias-aware liveness (borrow safety)
+### Phase 5: Alias-aware liveness (borrow safety) -- DONE
 
-Auto-move currently checks that the variable *name* is dead after the move point, but
-doesn't check whether T& aliases pointing to the same storage are still live. This can
-cause use-after-move through a dangling reference:
+Alias map built at prescan time: `alias_name -> source_name` for lvalue-initialized,
+non-reassigned variables with simple `TpyName` init. Transitive chains resolved
+(`a -> h, b -> a` => both alias `h`). Passed to `analyze_last_uses()` which checks:
+when marking a variable as last-use, also verify no T& alias is still in the live set.
+If an alias is live, auto-move is suppressed. For copyable types this falls back to the
+implicit-copy error; for @nocopy types the @nocopy-specific error fires.
 
-```python
-alias = h        # T& reference to h
-close(h)         # auto-move h (alias is still live!)
-print(alias.fd)  # dangling reference -- UB
-```
+Detach-on-reassign: when the source variable is reassigned (e.g. `alias = h; h = new()`),
+the alias points to old storage (separate slot in C++) and no longer constrains moves of
+the new h. Implemented via per-alias position tracking: a forward pre-scan finds both
+the first reassignment position for each source and the creation position of each alias.
+An alias is "detached" only if it was created BEFORE the source's first reassignment --
+aliases created after the reassignment track the current value and still constrain moves.
+The backward pass re-activates detached aliases at the reassignment point so code before
+it still checks. Only handles top-level reassignments in the same block (not inside
+nested if/for); conditional reassignments conservatively keep alias checking active.
 
-**Fix**: build an alias map (`source_var -> set[alias_var]`) during sema for Tier 2
-(T& reference) locals. After computing `all_last_uses`, check: for each auto-move
-candidate `h`, are any aliases of `h` live after the move point? If so, suppress the
-auto-move (remove from `all_last_uses`). For copyable types this falls back to copy;
-for @nocopy types it becomes an error telling the user to remove the alias or
-restructure.
-
-Transitive aliases (`a = h; b = a`) require transitive closure of the alias map.
+Only tracks simple name-to-name aliases. Field-access aliases (`alias = h.field`)
+are not tracked (future work if needed).
 
 ### Phase 6: Box[T] as library type
 

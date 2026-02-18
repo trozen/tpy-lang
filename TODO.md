@@ -8,6 +8,7 @@
 - dynamic protocols and dynamic dispatch
 - failed tests show source of test harness, not very useful; I would like it to show the source diff or change in output etc
 - type deduction usability - the following don't work: `p: Ptr[int]; p = None; p = Ptr()`, `l: list[int]; l = list()`
+- pointer None check: `Ptr() is None`
 - extend int type configuration to AddressType/SizeType/PtrDiff (e.g. UInt32, Int32, Int32)
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?

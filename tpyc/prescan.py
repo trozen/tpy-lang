@@ -25,6 +25,9 @@ class ScanResult:
     rvalue_reassigned: set[str] = field(default_factory=set)
     lvalue_reassigned: set[str] = field(default_factory=set)
     aug_assigned: set[str] = field(default_factory=set)
+    # alias_name -> source_name for lvalue-initialized, non-reassigned variables
+    # with simple TpyName init (T& reference candidates).
+    alias_sources: dict[str, str] = field(default_factory=dict)
 
 
 def scan_reassigned_vars(stmts: list[TpyStmt]) -> ScanResult:
@@ -39,6 +42,9 @@ def scan_reassigned_vars(stmts: list[TpyStmt]) -> ScanResult:
     declared: set[str] = set()
     result = ScanResult()
     _scan_stmts(stmts, declared, result)
+    # Reassigned vars become T* pointers, not T& refs -- remove from alias map
+    for name in result.reassigned:
+        result.alias_sources.pop(name, None)
     return result
 
 
@@ -69,6 +75,10 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     result.lvalue_reassigned.add(stmt.name)
             else:
                 declared.add(stmt.name)
+                if (stmt.init is not None
+                        and isinstance(stmt.init, TpyName)
+                        and stmt.init.name != stmt.name):
+                    result.alias_sources[stmt.name] = stmt.init.name
         elif isinstance(stmt, TpyAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.reassigned.add(stmt.target.name)

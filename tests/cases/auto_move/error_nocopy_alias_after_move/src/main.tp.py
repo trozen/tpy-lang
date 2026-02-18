@@ -1,5 +1,4 @@
-# T& alias of @nocopy -- non-consuming alias access before move is safe.
-# Alias is dead before close(h), so auto-move of h proceeds.
+# @nocopy: alias used after owner move point -- move suppressed, error fires.
 from tpy import Int32, Own, nocopy
 
 
@@ -16,8 +15,8 @@ def main():
     h = Handle()
     h.fd = 42
     alias = h
+    close(h)           # tpyc: error(/@nocopy.*used after/)
     print(alias.fd)
-    print(close(h))  # tpyc: ok
 
 
 main()

@@ -869,8 +869,10 @@ def main():
 - Non-consuming uses (field access, method calls, pass by reference) work normally
 - `alias = h` creates a `T&` reference (borrow), but aliases cannot be consumed
 - Returning a @nocopy local at last use works (C++ NRVO/implicit move)
-- **Known limitation**: auto-move does not yet check whether T& aliases are still live;
-  using an alias after the owner is moved is undefined behavior (planned fix: Phase 5)
+- Auto-move is suppressed when T& aliases of the source variable are still live
+  (prevents dangling references through aliases)
+- Detach-on-reassign: when the source is reassigned (`alias = h; h = new()`),
+  alias points to old storage and no longer constrains moves of the new h
 - `Own[T]` parameter forwarding works at last use
 
 Generated C++ for @nocopy records includes:
