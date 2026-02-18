@@ -7,38 +7,26 @@
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
 - dynamic protocols and dynamic dispatch
 - bi-directional contextual call inference: docs/BIDIRECTIONAL_CALL_INFERENCE_PROPOSAL.md
-- failed tests show source of test harness, not very useful; I would like it to show the source diff or change in output etc
-- type deduction usability - the following don't work: `p: Ptr[int]; p = None; p = Ptr()`, `l: list[int]; l = list()`
-- extend int type configuration to AddressType/SizeType/PtrDiff (e.g. UInt32, Int32, Int32)
-- how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top?
+- type deduction usability - the following don't work: `p: Ptr[int]; p = Ptr()`, `l: list[int]; l = list()` (reassignment context; var-decl `list[int] = list()` works, `p = None` fixed)
+- how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top? (differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
 - constant global variables
 - "@native_c, @native, @extern_c, @readonly, @noalloc are all hard-coded parser keywords" -- should be handled like normal functions eventually (maybe in tpy.extern package?)
-- move native_c_global and native_global to tpy.extern package?
+- move native_c_global and native_global to tpy.extern package? (or tpy.native?)
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
-- diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
+- Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - list literal contextual typing: when LHS has explicit annotation like `list[Int32 | None]`, allow compatible literals (`[]`, `[Int32(1)]`, `[None]`) via contextual element-type widening instead of strict inferred-list mismatch
-- const/mutability design: extend readonly model -- readonly inference for regular methods
 - type containing an allocated object (e.g. `Box[T]`)
-- type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (e.g. `BoxList[T]`, `BoxArray[T, N]`)
-- investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
-- `type()` function / compile-time type info
-- extract c++ compiler interface
+- type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (something like `UninitStorage[T, Size]`)
 - ~~`tpy::__len__()`~~ PARTIAL: `__len__`, `__getitem__`, `__setitem__` are now free functions in `dunder.hpp`. Consider also generating `__len__()` as `size()` member function for STL compatibility.
-- template function implementation should be in some specific header file
 - `DeRef` protocol?
-- allow type annotation to use "" (forward decl)
 - `ValueType` protocol bound — `T: ValueType` would suppress copy warnings for generic fields, since value types copy silently
 - proper string handling (STRING_HANDLING.md)
 - Deduce generic type args from field annotation: `self.data = Array()` → `Array[T, N]()` when `data: Array[T, N]`
-- differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently.
-- make a doc with TPy vs Python differences
 - keyword arguments
-- analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
-- for-each: preserve loop variable after loop exit (if used after the loop)
 - REPL: arr=[1,2,3]; arr[-4]
 - better C++ code formatting? 4 space indentation (or tab?)
 - argument default values
@@ -49,6 +37,7 @@
 - `buf: Array[Int16, 320] = [0] * 320`
 
 ## Investigate
+- investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - zig language: what it is, how is it different from C, what useful patterns can we learn
 - Go: channels is a nice concept (for our needs fixed size channels would be great)
 
@@ -66,7 +55,6 @@
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
-- Ptr constructor: `Ptr(value)` to explicitly create pointers
 - Polymorphic coercion: `Dog` → `Ptr[Animal]` (child to parent pointer)
 - Virtual dispatch (requires C++ `virtual` methods) - currently `self.method()` in parent uses static dispatch
 - Protocol-typed local variables: allow protocol types as variable types (e.g. `seq: Sequence[Int32] = items`)
@@ -80,6 +68,8 @@
 - list/StaticList operator (+=, *, +, in), sort
 - bytes type
 - list(str)
+- allow type annotation to use "" (forward decl)
+- for-each: preserve loop variable after loop exit (if used after the loop)
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
@@ -95,14 +85,11 @@ Random items that may or may not be implemented in the future, but putting them 
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- support augmented arithmetic operators, like `__iadd__` for `+=` etc.
 - support more dunder methods: `__bool__`, `__hash__`, etc.
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - ability to define `__str__` method (currently works as explicit call `obj.__str__()`, but `str(obj)` doesn't dispatch to it)
 - better class operator<< tests (but missing str formatting/concatenation)
-- dynamic dispatch
-- full Iterable[T]/Iterator[T] support (with StopIteration exception converted UTH to next/has_next method/returning optional)
 - formatting/linting like in genweb
 - properties with getter/setter
 - list[Ptr[Point]] not supported, but it should be, eventually
@@ -120,10 +107,15 @@ Random items that may or may not be implemented in the future, but putting them 
 - `# tpy: range-check=off`
 - warn on mutable globals
 - dead code detection
+- extend int type configuration to AddressType/SizeType/PtrDiff (e.g. UInt32, Int32, Int32)
+- diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
+- extract c++ compiler interface
+- analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
+- make a doc with TPy vs Python differences
 
 ## Code Review Items (2026-01-27)
 - Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
