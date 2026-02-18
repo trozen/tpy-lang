@@ -9,6 +9,7 @@ This is read-only verification — output.txt is never written by this test.
 import pytest
 
 from conftest import (
+    check_or_update,
     run_cpython,
     discover_success_cases,
 )
@@ -28,10 +29,4 @@ def test_cpy(case_dir, main_src):
         pytest.skip("No expected output.txt")
 
     cpython_output = run_cpython(main_src)
-
-    expected = expected_output.read_text()
-    assert cpython_output == expected, (
-        f"CPython output differs from expected.\n"
-        f"--- Expected ---\n{expected}\n"
-        f"--- CPython ---\n{cpython_output}"
-    )
+    check_or_update(cpython_output, expected_output, "CPython output")

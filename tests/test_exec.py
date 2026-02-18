@@ -58,7 +58,11 @@ def test_exec(case_dir, main_src):
         # C++ build failure — only acceptable for codegen-only tests (no expected output)
         has_expected = (expected_dir / "output.txt").exists() or (expected_dir / "panic.txt").exists()
         if has_expected:
-            pytest.fail(f"C++ compilation failed:\n{run_result.stderr}")
+            pytest.fail(
+                f"C++ compilation failed for {main_src}.\n"
+                f"--- stderr ---\n{run_result.stderr}",
+                pytrace=False,
+            )
         pytest.skip("C++ build failed (codegen-only test, no expected output)")
 
     if run_result.success:
@@ -66,7 +70,11 @@ def test_exec(case_dir, main_src):
         check_or_update(run_result.stdout, expected_output, "Output")
     else:
         if not UPDATE_EXPECTED and not case_dir.name.startswith("panic_"):
-            pytest.fail(f"Non-panic test panicked:\n{run_result.stderr}")
+            pytest.fail(
+                f"Non-panic test panicked for {main_src} (exit code {run_result.returncode}).\n"
+                f"--- stderr ---\n{run_result.stderr}",
+                pytrace=False,
+            )
 
         # Runtime panic
         expected_panic = expected_dir / "panic.txt"

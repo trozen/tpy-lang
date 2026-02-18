@@ -72,7 +72,10 @@ def test_comp(case_dir, main_src, tmp_path):
     if not UPDATE_EXPECTED:
         annotation_errors = validate_annotations(main_src, result.diagnostics)
         if annotation_errors:
-            pytest.fail("\n".join(annotation_errors))
+            pytest.fail(
+                "\n".join(annotation_errors),
+                pytrace=False,
+            )
 
     # Error tests must have at least one # tpyc: error(...) annotation
     if not UPDATE_EXPECTED and case_dir.name.startswith("error_"):
@@ -84,22 +87,32 @@ def test_comp(case_dir, main_src, tmp_path):
                 has_error_annotation = True
                 break
         if not has_error_annotation:
-            pytest.fail("Error test must have at least one '# tpyc: error(...)' annotation")
+            pytest.fail(
+                "Error test must have at least one '# tpyc: error(...)' annotation",
+                pytrace=False,
+            )
 
     # Handle compilation failure
     if not result.success:
         if not UPDATE_EXPECTED and not case_dir.name.startswith("error_"):
-            pytest.fail(f"Non-error test failed to compile:\n{result.diagnostics}")
+            pytest.fail(
+                f"Non-error test failed to compile: {main_src}\n"
+                f"--- diagnostics ---\n{result.diagnostics}",
+                pytrace=False,
+            )
         return
 
     # Error tests must not compile successfully
     if not UPDATE_EXPECTED and case_dir.name.startswith("error_"):
-        pytest.fail(f"Error test compiled successfully (expected compilation failure)")
+        pytest.fail(
+            f"Error test compiled successfully (expected compilation failure): {main_src}",
+            pytrace=False,
+        )
 
     # Check/update generated code for all modules
     for mod_name, hpp_path, cpp_path in result.all_modules:
         for ext, gen_path in [(".hpp", hpp_path), (".cpp", cpp_path)]:
             expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
             if not gen_path.exists():
-                pytest.fail(f"{gen_path} not generated")
+                pytest.fail(f"{gen_path} not generated", pytrace=False)
             check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}")

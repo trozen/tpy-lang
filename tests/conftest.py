@@ -1,5 +1,6 @@
 """Shared fixtures and utilities for TurboPython tests."""
 
+import difflib
 import json
 import os
 import re
@@ -50,7 +51,12 @@ def run_cpython(src_file: Path) -> str:
     )
 
     if result.returncode != 0:
-        pytest.fail(f"CPython execution failed:\n{result.stderr}")
+        stderr_text = _filter_harness_traceback(result.stderr)
+        pytest.fail(
+            f"CPython execution failed for {src_file} (exit code {result.returncode}).\n"
+            f"--- stderr ---\n{stderr_text}",
+            pytrace=False,
+        )
 
     return result.stdout
 
@@ -360,11 +366,42 @@ def check_or_update(actual: str, expected_file: Path, description: str) -> None:
         expected_file.write_text(actual)
     else:
         expected = expected_file.read_text() if expected_file.exists() else ""
-        assert actual == expected, (
-            f"{description} differs.\n"
-            f"--- Expected ---\n{expected}\n"
-            f"--- Got ---\n{actual}"
+        if actual != expected:
+            diff = _format_unified_diff(expected, actual, fromfile=str(expected_file), tofile="actual")
+            pytest.fail(
+                f"{description} differs: {expected_file}\n{diff}",
+                pytrace=False,
+            )
+
+
+def _format_unified_diff(expected: str, actual: str, fromfile: str, tofile: str, context: int = 3) -> str:
+    """Return a readable unified diff for expected vs actual text."""
+    diff_lines = list(
+        difflib.unified_diff(
+            expected.splitlines(),
+            actual.splitlines(),
+            fromfile=fromfile,
+            tofile=tofile,
+            lineterm="",
+            n=context,
         )
+    )
+    if not diff_lines:
+        return "(no visible line diff; content may differ by trailing newline or whitespace)"
+    return "\n".join(diff_lines)
+
+
+def _filter_harness_traceback(stderr: str) -> str:
+    """Hide harness frames from traceback output while preserving the error."""
+    lines = stderr.splitlines()
+    filtered: list[str] = []
+    for line in lines:
+        normalized = line.replace("\\", "/")
+        if '/tests/harness/' in normalized:
+            continue
+        filtered.append(line)
+    out = "\n".join(filtered).strip()
+    return out or stderr.strip()
 
 
 
