@@ -272,6 +272,7 @@ TurboPython Source (.tp.py) -> Parser -> Semantic Analyzer -> Code Generator -> 
 | `typing.py` | `typing` module (type annotations) |
 | `tpy.py` | TurboPython-specific types and decorators |
 | `unsafe.py` | `tpy.unsafe` module -- unsafe pointer operations |
+| `mem.py` | `tpy.mem` module -- uninitialized storage primitives |
 | `math.py` | `math` module |
 | `sys.py` | `sys` module |
 | `time.py` | `time` module |
@@ -295,6 +296,8 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`) |
 | `protocols.hpp` | `Sized`, `Sequence` concepts |
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
+| `uninit_array_storage.hpp` | `UninitArrayStorage<T, N>` inline uninitialized storage |
+| `uninit_heap_storage.hpp` | `UninitHeapStorage<T>` heap-allocated uninitialized storage |
 | `system.hpp` | `time_*`, `sys_argv` |
 
 Generated code requires C++23 (for `std::ranges` concepts).

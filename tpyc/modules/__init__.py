@@ -186,6 +186,7 @@ from tpyc.modules import time as _time_mod
 from tpyc.modules import sys as _sys_mod
 from tpyc.modules import typing as _typing_mod
 from tpyc.modules import unsafe as _unsafe_mod
+from tpyc.modules import mem as _mem_mod
 
 # Map module name -> factory function
 _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
@@ -196,6 +197,7 @@ _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
     _time_mod.NAME: _time_mod.init_module,
     _sys_mod.NAME: _sys_mod.init_module,
     _typing_mod.NAME: _typing_mod.init_module,
+    _mem_mod.NAME: _mem_mod.init_module,
 }
 
 # Cache for loaded modules
@@ -514,8 +516,9 @@ def lookup_type(type_or_name: "TpyType | str") -> BuiltinTypeDef | None:
         qname = type_or_name.qualified_name()
         if qname is None:
             return None
-    for module in _all_modules():
-        if typ := module.types.get(qname):
+    for module_name in _MODULE_FACTORIES:
+        module = get_module(module_name)
+        if module and (typ := module.types.get(qname)):
             return typ
     return None
 
@@ -531,13 +534,30 @@ def lookup_generic_type(name: str) -> GenericTypeLookup | None:
     """Lookup a parameterized type by its simple name (e.g., 'list', 'Array').
 
     Only returns types that have type parameters and a type factory defined.
-    Returns first match across modules - names must be unique to avoid ambiguity.
+    Returns first match across default modules (builtins + tpy) only.
+    Types from other modules (tpy.mem, tpy.unsafe, etc.) require explicit import
+    and are resolved via lookup_generic_type_in_module() instead.
     """
     for module in _all_modules():
         qualified = f"{module.name}.{name}"
         if typ := module.types.get(qualified):
             if typ.type_params and typ.type_factory:
                 return GenericTypeLookup(typ, qualified)
+    return None
+
+
+def lookup_generic_type_in_module(name: str, module_name: str) -> GenericTypeLookup | None:
+    """Lookup a parameterized type by simple name within a specific module.
+
+    Used when resolving imported names (e.g., 'from tpy.mem import UninitArrayStorage').
+    """
+    module = get_module(module_name)
+    if module is None:
+        return None
+    qualified = f"{module.name}.{name}"
+    if typ := module.types.get(qualified):
+        if typ.type_params and typ.type_factory:
+            return GenericTypeLookup(typ, qualified)
     return None
 
 

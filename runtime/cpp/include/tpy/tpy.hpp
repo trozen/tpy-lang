@@ -30,6 +30,10 @@
 // StaticList (depends on core)
 #include "static_list.hpp"
 
+// Uninitialized storage (depends on core)
+#include "uninit_array_storage.hpp"
+#include "uninit_heap_storage.hpp"
+
 // BigInt arbitrary precision (depends on core, fixed_int, type_traits)
 #include "bigint.hpp"
 
@@ -47,5 +51,7 @@
 
 // Expose types in global namespace for TurboPython generated code
 using tpy::StaticList;
+using tpy::UninitArrayStorage;
+using tpy::UninitHeapStorage;
 using tpy::tpy_panic;
 using tpy::BigInt;

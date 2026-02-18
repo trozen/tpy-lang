@@ -157,6 +157,7 @@ class CallAnalyzer:
         # Track if we found an imported generic type (allows fallthrough to generic handling)
         # Stores the original name (not alias) for lookup_generic_type
         imported_generic_name: str | None = None
+        imported_generic_module: str | None = None
 
         # Use namespace for unified lookup - handles shadowing automatically
         if self.ctx.current_ns:
@@ -208,8 +209,9 @@ class CallAnalyzer:
                         if record_info.constructors and not record_info.type_params:
                             return self._check_builtin_constructor(expr, record_info)
                     # Generic types (StaticList, Array, list) - mark as found and fall through
-                    if builtin_modules.lookup_generic_type(func_name):
+                    if builtin_modules.lookup_generic_type_in_module(func_name, module_name):
                         imported_generic_name = func_name
+                        imported_generic_module = module_name
                     else:
                         raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
                 elif binding.kind == BindingKind.MODULE:
@@ -251,7 +253,9 @@ class CallAnalyzer:
 
         # Generic type constructor without context for type inference
         # Only proceed if we found an imported generic type in namespace
-        if imported_generic_name and (lookup := builtin_modules.lookup_generic_type(imported_generic_name)):
+        if imported_generic_name and imported_generic_module and (
+            lookup := builtin_modules.lookup_generic_type_in_module(imported_generic_name, imported_generic_module)
+        ):
             type_def = lookup.type_def
             params = ", ".join(type_def.type_params)
 
@@ -497,6 +501,13 @@ class CallAnalyzer:
         T itself is unresolved.
         """
         lookup = builtin_modules.lookup_generic_type(expr.func)
+        if lookup is None:
+            # Try looking up via call_type's qualified name (for types from submodules)
+            qname = expr.call_type.qualified_name() if expr.call_type else None
+            if qname:
+                type_def = builtin_modules.lookup_type(qname)
+                if type_def and type_def.type_params and type_def.type_factory:
+                    lookup = builtin_modules.GenericTypeLookup(type_def, qname)
         if lookup is None or not lookup.type_def.constructors:
             return
         for ctor in lookup.type_def.constructors:

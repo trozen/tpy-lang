@@ -467,6 +467,7 @@ Key features:
 - **Working**: `ConstPtr[T]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`)
+- **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
 - **Planned**: `Ref[T]` -> `T&` (explicit reference)
 - **Planned**: `ConstRef[T]` -> `const T&`
 
@@ -995,6 +996,44 @@ print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
 ```
 
 Generates `reinterpret_cast<U*>(p)` in C++. The target pointee type can be specified via explicit type argument (`unsafe_cast[T](p)`) or inferred from context. Context includes variable annotation and known argument type in nested calls (for example `sink(unsafe_cast(p))` where `sink` expects `Ptr[U]` or `ConstPtr[U]`). The pointer kind (`Ptr`/`ConstPtr`) is preserved from the argument. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
+
+#### Uninitialized Storage -- `tpy.mem` (Working)
+
+The `tpy.mem` module provides low-level uninitialized storage types for building containers. Elements are not default-constructed -- the caller manages element lifetimes explicitly via `init`/`drop`. Debug builds include lifetime tracking that panics on misuse (double-init, use-after-drop, leak on destruction).
+
+```python
+from tpy import Int32, Ptr
+from tpy.mem import UninitArrayStorage, UninitHeapStorage
+```
+
+**UninitArrayStorage[T, N]** -- inline (stack) storage for N elements. Uses a C++ union so elements are not default-constructed. Copy/move follows C++ union rules (trivially copyable T: copy works; otherwise: implicitly deleted).
+
+```python
+storage = UninitArrayStorage[Int32, 4]()
+storage.init(0, 10)        # placement-new at index 0
+storage.init(1, 20)
+print(storage.load(0))     # access element -> 10
+storage.drop(0)            # destroy element at index 0
+```
+
+**UninitHeapStorage[T]** -- heap-allocated storage for a given capacity. Non-copyable, movable (move transfers pointer ownership). Always allocated -- constructor allocates, destructor deallocates.
+
+```python
+storage = UninitHeapStorage[Int32](4)   # allocate capacity for 4 elements
+storage.init(0, 100)
+val: Int32 = storage.take(0)            # move value out + destroy slot
+```
+
+**Shared API** (both types):
+
+| Method | Description |
+|--------|-------------|
+| `init(index, value)` | Placement-construct element at index |
+| `drop(index)` | Destroy element at index |
+| `load(index)` | Access element by reference |
+| `take(index)` | Move element out (load + drop in one operation) |
+| `init0(value)` / `drop0()` / `load0()` / `take0()` | Shortcuts for index 0 (single-element usage) |
+| `ptr()` | Raw `Ptr[T]` to underlying storage |
 
 ### User-Defined
 - **Working**: Classes → C++ structs

@@ -9,6 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
+    ListType, ArrayType, SpanType, ModuleType,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -250,9 +251,12 @@ class RecordGenerator:
             elif isinstance(fld.type, TypeParamRef):
                 # Type parameter - use ValuePrinter which handles both scalars and containers
                 out.write(f' << tpy::ValuePrinter(obj.{fld.name})')
-            elif fld.type.get_element_type() is not None:
-                # Known container type - use ListPrinter
+            elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
+                # Known iterable container type - use ListPrinter
                 out.write(f' << tpy::ListPrinter(obj.{fld.name})')
+            elif isinstance(fld.type, ModuleType):
+                # Module-defined types may not be printable -- use placeholder
+                out.write(f' << "<{fld.type}>"')
             else:
                 out.write(f' << obj.{fld.name}')
 

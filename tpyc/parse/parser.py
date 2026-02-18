@@ -16,7 +16,7 @@ from ..typesys import (
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
 )
-from ..modules import lookup_generic_type, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
+from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
@@ -713,6 +713,12 @@ class Parser:
                 if lookup := lookup_generic_type(resolved_container):
                     return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
 
+                # Generic types from explicitly imported builtin submodules (tpy.mem, etc.)
+                if import_source := self._imports.get_import_source(container):
+                    source_module, original_name = import_source
+                    if lookup := lookup_generic_type_in_module(original_name, source_module):
+                        return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
+
                 # User-defined generic protocols (e.g., Container[Int32])
                 if user_protocol := self.registry.get_protocol(resolved_container):
                     if user_protocol.type_params:
@@ -1062,6 +1068,10 @@ class Parser:
                 from tpyc.modules import lookup_generic_type as _lookup_generic_type
                 if _lookup_generic_type(name) is not None:
                     raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
+                # Generic types from imported builtin submodules (tpy.mem, etc.)
+                if import_src := self._imports.get_import_source(name):
+                    if lookup_generic_type_in_module(import_src[1], import_src[0]) is not None:
+                        raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
             index = self._parse_expr(node.slice)
             return TpySubscript(obj=obj, index=index, loc=loc)

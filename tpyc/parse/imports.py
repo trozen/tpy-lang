@@ -57,6 +57,25 @@ class ImportProcessor:
         self._warn = warn_fn
         self.tpy_import_aliases: dict[str, str] = {}
         self.tpy_star_import: bool = False
+        # Reference to the module's imports dict, set during process_import_from.
+        # Used by the parser for type resolution of imported builtin submodule types.
+        self.imports: dict[str, set[tuple[str, str]] | None | str] | None = None
+
+    def get_import_source(self, local_name: str) -> tuple[str, str] | None:
+        """Find source module and original name for an imported name.
+
+        Returns (module_name, original_name) or None.
+        E.g. for 'from tpy.mem import UninitArrayStorage as U':
+            get_import_source('U') -> ('tpy.mem', 'UninitArrayStorage')
+        """
+        if self.imports is None:
+            return None
+        for module_name, names in self.imports.items():
+            if isinstance(names, set):
+                for original, local in names:
+                    if local == local_name:
+                        return (module_name, original)
+        return None
 
     def process_import(self, node: ast.Import, imports: dict, user_module_imports: dict,
                        top_level_stmts: list, module_aliases: dict,
@@ -88,6 +107,7 @@ class ImportProcessor:
     def process_import_from(self, node: ast.ImportFrom, imports: dict, user_module_imports: dict,
                             top_level_stmts: list, module_aliases: dict) -> None:
         """Process 'from X import Y' statement."""
+        self.imports = imports
         module_name = node.module
         level = node.level
 

@@ -1,6 +1,8 @@
 # TODO
 
 ## Next
+- max Box[T] example great again
+- example: StaticList, using UninitArrayStorage
 - forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
 - dynamic protocols and dynamic dispatch
@@ -18,8 +20,8 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - list literal contextual typing: when LHS has explicit annotation like `list[Int32 | None]`, allow compatible literals (`[]`, `[Int32(1)]`, `[None]`) via contextual element-type widening instead of strict inferred-list mismatch
 - type containing an allocated object (e.g. `Box[T]`)
-- type containing uninitialized elements, that can be explicitely intialized, building block(s) for other data structures (something like `UninitStorage[T, Size]`)
 - ~~`tpy::__len__()`~~ PARTIAL: `__len__`, `__getitem__`, `__setitem__` are now free functions in `dunder.hpp`. Consider also generating `__len__()` as `size()` member function for STL compatibility.
+- copy/nocopy propagation: classes containing nocopy fields (e.g. `UninitHeapStorage`) should automatically become nocopy; extend to module-defined types (currently `@nocopy` only works on user-defined records)
 - `DeRef` protocol?
 - `ValueType` protocol bound — `T: ValueType` would suppress copy warnings for generic fields, since value types copy silently
 - proper string handling (STRING_HANDLING.md)
@@ -68,6 +70,7 @@
 - list(str)
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
+- add `__bool__()` and a proper protocol (bool() function should have overload consuming that protocol)
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:

@@ -1,0 +1,1 @@
+main.tp.py:5: error: Cannot call method 'init' on type UninitArrayStorage[Int32, 4]
