@@ -632,6 +632,7 @@ class TypeOperations:
             type_params=method.type_params,
             type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,
             cpp_template=method.cpp_template,  # Preserve cpp_template for codegen
+            qualified_name=method.qualified_name,
         )
 
     def get_deref_target_type(self, typ: TpyType) -> TpyType | None:

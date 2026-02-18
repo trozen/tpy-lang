@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- qualified name on `FunctionInfo`: add a `module` or `qualified_name` field so resolved functions can be identified by their source module (e.g. `tpy.copy` vs user-defined `copy`). Currently `is_builtin_function` + `name` is used as a proxy, which is fragile.
 - type inference through `Own[T]`: calling `wrapper(b)` where wrapper takes `Own[T]` fails to infer T from the argument type. Workaround: explicit type args `wrapper[Box](b)`.
 - forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
@@ -77,7 +76,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
 - Char type location: currently in `builtins` module but feels like a tpy type. Python doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.
 - ultimate goal: make tpyc compile with tpyc
-- BigInt: use second bit for int 63-126 bits long; do not allocate mzp_t, use low level GMP functions
 - game of life benchmark TPy vs CPy (two version: idiomatic python, optimized TPy types)
 - option to change divide semantics (negative): Python vs C++
 - do not stop at first error, generate source with special Invalid() type, that would be ignored in further lines, so that we get all errors from compilation

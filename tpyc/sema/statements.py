@@ -75,8 +75,7 @@ class StatementAnalyzer:
         """Warn when return copy(x) is used but x is at last use (auto-move suffices)."""
         if not (isinstance(value, TpyCall) and len(value.args) == 1
                 and value.resolved_function_info
-                and value.resolved_function_info.name == "copy"
-                and value.resolved_function_info.is_builtin_function):
+                and value.resolved_function_info.qualified_name == "tpy.copy"):
             return
         inner = value.args[0]
         if (isinstance(inner, TpyName)

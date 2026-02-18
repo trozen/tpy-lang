@@ -185,6 +185,7 @@ class CallAnalyzer:
                                 is_readonly=True,
                                 is_builtin_function=True,
                                 special_handling=True,
+                                qualified_name="builtins.print",
                             )
                             return VOID
                         elif func_name in ("enumerate", "zip"):
@@ -319,6 +320,7 @@ class CallAnalyzer:
                 is_readonly=True,
                 is_builtin_function=True,
                 special_handling=True,
+                qualified_name="builtins.print",
             )
             return VOID
         raise self.ctx.error(f"Unknown special builtin: '{func_name}'", expr)
@@ -384,6 +386,7 @@ class CallAnalyzer:
             return_type=target_type,
             is_builtin_function=True,
             special_handling=True,
+            qualified_name="tpy.unsafe.unsafe_cast",
         )
         return target_type
 
@@ -423,6 +426,7 @@ class CallAnalyzer:
             return_type=OwnType(arg_type),
             is_readonly=True,
             is_builtin_function=True,
+            qualified_name="tpy.copy",
         )
         return OwnType(arg_type)
 
@@ -472,8 +476,7 @@ class CallAnalyzer:
         """Warn when copy(x) is passed to Own[T] param but x is at last use."""
         if not (isinstance(arg, TpyCall) and len(arg.args) == 1
                 and arg.resolved_function_info
-                and arg.resolved_function_info.name == "copy"
-                and arg.resolved_function_info.is_builtin_function):
+                and arg.resolved_function_info.qualified_name == "tpy.copy"):
             return
         inner = arg.args[0]
         if (isinstance(inner, TpyName)

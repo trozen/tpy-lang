@@ -1118,6 +1118,7 @@ class FunctionInfo:
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
+    qualified_name: str = ""  # Full dotted path, e.g. "builtins.print", "tpy.copy", "__main__.foo"
 
     @property
     def is_native_import(self) -> bool:

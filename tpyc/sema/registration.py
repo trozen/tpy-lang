@@ -52,7 +52,7 @@ class TypeRegistrar:
         """
         for module in [builtin_modules.get_builtins(), builtin_modules.get_tpy()]:
             for name, fn_def in module.functions.items():
-                overloads = builtin_modules.builtin_function_to_info(fn_def)
+                overloads = builtin_modules.builtin_function_to_info(fn_def, module.name)
                 self.ctx.registry.register_builtin_function_overloads(name, overloads)
 
     def register_builtin_modules(self) -> None:
@@ -551,7 +551,8 @@ class TypeRegistrar:
             linkage=fi_linkage,
             native_name=func.native_name,
             type_params=func.type_params,
-            type_param_bounds=type_param_bounds
+            type_param_bounds=type_param_bounds,
+            qualified_name=f"{self.ctx.module_name}.{func.name}",
         )
 
         # Check for duplicate extern symbol names

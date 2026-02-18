@@ -363,13 +363,14 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
     )
 
 
-def builtin_function_to_info(fn_def: BuiltinFunctionDef) -> list["FunctionInfo"]:
+def builtin_function_to_info(fn_def: BuiltinFunctionDef, module_name: str = "") -> list["FunctionInfo"]:
     """Convert BuiltinFunctionDef to list of FunctionInfo (one per overload).
 
     Used to register builtin functions in the unified TypeRegistry.
     """
     from tpyc.typesys import FunctionInfo
 
+    qname = f"{module_name}.{fn_def.name}" if module_name else ""
     result = []
     for overload in fn_def.overloads:
         result.append(FunctionInfo(
@@ -382,6 +383,7 @@ def builtin_function_to_info(fn_def: BuiltinFunctionDef) -> list["FunctionInfo"]
             is_builtin_function=True,
             special_handling=fn_def.special_handling,
             type_params=fn_def.type_params,
+            qualified_name=qname,
         ))
     return result
 
@@ -396,7 +398,7 @@ def builtin_module_to_info(module: BuiltinModule) -> "ModuleInfo":
     # Convert functions to FunctionInfo overloads
     functions = {}
     for name, fn_def in module.functions.items():
-        functions[name] = builtin_function_to_info(fn_def)
+        functions[name] = builtin_function_to_info(fn_def, module.name)
 
     # Convert module variables
     variables = {}
