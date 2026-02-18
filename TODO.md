@@ -1,13 +1,15 @@
 # TODO
 
 ## Next
-- max Box[T] example great again
+- make Box[T] example great again
 - example: StaticList, using UninitArrayStorage
-- forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
+- `self.inner = inner` in `__init__` warns about field copy even when `inner` is `Own[T]` at last use -- should auto-move
+- `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check
+- move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
 - Type params in generic function bodies: `list[T]` as local variable annotation fails ("Type parameter 'T' used outside of generic context"), and `return []` can't infer element type from return type when it contains a type param
 - dynamic protocols and dynamic dispatch
-- bi-directional contextual type inference (Phase 2): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
+- bi-directional contextual type inference (Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top? (differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
@@ -50,7 +52,6 @@
 
 ## Hard Problems
 - auto-detect readonly from method body analysis (bottom-up inference) -- currently dunders in IMPLICIT_READONLY_METHODS are implicitly readonly, but regular methods need explicit `@readonly`; auto-inference could remove the need for annotations in most cases
-- generic method calls via dotted access: `tpy.unsafe.unsafe_cast[Int32](p)` fails parser ("Unsupported generic call target") because `Subscript(Attribute(...))` isn't handled as a call func. Requires adding `type_args` to `TpyMethodCall` and extending the parser. Workaround: `from tpy.unsafe import unsafe_cast; unsafe_cast[Int32](p)`.
 - handling cyclic imports
 - user-defined function/method overloads via `@overload` decorator (from `typing`). Each `@overload` body is the real implementation (unlike CPython where bodies are stubs). Maps directly to C++ overloads. Infrastructure already exists (overload resolution, type-checked params).
 
@@ -101,6 +102,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
 - hoisted variable slots: keep them at the lowest scope that satisfies lifetime, instead of always hoisting to function scope
 - eliminate trivial temps for value-type constructor args: `wrap(Int32(10))` generates `int32_t __tmp = 10; wrap(__tmp)` instead of `wrap(10)`
+- runtime `using` declarations in global namespace (`tpy.hpp`): generated code should use `tpy::` prefix instead of relying on `using tpy::BigInt` etc.
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 - C++ header ordering: inline method bodies in structs (constructors, methods) can't call free functions declared later in the header. Affects cases like `self.value = func()` when func is defined before the class in Python but its C++ forward declaration is emitted after the struct. Fix: emit function forward declarations before struct definitions, or move method bodies out-of-line.
 - investigate other backends than c++
