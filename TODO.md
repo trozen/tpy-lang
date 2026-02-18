@@ -6,6 +6,7 @@
 - forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
 - dynamic protocols and dynamic dispatch
+- bi-directional contextual call inference: docs/BIDIRECTIONAL_CALL_INFERENCE_PROPOSAL.md
 - failed tests show source of test harness, not very useful; I would like it to show the source diff or change in output etc
 - type deduction usability - the following don't work: `p: Ptr[int]; p = None; p = Ptr()`, `l: list[int]; l = list()`
 - pointer None check: `Ptr() is None`
@@ -44,6 +45,9 @@
 - argument default values
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
 - coerce int32 -> uint32?
+
+## Bugs
+- `buf: Array[Int16, 320] = [0] * 320`
 
 ## Investigate
 - zig language: what it is, how is it different from C, what useful patterns can we learn
