@@ -500,16 +500,23 @@ class TypeOperations:
         arg_types: list[TpyType],
         type_conforms_to_protocol: callable,
         expected_return_type: TpyType | None = None,
+        explicit_type_args: tuple[TpyType, ...] | None = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
         If expected_return_type is provided, unresolved params are matched against the return type.
+        If explicit_type_args is provided, pre-populates inferred with those (positional).
         """
         if len(arg_types) != len(func.params):
             return None
 
         inferred: dict[str, TpyType] = {}
+        if explicit_type_args:
+            if len(explicit_type_args) > len(func.type_params):
+                return None
+            for tp, arg in zip(func.type_params, explicit_type_args):
+                inferred[tp] = arg
         for (pname, ptype), arg_type in zip(func.params, arg_types):
             if not self.match_type_with_inference(ptype, arg_type, inferred):
                 return None

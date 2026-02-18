@@ -1,0 +1,1 @@
+main.tp.py:13: error: Cannot infer remaining type arguments for 'make_wrapper'

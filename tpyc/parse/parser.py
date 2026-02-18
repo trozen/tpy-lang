@@ -1037,6 +1037,18 @@ class Parser:
                             pass
                     return TpyCall(name, args, call_type=call_type, type_args=type_args,
                                    type_args_parse_error=type_args_parse_error, loc=loc)
+                elif isinstance(node.func.value, ast.Attribute):
+                    # module.func[T](args) -- method call with explicit type args
+                    obj = self._parse_expr(node.func.value.value)
+                    method = node.func.value.attr
+                    type_args = ()
+                    type_args_parse_error = None
+                    try:
+                        type_args = self._parse_type_args_from_subscript(node.func)
+                    except ParseError as e:
+                        type_args_parse_error = e.message
+                    return TpyMethodCall(obj, method, args, type_args=type_args,
+                                         type_args_parse_error=type_args_parse_error, loc=loc)
                 raise ParseError("Unsupported generic call target", node)
             else:
                 raise ParseError("Unsupported call target", node)

@@ -18,23 +18,18 @@ def make_empty[T]() -> list[T]: ...
 x: list[Int32] = make_empty()       # T = Int32 from assignment context
 return make_empty()                  # T from function return type
 c = Container()                      # type params from c's known type
-g(make_empty())                      # T from g's parameter type (future)
+g(make_empty())                      # T from g's parameter type
+unsafe_cast[UInt32](p)               # T explicit, U from arg (partial type args)
 ```
-
-Today, inference is argument-directed only: type params must be determinable from
-the arguments. Expected-type context is used only by `unsafe_cast` (ad hoc
-special case) and builtin generic constructors (`list()`, `Ptr()`). This design
-generalizes that into a single mechanism.
 
 ## Roadmap
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **Phase 1** | Return-type inference fallback for assignment + return context (exact/generic matches only) | **In progress** |
+| **Phase 1** | Return-type inference fallback for assignment + return context (exact/generic matches only) | **Done** |
 | **Phase 1b** | Coercion-aware return-type matching (numeric widening etc.); (optional, may be postponed) | Planned |
-| **Phase 2** | Nested call context: `g(f(...))` where g's param type constrains f. Evaluate whether to adopt HM-style constraint solving or continue incremental. | Planned |
+| **Phase 2** | Nested call context + partial explicit type args + unsafe_cast cleanup | **Done** |
 | **Phase 3** | Overload filtering by expected return type | Planned |
-| **Phase 4** | Remove `unsafe_cast` special-case, unify with general mechanism | Planned |
 
 ## Design Principles
 
@@ -115,24 +110,58 @@ x: Float = identity(Int32(1))           # T = Int32 from args; Float vs Int32
 
 ---
 
-## Phase 2: Nested Call Context (Planned)
+## Phase 2: Nested Call Context + Partial Type Args
 
-Propagate expected type into nested call arguments:
+### Nested Call Inference
+
+Parameter types from outer calls flow as hints to inner calls:
 
 ```python
 def sink(items: list[Int32]) -> None: ...
 sink(make_empty())                       # expected type for make_empty() = list[Int32]
 ```
 
-This requires resolving the outer call's parameter types before analyzing inner
-arguments. The current architecture analyzes arguments first, so this needs
-careful ordering changes.
+This works because `_analyze_user_function_call` already calls
+`analyze_expr_with_hint(arg, ptype)`, which sets `ctx.expr_type_hint` before
+analyzing the argument. Phase 1's return-type fallback then picks it up.
 
-This is the natural evaluation point for whether to adopt Hindley-Milner style
-constraint solving. HM uses type variables and unification to propagate
-constraints bidirectionally -- rather than patching individual call sites, all
-constraints are collected and solved together. If Phase 2 plumbing gets complex,
-that's the signal to invest in a proper constraint engine.
+Record constructor arguments also propagate hints (both generic and non-generic
+records use `analyze_expr_with_hint` for constructor args).
+
+### Partial Explicit Type Args
+
+Generic functions accept fewer explicit type args than type params. The remaining
+params are inferred from arguments and/or context:
+
+```python
+def transform[T, U](x: U) -> T: ...
+# unsafe_cast[UInt32](p) -- T=UInt32 explicit, U=Int32 from arg
+```
+
+`infer_type_params_for_function` accepts an `explicit_type_args` parameter that
+pre-populates the inferred dict. `match_type_with_inference` handles consistency
+checks for pre-populated entries. This works for both user generic functions and
+builtin generic overloads.
+
+### unsafe_cast Cleanup
+
+`unsafe_cast` was previously a special-cased builtin with custom sema logic.
+It is now defined as a standard two-type-param generic function:
+
+```python
+# T = target pointee type, U = source pointee type
+unsafe_cast[T, U]:
+    Ptr[U] -> Ptr[T]        # reinterpret_cast<T*>(p)
+    ConstPtr[U] -> ConstPtr[T]  # reinterpret_cast<const T*>(p)
+```
+
+Usage patterns:
+- `unsafe_cast[UInt32](p)` -- T=UInt32 explicit, U inferred from arg
+- `q: Ptr[UInt32] = unsafe_cast(p)` -- U from arg, T from context
+- ConstPtr arg with Ptr context correctly fails (ConstPtr overload returns
+  ConstPtr, which doesn't match Ptr target)
+
+---
 
 ## Phase 3: Overload Filtering by Return Type (Planned)
 
@@ -146,12 +175,4 @@ When multiple overloads match arguments, use expected return type as a filter:
 
 Expected type is a filter, not a scoring bonus. No heuristic tie-breakers.
 
-## Phase 4: Unify unsafe_cast (Planned)
-
-`unsafe_cast` currently has ad hoc special handling to read `ctx.expr_type_hint`
-for context-driven resolution (`q: Ptr[U] = unsafe_cast(p)`). Once the general
-mechanism is mature, `unsafe_cast` can use the standard path and the special case
-can be removed.
-
 ---
-

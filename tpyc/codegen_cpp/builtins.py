@@ -149,15 +149,17 @@ class BuiltinGenerator:
         """Generate C++ code for a builtin function call using unified FunctionInfo overloads."""
         fi = expr.resolved_function_info
         if fi and fi.cpp_template:
+            template = fi.cpp_template
+            # Resolve type param placeholders (e.g. {T} -> int32_t) at codegen
+            # time so native C++ names (_native_cpp_names) are available.
+            if expr.inferred_type_args and fi.type_params:
+                for name, typ in zip(fi.type_params, expr.inferred_type_args):
+                    placeholder = f"{{{name}}}"
+                    if placeholder in template and hasattr(typ, "to_cpp"):
+                        template = template.replace(placeholder, typ.to_cpp())
             gen_args = [self._gen_expr_deref(arg, ptype)
                         for arg, (_, ptype) in zip(expr.args, fi.params)]
-            return fi.cpp_template.format(*gen_args)
-        # unsafe_cast: build reinterpret_cast at codegen time so native type
-        # names (_native_cpp_names) are resolved correctly across modules.
-        if fi and fi.qualified_name == "tpy.unsafe.unsafe_cast":
-            target_cpp = fi.return_type.to_cpp()
-            arg = self._gen_expr_deref(expr.args[0], fi.params[0].type)
-            return f"reinterpret_cast<{target_cpp}>({arg})"
+            return template.format(*gen_args)
         # Fallback: re-resolve (shouldn't normally be needed)
         overload, gen_args = self._match_overload_args(expr, overloads)
         return overload.cpp_template.format(*gen_args)

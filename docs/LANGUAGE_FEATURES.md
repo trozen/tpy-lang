@@ -994,7 +994,7 @@ q: Ptr[UInt32] = unsafe_cast(p)          # target inferred from annotation
 print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
 ```
 
-Generates `reinterpret_cast<U*>(p)` in C++. The target pointee type can be specified via explicit type argument (`unsafe_cast[T](p)`) or inferred from context. Context includes variable annotation and known argument type in nested calls (for example `sink(unsafe_cast(p))` where `sink` expects `Ptr[U]` or `ConstPtr[U]`). The pointer kind (`Ptr`/`ConstPtr`) is preserved from the argument. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
+Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[UInt32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[UInt32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`ConstPtr`) is preserved: `Ptr[U]` returns `Ptr[T]`, `ConstPtr[U]` returns `ConstPtr[T]`. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
 
 ### User-Defined
 - **Working**: Classes → C++ structs
@@ -1810,9 +1810,24 @@ Contextual inference also unwraps `Own[T]` on both sides, so `Own[Container[T]]`
 matches `Container[Int32]` correctly. If no context is available, inference
 still fails and explicit type arguments are required.
 
-**Not yet supported**: inference from field assignment targets (`self.field = expr`),
-subscript targets (`items[i] = expr`), or function argument context (passing a
-generic call as an argument to another function). See
+**Nested call context**: parameter types from outer calls flow as hints to inner
+calls. This means `sink(make_box())` infers T from `sink`'s parameter type.
+Record constructor arguments also propagate hints to inner generic calls.
+
+**Partial explicit type args**: you can provide some type arguments and let the
+compiler infer the rest from arguments or context:
+
+```python
+from tpy.unsafe import unsafe_cast
+q = unsafe_cast[UInt32](p)  # T=UInt32 explicit, U=Int32 from arg
+
+# Also works with module.func[T](args) syntax
+import tpy.unsafe as m
+q = m.unsafe_cast[UInt32](p)
+```
+
+**Not yet supported**: inference from field assignment targets (`self.field = expr`)
+or subscript targets (`items[i] = expr`). See
 `docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` for the full design.
 
 **Explicit Type Arguments**: When inference isn't possible or you want explicit control:
@@ -1990,7 +2005,7 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 **Type Inference**:
 - Type arguments can be inferred from constructor arguments: `Box(42)` -> `Box[int]`
 - Inference works when all type parameters can be determined from arguments
-- Contextual inference from assignment annotation, return type, or reassignment context fills unresolved params
+- Contextual inference from assignment annotation, return type, reassignment, or nested call context fills unresolved params
 - If inference fails, explicit type arguments are required
 - When mixing int literals with `Int32`, inference upgrades to `Int32`: `Same(1, x: Int32)` → `Same[Int32]`
 - Supports inference through wrapper types: `Ptr[T]`, `ConstPtr[T]`, `Own[T]`, `list[T]`
@@ -2980,7 +2995,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 
 - **Working**: Local variables (inferred and annotated)
 - **Working**: Global variables (typed)
-- **Working**: Contextual type inference from assignment/return context for generic functions and record constructors
+- **Working**: Contextual type inference from assignment/return/nested-call context for generic functions and record constructors; partial explicit type args
 - **Open**: `global` → explicit global mutation from functions (attempted and reverted; may revisit)
 - **Open**: `:=` walrus → if useful pattern emerges
 

@@ -135,12 +135,15 @@ class TpyMethodCall(TpyExpr):
     obj: TpyExpr
     method: str
     args: list[TpyExpr]
+    type_args: tuple[TpyType, ...] = ()  # Explicit type args for module.func[T](args) syntax
+    type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
+    inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic builtin module calls
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr/ConstPtr
 
