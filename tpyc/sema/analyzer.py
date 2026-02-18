@@ -199,11 +199,12 @@ class SemanticAnalyzer:
 
         # Process imports
         self.ctx.imports = module.imports
+        self.ctx.bare_module_imports = module.bare_module_imports
         for import_module_name, names in self.ctx.imports.items():
             if names == "*":
                 # "from tpy import *" - register all tpy exports
                 self.registrar.register_tpy_star_import()
-            elif names is not None:
+            elif isinstance(names, set):
                 # "from X import Y" or "from X import Y as Z"
                 # Stored as (original_name, local_name) tuples to support aliases
                 for original_name, local_name in names:
@@ -213,11 +214,15 @@ class SemanticAnalyzer:
                     # For user module imports, also register the items for type checking
                     if import_module_name in module.user_module_imports:
                         self._register_user_module_import(import_module_name, original_name, local_name)
-            else:
-                # "import X" - register module name
-                # Check if there's an alias from "from . import submod"
+            elif names is None:
+                # "import X" for special modules (tpy, typing, etc.)
                 alias = module.module_aliases.get(import_module_name)
                 self.ctx.global_ns.bind_module(import_module_name, alias)
+
+        # Bind modules for bare `import X` statements (user modules)
+        for mod_name in module.bare_module_imports:
+            alias = module.module_aliases.get(mod_name)
+            self.ctx.global_ns.bind_module(mod_name, alias)
 
         # First pass: register all records
         for record in module.records:

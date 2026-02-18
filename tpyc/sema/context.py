@@ -68,10 +68,11 @@ class SemanticContext:
     var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
 
     # --- Import tracking ---
-    # imports: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
-    #          module_name -> None (for "import X")
+    # imports: module_name -> set of (original_name, local_name) tuples (for "from X import Y [as Z]")
     #          module_name -> "*" (for "from X import *")
     imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
+    # Modules that had bare `import X` statements (for module.func() routing in codegen)
+    bare_module_imports: set[str] = field(default_factory=set)
     # imported_names: name -> (module_name, function_name) for direct function access
     imported_names: dict[str, tuple[str, str]] = field(default_factory=dict)
 

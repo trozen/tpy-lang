@@ -59,7 +59,8 @@ class ImportProcessor:
         self.tpy_star_import: bool = False
 
     def process_import(self, node: ast.Import, imports: dict, user_module_imports: dict,
-                       top_level_stmts: list, module_aliases: dict) -> None:
+                       top_level_stmts: list, module_aliases: dict,
+                       bare_module_imports: set) -> None:
         """Process 'import X' or 'import X as Y' statement."""
         for alias in node.names:
             module_name = alias.name
@@ -68,7 +69,9 @@ class ImportProcessor:
             if module_name not in SPECIAL_MODULES:
                 # User module import - track line number and add to statements
                 user_module_imports[module_name] = node.lineno
-                imports[module_name] = None
+                bare_module_imports.add(module_name)
+                if module_name not in imports:
+                    imports[module_name] = set()
                 # Track alias if different from module name
                 if local_name != module_name:
                     module_aliases[module_name] = local_name
@@ -119,10 +122,10 @@ class ImportProcessor:
         if module_name not in SPECIAL_MODULES:
             # User module import: from utils import add, Point - track line number
             user_module_imports[module_name] = node.lineno
-            if module_name not in imports:
+            if module_name not in imports or imports[module_name] is None:
                 imports[module_name] = set()
             current = imports[module_name]
-            if current is not None and current != "*":
+            if current != "*":
                 for alias in node.names:
                     if alias.name == "*":
                         raise ParseError(f"'from {module_name} import *' not supported for user modules", node)

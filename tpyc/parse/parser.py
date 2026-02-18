@@ -123,6 +123,7 @@ class Parser:
         imports: dict[str, set[tuple[str, str]] | None | str] = {}
         user_module_imports: dict[str, int] = {}
         module_aliases: dict[str, str] = {}
+        bare_module_imports: set[str] = set()
         seen_non_import = False
 
         for node in tree.body:
@@ -135,7 +136,7 @@ class Parser:
             if isinstance(node, ast.ImportFrom):
                 self._imports.process_import_from(node, imports, user_module_imports, top_level_stmts, module_aliases)
             elif isinstance(node, ast.Import):
-                self._imports.process_import(node, imports, user_module_imports, top_level_stmts, module_aliases)
+                self._imports.process_import(node, imports, user_module_imports, top_level_stmts, module_aliases, bare_module_imports)
             elif isinstance(node, ast.ClassDef):
                 seen_non_import = True
                 result = self._parse_class(node)
@@ -166,7 +167,7 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, parse_warnings=self._warnings)
+        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, parse_warnings=self._warnings)
 
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""

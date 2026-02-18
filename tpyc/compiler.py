@@ -430,7 +430,8 @@ class Compiler:
                     submod_resolved = self.resolver.resolve(submod_name)
                     if submod_resolved:
                         import_items.discard((orig_name, local_name))
-                        ast.imports[submod_name] = None
+                        ast.imports[submod_name] = set()
+                        ast.bare_module_imports.add(submod_name)
                         ast.user_module_imports[submod_name] = import_lineno
                         ast.module_aliases[submod_name] = local_name
                         submod_imports.append(TpyImport(

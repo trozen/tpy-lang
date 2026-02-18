@@ -730,7 +730,7 @@ class ExpressionGenerator:
                            self.ctx.analyzer.registry.get_function(module_name) is not None or
                            self.ctx.analyzer.registry.get_record(module_name) is not None)
             if not is_shadowed:
-                if self.ctx.analyzer.imports[module_name] is None:
+                if module_name in self.ctx.analyzer.ctx.bare_module_imports:
                     module_info = self.ctx.analyzer.registry.get_module(module_name)
                     if module_info and expr.method in module_info.functions:
                         # Create a temp call for code generation

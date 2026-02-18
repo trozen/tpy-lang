@@ -480,5 +480,7 @@ class TpyModule:
     user_module_imports: dict[str, int] = field(default_factory=dict)
     # Module aliases from "from . import submod" -> {canonical_name: local_name}
     module_aliases: dict[str, str] = field(default_factory=dict)
+    # Modules that had bare `import X` statements (needed for module binding in sema)
+    bare_module_imports: set[str] = field(default_factory=set)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
