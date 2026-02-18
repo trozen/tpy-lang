@@ -33,7 +33,7 @@ void sink(T&& x) {
 // 17: def wrapper[T](x: Own[T]) -> None:
 template<typename T>
 void wrapper(T&& x) {
-  // 18:     sink(x)  # std::forward<T>(x) at last use
+  // 18:     sink[T](x)  # std::forward<T>(x) at last use
   sink<T>(std::forward<T>(x));
 }
 void main();

@@ -15,7 +15,7 @@ def sink[T](x: Own[T]) -> None:
 
 
 def wrapper[T](x: Own[T]) -> None:
-    sink(x)  # std::forward<T>(x) at last use
+    sink[T](x)  # std::forward<T>(x) at last use
 
 
 def main():

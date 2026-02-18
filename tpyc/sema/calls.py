@@ -13,7 +13,7 @@ from ..typesys import (
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     VOID, BIGINT, is_protocol_type, unwrap_readonly,
 )
-from ..parse import TpyCall, TpyStrLiteral, TpyName
+from ..parse import TpyCall, TpyStrLiteral, TpyName, TpyFunction
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import SemanticError
@@ -788,7 +788,11 @@ class CallAnalyzer:
                     if self.ctx.registry.get_record(type_arg.name) is None:
                         raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
                 # Validate the type (checks for missing generic args, etc.)
-                self.type_ops.validate_type(type_arg, loc=expr.loc)
+                in_generic = bool(
+                    (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
+                    or self.ctx.record_ctx.type_params
+                )
+                self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc)
             type_subst = dict(zip(func.type_params, expr.type_args))
             # Validate type parameter bounds
             for param_name, type_arg in type_subst.items():

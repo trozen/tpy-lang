@@ -80,7 +80,7 @@ class TypeOperations:
         """
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:
-                raise SemanticError(f"Type parameter '{typ.name}' used outside of generic class definition", loc)
+                raise SemanticError(f"Type parameter '{typ.name}' used outside of generic context", loc)
             if typ.kind == TypeParamKind.INT:
                 raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation", loc)
             return
