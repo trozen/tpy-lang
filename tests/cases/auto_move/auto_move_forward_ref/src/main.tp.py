@@ -29,4 +29,9 @@ def main():
     # Generic forwarding chain: wrapper -> sink, both T&&
     wrapper[Box](b2)
 
+    b3 = Box()
+    b3.value = 30
+    # Same but with inferred type argument
+    wrapper(b3)
+
     print("done")

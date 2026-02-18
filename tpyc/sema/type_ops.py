@@ -374,18 +374,12 @@ class TypeOperations:
                 )
             return False
 
-        # Own[T] wrapper
+        # Own[T] wrapper -- unwrap and match T against arg (any type can be owned)
         if isinstance(param_type, OwnType):
-            if isinstance(arg_type, OwnType):
-                return self.match_type_with_inference(
-                    param_type.wrapped, arg_type.wrapped, inferred
-                )
-            # Value types are implicitly owned
-            if arg_type.is_value_type():
-                return self.match_type_with_inference(
-                    param_type.wrapped, arg_type, inferred
-                )
-            return False
+            inner_arg = arg_type.wrapped if isinstance(arg_type, OwnType) else arg_type
+            return self.match_type_with_inference(
+                param_type.wrapped, inner_arg, inferred
+            )
 
         # Concrete type -- check compatibility
         if self.types_match_for_inference(param_type, arg_type):

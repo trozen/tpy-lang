@@ -27,7 +27,14 @@ void main() {
   // 29:     # Generic forwarding chain: wrapper -> sink, both T&&
   // 30:     wrapper[Box](b2)
   wrapper<Box>(std::move(b2));
-  // 32:     print("done")
+  // 32:     b3 = Box()
+  Box b3 = Box();
+  // 33:     b3.value = 30
+  b3.value = 30;
+  // 34:     # Same but with inferred type argument
+  // 35:     wrapper(b3)
+  wrapper<Box>(std::move(b3));
+  // 37:     print("done")
   std::cout << "done" << "\n";
 }
 

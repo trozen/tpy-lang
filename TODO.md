@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- type inference through `Own[T]`: calling `wrapper(b)` where wrapper takes `Own[T]` fails to infer T from the argument type. Workaround: explicit type args `wrapper[Box](b)`.
 - forwarding type params as explicit type args: `sink[T](x)` inside a generic function errors with "Type parameter 'T' used outside of generic class definition". Workaround: rely on inference `sink(x)` which works within generic context.
 - fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
 - dynamic protocols and dynamic dispatch
