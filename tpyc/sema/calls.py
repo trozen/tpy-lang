@@ -354,15 +354,19 @@ class CallAnalyzer:
 
         # 2. Fall back to variable annotation hint
         if target_type is None:
-            hint = self.ctx.expr_type_hint
-            if hint is None:
+            raw_hint = self.ctx.expr_type_hint
+            if raw_hint is None:
                 raise self.ctx.error(
                     "unsafe_cast() requires a type argument or target type annotation "
                     "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr
                 )
+            hint = raw_hint
+            if isinstance(hint, OwnType):
+                hint = hint.wrapped
+            hint = unwrap_readonly(hint)
             if not isinstance(hint, (PtrType, ConstPtrType)):
                 raise self.ctx.error(
-                    f"unsafe_cast() target must be Ptr[T] or ConstPtr[T], got {hint}", expr
+                    f"unsafe_cast() target must be Ptr[T] or ConstPtr[T], got {raw_hint}", expr
                 )
             target_type = hint
 

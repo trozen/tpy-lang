@@ -228,7 +228,7 @@ class MethodAnalyzer:
                 )
             expr.resolved_function_info = resolved
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr(arg)
+                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
         else:
@@ -351,7 +351,7 @@ class MethodAnalyzer:
                 )
             expr.resolved_function_info = resolved
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr(arg)
+                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"{pname} argument",
                                                         coercion_ctx=CoercionContext.ARG)
             return resolved.return_type
@@ -404,7 +404,7 @@ class MethodAnalyzer:
                 )
             expr.resolved_function_info = resolved
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr(arg)
+                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
             return resolved.return_type
@@ -472,7 +472,7 @@ class MethodAnalyzer:
                     expr,
                 )
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
-                arg_type = self.expr.analyze_expr(arg)
+                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
             return return_type
@@ -501,7 +501,7 @@ class MethodAnalyzer:
                         expr
                     )
                 for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
-                    arg_type = self.expr.analyze_expr(arg)
+                    arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                             coercion_ctx=CoercionContext.ARG)
                 return return_type
@@ -594,7 +594,7 @@ class MethodAnalyzer:
 
             # Type-check and coerce arguments
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr(arg)
+                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
 
@@ -694,7 +694,7 @@ class MethodAnalyzer:
 
         # Type-check and coerce arguments
         for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, func_info.params)):
-            arg_type = self.expr.analyze_expr(arg)
+            arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
             expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                     coercion_ctx=CoercionContext.ARG)
 
