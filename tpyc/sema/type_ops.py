@@ -13,6 +13,7 @@ from ..typesys import (
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
 )
+from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
@@ -387,7 +388,13 @@ class TypeOperations:
             return False
 
         # Concrete type -- check compatibility
-        return self.types_match_for_inference(param_type, arg_type)
+        if self.types_match_for_inference(param_type, arg_type):
+            return True
+
+        # For concrete parameters in generic inference, allow the same
+        # argument coercions used by normal call checking (e.g. Int32 -> Int64).
+        arg_unwrapped = unwrap_readonly(arg_type)
+        return resolve_coercion(arg_unwrapped, param_type, CoercionContext.ARG) is not None
 
     def _match_protocol_type_args_with_inference(
         self,
