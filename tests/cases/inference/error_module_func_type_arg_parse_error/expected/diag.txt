@@ -1,0 +1,1 @@
+main.tp.py:8: error: Integer '1' is not a valid type argument

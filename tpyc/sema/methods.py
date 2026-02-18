@@ -130,13 +130,17 @@ class MethodAnalyzer:
             if dotted_name:
                 flat_obj = TpyName(name=dotted_name, loc=expr.obj.loc)
                 flat_expr = TpyMethodCall(
-                    obj=flat_obj, method=expr.method, args=expr.args, loc=expr.loc,
+                    obj=flat_obj, method=expr.method, args=expr.args,
+                    type_args=expr.type_args,
+                    type_args_parse_error=expr.type_args_parse_error,
+                    loc=expr.loc,
                 )
                 result = self._analyze_module_method_call(flat_expr, module_name=dotted_name)
                 if result is not None:
                     expr.builtin_module_call = flat_expr.builtin_module_call
                     expr.user_module_call = flat_expr.user_module_call
                     expr.resolved_function_info = flat_expr.resolved_function_info
+                    expr.inferred_type_args = flat_expr.inferred_type_args
                     return result
 
         obj_type = self.expr.analyze_expr(expr.obj)
@@ -266,16 +270,28 @@ class MethodAnalyzer:
             overloads = module_info.functions[expr.method]
             if module_info.is_builtin:
                 expr.builtin_module_call = module_name
-                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                temp_call = TpyCall(func=expr.method, args=expr.args,
+                                    type_args=expr.type_args,
+                                    type_args_parse_error=expr.type_args_parse_error,
+                                    loc=expr.loc)
                 if overloads[0].special_handling:
                     result = self.calls._analyze_special_builtin(temp_call, expr.method, overloads)
                 else:
                     result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
                 expr.resolved_function_info = temp_call.resolved_function_info
+                expr.inferred_type_args = temp_call.inferred_type_args
                 return result
             else:
                 func_info = overloads[0]
-                return self._analyze_user_module_function_call(expr, func_info, module_name)
+                expr.user_module_call = module_name
+                temp_call = TpyCall(func=expr.method, args=expr.args,
+                                    type_args=expr.type_args,
+                                    type_args_parse_error=expr.type_args_parse_error,
+                                    loc=expr.loc)
+                result = self.calls._analyze_user_function_call(temp_call, func_info)
+                expr.resolved_function_info = temp_call.resolved_function_info
+                expr.inferred_type_args = temp_call.inferred_type_args
+                return result
 
         qname = f"{module_name}.{expr.method}"
         if record_info := self.ctx.registry.get_builtin_record(qname):
@@ -670,39 +686,6 @@ class MethodAnalyzer:
             deref_checker=self.type_ops.get_deref_coercion_target,
             default_int_type=self.ctx.default_int_type,
         )
-
-    def _analyze_user_module_function_call(
-        self, expr: TpyMethodCall, func_info: FunctionInfo, module_name: str
-    ) -> TpyType:
-        """Analyze a call to a user module function (module.func() pattern).
-
-        Args:
-            expr: The method call expression (module.func(args))
-            func_info: The FunctionInfo for the function
-            module_name: Name of the user module
-
-        Returns:
-            The return type of the function
-        """
-        # Check argument count
-        if len(expr.args) != len(func_info.params):
-            raise self.ctx.error(
-                f"Function '{func_info.name}' expects {len(func_info.params)} arguments, "
-                f"got {len(expr.args)}",
-                expr,
-            )
-
-        # Type-check and coerce arguments
-        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, func_info.params)):
-            arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-            expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                    coercion_ctx=CoercionContext.ARG)
-
-        # Mark as user module call for codegen
-        expr.resolved_function_info = func_info
-        expr.user_module_call = module_name
-
-        return func_info.return_type
 
     @staticmethod
     def stmt_contains_super_init(stmt: TpyStmt, super_init: TpyMethodCall) -> bool:

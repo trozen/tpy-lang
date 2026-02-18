@@ -1,0 +1,1 @@
+main.tp.py:10: error: Cannot call method 'unsafe_cast' on type Int32

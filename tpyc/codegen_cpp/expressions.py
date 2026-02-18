@@ -652,6 +652,10 @@ class ExpressionGenerator:
             if fi and (fi.is_native_import or fi.is_extern_c):
                 func_name = fi.native_name or fi.name
                 return f"{ns}::{func_name}({args})"
+            # Emit explicit template args for generic user-module calls
+            if fi and fi.is_generic() and expr.inferred_type_args:
+                type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
+                return f"{ns}::{expr.method}<{type_args_str}>({args})"
             return f"{ns}::{expr.method}({args})"
 
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
@@ -675,6 +679,7 @@ class ExpressionGenerator:
                 from ..parse import TpyCall
                 temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
                 temp_call.resolved_function_info = expr.resolved_function_info
+                temp_call.inferred_type_args = expr.inferred_type_args
                 return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
             # Check for type constructor (e.g., tpy.Int32)
             qname = f"{module_name}.{expr.method}"

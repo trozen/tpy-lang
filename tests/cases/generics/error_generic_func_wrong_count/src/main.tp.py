@@ -7,4 +7,4 @@ def first[T](items: list[T]) -> T:  # tpyc: ok
 
 
 nums = [1, 2, 3]  # tpyc: ok
-first[Int32, str](nums)  # tpyc: error(/expects 1 type arguments/)
+first[Int32, str](nums)  # tpyc: error(/expects 1 type argument/)

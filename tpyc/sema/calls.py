@@ -310,8 +310,6 @@ class CallAnalyzer:
         self, expr: TpyCall, func_name: str, overloads: list[FunctionInfo],
     ) -> TpyType:
         """Handle builtin functions with special_handling=True."""
-        if func_name == "unsafe_cast":
-            return self._analyze_unsafe_cast(expr)
         if func_name == "copy":
             return self._analyze_tpy_copy(expr)
         if func_name == "print":
@@ -328,71 +326,6 @@ class CallAnalyzer:
             )
             return VOID
         raise self.ctx.error(f"Unknown special builtin: '{func_name}'", expr)
-
-    def _analyze_unsafe_cast(self, expr: TpyCall) -> TpyType:
-        """Analyze unsafe_cast[T](ptr) or unsafe_cast(ptr) with annotation hint.
-
-        Target type is determined by:
-        1. Explicit type arg: unsafe_cast[UInt32](p) -> preserves pointer kind from arg
-        2. Variable annotation: q: Ptr[UInt32] = unsafe_cast(p) -> uses full annotation type
-        """
-        if len(expr.args) != 1:
-            raise self.ctx.error("unsafe_cast() takes exactly 1 argument", expr)
-
-        arg_type = self.expr.analyze_expr(expr.args[0])
-        if not isinstance(arg_type, (PtrType, ConstPtrType)):
-            raise self.ctx.error(
-                f"unsafe_cast() requires a Ptr or ConstPtr argument, got {arg_type}", expr
-            )
-
-        target_type: PtrType | ConstPtrType | None = None
-
-        # 1. Explicit type arg: unsafe_cast[T](p)
-        if expr.type_args:
-            if len(expr.type_args) != 1:
-                raise self.ctx.error("unsafe_cast() takes exactly 1 type argument", expr)
-            pointee = expr.type_args[0]
-            # Preserve pointer kind from arg
-            if isinstance(arg_type, ConstPtrType):
-                target_type = ConstPtrType(pointee)
-            else:
-                target_type = PtrType(pointee)
-
-        # 2. Fall back to variable annotation hint
-        if target_type is None:
-            raw_hint = self.ctx.expr_type_hint
-            if raw_hint is None:
-                raise self.ctx.error(
-                    "unsafe_cast() requires a type argument or target type annotation "
-                    "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr
-                )
-            hint = raw_hint
-            if isinstance(hint, OwnType):
-                hint = hint.wrapped
-            hint = unwrap_readonly(hint)
-            if not isinstance(hint, (PtrType, ConstPtrType)):
-                raise self.ctx.error(
-                    f"unsafe_cast() target must be Ptr[T] or ConstPtr[T], got {raw_hint}", expr
-                )
-            target_type = hint
-
-        # reinterpret_cast cannot drop const -- use unsafe_const_cast first
-        if isinstance(arg_type, ConstPtrType) and isinstance(target_type, PtrType):
-            raise self.ctx.error(
-                "unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)", expr
-            )
-
-        # cpp_template is built at codegen time so that native type names
-        # (from _native_cpp_names) are resolved correctly across modules.
-        expr.resolved_function_info = FunctionInfo(
-            name="unsafe_cast",
-            params=[ParamInfo("p", arg_type)],
-            return_type=target_type,
-            is_builtin_function=True,
-            special_handling=True,
-            qualified_name="tpy.unsafe.unsafe_cast",
-        )
-        return target_type
 
     def _get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
@@ -622,6 +555,37 @@ class CallAnalyzer:
         else:
             raise self.ctx.error(f"{type_name}() takes at most 1 argument, got {len(arg_types)}", expr)
 
+    def _validate_explicit_type_args(self, expr: TpyCall, max_type_params: int) -> None:
+        """Validate explicit type arguments for a generic call.
+
+        Checks parse errors, count bounds, protocol misuse, unknown types,
+        and well-formedness. Used by both user-function and builtin-function
+        generic call paths.
+        """
+        if expr.type_args_parse_error:
+            raise self.ctx.error(expr.type_args_parse_error, expr)
+        if len(expr.type_args) > max_type_params:
+            raise self.ctx.error(
+                f"Function '{expr.func}' expects {max_type_params} type argument(s), "
+                f"got {len(expr.type_args)}",
+                expr
+            )
+        for type_arg in expr.type_args:
+            if is_protocol_type(type_arg):
+                raise self.ctx.error(
+                    f"Protocol type '{type_arg.name}' cannot be used as a type argument. "
+                    f"Protocols are only valid for function parameters",
+                    expr
+                )
+            if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:
+                if self.ctx.registry.get_record(type_arg.name) is None:
+                    raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
+            in_generic = bool(
+                (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
+                or self.ctx.record_ctx.type_params
+            )
+            self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc)
+
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.
 
@@ -649,21 +613,30 @@ class CallAnalyzer:
                                                                 coercion_ctx=CoercionContext.ARG)
                 return matched.return_type
 
-        # Try generic overloads with type inference
+        # Validate explicit type args before generic inference
+        if expr.type_args_parse_error:
+            raise self.ctx.error(expr.type_args_parse_error, expr)
+        explicit: tuple[TpyType, ...] | None = None
+        if expr.type_args and generic:
+            max_tp = max(len(o.type_params) for o in generic)
+            self._validate_explicit_type_args(expr, max_tp)
+            explicit = expr.type_args
         for overload in generic:
             type_subst = self.type_ops.infer_type_params_for_function(
-                overload, arg_types, protocol_checker
+                overload, arg_types, protocol_checker,
+                expected_return_type=self.ctx.expr_type_hint,
+                explicit_type_args=explicit,
             )
             if type_subst is not None:
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
-                # Resolve type param placeholders in cpp_template (e.g. {T} -> int32_t)
-                if resolved.cpp_template and "{" in resolved.cpp_template:
-                    for name, typ in type_subst.items():
-                        placeholder = f"{{{name}}}"
-                        if placeholder in resolved.cpp_template and hasattr(typ, "to_cpp"):
-                            resolved.cpp_template = resolved.cpp_template.replace(
-                                placeholder, typ.to_cpp()
-                            )
+                # Catch ConstPtr-to-Ptr const-drop for unsafe_cast before
+                # the generic "type mismatch" at the assignment level.
+                if (expr.func == "unsafe_cast"
+                        and isinstance(resolved.return_type, ConstPtrType)
+                        and isinstance(self.ctx.expr_type_hint, PtrType)):
+                    raise self.ctx.error(
+                        "unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)", expr
+                    )
                 expr.resolved_function_info = resolved
                 expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, resolved.params)):
@@ -716,6 +689,32 @@ class CallAnalyzer:
                         f"{expr.func}() requires a mutable Ptr, got {arg_t}", expr
                     )
 
+        # Targeted diagnostics for unsafe_cast
+        if expr.func == "unsafe_cast" and len(arg_types) == 1:
+            arg_t = arg_types[0]
+            if not isinstance(arg_t, (PtrType, ConstPtrType)):
+                raise self.ctx.error(
+                    f"unsafe_cast() requires a Ptr or ConstPtr argument, got {arg_t}", expr
+                )
+            hint = self.ctx.expr_type_hint
+            if hint is not None:
+                raw_hint = hint
+                if isinstance(hint, OwnType):
+                    hint = hint.wrapped
+                hint = unwrap_readonly(hint)
+                if not isinstance(hint, (PtrType, ConstPtrType)):
+                    raise self.ctx.error(
+                        f"unsafe_cast() target must be Ptr[T] or ConstPtr[T], got {raw_hint}", expr
+                    )
+                if isinstance(arg_t, ConstPtrType) and isinstance(hint, PtrType):
+                    raise self.ctx.error(
+                        "unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)", expr
+                    )
+            raise self.ctx.error(
+                "unsafe_cast() requires a type argument or target type annotation "
+                "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr
+            )
+
         raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
 
     def _analyze_user_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
@@ -723,6 +722,13 @@ class CallAnalyzer:
         # Handle generic functions
         if func.is_generic():
             return self._analyze_generic_function_call(expr, func)
+
+        # Reject type args on non-generic functions
+        if expr.type_args or expr.type_args_parse_error:
+            raise self.ctx.error(
+                f"Function '{expr.func}' is not generic and does not accept type arguments",
+                expr,
+            )
 
         expr.resolved_function_info = func
         if len(expr.args) != len(func.params):
@@ -778,34 +784,26 @@ class CallAnalyzer:
 
         # Get type substitution from explicit args or inference
         if expr.type_args:
-            # Explicit: first[Int32](items)
-            if len(expr.type_args) != len(func.type_params):
-                raise self.ctx.error(
-                    f"Function '{expr.func}' expects {len(func.type_params)} type arguments, "
-                    f"got {len(expr.type_args)}",
-                    expr
+            self._validate_explicit_type_args(expr, len(func.type_params))
+
+            if len(expr.type_args) == len(func.type_params):
+                # Full explicit -- existing path
+                type_subst = dict(zip(func.type_params, expr.type_args))
+            else:
+                # Partial explicit -- infer remaining from args + context
+                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                type_subst = self.type_ops.infer_type_params_for_function(
+                    func, arg_types, self.protocols.type_conforms_to_protocol,
+                    expected_return_type=self.ctx.expr_type_hint,
+                    explicit_type_args=expr.type_args,
                 )
-            # Validate each explicit type argument
-            for i, type_arg in enumerate(expr.type_args):
-                # Protocol types cannot be used as type arguments
-                if is_protocol_type(type_arg):
+                if type_subst is None:
                     raise self.ctx.error(
-                        f"Protocol type '{type_arg.name}' cannot be used as a type argument. "
-                        f"Protocols are only valid for function parameters",
+                        f"Cannot infer remaining type arguments for '{func.name}'",
                         expr
                     )
-                # Check for unknown record types (no forward references allowed at call sites)
-                if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:
-                    if self.ctx.registry.get_record(type_arg.name) is None:
-                        raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
-                # Validate the type (checks for missing generic args, etc.)
-                in_generic = bool(
-                    (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
-                    or self.ctx.record_ctx.type_params
-                )
-                self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc)
-            type_subst = dict(zip(func.type_params, expr.type_args))
-            # Validate type parameter bounds
+
+            # Validate type parameter bounds for all params (explicit + inferred)
             for param_name, type_arg in type_subst.items():
                 if param_name in func.type_param_bounds:
                     bound = func.type_param_bounds[param_name]
@@ -819,7 +817,8 @@ class CallAnalyzer:
             # Infer from arguments
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
             type_subst = self.type_ops.infer_type_params_for_function(
-                func, arg_types, self.protocols.type_conforms_to_protocol
+                func, arg_types, self.protocols.type_conforms_to_protocol,
+                expected_return_type=self.ctx.expr_type_hint,
             )
             if type_subst is None:
                 raise self.ctx.error(
@@ -878,27 +877,26 @@ class CallAnalyzer:
             # Validate type arguments
             if record.is_generic():
                 if not expr.call_type.type_args:
-                    raise self.ctx.error(
-                        f"Generic record '{record.name}' requires type arguments: "
-                        f"{record.name}[{', '.join(record.type_params)}]",
-                        expr
-                    )
-                if len(expr.call_type.type_args) != len(record.type_params):
-                    raise self.ctx.error(
-                        f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
-                        f"got {len(expr.call_type.type_args)}",
-                        expr
-                    )
-                # Validate type parameter bounds
-                for param_name, type_arg in zip(record.type_params, expr.call_type.type_args):
-                    if param_name in record.type_param_bounds:
-                        bound = record.type_param_bounds[param_name]
-                        if not self.protocols.type_conforms_to_protocol(type_arg, bound):
-                            raise self.ctx.error(
-                                f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
-                                f"for type parameter '{param_name}' of '{record.name}'",
-                                expr
-                            )
+                    # No explicit type args -- fall through to inference section
+                    expr.call_type = None
+                else:
+                    if len(expr.call_type.type_args) != len(record.type_params):
+                        raise self.ctx.error(
+                            f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
+                            f"got {len(expr.call_type.type_args)}",
+                            expr
+                        )
+                    # Validate type parameter bounds
+                    for param_name, type_arg in zip(record.type_params, expr.call_type.type_args):
+                        if param_name in record.type_param_bounds:
+                            bound = record.type_param_bounds[param_name]
+                            if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                                raise self.ctx.error(
+                                    f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
+                                    f"for type parameter '{param_name}' of '{record.name}'",
+                                    expr
+                                )
+        if expr.call_type is not None and isinstance(expr.call_type, NamedType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
             if record.has_init:
@@ -909,8 +907,8 @@ class CallAnalyzer:
                         expr
                     )
                 for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                    arg_type = self.expr.analyze_expr(arg)
                     resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst) if type_subst else ptype
+                    arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)
             else:
@@ -922,7 +920,9 @@ class CallAnalyzer:
         if record.is_generic():
             if record.has_init:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                inferred = self.type_ops.infer_type_params_for_record(record, arg_types)
+                inferred = self.type_ops.infer_type_params_for_record(
+                    record, arg_types, expected_type=self.ctx.expr_type_hint,
+                )
                 if inferred:
                     # Resolve pending types for codegen.
                     for k, v in list(inferred.items()):
@@ -958,6 +958,35 @@ class CallAnalyzer:
                         )
                     self._set_record_constructor_info(expr, record, inferred_type, type_subst)
                     return inferred_type
+            else:
+                # No __init__ -- try contextual inference only
+                if self.ctx.expr_type_hint is not None:
+                    inferred: dict[str, TpyType] = {}
+                    exp = self.ctx.expr_type_hint
+                    if isinstance(exp, OwnType):
+                        exp = exp.wrapped
+                    record_pattern = NamedType(record.name, tuple(
+                        TypeParamRef(tp) for tp in record.type_params
+                    ))
+                    if self.type_ops.match_type_with_inference(record_pattern, exp, inferred):
+                        if all(tp in inferred for tp in record.type_params):
+                            # Validate type parameter bounds
+                            for param_name, type_arg in inferred.items():
+                                if param_name in record.type_param_bounds:
+                                    bound = record.type_param_bounds[param_name]
+                                    if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                                        raise self.ctx.error(
+                                            f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
+                                            f"for type parameter '{param_name}' of '{record.name}'",
+                                            expr
+                                        )
+                            type_args = tuple(inferred[p] for p in record.type_params)
+                            inferred_type = NamedType(expr.func, type_args)
+                            expr.call_type = inferred_type
+                            self._set_record_constructor_info(expr, record, inferred_type, inferred)
+                            for arg in expr.args:
+                                self.expr.analyze_expr(arg)
+                            return inferred_type
             # Inference failed - require explicit type args
             raise self.ctx.error(
                 f"Cannot infer type arguments for '{record.name}'. "
@@ -973,7 +1002,7 @@ class CallAnalyzer:
                     expr
                 )
             for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                arg_type = self.expr.analyze_expr(arg)
+                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
         else:

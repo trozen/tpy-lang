@@ -130,13 +130,21 @@ def init_module() -> BuiltinModule:
     ])
 
     # unsafe_cast: reinterpret a pointer as a different pointee type
-    # Target type comes from context (variable annotation).
-    # Handled specially in sema (not normal overload resolution).
-    module.function("unsafe_cast", special_handling=True, overloads=[
+    # T = target pointee type (explicit or inferred from context)
+    # U = source pointee type (inferred from argument)
+    U = TypeParamRef("U")
+    module.function("unsafe_cast", type_params=["T", "U"], overloads=[
+        # Ptr[U] -> Ptr[T]
         MethodDef(
-            params=[ParamDef("p", PtrType(T))],
+            params=[ParamDef("p", PtrType(U))],
             returns=PtrType(T),
-            cpp="",
+            cpp="reinterpret_cast<{T}*>({0})",
+        ),
+        # ConstPtr[U] -> ConstPtr[T]
+        MethodDef(
+            params=[ParamDef("p", ConstPtrType(U))],
+            returns=ConstPtrType(T),
+            cpp="reinterpret_cast<const {T}*>({0})",
         ),
     ])
 
