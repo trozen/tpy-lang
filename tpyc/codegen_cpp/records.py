@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
-    ListType, ArrayType, SpanType, ModuleType,
+    ListType, ArrayType, SpanType, ModuleType, unwrap_readonly,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -148,10 +148,10 @@ class RecordGenerator:
                 out.write(f"  {record.name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
-                # Use const ref for object types to allow temporaries like MyRecord([1, 2, 3])
-                cpp_params = ", ".join(
-                    ptype.to_cpp_const_param(pname)
-                    for pname, ptype in record.init_method.params
+                cpp_params = self.functions.gen_params(
+                    record.init_method.params,
+                    record.init_method.type_params,
+                    const_params=True,
                 )
                 out.write(f"  explicit {record.name}({cpp_params})")
             else:
@@ -310,6 +310,14 @@ class RecordGenerator:
                         if field_name in own_field_names:
                             fld_type = field_types[field_name]
                             value = self.expressions.gen_expr(stmt.value, fld_type)
+                            # Auto-move Own[T] params at last use in member init list.
+                            # Ctor params are by value (T, not T&&) so always use std::move.
+                            if (isinstance(stmt.value, TpyName)
+                                    and id(stmt.value) in self.ctx.analyzer.ctx.all_last_uses):
+                                for pname, ptype in init_method.params:
+                                    if pname == stmt.value.name and isinstance(unwrap_readonly(ptype), OwnType):
+                                        value = f"std::move({value})"
+                                        break
                             # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't
                             if isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type():
                                 raw_val_type = self.ctx.get_expr_type(stmt.value)

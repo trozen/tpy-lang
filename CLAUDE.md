@@ -21,19 +21,11 @@ uv run tpyc -x examples/hello.tp.py
 # Compile and run (release build, optimized)
 uv run tpyc -xO examples/hello.tp.py
 
-# Compile and run a snippet from stdin
-uv run tpyc -x <<EOF
-def greet(name: str) -> None:
-    print("Hello, " + name)
-greet("world")
-EOF
+# Compile and run a snippet (write to file first, no heredocs)
+uv run tpyc -x /tmp/agents/snippet.tp.py
 
 # Print generated C++ to stdout
-uv run tpyc --dump-code <<EOF
-def add(a: int, b: int) -> int:
-    return a + b
-print(add(1, 2))
-EOF
+uv run tpyc --dump-code /tmp/agents/snippet.tp.py
 
 # Compile to C++ and build binary
 uv run tpyc -b examples/hello.tp.py
@@ -350,9 +342,11 @@ See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language 
 When implementing new features:
 - **Never make design decisions autonomously.** If during implementation you discover that the plan needs to change (e.g., a new concept, a split in behavior, a workaround for an unforeseen constraint), **stop and consult the user** before proceeding. Do not invent new design concepts or alter the agreed-upon design without explicit approval.
 - If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
+- **Do NOT use heredocs (`<<EOF`)** in Bash commands -- they trigger permission prompts in Claude Code. Write snippets to files under `/tmp/agents/` instead.
 - Check `TODO.md` for current priorities
 - Run `uv run pytest -n auto` to verify no regressions after changes
 - Update test snapshots with `uv run python tests/update_snapshots.py` when expected output changes intentionally
+- **Add tests** when adding new features or making changes that could affect generated code. If proper tests don't already exist or the functionality isn't covered, add tests that check the happy path, errors/warnings, edge cases, and prevent future regressions.
 
 ### Key Documentation Files
 

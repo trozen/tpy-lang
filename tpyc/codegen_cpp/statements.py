@@ -101,8 +101,10 @@ class StatementGenerator:
             # Own[T] params are movable (caller gave up ownership)
             if isinstance(actual, OwnType) and not actual.wrapped.is_value_type():
                 self.ctx.movable_locals.add(pname)
-                # Generic Own[T] uses forwarding refs (T&&) for perfect forwarding
-                if isinstance(actual.wrapped, TypeParamRef):
+                # T&& forwarding refs only apply to free function template params
+                # (where T is deduced at the call site). Class method params use
+                # T by value, so they get std::move, not std::forward.
+                if isinstance(actual.wrapped, TypeParamRef) and not is_method:
                     self.ctx.forwarding_params[pname] = actual.wrapped.name
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
@@ -609,6 +611,7 @@ class StatementGenerator:
             obj = self.expressions.gen_expr(stmt.target.obj)
             target_type = self.ctx.get_expr_type(stmt.target)
             value = self.expressions.gen_expr(stmt.value, target_type)
+            value = self.expressions._maybe_move(stmt.value, value)
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
@@ -648,16 +651,19 @@ class StatementGenerator:
                                          and isinstance(val_type.inner, OwnType))
                     value = self.expressions.gen_expr(stmt.value, target_type)
                     if is_owned_optional:
+                        value = self.expressions._maybe_move(stmt.value, value)
                         return f"{indent}{target} = {value};\n"
                     return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
                 # Direct value or optional-to-optional (field-to-field) works without conversion
                 value = self.expressions.gen_expr_deref(stmt.value, target_type)
+                value = self.expressions._maybe_move(stmt.value, value)
                 return f"{indent}{target} = {value};\n"
 
-        # Default: simple assignment
+        # Default: simple assignment (includes field assignments like self.x = val)
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr_deref(stmt.value, target_type)
+        value = self.expressions._maybe_move(stmt.value, value)
         return f"{indent}{target} = {value};\n"
 
     def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:

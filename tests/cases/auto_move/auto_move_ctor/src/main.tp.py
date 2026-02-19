@@ -10,7 +10,7 @@ class Outer:
     inner: Inner
 
     def __init__(self, inner: Own[Inner]):
-        self.inner = inner
+        self.inner = inner  # tpyc: ok
 
     def get_value(self) -> Int32:
         return self.inner.value

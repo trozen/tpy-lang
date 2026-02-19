@@ -17,7 +17,7 @@ struct Box {
 
   // 7:     def __init__(self, val: Own[T]) -> None:
   Box() = default;
-  explicit Box(T val) : val(val) {}
+  explicit Box(T val) : val(std::move(val)) {}
 };
 
 template<typename T>

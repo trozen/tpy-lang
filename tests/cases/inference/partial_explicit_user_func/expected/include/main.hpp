@@ -18,7 +18,7 @@ struct Box {
 
   // 6:     def __init__(self, val: Own[T]) -> None:
   Box() = default;
-  explicit Box(T val) : val(val) {}
+  explicit Box(T val) : val(std::move(val)) {}
 };
 
 template<typename T>
@@ -39,7 +39,7 @@ struct Wrapper {
 
   // 12:     def __init__(self, inner: Own[A], tag: Own[B]) -> None:
   Wrapper() = default;
-  explicit Wrapper(A inner, B tag) : inner(inner), tag(tag) {}
+  explicit Wrapper(A inner, B tag) : inner(std::move(inner)), tag(std::move(tag)) {}
 };
 
 template<typename A, typename B>

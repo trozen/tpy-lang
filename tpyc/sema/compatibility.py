@@ -404,6 +404,10 @@ class TypeCompatibility:
         if self.is_copy_call(expr):
             return False
         if self.is_lvalue(expr):
+            # Skip warning when auto-move applies (last use of a movable var)
+            if isinstance(expr, TpyName) and id(expr) in self.ctx.all_last_uses:
+                if self._is_movable_var(expr.name):
+                    return False
             return True
         # T|None function returns always alias an existing object
         if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():

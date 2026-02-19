@@ -1,0 +1,1 @@
+Uses default-init value types (Int32 fields without __init__ assignment)

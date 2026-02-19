@@ -44,13 +44,27 @@ class FunctionGenerator:
         """Set statements generator (to break circular dependency)."""
         self.statements = statements
 
-    def gen_params(self, params: list[tuple[str, TpyType]]) -> str:
-        """Generate function parameter list."""
+    def gen_params(self, params: list[tuple[str, TpyType]],
+                   func_type_params: list[str] | None = None,
+                   *, const_params: bool = False) -> str:
+        """Generate function parameter list.
+
+        Own[T] uses T&& (forwarding ref) only when T is a function-level type
+        param (deduced at the call site). For class-level type params (methods,
+        constructors), T is already bound at instantiation so T&& would be an
+        rvalue ref -- fall through to T by value instead.
+
+        const_params: use to_cpp_const_param (const T& for generics). Needed
+        for constructors and const method overloads that must accept temporaries.
+        """
         parts = []
         for pname, ptype in params:
             own = unwrap_readonly(ptype)
-            if isinstance(own, OwnType) and isinstance(own.wrapped, TypeParamRef):
+            if (isinstance(own, OwnType) and isinstance(own.wrapped, TypeParamRef)
+                    and func_type_params and own.wrapped.name in func_type_params):
                 parts.append(f"{own.wrapped.name}&& {pname}")
+            elif const_params:
+                parts.append(ptype.to_cpp_const_param(pname))
             else:
                 parts.append(ptype.to_cpp_param(pname))
         return ", ".join(parts)
@@ -70,13 +84,15 @@ class FunctionGenerator:
                 parts.append(ptype.to_cpp_param(pname))
         return ", ".join(parts)
 
-    def gen_params_with_protocols(self, params: list[tuple[str, TpyType]]) -> str:
+    def gen_params_with_protocols(self, params: list[tuple[str, TpyType]],
+                                   func_type_params: list[str] | None = None) -> str:
         """Generate function parameter list, using template types for protocol params."""
         result = []
         for pname, ptype in params:
             # Resolve type in case it's a NamedType that's actually a protocol
             unwrapped = unwrap_readonly(ptype)
-            if isinstance(unwrapped, OwnType) and isinstance(unwrapped.wrapped, TypeParamRef):
+            if (isinstance(unwrapped, OwnType) and isinstance(unwrapped.wrapped, TypeParamRef)
+                    and func_type_params and unwrapped.wrapped.name in func_type_params):
                 result.append(f"{unwrapped.wrapped.name}&& {pname}")
             else:
                 resolved = self.protocols.resolve_type_for_codegen(unwrapped)
@@ -122,13 +138,14 @@ class FunctionGenerator:
                     func.type_params, protocol_params, func.type_param_bounds
                 ))
                 ret_type = func.return_type.to_cpp_return()
-                params = self.gen_params_with_protocols(func.params) if protocol_params else self.gen_params(func.params)
+                params = (self.gen_params_with_protocols(func.params, func.type_params)
+                          if protocol_params else self.gen_params(func.params, func.type_params))
                 out.write(f"{ret_type} {func.name}({params});\n")
             else:
                 self.gen_function_def(out, func)
         else:
             ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params(func.params)
+            params = self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params});\n")
 
     def gen_extern_c_redecl(self, out: TextIO, func_info: FunctionInfo) -> None:
@@ -180,11 +197,12 @@ class FunctionGenerator:
                 func.type_params, protocol_params, func.type_param_bounds
             ))
             ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params_with_protocols(func.params) if protocol_params else self.gen_params(func.params)
+            params = (self.gen_params_with_protocols(func.params, func.type_params)
+                      if protocol_params else self.gen_params(func.params, func.type_params))
             out.write(f"{ret_type} {func.name}({params}) {{\n")
         else:
             ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params(func.params)
+            params = self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -233,9 +251,9 @@ class FunctionGenerator:
         """Emit a single method overload (const or non-const)."""
         ret_type = cpp_return_type.to_cpp_return_const() if const else cpp_return_type.to_cpp_return()
         if const:
-            params = ", ".join(ptype.to_cpp_const_param(pname) for pname, ptype in method.params)
+            params = self.gen_params(method.params, method.type_params, const_params=True)
         else:
-            params = self.gen_params(method.params)
+            params = self.gen_params(method.params, method.type_params)
         const_suffix = " const" if const else ""
         static_prefix = "static " if static else ""
         out.write("\n")
@@ -387,7 +405,7 @@ class FunctionGenerator:
         """
         cpp_name = func.native_name or func.name
         ret_type = func.return_type.to_cpp_return()
-        params = self.gen_params(func.params)
+        params = self.gen_params(func.params, func.type_params)
         ns, bare_name = self._split_native_name(cpp_name)
         if ns:
             out.write(f"namespace {ns} {{ {ret_type} {bare_name}({params}); }}\n")
@@ -407,7 +425,7 @@ class FunctionGenerator:
             return
         cpp_name = func.native_name or func.name
         ret_type = func.return_type.to_cpp_return()
-        params = self.gen_params(func.params)
+        params = self.gen_params(func.params, func.type_params)
         ns, bare_name = self._split_extern_cpp_name(cpp_name)
 
         self.ctx.emit_preceding_comments(out, func.loc)

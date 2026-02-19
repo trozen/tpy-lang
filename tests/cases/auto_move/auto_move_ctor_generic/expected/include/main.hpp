@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 struct Inner;
-struct Outer;
+template<typename T> struct Box;
 
 extern std::string_view __name__;
 
@@ -25,25 +25,21 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
   return os;
 }
 
-// 9: class Outer:
-struct Outer {
-  // 10:     inner: Inner
-  Inner inner;
+// 9: class Box[T]:
+template<typename T>
+struct Box {
+  // 10:     item: T
+  T item;
 
-  // 12:     def __init__(self, inner: Own[Inner]):
-  Outer() = default;
-  explicit Outer(Inner inner) : inner(std::move(inner)) {}
-
-  // 15:     def get_value(self) -> Int32:
-  int32_t get_value() {
-    // 16:         return self.inner.value
-    return this->inner.value;
-  }
+  // 12:     def __init__(self, item: Own[T]):
+  Box() = default;
+  explicit Box(T item) : item(std::move(item)) {}
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-  os << "Outer("
-     << "inner=" << obj.inner
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
+  os << "Box("
+     << "item=" << tpy::ValuePrinter(obj.item)
      << ")";
   return os;
 }

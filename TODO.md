@@ -1,9 +1,10 @@
 # TODO
 
 ## Next
+- `Own[T] | None` params not recognized as movable -- auto-move and copy warning suppression don't apply because `_is_movable_var` only checks `OwnType`, not `OptionalType(OwnType(...))`
+- auto-move locals at last use: (1) copy warning doesn't fire when passing a local to an `Own[T]` param (e.g. `h.set_inner(i)` -- should warn about implicit copy), (2) locals at their last use should be auto-moved (`std::move`) instead of copied. Already works for `Own[T]` params -- needs extending to regular locals.
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - make Box[T] example great again
-- `self.inner = inner` in `__init__` warns about field copy even when `inner` is `Own[T]` at last use -- should auto-move
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
 - Type params in generic function bodies: `list[T]` as local variable annotation fails ("Type parameter 'T' used outside of generic context"), and `return []` can't infer element type from return type when it contains a type param
@@ -35,7 +36,7 @@
 - coerce int32 -> uint32?
 
 ## Bugs
-- None ;-)
+- `Optional[T]` from `typing` is not equivalent to `T | None` -- it generates `Optional<T>` (unresolved NamedType) instead of `std::optional<T>`. Either resolve `Optional[T]` to `OptionalType(T)` in the parser/module system, or error with a hint to use `T | None`.
 
 ## Examples
 - example: StaticList, using UninitArrayStorage
