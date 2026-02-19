@@ -758,6 +758,101 @@ class OptionalType(TpyType):
 
 
 @dataclass(frozen=True)
+class UnionType(TpyType):
+    """Union of multiple types: A | B | C -> std::variant<A, B, C>.
+
+    Members are stored in canonical sorted order for deterministic eq/hash.
+    NoneType is always last if present (maps to std::monostate).
+    """
+    members: tuple[TpyType, ...]
+
+    def to_cpp(self) -> str:
+        cpp_members = [
+            "std::monostate" if isinstance(m, (NoneType, VoidType)) else m.to_cpp()
+            for m in self.members
+        ]
+        return f"std::variant<{', '.join(cpp_members)}>"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"const {self.to_cpp()}& {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"const {self.to_cpp()}& {name}"
+
+    def to_cpp_return(self) -> str:
+        return self.to_cpp()
+
+    def to_cpp_return_const(self) -> str:
+        return self.to_cpp()
+
+    def __str__(self) -> str:
+        parts = [
+            "None" if isinstance(m, (NoneType, VoidType)) else str(m)
+            for m in self.members
+        ]
+        return " | ".join(parts)
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return self.members
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return make_union(*types)
+
+
+def make_union(*types: TpyType) -> TpyType:
+    """Normalize a sequence of types into a canonical union form.
+
+    - Flattens nested UnionType/OptionalType members
+    - Deduplicates by structural equality
+    - Single type collapses to itself
+    - Single type + None -> OptionalType(T)
+    - Multiple types +/- None -> UnionType(sorted..., [NoneType])
+    """
+    # Flatten nested unions and optionals
+    flat: list[TpyType] = []
+    has_none = False
+    for t in types:
+        if isinstance(t, UnionType):
+            for m in t.members:
+                if isinstance(m, (NoneType, VoidType)):
+                    has_none = True
+                else:
+                    flat.append(m)
+        elif isinstance(t, OptionalType):
+            has_none = True
+            flat.append(t.inner)
+        elif isinstance(t, (NoneType, VoidType)):
+            has_none = True
+        else:
+            flat.append(t)
+
+    # Deduplicate preserving order
+    seen: set[TpyType] = set()
+    deduped: list[TpyType] = []
+    for t in flat:
+        if t not in seen:
+            seen.add(t)
+            deduped.append(t)
+
+    # Sort by string representation for canonical order
+    deduped.sort(key=lambda t: str(t))
+
+    if len(deduped) == 0:
+        # Only None members -- caller should handle this
+        return VoidType()
+    elif len(deduped) == 1 and not has_none:
+        return deduped[0]
+    elif len(deduped) == 1 and has_none:
+        return OptionalType(deduped[0])
+    else:
+        members = tuple(deduped) + ((NoneType(),) if has_none else ())
+        return UnionType(members)
+
+
+@dataclass(frozen=True)
 class ArrayType(TpyType):
     """Fixed-size array: Array[T, N] -> std::array<T, N>"""
     element_type: TpyType

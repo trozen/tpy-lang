@@ -11,7 +11,7 @@ from typing import Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, TypeParamRef,
-    OptionalType, VoidType,
+    OptionalType, VoidType, make_union,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
@@ -63,6 +63,17 @@ def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
     if isinstance(node.slice, ast.Tuple):
         return node.slice.elts
     return [node.slice]
+
+
+def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:
+    """Flatten a left-recursive chain of A | B | C into [A, B, C]."""
+    arms: list[ast.expr] = []
+    if isinstance(node.left, ast.BinOp) and isinstance(node.left.op, ast.BitOr):
+        arms.extend(_collect_bitor_arms(node.left))
+    else:
+        arms.append(node.left)
+    arms.append(node.right)
+    return arms
 
 
 class Parser:
@@ -737,19 +748,24 @@ class Parser:
             return VOID
 
         elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            left = self._parse_type_annotation(node.left, type_param_scope)
-            right = self._parse_type_annotation(node.right, type_param_scope)
-            if isinstance(right, VoidType):
-                # Normalize readonly[T] | None -> readonly[T | None]
-                if isinstance(left, ReadonlyType):
-                    return ReadonlyType(OptionalType(left.wrapped))
-                return OptionalType(left)
-            elif isinstance(left, VoidType):
-                if isinstance(right, ReadonlyType):
-                    return ReadonlyType(OptionalType(right.wrapped))
-                return OptionalType(right)
-            else:
-                raise ParseError("Union types not yet supported; only T | None is allowed", node)
+            arms = _collect_bitor_arms(node)
+            parsed = [self._parse_type_annotation(arm, type_param_scope) for arm in arms]
+
+            # Handle readonly normalization:
+            # readonly[A] | readonly[B] -> readonly[A | B]
+            # readonly[A] | B -> error (mixed readonly)
+            readonly_count = sum(1 for t in parsed if isinstance(t, ReadonlyType))
+            non_none_count = sum(1 for t in parsed if not isinstance(t, VoidType))
+            if readonly_count > 0 and readonly_count < non_none_count:
+                raise ParseError("Cannot mix readonly and non-readonly types in a union", node)
+            if readonly_count > 0:
+                unwrapped = [
+                    t.wrapped if isinstance(t, ReadonlyType) else t
+                    for t in parsed
+                ]
+                return ReadonlyType(make_union(*unwrapped))
+
+            return make_union(*parsed)
 
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 

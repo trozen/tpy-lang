@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType,
-    ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType,
+    ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType, UnionType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
 )
@@ -66,6 +66,10 @@ class TypeOperations:
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped != typ.wrapped:
                 return ReadonlyType(resolved_wrapped)
+        elif isinstance(typ, UnionType):
+            resolved_members = tuple(self.resolve_type(m) for m in typ.members)
+            if resolved_members != typ.members:
+                return UnionType(resolved_members)
         return typ
 
     def validate_type(
@@ -110,6 +114,14 @@ class TypeOperations:
                 )
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
+        elif isinstance(typ, UnionType):
+            for member in typ.members:
+                self.validate_type(member, allow_type_param_ref, loc)
+                if is_protocol_type(member):
+                    raise SemanticError(
+                        f"Protocol type '{member.name}' cannot be used as a union member",
+                        loc,
+                    )
         elif isinstance(typ, ReadonlyType):
             self.validate_type(typ.wrapped, allow_type_param_ref, loc)
         elif isinstance(typ, (PtrType, ConstPtrType)):

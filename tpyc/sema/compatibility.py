@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
-    NamedType, TypeParamRef, NoneType, OptionalType,
+    NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
@@ -89,6 +89,21 @@ class TypeCompatibility:
         # None -> Optional[T] / Ptr[T] / ConstPtr[T]: always compatible
         if isinstance(actual, NoneType) and isinstance(expected, (OptionalType, PtrType, ConstPtrType)):
             return None
+
+        # Union[A, B] -> Union[A, B, C]: each actual member must match some expected member
+        if isinstance(actual, UnionType) and isinstance(expected, UnionType):
+            for member in actual.members:
+                self.check_type_compatible(member, expected, context, loc, source_expr, is_return, coercion_ctx)
+            return None
+
+        # T -> Union[T, ...]: actual must match at least one member
+        if isinstance(expected, UnionType):
+            for member in expected.members:
+                try:
+                    return self.check_type_compatible(actual, member, context, loc, source_expr, is_return, coercion_ctx)
+                except SemanticError:
+                    pass
+            raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
 
         # T -> Optional[T]: implicit wrapping
         if isinstance(expected, OptionalType):

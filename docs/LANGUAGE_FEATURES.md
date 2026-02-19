@@ -1661,6 +1661,16 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 
 ### Union/Optional
+- **Working**: Union types `A | B | C` → `std::variant<A, B, C>`
+  - Two-way, three-way, and n-way unions in annotations (function params, returns, local variables)
+  - Canonical member ordering (sorted by type name, `None`/`std::monostate` always last)
+  - `A | None` with single non-None type still produces `Optional[T]` (backward compatible)
+  - Member type compatibility: `T` assignable to `T | U`, `T | U` assignable to `T | U | V`
+  - `make_union()` normalizes: flattens nested unions, deduplicates, collapses single-type unions
+  - Protocol types cannot be union members (sema error)
+  - Mixed `readonly`/non-`readonly` in unions is a parse error
+  - Generic functions returning `T | U` where `T == U` at instantiation produce a sema error (duplicate variant members)
+  - **Not yet supported**: `isinstance()` narrowing, `std::get` extraction, pattern matching on variants
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - `x is None` / `x is not None` for null checks

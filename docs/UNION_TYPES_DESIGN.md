@@ -29,12 +29,12 @@ def area(s: Shape) -> float:
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **Phase 1** | `UnionType` in type system + parser accepts `A \| B \| C` | Planned |
-| **Phase 2** | Sema: type compatibility (member -> union assignment) | Planned |
+| **Phase 1** | `UnionType` in type system + parser accepts `A \| B \| C` | **Done** |
+| **Phase 2** | Sema: type compatibility (member -> union assignment) | **Done** |
 | **Phase 3** | `isinstance()` special form + narrowing facts | Planned |
 | **Phase 4** | Narrowing generalization (`narrowed_types` dict) | Planned |
-| **Phase 5** | Codegen: `std::variant`, `holds_alternative`, `std::get` | Planned |
-| **Phase 6** | Tests | Planned |
+| **Phase 5** | Codegen: `std::variant`, `holds_alternative`, `std::get` | Partial (codegen done, no `std::get`/narrowing yet) |
+| **Phase 6** | Tests | Partial |
 | **Future** | `match`/`case`, exhaustiveness checking, ADT patterns | Design only |
 
 ## Design Principles

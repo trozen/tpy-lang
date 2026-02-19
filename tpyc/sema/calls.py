@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
-    VOID, BIGINT, is_protocol_type, unwrap_readonly,
+    UnionType, VOID, BIGINT, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName, TpyFunction
 from ..namespace import BindingKind
@@ -644,6 +644,16 @@ class CallAnalyzer:
                         expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
                                                                 f"argument '{pname}'",
                                                                 coercion_ctx=CoercionContext.ARG)
+                if isinstance(overload.return_type, UnionType):
+                    orig_count = len(overload.return_type.members)
+                    resolved_ret = resolved.return_type
+                    resolved_count = len(resolved_ret.members) if isinstance(resolved_ret, UnionType) else 1
+                    if resolved_count < orig_count:
+                        raise self.ctx.error(
+                            f"Generic union return type '{overload.return_type}' produces duplicate "
+                            f"members with these type arguments (resolves to '{resolved_ret}')",
+                            expr,
+                        )
                 return resolved.return_type
 
         # No matching overload found - try to give a helpful error
@@ -868,7 +878,21 @@ class CallAnalyzer:
                 self.list_tracker.mark_list_param_context(arg, resolved_ptype)
 
         # Resolve return type
-        return self.type_ops.substitute_type_params(func.return_type, type_subst)
+        resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
+
+        # Detect duplicate union members after generic substitution:
+        # e.g. T | U | str with T=U=Int32 would emit std::variant<int, int, str> (ill-formed)
+        if isinstance(func.return_type, UnionType):
+            orig_count = len(func.return_type.members)
+            resolved_count = len(resolved_return.members) if isinstance(resolved_return, UnionType) else 1
+            if resolved_count < orig_count:
+                raise self.ctx.error(
+                    f"Generic union return type '{func.return_type}' produces duplicate members "
+                    f"with these type arguments (resolves to '{resolved_return}')",
+                    expr,
+                )
+
+        return resolved_return
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
