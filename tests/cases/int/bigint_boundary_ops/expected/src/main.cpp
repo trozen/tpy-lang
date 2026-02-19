@@ -126,19 +126,19 @@ void __tpy_init() {
   // 54: probe("small_max + one", SMALL_MAX, 1, Int32(1))
   probe("small_max + one", SMALL_MAX, tpy::BigInt(1), 1);
   // 55: probe("small_min + minus_one", SMALL_MIN, -1, Int32(1))
-  probe("small_min + minus_one", SMALL_MIN, -1, 1);
+  probe("small_min + minus_one", SMALL_MIN, tpy::BigInt(-1), 1);
   // 56: probe("big_pos + three", BIG_POS, 3, Int32(2))
   probe("big_pos + three", BIG_POS, tpy::BigInt(3), 2);
   // 57: probe("big_neg + three", BIG_NEG, 3, Int32(2))
   probe("big_neg + three", BIG_NEG, tpy::BigInt(3), 2);
   // 58: probe("wide_pos + minus_five", WIDE_POS, -5, Int32(31))
-  probe("wide_pos + minus_five", WIDE_POS, -5, 31);
+  probe("wide_pos + minus_five", WIDE_POS, tpy::BigInt(-5), 31);
   // 59: probe("wide_neg + seven", WIDE_NEG, 7, Int32(31))
   probe("wide_neg + seven", WIDE_NEG, tpy::BigInt(7), 31);
   // 60: probe("zero + big_pos", 0, BIG_POS, Int32(63))
   probe("zero + big_pos", tpy::BigInt(0), BIG_POS, 63);
   // 61: probe("minus_one + wide_pos", -1, WIDE_POS, Int32(64))
-  probe("minus_one + wide_pos", -1, WIDE_POS, 64);
+  probe("minus_one + wide_pos", tpy::BigInt(-1), WIDE_POS, 64);
   // 63: # Shift behavior at and beyond machine-word boundaries.
   // 64: print(BIG_POS << 63)
   std::cout << ((BIG_POS) << (tpy::BigInt(63))) << "\n";

@@ -11,7 +11,7 @@ extern "C" void app_init() {
   // 6:     abs(Int32(0))
   std::abs(0);
   // 7:     x: Int32 = get_clock()
-  int32_t x = clock();
+  int32_t x = tpy_clock();
   // 8:     print(x)
   std::cout << x << "\n";
 }

@@ -33,7 +33,7 @@ void __tpy_init() {
   // 11: print(x)
   std::cout << x << "\n";
   // 12: update(-1)
-  update(-1);
+  update(tpy::BigInt(-1));
   // 13: print(x)
   std::cout << x << "\n";
 }

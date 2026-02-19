@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
-extern "C" int32_t clock();
+extern "C" int32_t tpy_clock();
 extern "C" int32_t abs(int32_t x);
 
 void __tpy_init();

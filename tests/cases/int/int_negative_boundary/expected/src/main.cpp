@@ -30,7 +30,7 @@ void __tpy_init() {
   std::cout << a << "\n";
   // 8: # One below Int32 min -- should promote to BigInt with warning
   // 9: b = -2147483649  # tpyc: warning(/outside default Int32 range/)
-  b = -2147483649;
+  b = tpy::BigInt(static_cast<int64_t>(-2147483649LL));
   // 10: print(b)
   std::cout << b << "\n";
   // 12: # Exactly Int32 max -- should stay Int32

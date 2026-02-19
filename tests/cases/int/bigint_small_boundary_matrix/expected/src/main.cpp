@@ -52,17 +52,17 @@ void __tpy_init() {
   // 25: show_mul("mul_small_small_to_large_pos", SMALL_MAX, 2)
   show_mul("mul_small_small_to_large_pos", SMALL_MAX, tpy::BigInt(2));
   // 26: show_mul("mul_small_small_to_large_neg", SMALL_MIN, -1)
-  show_mul("mul_small_small_to_large_neg", SMALL_MIN, -1);
+  show_mul("mul_small_small_to_large_neg", SMALL_MIN, tpy::BigInt(-1));
   // 28: # small * large -> large
   // 29: show_mul("mul_small_large_to_large_1", SMALL_MAX, BIG_POS)
   show_mul("mul_small_large_to_large_1", SMALL_MAX, BIG_POS);
   // 30: show_mul("mul_small_large_to_large_2", -1, BIG_POS)
-  show_mul("mul_small_large_to_large_2", -1, BIG_POS);
+  show_mul("mul_small_large_to_large_2", tpy::BigInt(-1), BIG_POS);
   // 32: # large * small -> large (or exact-boundary canonicalization to small)
   // 33: show_mul("mul_large_small_large", BIG_POS, 2)
   show_mul("mul_large_small_large", BIG_POS, tpy::BigInt(2));
   // 34: show_mul("mul_large_small_back_to_small", BIG_POS, -1)
-  show_mul("mul_large_small_back_to_small", BIG_POS, -1);
+  show_mul("mul_large_small_back_to_small", BIG_POS, tpy::BigInt(-1));
   // 36: # large * large -> large
   // 37: show_mul("mul_large_large", BIG_POS, BIG_NEG)
   show_mul("mul_large_large", BIG_POS, BIG_NEG);

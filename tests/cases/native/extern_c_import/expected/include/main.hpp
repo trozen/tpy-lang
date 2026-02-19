@@ -8,7 +8,7 @@ namespace tpy_user::main {
 extern std::string_view __name__;
 
 extern "C" int32_t abs(int32_t x);
-extern "C" void srand(int32_t seed);
+extern "C" void tpy_srand(int32_t seed);
 
 void __tpy_init();
 } // namespace tpy_user::main

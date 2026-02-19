@@ -22,7 +22,7 @@ void __tpy_init() {
   // 5: print(x)
   std::cout << x << "\n";
   // 6: y: Int32 = lib.get_clock()
-  y = tpy_user::lib::clock();
+  y = tpy_user::lib::tpy_clock();
   // 7: print(y)
   std::cout << y << "\n";
 }

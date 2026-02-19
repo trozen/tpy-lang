@@ -106,15 +106,7 @@ class ExpressionGenerator:
             target_type: Optional expected type (for implicit promotion)
         """
         if isinstance(expr, TpyIntLiteral):
-            # Promote to BigInt if target expects it
-            if isinstance(target_type, BigIntType):
-                if -2**31 <= expr.value <= 2**31 - 1:
-                    return f"tpy::BigInt({expr.value})"
-                elif -2**63 <= expr.value <= 2**63 - 1:
-                    # Use static_cast for portability (int64_t is long on Linux, long long on macOS)
-                    return f"tpy::BigInt(static_cast<int64_t>({expr.value}LL))"
-                return f'tpy::BigInt::from_str("{expr.value}")'
-            return str(expr.value)
+            return self._gen_int_literal_value(expr.value, target_type)
 
         elif isinstance(expr, TpyFloatLiteral):
             # C++ accepts Python-style float literals directly
@@ -235,14 +227,8 @@ class ExpressionGenerator:
             and not self.types.involves_variables(expr)
         ):
             resolved = self.types.get_resolved_type(expr)
-            if isinstance(resolved, BigIntType):
-                v = analyzed_type.value
-                if -2**31 <= v <= 2**31 - 1:
-                    return f"tpy::BigInt({v})"
-                if -2**63 <= v <= 2**63 - 1:
-                    return f"tpy::BigInt(static_cast<int64_t>({v}LL))"
-                return f'tpy::BigInt::from_str("{v}")'
-            return str(analyzed_type.value)
+            bigint_target = resolved if isinstance(resolved, BigIntType) else None
+            return self._gen_int_literal_value(analyzed_type.value, bigint_target)
 
         # First pass: get raw types to detect fixed-int operands
         left_raw = self.types.get_resolved_type(expr.left)
@@ -446,7 +432,7 @@ class ExpressionGenerator:
         ):
             # Keep literal negation as a plain constant to avoid emitting
             # checked fixed-int runtime helpers for compile-time literals.
-            return str(-expr.operand.value)
+            return self._gen_int_literal_value(-expr.operand.value, target_type)
         resolved_operand_type = self.types.get_resolved_type(expr.operand)
         unary_target = target_type
         if isinstance(resolved_operand_type, OptionalType) and resolved_operand_type.inner.is_value_type():
@@ -462,6 +448,16 @@ class ExpressionGenerator:
             return f"({expr.op}{operand})"
 
         raise RuntimeError(f"No codegen for unary operator {expr.op} with {operand_type}")
+
+    def _gen_int_literal_value(self, v: int, target_type: TpyType | None) -> str:
+        """Emit an integer literal, wrapping in BigInt constructor if needed."""
+        if isinstance(target_type, BigIntType):
+            if -2**31 <= v <= 2**31 - 1:
+                return f"tpy::BigInt({v})"
+            if -2**63 <= v <= 2**63 - 1:
+                return f"tpy::BigInt(static_cast<int64_t>({v}LL))"
+            return f'tpy::BigInt::from_str("{v}")'
+        return str(v)
 
     def _gen_call(self, expr: TpyCall) -> str:
         """Generate function call code."""

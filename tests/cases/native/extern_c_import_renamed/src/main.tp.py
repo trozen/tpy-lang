@@ -1,6 +1,6 @@
 from tpy import native_c, Int32
 
-@native_c("clock")
+@native_c("tpy_clock")
 def get_clock() -> Int32: ...
 
 @native_c("abs")
