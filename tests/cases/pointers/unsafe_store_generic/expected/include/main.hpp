@@ -30,6 +30,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
   return os;
 }
 
+// 12: def store_at[T](p: Ptr[T], idx: UInt32, val: T) -> None:
+template<typename T>
+void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val) {
+  // 13:     unsafe_store(p, idx, val)
+  p[idx] = val;
+}
 void main();
 
 void __tpy_init();

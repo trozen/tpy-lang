@@ -326,6 +326,11 @@ class TypeOperations:
             arg_unwrapped = unwrap_readonly(arg_type)
             return self.match_type_with_inference(param_type.wrapped, arg_unwrapped, inferred)
 
+        # Own[T] wrapper on argument -- unwrap before matching.
+        # Own is an ownership marker (e.g. from copy()), not a distinct type.
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+
         # TypeParamRef -- infer or check consistency
         if isinstance(param_type, TypeParamRef):
             if param_type.name in inferred:

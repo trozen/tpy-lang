@@ -60,7 +60,7 @@ def init_module() -> BuiltinModule:
             params=[
                 ParamDef("p", PtrType(T)),
                 ParamDef("offset", UINT32),
-                ParamDef("value", OwnType(T)),
+                ParamDef("value", T),
             ],
             returns=VOID,
             cpp="{0}[{1}] = {2}",

@@ -2,7 +2,6 @@
 
 ## Next
 - make Box[T] example great again
-- fix generic `unsafe_store` ownership inference: `unsafe_store(arr: Ptr[T], ..., val: T)` currently fails (`No matching overload ... Own[T]`) unless caller passes `Own[T]` or `copy(val)`; should accept `T` and preserve explicit/diagnosable copy semantics
 - `self.inner = inner` in `__init__` warns about field copy even when `inner` is `Own[T]` at last use -- should auto-move
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns

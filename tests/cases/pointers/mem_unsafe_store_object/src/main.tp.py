@@ -1,4 +1,5 @@
-from tpy import Ptr, Int32, UInt32, Array, copy
+# unsafe_store with a record variable (no copy() needed)
+from tpy import Ptr, Int32, UInt32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 class Point:
@@ -8,12 +9,13 @@ class Point:
         self.x = x
         self.y = y
 
-def test_store_owned_object() -> None:
-    arr: Array[Point, 2] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+def main() -> None:
+    arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
     p: Ptr[Point] = unsafe_ptr(arr)
-    unsafe_store(p, UInt32(0), copy(Point(Int32(10), Int32(20))))
-    loaded: Point = unsafe_load(p, UInt32(0))
+    pt: Point = Point(10, 20)
+    unsafe_store(p, 0, pt)
+    loaded: Point = unsafe_load(p, 0)
     print(loaded.x)
     print(loaded.y)
 
-test_store_owned_object()
+main()

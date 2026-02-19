@@ -5,19 +5,21 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 11: def test_store_owned_object() -> None:
-void test_store_owned_object() {
-  // 12:     arr: Array[Point, 2] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+// 12: def main() -> None:
+void main() {
+  // 13:     arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
   std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
-  // 13:     p: Ptr[Point] = unsafe_ptr(arr)
+  // 14:     p: Ptr[Point] = unsafe_ptr(arr)
   Point* p = arr.data();
-  // 14:     unsafe_store(p, UInt32(0), copy(Point(Int32(10), Int32(20))))
-  p[0] = Point(10, 20);
-  // 15:     loaded: Point = unsafe_load(p, UInt32(0))
+  // 15:     pt: Point = Point(10, 20)
+  Point pt = Point(10, 20);
+  // 16:     unsafe_store(p, 0, pt)
+  p[0] = pt;
+  // 17:     loaded: Point = unsafe_load(p, 0)
   Point loaded = p[0];
-  // 16:     print(loaded.x)
+  // 18:     print(loaded.x)
   std::cout << loaded.x << "\n";
-  // 17:     print(loaded.y)
+  // 19:     print(loaded.y)
   std::cout << loaded.y << "\n";
 }
 
@@ -27,9 +29,9 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
-  // 19: test_store_owned_object()
-  test_store_owned_object();
+  // 3: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
+  // 21: main()
+  main();
 }
 
 } // namespace tpy_user::main
