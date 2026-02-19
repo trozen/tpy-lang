@@ -335,11 +335,14 @@ class StatementGenerator:
     # --- Rvalue slot helpers (shared by init and rebind) ---
 
     @staticmethod
-    def _ptr_from_rvalue_slot(slot: str, init_expr: str, is_opt_field: bool) -> str:
+    def _ptr_from_rvalue_slot(slot: str, init_expr: str, is_opt_field: bool,
+                              is_optional_slot: bool = True) -> str:
         """Assign rvalue into pre-declared slot and derive pointer expression."""
         if is_opt_field:
             return f"tpy::optional_to_ptr({slot} = {init_expr})"
-        return f"&*({slot} = {init_expr})"
+        if is_optional_slot:
+            return f"&*({slot} = {init_expr})"
+        return f"&({slot} = {init_expr})"
 
     @staticmethod
     def _ptr_from_local_slot(slot: str, is_opt_field: bool) -> str:
@@ -421,7 +424,8 @@ class StatementGenerator:
                     self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
                 else:
                     self.ctx.rebind_slots[name] = init_slot
-                deref = self._ptr_from_rvalue_slot(init_slot, init_expr, is_opt_field)
+                deref = self._ptr_from_rvalue_slot(init_slot, init_expr, is_opt_field,
+                                                   init_slot not in self.ctx.plain_rebind_slots)
                 return f"{indent}{target} = {deref};\n"
             if name in self.ctx.rvalue_reassigned_vars:
                 # Separate rebind slot so aliases to init value aren't overwritten
@@ -495,7 +499,8 @@ class StatementGenerator:
         if self.ctx.is_rvalue_source(init):
             rebind_slot = self.ctx.rebind_slots.get(name)
             if rebind_slot:
-                deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field)
+                deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field,
+                                                   rebind_slot not in self.ctx.plain_rebind_slots)
                 return f"{indent}{name} = {deref};\n"
             # First rvalue assignment (e.g. global init) -- declare slot here
             slot = self.ctx.slots.next_slot()
@@ -503,8 +508,11 @@ class StatementGenerator:
             slot_type = self._slot_decl_type(cpp_type, is_opt_field)
             if is_hoisted:
                 self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
-                deref = self._ptr_from_rvalue_slot(slot, init_expr, is_opt_field)
+                deref = self._ptr_from_rvalue_slot(slot, init_expr, is_opt_field,
+                                                   slot not in self.ctx.plain_rebind_slots)
                 return f"{indent}{name} = {deref};\n"
+            if not is_opt_field:
+                self.ctx.plain_rebind_slots.add(slot)
             deref = self._ptr_from_local_slot(slot, is_opt_field)
             return (f"{indent}{static_kw}{slot_type} {slot} = {init_expr};\n"
                     f"{indent}{name} = {deref};\n")

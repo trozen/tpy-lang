@@ -6,11 +6,13 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <iterator>
 #include <ranges>
+#include <type_traits>
 #include <vector>
 
 namespace tpy {
@@ -91,19 +93,36 @@ std::vector<T> to_vector(R&& range) {
     return result;
 }
 
+// Trait to detect std::array specializations
+template<typename T> struct is_std_array : std::false_type {};
+template<typename T, std::size_t N> struct is_std_array<std::array<T, N>> : std::true_type {};
+
 /**
  * from_range<Container> - Construct a container from a range.
  *
  * Constructs container using iterator-pair constructor (begin, end).
  * If container supports reserve() and range has known size, reserves first.
- * Works with std::vector, StaticList, and any container with this constructor.
+ * For std::array (aggregate, no iterator-pair ctor), fills element-by-element.
+ * Works with std::vector, StaticList, std::array, and any container with
+ * an iterator-pair constructor.
  *
  * Usage: tpy::from_range<StaticList<int, 10>>(some_range)
  *        tpy::from_range<std::vector<int>>(some_range)
+ *        tpy::from_range<std::array<int, 5>>(some_range)
  */
 template<typename Container, std::ranges::input_range R>
 Container from_range(R&& range) {
-    if constexpr (requires(Container& c) { c.reserve(std::size_t{}); } &&
+    if constexpr (is_std_array<Container>::value) {
+        constexpr auto N = std::tuple_size<Container>::value;
+        Container result{};
+        std::size_t i = 0;
+        for (auto&& elem : range) {
+            if (i >= N) { tpy_panic("from_range: range size exceeds array capacity"); }
+            result[i++] = std::move(elem);
+        }
+        if (i != N) { tpy_panic("from_range: range size does not match array size"); }
+        return result;
+    } else if constexpr (requires(Container& c) { c.reserve(std::size_t{}); } &&
                   std::ranges::sized_range<R>) {
         Container result;
         result.reserve(std::ranges::size(range));

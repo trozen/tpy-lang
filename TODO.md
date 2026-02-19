@@ -36,8 +36,7 @@
 - coerce int32 -> uint32?
 
 ## Bugs
-- Reassigning a non-value-type pointer global produces invalid C++ (`c2 = &*(__global_slot_1 = Container<int32_t>())` dereferences a non-pointer value)
-- `buf: Array[Int16, 320] = [0] * 320`
+- None ;-)
 
 ## Investigate
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust

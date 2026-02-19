@@ -170,6 +170,14 @@ class TypeCompatibility:
         # List *variables* cannot be coerced to Array - codegen can't handle std::vector -> std::array
         if isinstance(actual, ListType) and isinstance(expected, ArrayType):
             if isinstance(source_expr, (TpyArrayLiteral, TpyListRepeat)):
+                # Validate size for list repeats with known count
+                if isinstance(source_expr, TpyListRepeat) and isinstance(source_expr.count, TpyIntLiteral):
+                    repeat_size = len(source_expr.elements) * source_expr.count.value
+                    if repeat_size != expected.size:
+                        raise SemanticError(
+                            f"List repeat produces {repeat_size} elements but Array[..., {expected.size}] expects {expected.size}",
+                            loc
+                        )
                 if actual.element_type == expected.element_type:
                     return None
                 if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
