@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - make Box[T] example great again
 - `self.inner = inner` in `__init__` warns about field copy even when `inner` is `Own[T]` at last use -- should auto-move
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check

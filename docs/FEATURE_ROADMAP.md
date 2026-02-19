@@ -10,6 +10,35 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 ---
 
+## Highest Internal Impact
+
+Features that reshape compiler internals (change the model, not just add to it).
+For comparison: move semantics changed how every variable is handled (3-tier model,
+liveness analysis, gen_expr vs gen_expr_deref). Most features below are additive --
+they don't change how existing code compiles. These two do:
+
+1. **Narrowing generalization** (part of union types / isinstance) -- the narrowing
+   system changes from a boolean ("is this None or not-None?") to tracking **type sets**
+   ("which types from the union are still possible?"). Merge logic, invalidation rules,
+   loop-entry reset all go from bit operations to set operations. Existing None-narrowing
+   becomes a special case of the general system. Affects all code that uses narrowing.
+
+2. **Generic Optional codegen fix** (A3) -- changes what C++ is emitted for existing
+   `T | None` patterns when `T` is a type parameter. Every Optional-related codegen path
+   (check, unwrap, assign None) potentially produces different output for generic code.
+
+3. **Dynamic dispatch** (B4 + B5) -- method definition codegen goes from "always
+   non-virtual" to "decide per method: virtual or not?" affecting every class hierarchy.
+   Method call codegen needs a static-vs-vtable dispatch decision. Protocol conformance
+   checking goes from "yes/no validation" to "generate conformance adapters" -- the
+   protocol system starts producing codegen artifacts, not just type-checking results.
+
+Everything else -- effect system, closures, generators, exceptions, Box, match/case,
+dict, tuples -- is **additive**: important and sometimes touching many files, but the
+existing compiler model stays the same for existing code.
+
+---
+
 ## Implementation Roadmap
 
 ### Phase A: Quick Wins (unblock real programs)
