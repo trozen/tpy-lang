@@ -13,7 +13,7 @@
 - how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top? (differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
-- constant global variables
+- constant global variables (see `Final` in Language Features Roadmap)
 - "@native_c, @native, @extern_c, @readonly, @noalloc are all hard-coded parser keywords" -- should be handled like normal functions eventually (maybe in tpy.extern package?)
 - move native_c_global and native_global to tpy.extern package? (or tpy.native?)
 - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
@@ -35,6 +35,40 @@
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
 - coerce int32 -> uint32?
 
+## Language Features Roadmap
+
+Discussed 2026-02-19. Grouped by suggested implementation phase.
+
+### Near-term (low effort, high value)
+
+- **Type alias**: `type MessagePayload = HelloMessage | ChatMessage` or `MessagePayload = TypeAlias[...]`. Maps to C++ `using`. Prerequisite for ergonomic union types. [Low effort]
+- **Enums**: `class Color(Enum)` -> `enum class Color : int32_t`. Int-based enums first; design questions: string enums, flag enums, interaction with match/case. [Medium effort]
+- **`Final` for constants**: `GLOBAL_CONST: Final = Int32(123)` -> `constexpr int32_t`. Semantically equivalent to `readonly` in TPy (both mean full immutability). Use `Final` for declarations (variables, globals), `readonly[T]` for type positions (parameters, fields). [Low effort, extends existing readonly infrastructure]
+- **Function overload** (`@overload`): already tracked in Hard Problems; sema infrastructure exists, needs user-facing wiring. [Medium effort]
+- **Function hiding/override warnings**: warn when child method hides parent method without virtual dispatch. Important correctness warning -- TPy/C++ uses static dispatch, Python uses dynamic dispatch, so `base_ref.method()` behaves differently. Ties into virtual dispatch (Polymorphism section). [Low effort]
+- **`with` statement** (context managers): `with open(f) as fh:` -> C++ RAII scoped blocks. Natural fit for C++ (destructors, scope guards). Maps to `__enter__`/`__exit__` protocol. [Medium effort]
+- **Tuple unpacking**: `a, b = func()` and `for k, v in items:`. Requires tuple type support first (`tuple` or `std::tuple`). Also needed for multiple return values. [Medium effort]
+- **f-strings**: `f"x={x}, y={y}"` -> `std::format` (C++20) or `fmt::format`. Extremely common Python pattern. Ties into macro discussion (compile-time format string parsing). [Medium effort]
+- **List comprehensions**: `[x*2 for x in items if x > 0]` -> loop + push_back or range pipeline. Very Pythonic, high-frequency usage. [Medium effort]
+- **Dataclasses** (`@dataclass`): auto-generate `__init__`, `__eq__`, `__repr__` from field annotations. TPy classes already have partial overlap; explicit `@dataclass` support would be more Pythonic. [Medium effort]
+
+### Medium-term (foundational features)
+
+- **Union types** (`A | B` with isinstance): tagged unions via `std::variant`. `isinstance(x, A)` -> `std::holds_alternative<A>`. Needs narrowing support (after isinstance check, type is known). Foundational for match/case. [High effort]
+- **Match/case with patterns**: Python 3.10+ `match`/`case` -> C++ `switch` on `variant.index()` (not `std::visit` -- avoids indirect dispatch overhead). Class patterns (`case ChatMessage():`) narrow the subject variable for the block body. Start with literal + type patterns (v1), structural patterns later. Depends on union types + enums. [Medium-high effort]
+- **Exception handling** (`try`/`except`/`raise`): fundamental for real-world code. Design question: C++ exceptions, error codes, or `std::expected`. Could offer policy-based approach (exceptions by default, `@noexcept` for hot paths). [High effort]
+- **`del x` explicit destruction**: `del x` destructs object and marks variable as de-initialized; compiler errors on subsequent use. Leverages existing init_tracker. [Medium effort]
+- **String literal types** (`Literal["r", "w", "rb"]`): compile-time checked string sets for API compat (e.g. `open()` mode). Could map to enum class internally while accepting string syntax at TPy level. [Medium effort]
+- **Closures / nested functions**: `def inner():` capturing outer variables. Needs capture semantics design (by value vs by reference, lifetime of captures). Prerequisite for lambda and callbacks. [Medium-high effort]
+
+### Longer-term (design-heavy)
+
+- **Thread safety design**: Rust-inspired ideas (Send/Sync traits, ownership-based thread safety, immutable-by-default sharing). TPy targets multi-threaded applications unlike Python. Needs early design to avoid painting into a corner. Ties into existing investigation item (borrowing/lifetimes). [Design phase first]
+- **Macro system** (compile-time codegen): function-like macros (`print(...)` expands to optimized formatting code, like Rust's `println!`) and decorator macros (`@parse_json class X` generates methods from class fields). Partially designed in LANGUAGE_FEATURES.md (`@compile_time` / `__generate__` hooks). [High effort]
+- **Self-interpret** (TPy eval in tpyc): run/interpret TPy code during compilation for macro expansion. Also improves REPL (current approach is awkward). Two approaches: embedded interpreter or compile-and-exec during compilation (like Zig comptime). [High effort, needs design exploration]
+- **Cyclic dependency handling**: already tracked in Hard Problems. TPy can do better than Python (which silently partially-initializes modules) since we have the full dep graph at compile time. Options: clear error on cycles, or resolve via C++ forward declarations where possible. [High effort]
+- **Lambda**: `lambda x: x + 1` -> C++ lambda. Depends on closures/nested functions for capture semantics. [Medium effort, lower priority]
+
 ## Bugs
 - None ;-)
 
@@ -51,8 +85,8 @@
 
 ## Hard Problems
 - auto-detect readonly from method body analysis (bottom-up inference) -- currently dunders in IMPLICIT_READONLY_METHODS are implicitly readonly, but regular methods need explicit `@readonly`; auto-inference could remove the need for annotations in most cases
-- handling cyclic imports
-- user-defined function/method overloads via `@overload` decorator (from `typing`). Each `@overload` body is the real implementation (unlike CPython where bodies are stubs). Maps directly to C++ overloads. Infrastructure already exists (overload resolution, type-checked params).
+- handling cyclic imports (see Language Features Roadmap -- Longer-term)
+- user-defined function/method overloads via `@overload` decorator (from `typing`). Each `@overload` body is the real implementation (unlike CPython where bodies are stubs). Maps directly to C++ overloads. Infrastructure already exists (overload resolution, type-checked params). (See Language Features Roadmap -- Near-term)
 
 ## Polymorphism
 - Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
