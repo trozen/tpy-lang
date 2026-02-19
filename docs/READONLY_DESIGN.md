@@ -1,5 +1,13 @@
 # Readonly and Const Design
 
+## Status
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1** | `@readonly` decorator (function/method level), implicit readonly dunders, parameter-rooted mutation enforcement, local alias tracking, C++ const generation | Done |
+| **Phase 2** | `readonly[T]` type modifier, type-embedded enforcement, expression propagation, control-flow merging, dual const/non-const overloads | Done |
+| **Future** | `@readonly` desugaring, protocol-level readonly contracts, automatic inference from method body, escape analysis for sound narrowing | Planned |
+
 ## Problem Statement
 
 TurboPython needs a way to express and enforce immutability of references. This

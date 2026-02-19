@@ -1,5 +1,16 @@
 # Move Semantics Design for TurboPython
 
+## Status
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1** | Liveness analysis (backward dataflow last-use) | Done |
+| **Phase 2** | Auto-move emission (`std::move` at last use for Tier 1 locals and `Own[T]` params) | Done |
+| **Phase 3** | Unnecessary `copy()` warnings at last use | Done |
+| **Phase 4** | `@nocopy` types (deleted copy, consumption tracking, move-only) | Done |
+| **Phase 5** | Alias-aware liveness (borrow safety, detach-on-reassign) | Done |
+| **Phase 6** | `Box[T]` as library type (`unique_ptr` wrapper, `Deref[T]`) | Planned |
+
 ## Motivation
 
 TurboPython's current ownership model uses explicit `copy()` with warnings: when a

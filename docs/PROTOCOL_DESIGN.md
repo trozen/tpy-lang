@@ -1,5 +1,19 @@
 # Protocol System for TurboPython - Design Sketch
 
+## Status
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1** | Simple protocols (Sized), user-defined protocols, C++20 concept generation | Done |
+| **Phase 2** | Protocol matching in sema for function params | Done |
+| **Phase 3** | Generic protocols (`Sequence[T]`), type param substitution | Done |
+| **Phase 4** | `NativeIterable[T]` marker protocol, `extends` declaration | Done |
+| **Phase 5** | `Self` type in protocols, recursive substitution | Done |
+| **Phase 6** | Compiler trait protocols (`NativeContiguous`, `MutableSequence`, `NativeRangeConstructible`) | Done |
+| **Phase 7** | User-defined protocols (moved to Phase 1) | Done |
+| **Phase 8** | Python-compatible `Iterable[T]`/`Iterator[T]` with `__iter__`/`__next__` | Planned |
+| **Phase 9** | Dynamic protocol dispatch (`@dynamic`, `Dyn[P]`, `Box[P]`, vtables) | Planned |
+
 ## Overview
 
 Protocols enable structural subtyping (compile-time duck typing). A type matches a protocol if it has the required methods, without explicit inheritance. This is Python's `typing.Protocol` (PEP 544) and similar to Go interfaces.

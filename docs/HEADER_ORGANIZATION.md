@@ -1,5 +1,14 @@
 # C++ Header Organization Design
 
+## Status
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 0** | Single-header scheme (current); template functions in `.hpp` | Done |
+| **Phase 1** | 4-header split (`_fwd.hpp`, `.hpp`, `_templ.hpp`, `_impl.hpp`) with conservative includes | Planned |
+| **Phase 2** | Usage classification pre-pass for minimum include levels per dependency | Planned |
+| **Phase 3** | Inline function heuristics for small non-template functions | Planned |
+
 ## Problem
 
 TurboPython compiles each `.tp.py` module to a `.hpp`/`.cpp` pair. Currently,

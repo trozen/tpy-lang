@@ -1,5 +1,18 @@
 # String Handling Design
 
+## Status
+
+| Feature | Status |
+|---------|--------|
+| `str` as `const char*` / `std::string_view` | Done |
+| `str` literals, parameters, basic operations | Done |
+| `DynStr` owning string type (`std::string`) | Planned |
+| `str` -> `DynStr` implicit coercion | Planned |
+| `str(numeric)` returning `DynStr` | Planned |
+| `@noalloc` string restrictions | Planned |
+| `FixStr[N]` fixed-capacity strings | Planned |
+| `str` field lifetime safety rules | Planned |
+
 ## Goals
 
 - Keep `str` as a non-owning view for fast argument passing and zero allocations.

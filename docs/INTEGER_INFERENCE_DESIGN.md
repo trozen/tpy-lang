@@ -1,6 +1,12 @@
 # Integer Literal Default Type Policy
 
-Status: Accepted design (Phase 1)
+## Status
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1** | Global `--default-int` CLI flag, configurable default (Int32/Int64/BigInt), explicit `int` stays BigInt | Done |
+| **Phase 2** | Deferred `IntLiteralType` resolution (context-sensitive per usage site) | Planned |
+| **Future** | Per-module/per-function overrides (`# tpy:` directives, `@tpy.config`), constant folding | Planned |
 
 Decision date: 2026-02-16
 
