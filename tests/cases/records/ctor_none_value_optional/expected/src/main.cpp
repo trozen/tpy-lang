@@ -5,12 +5,16 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 9: def main():
+// 11: def main():
 void main() {
-  // 10:     t = time(99)
-  time t = time(tpy::BigInt(99));
-  // 11:     print(t.value)
-  std::cout << t.value << "\n";
+  // 12:     h1 = Holder(None)
+  Holder h1 = Holder(std::nullopt);
+  // 13:     print(h1.value is None)
+  std::cout << tpy::print_bool((!h1.value.has_value())) << "\n";
+  // 15:     h2 = Holder(Int32(42))
+  Holder h2 = Holder(42);
+  // 16:     print(h2.value)
+  std::cout << tpy::print_optional_val(h2.value) << "\n";
 }
 
 void __tpy_init() {
@@ -19,7 +23,8 @@ void __tpy_init() {
   initialized = true;
 
   __name__ = "__main__";
-  // 1: import time
+  // 18: main()
+  main();
 }
 
 } // namespace tpy_user::main

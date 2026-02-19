@@ -14,7 +14,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 19: c = Child(10, 20)
-  static Child __global_slot_1 = Child(10, 20);
+  static Child __global_slot_1 = Child(tpy::BigInt(10), tpy::BigInt(20));
   c = &__global_slot_1;
   // 20: print(c.value)
   std::cout << c->value << "\n";

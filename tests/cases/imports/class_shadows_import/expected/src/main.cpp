@@ -8,7 +8,7 @@ std::string_view __name__;
 // 9: def main():
 void main() {
   // 10:     t = time(42)
-  time t = time(42);
+  time t = time(tpy::BigInt(42));
   // 11:     print(t.value)
   std::cout << t.value << "\n";
 }

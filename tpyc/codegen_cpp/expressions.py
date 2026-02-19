@@ -610,10 +610,7 @@ class ExpressionGenerator:
                     else:
                         gen_args.append(f"&({self.gen_expr(a, ptype)})")
                 else:
-                    gen_arg = self.gen_expr_deref(a)
-                    if isinstance(actual_ptype, OwnType):
-                        gen_arg = self._maybe_move(a, gen_arg)
-                    gen_args.append(gen_arg)
+                    gen_args.append(self.gen_call_arg(a, ptype))
             args = ", ".join(gen_args)
             # Native records: use native C++ name
             if record_info.is_native:

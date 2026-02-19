@@ -839,7 +839,7 @@ def forward(p: Own[Point]) -> Int32:
     return consume(p)  # auto-move of Own param
 ```
 
-**Generic forwarding refs**: When a generic function takes `Own[T]` where `T` is a type parameter, the compiler generates C++ forwarding references (`T&&`) with `std::forward<T>()` for perfect forwarding -- zero-copy pass-through for rvalue arguments:
+**Generic forwarding refs**: When a generic **free function** takes `Own[T]` where `T` is a function-level type parameter, the compiler generates C++ forwarding references (`T&&`) with `std::forward<T>()` for perfect forwarding -- zero-copy pass-through for rvalue arguments:
 
 ```python
 def wrapper[T](x: Own[T]) -> None:
@@ -847,6 +847,8 @@ def wrapper[T](x: Own[T]) -> None:
 ```
 
 Generated C++: `template<typename T> void wrapper(T&& x) { sink<T>(std::forward<T>(x)); }`
+
+For **class methods**, `Own[T]` where `T` is a class-level type parameter generates `T` by value with `std::move()` instead -- because `T&&` in a class template is an rvalue reference (T is already bound at instantiation), not a forwarding reference.
 
 #### @nocopy Types (Working)
 

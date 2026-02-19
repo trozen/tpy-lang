@@ -46,7 +46,7 @@ void test_bigint_expr_to_int32() {
   std::cout << sum_val << "\n";
   // 77:     # Method call result -> Int32
   // 78:     c: Counter = Counter(100)
-  Counter c = Counter(100);
+  Counter c = Counter(tpy::BigInt(100));
   // 79:     val: Int32 = c.get()
   int32_t val = (c.get()).to_fixed_check<int32_t>();
   // 80:     print(val)  # 100
