@@ -1,0 +1,2 @@
+main.tp.py:14: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.tp.py:15: warning: may copy T into owned storage if not a value type; use copy() to make this explicit

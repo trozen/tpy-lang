@@ -395,10 +395,14 @@ class StatementAnalyzer:
             stmt.type = _resolve(stmt.type)
 
         # Validate the type annotation if present
-        # Allow TypeParamRef when inside a generic record's methods
+        # Allow TypeParamRef inside generic functions or generic record methods
         if stmt.type:
             try:
-                self.type_ops.validate_type(stmt.type, allow_type_param_ref=bool(self.ctx.record_ctx.type_params), loc=stmt.loc)
+                in_generic = bool(
+                    (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
+                    or self.ctx.record_ctx.type_params
+                )
+                self.type_ops.validate_type(stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc)
             except SemanticError as e:
                 raise self.ctx.error(str(e), stmt)
 
