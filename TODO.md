@@ -1,6 +1,9 @@
 # TODO
 
 ## Next
+- C++ header ordering: inline method bodies in structs (constructors, methods) can't call free functions declared later in the header. Affects cases like `self.value = func()` when func is defined before the class in Python but its C++ forward declaration is emitted after the struct. Fix: emit function forward declarations before struct definitions, or move method bodies out-of-line.
+- Static methods on generic classes don't infer class type params: `Box.from_optional(next)` where `Box[T]` has `from_optional(value: Own[T] | None)` fails because `_analyze_static_method_call` doesn't run type inference -- params still contain unresolved `TypeParamRef('T')`
+- `ClassName[TypeArgs].method()` syntax not supported for static calls: `Box[Node].from_optional(x)` fails because `Box[Node]` is parsed as a subscript, not recognized as a type-qualified static method call
 - move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
@@ -36,6 +39,7 @@
 - coerce int32 -> uint32?
 
 ## Bugs
+- Constructor codegen uses body assignments instead of initializer lists: when `__init__` has control flow (if/else, loops), fields are default-constructed then assigned (`this->tag = tag;`) instead of using C++ initializer lists (`: tag(tag)`). Works for trivial types but breaks for non-default-constructible types, `@nocopy` types, and eventually `const` fields. Needs either: (a) analyze which fields can still use initializer list even with control flow, (b) use `std::optional` wrappers for deferred init, or (c) restructure to always emit initializer lists with conditional logic factored differently.
 - `Optional[T]` from `typing` is not equivalent to `T | None` -- it generates `Optional<T>` (unresolved NamedType) instead of `std::optional<T>`. Either resolve `Optional[T]` to `OptionalType(T)` in the parser/module system, or error with a hint to use `T | None`.
 - examples/brainfuck.py fails
 
@@ -109,7 +113,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - eliminate trivial temps for value-type constructor args: `wrap(Int32(10))` generates `int32_t __tmp = 10; wrap(__tmp)` instead of `wrap(10)`
 - runtime `using` declarations in global namespace (`tpy.hpp`): generated code should use `tpy::` prefix instead of relying on `using tpy::BigInt` etc.
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
-- C++ header ordering: inline method bodies in structs (constructors, methods) can't call free functions declared later in the header. Affects cases like `self.value = func()` when func is defined before the class in Python but its C++ forward declaration is emitted after the struct. Fix: emit function forward declarations before struct definitions, or move method bodies out-of-line.
 - investigate other backends than c++
 - panic show line number?
 - properly import annotations from tpy module (readonly, noalloc etc); should not be accessible without it; also, should support @tpy.readonly

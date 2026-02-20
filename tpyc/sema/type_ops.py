@@ -391,6 +391,13 @@ class TypeOperations:
                 )
             return False
 
+        # Optional[T] -- unwrap and recurse (bare T can coerce to Optional[T])
+        if isinstance(param_type, OptionalType):
+            inner_arg = arg_type.inner if isinstance(arg_type, OptionalType) else arg_type
+            return self.match_type_with_inference(
+                param_type.inner, inner_arg, inferred
+            )
+
         # Own[T] wrapper -- unwrap and match T against arg (any type can be owned)
         if isinstance(param_type, OwnType):
             inner_arg = arg_type.wrapped if isinstance(arg_type, OwnType) else arg_type

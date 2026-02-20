@@ -32,6 +32,17 @@ class Box[T](Deref[T]):
     def __deref__(self) -> T:
         return self.get()
 
+    # not copyable, since it's allocating so we don't want accidental copies
+    # TODO: add @nocopy to type to be explicit about it
+    def clone(self) -> Own[Box[T]]:
+        return Box[T](self.get())
+
+    @staticmethod
+    def from_optional(value: Own[T] | None) -> Own[Box[T]] | None:
+        if value is not None:
+            return Box(value)
+        return None
+
     # TODO: readonly deref?
 
     # TODO: __del__() method
@@ -45,27 +56,38 @@ class Box[T](Deref[T]):
     #   2. Near-term: take(self: Own) consumes self, compiler rejects further use
     #   3. Long-term: full move/borrow tracking (Rust-style borrow checker)
 
+
+# HACK: workaround for the problem with from_optional
+def box_from_optional[T](value: Own[T] | None) -> Own[Box[T]] | None:
+    if value is not None:
+        return Box(value)
+    return None
+
+
 # Int32
 b = Box[Int32](42)
-print(b.get())
+print("b.get():", b.get())
 b.set(100)
-print(b.get())
+print("b.get():", b.get())
 # TODO: should deref here?
 # print(b + 1)
 b.drop()
 
 # also Int32
-# b2 = Box(666)
+b2 = Box(666)
 # TODO: should print something like "Box(666)" or maybe "Box[Int32](666)" or "Box(Int32(666))"
-# print(b2)
-# b2.drop()
+print("b2:", b2)
+b2c = b2.clone()
+b2.drop()
+print("b2c:", b2c)
+b2c.drop()
 
 # str
 # TODO: should this use std::string? (what does owning std::string_view does)
 s = Box[str]("hello")
-print(s.get())
+print("s.get():", s.get())
 s.set("world")
-print(s.get())
+print("s.get():", s.get())
 s.drop()
 
 # TODO: test with real class
@@ -75,19 +97,22 @@ class Node:
     # TODO: optimize like in rust -> single pointer instead of std::optional<>
     next: Box[Node] | None
 
-    def __init__(self, value: Int32):
-        self.value = value
-        self.next = None
+    # def __init__(self, value: Int32):
+    #     self.value = value
+    #     self.next = None
 
-    # TODO: how to make it work?
     # TODO: proper nocopy propagation in Box[T]
     # TODO: Own[T]|None not recognized as moveable
-    # def __init__(self, value: Int32, next: Own[Node] | None):
-    #     self.value = value
-    #     if next is not None:
-    #         self.next = Box(next)
-    #     else:
-    #         self.next = None
+    def __init__(self, value: Int32, next: Own[Node] | None):
+        self.value = value
+        # TODO: self.next = Box.from_optional(next)
+        # TODO: self.next = box_from_optional(next)
+        if next is not None:
+            self.next = Box(next)
+        else:
+            self.next = None
 
 # TODO: how to make it work
-# n = Node(123, None)
+print("Node:", Node(0, None))
+# TODO: n = Node(123, Node(666, None))
+# print("n:", n)

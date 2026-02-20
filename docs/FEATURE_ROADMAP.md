@@ -53,6 +53,7 @@ existing compiler model stays the same for existing code.
 | A6 | Keyword args + default values | M | Not started | [VII](#keyword-arguments-and-default-values) |
 | A7 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
 | A8 | `__bool__` protocol | S | Not started | [VII](#__bool__-protocol) |
+| A9 | Constructor initializer list codegen | M | Known bug | [II](#constructor-initializer-list-codegen) |
 
 ### Phase B: Polymorphism Foundation
 
@@ -444,6 +445,55 @@ No upcasting coercion. Registration.py has comments noting the dispatch gap.
 Could implement as: explicit `@virtual` decorator, or auto-detect when override exists.
 
 **Effort**: M (codegen for virtual/override, vtable layout)
+
+---
+
+### Constructor Initializer List Codegen
+
+When `__init__` has only simple `self.field = param` assignments, the codegen emits
+C++ member initializer lists (`: x(x), y(y)`). But when `__init__` contains any
+control flow (if/else, loops), it falls back to body assignments:
+
+```cpp
+// Simple __init__ -> initializer list (correct)
+Wrapper(int32_t tag) : tag(tag) {}
+
+// __init__ with control flow -> body assignment (problematic)
+Wrapper(std::optional<Point> p, int32_t tag) {
+    if (p.has_value()) {
+        this->tag = tag;     // assignment, not construction
+    } else {
+        this->tag = -1;
+    }
+}
+```
+
+This works for trivial types (`int32_t`, `double`, `bool`) but breaks for:
+- **Non-default-constructible types**: field has no `T()` -- C++ won't compile
+- **`@nocopy` (move-only) types**: default-construct + assign requires copy assignment
+- **`const` fields** (future): can only be set in initializer list
+- **Reference fields** (future): must be bound at construction
+
+**Why it matters**: As more complex types become fields (e.g. `Box[T]`, `@nocopy`
+records, `Own[T]`), constructors with any branching will fail to compile in C++.
+This is a correctness bug that will surface more frequently as the type system grows.
+
+Design options:
+- **(a) Deferred initialization**: wrap fields in `std::optional<T>` when init is
+  conditional, unwrap on first use. Overhead: extra byte per field + has_value checks.
+- **(b) Factored initializer**: analyze which fields are assigned on all paths and
+  extract them to the initializer list; only truly conditional fields use body
+  assignment. Requires data-flow analysis of `__init__`.
+- **(c) Lambda-in-initializer**: `: field([&]{ if (...) return x; else return y; }())`
+  -- keeps initializer list, moves branching into per-field lambdas. Works for all
+  types but generates unusual C++.
+
+**Current state**: Known bug. Works for trivial types only.
+
+**Dependencies**: Interacts with `@nocopy`, `Box[T]`, and any non-trivially-constructible
+field types.
+
+**Effort**: M (data-flow analysis of `__init__` + codegen restructuring)
 
 ---
 
