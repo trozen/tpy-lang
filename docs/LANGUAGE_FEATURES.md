@@ -2545,7 +2545,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `__add__`, `__sub__`, `__mul__`, etc. → arithmetic operators
 - **Working**: `__len__` → `__len__()` method (used by `len()`)
 - **Working**: `__getitem__` → `operator[]` (for `Sequence` conformance)
-- **Working**: `__del__` -- maps to C++ destructor `~ClassName()`. Parent destructors are called automatically after child body (no `super().__del__()` needed). If `super().__del__()` is written (Python style), it must be the last statement and is silently dropped in codegen. A warning is emitted when parent has `__del__` but child omits the call, since C++ always calls parent dtors automatically while Python requires an explicit call. Non-virtual; virtual dispatch is a separate feature.
+- **Working**: `__del__` -- maps to C++ destructor `~ClassName()`. Parent destructors are called automatically after child body (no `super().__del__()` needed). If `super().__del__()` is written (Python style), it must be the last statement and is silently dropped in codegen. A warning is emitted when parent has `__del__` but child omits the call, since C++ always calls parent dtors automatically while Python requires an explicit call. Non-virtual; virtual dispatch is a separate feature. Classes with `__del__` get a hidden `__tpy_owned_` drop flag and custom move constructor/assignment to prevent double-drop after move -- the moved-from object's destructor skips its body.
 - **Open**: `__setitem__` → mutable `operator[]`
 - **Open**: `__str__` → if we have string type
 - **Open**: `__enter__`, `__exit__` → RAII wrapper

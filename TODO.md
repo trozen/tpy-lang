@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- `__tpy_owned_` drop flag: for classes with `__del__`, emit a hidden `bool __tpy_owned_ = true;` field that the move constructor sets to `false` on the moved-from object; destructor skips cleanup when `__tpy_owned_ == false`. Fixes double-drop after move without relying on the fragile `UninitHeapStorage::drop()` null check. Interim solution until the proper `OwnedSlot<T>` approach (FEATURE_ROADMAP.md E9).
+- "Destructor not called on reassignment" -- fix limitation
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check
@@ -143,6 +143,8 @@ Random items that may or may not be implemented in the future, but putting them 
 - Generic Optional codegen mismatch: for generic records, `T | None` generates `T*`/`nullptr` instead of `std::optional<T>`. This breaks C++ concepts that expect `std::optional<ElemT>` (e.g., `tpy::OptIterator`). Value-type Optional (`Int32 | None` → `std::optional<int32_t>`) works fine.
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.
 - No `Iterable[T]` protocol: `__iter__` support is structural (detected by `get_iter_element_type()`), not protocol-based. Can't write `def f(it: Iterable[T])` as a parameter type. Adding it requires return-type conformance checking in the protocol system — currently protocol conformance only checks type equality on method signatures, not whether a return type *conforms to* another protocol (e.g., `Counter` conforming to `OptIterator[T]`).
+- Destructor not called on reassignment: when a variable with `__del__` is reassigned 3+ times, the slot-based codegen reuses the same slot via move-assignment, which overwrites the old value without running its destructor body. Only the initial and final values get destructed; intermediate values leak. Also affects loop reassignment patterns. Fix requires either destroy-before-assign in move-assignment or a different slot strategy for destructible types.
+- Destructor drop flag shadowing in inheritance: when both parent and child have `__del__`, each class emits its own `bool __tpy_owned_ = true` field. The child's shadows the parent's, creating two independent flags that must stay in sync. Currently correct (each move op/destructor operates on its own class's flag), but fragile. Fix: emit `__tpy_owned_` only on the root class that introduces `__del__`; children inherit it without shadowing.
 
 ## ShedSkin examples
 - score4

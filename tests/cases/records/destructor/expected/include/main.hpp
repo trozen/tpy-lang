@@ -18,18 +18,31 @@ void main();
 struct Resource {
   // 5:     name: str
   std::string_view name;
+  bool __tpy_owned_ = true;
 
   // 6:     def __init__(self, name: str):
   Resource() = default;
   explicit Resource(std::string_view name) : name(name) {}
+  Resource(const Resource&) = delete;
+  Resource& operator=(const Resource&) = delete;
+  Resource(Resource&& other) noexcept : name(std::move(other.name)) {
+    other.__tpy_owned_ = false;
+  }
+  Resource& operator=(Resource&& other) noexcept {
+    if (this != &other) {
+      name = std::move(other.name);
+      __tpy_owned_ = other.__tpy_owned_;
+      other.__tpy_owned_ = false;
+    }
+    return *this;
+  }
   // 8:     def __del__(self):
 
   ~Resource() {
+    if (!__tpy_owned_) return;
     // 9:         print("destroying", self.name)
     std::cout << "destroying" << " " << this->name << "\n";
   }
-  Resource(Resource&&) = default;
-  Resource& operator=(Resource&&) = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {

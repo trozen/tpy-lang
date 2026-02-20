@@ -1,0 +1,6 @@
+use 1
+close 1
+---
+use 2
+close 2
+done

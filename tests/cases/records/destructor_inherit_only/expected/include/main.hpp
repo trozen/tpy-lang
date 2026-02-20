@@ -10,68 +10,60 @@ struct Child;
 
 extern std::string_view __name__;
 
+void consume(Child c);
 void main();
 
-// # Tests __del__ whose body is only super().__del__() -- effective body is empty
-// 3: class Base:
+// 6: class Base:
 struct Base {
+  // 7:     name: str
+  std::string_view name;
   bool __tpy_owned_ = true;
 
+  // 8:     def __init__(self, name: str):
   Base() = default;
+  explicit Base(std::string_view name) : name(name) {}
   Base(const Base&) = delete;
   Base& operator=(const Base&) = delete;
-  Base(Base&& other) noexcept {
+  Base(Base&& other) noexcept : name(std::move(other.name)) {
     other.__tpy_owned_ = false;
   }
   Base& operator=(Base&& other) noexcept {
     if (this != &other) {
+      name = std::move(other.name);
       __tpy_owned_ = other.__tpy_owned_;
       other.__tpy_owned_ = false;
     }
     return *this;
   }
-  // 4:     def __del__(self):
+  // 10:     def __del__(self):
 
   ~Base() {
     if (!__tpy_owned_) return;
-    // 5:         print("Base destroyed")
-    std::cout << "Base destroyed" << "\n";
+    // 11:         print("drop", self.name)
+    std::cout << "drop" << " " << this->name << "\n";
   }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
   os << "Base("
+     << "name=" << "\"" << obj.name << "\""
      << ")";
   return os;
 }
 
-// 7: class Child(Base):
+// 13: class Child(Base):
 struct Child : Base {
-  bool __tpy_owned_ = true;
+  // 14:     tag: str
+  std::string_view tag;
 
+  // 15:     def __init__(self, name: str, tag: str):
   Child() = default;
-  Child(const Child&) = delete;
-  Child& operator=(const Child&) = delete;
-  Child(Child&& other) noexcept : Base(std::move(other)) {
-    other.__tpy_owned_ = false;
-  }
-  Child& operator=(Child&& other) noexcept {
-    if (this != &other) {
-      Base::operator=(std::move(other));
-      __tpy_owned_ = other.__tpy_owned_;
-      other.__tpy_owned_ = false;
-    }
-    return *this;
-  }
-  // 8:     def __del__(self):
-
-  ~Child() {
-    if (!__tpy_owned_) return;
-  }
+  explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
   os << "Child("
+     << "tag=" << "\"" << obj.tag << "\""
      << ")";
   return os;
 }

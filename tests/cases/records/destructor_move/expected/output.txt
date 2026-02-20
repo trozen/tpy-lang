@@ -1,0 +1,6 @@
+consumed a
+drop a
+---
+consumed b
+drop b
+---

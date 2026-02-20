@@ -132,6 +132,14 @@ class RecordGenerator:
                 default = f" = {fld.default_value}"
             out.write(f"  {cpp_type} {fld.name}{default};\n")
 
+        # Drop flag for classes with __del__ -- prevents double-drop after move.
+        # NOTE: in inheritance chains where both parent and child have __del__, each
+        # class emits its own __tpy_owned_ (child's shadows parent's). This works
+        # because each destructor reads its own class's flag, but it's fragile --
+        # ideally only the root __del__ class should emit the flag.
+        if record.del_method is not None:
+            out.write(f"  bool __tpy_owned_ = true;\n")
+
         out.write("\n")
 
         # Determine constructor generation strategy
@@ -182,15 +190,18 @@ class RecordGenerator:
             # No __init__, use default constructor
             out.write(f"  {record.name}() = default;\n")
 
-        # @nocopy: delete copy, default move
-        if record_info and record_info.is_nocopy:
+        # Delete copy ops for @nocopy or __del__ classes.
+        # __del__ implies non-copyable: copying would create two owned objects that
+        # both run cleanup (double-drop). Move ops come from _gen_move_and_destructor.
+        if record_info and (record_info.is_nocopy or record_info.has_del):
             out.write(f"  {record.name}(const {record.name}&) = delete;\n")
             out.write(f"  {record.name}& operator=(const {record.name}&) = delete;\n")
-            out.write(f"  {record.name}({record.name}&&) = default;\n")
-            out.write(f"  {record.name}& operator=({record.name}&&) = default;\n")
+            if record_info.is_nocopy and not record_info.has_del:
+                out.write(f"  {record.name}({record.name}&&) = default;\n")
+                out.write(f"  {record.name}& operator=({record.name}&&) = default;\n")
 
         # Generate destructor if __del__ is defined
-        self._gen_destructor(out, record)
+        self._gen_move_and_destructor(out, record)
 
         # Generate methods (excluding __init__ and __del__)
         for method in record.methods:
@@ -288,41 +299,68 @@ class RecordGenerator:
                 return expr.super_parent_type is not None
         return False
 
-    def _gen_destructor(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate a C++ destructor from a __del__ method.
+    def _gen_move_and_destructor(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate a C++ destructor with drop-flag protection from a __del__ method.
+
+        Emits:
+        1. Custom move constructor that sets source's __tpy_owned_ = false
+        2. Custom move assignment with self-check and flag transfer
+        3. Destructor guarded by __tpy_owned_ to skip body on moved-from objects
 
         super().__del__() calls are dropped -- parent destructors are called
         automatically by C++ after the child destructor body runs.
-
-        A custom destructor suppresses implicit move generation in C++ (Rule of Five),
-        so we explicitly default move constructor and assignment unless @nocopy already
-        handles them.
         """
         del_method = record.del_method
         if del_method is None:
             return
 
+        name = record.name
+        record_info = self.ctx.analyzer.registry.get_record(name)
+
         # Filter out super().__del__() calls -- they're automatic in C++
         body_stmts = [s for s in del_method.body if not self._is_super_del_call(s)]
 
-        # TODO: when body_stmts is effectively empty (only docstrings/pass),
-        # emit ~Name() = default or omit entirely to avoid suppressing implicit
-        # move generation unnecessarily.
+        # --- Custom move constructor ---
+        init_parts = []
+        if record_info and record_info.parent:
+            parent_cpp = record_info.parent.to_cpp()
+            init_parts.append(f"{parent_cpp}(std::move(other))")
+        for fld in record.fields:
+            init_parts.append(f"{fld.name}(std::move(other.{fld.name}))")
+
+        init_list = ""
+        if init_parts:
+            init_list = " : " + ", ".join(init_parts)
+
+        out.write(f"  {name}({name}&& other) noexcept{init_list} {{\n")
+        out.write(f"    other.__tpy_owned_ = false;\n")
+        out.write(f"  }}\n")
+
+        # --- Custom move assignment ---
+        out.write(f"  {name}& operator=({name}&& other) noexcept {{\n")
+        out.write(f"    if (this != &other) {{\n")
+        if record_info and record_info.parent:
+            parent_cpp = record_info.parent.to_cpp()
+            out.write(f"      {parent_cpp}::operator=(std::move(other));\n")
+        for fld in record.fields:
+            out.write(f"      {fld.name} = std::move(other.{fld.name});\n")
+        out.write(f"      __tpy_owned_ = other.__tpy_owned_;\n")
+        out.write(f"      other.__tpy_owned_ = false;\n")
+        out.write(f"    }}\n")
+        out.write(f"    return *this;\n")
+        out.write(f"  }}\n")
+
+        # --- Destructor with drop-flag guard ---
         self.ctx.emit_preceding_comments(out, del_method.loc, indent="  ")
         self.ctx.emit_source_comment(out, del_method.loc, indent="  ")
-        out.write(f"\n  ~{record.name}() {{\n")
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        local_ns.bind_variable("self", NamedType(record.name))
-        self.functions.gen_body(out, body_stmts, [], del_method.return_type,
-                                del_method, local_ns, indent_level=2, is_method=True)
+        out.write(f"\n  ~{name}() {{\n")
+        out.write(f"    if (!__tpy_owned_) return;\n")
+        if body_stmts:
+            local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+            local_ns.bind_variable("self", NamedType(name))
+            self.functions.gen_body(out, body_stmts, [], del_method.return_type,
+                                    del_method, local_ns, indent_level=2, is_method=True)
         out.write("  }\n")
-
-        # Restore move semantics suppressed by the custom destructor.
-        # @nocopy classes already emit these explicitly, so skip to avoid duplication.
-        record_info = self.ctx.analyzer.registry.get_record(record.name)
-        if record_info is None or not record_info.is_nocopy:
-            out.write(f"  {record.name}({record.name}&&) = default;\n")
-            out.write(f"  {record.name}& operator=({record.name}&&) = default;\n")
 
     def _extract_base_init(self, init_method: TpyFunction, record: TpyRecord) -> str | None:
         """Extract super().__init__() call and return base class initializer string.

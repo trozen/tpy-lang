@@ -1,0 +1,6 @@
+consumed x t1
+drop x
+---
+consumed y t2
+drop y
+done

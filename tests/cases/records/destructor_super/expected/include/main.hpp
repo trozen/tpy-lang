@@ -16,16 +16,28 @@ void main();
 // # no warning emitted
 // 4: class Base:
 struct Base {
+  bool __tpy_owned_ = true;
 
   Base() = default;
+  Base(const Base&) = delete;
+  Base& operator=(const Base&) = delete;
+  Base(Base&& other) noexcept {
+    other.__tpy_owned_ = false;
+  }
+  Base& operator=(Base&& other) noexcept {
+    if (this != &other) {
+      __tpy_owned_ = other.__tpy_owned_;
+      other.__tpy_owned_ = false;
+    }
+    return *this;
+  }
   // 5:     def __del__(self):
 
   ~Base() {
+    if (!__tpy_owned_) return;
     // 6:         print("Base destroyed")
     std::cout << "Base destroyed" << "\n";
   }
-  Base(Base&&) = default;
-  Base& operator=(Base&&) = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
@@ -38,18 +50,32 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 struct Child : Base {
   // 9:     label: str
   std::string_view label;
+  bool __tpy_owned_ = true;
 
   // 10:     def __init__(self, label: str):
   Child() = default;
   explicit Child(std::string_view label) : label(label) {}
+  Child(const Child&) = delete;
+  Child& operator=(const Child&) = delete;
+  Child(Child&& other) noexcept : Base(std::move(other)), label(std::move(other.label)) {
+    other.__tpy_owned_ = false;
+  }
+  Child& operator=(Child&& other) noexcept {
+    if (this != &other) {
+      Base::operator=(std::move(other));
+      label = std::move(other.label);
+      __tpy_owned_ = other.__tpy_owned_;
+      other.__tpy_owned_ = false;
+    }
+    return *this;
+  }
   // 12:     def __del__(self):
 
   ~Child() {
+    if (!__tpy_owned_) return;
     // 13:         print("Child destroyed:", self.label)
     std::cout << "Child destroyed:" << " " << this->label << "\n";
   }
-  Child(Child&&) = default;
-  Child& operator=(Child&&) = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {

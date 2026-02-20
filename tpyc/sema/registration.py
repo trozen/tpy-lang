@@ -237,6 +237,7 @@ class TypeRegistrar:
             is_native=is_native,
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,
+            has_del=record.del_method is not None,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)

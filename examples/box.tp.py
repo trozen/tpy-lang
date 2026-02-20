@@ -100,6 +100,5 @@ class LinkedListNode:
 
 # TODO: next=None default
 print("Node:", LinkedListNode(0, None))
-# TODO: causes double-free now, because of destructor of moved-away object
-# n = LinkedListNode(123, LinkedListNode(666, None))
-# print("n:", n)
+n = LinkedListNode(123, LinkedListNode(666, None))
+print("n:", n)
