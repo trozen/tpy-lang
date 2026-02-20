@@ -104,7 +104,8 @@ existing compiler model stays the same for existing code.
 | E6 | Auto-detect readonly | M-L | Not started | [IV](#auto-detect-readonly-from-method-body) |
 | E7 | Dead code detection | M | Not started | [VIII](#dead-code-detection) |
 | E8 | Error recovery / multi-error diagnostics | L | Not started | [VIII](#error-recovery--multi-error-diagnostics) |
-| E9 | Owned slot codegen (move-safe destructors) | M-L | Workaround | [IV](#owned-slot-codegen-move-safe-destructors) |
+| E9a | Drop flag (`__tpy_owned_`) | S | Done | [IV](#move-safe-destructors) |
+| E9b | Sentinel field optimization (eliminate drop flag) | M | Not started | [IV](#move-safe-destructors) |
 
 ### Phase F: Compile-Time Power
 
@@ -705,64 +706,50 @@ invalidations). Listed as a Hard Problem in TODO.md.
 
 ---
 
-### Owned Slot Codegen (Move-Safe Destructors)
+### Move-Safe Destructors
 
-Eliminate the double-drop problem for classes with `__del__` by using Rust-like
-ownership tracking in generated C++ code.
+Prevent double-drop when objects with `__del__` are moved.
 
-**Problem**: When a class defines `__del__` (C++ destructor), the compiler emits
-`= default` move constructor/assignment to restore move semantics (Rule of Five).
-But after a default move, the moved-from object's destructor still runs -- calling
-cleanup code (e.g. `UninitHeapStorage::drop()`) on null/empty state. Currently
-worked around by a null check in `drop()`, which weakens debug safety.
+**E9a: Drop flag (`__tpy_owned_`) -- Done**
 
-**Rust's approach**: After a move, Rust considers the source "uninitialized" and
-never calls its destructor. For non-trivial cases (conditional moves, moves inside
-loops), Rust uses a stack-allocated drop flag to track whether destruction is needed.
+Classes with `__del__` get a hidden `bool __tpy_owned_ = true` field. The compiler
+generates custom move constructor (sets source flag to `false`), destroy-and-reconstruct
+move assignment (`this->~T()` + placement `new`), and a destructor guarded by
+`if (!__tpy_owned_) return;`. `__del__` also implies `@nocopy` (copying would create
+two owned objects that both run cleanup).
 
-**Proposed design**:
+This handles all current cases: temporaries moved into functions, auto-move at last
+use, variable reassignment (including loops and conditionals), and inheritance chains
+where both parent and child have `__del__`.
 
-1. **`tpy::OwnedSlot<T>`** for local variable slots of types with destructors:
-   - Union-backed slot type that can `take()` a value (move out) without calling
-     T's destructor on the moved-from bits
-   - Tracks ownership with a boolean flag
-   - Destructor only runs T's destructor if the slot still owns the value
-   - Generated code uses `OwnedSlot<Box<Node>>` instead of raw `Box<Node>` for locals
+**E9b: Sentinel field optimization -- Not started**
 
-2. **Nullable pointer representation** for `T | None` fields of owned types:
-   - When T has a destructor, `Optional<T>` field uses pointer representation
-     where nullptr means None and non-null means owned
-   - Assigning None calls destructor on old value; moving sets pointer to null
+The drop flag adds a `bool` per object (often 8 bytes with padding). For classes
+where a field has a natural "empty" state after move, that field can serve as the
+sentinel instead:
 
-3. **No user-visible changes**: This is purely a codegen strategy. Users write
-   the same Python code; the compiler chooses the right C++ representation.
+| Field type | Post-move null state | Usable as sentinel? |
+|---|---|---|
+| `Ptr[T]`, `ConstPtr[T]` | Need explicit `other.p = nullptr` | Yes, with codegen |
+| `T \| None` (maps to `T*`) | Need explicit null | Yes, with codegen |
+| `UninitHeapStorage[T]` | Nulls on move (heap pointer) | Yes, naturally |
+| `std::unique_ptr<T>` | Guaranteed null after move | Yes, naturally |
+| `std::optional<T>` | Unspecified by standard | No, unreliable |
+| Value types (`Int32`, `bool`) | No null state | No |
 
-```cpp
-// Current (buggy without null check hack):
-Box<Node> node = Box<Node>(Node(42));
-Box<Node> other = std::move(node);
-// ~node runs, calls drop() on moved-from storage -> panic or UB
+The optimization: if a class has at least one pointer-like field, skip `__tpy_owned_`
+and instead check that field in the destructor. The move constructor explicitly nulls
+the sentinel field on the source. Classes with only value-type fields keep the flag.
 
-// Proposed:
-tpy::OwnedSlot<Box<Node>> node;
-node.emplace(Node(42));
-Box<Node> other = node.take();  // moves out, clears ownership flag
-// ~node runs, OwnedSlot sees flag=false, skips T destructor
-```
+Most real-world RAII classes (owning a pointer/handle) would benefit. The `|None` case
+works because we control the move constructor and can emit explicit nullification.
 
-**Why it matters**: Every class with `__del__` is affected. The current null check
-in `UninitHeapStorage::drop()` is fragile -- it silently masks bugs where drop is
-called on genuinely uninitialized storage. The owned slot approach makes the
-ownership tracking explicit and principled.
+**Current state**: E9a done. E9b not started.
 
-**Current state**: Workaround in place (`UninitHeapStorage::drop()` null check).
-See TODO.md for the tracked hack.
+**Dependencies**: `__del__` support (done). Move semantics (done).
 
-**Dependencies**: `__del__` support (done). Move semantics (done). Interacts with
-`Box[T]` design and any future types with custom destructors.
-
-**Effort**: M-L (new runtime type, codegen changes for local variable slots, field
-representation changes for Optional of owned types)
+**Effort**: E9a: S (done). E9b: M (sentinel detection, codegen changes for
+per-field nullification, destructor guard rewriting)
 
 ---
 
