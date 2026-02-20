@@ -454,6 +454,28 @@ class Parser:
                 dec_name = dec.id if isinstance(dec, ast.Name) else type(dec).__name__
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
 
+        # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
+        method_type_params: list[str] = []
+        method_type_param_bounds: dict[str, TpyType] = {}
+        if hasattr(node, 'type_params') and node.type_params:
+            for tp in node.type_params:
+                if isinstance(tp, ast.TypeVar):
+                    method_type_params.append(tp.name)
+                    if tp.bound is not None:
+                        bound_type = self._parse_type_annotation(tp.bound)
+                        if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
+                            raise ParseError(f"Type parameter bound must be a protocol, got {bound_type}", tp)
+                        method_type_param_bounds[tp.name] = bound_type
+                else:
+                    raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
+
+        # Merge class-level and method-level type param scopes
+        if method_type_params:
+            merged_scope = dict(type_param_scope) if type_param_scope else {}
+            for tp_name in method_type_params:
+                merged_scope[tp_name] = TypeParamKind.TYPE
+            type_param_scope = merged_scope
+
         params = []
         args_iter = iter(enumerate(node.args.args))
         for i, arg in args_iter:
@@ -491,6 +513,8 @@ class Parser:
             is_stub=is_stub,
             linkage=method_linkage,
             native_name=native_name,
+            type_params=method_type_params,
+            type_param_bounds=method_type_param_bounds,
             loc=self._loc(node)
         )
 

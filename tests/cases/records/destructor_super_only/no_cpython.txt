@@ -1,0 +1,1 @@
+__del__ not supported in CPython harness

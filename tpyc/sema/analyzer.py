@@ -396,6 +396,29 @@ class SemanticAnalyzer:
                             self.ctx.super_init_call
                         )
 
+            # Validate __del__ methods
+            if method.name == "__del__":
+                record_info = self.ctx.registry.get_record(record.name)
+                if self.ctx.super_del_call is not None:
+                    # super().__del__() must be the last non-docstring statement
+                    last_real_stmt = MethodAnalyzer.find_last_non_docstring_stmt(method.body)
+                    if last_real_stmt is not None and not MethodAnalyzer._is_super_del_call(last_real_stmt):
+                        raise self._error(
+                            "super().__del__() must be the last statement in __del__",
+                            self.ctx.super_del_call
+                        )
+                elif record_info and record_info.parent:
+                    # No super().__del__() but there is a parent class - check if parent has __del__
+                    parent_info = self.ctx.registry.get_record(record_info.parent.name) if hasattr(record_info.parent, 'name') else None
+                    if parent_info and parent_info.get_method("__del__") is not None:
+                        self.ctx.warning(
+                            "Parent class has __del__() which will be called automatically by C++ "
+                            "after this destructor runs. Unlike Python, you do not need "
+                            "super().__del__() -- but it also means the parent destructor "
+                            "always runs even without an explicit call.",
+                            method
+                        )
+
             # Resolve pending list types after analyzing the full method
             self.list_tracker.resolve_pending_list_types()
 

@@ -454,6 +454,14 @@ class TpyRecord:
                 return m
         return None
 
+    @property
+    def del_method(self) -> Optional[TpyFunction]:
+        """Get __del__ method if present."""
+        for m in self.methods:
+            if m.name == "__del__":
+                return m
+        return None
+
 
 @dataclass
 class TpyProtocol:

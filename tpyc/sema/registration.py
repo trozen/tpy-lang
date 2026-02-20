@@ -122,6 +122,29 @@ class TypeRegistrar:
                     loc=fld.loc
                 )
 
+        del_method = record.del_method
+        if del_method:
+            if del_method.params:
+                raise SemanticError(
+                    f"'__del__' must not have parameters",
+                    del_method.loc or record.loc,
+                )
+            if not isinstance(del_method.return_type, VoidType):
+                raise SemanticError(
+                    f"'__del__' must return None, got '{del_method.return_type}'",
+                    del_method.loc or record.loc,
+                )
+            if del_method.is_staticmethod:
+                raise SemanticError(
+                    f"'__del__' cannot be a static method",
+                    del_method.loc or record.loc,
+                )
+            if del_method.type_params:
+                raise SemanticError(
+                    f"'__del__' cannot have type parameters",
+                    del_method.loc or record.loc,
+                )
+
         init_params = []
         if record.init_method:
             for pname, ptype in record.init_method.params:
@@ -375,8 +398,8 @@ class TypeRegistrar:
 
         # Check each method defined in this class
         for method_name in record_info.methods:
-            if method_name == "__init__":
-                continue  # __init__ hiding is expected (constructors)
+            if method_name in ("__init__", "__del__"):
+                continue  # constructor/destructor hiding is expected
 
             # Check if any ancestor has this method
             ancestor_with_method = self._find_ancestor_with_method(parent_info, method_name)

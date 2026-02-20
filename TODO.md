@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- `__del__()` function/destructor
+- `__tpy_owned_` drop flag: for classes with `__del__`, emit a hidden `bool __tpy_owned_ = true;` field that the move constructor sets to `false` on the moved-from object; destructor skips cleanup when `__tpy_owned_ == false`. Fixes double-drop after move without relying on the fragile `UninitHeapStorage::drop()` null check. Interim solution until the proper `OwnedSlot<T>` approach (FEATURE_ROADMAP.md E9).
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check

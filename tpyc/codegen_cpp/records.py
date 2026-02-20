@@ -189,9 +189,12 @@ class RecordGenerator:
             out.write(f"  {record.name}({record.name}&&) = default;\n")
             out.write(f"  {record.name}& operator=({record.name}&&) = default;\n")
 
-        # Generate methods (excluding __init__)
+        # Generate destructor if __del__ is defined
+        self._gen_destructor(out, record)
+
+        # Generate methods (excluding __init__ and __del__)
         for method in record.methods:
-            if method.name == "__init__":
+            if method.name in ("__init__", "__del__"):
                 continue
             self.functions.gen_method_def(out, method, record.name)
 
@@ -272,6 +275,54 @@ class RecordGenerator:
                 if expr.super_parent_type is not None:
                     return True
         return False
+
+    def _is_super_del_call(self, stmt: TpyStmt) -> bool:
+        """Check if a statement is a super().__del__() call.
+
+        NOTE: duplicates MethodAnalyzer._is_super_del_call in sema/methods.py.
+        Consider unifying into a shared helper if more super-call patterns emerge.
+        """
+        if isinstance(stmt, TpyExprStmt):
+            expr = stmt.expr
+            if isinstance(expr, TpyMethodCall) and expr.method == "__del__":
+                return expr.super_parent_type is not None
+        return False
+
+    def _gen_destructor(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate a C++ destructor from a __del__ method.
+
+        super().__del__() calls are dropped -- parent destructors are called
+        automatically by C++ after the child destructor body runs.
+
+        A custom destructor suppresses implicit move generation in C++ (Rule of Five),
+        so we explicitly default move constructor and assignment unless @nocopy already
+        handles them.
+        """
+        del_method = record.del_method
+        if del_method is None:
+            return
+
+        # Filter out super().__del__() calls -- they're automatic in C++
+        body_stmts = [s for s in del_method.body if not self._is_super_del_call(s)]
+
+        # TODO: when body_stmts is effectively empty (only docstrings/pass),
+        # emit ~Name() = default or omit entirely to avoid suppressing implicit
+        # move generation unnecessarily.
+        self.ctx.emit_preceding_comments(out, del_method.loc, indent="  ")
+        self.ctx.emit_source_comment(out, del_method.loc, indent="  ")
+        out.write(f"\n  ~{record.name}() {{\n")
+        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+        local_ns.bind_variable("self", NamedType(record.name))
+        self.functions.gen_body(out, body_stmts, [], del_method.return_type,
+                                del_method, local_ns, indent_level=2, is_method=True)
+        out.write("  }\n")
+
+        # Restore move semantics suppressed by the custom destructor.
+        # @nocopy classes already emit these explicitly, so skip to avoid duplication.
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        if record_info is None or not record_info.is_nocopy:
+            out.write(f"  {record.name}({record.name}&&) = default;\n")
+            out.write(f"  {record.name}& operator=({record.name}&&) = default;\n")
 
     def _extract_base_init(self, init_method: TpyFunction, record: TpyRecord) -> str | None:
         """Extract super().__init__() call and return base class initializer string.

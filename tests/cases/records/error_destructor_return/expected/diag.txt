@@ -1,0 +1,1 @@
+main.tp.py:4: error: '__del__' must return None, got 'int'

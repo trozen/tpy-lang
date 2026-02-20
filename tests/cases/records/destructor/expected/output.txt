@@ -1,0 +1,3 @@
+alive
+destroying local
+destroying global

@@ -623,6 +623,31 @@ class MethodAnalyzer:
                 expr.super_parent_type = parent_type
                 return VOID
 
+        # Special handling for super().__del__()
+        if expr.method == "__del__":
+            # super().__del__() can only be called inside __del__
+            if self.ctx.current_function is None or self.ctx.current_function.name != "__del__":
+                raise self.ctx.error(
+                    "super().__del__() can only be called inside __del__",
+                    expr
+                )
+            # Check for duplicate super().__del__() calls
+            if self.ctx.super_del_call is not None:
+                raise self.ctx.error(
+                    "super().__del__() can only be called once",
+                    expr
+                )
+            # Track this call for later validation (must be last statement)
+            self.ctx.super_del_call = expr
+            # No arguments allowed
+            if expr.args:
+                raise self.ctx.error(
+                    "super().__del__() takes no arguments",
+                    expr
+                )
+            expr.super_parent_type = parent_type
+            return VOID
+
         # Check readonly constraint: super() in @readonly method inherits readonly
         is_readonly_context = (
             isinstance(self.ctx.current_function, TpyFunction)
@@ -759,3 +784,26 @@ class MethodAnalyzer:
                 continue
             return stmt
         return None
+
+    @staticmethod
+    def find_last_non_docstring_stmt(stmts: list[TpyStmt]) -> TpyStmt | None:
+        """Find the last statement, skipping only a leading docstring.
+
+        Only the first statement can be a docstring (string-literal expression).
+        Trailing string literals are regular statements, not docstrings.
+        """
+        if not stmts:
+            return None
+        # A single string-literal expression is a docstring-only body
+        if len(stmts) == 1 and isinstance(stmts[0], TpyExprStmt) and isinstance(stmts[0].expr, TpyStrLiteral):
+            return None
+        return stmts[-1]
+
+    @staticmethod
+    def _is_super_del_call(stmt: TpyStmt) -> bool:
+        """Check if a statement is a super().__del__() call."""
+        if isinstance(stmt, TpyExprStmt):
+            expr = stmt.expr
+            if isinstance(expr, TpyMethodCall) and expr.method == "__del__":
+                return expr.super_parent_type is not None
+        return False

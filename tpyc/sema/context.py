@@ -97,6 +97,7 @@ class SemanticContext:
     loop_depth: int = 0
     is_top_level: bool = False
     super_init_call: TpyMethodCall | None = None
+    super_del_call: TpyMethodCall | None = None
     loop_vars: set[str] = field(default_factory=set)
 
     # --- Scope escape tracking ---
@@ -203,6 +204,7 @@ class SemanticContext:
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
         self.super_init_call = None
+        self.super_del_call = None
         self.loop_vars.clear()
         self.var_scope_depth.clear()
         self.hoisted_vars.clear()

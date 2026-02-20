@@ -1,0 +1,3 @@
+alive
+Child destroyed: hello
+Base destroyed

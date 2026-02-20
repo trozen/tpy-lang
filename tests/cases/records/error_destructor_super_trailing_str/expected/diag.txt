@@ -1,0 +1,1 @@
+main.tp.py:9: error: super().__del__() must be the last statement in __del__

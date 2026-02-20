@@ -1,0 +1,2 @@
+alive
+Base destroyed
