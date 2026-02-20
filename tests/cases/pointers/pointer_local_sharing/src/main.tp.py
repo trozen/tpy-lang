@@ -71,7 +71,7 @@ def test_build_with_copy() -> None:
     p.x = 10
     results.append(copy(p))
     p.x = 20
-    results.append(copy(p))
+    results.append(copy(p))  # tpyc: warning(/unnecessary copy/)
     print(results[0].x)  # 10 — independent copy
     print(results[1].x)  # 20 — independent copy
 

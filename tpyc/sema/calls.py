@@ -508,11 +508,9 @@ class CallAnalyzer:
                     f"Only the original owner can be moved at its last use.",
                     arg
                 )
-            raise self.ctx.error(
-                f"Cannot pass '{arg_type}' to parameter '{pname}: Own[{ptype.wrapped}]' "
-                f"(would be implicit copy)",
-                arg
-            )
+            # Non-nocopy implicit copy: warning is emitted by the coercion
+            # path in compatibility.py (T -> Own[T] coercion), so no need
+            # to duplicate it here.
 
     def _warn_unnecessary_copy(self, arg: TpyExpr) -> None:
         """Warn when copy(x) is passed to Own[T] param but x is at last use."""
@@ -531,10 +529,11 @@ class CallAnalyzer:
 
     def check_own_param(self, arg: TpyExpr, arg_type: TpyType,
                         pname: str, ptype: TpyType) -> None:
-        """Run Own[T] / Own[T]|None param checks: implicit-copy error and unnecessary-copy warning.
+        """Run Own[T] / Own[T]|None param checks: @nocopy error and unnecessary-copy warning.
 
         Handles both bare Own[T] and Own[T] | None parameter types.
         Call this for every parameter that might be ownership-taking.
+        Non-nocopy implicit copies are warned by the coercion path.
         """
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:

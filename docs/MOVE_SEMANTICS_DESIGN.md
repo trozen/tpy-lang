@@ -309,7 +309,7 @@ non-reassigned variables with simple `TpyName` init. Transitive chains resolved
 (`a -> h, b -> a` => both alias `h`). Passed to `analyze_last_uses()` which checks:
 when marking a variable as last-use, also verify no T& alias is still in the live set.
 If an alias is live, auto-move is suppressed. For copyable types this falls back to the
-implicit-copy error; for @nocopy types the @nocopy-specific error fires.
+implicit-copy warning; for @nocopy types the @nocopy-specific error fires.
 
 Detach-on-reassign: when the source variable is reassigned (e.g. `alias = h; h = new()`),
 the alias points to old storage (separate slot in C++) and no longer constrains moves of

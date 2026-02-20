@@ -1,1 +1,0 @@
-main.tp.py:21: error: Cannot pass 'Point' to parameter 'p: Own[Point]' (would be implicit copy)

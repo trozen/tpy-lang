@@ -56,6 +56,63 @@ class MethodAnalyzer:
         self.expr = expr
         self.calls = calls
 
+    def _check_and_coerce_args(
+        self, expr: TpyMethodCall,
+        params: list[tuple[str, TpyType]],
+        arg_types: list[TpyType] | None = None,
+    ) -> None:
+        """Analyze, ownership-check, and coerce method arguments in place.
+
+        If arg_types is None, each arg is analyzed with a type hint from the
+        corresponding param. Otherwise pre-analyzed arg_types are used.
+        """
+        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
+            if arg_types is None:
+                at = self.expr.analyze_expr_with_hint(arg, ptype)
+            else:
+                at = arg_types[i]
+            self.calls.check_own_param(arg, at, pname, ptype)
+            expr.args[i] = self.compat.coerce_expr(arg, at, ptype, f"argument '{pname}'",
+                                                    coercion_ctx=CoercionContext.ARG)
+
+    def _resolve_and_check_args(
+        self, expr: TpyMethodCall,
+        overloads: list[FunctionInfo],
+        type_subst: dict[str, TpyType | int],
+    ) -> TpyType:
+        """Resolve overloads, substitute type params, check arg count, and coerce args.
+
+        Sets expr.resolved_function_info. Returns the return type.
+        """
+        if len(overloads) == 1:
+            resolved = (self.type_ops.substitute_method_type_params(overloads[0], type_subst)
+                        if type_subst else overloads[0])
+            if len(expr.args) != len(resolved.params):
+                raise self.ctx.error(
+                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
+                    f"got {len(expr.args)}", expr)
+            expr.resolved_function_info = resolved
+            self._check_and_coerce_args(expr, resolved.params)
+        else:
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            resolved_overloads = [
+                self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
+                for m in overloads
+            ]
+            resolved = resolve_overload(
+                resolved_overloads, arg_types,
+                protocol_checker=self.protocols.type_conforms_to_protocol,
+                deref_checker=self.type_ops.get_deref_coercion_target,
+                default_int_type=self.ctx.default_int_type,
+            )
+            if resolved is None:
+                arg_strs = ", ".join(str(t) for t in arg_types)
+                raise self.ctx.error(
+                    f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
+            expr.resolved_function_info = resolved
+            self._check_and_coerce_args(expr, resolved.params, arg_types)
+        return resolved.return_type
+
     @staticmethod
     def _analyze_super_call_static(ctx: SemanticContext, expr: TpyCall) -> TpyType:
         """Analyze a super() call (static method for use from CallAnalyzer).
@@ -97,10 +154,7 @@ class MethodAnalyzer:
 
     def _try_resolve_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
         """Try to resolve method on obj_type. Returns return type or None."""
-        result = self._analyze_builtin_type_method(expr, obj_type)
-        if result is not None:
-            return result
-        result = self._analyze_user_record_method(expr, obj_type)
+        result = self._analyze_instance_method(expr, obj_type)
         if result is not None:
             return result
         result = self._analyze_protocol_or_bound_method(expr, obj_type)
@@ -232,33 +286,9 @@ class MethodAnalyzer:
                 expr,
             )
 
-        if len(overloads) == 1:
-            resolved = overloads[0]
-            if len(expr.args) != len(resolved.params):
-                raise self.ctx.error(
-                    f"Static method '{expr.method}' expects {len(resolved.params)} arguments, "
-                    f"got {len(expr.args)}",
-                    expr,
-                )
-            expr.resolved_function_info = resolved
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                        coercion_ctx=CoercionContext.ARG)
-        else:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-            resolved = self._resolve_method_overload(overloads, arg_types, {})
-            if resolved is None:
-                arg_type_strs = ", ".join(str(t) for t in arg_types)
-                raise self.ctx.error(
-                    f"No matching overload for {expr.obj.name}.{expr.method}({arg_type_strs})", expr)
-            expr.resolved_function_info = resolved
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
-                                                        coercion_ctx=CoercionContext.ARG)
-
+        return_type = self._resolve_and_check_args(expr, overloads, {})
         expr.is_static_call = True
-        return resolved.return_type
+        return return_type
 
     def _analyze_generic_static_method_call(
         self, expr: TpyMethodCall, record_info, overloads: list[FunctionInfo],
@@ -389,113 +419,38 @@ class MethodAnalyzer:
             return binding.import_source[0] if binding.import_source else name
         return None
 
-    def _analyze_builtin_type_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
-        """Analyze a builtin type method call. Returns type or None if no matching builtin."""
-        if isinstance(obj_type, NamedType) and obj_type.is_record:
-            return None
+    def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+        """Analyze instance method call on any type (builtin or user record)."""
+        is_user_record = isinstance(obj_type, NamedType) and obj_type.is_record
 
-        record_info = self.ctx.registry.get_record_for_type(obj_type)
-        if not record_info:
-            return None
-
-        overloads = record_info.get_method_overloads(expr.method)
-        if not overloads:
-            return None
-
-        type_subst = builtin_modules.extract_type_params(obj_type)
-
-        if len(overloads) == 1:
-            resolved = self.type_ops.substitute_method_type_params(overloads[0], type_subst) if type_subst else overloads[0]
-            if len(expr.args) != len(resolved.params):
-                raise self.ctx.error(
-                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                    f"got {len(expr.args)}",
-                    expr,
-                )
-            expr.resolved_function_info = resolved
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"{pname} argument",
-                                                        coercion_ctx=CoercionContext.ARG)
-            return resolved.return_type
+        if is_user_record:
+            record_info = self.ctx.registry.get_record(obj_type.name)
+            if not record_info:
+                return None
+            overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
+                record_info, expr.method)
+            if not overloads:
+                return None
+            instance_subst = self.type_ops.build_type_substitution(obj_type)
+            if inherited_subst and instance_subst:
+                type_subst = {
+                    k: self.type_ops.substitute_type_params(v, instance_subst)
+                    for k, v in inherited_subst.items()
+                }
+            elif inherited_subst:
+                type_subst = inherited_subst
+            else:
+                type_subst = instance_subst
         else:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-            resolved = self._resolve_method_overload(overloads, arg_types, type_subst)
-            if resolved is None:
-                arg_type_strs = ", ".join(str(t) for t in arg_types)
-                raise self.ctx.error(f"No matching overload for {expr.method}({arg_type_strs})", expr)
+            record_info = self.ctx.registry.get_record_for_type(obj_type)
+            if not record_info:
+                return None
+            overloads = record_info.get_method_overloads(expr.method)
+            if not overloads:
+                return None
+            type_subst = builtin_modules.extract_type_params(obj_type)
 
-            expr.resolved_function_info = resolved
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
-                                                        coercion_ctx=CoercionContext.ARG)
-            return resolved.return_type
-
-    def _analyze_user_record_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
-        """Analyze a user-defined record method call. Returns type or None if not applicable."""
-        if not (isinstance(obj_type, NamedType) and obj_type.is_record):
-            return None
-
-        record_info = self.ctx.registry.get_record(obj_type.name)
-        if not record_info:
-            return None
-
-        overloads, inherited_subst = self.protocols.lookup_record_method_overloads(record_info, expr.method)
-        if not overloads:
-            return None
-
-        # Build type substitution, resolving inherited TypeParamRefs with instance type args
-        instance_subst = self.type_ops.build_type_substitution(obj_type)
-        if inherited_subst and instance_subst:
-            type_subst = {
-                k: self.type_ops.substitute_type_params(v, instance_subst)
-                for k, v in inherited_subst.items()
-            }
-        elif inherited_subst:
-            type_subst = inherited_subst
-        else:
-            type_subst = instance_subst
-
-        if len(overloads) == 1:
-            method_info = overloads[0]
-            resolved = self.type_ops.substitute_method_type_params(method_info, type_subst) if type_subst else method_info
-            if len(expr.args) != len(resolved.params):
-                raise self.ctx.error(
-                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                    f"got {len(expr.args)}",
-                    expr,
-                )
-            expr.resolved_function_info = resolved
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                self.calls.check_own_param(arg, arg_type, pname, ptype)
-                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                        coercion_ctx=CoercionContext.ARG)
-            return resolved.return_type
-        else:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-            resolved_overloads = [
-                self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
-                for m in overloads
-            ]
-            resolved = resolve_overload(
-                resolved_overloads, arg_types,
-                protocol_checker=self.protocols.type_conforms_to_protocol,
-                deref_checker=self.type_ops.get_deref_coercion_target,
-                default_int_type=self.ctx.default_int_type,
-            )
-            if resolved is not None:
-                expr.resolved_function_info = resolved
-                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                    self.calls.check_own_param(arg, arg_types[i], pname, ptype)
-                    expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
-                                                            coercion_ctx=CoercionContext.ARG)
-                return resolved.return_type
-            param_types_str = ", ".join(str(t) for t in arg_types)
-            raise self.ctx.error(
-                f"No matching overload for '{expr.method}' with argument types ({param_types_str})",
-                expr,
-            )
+        return self._resolve_and_check_args(expr, overloads, type_subst)
 
     def _is_protocol_method_readonly(self, protocol_name: str, method_name: str) -> bool:
         """Check if a protocol method is readonly (per-method or protocol-level).
@@ -513,34 +468,26 @@ class MethodAnalyzer:
                 return msig.is_readonly
         return False
 
+    def _build_protocol_method_info(self, protocol_name: str, method_name: str,
+                                     raw_params: list[tuple[str, TpyType]],
+                                     return_type: TpyType) -> FunctionInfo:
+        """Build a FunctionInfo for a protocol method signature."""
+        params = [ParamInfo(n, t) for n, t in raw_params]
+        return FunctionInfo(
+            name=method_name, params=params, return_type=return_type,
+            is_method=True,
+            is_readonly=self._is_protocol_method_readonly(protocol_name, method_name),
+        )
+
     def _analyze_protocol_or_bound_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
         """Analyze method calls on protocol-typed values or bounded type parameters."""
         if is_protocol_type(obj_type):
             method_sig = self.protocols.get_protocol_method_signature(obj_type, expr.method)
             if method_sig is None:
                 raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
-
             raw_params, return_type = method_sig
-            params = [ParamInfo(n, t) for n, t in raw_params]
-            method_readonly = self._is_protocol_method_readonly(obj_type.name, expr.method)
-            expr.resolved_function_info = FunctionInfo(
-                name=expr.method,
-                params=params,
-                return_type=return_type,
-                is_method=True,
-                is_readonly=method_readonly,
-            )
-            if len(expr.args) != len(params):
-                raise self.ctx.error(
-                    f"Method '{expr.method}' expects {len(params)} arguments, "
-                    f"got {len(expr.args)}",
-                    expr,
-                )
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
-                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                        coercion_ctx=CoercionContext.ARG)
-            return return_type
+            fi = self._build_protocol_method_info(obj_type.name, expr.method, raw_params, return_type)
+            return self._resolve_and_check_args(expr, [fi], {})
 
         if isinstance(obj_type, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(obj_type.name)
@@ -548,28 +495,9 @@ class MethodAnalyzer:
                 method_sig = self.protocols.get_protocol_method_signature(bound, expr.method, self_type=obj_type)
                 if method_sig is None:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
-
                 raw_params, return_type = method_sig
-                params = [ParamInfo(n, t) for n, t in raw_params]
-                method_readonly = self._is_protocol_method_readonly(bound.name, expr.method)
-                expr.resolved_function_info = FunctionInfo(
-                    name=expr.method,
-                    params=params,
-                    return_type=return_type,
-                    is_method=True,
-                    is_readonly=method_readonly,
-                )
-                if len(expr.args) != len(params):
-                    raise self.ctx.error(
-                        f"Method '{expr.method}' expects {len(params)} arguments, "
-                        f"got {len(expr.args)}",
-                        expr
-                    )
-                for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
-                    arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                    expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                            coercion_ctx=CoercionContext.ARG)
-                return return_type
+                fi = self._build_protocol_method_info(bound.name, expr.method, raw_params, return_type)
+                return self._resolve_and_check_args(expr, [fi], {})
 
         return None
 
@@ -670,96 +598,13 @@ class MethodAnalyzer:
         # Build type substitution for generic parent (e.g., Container[Int32] -> {"T": Int32})
         type_subst = self.protocols._get_parent_type_subst(parent_type, parent_info)
 
-        # For single overload, resolve directly
-        if len(overloads) == 1:
-            method_info = overloads[0]
-            resolved = self.type_ops.substitute_method_type_params(method_info, type_subst) if type_subst else method_info
-
-            if len(expr.args) != len(resolved.params):
-                raise self.ctx.error(
-                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                    f"got {len(expr.args)}",
-                    expr
-                )
-
-            # Type-check and coerce arguments
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                        coercion_ctx=CoercionContext.ARG)
-
-            # Check readonly constraint on super() calls
-            if is_readonly_context and not resolved.is_readonly:
-                raise self.ctx.error(
-                    f"Cannot call non-readonly method '{expr.method}' on readonly reference",
-                    expr)
-
-            # Store parent type for codegen
-            expr.resolved_function_info = resolved
-            expr.super_parent_type = parent_type
-            return resolved.return_type
-
-        # Multiple overloads - find matching one
-        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-        resolved_overloads = [
-            self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
-            for m in overloads
-        ]
-        resolved = resolve_overload(
-            resolved_overloads, arg_types,
-            protocol_checker=self.protocols.type_conforms_to_protocol,
-            deref_checker=self.type_ops.get_deref_coercion_target,
-            default_int_type=self.ctx.default_int_type,
-        )
-        if resolved is not None:
-            # Coerce arguments
-            for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"argument '{pname}'",
-                                                        coercion_ctx=CoercionContext.ARG)
-            # Check readonly constraint on super() calls
-            if is_readonly_context and not resolved.is_readonly:
-                raise self.ctx.error(
-                    f"Cannot call non-readonly method '{expr.method}' on readonly reference",
-                    expr)
-
-            # Store parent type for codegen
-            expr.resolved_function_info = resolved
-            expr.super_parent_type = parent_type
-            return resolved.return_type
-
-        # No matching overload found
-        param_types_str = ", ".join(str(t) for t in arg_types)
-        raise self.ctx.error(
-            f"No matching overload for '{expr.method}' with argument types ({param_types_str})",
-            expr
-        )
-
-    def _resolve_method_overload(
-        self,
-        overloads: list[FunctionInfo],
-        arg_types: list[TpyType],
-        type_subst: dict[str, TpyType]
-    ) -> FunctionInfo | None:
-        """Find matching overload from list of FunctionInfo.
-
-        Args:
-            overloads: List of method overloads to check
-            arg_types: Already-analyzed argument types
-            type_subst: Type parameter substitution (e.g., {"T": Int32})
-
-        Returns:
-            The matching FunctionInfo with type params substituted, or None
-        """
-        resolved_overloads = [
-            self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
-            for m in overloads
-        ]
-        return resolve_overload(
-            resolved_overloads, arg_types,
-            protocol_checker=self.protocols.type_conforms_to_protocol,
-            deref_checker=self.type_ops.get_deref_coercion_target,
-            default_int_type=self.ctx.default_int_type,
-        )
+        return_type = self._resolve_and_check_args(expr, overloads, type_subst)
+        if is_readonly_context and not expr.resolved_function_info.is_readonly:
+            raise self.ctx.error(
+                f"Cannot call non-readonly method '{expr.method}' on readonly reference",
+                expr)
+        expr.super_parent_type = parent_type
+        return return_type
 
     @staticmethod
     def stmt_contains_super_init(stmt: TpyStmt, super_init: TpyMethodCall) -> bool:

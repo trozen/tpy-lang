@@ -130,7 +130,7 @@ void test_build_with_copy() {
   results.push_back(p);
   // 73:     p.x = 20
   p.x = 20;
-  // 74:     results.append(copy(p))
+  // 74:     results.append(copy(p))  # tpyc: warning(/unnecessary copy/)
   results.push_back(p);
   // 75:     print(results[0].x)  # 10 — independent copy
   std::cout << tpy::get_item(results, 0).x << "\n";
