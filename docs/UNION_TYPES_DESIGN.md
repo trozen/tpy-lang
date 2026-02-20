@@ -31,11 +31,23 @@ def area(s: Shape) -> float:
 |-------|-------|--------|
 | **Phase 1** | `UnionType` in type system + parser accepts `A \| B \| C` | **Done** |
 | **Phase 2** | Sema: type compatibility (member -> union assignment) | **Done** |
-| **Phase 3** | `isinstance()` special form + narrowing facts | Planned |
-| **Phase 4** | Narrowing generalization (`narrowed_types` dict) | Planned |
-| **Phase 5** | Codegen: `std::variant`, `holds_alternative`, `std::get` | Partial (codegen done, no `std::get`/narrowing yet) |
-| **Phase 6** | Tests | Partial |
-| **Future** | `match`/`case`, exhaustiveness checking, ADT patterns | Design only |
+| **Phase 3** | `isinstance()` special form + narrowing facts | **Done** |
+| **Phase 4** | Narrowing generalization (`narrowed_types` dict) | **Done** |
+| **Phase 5** | Codegen: `std::variant`, `holds_alternative`, `std::get` | **Done** |
+| **Phase 6** | Tests | **Done** |
+| **Phase 7** | `A \| B \| None` with `std::monostate`, `is None`/`is not None` on unions | Design only |
+| **Phase 8** | Type aliases (`Shape = Circle \| Rect`) | Not designed |
+| **Phase 9** | Equality `==`/`!=` on unions (if all members support it) | Not designed |
+| **Phase 10** | Unify `narrowed_types` with `non_none_vars` | Not designed |
+| **Later** | `isinstance(x, (A, B))` tuple form (narrow to subset of union) | Design only |
+| **Later** | Exhaustiveness checking (isinstance chains + match/case) | Design only |
+| **Later** | isinstance on non-name expressions (`x.field`, `x[i]`) | Not designed |
+| **Later** | While-loop isinstance narrowing | Not designed |
+| **Later** | Common-method dispatch (call shared method without narrowing) | Design only |
+| **Later** | Copy/nocopy enforcement for unions with `@nocopy` members | Not designed |
+| **Later** | Generic unions (`Union[T, U]` in generic context) | Not designed |
+| **Later** | `match`/`case` structural pattern matching | Design only |
+| **Later** | Recursive unions / ADT patterns | Design only |
 
 ## Design Principles
 
@@ -50,9 +62,12 @@ def area(s: Shape) -> float:
    compatibility. The new `UnionType` only applies to multi-type unions without
    None, or is wrapped inside `OptionalType` when None is present.
 
-4. **Value-type semantics**: `std::variant` is stack-allocated and fixed-size,
-   so `UnionType` behaves like a value type for variable classification
-   (no pointer-local indirection).
+4. **Value-type semantics depend on members**: `std::variant` is stack-allocated
+   and fixed-size. If all members are value types (`int | bool`), the union is
+   a value type (passed as `const&`, no pointer-local). If any member is a
+   non-value type (`Dog | Cat` with records), the union is non-value (passed as
+   `&` for mutable access to narrowed members, uses pointer-local when
+   reassigned).
 
 ---
 
@@ -122,11 +137,15 @@ same `UnionType` and the same C++ `std::variant<A, B>`.
 
 ### is_value_type() rationale
 
-`std::variant` is a value type -- stack-allocated, fixed-size (size of largest
-member + discriminant tag). This means:
-- No pointer-local indirection (`_needs_indirection()` returns False)
-- Variables declared as `auto x = ...` not `T* x`
-- Passed by const ref (like `BigInt`), not by value
+`UnionType.is_value_type()` returns `all(m.is_value_type() for m in members)`.
+`std::variant` is always stack-allocated, but the value-type classification
+controls parameter passing and the pointer-local variable model:
+
+- **All value-type members** (`int | bool`): value type -- passed as `const&`,
+  no pointer-local indirection
+- **Any non-value member** (`Dog | Cat`): non-value type -- passed as `&`
+  (mutable ref, so `std::get` yields mutable access), uses pointer-local (`T*`)
+  when reassigned
 
 ### Parser Changes
 
@@ -662,6 +681,25 @@ all three members appear in case patterns. Missing members without
 Optional lint: detect when an if/elif chain tests all union members and could
 be a match statement. Or enforce exhaustiveness on isinstance chains when the
 last branch is not a plain `else:`.
+
+---
+
+## Current Limitations
+
+- **isinstance only on simple names**: `isinstance(x, T)` works for variable
+  names only, not `x.field` or `x[i]`. Extending to expression identities
+  (like `non_none_exprs`) is future work.
+
+- **No `isinstance(x, (A, B))` tuple form**: narrowing to a subset of union
+  members via tuple syntax is future work.
+
+- **No while-loop isinstance narrowing**: isinstance narrowing is only applied
+  in if/elif/else chains, not in while-loop conditions.
+
+- **`narrowed_types` subsumes `non_none_vars` conceptually**: Optional
+  narrowing (`x is not None`) could be unified with union narrowing via
+  `narrowed_types`. This is a future simplification -- currently both
+  systems coexist independently.
 
 ---
 

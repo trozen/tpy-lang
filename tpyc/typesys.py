@@ -774,10 +774,12 @@ class UnionType(TpyType):
         return f"std::variant<{', '.join(cpp_members)}>"
 
     def is_value_type(self) -> bool:
-        return True
+        return all(m.is_value_type() for m in self.members)
 
     def to_cpp_param(self, name: str) -> str:
-        return f"const {self.to_cpp()}& {name}"
+        if self.is_value_type():
+            return f"const {self.to_cpp()}& {name}"
+        return f"{self.to_cpp()}& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
         return f"const {self.to_cpp()}& {name}"

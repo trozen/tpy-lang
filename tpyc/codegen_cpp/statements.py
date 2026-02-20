@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, TypeParamRef,
+    ReadonlyType, unwrap_readonly, TypeParamRef, UnionType,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -754,6 +754,47 @@ class StatementGenerator:
         else:
             return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
 
+    def _emit_isinstance_extractions(
+        self, out: TextIO, type_facts: dict[str, TpyType], stmt: TpyIf,
+    ) -> dict[str, str | None]:
+        """Emit std::get extractions for isinstance-narrowed variables.
+
+        Returns saved narrowed_vars entries for later restoration.
+        Only emits extraction when the fact is a concrete (non-union) type.
+        """
+        saved: dict[str, str | None] = {}
+        if not type_facts:
+            return saved
+        inner_indent = "  " * (self.ctx.indent_level + 1)
+        for var_name, narrowed_type in type_facts.items():
+            if isinstance(narrowed_type, UnionType):
+                continue
+            cpp_type = self.types.type_to_cpp(narrowed_type)
+            var_ref = var_name
+            if var_name in self.ctx.narrowed_vars:
+                var_ref = self.ctx.narrowed_vars[var_name]
+            elif self.ctx.is_indirect_name(TpyName(var_name)):
+                var_ref = f"(*{var_name})"
+            local_name = f"__{var_name}"
+            # Value-type union params are const&, so std::get yields const T&.
+            # Non-value union params and locals are mutable.
+            var_decl_type = self.ctx.var_types.get(var_name)
+            is_const = (var_name in self.ctx.current_func_params
+                        and var_decl_type is not None and var_decl_type.is_value_type())
+            qualifier = "const auto&" if is_const else "auto&"
+            out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({var_ref});\n")
+            saved[var_name] = self.ctx.narrowed_vars.get(var_name)
+            self.ctx.narrowed_vars[var_name] = local_name
+        return saved
+
+    def _restore_narrowed_vars(self, saved: dict[str, str | None]) -> None:
+        """Restore narrowed_vars after a branch block."""
+        for var_name, prev in saved.items():
+            if prev is not None:
+                self.ctx.narrowed_vars[var_name] = prev
+            else:
+                self.ctx.narrowed_vars.pop(var_name, None)
+
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
         # Pre-declare variables first declared inside branches
@@ -790,19 +831,28 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}if ({cond}) {{\n")
 
+        # isinstance narrowing: emit std::get extractions from sema-computed type facts
+        then_saved = self._emit_isinstance_extractions(out, stmt.then_type_facts, stmt)
+
         self.ctx.indent_level += 1
         for s in stmt.then_body:
             self.gen_stmt(out, s)
         self.ctx.emit_block_trailing_comments(out, stmt.then_body, self.ctx.indent())
         self.ctx.indent_level -= 1
 
+        self._restore_narrowed_vars(then_saved)
+
         if stmt.else_body:
             out.write(f"{indent}}} else {{\n")
+            else_saved = self._emit_isinstance_extractions(out, stmt.else_type_facts, stmt)
+
             self.ctx.indent_level += 1
             for s in stmt.else_body:
                 self.gen_stmt(out, s)
             self.ctx.emit_block_trailing_comments(out, stmt.else_body, self.ctx.indent())
             self.ctx.indent_level -= 1
+
+            self._restore_narrowed_vars(else_saved)
 
         out.write(f"{indent}}}\n")
 

@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Callable
 from ..typesys import (
     TpyType, OptionalType, NoneType, PtrType, ConstPtrType, OwnType, NamedType,
     TypeParamRef, ListType, ArrayType, SpanType, PendingListType, StrType, ModuleType,
-    ReadonlyType, unwrap_readonly,
+    ReadonlyType, UnionType, unwrap_readonly, make_union,
     is_protocol_type,
 )
 from ..parse import (
@@ -54,7 +54,9 @@ class NarrowingTracker:
     # -- Name-based narrowing -------------------------------------------
 
     def narrow_name_type(self, name: str, typ: TpyType) -> TpyType:
-        """Narrow Optional name type using flow facts."""
+        """Narrow Optional/Union name type using flow facts."""
+        if name in self.ctx.narrowed_types:
+            return self.ctx.narrowed_types[name]
         if isinstance(typ, OptionalType) and name in self.ctx.non_none_vars:
             return typ.inner
         # Handle ReadonlyType(OptionalType(T)) -> ReadonlyType(T)
@@ -307,6 +309,55 @@ class NarrowingTracker:
         """Get (true_facts, false_facts) for Optional expression-identity narrowing."""
         return self._expr_none_facts(condition)
 
+    # -- Union isinstance narrowing ------------------------------------
+
+    def _isinstance_facts(
+        self, expr: TpyExpr,
+    ) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
+        """Extract (true_facts, false_facts) for isinstance-based union narrowing."""
+        if isinstance(expr, TpyCall) and expr.isinstance_var is not None and expr.isinstance_type is not None:
+            name = expr.isinstance_var
+            check_type = expr.isinstance_type
+            # Get the effective union type (may already be narrowed)
+            effective = self.ctx.narrowed_types.get(name)
+            if effective is None:
+                effective = self.declared_type_for_name(name)
+            if isinstance(effective, UnionType):
+                remaining = [m for m in effective.members if m != check_type]
+                if remaining:
+                    false_type = make_union(*remaining)
+                else:
+                    false_type = check_type
+                return {name: check_type}, {name: false_type}
+
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            true_facts, false_facts = self._isinstance_facts(expr.operand)
+            return false_facts, true_facts
+
+        if isinstance(expr, TpyBinOp):
+            if expr.op == "&&":
+                left_true, left_false = self._isinstance_facts(expr.left)
+                right_true, right_false = self._isinstance_facts(expr.right)
+                merged_true = {**left_true, **right_true}
+                merged_false = {k: v for k, v in left_false.items()
+                                if k in right_false and right_false[k] == v}
+                return merged_true, merged_false
+            if expr.op == "||":
+                left_true, left_false = self._isinstance_facts(expr.left)
+                right_true, right_false = self._isinstance_facts(expr.right)
+                merged_true = {k: v for k, v in left_true.items()
+                               if k in right_true and right_true[k] == v}
+                merged_false = {**left_false, **right_false}
+                return merged_true, merged_false
+
+        return {}, {}
+
+    def condition_type_facts(
+        self, condition: TpyExpr,
+    ) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
+        """Get (true_facts, false_facts) for isinstance union type narrowing."""
+        return self._isinstance_facts(condition)
+
     # -- Truthiness warnings -------------------------------------------
 
     def _truthy_names(self, expr: TpyExpr) -> set[str]:
@@ -352,6 +403,7 @@ class NarrowingTracker:
         rhs_expr: TpyExpr | None = None,
     ) -> None:
         """Update flow facts after assigning/writing a variable."""
+        self.ctx.narrowed_types.pop(name, None)
         # Unwrap ReadonlyType for Optional checks
         inner_target = unwrap_readonly(target_type)
         if not isinstance(inner_target, OptionalType):

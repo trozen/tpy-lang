@@ -1672,7 +1672,15 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Protocol types cannot be union members (sema error)
   - Mixed `readonly`/non-`readonly` in unions is a parse error
   - Generic functions returning `T | U` where `T == U` at instantiation produce a sema error (duplicate variant members)
-  - **Not yet supported**: `isinstance()` narrowing, `std::get` extraction, pattern matching on variants
+  - `isinstance(x, T)` narrowing in if/elif/else branches: narrows union variable to member type
+  - Compound conditions: `isinstance(x, T) and x.field > 0` narrows `x` on the RHS of `and`
+  - `isinstance(x, T) or x.other_field > 0` narrows `x` to remaining members on `or` RHS
+  - Negative (else-branch) narrowing: remaining union members after isinstance check
+  - Chained elif isinstance for multi-way branching (3+ member unions)
+  - Narrowed variables can be used for field access, method calls, and passed to functions expecting the member type
+  - `std::get<T>` extraction emitted once at block entry for efficient narrowed access
+  - Value-type semantics: all-value unions (`int | bool`) pass as `const&`; unions with records pass as `&` (mutable)
+  - **Not yet supported**: `isinstance(x, (A, B))` tuple form, pattern matching on variants
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - `x is None` / `x is not None` for null checks
@@ -2528,7 +2536,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
 - **Working**: `abs()`, `min()`, `max()` for numeric types
 - **Planned**: List slicing: `items[1:3]`
-- **Open**: `isinstance()` → compile-time type check / type narrowing
+- **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Open**: `type()` → compile-time type info
 - **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from NativeIterable containers, `list(range(...))`, `list(iterator)` from OptIterator
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity

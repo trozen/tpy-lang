@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
-    UnionType, VOID, BIGINT, is_protocol_type, unwrap_readonly,
+    UnionType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName, TpyFunction
 from ..namespace import BindingKind
@@ -176,7 +176,9 @@ class CallAnalyzer:
                         return self._analyze_tpy_copy(expr)
                     # Special handling for builtins with custom sema
                     if module_name == "builtins":
-                        if func_name == "print":
+                        if func_name == "isinstance":
+                            return self._analyze_isinstance(expr)
+                        elif func_name == "print":
                             for arg in expr.args:
                                 self.expr.analyze_expr(arg)
                             expr.resolved_function_info = FunctionInfo(
@@ -312,6 +314,8 @@ class CallAnalyzer:
         """Handle builtin functions with special_handling=True."""
         if func_name == "copy":
             return self._analyze_tpy_copy(expr)
+        if func_name == "isinstance":
+            return self._analyze_isinstance(expr)
         if func_name == "print":
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
@@ -366,6 +370,87 @@ class CallAnalyzer:
             qualified_name="tpy.copy",
         )
         return OwnType(arg_type)
+
+    def _resolve_isinstance_type(self, name: str, expr: TpyCall) -> TpyType:
+        """Resolve a type name used as the second argument to isinstance().
+
+        Handles user-defined records and builtin type names (int, str, bool, float,
+        fixed-int types like Int32, etc.).
+        """
+        # User-defined records
+        record = self.ctx.registry.get_record(name)
+        if record:
+            return NamedType(name)
+        # Builtin type names
+        from tpyc.modules import _resolve_concrete_type_name
+        resolved = _resolve_concrete_type_name(name)
+        if resolved is not None:
+            return resolved
+        # bool is not in _resolve_concrete_type_name -- check directly
+        if name == "bool":
+            return BOOL
+        raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
+
+    def _analyze_isinstance(self, expr: TpyCall) -> TpyType:
+        """Analyze isinstance(x, T) for union type narrowing.
+
+        Validates:
+        - Exactly 2 arguments
+        - First argument is a simple name with a UnionType
+        - Second argument is a type name that is a member of the union
+        Sets isinstance_var and isinstance_type on the TpyCall node.
+        """
+        if len(expr.args) != 2:
+            raise self.ctx.error(
+                f"isinstance() takes exactly 2 arguments, got {len(expr.args)}", expr
+            )
+
+        first_arg = expr.args[0]
+        if not isinstance(first_arg, TpyName):
+            raise self.ctx.error(
+                "isinstance() first argument must be a variable name", expr
+            )
+
+        var_type = self.expr.analyze_expr(first_arg)
+
+        # Check for active narrowing on this variable
+        effective_type = self.ctx.narrowed_types.get(first_arg.name, var_type)
+
+        if not isinstance(effective_type, UnionType):
+            raise self.ctx.error(
+                f"isinstance() is only supported on union types, "
+                f"got '{effective_type}'",
+                expr
+            )
+
+        # Second arg: resolve as type name (not an expression)
+        second_arg = expr.args[1]
+        if not isinstance(second_arg, TpyName):
+            raise self.ctx.error(
+                "isinstance() second argument must be a type name", expr
+            )
+
+        resolved_type = self._resolve_isinstance_type(second_arg.name, expr)
+
+        # Check that the resolved type is a member of the union
+        if not any(m == resolved_type for m in effective_type.members):
+            raise self.ctx.error(
+                f"Type '{resolved_type}' is not a member of union '{effective_type}'",
+                expr
+            )
+
+        expr.isinstance_var = first_arg.name
+        expr.isinstance_type = resolved_type
+        expr.resolved_function_info = FunctionInfo(
+            name="isinstance",
+            params=[],
+            return_type=BOOL,
+            is_readonly=True,
+            is_builtin_function=True,
+            special_handling=True,
+            qualified_name="builtins.isinstance",
+        )
+        return BOOL
 
     def _is_nocopy_type(self, typ: TpyType) -> bool:
         """Check if a type is @nocopy (move-only, copy deleted).

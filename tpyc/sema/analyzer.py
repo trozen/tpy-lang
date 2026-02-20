@@ -176,7 +176,8 @@ class SemanticAnalyzer:
         # Python builtin functions
         # All go through namespace; special handling is in IMPORTED_NAME handler
         python_builtin_functions = ["len", "chr", "abs", "min", "max", "ord",
-                                    "print", "range", "enumerate", "zip"]
+                                    "print", "range", "enumerate", "zip",
+                                    "isinstance"]
         for name in python_builtin_functions:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
 

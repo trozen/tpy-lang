@@ -400,6 +400,11 @@ def init_module() -> BuiltinModule:
     # - Polymorphic: accepts any printable type (primitives, records, containers)
     module.function("print", overloads=[], special_handling=True)
 
+    # isinstance() - type checking for union type narrowing
+    # Special handling in sema (validates union member, sets isinstance_var/isinstance_type)
+    # and codegen (emits std::holds_alternative)
+    module.function("isinstance", overloads=[], special_handling=True)
+
     # range() - range iterator for for loops
     range_overloads = []
     for fixed_type in ALL_FIXED_INTS:

@@ -127,6 +127,8 @@ class TpyCall(TpyExpr):
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
+    isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
+    isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
 
 
 @dataclass
@@ -256,6 +258,9 @@ class TpyIf(TpyStmt):
     condition: TpyExpr
     then_body: list[TpyStmt]
     else_body: list[TpyStmt]
+    # Set by sema: isinstance union narrowing facts for codegen
+    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+    else_type_facts: dict[str, TpyType] = field(default_factory=dict)
 
 
 @dataclass

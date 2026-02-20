@@ -184,6 +184,9 @@ class CodeGenContext:
     hoisted_vars: set[str] = field(default_factory=set)
     pending_hoist_decls: list[str] = field(default_factory=list)
 
+    # --- Union type narrowing (isinstance -> std::get) ---
+    narrowed_vars: dict[str, str] = field(default_factory=dict)
+
     # --- Iterator loop counter ---
     iter_counter: int = 0
 

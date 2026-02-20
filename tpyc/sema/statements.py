@@ -190,6 +190,9 @@ class StatementAnalyzer:
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_facts, else_facts = self.narrowing.condition_name_facts(stmt.condition)
             then_expr_facts, else_expr_facts = self.narrowing.condition_expr_facts(stmt.condition)
+            then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
+            stmt.then_type_facts = then_type_facts
+            stmt.else_type_facts = else_type_facts
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
@@ -198,6 +201,7 @@ class StatementAnalyzer:
             ns_types_before = self._save_ns_var_types()
             self.ctx.non_none_vars.update(then_facts)
             self.ctx.non_none_exprs.update(then_expr_facts)
+            self.ctx.narrowed_types.update(then_type_facts)
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
@@ -208,6 +212,7 @@ class StatementAnalyzer:
             self.init.restore(before)
             self.ctx.non_none_vars.update(else_facts)
             self.ctx.non_none_exprs.update(else_expr_facts)
+            self.ctx.narrowed_types.update(else_type_facts)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()

@@ -231,19 +231,24 @@ class ExpressionAnalyzer:
         if expr.op in ("&&", "||"):
             name_true, name_false = self.narrowing.condition_name_facts(expr.left)
             expr_true, expr_false = self.narrowing.condition_expr_facts(expr.left)
+            type_true, type_false = self.narrowing.condition_type_facts(expr.left)
             saved_vars = set(self.ctx.non_none_vars)
             saved_exprs = set(self.ctx.non_none_exprs)
+            saved_types = dict(self.ctx.narrowed_types)
             if expr.op == "&&":
                 self.ctx.non_none_vars |= name_true
                 self.ctx.non_none_exprs |= expr_true
+                self.ctx.narrowed_types.update(type_true)
             else:
                 self.ctx.non_none_vars |= name_false
                 self.ctx.non_none_exprs |= expr_false
+                self.ctx.narrowed_types.update(type_false)
             try:
                 right_type = self.analyze_expr(expr.right)
             finally:
                 self.ctx.non_none_vars = saved_vars
                 self.ctx.non_none_exprs = saved_exprs
+                self.ctx.narrowed_types = saved_types
         else:
             right_type = self.analyze_expr(expr.right)
 

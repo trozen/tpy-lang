@@ -118,6 +118,8 @@ class SemanticContext:
     non_none_vars: set[str] = field(default_factory=set)
     # Expression identities (e.g. x.field, x[i]) proven non-None.
     non_none_exprs: set[tuple[str, ...]] = field(default_factory=set)
+    # Union type narrowing: var_name -> narrowed member type (from isinstance checks).
+    narrowed_types: dict[str, TpyType] = field(default_factory=dict)
 
     # --- Reassignment inference tracking ---
     # Vars initialized from int literals without annotation (defaulted to
@@ -215,6 +217,7 @@ class SemanticContext:
         self.init_terminated = False
         self.non_none_vars.clear()
         self.non_none_exprs.clear()
+        self.narrowed_types.clear()
         self.literal_default_vars.clear()
         self.literal_values.clear()
         self.unresolved_none_vars.clear()

@@ -10,7 +10,7 @@ from typing import Final, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
-    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly,
+    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, UnionType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
     ResolvedBinop
 )
@@ -63,7 +63,8 @@ class ExpressionGenerator:
         operators, function arguments). For assignment targets, use gen_expr.
         """
         result = self.gen_expr(expr, target_type)
-        if self.ctx.is_indirect_name(expr):
+        is_narrowed = isinstance(expr, TpyName) and expr.name in self.ctx.narrowed_vars
+        if self.ctx.is_indirect_name(expr) and not is_narrowed:
             result = f"(*{result})"
         # Value optionals are represented as std::optional<T> and must be
         # unwrapped when a concrete value is required.
@@ -161,6 +162,9 @@ class ExpressionGenerator:
             return f'"{escape_cpp_string(expr.value)}"'
 
         elif isinstance(expr, TpyName):
+            # Union type narrowing: use the std::get-extracted local
+            if expr.name in self.ctx.narrowed_vars:
+                return self.ctx.narrowed_vars[expr.name]
             # self -> (*this) only in instance methods (self is implicit receiver, not a param)
             if expr.name == "self" and self.ctx.in_method and "self" not in self.ctx.current_func_params:
                 return "(*this)"
@@ -221,7 +225,19 @@ class ExpressionGenerator:
             return f"(!({operand_truthy}))"
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
             left = self.gen_truthy_expr(expr.left)
+            # Propagate isinstance narrowing to RHS of &&/||
+            inline_facts = self._collect_inline_isinstance_facts(
+                expr.left, true_branch=(expr.op == "&&"))
+            saved = {}
+            for var_name, inline_expr in inline_facts.items():
+                saved[var_name] = self.ctx.narrowed_vars.get(var_name)
+                self.ctx.narrowed_vars[var_name] = inline_expr
             right = self.gen_truthy_expr(expr.right)
+            for var_name, prev in saved.items():
+                if prev is not None:
+                    self.ctx.narrowed_vars[var_name] = prev
+                else:
+                    self.ctx.narrowed_vars.pop(var_name, None)
             return f"({left} {expr.op} {right})"
 
         expr_type = self.types.get_resolved_type(expr)
@@ -309,7 +325,20 @@ class ExpressionGenerator:
         # Logical operators - generate C++ directly.
         if expr.op in ("&&", "||"):
             left = self.gen_expr_deref(expr.left)
+            # Propagate isinstance narrowing to RHS of && (like short-circuit eval).
+            # For &&, LHS true-facts apply; for ||, LHS false-facts apply.
+            inline_facts = self._collect_inline_isinstance_facts(
+                expr.left, true_branch=(expr.op == "&&"))
+            saved = {}
+            for var_name, inline_expr in inline_facts.items():
+                saved[var_name] = self.ctx.narrowed_vars.get(var_name)
+                self.ctx.narrowed_vars[var_name] = inline_expr
             right = self.gen_expr_deref(expr.right)
+            for var_name, prev in saved.items():
+                if prev is not None:
+                    self.ctx.narrowed_vars[var_name] = prev
+                else:
+                    self.ctx.narrowed_vars.pop(var_name, None)
             return f"({left} {expr.op} {right})"
 
         # Comparison operators - generate C++ directly.
@@ -464,6 +493,57 @@ class ExpressionGenerator:
 
         raise RuntimeError(f"No codegen for unary operator {expr.op} with {operand_type}")
 
+    def _collect_inline_isinstance_facts(
+        self, expr: TpyExpr, true_branch: bool,
+    ) -> dict[str, str]:
+        """Collect inline std::get expressions for isinstance narrowing in conditions.
+
+        For && RHS (true_branch=True): isinstance(v, A) means v is A.
+        For || RHS (true_branch=False): isinstance(v, A) means v is NOT A.
+        Returns {var_name: inline_get_expr} for concrete (non-union) types only.
+        """
+        facts: dict[str, TpyType] = {}
+        self._extract_isinstance_facts(expr, true_branch, facts)
+        result: dict[str, str] = {}
+        for var_name, narrowed_type in facts.items():
+            if isinstance(narrowed_type, UnionType):
+                continue
+            cpp_type = self.types.type_to_cpp(narrowed_type)
+            var_ref = var_name
+            if var_name in self.ctx.narrowed_vars:
+                var_ref = self.ctx.narrowed_vars[var_name]
+            elif self.ctx.is_indirect_name(TpyName(var_name)):
+                var_ref = f"(*{var_name})"
+            result[var_name] = f"std::get<{cpp_type}>({var_ref})"
+        return result
+
+    def _extract_isinstance_facts(
+        self, expr: TpyExpr, true_branch: bool, facts: dict[str, TpyType],
+    ) -> None:
+        """Walk expression tree to collect isinstance type facts."""
+        if isinstance(expr, TpyCall) and expr.isinstance_var and expr.isinstance_type:
+            if true_branch:
+                facts[expr.isinstance_var] = expr.isinstance_type
+            else:
+                # False branch: compute remaining union members
+                var_type = self.ctx.get_expr_type(expr.args[0])
+                if isinstance(var_type, UnionType):
+                    from ..typesys import make_union
+                    remaining = [m for m in var_type.members if m != expr.isinstance_type]
+                    if remaining:
+                        facts[expr.isinstance_var] = (
+                            remaining[0] if len(remaining) == 1 else make_union(*remaining))
+        elif isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            self._extract_isinstance_facts(expr.operand, not true_branch, facts)
+        elif isinstance(expr, TpyBinOp) and expr.op == "&&":
+            self._extract_isinstance_facts(expr.left, true_branch, facts)
+            if true_branch:
+                self._extract_isinstance_facts(expr.right, True, facts)
+        elif isinstance(expr, TpyBinOp) and expr.op == "||":
+            if not true_branch:
+                self._extract_isinstance_facts(expr.left, False, facts)
+                self._extract_isinstance_facts(expr.right, False, facts)
+
     def _gen_int_literal_value(self, v: int, target_type: TpyType | None) -> str:
         """Emit an integer literal, wrapping in BigInt constructor if needed."""
         if isinstance(target_type, BigIntType):
@@ -476,6 +556,15 @@ class ExpressionGenerator:
 
     def _gen_call(self, expr: TpyCall) -> str:
         """Generate function call code."""
+        # isinstance(x, T) -> std::holds_alternative<CppT>(x)
+        if expr.isinstance_var is not None and expr.isinstance_type is not None:
+            cpp_type = self.types.type_to_cpp(expr.isinstance_type)
+            var_name = expr.isinstance_var
+            if var_name in self.ctx.narrowed_vars:
+                var_name = self.ctx.narrowed_vars[var_name]
+            name_node = TpyName(var_name)
+            var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else var_name
+            return f"std::holds_alternative<{cpp_type}>({var_ref})"
         # Check if it's a builtin type constructor (e.g., int from builtins, Int32 from tpy)
         for module_name in ["builtins", "tpy"]:
             qname = f"{module_name}.{expr.func}"
@@ -824,8 +913,9 @@ class ExpressionGenerator:
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
             return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}({args})"
         # User-defined Deref: emit .__deref__() calls before method call
+        is_narrowed = isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars
         if deref_chain and obj_type and not obj_type.is_pointer():
-            is_indirect = self.ctx.is_indirect_name(expr.obj)
+            is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
             if is_indirect or is_optional_ptr:
                 return f"{obj}->{deref_chain[1:]}.{expr.method}({args})"
             return f"{obj}{deref_chain}.{expr.method}({args})"
@@ -833,7 +923,7 @@ class ExpressionGenerator:
             if expr.ptr_non_null:
                 return f"{obj}->{expr.method}({args})"
             return f"tpy::deref_check({obj}).{expr.method}({args})"
-        use_arrow = self.ctx.is_indirect_name(expr.obj) or is_optional_ptr
+        use_arrow = (self.ctx.is_indirect_name(expr.obj) and not is_narrowed) or is_optional_ptr
         accessor = "->" if use_arrow else "."
         # Use native method name if available (for @native/@native_c class methods)
         cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
@@ -862,7 +952,9 @@ class ExpressionGenerator:
             obj = f"(*{obj})"
         # Check if obj is a pointer type or global - use -> instead of .
         obj_type = self.ctx.get_expr_type(expr.obj)
-        is_indirect = self.ctx.is_indirect_name(expr.obj)
+        # Narrowed vars (from isinstance std::get) are direct references, not pointers
+        is_narrowed = isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars
+        is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path

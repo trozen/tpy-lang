@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
+#include <variant>
 
 namespace tpy {
 

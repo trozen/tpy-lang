@@ -1,0 +1,1 @@
+main.tp.py:14: error: isinstance() second argument must be a type, got 't'
