@@ -171,28 +171,27 @@ class CallAnalyzer:
                     return self._analyze_record_constructor(expr, binding.record_info)
                 elif binding.kind == BindingKind.IMPORTED_NAME:
                     module_name, func_name = binding.import_source
-                    # Special handling for copy() from tpy - truly generic function
-                    if module_name == "tpy" and func_name == "copy":
+                    qname = f"{module_name}.{func_name}"
+                    # Special handling for functions with custom sema
+                    if qname == "tpy.copy":
                         return self._analyze_tpy_copy(expr)
-                    # Special handling for builtins with custom sema
-                    if module_name == "builtins":
-                        if func_name == "isinstance":
-                            return self._analyze_isinstance(expr)
-                        elif func_name == "print":
-                            for arg in expr.args:
-                                self.expr.analyze_expr(arg)
-                            expr.resolved_function_info = FunctionInfo(
-                                name="print",
-                                params=[],
-                                return_type=VOID,
-                                is_readonly=True,
-                                is_builtin_function=True,
-                                special_handling=True,
-                                qualified_name="builtins.print",
-                            )
-                            return VOID
-                        elif func_name in ("enumerate", "zip"):
-                            raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
+                    if qname == "builtins.isinstance":
+                        return self._analyze_isinstance(expr)
+                    if qname == "builtins.print":
+                        for arg in expr.args:
+                            self.expr.analyze_expr(arg)
+                        expr.resolved_function_info = FunctionInfo(
+                            name="print",
+                            params=[],
+                            return_type=VOID,
+                            is_readonly=True,
+                            is_builtin_function=True,
+                            special_handling=True,
+                            qualified_name="builtins.print",
+                        )
+                        return VOID
+                    if func_name in ("enumerate", "zip"):
+                        raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
                     # Check for user module function (registered via _register_user_module_import)
                     if func_info := self.ctx.registry.get_function(expr.func):
                         return self._analyze_user_function_call(expr, func_info)
@@ -203,7 +202,7 @@ class CallAnalyzer:
                     from .registration import TypeRegistrar
                     if overloads := self._get_module_function_overloads(module_name, func_name):
                         if overloads[0].special_handling:
-                            return self._analyze_special_builtin(expr, func_name, overloads)
+                            return self._analyze_special_builtin(expr, overloads)
                         return self._analyze_builtin_function_overloads(expr, overloads)
                     # Check for type constructor (e.g., Int32 from tpy, int from builtins)
                     qname = f"{module_name}.{func_name}"
@@ -321,14 +320,15 @@ class CallAnalyzer:
         raise self.ctx.error(f"Unknown function or type: '{expr.func}'", expr)
 
     def _analyze_special_builtin(
-        self, expr: TpyCall, func_name: str, overloads: list[FunctionInfo],
+        self, expr: TpyCall, overloads: list[FunctionInfo],
     ) -> TpyType:
         """Handle builtin functions with special_handling=True."""
-        if func_name == "copy":
+        qname = overloads[0].qualified_name
+        if qname == "tpy.copy":
             return self._analyze_tpy_copy(expr)
-        if func_name == "isinstance":
+        if qname == "builtins.isinstance":
             return self._analyze_isinstance(expr)
-        if func_name == "print":
+        if qname == "builtins.print":
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
             expr.resolved_function_info = FunctionInfo(
@@ -341,7 +341,7 @@ class CallAnalyzer:
                 qualified_name="builtins.print",
             )
             return VOID
-        raise self.ctx.error(f"Unknown special builtin: '{func_name}'", expr)
+        raise self.ctx.error(f"Unknown special builtin: '{qname}'", expr)
 
     def _get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
@@ -750,7 +750,7 @@ class CallAnalyzer:
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
                 # Catch ConstPtr-to-Ptr const-drop for unsafe_cast before
                 # the generic "type mismatch" at the assignment level.
-                if (expr.func == "unsafe_cast"
+                if (overload.qualified_name == "tpy.unsafe.unsafe_cast"
                         and isinstance(resolved.return_type, ConstPtrType)
                         and isinstance(self.ctx.expr_type_hint, PtrType)):
                     raise self.ctx.error(
@@ -819,7 +819,7 @@ class CallAnalyzer:
                     )
 
         # Targeted diagnostics for unsafe_cast
-        if expr.func == "unsafe_cast" and len(arg_types) == 1:
+        if overloads[0].qualified_name == "tpy.unsafe.unsafe_cast" and len(arg_types) == 1:
             arg_t = arg_types[0]
             if not isinstance(arg_t, (PtrType, ConstPtrType)):
                 raise self.ctx.error(

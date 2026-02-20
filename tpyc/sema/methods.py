@@ -322,7 +322,7 @@ class MethodAnalyzer:
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
                 if overloads[0].special_handling:
-                    result = self.calls._analyze_special_builtin(temp_call, expr.method, overloads)
+                    result = self.calls._analyze_special_builtin(temp_call, overloads)
                 else:
                     result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
                 expr.resolved_function_info = temp_call.resolved_function_info
