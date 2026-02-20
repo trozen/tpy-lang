@@ -49,7 +49,6 @@ class SourceLocation:
 class TpyExpr:
     """Base class for expressions."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
-    narrowed_optional_proven: bool = field(default=False, kw_only=True)
 
 
 if TYPE_CHECKING:

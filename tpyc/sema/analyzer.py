@@ -79,7 +79,6 @@ class SemanticAnalyzer:
         self.calls.set_cross_deps(self.expr)
         self.methods.set_cross_deps(self.expr, self.calls)
         self.stmts.set_cross_deps(self.expr)
-        self.narrowing.set_readonly_check(StatementAnalyzer._is_readonly_call_expr)
 
         # Per-function/method pre-scan results (shared with codegen)
         self.function_scan_results: dict[int, ScanResult] = {}

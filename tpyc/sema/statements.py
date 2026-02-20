@@ -86,16 +86,6 @@ class StatementAnalyzer:
                 value,
             )
 
-    @staticmethod
-    def _is_readonly_call_expr(expr: TpyExpr) -> bool:
-        """Check if a call expression is known to be readonly (for narrowing)."""
-        if isinstance(expr, TpyCall) and expr.func == "super":
-            return True
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            info = expr.resolved_function_info
-            return info is not None and info.is_readonly
-        return False
-
     def _save_ns_var_types(self) -> dict[str, TpyType]:
         """Save namespace variable types for later restoration."""
         result: dict[str, TpyType] = {}
@@ -137,8 +127,6 @@ class StatementAnalyzer:
             self._analyze_aug_assign(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
-            if self.narrowing.expr_has_unknown_call(stmt.expr):
-                self.ctx.non_none_exprs.clear()
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
                 expected = self.ctx.current_function.return_type if self.ctx.current_function else VOID
@@ -188,7 +176,6 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
-            then_expr_facts, else_expr_facts = self.narrowing.condition_expr_facts(stmt.condition)
             then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
             # Only union-origin facts go to codegen (Optional narrowing is implicit)
             stmt.then_type_facts = {
@@ -205,7 +192,6 @@ class StatementAnalyzer:
             # Save binding types for ReadonlyType merge after branches
             bindings_before = dict(self.ctx.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
-            self.ctx.non_none_exprs.update(then_expr_facts)
             self.ctx.narrowed_types.update(then_type_facts)
             for s in stmt.then_body:
                 self.analyze_stmt(s)
@@ -215,7 +201,6 @@ class StatementAnalyzer:
             self.ctx.current_scope.bindings.update(bindings_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
-            self.ctx.non_none_exprs.update(else_expr_facts)
             self.ctx.narrowed_types.update(else_type_facts)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
@@ -255,7 +240,6 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
-            then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             before = self.init.save()
             # Save namespace types -- loop_scope() restores scope bindings
             # automatically, but namespace mutations inside the loop persist.
@@ -264,7 +248,6 @@ class StatementAnalyzer:
                 self.init.apply_loop_entry_facts(
                     before,
                     condition_type_facts=then_type_facts,
-                    condition_non_none_exprs=then_expr_facts,
                 )
                 for s in stmt.body:
                     self.analyze_stmt(s)
@@ -332,9 +315,7 @@ class StatementAnalyzer:
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
-            then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             self.ctx.narrowed_types.update(then_type_facts)
-            self.ctx.non_none_exprs.update(then_expr_facts)
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)
         elif isinstance(stmt, TpyRaiseStopIteration):
@@ -673,10 +654,6 @@ class StatementAnalyzer:
             self.ctx.current_scope.define(stmt.name, var_type)
         else:
             self.ctx.current_scope.define(stmt.name, var_type)
-        # Any write to the root invalidates identity facts rooted at that variable.
-        self.narrowing.kill_facts_rooted_at(stmt.name)
-        if stmt.init and self.narrowing.expr_has_unknown_call(stmt.init):
-            self.ctx.non_none_exprs.clear()
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
@@ -734,7 +711,6 @@ class StatementAnalyzer:
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
         self._enforce_readonly_assignment_target(stmt.target)
-        value_has_unknown_call = self.narrowing.expr_has_unknown_call(stmt.value)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
@@ -793,9 +769,6 @@ class StatementAnalyzer:
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
-        if value_has_unknown_call:
-            self.ctx.non_none_exprs.clear()
-
         if isinstance(stmt.target, TpyFieldAccess):
             if self.compat.needs_copy_warning(stmt.value, target_type):
                 if isinstance(target_type, TypeParamRef):
@@ -833,11 +806,8 @@ class StatementAnalyzer:
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):
-            self.narrowing.kill_facts_rooted_at(stmt.target.name)
             self.init.mark_assigned(stmt.target.name)
             self.narrowing.update_after_write(stmt.target.name, target_type, value_type, stmt.value)
-        else:
-            self.narrowing.kill_facts_for_target(stmt.target)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
@@ -845,7 +815,6 @@ class StatementAnalyzer:
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr(stmt.value)
         self._enforce_readonly_assignment_target(stmt.target)
-        self.narrowing.kill_facts_for_target(stmt.target)
         if (
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)

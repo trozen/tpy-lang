@@ -227,7 +227,9 @@ pointer).
   **best-effort**: container-mediated aliases and global writes can invalidate
   narrowing facts that the readonly system does not track. Full soundness
   requires escape analysis, which is not yet implemented.
-- Non-readonly calls clear expression-identity facts.
+- Expression-identity narrowing for fields/subscripts was removed (unsound
+  with threading and user-defined `__getitem__`). Narrowing only applies to
+  local variable names.
 
 ### Builtins
 

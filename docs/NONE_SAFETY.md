@@ -129,56 +129,42 @@ Unproven optional access emits:
 
 ## Known Limitations
 
-- Narrowing supports both name-based facts and a conservative subset of expression identities.
-- Expression-identity facts are currently limited to stable forms:
-  - field/chained-field identities rooted at a name
-  - subscript identities for builtin/stable containers with simple indexes
-- Arbitrary expression identities (for example `f().x`, complex index expressions) are not tracked.
-- There is no concurrency-aware gating yet for expression-identity narrowing.
+- Narrowing only works on local variable names. Field access (`obj.field`) and
+  subscript access (`items[i]`) are NOT narrowed -- they require explicit
+  binding to a local variable first:
+  ```python
+  # Won't narrow (field/subscript access is a new evaluation each time):
+  if obj.field is not None:
+      obj.field.method()  # warning + runtime check
+
+  # Correct pattern (bind to local, then narrow):
+  val = obj.field
+  if val is not None:
+      val.method()  # narrowed, no warning
+  ```
+- This is by design: field access and subscripts are function calls
+  (`__getattr__`, `__getitem__`) that may return different values on
+  repeated evaluation, especially in multi-threaded environments.
 - Effect contract support is partial: `@readonly` exists, but full effect lattice/inference is not implemented.
 - Ordering operators (`<`, `>`, `<=`, `>=`) across mixed Optional/non-Optional values are still conservative (warning + runtime check), matching Python 3 which raises TypeError for `None < 5`.
 - `==`/`!=` with Optional value-type operands are None-safe: no warning, no runtime panic. `None == 5` evaluates to `False`, `None != 5` to `True` (delegated to C++ `std::optional` comparison).
 
 ## Design Decisions (Locked)
 
-- Implement in two steps:
-  - Phase 3a: expression-identity narrowing (`obj.field`, `items[i]`).
-  - Phase 3b: loop-focused truthiness/flow stress semantics after 3a lands.
+- Narrowing only applies to local variable names (not fields or subscripts).
 - Safety rule: narrow aggressively, invalidate more aggressively.
-- Do not trust repeated reads unless the read is proven stable.
-  - Example: concurrent/container reads like `csl[i]` may change between reads.
-  - Therefore `if csl[i] is not None: use(csl[i])` must not rely on a stale prior read.
-- Do not auto-rewrite to temporary single-evaluation variables for users (for now).
-  - Keep behavior explicit; emit warnings and keep runtime checks when proof is missing.
+- Do not trust repeated reads of fields/subscripts -- they are function calls
+  that may return different values each time (threading, user-defined types).
+- Users must bind to a local variable for narrowing (explicit, sound).
+- Keep behavior explicit; emit warnings and keep runtime checks when proof is missing.
 
 ## Planned (Detailed)
 
-### Phase 3a: Expression-Identity Narrowing (Implemented Subset)
-
-- Implemented flow facts for stable expression identities:
-  - `name.field` and chained field paths
-  - `name[index]` for builtin/stable containers with simple index forms
-- Intentionally still conservative:
-  - no narrowing for arbitrary call-based bases (for example `f().x`, `get_obj()[i]`)
-  - no narrowing for complex/non-trackable index forms
-
-### Invalidation Rules (Current + Remaining)
+### Loop Stress Semantics
 
 - Implemented:
-  - kill all expression-identity facts rooted at `x` when `x` is assigned/rebound
-  - kill rooted expression-identity facts on field/subscript writes
-  - clear expression-identity facts on unknown call boundaries
-- Remaining:
-  - finer-grained effect-aware invalidation for known mutating vs readonly calls
-  - effect-contract-driven invalidation once `@readonly`/effects land
-- Fallback rule remains: if safety is not proven, use warning + runtime null checks.
-
-### Phase 3b: Loop Stress Semantics
-
-- Implemented:
-  - conservative loop-entry fact application (no stale expression-identity carry-over by default)
-  - `while` condition re-proves name/expression Optional facts for loop body entry
-  - `for`/`for-each` loop entry clears expression-identity facts conservatively
+  - conservative loop-entry fact application
+  - `while` condition re-proves name Optional facts for loop body entry
   - targeted loop stress tests covering reassignment, `continue`, `break`, nested merges, and short-circuit conditions
 - Rule:
   - treat loop body facts as iteration-local unless re-proven by current iteration condition.
@@ -192,13 +178,6 @@ Unproven optional access emits:
     - rejects field/subscript writes in readonly bodies
     - rejects writes to globals in readonly bodies
     - rejects calls to unknown/non-readonly functions in readonly bodies
-  - None-safety invalidation is effect-aware:
-    - readonly calls preserve expression-identity facts
-    - unknown/non-readonly calls clear expression-identity facts
-  - Builtin readonly read APIs currently include:
-    - `list.__getitem__`
-    - `tpy.Array.__getitem__`
-    - `tpy.StaticList.__getitem__`
   - Call metadata is propagated through major dispatch forms (including protocol methods, `super()` methods, and constructors) so readonly checks have consistent visibility.
   - `print` is intentionally non-readonly because it has observable I/O side effects.
   - Readonly is about not mutating pre-existing observable state; constructing fresh local objects and returning them (for example via `Own[T]`) is intended to be allowed.
@@ -215,15 +194,6 @@ Unproven optional access emits:
   - infer readonly only when provable
   - default unknown to unsafe
   - keep annotation-based enforcement for explicit intent
-
-### Concurrency Policy (Future, Required for broader narrowing)
-
-- Narrowing facts must only be trusted when reads are stable in the relevant region.
-- For concurrent structures, repeated reads may differ even with same key/index.
-- Without proven thread-safety/stability guarantees:
-  - do not carry expression-identity facts across reads,
-  - keep runtime checks on subsequent optional use,
-  - emit guidance warning where appropriate.
 
 ### Custom Truthiness Semantics (Future)
 

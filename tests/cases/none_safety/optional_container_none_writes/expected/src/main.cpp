@@ -17,8 +17,8 @@ int32_t write_none(std::vector<std::optional<int32_t>>& items) {
   tpy::list_insert(items, 0, std::nullopt);
   // 8:     if items[1] is not None:
   if ((tpy::get_item(items, 1).has_value())) {
-    // 9:         return items[1] + 1  # tpyc: ok
-    return (tpy::add_check<int32_t>((*tpy::get_item(items, 1)), 1));
+    // 9:         return items[1] + 1  # tpyc: warning(/Potential None access/)
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::get_item(items, 1)), 1));
   }
   // 10:     return 0
   return 0;

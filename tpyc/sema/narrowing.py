@@ -1,23 +1,21 @@
 """
 TurboPython Narrowing Tracker
 
-Centralizes type narrowing (Optional + Union), expression-identity narrowing,
-and fact invalidation on writes/calls.
+Centralizes type narrowing (Optional + Union) and fact invalidation on writes.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, ConstPtrType, OwnType, NamedType,
-    TypeParamRef, ListType, ArrayType, SpanType, PendingListType, StrType, ModuleType,
+    TypeParamRef,
     ReadonlyType, UnionType, unwrap_readonly, make_union, union_none_narrow,
     is_protocol_type,
 )
 from ..parse import (
-    TpyExpr, TpyName, TpyIntLiteral, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
-    TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall, TpyArrayLiteral,
-    TpyListRepeat, TpyCoerce,
+    TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
+    TpySubscript, TpyNoneLiteral, TpyCall,
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -28,13 +26,11 @@ if TYPE_CHECKING:
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
 
-ExprIdentity = tuple[str, ...]
-
 
 class NarrowingTracker:
-    """Centralized type narrowing and expression-identity flow analysis.
+    """Centralized type narrowing flow analysis.
 
-    Operates on ctx.narrowed_types and ctx.non_none_exprs without owning them.
+    Operates on ctx.narrowed_types without owning it.
     """
 
     def __init__(
@@ -46,11 +42,6 @@ class NarrowingTracker:
         self.ctx = ctx
         self.type_ops = type_ops
         self.protocols = protocols
-        self._is_readonly_call: Callable[[TpyExpr], bool] | None = None
-
-    def set_readonly_check(self, fn: Callable[[TpyExpr], bool]) -> None:
-        """Inject the readonly-call predicate (avoids circular dependency)."""
-        self._is_readonly_call = fn
 
     # -- Name-based narrowing -------------------------------------------
 
@@ -66,26 +57,7 @@ class NarrowingTracker:
                 return binding.type
         return self.ctx.current_scope.lookup(name)
 
-    # -- Expression-identity narrowing ----------------------------------
-
-    def _is_builtin_stable_subscript_type(self, typ: TpyType) -> bool:
-        """Whether subscript identities for this type are safe to track."""
-        typ = unwrap_readonly(typ)
-        if isinstance(typ, (ListType, ArrayType, SpanType, PendingListType, StrType)):
-            return True
-        if isinstance(typ, ModuleType):
-            qname = typ.qualified_name()
-            return qname in {"builtins.list", "builtins.str", "tpy.Array", "tpy.Span", "tpy.StaticList"}
-        return False
-
-    def _simple_index_token(self, expr: TpyExpr) -> str | None:
-        if isinstance(expr, TpyIntLiteral):
-            return f"int:{expr.value}"
-        if isinstance(expr, TpyName):
-            return f"name:{expr.name}"
-        if isinstance(expr, TpyUnaryOp) and expr.op == "-" and isinstance(expr.operand, TpyIntLiteral):
-            return f"int:{-expr.operand.value}"
-        return None
+    # -- Declared type resolution for expressions ------------------------
 
     def declared_type_for_expr(self, expr: TpyExpr) -> TpyType | None:
         """Get declared type for identity-capable expressions without flow narrowing."""
@@ -176,42 +148,6 @@ class NarrowingTracker:
             return self.type_ops.substitute_type_params(getitem.return_type, type_subst)
         return getitem.return_type
 
-    def expr_identity(self, expr: TpyExpr) -> ExprIdentity | None:
-        """Compute a stable identity tuple for an expression (or None if not trackable)."""
-        if isinstance(expr, TpyName):
-            return (expr.name,)
-        if isinstance(expr, TpyFieldAccess):
-            base = self.expr_identity(expr.obj)
-            if base is None:
-                return None
-            return base + (f".{expr.field}",)
-        if isinstance(expr, TpySubscript):
-            base = self.expr_identity(expr.obj)
-            if base is None:
-                return None
-            base_type = self.declared_type_for_expr(expr.obj)
-            if base_type is None:
-                return None
-            if isinstance(base_type, OptionalType):
-                base_type = base_type.inner
-            if not self._is_builtin_stable_subscript_type(base_type):
-                return None
-            token = self._simple_index_token(expr.index)
-            if token is None:
-                return None
-            return base + (f"[{token}]",)
-        return None
-
-    def narrow_optional_expr_type(self, expr: TpyExpr, typ: TpyType) -> TpyType:
-        """Narrow Optional type using expression-identity flow facts."""
-        if isinstance(typ, OptionalType):
-            identity = self.expr_identity(expr)
-            if identity is not None and identity in self.ctx.non_none_exprs:
-                if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-                    expr.narrowed_optional_proven = True
-                return typ.inner
-        return typ
-
     # -- Condition fact extraction --------------------------------------
 
     @staticmethod
@@ -229,48 +165,6 @@ class NarrowingTracker:
         if isinstance(typ, ReadonlyType):
             return ReadonlyType(typ.wrapped.inner)
         return typ.inner
-
-    def _expr_none_facts(self, expr: TpyExpr) -> tuple[set[ExprIdentity], set[ExprIdentity]]:
-        """Return (facts_if_true, facts_if_false) for Optional expression identities."""
-        if isinstance(expr, (TpyName, TpyFieldAccess, TpySubscript)):
-            identity = self.expr_identity(expr)
-            declared = self.declared_type_for_expr(expr)
-            if identity is not None and self._is_optional_type(declared):
-                return {identity}, set()
-
-        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            true_facts, false_facts = self._expr_none_facts(expr.operand)
-            return false_facts, true_facts
-
-        if isinstance(expr, TpyBinOp):
-            if expr.op in ("is", "is not"):
-                identity_expr: TpyExpr | None = None
-                if isinstance(expr.right, TpyNoneLiteral):
-                    identity_expr = expr.left
-                elif isinstance(expr.left, TpyNoneLiteral):
-                    identity_expr = expr.right
-                if identity_expr is not None:
-                    identity = self.expr_identity(identity_expr)
-                    declared = self.declared_type_for_expr(identity_expr)
-                    if identity is not None and self._is_optional_type(declared):
-                        if expr.op == "is not":
-                            return {identity}, set()
-                        return set(), {identity}
-            if expr.op == "&&":
-                left_true, left_false = self._expr_none_facts(expr.left)
-                right_true, right_false = self._expr_none_facts(expr.right)
-                return left_true | right_true, left_false & right_false
-            if expr.op == "||":
-                left_true, left_false = self._expr_none_facts(expr.left)
-                right_true, right_false = self._expr_none_facts(expr.right)
-                return left_true & right_true, left_false | right_false
-        return set(), set()
-
-    def condition_expr_facts(
-        self, condition: TpyExpr
-    ) -> tuple[set[ExprIdentity], set[ExprIdentity]]:
-        """Get (true_facts, false_facts) for Optional expression-identity narrowing."""
-        return self._expr_none_facts(condition)
 
     # -- Type narrowing (isinstance, is None, truthiness) ---------------
 
@@ -412,49 +306,3 @@ class NarrowingTracker:
             return
         self.ctx.narrowed_types[name] = self._optional_inner_type(target_type)
 
-    def _identity_root_name(self, expr: TpyExpr) -> str | None:
-        if isinstance(expr, TpyName):
-            return expr.name
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-            return self._identity_root_name(expr.obj)
-        return None
-
-    def kill_facts_rooted_at(self, root: str) -> None:
-        """Remove all expression-identity facts rooted at a given variable."""
-        if not self.ctx.non_none_exprs:
-            return
-        self.ctx.non_none_exprs = {k for k in self.ctx.non_none_exprs if not k or k[0] != root}
-
-    def kill_facts_for_target(self, target: TpyExpr) -> None:
-        """Remove expression-identity facts touching an assignment target."""
-        root = self._identity_root_name(target)
-        if root is not None:
-            self.kill_facts_rooted_at(root)
-
-    def expr_has_unknown_call(self, expr: TpyExpr) -> bool:
-        """Check if an expression contains a non-readonly call."""
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            if self._is_readonly_call is None or not self._is_readonly_call(expr):
-                return True
-            if isinstance(expr, TpyMethodCall) and self.expr_has_unknown_call(expr.obj):
-                return True
-            if any(self.expr_has_unknown_call(arg) for arg in expr.args):
-                return True
-            if isinstance(expr, TpyCall):
-                return any(self.expr_has_unknown_call(v) for v in expr.kwargs.values())
-            return False
-        if isinstance(expr, TpyBinOp):
-            return self.expr_has_unknown_call(expr.left) or self.expr_has_unknown_call(expr.right)
-        if isinstance(expr, TpyUnaryOp):
-            return self.expr_has_unknown_call(expr.operand)
-        if isinstance(expr, TpyFieldAccess):
-            return self.expr_has_unknown_call(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self.expr_has_unknown_call(expr.obj) or self.expr_has_unknown_call(expr.index)
-        if isinstance(expr, TpyArrayLiteral):
-            return any(self.expr_has_unknown_call(e) for e in expr.elements)
-        if isinstance(expr, TpyListRepeat):
-            return any(self.expr_has_unknown_call(e) for e in expr.elements) or self.expr_has_unknown_call(expr.count)
-        if isinstance(expr, TpyCoerce):
-            return self.expr_has_unknown_call(expr.expr)
-        return False

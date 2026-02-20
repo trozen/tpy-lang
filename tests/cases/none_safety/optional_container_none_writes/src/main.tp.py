@@ -6,7 +6,7 @@ def write_none(items: list[Int32 | None]) -> Int32:
     items.append(None)
     items.insert(0, None)
     if items[1] is not None:
-        return items[1] + 1  # tpyc: ok
+        return items[1] + 1  # tpyc: warning(/Potential None access/)
     return 0
 
 

@@ -229,20 +229,15 @@ class ExpressionAnalyzer:
         """Analyze a binary operation."""
         left_type = self.analyze_expr(expr.left)
         if expr.op in ("&&", "||"):
-            expr_true, expr_false = self.narrowing.condition_expr_facts(expr.left)
             type_true, type_false = self.narrowing.condition_type_facts(expr.left)
-            saved_exprs = set(self.ctx.non_none_exprs)
             saved_types = dict(self.ctx.narrowed_types)
             if expr.op == "&&":
-                self.ctx.non_none_exprs |= expr_true
                 self.ctx.narrowed_types.update(type_true)
             else:
-                self.ctx.non_none_exprs |= expr_false
                 self.ctx.narrowed_types.update(type_false)
             try:
                 right_type = self.analyze_expr(expr.right)
             finally:
-                self.ctx.non_none_exprs = saved_exprs
                 self.ctx.narrowed_types = saved_types
         else:
             right_type = self.analyze_expr(expr.right)
@@ -522,7 +517,7 @@ class ExpressionAnalyzer:
                 field_type = field_info.type
                 if type_subst:
                     field_type = self.type_ops.substitute_type_params(field_type, type_subst)
-                return self.narrowing.narrow_optional_expr_type(expr, field_type)
+                return field_type
             return None
 
         if isinstance(typ, TypeParamRef):
@@ -536,7 +531,7 @@ class ExpressionAnalyzer:
                             if protocol_info.type_params and bound.type_args:
                                 type_subst.update(dict(zip(protocol_info.type_params, bound.type_args)))
                             resolved = self.type_ops.substitute_types(field_type, type_subst)
-                            return self.narrowing.narrow_optional_expr_type(expr, resolved)
+                            return resolved
                     raise self.ctx.error(f"Protocol '{bound.name}' has no field '{expr.field}'", expr)
 
         return None
@@ -724,7 +719,7 @@ class ExpressionAnalyzer:
         if elem_type is not None:
             if is_readonly_obj and not elem_type.is_value_type():
                 elem_type = ReadonlyType(unwrap_readonly(elem_type))
-            return self.narrowing.narrow_optional_expr_type(expr, elem_type)
+            return elem_type
 
         # Protocol types - lookup __getitem__ return type
         if is_protocol_type(actual_type):
@@ -733,7 +728,7 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(f"Protocol {actual_type.name} does not support indexing", expr)
             if is_readonly_obj and not ret.is_value_type():
                 ret = ReadonlyType(unwrap_readonly(ret))
-            return self.narrowing.narrow_optional_expr_type(expr, ret)
+            return ret
 
         # User records with __getitem__ method
         if isinstance(actual_type, NamedType) and actual_type.is_record:
@@ -742,6 +737,6 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
             if is_readonly_obj and not ret.is_value_type():
                 ret = ReadonlyType(unwrap_readonly(ret))
-            return self.narrowing.narrow_optional_expr_type(expr, ret)
+            return ret
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)

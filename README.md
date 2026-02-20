@@ -10,6 +10,7 @@ A proof-of-concept compiler (tpyc) that translates Python to C++.
 4. **Familiar syntax** — Keep the language readable for non-programmers and close to regular Python where possible.
 5. **Semantic transparency** — Warn when TurboPython behavior differs from CPython so differences are explicit during development.
 6. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
+7. **Thread safety** — Unlike CPython (GIL), TurboPython targets multi-threaded, high-performance environments. The compiler should be thread-safe by default where possible without sacrificing performance, and give the user explicit control where trade-offs exist.
 
 ## Dependencies
 

@@ -295,7 +295,6 @@ File: `tpyc/sema/context.py`
 
 ```python
 narrowed_types: dict[str, TpyType]  # variable -> current narrowed type (Optional + Union)
-non_none_exprs: set[tuple]          # expression identities proven non-None
 ```
 
 File: `tpyc/sema/narrowing.py`
@@ -305,8 +304,8 @@ File: `tpyc/sema/narrowing.py`
 
 File: `tpyc/sema/init_tracker.py`
 
-`FlowState` is a 7-tuple carrying all flow-sensitive state including
-`narrowed_types` and `non_none_exprs`.
+`FlowState` is a 6-tuple carrying all flow-sensitive state including
+`narrowed_types`.
 
 ### New design: `narrowed_types`
 
@@ -340,7 +339,6 @@ FlowState = tuple[
     bool,                              # init_terminated
     frozenset[str],                    # rvalue_vars
     frozenset[str],                    # param_provenance_vars
-    frozenset[ExprIdentity],           # non_none_exprs
     frozenset[str],                    # non_null_ptr_vars
     frozenset[tuple[str, TpyType]],    # narrowed_types (as frozenset of pairs)
 ]
@@ -686,8 +684,7 @@ last branch is not a plain `else:`.
 ## Current Limitations
 
 - **isinstance only on simple names**: `isinstance(x, T)` works for variable
-  names only, not `x.field` or `x[i]`. Extending to expression identities
-  (like `non_none_exprs`) is future work.
+  names only, not `x.field` or `x[i]`.
 
 - **No `isinstance(x, (A, B))` tuple form**: narrowing to a subset of union
   members via tuple syntax is future work.

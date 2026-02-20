@@ -21,6 +21,8 @@ Status legend:
 
 **Tooling-friendly**: Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins or language server protocols. Development uses the same tools as regular Python.
 
+**Thread safety**: Unlike CPython (which relies on the GIL), TurboPython targets multi-threaded, high-performance environments. The compiler should produce thread-safe code by default where possible without sacrificing performance, and give the user explicit control where trade-offs exist. Compiler analyses (e.g. narrowing, aliasing) must be sound in the presence of concurrent access.
+
 **Pluggable backends**: The mapping from TurboPython to C++ should be configurable. Different projects have different needs:
 - `Span[T]` → `std::span<const T>` or a custom span type
 - `print()` → `std::cout` (default) or a logging framework
