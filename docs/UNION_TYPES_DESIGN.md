@@ -35,7 +35,7 @@ def area(s: Shape) -> float:
 | **Phase 4** | Narrowing generalization (`narrowed_types` dict) | **Done** |
 | **Phase 5** | Codegen: `std::variant`, `holds_alternative`, `std::get` | **Done** |
 | **Phase 6** | Tests | **Done** |
-| **Phase 7** | `A \| B \| None` with `std::monostate`, `is None`/`is not None` on unions | Design only |
+| **Phase 7** | `A \| B \| None` with `std::monostate`, `is None`/`is not None` on unions | **Done** |
 | **Phase 8** | Type aliases (`Shape = Circle \| Rect`) | Not designed |
 | **Phase 9** | Equality `==`/`!=` on unions (if all members support it) | Not designed |
 | **Phase 10** | Unify `narrowed_types` with `non_none_vars` | Not designed |

@@ -376,8 +376,34 @@ class StatementGenerator:
         """
         from ..parse import TpyName as _TpyName
 
-        # None literal -> nullptr
+        # None literal -> nullptr (Optional/Ptr) or monostate slot (Union)
         if isinstance(init, TpyNoneLiteral):
+            # Union pointer-locals: allocate slot with std::monostate{}
+            if isinstance(target_type, UnionType):
+                init_expr = "std::monostate{}"
+                static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+                hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
+                slot_opt_cpp = f"std::optional<{cpp_type}>"
+                init_slot = self.ctx.slots.next_slot()
+                is_hoisted = name in self.ctx.hoisted_vars
+                if is_hoisted:
+                    self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
+                    if name in self.ctx.rvalue_reassigned_vars:
+                        rebind_slot = self.ctx.slots.next_slot()
+                        self.ctx.rebind_slots[name] = rebind_slot
+                        self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
+                    else:
+                        self.ctx.rebind_slots[name] = init_slot
+                    return f"{indent}{cpp_type}* {name} = &({init_slot}.emplace({init_expr}));\n"
+                if name in self.ctx.rvalue_reassigned_vars:
+                    rebind_slot = self.ctx.slots.next_slot()
+                    self.ctx.rebind_slots[name] = rebind_slot
+                    return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
+                            f"{indent}{static_kw}{slot_opt_cpp} {rebind_slot};\n"
+                            f"{indent}{cpp_type}* {name} = &{init_slot};\n")
+                self.ctx.rebind_slots[name] = init_slot
+                return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
+                        f"{indent}{cpp_type}* {name} = &{init_slot};\n")
             # Pre-declare rebind slot if future rvalue rebinds need it
             rebind_decl = ""
             if name in self.ctx.rvalue_reassigned_vars:
@@ -473,8 +499,18 @@ class StatementGenerator:
         """
         from ..parse import TpyName as _TpyName
 
-        # None literal -> set to nullptr
+        # None literal -> set to nullptr (Optional/Ptr) or monostate (Union)
         if isinstance(init, TpyNoneLiteral):
+            if isinstance(target_type, UnionType):
+                rebind_slot = self.ctx.rebind_slots.get(name)
+                if rebind_slot:
+                    is_optional_slot = rebind_slot not in self.ctx.plain_rebind_slots
+                    if is_optional_slot:
+                        return (f"{indent}{rebind_slot}.emplace(std::monostate{{}});\n"
+                                f"{indent}{name} = &(*{rebind_slot});\n")
+                    return (f"{indent}{rebind_slot} = std::monostate{{}};\n"
+                            f"{indent}{name} = &{rebind_slot};\n")
+                return f"{indent}(*{name}) = std::monostate{{}};\n"
             return f"{indent}{name} = nullptr;\n"
 
         init_type = self.ctx.get_expr_type(init)
@@ -769,7 +805,7 @@ class StatementGenerator:
             return saved
         inner_indent = "  " * (self.ctx.indent_level + 1)
         for var_name, narrowed_type in type_facts.items():
-            if isinstance(narrowed_type, UnionType):
+            if isinstance(narrowed_type, (UnionType, NoneType)):
                 continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
             var_ref = var_name

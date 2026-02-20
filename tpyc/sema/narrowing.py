@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, OptionalType, NoneType, PtrType, ConstPtrType, OwnType, NamedType,
+    TpyType, OptionalType, NoneType, VoidType, PtrType, ConstPtrType, OwnType, NamedType,
     TypeParamRef, ListType, ArrayType, SpanType, PendingListType, StrType, ModuleType,
-    ReadonlyType, UnionType, unwrap_readonly, make_union,
+    ReadonlyType, UnionType, unwrap_readonly, make_union, union_none_narrow,
     is_protocol_type,
 )
 from ..parse import (
@@ -19,6 +19,7 @@ from ..parse import (
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall, TpyArrayLiteral,
     TpyListRepeat, TpyCoerce,
 )
+from ..prescan import match_is_none
 from ..namespace import BindingKind
 from .diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 
@@ -329,6 +330,20 @@ class NarrowingTracker:
                 else:
                     false_type = check_type
                 return {name: check_type}, {name: false_type}
+
+        # is None / is not None on union types with NoneType member
+        match = match_is_none(expr)
+        if match is not None:
+            name, is_not_none = match
+            effective = self.ctx.narrowed_types.get(name)
+            if effective is None:
+                effective = self.declared_type_for_name(name)
+            if isinstance(effective, UnionType) and effective.has_none_member():
+                non_none_type, none_type = union_none_narrow(effective)
+                if is_not_none:
+                    return {name: non_none_type}, {name: none_type}
+                else:
+                    return {name: none_type}, {name: non_none_type}
 
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
             true_facts, false_facts = self._isinstance_facts(expr.operand)

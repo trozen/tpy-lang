@@ -6,16 +6,16 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 // 5: def accept(x: Int32 | str | None) -> None:
-void accept(const std::variant<int32_t, std::string_view, std::monostate>& x) {
+void accept(const std::variant<std::monostate, int32_t, std::string_view>& x) {
   // 6:     pass
 }
 
 // 9: def test() -> None:
 void test() {
   // 10:     a: Int32 | str | None = Int32(42)
-  std::variant<int32_t, std::string_view, std::monostate> a = 42;
+  std::variant<std::monostate, int32_t, std::string_view> a = 42;
   // 11:     b: Int32 | str | None = "hello"
-  std::variant<int32_t, std::string_view, std::monostate> b = "hello";
+  std::variant<std::monostate, int32_t, std::string_view> b = "hello";
   // 12:     accept(a)
   accept(a);
   // 13:     accept(b)

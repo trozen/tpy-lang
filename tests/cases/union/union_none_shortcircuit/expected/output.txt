@@ -1,0 +1,9 @@
+int+flag
+skip
+skip
+int
+other
+other
+both present
+has none
+has none

@@ -35,8 +35,8 @@ class TestMakeUnion:
     def test_two_types_with_none(self):
         result = make_union(INT32, STR, VOID)
         assert isinstance(result, UnionType)
-        # None member should be last
-        assert isinstance(result.members[-1], NoneType)
+        # None member should be first (std::monostate at index 0)
+        assert isinstance(result.members[0], NoneType)
         # Non-None members sorted by str()
         non_none = [m for m in result.members if not isinstance(m, (NoneType, VoidType))]
         assert len(non_none) == 2
@@ -62,8 +62,8 @@ class TestMakeUnion:
         opt = OptionalType(INT32)
         result = make_union(opt, STR)
         assert isinstance(result, UnionType)
-        # INT32, STR, NoneType (from unwrapped optional)
-        assert isinstance(result.members[-1], NoneType)
+        # NoneType, INT32, STR (from unwrapped optional)
+        assert isinstance(result.members[0], NoneType)
         non_none = [m for m in result.members if not isinstance(m, (NoneType, VoidType))]
         assert len(non_none) == 2
 

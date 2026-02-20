@@ -1,0 +1,6 @@
+int
+dog
+nothing
+got int
+got dog
+got none

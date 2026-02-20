@@ -1680,6 +1680,10 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Narrowed variables can be used for field access, method calls, and passed to functions expecting the member type
   - `std::get<T>` extraction emitted once at block entry for efficient narrowed access
   - Value-type semantics: all-value unions (`int | bool`) pass as `const&`; unions with records pass as `&` (mutable)
+  - Nullable unions: `A | B | None` maps to `std::variant<A, B, std::monostate>`
+  - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`
+  - `is not None` narrows to remaining non-None members; chained isinstance further narrows
+  - `v == None` / `v != None` on nullable unions errors with hint to use `is`/`is not`
   - **Not yet supported**: `isinstance(x, (A, B))` tuple form, pattern matching on variants
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)

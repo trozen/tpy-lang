@@ -514,8 +514,8 @@ class CodeGenContext:
         """
         from ..typesys import VOID
 
-        # Scalar literals: 1, 3.14, "x", True
-        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral)):
+        # Scalar literals: 1, 3.14, "x", True, None
+        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral)):
             return True
         # Container literals: [], [1,2,3], [0]*10
         if isinstance(expr, (TpyArrayLiteral, TpyListRepeat)):

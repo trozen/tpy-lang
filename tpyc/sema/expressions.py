@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
-    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType,
+    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
@@ -252,14 +252,14 @@ class ExpressionAnalyzer:
         else:
             right_type = self.analyze_expr(expr.right)
 
-        # Preserve declared Optional type for identity checks when flow narrowing
-        # resolved an expression to its inner type.
+        # Preserve declared Optional/Union type for identity checks when flow
+        # narrowing resolved an expression to its inner type.
         if expr.op in ("is", "is not"):
             declared_left = self.narrowing.declared_type_for_expr(expr.left)
-            if isinstance(declared_left, OptionalType):
+            if isinstance(declared_left, (OptionalType, UnionType)):
                 left_type = declared_left
             declared_right = self.narrowing.declared_type_for_expr(expr.right)
-            if isinstance(declared_right, OptionalType):
+            if isinstance(declared_right, (OptionalType, UnionType)):
                 right_type = declared_right
 
         # Enforce Pythonic None identity checks for Optional values.
@@ -278,6 +278,12 @@ class ExpressionAnalyzer:
                 if isinstance(other, (PtrType, ConstPtrType)):
                     raise self.ctx.error(
                         "Use 'is None' / 'is not None' for pointer None checks "
+                        "(not '==' / '!=')",
+                        expr,
+                    )
+                if isinstance(other, UnionType) and other.has_none_member():
+                    raise self.ctx.error(
+                        "Use 'is None' / 'is not None' for union None checks "
                         "(not '==' / '!=')",
                         expr,
                     )
@@ -327,8 +333,13 @@ class ExpressionAnalyzer:
                 return BOOL
             if isinstance(left_check, NoneType) and isinstance(right_check, NoneType):
                 return BOOL
+            # Nullable unions: v is None / v is not None
+            if isinstance(right_check, NoneType) and isinstance(left_check, UnionType) and left_check.has_none_member():
+                return BOOL
+            if isinstance(left_check, NoneType) and isinstance(right_check, UnionType) and right_check.has_none_member():
+                return BOOL
             raise self.ctx.error(
-                f"'is' / 'is not' can only compare Optional/Ptr types with None, "
+                f"'is' / 'is not' can only compare Optional/Ptr/union types with None, "
                 f"got {left_type} and {right_type}",
                 expr,
             )

@@ -13,7 +13,7 @@ from .parse import (
     TpyIf, TpyWhile, TpyForEach, TpyName, TpySubscript,
     TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat,
+    TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
     TpyCoerce, TpyFieldAccess,
 )
 
@@ -48,6 +48,23 @@ def scan_reassigned_vars(stmts: list[TpyStmt]) -> ScanResult:
     return result
 
 
+def match_is_none(expr: TpyExpr) -> tuple[str, bool] | None:
+    """Match `v is None`, `v is not None`, `None is v`, `None is not v`.
+
+    Returns (var_name, is_not_none) or None if the pattern doesn't match.
+    """
+    if not isinstance(expr, TpyBinOp) or expr.op not in ("is", "is not"):
+        return None
+    name: str | None = None
+    if isinstance(expr.left, TpyName) and isinstance(expr.right, TpyNoneLiteral):
+        name = expr.left.name
+    elif isinstance(expr.right, TpyName) and isinstance(expr.left, TpyNoneLiteral):
+        name = expr.right.name
+    if name is None:
+        return None
+    return name, expr.op == "is not"
+
+
 def is_scan_rvalue(expr: TpyExpr | None) -> bool:
     """Conservative rvalue check for pre-scan (no type registry needed)."""
     if expr is None:
@@ -60,7 +77,7 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
         return is_scan_rvalue(expr.obj)
     return isinstance(expr, (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
                              TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                             TpyBoolLiteral, TpyArrayLiteral, TpyListRepeat))
+                             TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat))
 
 
 def _scan_stmts(stmts: list[TpyStmt], declared: set[str],

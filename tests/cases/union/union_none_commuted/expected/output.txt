@@ -1,0 +1,6 @@
+int
+cat
+none
+got int
+got cat
+got none

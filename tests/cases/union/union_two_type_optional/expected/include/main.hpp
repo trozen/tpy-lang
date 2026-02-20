@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
-void accept(const std::variant<std::monostate, int32_t, std::string_view>& x);
-void test();
+std::string_view check(std::optional<int32_t> v);
+void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

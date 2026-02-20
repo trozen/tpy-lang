@@ -782,6 +782,9 @@ class UnionType(TpyType):
         ]
         return f"std::variant<{', '.join(cpp_members)}>"
 
+    def has_none_member(self) -> bool:
+        return any(isinstance(m, (NoneType, VoidType)) for m in self.members)
+
     def is_value_type(self) -> bool:
         return all(m.is_value_type() for m in self.members)
 
@@ -859,8 +862,18 @@ def make_union(*types: TpyType) -> TpyType:
     elif len(deduped) == 1 and has_none:
         return OptionalType(deduped[0])
     else:
-        members = tuple(deduped) + ((NoneType(),) if has_none else ())
+        members = ((NoneType(),) if has_none else ()) + tuple(deduped)
         return UnionType(members)
+
+
+def union_none_narrow(union: UnionType) -> tuple[TpyType, TpyType]:
+    """Compute narrowing facts for a nullable union's None check.
+
+    Returns (non_none_type, none_type) where non_none_type is the union
+    with NoneType/VoidType members removed.
+    """
+    non_none = [m for m in union.members if not isinstance(m, (NoneType, VoidType))]
+    return make_union(*non_none), NoneType()
 
 
 @dataclass(frozen=True)

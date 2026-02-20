@@ -10,7 +10,7 @@ from typing import Final, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
-    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType,
+    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
     ResolvedBinop
 )
@@ -19,6 +19,7 @@ from ..parse import (
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
+from ..prescan import match_is_none
 from ..namespace import BindingKind
 from .context import escape_cpp_string, escape_cpp_char, module_to_cpp_namespace, expand_cpp_template
 
@@ -136,6 +137,8 @@ class ExpressionGenerator:
                 return "std::nullopt"
             if isinstance(target_type, OptionalType):
                 return "std::nullopt"
+            if isinstance(target_type, UnionType):
+                return "std::monostate{}"
             return "nullptr"
 
         elif isinstance(expr, TpyCoerce):
@@ -316,6 +319,21 @@ class ExpressionGenerator:
                     return f"(!{val}.has_value())"
                 else:
                     return f"({val}.has_value())"
+            # Union types with NoneType member: std::holds_alternative<std::monostate>
+            union_expr = None
+            if isinstance(left_type, UnionType) and isinstance(expr.right, TpyNoneLiteral):
+                union_expr = expr.left
+            elif isinstance(right_type, UnionType) and isinstance(expr.left, TpyNoneLiteral):
+                union_expr = expr.right
+            if union_expr is not None:
+                val = self.gen_expr(union_expr)
+                if self.ctx.is_indirect_name(union_expr):
+                    val = f"(*{val})"
+                check = f"std::holds_alternative<std::monostate>({val})"
+                if expr.op == "is":
+                    return f"({check})"
+                else:
+                    return f"(!{check})"
             # Fallback: pointer comparison
             cpp_op = "==" if expr.op == "is" else "!="
             left = self.gen_expr(expr.left)
@@ -506,7 +524,7 @@ class ExpressionGenerator:
         self._extract_isinstance_facts(expr, true_branch, facts)
         result: dict[str, str] = {}
         for var_name, narrowed_type in facts.items():
-            if isinstance(narrowed_type, UnionType):
+            if isinstance(narrowed_type, (UnionType, NoneType)):
                 continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
             var_ref = var_name
@@ -528,11 +546,21 @@ class ExpressionGenerator:
                 # False branch: compute remaining union members
                 var_type = self.ctx.get_expr_type(expr.args[0])
                 if isinstance(var_type, UnionType):
-                    from ..typesys import make_union
                     remaining = [m for m in var_type.members if m != expr.isinstance_type]
                     if remaining:
                         facts[expr.isinstance_var] = (
                             remaining[0] if len(remaining) == 1 else make_union(*remaining))
+        elif (match := match_is_none(expr)) is not None:
+            # is None / is not None on union types
+            name, is_not_none = match
+            name_expr = expr.left if isinstance(expr.left, TpyName) else expr.right
+            var_type = self.ctx.get_expr_type(name_expr)
+            if isinstance(var_type, UnionType) and var_type.has_none_member():
+                non_none_type, none_type = union_none_narrow(var_type)
+                if (is_not_none and true_branch) or (not is_not_none and not true_branch):
+                    facts[name] = non_none_type
+                else:
+                    facts[name] = none_type
         elif isinstance(expr, TpyUnaryOp) and expr.op == "!":
             self._extract_isinstance_facts(expr.operand, not true_branch, facts)
         elif isinstance(expr, TpyBinOp) and expr.op == "&&":
