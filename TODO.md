@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- `@nocopy` not-at-last-use error only fires for function calls -- record method calls (`holder.take(h)`) and generic constructor calls (`GenericHolder[Handle](h)`) only emit a copy warning instead of the expected `@nocopy used after this point` error- move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
+- move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - `Own[T] | None` params not recognized as movable -- auto-move and copy warning suppression don't apply because `_is_movable_var` only checks `OwnType`, not `OptionalType(OwnType(...))`
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
@@ -38,6 +38,7 @@
 
 ## Bugs
 - `Optional[T]` from `typing` is not equivalent to `T | None` -- it generates `Optional<T>` (unresolved NamedType) instead of `std::optional<T>`. Either resolve `Optional[T]` to `OptionalType(T)` in the parser/module system, or error with a hint to use `T | None`.
+- examples/brainfuck.py fails
 
 ## Examples
 - example: StaticList, using UninitArrayStorage

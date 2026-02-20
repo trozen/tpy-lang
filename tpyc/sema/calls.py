@@ -380,7 +380,16 @@ class CallAnalyzer:
 
     def _check_own_param_arg(self, arg: TpyExpr, arg_type: TpyType,
                               pname: str, ptype: OwnType) -> None:
-        """Check lvalue passed to Own[T] param -- auto-move at last use or error."""
+        """Check lvalue passed to Own[T] param -- auto-move at last use or error.
+
+        Rvalue expressions (calls, literals, etc.) produce temporaries that
+        bind directly to the value param, so no check is needed.
+        Unresolved TypeParamRef (generic T) can't be checked at analysis time.
+        """
+        if not isinstance(arg, TpyName):
+            return
+        if isinstance(arg_type, TypeParamRef):
+            return
         is_last_use_movable = (isinstance(arg, TpyName)
                                and id(arg) in self.ctx.all_last_uses
                                and self.compat._is_movable_var(arg.name))
@@ -933,6 +942,10 @@ class CallAnalyzer:
                 for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                     resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst) if type_subst else ptype
                     arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
+                    if isinstance(resolved_ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
+                        self._check_own_param_arg(arg, arg_type, pname, resolved_ptype)
+                    if isinstance(resolved_ptype, OwnType):
+                        self._warn_unnecessary_copy(arg)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)
             else:
@@ -976,6 +989,10 @@ class CallAnalyzer:
                     type_subst = inferred
                     for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                         resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
+                        if isinstance(resolved_ptype, OwnType) and not isinstance(arg_types[i], OwnType) and not arg_types[i].is_value_type():
+                            self._check_own_param_arg(arg, arg_types[i], pname, resolved_ptype)
+                        if isinstance(resolved_ptype, OwnType):
+                            self._warn_unnecessary_copy(arg)
                         expr.args[i] = self.compat.coerce_expr(
                             arg, arg_types[i], resolved_ptype,
                             f"argument '{pname}'", coercion_ctx=CoercionContext.ARG
@@ -1027,6 +1044,10 @@ class CallAnalyzer:
                 )
             for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                 arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+                if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
+                    self._check_own_param_arg(arg, arg_type, pname, ptype)
+                if isinstance(ptype, OwnType):
+                    self._warn_unnecessary_copy(arg)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
         else:

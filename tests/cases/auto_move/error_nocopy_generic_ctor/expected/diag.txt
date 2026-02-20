@@ -1,0 +1,1 @@
+main.tp.py:20: error: @nocopy type 'Handle' is used after this point and cannot be moved into 'item: Own[Handle]'. Remove later uses or restructure the code.
