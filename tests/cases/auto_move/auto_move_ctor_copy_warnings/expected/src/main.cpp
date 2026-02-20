@@ -46,7 +46,7 @@ void main() {
   // 86:     i.value = 10
   i.value = 10;
   // 87:     h.set_inner(i)
-  h.set_inner(i);
+  h.set_inner(std::move(i));
   // 88:     print(h.inner.value)
   std::cout << h.inner.value << "\n";
   // 90:     # Generic ctor with lvalue
@@ -55,7 +55,7 @@ void main() {
   // 92:     i2.value = 20
   i2.value = 20;
   // 93:     gh = GenericHolder[Inner](i2)
-  GenericHolder<Inner> gh = GenericHolder<Inner>(i2);
+  GenericHolder<Inner> gh = GenericHolder<Inner>(std::move(i2));
   // 94:     print(gh.item.value)
   std::cout << gh.item.value << "\n";
   // 96:     # Generic set_item with lvalue
@@ -64,7 +64,7 @@ void main() {
   // 98:     i3.value = 30
   i3.value = 30;
   // 99:     gh.set_item(i3)
-  gh.set_item(i3);
+  gh.set_item(std::move(i3));
   // 100:     print(gh.item.value)
   std::cout << gh.item.value << "\n";
   // 102:     # Generic set_item with rvalue

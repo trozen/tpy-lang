@@ -5,7 +5,7 @@ Generates C++ code from TurboPython expressions.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
@@ -29,6 +29,14 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
 
 from tpyc import modules as builtin_modules
+
+
+class _Unset:
+    """Sentinel distinguishing 'not provided' from explicit None."""
+    __slots__ = ()
+
+
+_UNSET: Final[_Unset] = _Unset()
 
 
 class ExpressionGenerator:
@@ -91,9 +99,16 @@ class ExpressionGenerator:
             return f"std::move({gen_code})"
         return gen_code
 
-    def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None) -> str:
-        """Generate a call argument with deref and auto-move for Own[T] params."""
-        gen_arg = self.gen_expr_deref(arg, ptype)
+    def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
+                     target_type: TpyType | None | _Unset = _UNSET) -> str:
+        """Generate a call argument with deref and auto-move for Own[T] params.
+
+        target_type overrides ptype as the hint passed to gen_expr_deref.
+        Pass None explicitly to suppress the target hint (e.g. record method
+        args where the resolved param type should only drive the move check,
+        not literal coercion).
+        """
+        gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
         if ptype is not None and isinstance(unwrap_readonly(ptype), OwnType):
             gen_arg = self._maybe_move(arg, gen_arg)
         return gen_arg
@@ -582,8 +597,21 @@ class ExpressionGenerator:
                         gen = f"(*{gen})"
                     gen_args.append(gen)
                 return self.builtins.apply_cpp_template(ctor.cpp_template, gen_args, type_params, expr.call_type)
-            # Pass call_type as target for proper nested array brace generation
-            args = ", ".join(self.gen_expr_deref(a, expr.call_type) for a in expr.args)
+            # Look up resolved init params for auto-move on Own[T] params
+            init_params = []
+            call_type = expr.call_type
+            record_name = call_type.name if isinstance(call_type, NamedType) else None
+            if record_name:
+                rec_info = self.ctx.analyzer.registry.get_record(record_name)
+                if rec_info:
+                    init_info = rec_info.get_method("__init__")
+                    if init_info and expr.resolved_function_info:
+                        init_params = expr.resolved_function_info.params
+            gen_args = []
+            for i, a in enumerate(expr.args):
+                ptype = init_params[i].type if i < len(init_params) else None
+                gen_args.append(self.gen_call_arg(a, ptype, target_type=expr.call_type))
+            args = ", ".join(gen_args)
             # Use qualified type name for imported records
             type_cpp = self.types.type_to_cpp(expr.call_type)
             return f"{type_cpp}({args})"
@@ -766,7 +794,8 @@ class ExpressionGenerator:
                         for param_name, arg_type in zip(record_info.type_params, obj_type.type_args):
                             type_subst[param_name] = arg_type
                     gen_args = []
-                    for arg, (pname, ptype) in zip(expr.args, method_info.params):
+                    resolved_params = expr.resolved_function_info.params if expr.resolved_function_info else []
+                    for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
                         if isinstance(ptype, TypeParamRef) and self.ctx.is_temporary_expr(arg):
                             # Resolve TypeParamRef to actual type
                             resolved_type = type_subst.get(ptype.name, ptype)
@@ -778,7 +807,8 @@ class ExpressionGenerator:
                             else:
                                 gen_args.append(self.gen_expr_deref(arg))
                         else:
-                            gen_args.append(self.gen_expr_deref(arg))
+                            rptype = resolved_params[i].type if i < len(resolved_params) else ptype
+                            gen_args.append(self.gen_call_arg(arg, rptype, target_type=None))
                     args = ", ".join(gen_args)
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions

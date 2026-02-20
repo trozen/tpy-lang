@@ -1,10 +1,9 @@
 # TODO
 
 ## Next
-- move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
+- `@nocopy` not-at-last-use error only fires for function calls -- record method calls (`holder.take(h)`) and generic constructor calls (`GenericHolder[Handle](h)`) only emit a copy warning instead of the expected `@nocopy used after this point` error- move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - `Own[T] | None` params not recognized as movable -- auto-move and copy warning suppression don't apply because `_is_movable_var` only checks `OwnType`, not `OptionalType(OwnType(...))`
-- auto-move locals at last use: (1) copy warning doesn't fire when passing a local to an `Own[T]` param (e.g. `h.set_inner(i)` -- should warn about implicit copy), (2) locals at their last use should be auto-moved (`std::move`) instead of copied. Already works for `Own[T]` params -- needs extending to regular locals.
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - make Box[T] example great again
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check

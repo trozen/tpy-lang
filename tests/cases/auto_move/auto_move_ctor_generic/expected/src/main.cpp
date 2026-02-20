@@ -12,7 +12,7 @@ void main() {
   // 18:     inner.value = 42
   inner.value = 42;
   // 19:     box = Box[Inner](inner)
-  Box<Inner> box = Box<Inner>(inner);
+  Box<Inner> box = Box<Inner>(std::move(inner));
   // 20:     print(box.item.value)
   std::cout << box.item.value << "\n";
 }

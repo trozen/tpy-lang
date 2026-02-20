@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<A, B>& obj) {
 template<typename A, typename B>
 Wrapper<A, B> wrap_with_tag(A&& inner, B&& tag) {
   // 17:     return Wrapper[A, B](inner, tag)
-  return Wrapper<A, B>(inner, tag);
+  return Wrapper<A, B>(std::forward<A>(inner), std::forward<B>(tag));
 }
 void main();
 

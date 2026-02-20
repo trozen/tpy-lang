@@ -28,12 +28,12 @@ class Box[T](Deref[T]):
     def has_value(self) -> bool:
         # TODO: check if self._storage is allocated
         return False
-        
+
     def __deref__(self) -> T:
         return self.get()
 
     # TODO: readonly deref?
-        
+
     # TODO: __del__() method
     # TODO: __bool__() method
     # TODO: __copy__() method?
@@ -79,7 +79,9 @@ class Node:
         self.value = value
         self.next = None
 
-    # TODO: how to make it work?    
+    # TODO: how to make it work?
+    # TODO: proper nocopy propagation in Box[T]
+    # TODO: Own[T]|None not recognized as moveable
     # def __init__(self, value: Int32, next: Own[Node] | None):
     #     self.value = value
     #     if next is not None:
