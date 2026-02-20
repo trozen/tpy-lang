@@ -57,6 +57,24 @@ class NarrowingTracker:
                 return binding.type
         return self.ctx.current_scope.lookup(name)
 
+    def effective_union_type(self, name: str) -> TpyType | None:
+        """Get effective type for isinstance/narrowing, falling through assignment narrowing.
+
+        If the variable is narrowed to a concrete (non-union) type by assignment
+        narrowing, returns the declared union type instead, since isinstance and
+        condition_type_facts need the full union to compute branch facts.
+        """
+        effective = self.ctx.narrowed_types.get(name)
+        if effective is None:
+            effective = self.declared_type_for_name(name)
+        if not isinstance(effective, UnionType):
+            declared = self.declared_type_for_name(name)
+            if declared is not None:
+                inner = unwrap_readonly(declared)
+                if isinstance(inner, UnionType):
+                    return inner
+        return effective
+
     # -- Declared type resolution for expressions ------------------------
 
     def declared_type_for_expr(self, expr: TpyExpr) -> TpyType | None:
@@ -179,12 +197,7 @@ class NarrowingTracker:
         if isinstance(expr, TpyCall) and expr.isinstance_var is not None and expr.isinstance_type is not None:
             name = expr.isinstance_var
             check_type = expr.isinstance_type
-            # Get the effective union type (may already be narrowed)
-            effective = self.ctx.narrowed_types.get(name)
-            if effective is None:
-                effective = self.declared_type_for_name(name)
-            # NOTE: doesn't unwrap ReadonlyType -- readonly unions can't
-            # reach here today, but add unwrap_readonly if that changes.
+            effective = self.effective_union_type(name)
             if isinstance(effective, UnionType):
                 remaining = [m for m in effective.members if m != check_type]
                 if remaining:

@@ -186,6 +186,8 @@ class CodeGenContext:
 
     # --- Union type narrowing (isinstance -> std::get) ---
     narrowed_vars: dict[str, str] = field(default_factory=dict)
+    # Assignment narrowing: var -> narrowed concrete type (for inline std::get at access points)
+    assign_narrowed_types: dict[str, 'TpyType'] = field(default_factory=dict)
 
     # --- Iterator loop counter ---
     iter_counter: int = 0
@@ -236,6 +238,8 @@ class CodeGenContext:
         self.current_return_type = None
         self.current_func_params = {}
         self.in_method = False
+        self.narrowed_vars = {}
+        self.assign_narrowed_types = {}
         self.iter_counter = 0
 
     def indent(self) -> str:

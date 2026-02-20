@@ -836,7 +836,8 @@ class ExpressionGenerator:
                 if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
                     return self.builtins.gen_method_from_function_info("(*this)", expr.args, method_info)
                 obj = self.gen_expr(expr.obj)
-                method_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+                obj, an = self._apply_assign_narrowing(expr.obj, obj)
+                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not an) else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # Handle self.method() -> just method() (inside method, implicit this)
@@ -877,6 +878,7 @@ class ExpressionGenerator:
                         temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
                         return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
         obj = self.gen_expr(expr.obj)
+        obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
         obj_type = self.types.get_resolved_type(expr.obj)
 
         # Unwrap OwnType for method lookup - Own[T] behaves as T for method calls
@@ -888,7 +890,7 @@ class ExpressionGenerator:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
                 # T* pointer-locals/globals need dereferencing for method template access
-                method_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not is_assign_narrowed) else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # User-defined record methods may need temp handling for TypeParamRef params
@@ -935,7 +937,7 @@ class ExpressionGenerator:
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
             return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}({args})"
         # User-defined Deref: emit .__deref__() calls before method call
-        is_narrowed = isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars
+        is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         if deref_chain and obj_type and not obj_type.is_pointer():
             is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
             if is_indirect or is_optional_ptr:
@@ -950,6 +952,19 @@ class ExpressionGenerator:
         # Use native method name if available (for @native/@native_c class methods)
         cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
         return f"{obj}{accessor}{cpp_method}({args})"
+
+    def _apply_assign_narrowing(self, expr_obj: TpyExpr, obj_code: str) -> tuple[str, bool]:
+        """Apply inline std::get wrapping for assignment-narrowed union vars.
+
+        Returns (possibly wrapped code, was_narrowed).
+        """
+        if isinstance(expr_obj, TpyName) and expr_obj.name in self.ctx.assign_narrowed_types:
+            narrowed_type = self.ctx.assign_narrowed_types[expr_obj.name]
+            cpp_type = self.types.type_to_cpp(narrowed_type)
+            if self.ctx.is_indirect_name(expr_obj):
+                return f"std::get<{cpp_type}>((*{expr_obj.name}))", True
+            return f"std::get<{cpp_type}>({obj_code})", True
+        return obj_code, False
 
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""
@@ -970,10 +985,12 @@ class ExpressionGenerator:
                         return module_info.variables[expr.field].cpp_expr
 
         obj = self.gen_expr(expr.obj)
+        # Assignment narrowing: inline std::get<T> for member access only
+        obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
         # Check if obj is a pointer type or global - use -> instead of .
         obj_type = self.ctx.get_expr_type(expr.obj)
         # Narrowed vars (from isinstance std::get) are direct references, not pointers
-        is_narrowed = isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars
+        is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
         is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
         deref_chain = ".__deref__()" * expr.deref_depth

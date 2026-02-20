@@ -40,8 +40,9 @@ def area(s: Shape) -> float:
 | **Phase 9** | Equality `==`/`!=` on unions (if all members support it) | Not designed |
 | **Phase 10** | Unify `narrowed_types` with `non_none_vars` | **Done** |
 | **Phase 11** | `assert isinstance(x, T)` codegen for unions | **Done** |
-| **Later** | Assignment narrowing: `v = Rect(...)` narrows `v: A \| B` to `Rect` when RHS type is a known member | Not designed |
-| **Later** | While-loop condition narrows union types (codegen extraction) | Not designed |
+| **Phase 12** | Assignment narrowing: `v: A \| B = Rect(...)` narrows `v` to `Rect` for field/method access | **Done** |
+| **Phase 13** | While-loop isinstance narrowing: `while isinstance(v, T)` extracts inside loop body | **Done** |
+| **Later** | Deferred union init: `x: A \| B` without initializer, assigned in branches | Not designed |
 | **Later** | `isinstance(x, (A, B))` tuple form (narrow to subset of union) | Design only |
 | **Later** | Exhaustiveness checking (isinstance chains + match/case) | Design only |
 | **Later** | isinstance on non-name expressions (`x.field`, `x[i]`) | Not designed |

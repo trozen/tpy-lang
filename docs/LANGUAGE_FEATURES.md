@@ -1682,6 +1682,9 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Chained elif isinstance for multi-way branching (3+ member unions)
   - Narrowed variables can be used for field access, method calls, and passed to functions expecting the member type
   - `std::get<T>` extraction emitted once at block entry for efficient narrowed access
+  - `while isinstance(x, T)` narrows `x` to `T` inside the loop body (same extraction as if-blocks)
+  - Assignment narrowing: `v: A | B = A(...)` narrows `v` to `A` so field access works without isinstance; uses inline `std::get<T>()` at access points (not aliased, so `v` can still be passed to functions expecting the full union)
+  - Assignment narrowing is cleared on reassignment (`v = B(...)` clears the `A` narrowing)
   - Value-type semantics: all-value unions (`int | bool`) pass as `const&`; unions with records pass as `&` (mutable)
   - Nullable unions: `A | B | None` maps to `std::variant<A, B, std::monostate>`
   - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`

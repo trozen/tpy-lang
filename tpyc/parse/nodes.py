@@ -214,6 +214,8 @@ class TpyVarDecl(TpyStmt):
     init: Optional[TpyExpr]
     linkage: VarLinkage = VarLinkage.DEFAULT
     native_name: str | None = None
+    # Set by sema: union assignment narrowing facts for codegen
+    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
 
 
 @dataclass
@@ -269,6 +271,8 @@ class TpyWhile(TpyStmt):
     """While loop."""
     condition: TpyExpr
     body: list[TpyStmt]
+    # Set by sema: isinstance union narrowing facts for codegen
+    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
 
 
 @dataclass

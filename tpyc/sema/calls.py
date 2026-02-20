@@ -411,10 +411,9 @@ class CallAnalyzer:
                 "isinstance() first argument must be a variable name", expr
             )
 
-        var_type = self.expr.analyze_expr(first_arg)
+        self.expr.analyze_expr(first_arg)
 
-        # Check for active narrowing on this variable
-        effective_type = self.ctx.narrowed_types.get(first_arg.name, var_type)
+        effective_type = self.expr.narrowing.effective_union_type(first_arg.name)
 
         if not isinstance(effective_type, UnionType):
             raise self.ctx.error(

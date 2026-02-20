@@ -233,6 +233,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
+            stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             before = self.init.save()
             # Save namespace types -- loop_scope() restores scope bindings
             # automatically, but namespace mutations inside the loop persist.
@@ -664,6 +665,14 @@ class StatementAnalyzer:
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
+        # Union assignment narrowing: narrow to concrete member on initial declaration
+        if existing_type is None:
+            inner_var = unwrap_readonly(var_type)
+            if (isinstance(inner_var, UnionType) and init_type is not None
+                    and init_type in inner_var.members):
+                self.ctx.narrowed_types[stmt.name] = init_type
+                facts = {stmt.name: init_type}
+                stmt.then_type_facts = self._filter_union_codegen_facts(facts)
         # Record scope depth for new variables (not reassignments of outer-scope
         # vars). Uses scope lookup rather than var_scope_depth existence, so that
         # stale entries from discarded inner scopes get overwritten correctly.

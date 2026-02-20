@@ -152,6 +152,13 @@ class StatementGenerator:
             if code is not None:
                 self.ctx.temps.flush(out, indent)
                 out.write(code)
+            # Assignment narrowing for union VarDecl
+            if isinstance(stmt, TpyVarDecl):
+                # Clear stale narrowing on any write to this variable
+                self.ctx.assign_narrowed_types.pop(stmt.name, None)
+                if stmt.then_type_facts:
+                    for var_name, narrowed_type in stmt.then_type_facts.items():
+                        self.ctx.assign_narrowed_types[var_name] = narrowed_type
 
     def _gen_simple_stmt(self, stmt: TpyStmt, indent: str) -> str | None:
         """Generate code for simple statements. Returns code to write or None.
@@ -634,6 +641,9 @@ class StatementGenerator:
 
     def _gen_assign_code(self, stmt: TpyAssign, indent: str) -> str:
         """Generate code for an assignment. Returns code to write."""
+        # Clear stale assignment narrowing on reassignment
+        if isinstance(stmt.target, TpyName):
+            self.ctx.assign_narrowed_types.pop(stmt.target.name, None)
         # Special handling for subscript assignment
         if isinstance(stmt.target, TpySubscript):
             obj = self.expressions.gen_expr(stmt.target.obj)
@@ -927,12 +937,15 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
 
+        saved = self._emit_isinstance_extractions(out, stmt.then_type_facts)
+
         self.ctx.indent_level += 1
         for s in stmt.body:
             self.gen_stmt(out, s)
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
         self.ctx.indent_level -= 1
 
+        self._restore_narrowed_vars(saved)
         out.write(f"{indent}}}\n")
 
     def _gen_loop_body(self, out: TextIO, stmt: TpyForEach, indent: str,
