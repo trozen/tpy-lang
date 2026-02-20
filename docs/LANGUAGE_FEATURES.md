@@ -1026,6 +1026,9 @@ storage.drop(0)            # destroy element at index 0
 storage = UninitHeapStorage[Int32](4)   # allocate capacity for 4 elements
 storage.init(0, 100)
 val: Int32 = storage.take(0)            # move value out + destroy slot
+
+# Type can be inferred from assignment target context:
+s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 ```
 
 **Shared API** (both types):
@@ -1855,7 +1858,7 @@ argument coercion.
 
 **Contextual Type Inference**: When arguments don't fully determine all type
 parameters, the expected type from context (assignment annotation, return type,
-reassignment) fills in the remaining params:
+reassignment, field assignment) fills in the remaining params:
 
 ```python
 class Container[T]:
@@ -3086,7 +3089,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 
 - **Working**: Local variables (inferred and annotated)
 - **Working**: Global variables (typed)
-- **Working**: Contextual type inference from assignment/return/nested-call context for generic functions and record constructors; partial explicit type args
+- **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args
 - **Open**: `global` → explicit global mutation from functions (attempted and reverted; may revisit)
 - **Open**: `:=` walrus → if useful pattern emerges
 

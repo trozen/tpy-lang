@@ -1,9 +1,8 @@
 # Box[T] proof-of-concept -- heap-allocated owning container.
 # Simplified version of Rust's Box<T>, using UninitHeapStorage as backing.
+from __future__ import annotations
 from tpy import *
 from tpy.mem import UninitHeapStorage
-
-# TODO: implement all the feature to make it work
 
 # TODO: for production should use a Ptr[T] inside, with an annotation @nevernone, so compiler can optimize Box|None to a single pointer
 class Box[T](Deref[T]):
