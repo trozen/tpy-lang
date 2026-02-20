@@ -1,1 +1,1 @@
-main.tp.py:5: error: Protocol type 'Sized' cannot be used as a union member
+main.tp.py:6: error: Protocol type 'Sized' cannot be used as a union member

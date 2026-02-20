@@ -20,7 +20,8 @@ from .nodes import (
 
 from .imports import (
     SPECIAL_MODULES, TPY_TYPES,
-    check_tpy_type_imported, ImportProcessor,
+    PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES,
+    ImportProcessor,
 )
 
 from .parser import Parser
@@ -39,7 +40,8 @@ __all__ = [
     "is_super_del_call",
     # imports
     "SPECIAL_MODULES", "TPY_TYPES",
-    "check_tpy_type_imported", "ImportProcessor",
+    "PYTHON_BUILTINS", "TYPING_NAMES", "TPY_TYPE_NAMES",
+    "ImportProcessor",
     # parser
     "Parser",
 ]

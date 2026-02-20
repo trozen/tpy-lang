@@ -1,4 +1,5 @@
 """Test error when protocol type used as explicit type argument."""
+from typing import Protocol
 
 
 class Printable(Protocol):

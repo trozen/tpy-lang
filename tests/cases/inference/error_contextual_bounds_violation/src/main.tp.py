@@ -1,5 +1,6 @@
 # Contextual inference respects type parameter bounds.
-from tpy import Int32, Sized
+from tpy import Int32
+from typing import Sized
 
 class C[T: Sized]:
     val: T

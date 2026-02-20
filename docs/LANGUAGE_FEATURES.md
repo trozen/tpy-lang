@@ -2714,11 +2714,15 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 ## Modules & Imports
 
 - **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `StaticList`)
-  - **Note**: tpy types require explicit import - using `Int32` without `from tpy import Int32` produces an error with a helpful suggestion
+  - **Note**: tpy types require explicit import -- using `Int32` without `from tpy import Int32` produces an error with a helpful suggestion
+- **Working**: `from typing import ...` (type annotations like `Optional`, `Protocol`, `Self`, `Sized`, `Sequence`, `MutableSequence`)
+  - **Note**: typing names require explicit import -- using `Optional` without `from typing import Optional` produces an error with a helpful suggestion
 - **Working**: `import time` and `from time import time`
-- **Working**: Import aliases: `from time import time as get_time`, `from tpy import Int32 as I32`
-  - Aliases work for both type annotations (`x: I32`) and constructor calls (`I32(42)`)
-- **Working**: Module-level aliases: `import time as t`, `import tpy as t` (then use `t.time()`, `t.Int32()`)
+- **Working**: Import aliases: `from time import time as get_time`, `from tpy import Int32 as I32`, `from typing import Optional as Opt`
+  - Aliases work for both type annotations (`x: I32`, `x: Opt[I32]`) and constructor calls (`I32(42)`)
+- **Working**: Module-level aliases: `import time as t`, `import tpy as tp`, `import typing as t`
+  - Qualified type annotations work: `tp.Int32`, `t.Optional[tp.Int32]`, `typing.Protocol`
+  - Requires `import` (not `from ... import`): `import tpy` or `import tpy as tp`
 - **Working**: `import sys` - system module with `sys.argv`
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
@@ -2726,6 +2730,8 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 - **Working**: Package support (dotted imports, `__init__.tp.py`, namespace packages)
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
 - **Working**: Re-exports in `__init__.py` (functions, records, protocols, variables)
+- **Working**: Shadowing warnings -- defining a class that shadows an imported special name (e.g., `class Sized` after `from typing import Sized`) emits a warning
+- **Open**: `from typing import *` (not supported)
 - **Open**: Importing additional Python stdlib subsets that can be statically compiled
 
 ### User-Defined Modules (Working)

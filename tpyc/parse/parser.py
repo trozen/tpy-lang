@@ -27,7 +27,10 @@ from .nodes import (
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyModule,
 )
-from .imports import ImportProcessor, SPECIAL_MODULES, check_tpy_type_imported
+from .imports import (
+    ImportProcessor, SPECIAL_MODULES,
+    PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES, TPY_TYPES,
+)
 
 # Map of fixed-int type names to their singleton instances
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
@@ -91,6 +94,9 @@ class Parser:
         self._type_param_scope: dict[str, TypeParamKind] | None = None
         self._warnings: list[ParseWarning] = []
         self._imports = ImportProcessor(self._warn)
+        self._module_aliases: dict[str, str] = {}
+        self._bare_module_imports: set[str] = set()
+        self._reverse_module_aliases: dict[str, str] = {}
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -103,6 +109,114 @@ class Parser:
         """Record a parser warning."""
         loc = self._loc(node) if node else None
         self._warnings.append(ParseWarning(message, loc))
+
+    def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
+        """Resolve annotation name -> (module, original_name) or None.
+
+        Checks imports first, then tpy star import, then Python builtins.
+        """
+        source = self._imports.get_import_source(local_name)
+        if source:
+            return source
+
+        if self._imports.tpy_star_import and local_name in TPY_TYPE_NAMES:
+            return ("tpy", local_name)
+
+        if local_name in PYTHON_BUILTINS:
+            return ("builtins", local_name)
+
+        return None
+
+    def _resolve_qualified_type_name(self, node: ast.Attribute) -> tuple[str, str] | None:
+        """Resolve module.Name -> (module, name) or None.
+
+        Only resolves if the module was bare-imported (import X or import X as Y).
+        'from X import ...' does NOT put the module name in scope.
+        """
+        if not isinstance(node.value, ast.Name):
+            return None
+        local_module = node.value.id
+        canonical = self._reverse_module_aliases.get(local_module, local_module)
+        if canonical not in SPECIAL_MODULES:
+            return None
+        # Verify the module was bare-imported (imports[canonical] is None means
+        # whole-module import; the key being absent means no import at all)
+        imports = self._imports.imports
+        if imports is None or canonical not in imports or imports[canonical] is not None:
+            return None
+        return (canonical, node.attr)
+
+    def _resolve_primitive_type(self, module: str, original: str, node: ast.expr) -> TpyType | None:
+        """Resolve a (module, original_name) pair to a primitive type.
+
+        Returns the type if it's a directly-mapped primitive (int -> BIGINT, etc.),
+        or None if it should fall through to registry lookups.
+        Raises ParseError for names that can't be used as types (Protocol).
+        """
+        if module == "builtins":
+            if original == "int": return BIGINT
+            elif original == "float": return FLOAT
+            elif original == "bool": return BOOL
+            elif original == "str": return STR
+            elif original == "None": return VOID
+        elif module == "tpy":
+            if (fixed_int := _FIXED_INT_MAP.get(original)) is not None:
+                return fixed_int
+            elif original == "Char":
+                return CHAR
+        elif module == "typing":
+            if original == "Self":
+                return SELF
+            elif original == "Protocol":
+                raise ParseError("'Protocol' cannot be used as a type annotation", node)
+        return None
+
+    def _resolve_registered_type(self, name: str, node: ast.expr) -> TpyType | None:
+        """Look up a name in the type registry (protocols, aliases, records).
+
+        Raises ParseError for generic protocols used without type arguments,
+        or for completely unknown names.
+        """
+        if (user_protocol := self.registry.get_protocol(name)) is not None:
+            if user_protocol.type_params:
+                raise ParseError(
+                    f"Generic protocol '{name}' requires type arguments: "
+                    f"{name}[{', '.join(user_protocol.type_params)}]",
+                    node
+                )
+            return NamedType(name, is_protocol=True)
+        elif (alias := self.registry.get_type_alias(name)) is not None:
+            return alias
+        elif (protocol_def := lookup_builtin_protocol(name)) is not None:
+            if protocol_def.type_params:
+                raise ParseError(
+                    f"Generic protocol '{name}' requires type arguments: "
+                    f"{name}[{', '.join(protocol_def.type_params)}]",
+                    node
+                )
+            return NamedType(name, is_protocol=True)
+        elif self.registry.is_known_type(name) or name[0].isupper():
+            return NamedType(name)
+        return None
+
+    def _raise_unresolved_import_error(self, raw_name: str, node: ast.expr) -> None:
+        """Raise a helpful error for unresolved type names with import hints."""
+        if raw_name in TYPING_NAMES:
+            raise ParseError(f"'{raw_name}' requires: from typing import {raw_name}", node)
+        if raw_name in TPY_TYPES:
+            raise ParseError(
+                f"'{raw_name}' is not defined. Did you mean: from tpy import {raw_name}",
+                node
+            )
+
+    def _raise_unresolved_qualified_error(self, node: ast.expr) -> None:
+        """Raise error for qualified names where the module wasn't imported."""
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+            mod = node.value.id
+            canonical = self._reverse_module_aliases.get(mod, mod)
+            qualified = f"{mod}.{node.attr}"
+            if canonical in SPECIAL_MODULES:
+                raise ParseError(f"'{qualified}' requires: import {canonical}", node)
 
     def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
         """Check if a statement should be ignored for import ordering.
@@ -122,20 +236,28 @@ class Parser:
         self.source_lines = source.splitlines()
         self._warnings = []
         self._imports = ImportProcessor(self._warn)
+        self._module_aliases = {}
+        self._bare_module_imports = set()
+        self._reverse_module_aliases = {}
         tree = ast.parse(source)
         return self._parse_module(tree)
 
     # Names that _parse_type_annotation resolves directly (not through registry)
     _BUILTIN_TYPE_NAMES = frozenset({
-        "int", "float", "bool", "str", "None", "Char", "Self",
+        "int", "float", "bool", "str", "None",
     })
 
     def _is_type_name(self, name: str) -> bool:
         """Check if a name is recognizable as a type by _parse_type_annotation."""
-        resolved = self._imports.tpy_import_aliases.get(name, name)
-        if resolved in self._BUILTIN_TYPE_NAMES or resolved in _FIXED_INT_MAP:
-            return True
-        return self.registry.is_known_type(resolved)
+        resolved = self._resolve_type_name(name)
+        if resolved:
+            original = resolved[1]
+            if original in self._BUILTIN_TYPE_NAMES or original in _FIXED_INT_MAP:
+                return True
+            if original == "Char" or original == "Self":
+                return True
+        # Also check registry directly for user-defined types
+        return self.registry.is_known_type(name)
 
     def _is_type_alias_assign(self, node: ast.Assign) -> bool:
         """Check if an assignment is an old-style type alias (e.g., Shape = Circle | Rect).
@@ -184,6 +306,10 @@ class Parser:
         user_module_imports: dict[str, int] = {}
         module_aliases: dict[str, str] = {}
         bare_module_imports: set[str] = set()
+        self._module_aliases = module_aliases
+        self._bare_module_imports = bare_module_imports
+        # Set imports reference early so _resolve_qualified_type_name can check it
+        self._imports.imports = imports
         seen_non_import = False
 
         for node in tree.body:
@@ -195,10 +321,18 @@ class Parser:
 
             if isinstance(node, ast.ImportFrom):
                 self._imports.process_import_from(node, imports, user_module_imports, top_level_stmts, module_aliases)
+                # Rebuild reverse alias mapping after each import
+                self._reverse_module_aliases = {v: k for k, v in module_aliases.items()}
             elif isinstance(node, ast.Import):
                 self._imports.process_import(node, imports, user_module_imports, top_level_stmts, module_aliases, bare_module_imports)
+                # Rebuild reverse alias mapping after each import
+                self._reverse_module_aliases = {v: k for k, v in module_aliases.items()}
             elif isinstance(node, ast.ClassDef):
                 seen_non_import = True
+                # Warn if class shadows an imported special name
+                source = self._imports.get_import_source(node.name)
+                if source and source[0] in SPECIAL_MODULES:
+                    self._warn(f"class '{node.name}' shadows import from '{source[0]}'", node)
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):
                     protocols.append(result)
@@ -235,14 +369,21 @@ class Parser:
 
         return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
 
+    def _is_protocol_base(self, base: ast.expr) -> bool:
+        """Check if a base class expression refers to typing.Protocol."""
+        if isinstance(base, ast.Name):
+            resolved = self._resolve_type_name(base.id)
+            return resolved == ("typing", "Protocol")
+        elif isinstance(base, ast.Attribute):
+            resolved = self._resolve_qualified_type_name(base)
+            return resolved == ("typing", "Protocol")
+        return False
+
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""
         # Check if this is a Protocol definition (has Protocol as one of its bases)
         if node.bases:
-            has_protocol = any(
-                isinstance(base, ast.Name) and base.id == "Protocol"
-                for base in node.bases
-            )
+            has_protocol = any(self._is_protocol_base(base) for base in node.bases)
             if has_protocol:
                 return self._parse_protocol(node)
 
@@ -376,14 +517,20 @@ class Parser:
         # Extract parent protocols (excluding Protocol itself)
         parent_protocols = []
         for base in node.bases:
+            if self._is_protocol_base(base):
+                continue
             if isinstance(base, ast.Name):
-                if base.id != "Protocol":
-                    parent_protocols.append(base.id)
+                parent_protocols.append(base.id)
             elif isinstance(base, ast.Subscript):
                 # Generic parent protocols like Parent[T] are not yet supported
-                if isinstance(base.value, ast.Name) and base.value.id != "Protocol":
+                base_name = None
+                if isinstance(base.value, ast.Name):
+                    base_name = base.value.id
+                elif isinstance(base.value, ast.Attribute) and isinstance(base.value.value, ast.Name):
+                    base_name = f"{base.value.value.id}.{base.value.attr}"
+                if base_name:
                     raise ParseError(
-                        f"Generic parent protocols are not yet supported: {base.value.id}[...]. "
+                        f"Generic parent protocols are not yet supported: {base_name}[...]. "
                         f"Use non-generic parent protocols instead.",
                         base
                     )
@@ -726,81 +873,65 @@ class Parser:
             if type_param_scope and name in type_param_scope:
                 kind = type_param_scope[name]
                 return TypeParamRef(name, kind=kind)
-            # Resolve tpy import aliases (e.g., "from tpy import Int32 as I" allows using "I")
-            resolved_name = self._imports.tpy_import_aliases.get(name, name)
-            # Check if tpy type was explicitly imported
-            check_tpy_type_imported(name, resolved_name, node, self._imports.tpy_star_import, self._imports.tpy_import_aliases)
-            if resolved_name == "Self":
-                return SELF
-            elif (fixed_int := _FIXED_INT_MAP.get(resolved_name)) is not None:
-                return fixed_int
-            elif resolved_name == "int":
-                return BIGINT
-            elif resolved_name == "float":
-                return FLOAT
-            elif resolved_name == "bool":
-                return BOOL
-            elif resolved_name == "None":
-                return VOID
-            elif resolved_name == "str":
-                return STR
-            elif resolved_name == "Char":
-                return CHAR
-            elif (user_protocol := self.registry.get_protocol(resolved_name)) is not None:
-                # User-defined protocol type
-                # Check if generic protocol requires type arguments
-                if user_protocol.type_params:
-                    raise ParseError(
-                        f"Generic protocol '{resolved_name}' requires type arguments: "
-                        f"{resolved_name}[{', '.join(user_protocol.type_params)}]",
-                        node
-                    )
-                return NamedType(resolved_name, is_protocol=True)
-            elif (alias := self.registry.get_type_alias(resolved_name)) is not None:
-                return alias
-            elif (protocol_def := lookup_builtin_protocol(resolved_name)) is not None:
-                # Built-in protocol type (e.g., Sized)
-                # Check if generic protocol requires type arguments
-                if protocol_def.type_params:
-                    raise ParseError(
-                        f"Generic protocol '{resolved_name}' requires type arguments: "
-                        f"{resolved_name}[{', '.join(protocol_def.type_params)}]",
-                        node
-                    )
-                return NamedType(resolved_name, is_protocol=True)
-            elif self.registry.is_known_type(resolved_name) or resolved_name[0].isupper():
-                # Assume it's a record type (will be validated later)
-                return NamedType(resolved_name)
+
+            resolved = self._resolve_type_name(name)
+
+            if resolved:
+                primitive = self._resolve_primitive_type(*resolved, node)
+                if primitive is not None:
+                    return primitive
             else:
-                raise ParseError(f"Unknown type: {name}", node)
+                self._raise_unresolved_import_error(name, node)
+
+            # Registry lookups (user protocols, type aliases, builtin protocols, user records)
+            resolved_name = resolved[1] if resolved else name
+            registered = self._resolve_registered_type(resolved_name, node)
+            if registered is not None:
+                return registered
+            raise ParseError(f"Unknown type: {name}", node)
 
         elif isinstance(node, ast.Subscript):
+            # Resolve container name (supports both Name and Attribute forms)
             if isinstance(node.value, ast.Name):
-                container = node.value.id
-                # TODO: resolve to qualified names (typing.Optional, tpy.readonly, etc.)
-                # Resolve tpy import aliases for container names
-                resolved_container = self._imports.tpy_import_aliases.get(container, container)
-                # Check if tpy type was explicitly imported
-                check_tpy_type_imported(container, resolved_container, node, self._imports.tpy_star_import, self._imports.tpy_import_aliases)
-                # Pointer types are fundamental, not module-defined
-                if resolved_container == "Ptr":
-                    inner = self._parse_type_annotation(node.slice, type_param_scope)
-                    return PtrType(inner)
-                elif resolved_container == "ConstPtr":
-                    inner = self._parse_type_annotation(node.slice, type_param_scope)
-                    return ConstPtrType(inner)
-                elif resolved_container == "Own":
-                    inner = self._parse_type_annotation(node.slice, type_param_scope)
-                    return OwnType(inner)
-                elif resolved_container == "readonly":
-                    inner = self._parse_type_annotation(node.slice, type_param_scope)
-                    return ReadonlyType(inner)
-                elif container == "Optional":
-                    source = self._imports.get_import_source(container)
-                    if source and source[0] == "typing":
+                resolved = self._resolve_type_name(node.value.id)
+                raw_name = node.value.id
+            elif isinstance(node.value, ast.Attribute):
+                resolved = self._resolve_qualified_type_name(node.value)
+                raw_name = (f"{node.value.value.id}.{node.value.attr}"
+                            if isinstance(node.value.value, ast.Name) else None)
+            else:
+                raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+
+            if resolved:
+                module, original = resolved
+                if module == "tpy":
+                    if original == "Ptr":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return PtrType(inner)
+                    elif original == "ConstPtr":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return ConstPtrType(inner)
+                    elif original == "Own":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return OwnType(inner)
+                    elif original == "readonly":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return ReadonlyType(inner)
+                elif module == "typing":
+                    if original == "Optional":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return OptionalType(inner)
+            else:
+                if raw_name:
+                    self._raise_unresolved_import_error(raw_name, node)
+                # Qualified name with missing module import
+                if isinstance(node.value, ast.Attribute):
+                    self._raise_unresolved_qualified_error(node.value)
 
+            # Use original name for registry lookups when resolved
+            resolved_container = resolved[1] if resolved else raw_name
+
+            if resolved_container:
                 # Generic protocols (e.g., Sequence[Int32])
                 if protocol_def := lookup_builtin_protocol(resolved_container):
                     if protocol_def.type_params:
@@ -812,10 +943,15 @@ class Parser:
                     return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
 
                 # Generic types from explicitly imported builtin submodules (tpy.mem, etc.)
-                if import_source := self._imports.get_import_source(container):
-                    source_module, original_name = import_source
+                if resolved and resolved[0] not in SPECIAL_MODULES:
+                    source_module, original_name = resolved
                     if lookup := lookup_generic_type_in_module(original_name, source_module):
                         return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
+                elif not resolved and raw_name:
+                    if import_source := self._imports.get_import_source(raw_name):
+                        source_module, original_name = import_source
+                        if lookup := lookup_generic_type_in_module(original_name, source_module):
+                            return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
 
                 # User-defined generic protocols (e.g., Container[Int32])
                 if user_protocol := self.registry.get_protocol(resolved_container):
@@ -824,12 +960,26 @@ class Parser:
                         return NamedType(resolved_container, type_args, is_protocol=True)
 
                 # User-defined generic records (e.g., Stack[Int32])
-                # Check if it's a known record or looks like a record name (capitalized)
                 if self.registry.get_record(resolved_container) is not None or resolved_container[0].isupper():
                     type_args = self._parse_record_type_args(node, resolved_container, type_param_scope)
                     return NamedType(resolved_container, type_args)
 
-                raise ParseError(f"Unknown generic type: {container}", node)
+            raise ParseError(f"Unknown generic type: {raw_name}", node)
+
+        elif isinstance(node, ast.Attribute):
+            resolved = self._resolve_qualified_type_name(node)
+            if resolved:
+                primitive = self._resolve_primitive_type(*resolved, node)
+                if primitive is not None:
+                    return primitive
+                # Registry lookups for qualified names
+                registered = self._resolve_registered_type(resolved[1], node)
+                if registered is not None:
+                    return registered
+            # Not resolved -- check if module exists but wasn't imported
+            self._raise_unresolved_qualified_error(node)
+            qualified = f"{node.value.id}.{node.attr}" if isinstance(node.value, ast.Name) else ast.dump(node)
+            raise ParseError(f"Unsupported qualified type: {qualified}", node)
 
         elif isinstance(node, ast.Constant) and node.value is None:
             return VOID

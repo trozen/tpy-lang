@@ -28,22 +28,14 @@ TPY_TYPES = {
     "Ptr", "ConstPtr", "Own",  # Pointer types
 }
 
+# Python builtins -- always available without import
+PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None"})
 
-def check_tpy_type_imported(
-    name: str, resolved_name: str, node: ast.AST,
-    tpy_star_import: bool, tpy_import_aliases: dict[str, str],
-) -> None:
-    """Check that a tpy type was explicitly imported before use."""
-    if resolved_name not in TPY_TYPES:
-        return
-    if tpy_star_import:
-        return
-    if name in tpy_import_aliases:
-        return
-    raise ParseError(
-        f"'{name}' is not defined. Did you mean: from tpy import {resolved_name}",
-        node
-    )
+# Names from typing that require explicit import
+TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence"})
+
+# All tpy type names (union of TPY_TYPES + decorators/modifiers)
+TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy"}
 
 
 class ImportProcessor:

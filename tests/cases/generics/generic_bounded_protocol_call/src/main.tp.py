@@ -1,6 +1,6 @@
 # Test calling protocol methods on bounded type parameters
 from __future__ import annotations
-from typing import Protocol, Sized
+from typing import Protocol, Self, Sized
 from tpy import Int32, Own, Comparable
 
 # Test 1: Builtin protocol (Sized) method call inside generic function
