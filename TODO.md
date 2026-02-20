@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
+- `__del__()` function/destructor
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check
@@ -78,6 +78,7 @@
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
 - add `__bool__()` and a proper protocol (bool() function should have overload consuming that protocol)
+- `Self` type
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:

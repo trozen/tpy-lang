@@ -13,6 +13,7 @@ from ..typesys import (
     ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
+    local_var_is_movable,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -194,6 +195,7 @@ class StatementGenerator:
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
                 if self.ctx.is_indirect_name(stmt.value):
                     ret_expr = f"(*{ret_expr})"
+                    ret_expr = self.expressions._maybe_move(stmt.value, ret_expr)
                 return f"{indent}return {ret_expr};\n"
             return f"{indent}return;\n"
         elif isinstance(stmt, TpyBreak):
@@ -615,12 +617,12 @@ class StatementGenerator:
             if is_optional or stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
                 # T* pointer-local -- needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
-                # Reassigned pointer-locals are movable at last use only when
-                # ALL bindings are rvalue (owned storage, no borrowed aliases)
-                if (stmt.init is not None
-                        and stmt.name in self.ctx.reassigned_vars
-                        and stmt.name not in self.ctx.lvalue_reassigned_vars
-                        and self.ctx.is_rvalue_source(stmt.init)):
+                if local_var_is_movable(
+                        stmt.name,
+                        self.ctx.hoisted_vars,
+                        self.ctx.reassigned_vars,
+                        self.ctx.lvalue_reassigned_vars,
+                        stmt.init is None or self.ctx.is_rvalue_source(stmt.init)):
                     self.ctx.movable_locals.add(stmt.name)
                 if stmt.init:
                     return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
@@ -633,7 +635,13 @@ class StatementGenerator:
                 return f"{indent}{cpp_type}& {stmt.name} = {init_expr};\n"
 
         # Tier 1 non-value-type locals are eligible for auto-move at last use
-        if target_type and not target_type.is_value_type():
+        if (target_type and not target_type.is_value_type()
+                and local_var_is_movable(
+                    stmt.name,
+                    self.ctx.hoisted_vars,
+                    self.ctx.reassigned_vars,
+                    self.ctx.lvalue_reassigned_vars,
+                    stmt.init is None or self.ctx.is_rvalue_source(stmt.init))):
             self.ctx.movable_locals.add(stmt.name)
 
         if stmt.init:
@@ -853,8 +861,12 @@ class StatementGenerator:
                     self.ctx.current_ns.bind_variable(name, var_type)
                 if self._needs_indirection(var_type, name, None):
                     self.ctx.pointer_locals.add(name)
-                    if (name in self.ctx.reassigned_vars
-                            and name not in self.ctx.lvalue_reassigned_vars):
+                    if local_var_is_movable(
+                            name,
+                            self.ctx.hoisted_vars,
+                            self.ctx.reassigned_vars,
+                            self.ctx.lvalue_reassigned_vars,
+                            True):  # branch-declared vars have no init; movability is reassignment-based
                         self.ctx.movable_locals.add(name)
                     if name in self.ctx.rvalue_reassigned_vars:
                         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""

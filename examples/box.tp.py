@@ -6,11 +6,13 @@ from tpy.mem import UninitHeapStorage
 # TODO: implement all the feature to make it work
 
 # TODO: other protocols? for bool and copy?
+# TODO: for production should use a Ptr[T] inside, with an annotation @nevernone, so compiler can optimize Box|None to a single pointer
 class Box[T](Deref[T]):
     _storage: UninitHeapStorage[T]
 
     def __init__(self, value: Own[T]):
         # TODO: by default construct with a single element?
+        # TODO: [T] should not be needed
         self._storage = UninitHeapStorage[T](1)
         self._storage.init0(value)
 
@@ -53,7 +55,7 @@ class Box[T](Deref[T]):
     # TODO: def take() -> Own[T]
     #   Safety after take() or drop() (use-after-move):
     #   1. Now: runtime panic in debug mode (storage tracks alive slots)
-    #   2. Near-term: take(self: Own) consumes self, compiler rejects further use
+    #   2. Near-term: take(self: Own) consumes self, compiler rejects further use: def take(self: Own[Self])?
     #   3. Long-term: full move/borrow tracking (Rust-style borrow checker)
 
 

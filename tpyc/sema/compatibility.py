@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
-    is_protocol_type, unwrap_readonly, unwrap_optional_own,
+    is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -347,31 +347,23 @@ class TypeCompatibility:
     def _is_movable_var(self, name: str) -> bool:
         """Check if a variable is eligible for auto-move (owned, not borrowed).
 
-        Must match codegen's movable_locals population to avoid silent copies.
-        Movable: Own[T] params, Tier 1 locals (rvalue-init, not hoisted,
-        not Optional non-value), and reassigned locals (T* pointer-locals).
-        NOT movable: T& reference locals (lvalue-init, not reassigned),
-        hoisted locals, Optional non-value locals.
+        Delegates local-variable logic to local_var_is_movable() which is
+        also used by codegen (single source of truth).
+        Movable: Own[T] params, rvalue-init locals (not hoisted, not lvalue-reassigned).
+        NOT movable: lvalue-init locals, hoisted locals, top-level vars.
         """
         func = self.ctx.current_function
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:
                 if pname == name:
                     return unwrap_optional_own(unwrap_readonly(ptype)) is not None
-            if name in self.ctx.hoisted_vars:
-                return False  # Hoisted -> T* pointer-local
-            var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
-            if var_type and isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
-                return False  # Optional non-value -> T* pointer-local
-            # Reassigned locals are T* pointer-locals -- movable only when
-            # ALL bindings are rvalue (owned storage). If any binding is lvalue,
-            # the pointer might alias borrowed/global storage at use time.
-            if name in self.ctx.current_reassigned_vars:
-                return (name in self.ctx.rvalue_vars
-                        and name not in self.ctx.current_lvalue_reassigned)
-            if name not in self.ctx.rvalue_vars:
-                return False  # Lvalue-init -> T& reference, not owned
-            return True
+            return local_var_is_movable(
+                name,
+                self.ctx.hoisted_vars,
+                self.ctx.current_reassigned_vars,
+                self.ctx.current_lvalue_reassigned,
+                name in self.ctx.rvalue_vars,
+            )
         # Top-level: non-value-type vars become pointer-globals, can't be moved
         var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
         if var_type and not var_type.is_value_type():
