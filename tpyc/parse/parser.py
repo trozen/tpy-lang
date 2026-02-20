@@ -125,12 +125,61 @@ class Parser:
         tree = ast.parse(source)
         return self._parse_module(tree)
 
+    # Names that _parse_type_annotation resolves directly (not through registry)
+    _BUILTIN_TYPE_NAMES = frozenset({
+        "int", "float", "bool", "str", "None", "Char", "Self",
+    })
+
+    def _is_type_name(self, name: str) -> bool:
+        """Check if a name is recognizable as a type by _parse_type_annotation."""
+        resolved = self._imports.tpy_import_aliases.get(name, name)
+        if resolved in self._BUILTIN_TYPE_NAMES or resolved in _FIXED_INT_MAP:
+            return True
+        return self.registry.is_known_type(resolved)
+
+    def _is_type_alias_assign(self, node: ast.Assign) -> bool:
+        """Check if an assignment is an old-style type alias (e.g., Shape = Circle | Rect).
+
+        Triggers when ALL arms are Names/None AND at least one arm is a
+        confirmed type (registered or builtin). Pure forward-ref aliases
+        (all arms capitalized but none yet registered) also match.
+        """
+        if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
+            return False
+        if not (isinstance(node.value, ast.BinOp) and isinstance(node.value.op, ast.BitOr)):
+            return False
+        arms = _collect_bitor_arms(node.value)
+        has_confirmed_type = False
+        all_capitalized = True
+        for arm in arms:
+            if isinstance(arm, ast.Constant) and arm.value is None:
+                has_confirmed_type = True
+                continue
+            if not isinstance(arm, ast.Name):
+                return False
+            if self._is_type_name(arm.id):
+                has_confirmed_type = True
+            elif not arm.id[0].isupper():
+                all_capitalized = False
+        return has_confirmed_type or all_capitalized
+
+    def _register_type_alias(
+        self, name: str, type_node: ast.expr,
+        type_aliases: dict[str, tuple[TpyType, SourceLocation | None]]
+    ) -> None:
+        """Parse a type annotation node and register as a type alias."""
+        alias_type = self._parse_type_annotation(type_node)
+        self.registry.register_type_alias(name, alias_type)
+        loc = SourceLocation(line=type_node.lineno) if hasattr(type_node, 'lineno') else None
+        type_aliases[name] = (alias_type, loc)
+
     def _parse_module(self, tree: ast.Module) -> TpyModule:
         """Parse a module."""
         records = []
         functions = []
         protocols = []
         top_level_stmts = []
+        type_aliases: dict[str, tuple[TpyType, SourceLocation | None]] = {}
         imports: dict[str, set[tuple[str, str]] | None | str] = {}
         user_module_imports: dict[str, int] = {}
         module_aliases: dict[str, str] = {}
@@ -171,6 +220,12 @@ class Parser:
                 seen_non_import = True
                 func = self._parse_function(node)
                 functions.append(func)
+            elif isinstance(node, ast.TypeAlias):
+                seen_non_import = True
+                self._register_type_alias(node.name.id, node.value, type_aliases)
+            elif isinstance(node, ast.Assign) and self._is_type_alias_assign(node):
+                seen_non_import = True
+                self._register_type_alias(node.targets[0].id, node.value, type_aliases)
             else:
                 # Skip docstrings and pass statements for late import detection
                 if not self._is_ignorable_for_import_order(node):
@@ -178,7 +233,7 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, parse_warnings=self._warnings)
+        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
 
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""
@@ -701,6 +756,8 @@ class Parser:
                         node
                     )
                 return NamedType(resolved_name, is_protocol=True)
+            elif (alias := self.registry.get_type_alias(resolved_name)) is not None:
+                return alias
             elif (protocol_def := lookup_builtin_protocol(resolved_name)) is not None:
                 # Built-in protocol type (e.g., Sized)
                 # Check if generic protocol requires type arguments

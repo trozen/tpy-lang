@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     result: Int32 = add(Int32(10), Int32(32))
-  int32_t result = tpy_user::mypackage::utils::add(10, 32);
+  int32_t result = ::tpy_user::mypackage::utils::add(10, 32);
   // 6:     print(result)
   std::cout << result << "\n";
   // 7:     return Int32(0)
@@ -22,8 +22,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from mypackage.utils import add
-  tpy_user::mypackage::__tpy_init();
-  tpy_user::mypackage::utils::__tpy_init();
+  ::tpy_user::mypackage::__tpy_init();
+  ::tpy_user::mypackage::utils::__tpy_init();
   // 9: main()
   main();
 }

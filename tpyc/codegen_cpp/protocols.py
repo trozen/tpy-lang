@@ -12,7 +12,7 @@ from ..typesys import (
     MethodSignature, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyProtocol, TpyRecord
-from .context import DUNDER_TO_BINARY_OP, module_to_cpp_namespace
+from .context import DUNDER_TO_BINARY_OP, qualified_cpp_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -56,7 +56,7 @@ class ProtocolGenerator:
         # Check if this is an imported protocol from another user module
         if protocol.name in self.ctx.user_imported_protocols:
             source_module, original_name = self.ctx.user_imported_protocols[protocol.name]
-            return f"{module_to_cpp_namespace(source_module)}::{original_name}"
+            return qualified_cpp_name(source_module, original_name)
         # User-defined protocol - use the protocol name directly
         return protocol.name
 

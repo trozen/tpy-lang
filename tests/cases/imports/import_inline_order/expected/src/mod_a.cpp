@@ -18,7 +18,7 @@ void __tpy_init() {
 
   __name__ = "mod_a";
   // 2: from mod_c import shared_value
-  tpy_user::mod_c::__tpy_init();
+  ::tpy_user::mod_c::__tpy_init();
   // 4: print("mod_a init")
   std::cout << "mod_a init" << "\n";
 }

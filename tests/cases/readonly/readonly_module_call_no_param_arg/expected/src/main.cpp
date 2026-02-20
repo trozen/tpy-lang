@@ -9,7 +9,7 @@ std::string_view __name__;
 // 7: def ok() -> None:
 void ok() {
   // 8:     h.mutate()  # tpyc: ok
-  tpy_user::helpers::mutate();
+  ::tpy_user::helpers::mutate();
 }
 
 void __tpy_init() {
@@ -19,7 +19,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: import helpers as h
-  tpy_user::helpers::__tpy_init();
+  ::tpy_user::helpers::__tpy_init();
   // 11: ok()
   ok();
   // 12: print(0)

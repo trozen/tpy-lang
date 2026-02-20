@@ -2,7 +2,6 @@
 
 ## Next
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
-- union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check
 - stubs for tpy modules for CPython, so that we can run (some) TPy code in CPython, but also for use in IDEs etc. (we have already something for tests, so maybe it can be extracted)
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns

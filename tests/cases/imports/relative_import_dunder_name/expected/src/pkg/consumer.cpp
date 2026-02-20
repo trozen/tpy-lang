@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def compute() -> Int32:
 int32_t compute() {
   // 5:     return get_value()
-  return tpy_user::pkg::my__helper::get_value();
+  return ::tpy_user::pkg::my__helper::get_value();
 }
 
 void __tpy_init() {
@@ -18,8 +18,8 @@ void __tpy_init() {
 
   __name__ = "pkg.consumer";
   // 1: from .my__helper import get_value
-  tpy_user::pkg::__tpy_init();
-  tpy_user::pkg::my__helper::__tpy_init();
+  ::tpy_user::pkg::__tpy_init();
+  ::tpy_user::pkg::my__helper::__tpy_init();
 }
 
 } // namespace tpy_user::pkg::consumer

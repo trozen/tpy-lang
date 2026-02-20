@@ -1,0 +1,1 @@
+main.tp.py:23: error: isinstance() second argument must be a type, got 'Shape'

@@ -14,7 +14,7 @@ void __tpy_init() {
 
   __name__ = "mypackage";
   // 2: from .utils import add
-  tpy_user::mypackage::utils::__tpy_init();
+  ::tpy_user::mypackage::utils::__tpy_init();
   // 4: VERSION: Int32 = Int32(42)
   VERSION = 42;
 }

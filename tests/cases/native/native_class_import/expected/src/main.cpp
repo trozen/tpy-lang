@@ -33,7 +33,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from lib import Vec2, MyRect, rect_area
-  tpy_user::lib::__tpy_init();
+  ::tpy_user::lib::__tpy_init();
   // 19: main()
   main();
 }

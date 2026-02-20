@@ -8,9 +8,9 @@ std::string_view __name__;
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     p = Point(Int32(1), Int32(2))
-  tpy_user::utils::Point p = tpy_user::utils::Point(1, 2);
+  ::tpy_user::utils::Point p = ::tpy_user::utils::Point(1, 2);
   // 6:     result = add(p.x, p.y)
-  int32_t result = tpy_user::utils::add(p.x, p.y);
+  int32_t result = ::tpy_user::utils::add(p.x, p.y);
   // 7:     print(result)
   std::cout << result << "\n";
   // 8:     return Int32(0)
@@ -24,7 +24,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from utils import add, Point
-  tpy_user::utils::__tpy_init();
+  ::tpy_user::utils::__tpy_init();
   // 10: main()
   main();
 }

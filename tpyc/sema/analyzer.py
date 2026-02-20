@@ -7,7 +7,7 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType, VoidType, INT32, ReadonlyType, unwrap_readonly
+from ..typesys import TpyType, TypeRegistry, NamedType, UnionType, STR, NoneType, VoidType, INT32, ReadonlyType, unwrap_readonly
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, is_super_del_call
 
@@ -224,6 +224,13 @@ class SemanticAnalyzer:
             alias = module.module_aliases.get(mod_name)
             self.ctx.global_ns.bind_module(mod_name, alias)
 
+        # Resolve imported type aliases in AST type annotations.
+        # The parser creates NamedType("Shape") for imported aliases since it
+        # doesn't know about cross-module aliases at parse time. Substitute them
+        # with the resolved types before registration/analysis.
+        if self.ctx.user_imported_type_aliases:
+            self._resolve_imported_aliases(module)
+
         # First pass: register all records
         for record in module.records:
             self.registrar.register_record(record)
@@ -237,6 +244,11 @@ class SemanticAnalyzer:
         # Validate inheritance relationships (after all records and protocols are registered)
         for record in module.records:
             self.registrar.validate_record_inheritance(record)
+
+        # Transfer type aliases from parser to sema registry, validating members
+        for name, (typ, loc) in module.type_aliases.items():
+            self._validate_type_alias_members(name, typ, loc)
+            self.ctx.registry.register_type_alias(name, typ)
 
         # Second pass: register all functions
         for func in module.functions:
@@ -323,6 +335,60 @@ class SemanticAnalyzer:
         self.ctx.current_function = None
         self.ctx.current_scope = None
         self.ctx.current_ns = None
+
+    def _validate_type_alias_members(
+        self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
+    ) -> None:
+        """Validate that all NamedType members in a type alias are registered."""
+        from ..parse import SourceLocation
+        members: list[TpyType] = []
+        if isinstance(typ, UnionType):
+            members = list(typ.members)
+        elif isinstance(typ, NamedType):
+            members = [typ]
+        for m in members:
+            if isinstance(m, NamedType) and not m.is_protocol:
+                if self.ctx.registry.get_record(m.name) is None:
+                    raise SemanticError(
+                        f"Type alias '{alias_name}' references unknown type '{m.name}'",
+                        loc,
+                    )
+
+    @staticmethod
+    def _resolve_alias(typ: TpyType, aliases: dict[str, TpyType]) -> TpyType:
+        """Recursively substitute alias NamedTypes with their resolved types."""
+        if isinstance(typ, NamedType) and not typ.is_protocol:
+            resolved = aliases.get(typ.name)
+            if resolved is not None:
+                return resolved
+        return typ.map_inner_types(
+            lambda t: SemanticAnalyzer._resolve_alias(t, aliases)
+        )
+
+    def _resolve_imported_aliases(self, module: TpyModule) -> None:
+        """Substitute imported alias NamedTypes in module AST type annotations."""
+        from ..parse.nodes import TpyVarDecl
+        aliases = self.ctx.registry.type_aliases
+        for func in module.functions:
+            self._resolve_func_aliases(func, aliases)
+        for record in module.records:
+            for f in record.fields:
+                f.type = self._resolve_alias(f.type, aliases)
+            for method in record.methods:
+                self._resolve_func_aliases(method, aliases)
+        for stmt in module.top_level_stmts:
+            if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
+                stmt.type = self._resolve_alias(stmt.type, aliases)
+
+    @staticmethod
+    def _resolve_func_aliases(func: TpyFunction, aliases: dict[str, TpyType]) -> None:
+        """Resolve alias types in a function's signature."""
+        if func.return_type is not None:
+            func.return_type = SemanticAnalyzer._resolve_alias(func.return_type, aliases)
+        for i, (name, typ) in enumerate(func.params):
+            resolved = SemanticAnalyzer._resolve_alias(typ, aliases)
+            if resolved is not typ:
+                func.params[i] = (name, resolved)
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
@@ -537,6 +603,21 @@ class SemanticAnalyzer:
             # Also bind in namespace so it can be resolved as a type
             self.ctx.global_ns.bind_imported_name(local_name, module_name, original_name)
             self.ctx.user_imported_protocols[local_name] = (module_name, original_name)
+            return
+
+        # Check for type alias
+        if module_info.type_aliases and original_name in module_info.type_aliases:
+            typ = module_info.type_aliases[original_name]
+            self.ctx.registry.register_type_alias(local_name, typ)
+            self.ctx.user_imported_type_aliases[local_name] = (module_name, original_name)
+            # Implicitly import member record types so codegen can qualify them
+            if isinstance(typ, UnionType) and module_info.records:
+                for member in typ.members:
+                    if isinstance(member, NamedType) and member.name in module_info.records:
+                        if member.name not in self.ctx.user_imported_records:
+                            rec = module_info.records[member.name]
+                            self.ctx.registry.register_record(rec, member.name)
+                            self.ctx.user_imported_records[member.name] = (module_name, member.name)
             return
 
         # Check for variable

@@ -8,9 +8,9 @@ std::string_view __name__;
 // 5: def main() -> Int32:
 int32_t main() {
   // 6:     print(b_value())
-  std::cout << tpy_user::mod_b::b_value() << "\n";
+  std::cout << ::tpy_user::mod_b::b_value() << "\n";
   // 7:     print(c_value())
-  std::cout << tpy_user::mod_c::c_value() << "\n";
+  std::cout << ::tpy_user::mod_c::c_value() << "\n";
   // 8:     return Int32(0)
   return 0;
 }
@@ -22,9 +22,9 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from mod_b import b_value
-  tpy_user::mod_b::__tpy_init();
+  ::tpy_user::mod_b::__tpy_init();
   // 3: from mod_c import c_value
-  tpy_user::mod_c::__tpy_init();
+  ::tpy_user::mod_c::__tpy_init();
   // 10: main()
   main();
 }

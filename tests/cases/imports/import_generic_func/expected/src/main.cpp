@@ -16,21 +16,21 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: from helpers import first, length
-  tpy_user::helpers::__tpy_init();
+  ::tpy_user::helpers::__tpy_init();
   // 5: nums: list[Int32] = [Int32(10), Int32(20), Int32(30)]
   static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
   nums = &__global_slot_1;
   // 6: print(first(nums))
-  std::cout << tpy_user::helpers::first<int32_t>((*nums)) << "\n";
+  std::cout << ::tpy_user::helpers::first<int32_t>((*nums)) << "\n";
   // 7: print(length(nums))
-  std::cout << tpy_user::helpers::length<int32_t>((*nums)) << "\n";
+  std::cout << ::tpy_user::helpers::length<int32_t>((*nums)) << "\n";
   // 9: words: list[str] = ["hello", "world"]
   static std::vector<std::string_view> __global_slot_2 = {"hello", "world"};
   words = &__global_slot_2;
   // 10: print(first(words))
-  std::cout << tpy_user::helpers::first<std::string_view>((*words)) << "\n";
+  std::cout << ::tpy_user::helpers::first<std::string_view>((*words)) << "\n";
   // 11: print(length(words))
-  std::cout << tpy_user::helpers::length<std::string_view>((*words)) << "\n";
+  std::cout << ::tpy_user::helpers::length<std::string_view>((*words)) << "\n";
 }
 
 } // namespace tpy_user::main

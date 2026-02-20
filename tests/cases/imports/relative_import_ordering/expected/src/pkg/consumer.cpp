@@ -14,13 +14,13 @@ void __tpy_init() {
   // 1: print("before first import")
   std::cout << "before first import" << "\n";
   // 2: from . import first
-  tpy_user::pkg::__tpy_init();
-  tpy_user::pkg::first::__tpy_init();
+  ::tpy_user::pkg::__tpy_init();
+  ::tpy_user::pkg::first::__tpy_init();
   // 3: print("after first, before second")
   std::cout << "after first, before second" << "\n";
   // 4: from . import second
-  tpy_user::pkg::__tpy_init();
-  tpy_user::pkg::second::__tpy_init();
+  ::tpy_user::pkg::__tpy_init();
+  ::tpy_user::pkg::second::__tpy_init();
   // 5: print("after second")
   std::cout << "after second" << "\n";
 }

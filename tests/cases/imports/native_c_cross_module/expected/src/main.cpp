@@ -24,7 +24,7 @@ void __tpy_init() {
   // 1: # Test: both `import lib` and `from lib import ...` coexist
   // 2: # The named imports must not be dropped when bare import also exists.
   // 3: import lib
-  tpy_user::lib::__tpy_init();
+  ::tpy_user::lib::__tpy_init();
   // 12: main()
   main();
 }

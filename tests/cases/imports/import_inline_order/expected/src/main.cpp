@@ -12,15 +12,15 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from mod_a import func_a
-  tpy_user::mod_a::__tpy_init();
+  ::tpy_user::mod_a::__tpy_init();
   // 3: from mod_b import func_b
-  tpy_user::mod_b::__tpy_init();
+  ::tpy_user::mod_b::__tpy_init();
   // 5: print("main init")
   std::cout << "main init" << "\n";
   // 7: func_a()
-  tpy_user::mod_a::func_a();
+  ::tpy_user::mod_a::func_a();
   // 8: func_b()
-  tpy_user::mod_b::func_b();
+  ::tpy_user::mod_b::func_b();
 }
 
 } // namespace tpy_user::main

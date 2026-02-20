@@ -1693,6 +1693,13 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`
   - `is not None` narrows to remaining non-None members; chained isinstance further narrows
   - `v == None` / `v != None` on nullable unions errors with hint to use `is`/`is not`
+  - Type aliases: `Shape = Circle | Rect` (old-style assignment) and `type Shape = Circle | Rect` (Python 3.12 `type` statement)
+  - Aliases resolve eagerly at parse time to the underlying union type; sema and codegen see the expanded type
+  - Old-style aliases support forward references (alias before class definitions)
+  - Aliases can include `None` members: `MaybeShape = Circle | Rect | None`
+  - Emits C++ `using Shape = std::variant<Circle, Rect>;` in the header
+  - `isinstance(x, Shape)` where `Shape` is a type alias is not yet supported; isinstance on concrete member types only
+  - Type aliases can be imported cross-module: `from shapes import Shape`
   - **Not yet supported**: `isinstance(x, (A, B))` tuple form, pattern matching on variants
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)

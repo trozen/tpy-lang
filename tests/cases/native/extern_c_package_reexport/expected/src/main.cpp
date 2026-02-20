@@ -23,7 +23,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from mathlib import abs, get_clock
-  tpy_user::mathlib::__tpy_init();
+  ::tpy_user::mathlib::__tpy_init();
 }
 
 } // namespace tpy_user::main

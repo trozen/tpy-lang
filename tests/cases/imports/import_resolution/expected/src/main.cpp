@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     print(get_value())
-  std::cout << tpy_user::helper::get_value() << "\n";
+  std::cout << ::tpy_user::helper::get_value() << "\n";
   // 6:     return Int32(0)
   return 0;
 }
@@ -20,7 +20,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from helper import get_value
-  tpy_user::helper::__tpy_init();
+  ::tpy_user::helper::__tpy_init();
   // 8: main()
   main();
 }

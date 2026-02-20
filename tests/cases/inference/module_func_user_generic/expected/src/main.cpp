@@ -9,7 +9,7 @@ std::string_view __name__;
 void main() {
   // 6:     # module.func[T](args) syntax on user-defined generic
   // 7:     y = helpers.identity[Int32](Int32(7))
-  int32_t y = tpy_user::helpers::identity<int32_t>(7);
+  int32_t y = ::tpy_user::helpers::identity<int32_t>(7);
   // 8:     print(y)
   std::cout << y << "\n";
   // 9:     print("done")
@@ -23,7 +23,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 3: import helpers
-  tpy_user::helpers::__tpy_init();
+  ::tpy_user::helpers::__tpy_init();
   // 11: main()
   main();
 }

@@ -8,7 +8,7 @@ std::string_view __name__;
 // 3: def main():
 void main() {
   // 4:     result = custom_add(MAGIC, 8)
-  int32_t result = tpy_user::math::custom_add(tpy_user::math::MAGIC, 8);
+  int32_t result = ::tpy_user::math::custom_add(::tpy_user::math::MAGIC, 8);
   // 5:     print(result)
   std::cout << result << "\n";
 }
@@ -20,7 +20,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: from math import custom_add, MAGIC  # tpyc: warning(/shadows builtin module/)
-  tpy_user::math::__tpy_init();
+  ::tpy_user::math::__tpy_init();
   // 7: main()
   main();
 }

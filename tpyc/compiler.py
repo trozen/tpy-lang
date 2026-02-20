@@ -205,6 +205,7 @@ class ModuleExports:
     records: dict[str, RecordInfo] = field(default_factory=dict)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)
     variables: dict[str, TpyType] = field(default_factory=dict)
+    type_aliases: dict[str, TpyType] = field(default_factory=dict)
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
@@ -667,6 +668,10 @@ class Compiler:
                     if module_info and original_name in module_info.protocols:
                         exports.protocols[local_name] = module_info.protocols[original_name]
 
+        # Export type aliases
+        for name, (typ, _loc) in compiled.ast.type_aliases.items():
+            exports.type_aliases[name] = typ
+
         # Export global variables (from top-level statements)
         # These are tracked in the global scope, but we must exclude imported variables
         # UNLESS they were redefined at the top level (in top_level_decls)
@@ -721,6 +726,7 @@ class Compiler:
             variables=variables,
             records=exports.records,
             protocols=exports.protocols,
+            type_aliases=exports.type_aliases,
         )
 
     def generate_code(self, compiled: CompiledModule, output_dir: Path,

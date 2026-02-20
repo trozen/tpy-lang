@@ -12,8 +12,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 1: import pkg.consumer
-  tpy_user::pkg::__tpy_init();
-  tpy_user::pkg::consumer::__tpy_init();
+  ::tpy_user::pkg::__tpy_init();
+  ::tpy_user::pkg::consumer::__tpy_init();
   // 2: print("done")
   std::cout << "done" << "\n";
 }

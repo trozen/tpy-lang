@@ -10,7 +10,7 @@ struct Message;
 
 extern std::string_view __name__;
 
-template<tpy_user::traits::Printable T_p>
+template<::tpy_user::traits::Printable T_p>
 void show(T_p& p);
 int32_t main();
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 }
 
 // 13: def show(p: Printable) -> None:
-template<tpy_user::traits::Printable T_p>
+template<::tpy_user::traits::Printable T_p>
 void show(T_p& p) {
   // 14:     print(p.to_string())
   std::cout << p.to_string() << "\n";

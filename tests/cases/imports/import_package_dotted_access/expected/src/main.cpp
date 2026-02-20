@@ -8,9 +8,9 @@ std::string_view __name__;
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     print(mypackage.utils.add(Int32(3), Int32(4)))
-  std::cout << tpy_user::mypackage::utils::add(3, 4) << "\n";
+  std::cout << ::tpy_user::mypackage::utils::add(3, 4) << "\n";
   // 6:     print(mypackage.utils.add(Int32(5), Int32(6)))
-  std::cout << tpy_user::mypackage::utils::add(5, 6) << "\n";
+  std::cout << ::tpy_user::mypackage::utils::add(5, 6) << "\n";
   // 7:     return Int32(0)
   return 0;
 }
@@ -22,8 +22,8 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: import mypackage.utils
-  tpy_user::mypackage::__tpy_init();
-  tpy_user::mypackage::utils::__tpy_init();
+  ::tpy_user::mypackage::__tpy_init();
+  ::tpy_user::mypackage::utils::__tpy_init();
   // 9: main()
   main();
 }

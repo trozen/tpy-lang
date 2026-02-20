@@ -9,10 +9,10 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, ConstPtrType, BIGINT, clear_native_cpp_names, register_native_cpp_name
+from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, ConstPtrType, BIGINT, clear_native_cpp_names, register_native_cpp_name, register_union_alias
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 
-from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace
+from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .builtins import BuiltinGenerator
@@ -94,10 +94,18 @@ class CodeGenerator:
             record_info = self.analyzer.registry.get_record(record.name)
             if record_info and record_info.is_native and record_info.native_name:
                 register_native_cpp_name(record.name, record_info.native_name)
-        for local_name, (_src_mod, original_name) in self.analyzer.ctx.user_imported_records.items():
+        for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_records.items():
             record_info = self.analyzer.registry.get_record(local_name)
             if record_info and record_info.is_native and record_info.native_name:
                 register_native_cpp_name(local_name, record_info.native_name)
+            elif not (record_info and record_info.is_native):
+                register_native_cpp_name(local_name, qualified_cpp_name(src_mod, original_name))
+        # Register imported union type aliases so UnionType.to_cpp() can use
+        # the alias name instead of expanding to std::variant<...>
+        for local_name, (_src_mod, original_name) in self.analyzer.ctx.user_imported_type_aliases.items():
+            alias_type = self.analyzer.registry.get_type_alias(local_name)
+            if isinstance(alias_type, UnionType):
+                register_union_alias(alias_type.members, local_name)
         # Filter user_module_imports to only include actual user modules (not builtins without user files)
         if actual_user_modules is not None:
             self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}
@@ -109,6 +117,7 @@ class CodeGenerator:
         self.ctx.user_imported_records = dict(self.analyzer.ctx.user_imported_records)
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
         self.ctx.user_imported_variables = dict(self.analyzer.ctx.user_imported_variables)
+        self.ctx.user_imported_type_aliases = dict(self.analyzer.ctx.user_imported_type_aliases)
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
         self.ctx.reexported_functions = reexported_functions or {}
         self.ctx.reexported_records = reexported_records or {}
@@ -442,6 +451,19 @@ class CodeGenerator:
             self.functions.gen_global_extern(hpp, stmt)
         hpp.write("\n")
 
+        # Imported type alias using-declarations (before function forward
+        # decls so signatures can reference alias names like Shape)
+        emitted_imported_alias = False
+        for local_name, (src_mod, original_name) in sorted(self.ctx.user_imported_type_aliases.items()):
+            qualified = qualified_cpp_name(src_mod, original_name)
+            if local_name == original_name:
+                hpp.write(f"using {qualified};\n")
+            else:
+                hpp.write(f"using {local_name} = {qualified};\n")
+            emitted_imported_alias = True
+        if emitted_imported_alias:
+            hpp.write("\n")
+
         # Function forward declarations (before records, so inline
         # constructor/method bodies can call free functions)
         emitted_fwd_func = False
@@ -460,6 +482,22 @@ class CodeGenerator:
                 continue
             self.records.gen_record_decl(hpp, record)
             hpp.write("\n")
+
+        # Module-local type alias definitions (after record definitions
+        # so member types are complete for std::variant)
+        emitted_alias = False
+        for name, (typ, _loc) in sorted(module.type_aliases.items()):
+            cpp_type = self.types.type_to_cpp(typ)
+            hpp.write(f"using {name} = {cpp_type};\n")
+            emitted_alias = True
+        if emitted_alias:
+            hpp.write("\n")
+        # Register module-local union aliases AFTER emitting the using
+        # declaration (to avoid circular `using Shape = Shape;`) but
+        # BEFORE function definitions (so signatures use the alias name)
+        for name, (typ, _loc) in module.type_aliases.items():
+            if isinstance(typ, UnionType):
+                register_union_alias(typ.members, name)
 
         # Function declarations (template definitions, stubs, and extern "C";
         # non-template signatures are already forward-declared above)
@@ -493,7 +531,7 @@ class CodeGenerator:
                 if func_info and (func_info.is_native_c or func_info.is_extern_c):
                     self.functions.gen_extern_c_redecl(hpp, func_info)
                     continue
-                qualified = f"{module_to_cpp_namespace(source_module)}::{original_name}"
+                qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
                     hpp.write(f"using {qualified};\n")
                 else:
@@ -503,7 +541,7 @@ class CodeGenerator:
         # Re-exported records
         if self.ctx.reexported_records:
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_records.items()):
-                qualified = f"{module_to_cpp_namespace(source_module)}::{original_name}"
+                qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
                     hpp.write(f"using {qualified};\n")
                 else:
@@ -513,7 +551,7 @@ class CodeGenerator:
         # Re-exported variables
         if self.ctx.reexported_variables:
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_variables.items()):
-                qualified = f"{module_to_cpp_namespace(source_module)}::{original_name}"
+                qualified = qualified_cpp_name(source_module, original_name)
                 hpp.write(f"inline auto& {local_name} = {qualified};\n")
             hpp.write("\n")
 

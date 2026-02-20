@@ -17,11 +17,11 @@ For comparison: move semantics changed how every variable is handled (3-tier mod
 liveness analysis, gen_expr vs gen_expr_deref). Most features below are additive --
 they don't change how existing code compiles. These two do:
 
-1. **Narrowing generalization** (part of union types / isinstance) -- the narrowing
-   system changes from a boolean ("is this None or not-None?") to tracking **type sets**
-   ("which types from the union are still possible?"). Merge logic, invalidation rules,
-   loop-entry reset all go from bit operations to set operations. Existing None-narrowing
-   becomes a special case of the general system. Affects all code that uses narrowing.
+1. **Narrowing generalization** (part of union types / isinstance) -- **Done.** The
+   narrowing system tracks type sets ("which types from the union are still possible?")
+   with set-based merge logic, invalidation rules, and loop-entry reset. Existing
+   None-narrowing is a special case. Supports if/elif/else isinstance, assert isinstance,
+   while-loop isinstance, and assignment narrowing.
 
 2. **Generic Optional codegen fix** (A3) -- changes what C++ is emitted for existing
    `T | None` patterns when `T` is a type parameter. Every Optional-related codegen path
@@ -46,7 +46,7 @@ existing compiler model stays the same for existing code.
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
 | A1 | Final constants | S | Not started | [I](#final--constant-globals) |
-| A2 | Type aliases | S | Not started | [I](#type-aliases) |
+| A2 | Type aliases | S | Done | [I](#type-aliases) |
 | A3 | Generic Optional codegen fix | M | Known bug | [I](#generic-optional-codegen-fix) |
 | A4 | DynStr (owned strings) | M | Designed | [I](#string-ownership-dynstr) |
 | A5 | Enums | M | Not started | [I](#enums) |
@@ -60,7 +60,7 @@ existing compiler model stays the same for existing code.
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
 | B1 | Box[T] heap ownership | M | Not started | [II](#boxt----heap-ownership) |
-| B2 | Union types / ADTs | L | Not started | [I](#union-types--algebraic-data-types) |
+| B2 | Union types / ADTs | L | Partial | [I](#union-types--algebraic-data-types) |
 | B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- Dyn[P] | L | Designed | [II](#dynamic-dispatch-dynp) |
 | B5 | Virtual methods in inheritance | M | Not started | [II](#virtual-methods-in-inheritance) |
@@ -165,7 +165,9 @@ match are the natural replacement, and a prerequisite for self-hosting via tag d
 Maps to `std::variant` or manual tag+union in C++. No heap allocation, no vtable.
 Compatible with `@noalloc`.
 
-**Current state**: Not started. `T | None` exists but is special-cased as Optional.
+**Current state**: Basic union types working (`A | B` annotations, `isinstance` narrowing,
+`assert isinstance`, while-loop narrowing, assignment narrowing, type aliases). Maps to
+`std::variant`. Missing: `@sealed`, match/case, exhaustiveness checking.
 
 **Dependencies**: Enums (simpler case, good stepping stone). Match/case (consumer of unions).
 Interacts with generic Optional codegen (union is a generalization of Optional).
@@ -270,14 +272,20 @@ Int-based enums first; string enums and flag enums later.
 ### Type Aliases
 
 ```python
-type MessagePayload = HelloMessage | ChatMessage
-# or
-MessagePayload = TypeAlias[HelloMessage | ChatMessage]
+Shape = Circle | Rect                  # old-style assignment
+type Shape = Circle | Rect             # Python 3.12 type statement
+MaybeShape = Circle | Rect | None      # with None member
 ```
 
-Maps to C++ `using`. Prerequisite for ergonomic union types.
+Maps to C++ `using Shape = std::variant<Circle, Rect>;`. Both syntaxes supported.
+Cross-module import works (`from shapes import Shape`), including alias-only import
+(member records are implicitly imported for codegen). Nested annotations (`list[Shape]`)
+resolve correctly.
 
-**Current state**: Not started.
+**Current state**: Done.
+
+**Not yet supported**: `isinstance(x, Shape)` where Shape is a type alias;
+`isinstance(x, (A, B))` tuple form; pattern matching on variants.
 
 **Dependencies**: Needed for union types to be usable.
 

@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def compute() -> Int32:
 int32_t compute() {
   // 5:     return add(Int32(10), Int32(32))
-  return tpy_user::mypackage::utils::add(10, 32);
+  return ::tpy_user::mypackage::utils::add(10, 32);
 }
 
 void __tpy_init() {
@@ -18,8 +18,8 @@ void __tpy_init() {
 
   __name__ = "mypackage.consumer";
   // 2: from .utils import add
-  tpy_user::mypackage::__tpy_init();
-  tpy_user::mypackage::utils::__tpy_init();
+  ::tpy_user::mypackage::__tpy_init();
+  ::tpy_user::mypackage::utils::__tpy_init();
 }
 
 } // namespace tpy_user::mypackage::consumer

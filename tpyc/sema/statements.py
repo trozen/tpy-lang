@@ -383,6 +383,17 @@ class StatementAnalyzer:
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
+        # Resolve type aliases in annotation (for cross-module imported aliases)
+        # Recursive to handle nested types like list[Shape], Optional[Shape]
+        if stmt.type and self.ctx.registry.type_aliases:
+            def _resolve(t: TpyType) -> TpyType:
+                if isinstance(t, NamedType) and not t.is_protocol:
+                    alias = self.ctx.registry.get_type_alias(t.name)
+                    if alias is not None:
+                        return alias
+                return t.map_inner_types(_resolve)
+            stmt.type = _resolve(stmt.type)
+
         # Validate the type annotation if present
         # Allow TypeParamRef when inside a generic record's methods
         if stmt.type:

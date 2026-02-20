@@ -9,12 +9,14 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
-    PendingListType, ListType, ArrayType, TypeParamRef, NamedType,
+    PendingListType, ListType, ArrayType, TypeParamRef, NamedType, UnionType,
+    NoneType, VoidType,
     unwrap_readonly,
-    INT32, BIGINT, FLOAT
+    INT32, BIGINT, FLOAT,
+    _union_alias_names
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
-from .context import module_to_cpp_namespace
+from .context import qualified_cpp_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -205,7 +207,7 @@ class TypeResolver:
             # Check if this record is imported from a user module
             if typ.name in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[typ.name]
-                qualified = f"{module_to_cpp_namespace(source_module)}::{original_name}"
+                qualified = qualified_cpp_name(source_module, original_name)
                 if typ.type_args:
                     args = ", ".join(
                         self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
@@ -213,5 +215,15 @@ class TypeResolver:
                     )
                     return f"{qualified}<{args}>"
                 return qualified
+        # Union types: use alias name if registered, otherwise qualify member names
+        if isinstance(typ, UnionType):
+            alias = _union_alias_names.get(typ.members)
+            if alias is not None:
+                return alias
+            cpp_members = [
+                "std::monostate" if isinstance(m, (NoneType, VoidType)) else self.type_to_cpp(m)
+                for m in typ.members
+            ]
+            return f"std::variant<{', '.join(cpp_members)}>"
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()

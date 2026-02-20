@@ -1,0 +1,1 @@
+Forward references in old-style type aliases are not valid Python (NameError at runtime)

@@ -8,9 +8,9 @@ std::string_view __name__;
 // 4: def main() -> Int32:
 int32_t main() {
   // 5:     print(VERSION)
-  std::cout << tpy_user::mypackage::VERSION << "\n";
+  std::cout << ::tpy_user::mypackage::VERSION << "\n";
   // 6:     result: Int32 = add(Int32(5), Int32(7))
-  int32_t result = tpy_user::mypackage::add(5, 7);
+  int32_t result = ::tpy_user::mypackage::add(5, 7);
   // 7:     print(result)
   std::cout << result << "\n";
   // 8:     return Int32(0)
@@ -24,7 +24,7 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from mypackage import VERSION, add
-  tpy_user::mypackage::__tpy_init();
+  ::tpy_user::mypackage::__tpy_init();
   // 10: main()
   main();
 }

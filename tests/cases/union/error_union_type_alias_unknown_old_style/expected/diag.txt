@@ -1,0 +1,1 @@
+main.tp.py:9: error: Unknown type: unknown

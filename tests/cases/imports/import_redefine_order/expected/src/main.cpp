@@ -18,12 +18,12 @@ void __tpy_init() {
 
   __name__ = "__main__";
   // 2: from utils import MAX, MIN
-  tpy_user::utils::__tpy_init();
+  ::tpy_user::utils::__tpy_init();
   // 4: # Use imported values first
   // 5: print(MAX)  # 100
-  std::cout << tpy_user::utils::MAX << "\n";
+  std::cout << ::tpy_user::utils::MAX << "\n";
   // 6: print(MIN)  # 1
-  std::cout << tpy_user::utils::MIN << "\n";
+  std::cout << ::tpy_user::utils::MIN << "\n";
   // 8: # Redefine MAX with same type (explicit annotation)
   // 9: MAX: Int32 = Int32(42)
   MAX = 42;

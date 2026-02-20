@@ -25,7 +25,7 @@ from ..parse import (
     TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce,
 )
 from ..namespace import Namespace
-from .context import CodeGenError, module_to_cpp_namespace, expand_cpp_template
+from .context import CodeGenError, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
 
 if TYPE_CHECKING:
@@ -233,10 +233,10 @@ class StatementGenerator:
                     if parent_pkg == self.ctx.module_name:
                         continue  # don't self-init
                     if parent_pkg in self.ctx.all_user_modules:
-                        result += f"{indent}{module_to_cpp_namespace(parent_pkg)}::__tpy_init();\n"
+                        result += f"{indent}{qualified_cpp_name(parent_pkg, '__tpy_init')}();\n"
                 # Then init the submodule itself (skip self-init)
                 if stmt.module_name != self.ctx.module_name:
-                    result += f"{indent}{module_to_cpp_namespace(stmt.module_name)}::__tpy_init();\n"
+                    result += f"{indent}{qualified_cpp_name(stmt.module_name, '__tpy_init')}();\n"
                 return result
             return ""  # Builtin module - no init needed
         return None

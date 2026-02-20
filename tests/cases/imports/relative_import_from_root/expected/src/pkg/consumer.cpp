@@ -8,7 +8,7 @@ std::string_view __name__;
 // 4: def compute() -> Int32:
 int32_t compute() {
   // 5:     return utils.root_func()
-  return tpy_user::utils::root_func();
+  return ::tpy_user::utils::root_func();
 }
 
 void __tpy_init() {
@@ -18,7 +18,7 @@ void __tpy_init() {
 
   __name__ = "pkg.consumer";
   // 1: from .. import utils
-  tpy_user::utils::__tpy_init();
+  ::tpy_user::utils::__tpy_init();
 }
 
 } // namespace tpy_user::pkg::consumer

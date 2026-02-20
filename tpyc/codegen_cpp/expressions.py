@@ -21,7 +21,7 @@ from ..parse import (
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
-from .context import escape_cpp_string, escape_cpp_char, module_to_cpp_namespace, expand_cpp_template
+from .context import escape_cpp_string, escape_cpp_char, qualified_cpp_name, expand_cpp_template
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -183,7 +183,7 @@ class ExpressionGenerator:
                         return expr.name
                 # Use qualified import reference (convert dotted name to C++ namespace)
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
-                return f"{module_to_cpp_namespace(source_module)}::{original_name}"
+                return qualified_cpp_name(source_module, original_name)
             return expr.name
 
         elif isinstance(expr, TpyBinOp):
@@ -678,7 +678,7 @@ class ExpressionGenerator:
                 func_cpp_name = func_info.native_name or func_info.name
             elif expr.func in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func]
-                func_cpp_name = f"{module_to_cpp_namespace(source_module)}::{original_name}"
+                func_cpp_name = qualified_cpp_name(source_module, original_name)
 
             # For generic functions, always emit explicit type args to avoid C++ deduction issues
             # with tpy::param_val_or_ref_t<T> parameters
@@ -762,7 +762,7 @@ class ExpressionGenerator:
             # Qualify imported records (use original name for aliases)
             if expr.func in self.ctx.user_imported_records:
                 source_module, original_name = self.ctx.user_imported_records[expr.func]
-                return f"{module_to_cpp_namespace(source_module)}::{original_name}({args})"
+                return f"{qualified_cpp_name(source_module, original_name)}({args})"
             return f"{expr.func}({args})"
         args = ", ".join(self.gen_expr(a) for a in expr.args)
         return f"{expr.func}({args})"
@@ -777,18 +777,17 @@ class ExpressionGenerator:
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
 
-        # Handle user module function calls: module.func() -> tpy_user::module::func()
+        # Handle user module function calls: module.func() -> ::tpy_user::module::func()
         if expr.user_module_call is not None:
-            ns = module_to_cpp_namespace(expr.user_module_call)
             fi = expr.resolved_function_info
             if fi and (fi.is_native_import or fi.is_extern_c):
                 func_name = fi.native_name or fi.name
-                return f"{ns}::{func_name}({args})"
+                return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
                 type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
-                return f"{ns}::{expr.method}<{type_args_str}>({args})"
-            return f"{ns}::{expr.method}({args})"
+                return f"{qualified_cpp_name(expr.user_module_call, expr.method)}<{type_args_str}>({args})"
+            return f"{qualified_cpp_name(expr.user_module_call, expr.method)}({args})"
 
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:

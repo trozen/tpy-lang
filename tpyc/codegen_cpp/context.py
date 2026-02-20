@@ -55,11 +55,19 @@ def escape_cpp_char(value: str) -> str:
 # is truncating division (like Python //); user types should implement the
 # appropriate semantics in their __truediv__/__floordiv__ methods.
 def module_to_cpp_namespace(module_name: str) -> str:
-    """Convert a dotted module name to a fully-qualified C++ namespace.
+    """Convert a dotted module name to a C++ namespace (for declarations).
 
     Example: "mypackage.submod" -> "tpy_user::mypackage::submod"
     """
     return f"tpy_user::{module_name.replace('.', '::')}"
+
+
+def qualified_cpp_name(module_name: str, name: str) -> str:
+    """Build an absolute-qualified C++ name for cross-module references.
+
+    Example: ("shapes", "Circle") -> "::tpy_user::shapes::Circle"
+    """
+    return f"::{module_to_cpp_namespace(module_name)}::{name}"
 
 
 DUNDER_TO_BINARY_OP: dict[str, str] = {
@@ -203,6 +211,7 @@ class CodeGenContext:
     user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_type_aliases: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
     current_stmt_line: int = 0
 

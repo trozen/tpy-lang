@@ -29,6 +29,7 @@ class TypeParamKind(Enum):
 # (each CodeGenerator.generate() call clears and repopulates before use).
 # Would need to move into CodeGenContext if codegen ever runs concurrently.
 _native_cpp_names: dict[str, str] = {}
+_union_alias_names: dict[tuple['TpyType', ...], str] = {}
 
 
 def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
@@ -36,9 +37,15 @@ def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
     _native_cpp_names[py_name] = cpp_name
 
 
+def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> None:
+    """Register a union type -> alias name mapping for codegen."""
+    _union_alias_names[members] = alias_name
+
+
 def clear_native_cpp_names() -> None:
     """Clear all native C++ name mappings (called per-compilation)."""
     _native_cpp_names.clear()
+    _union_alias_names.clear()
 
 
 @dataclass(frozen=True)
@@ -776,6 +783,9 @@ class UnionType(TpyType):
     members: tuple[TpyType, ...]
 
     def to_cpp(self) -> str:
+        alias = _union_alias_names.get(self.members)
+        if alias is not None:
+            return alias
         cpp_members = [
             "std::monostate" if isinstance(m, (NoneType, VoidType)) else m.to_cpp()
             for m in self.members
@@ -1355,6 +1365,7 @@ class ModuleInfo:
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)  # protocol_name -> ProtocolInfo
+    type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
 
 
 class TypeRegistry:
@@ -1367,6 +1378,7 @@ class TypeRegistry:
         self.builtin_function_overloads: dict[str, list[FunctionInfo]] = {}  # Builtin function overloads
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
+        self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
         # Fundamental types not in module system (pointer wrappers)
         self._fundamental_types = {"Own"}
 
@@ -1412,6 +1424,14 @@ class TypeRegistry:
         """
         self.protocols[name or info.name] = info
 
+    def register_type_alias(self, name: str, typ: 'TpyType') -> None:
+        """Register a type alias (e.g., Shape = Circle | Rect)."""
+        self.type_aliases[name] = typ
+
+    def get_type_alias(self, name: str) -> 'TpyType | None':
+        """Get a type alias by name, or None if not found."""
+        return self.type_aliases.get(name)
+
     def register_module(self, info: ModuleInfo) -> None:
         """Register a module by name."""
         self.modules[info.name] = info
@@ -1450,7 +1470,7 @@ class TypeRegistry:
         """Check if a name refers to a known type."""
         if name in self._fundamental_types:
             return True
-        if name in self.records or name in self.protocols:
+        if name in self.records or name in self.protocols or name in self.type_aliases:
             return True
         # Check module system for registered types
         from tpyc.modules import get_builtins, get_tpy

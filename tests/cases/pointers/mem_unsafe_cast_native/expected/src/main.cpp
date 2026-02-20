@@ -31,7 +31,7 @@ void __tpy_init() {
   __name__ = "__main__";
   // 3: from tpy.unsafe import unsafe_cast
   // 4: from ntypes import ThingT, SectorT
-  tpy_user::ntypes::__tpy_init();
+  ::tpy_user::ntypes::__tpy_init();
   // 15: main()
   main();
 }

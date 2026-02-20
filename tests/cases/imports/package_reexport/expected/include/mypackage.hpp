@@ -9,7 +9,7 @@ namespace tpy_user::mypackage {
 extern std::string_view __name__;
 extern int32_t VERSION;
 
-using tpy_user::mypackage::utils::add;
+using ::tpy_user::mypackage::utils::add;
 
 void __tpy_init();
 } // namespace tpy_user::mypackage
