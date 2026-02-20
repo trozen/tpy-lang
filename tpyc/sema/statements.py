@@ -725,7 +725,7 @@ class StatementAnalyzer:
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
         target_type = self.expr.analyze_expr(stmt.target)
-        value_type = self.expr.analyze_expr(stmt.value)
+        value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         self._enforce_readonly_assignment_target(stmt.target)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
@@ -829,7 +829,7 @@ class StatementAnalyzer:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         from .operators import OperatorResolver
         target_type = self.expr.analyze_expr(stmt.target)
-        value_type = self.expr.analyze_expr(stmt.value)
+        value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         self._enforce_readonly_assignment_target(stmt.target)
         if (
             isinstance(stmt.target, TpyName)

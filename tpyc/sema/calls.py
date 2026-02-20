@@ -285,6 +285,18 @@ class CallAnalyzer:
                                     expr.resolved_function_info = _method_def_to_function_info(ctor)
                                 self._validate_lvalue_params(expr)
                                 return result_type
+                            # T not inferred from args; try assignment target hint
+                            if type_def.type_factory and self.ctx.expr_type_hint is not None:
+                                hint = self.ctx.expr_type_hint
+                                if isinstance(hint, OwnType):
+                                    hint = hint.wrapped
+                                hint = unwrap_readonly(hint)
+                                if hint.qualified_name() == lookup.qualified_name:
+                                    expr.call_type = hint
+                                    if ctor.cpp:
+                                        expr.resolved_function_info = _method_def_to_function_info(ctor)
+                                    self._validate_lvalue_params(expr)
+                                    return hint
 
                 # Show specific error when a non-literal type with element info
                 # can't match any constructor (e.g., Range passed to list())

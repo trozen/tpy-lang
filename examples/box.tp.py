@@ -5,15 +5,12 @@ from tpy.mem import UninitHeapStorage
 
 # TODO: implement all the feature to make it work
 
-# TODO: other protocols? for bool and copy?
 # TODO: for production should use a Ptr[T] inside, with an annotation @nevernone, so compiler can optimize Box|None to a single pointer
 class Box[T](Deref[T]):
     _storage: UninitHeapStorage[T]
 
     def __init__(self, value: Own[T]):
-        # TODO: by default construct with a single element?
-        # TODO: [T] should not be needed
-        self._storage = UninitHeapStorage[T](1)
+        self._storage = UninitHeapStorage(1)
         self._storage.init0(value)
 
     def __del__(self):
@@ -51,9 +48,6 @@ class Box[T](Deref[T]):
         return None
 
     # TODO: readonly deref?
-
-    # TODO: __bool__() method
-    # TODO: __copy__() method?
     # TODO: __str__() method?
     # TODO: __eq__() method?
 
@@ -80,15 +74,10 @@ print("s.get():", s.get())
 s.set("world")
 print("s.get():", s.get())
 
-# TODO: test with real class
 class LinkedListNode:
     value: Int32
     # TODO: optimize like in rust -> single pointer instead of std::optional<>
     next: Box[LinkedListNode] | None
-
-    # def __init__(self, value: Int32):
-    #     self.value = value
-    #     self.next = None
 
     # TODO: proper nocopy propagation in Box[T]
     # TODO: Own[T]|None not recognized as moveable
