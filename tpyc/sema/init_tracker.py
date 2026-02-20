@@ -16,9 +16,9 @@ if TYPE_CHECKING:
     from .context import SemanticContext
 
 # (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars,
-#  non_none_vars, non_none_exprs, non_null_ptr_vars, narrowed_types)
+#  non_none_exprs, non_null_ptr_vars, narrowed_types)
 FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str],
-                  frozenset[str], frozenset[ExprIdentity], frozenset[str],
+                  frozenset[ExprIdentity], frozenset[str],
                   frozenset[tuple[str, 'TpyType']]]
 
 
@@ -33,7 +33,6 @@ class InitTracker:
                 self.ctx.init_terminated,
                 frozenset(self.ctx.rvalue_vars),
                 frozenset(self.ctx.param_provenance_vars),
-                frozenset(self.ctx.non_none_vars),
                 frozenset(self.ctx.non_none_exprs),
                 frozenset(self.ctx.non_null_ptr_vars),
                 frozenset(self.ctx.narrowed_types.items()))
@@ -43,10 +42,9 @@ class InitTracker:
         self.ctx.init_terminated = state[1]
         self.ctx.rvalue_vars = set(state[2])
         self.ctx.param_provenance_vars = set(state[3])
-        self.ctx.non_none_vars = set(state[4])
-        self.ctx.non_none_exprs = set(state[5])
-        self.ctx.non_null_ptr_vars = set(state[6])
-        self.ctx.narrowed_types = dict(state[7])
+        self.ctx.non_none_exprs = set(state[4])
+        self.ctx.non_null_ptr_vars = set(state[5])
+        self.ctx.narrowed_types = dict(state[6])
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -77,35 +75,35 @@ class InitTracker:
     def apply_loop_entry_facts(
         self,
         before: FlowState,
-        condition_non_none: set[str] | None = None,
+        condition_type_facts: dict[str, TpyType] | None = None,
         condition_non_none_exprs: set[tuple[str, ...]] | None = None,
     ) -> None:
         """Apply conservative flow facts at loop body entry.
 
-        We treat loop bodies as potentially revisited. To avoid stale Optional
+        We treat loop bodies as potentially revisited. To avoid stale
         proofs across iterations:
         - expression-identity facts default to cleared unless re-proven by loop
           condition facts for this iteration entry.
-        - name-based Optional facts can be constrained to condition-proven names.
+        - type narrowing facts are constrained to condition-proven facts.
         """
         self.ctx.definitely_assigned = set(before[0])
         self.ctx.init_terminated = False
         self.ctx.rvalue_vars = set(before[2])
         self.ctx.param_provenance_vars = set(before[3])
-        if condition_non_none is None:
-            self.ctx.non_none_vars = set(before[4])
-        else:
-            self.ctx.non_none_vars = set(condition_non_none)
         if condition_non_none_exprs is None:
             self.ctx.non_none_exprs = set()
         else:
             self.ctx.non_none_exprs = set(condition_non_none_exprs)
-        self.ctx.non_null_ptr_vars = set(before[6])
-        self.ctx.narrowed_types = {}
+        self.ctx.non_null_ptr_vars = set(before[5])
+        if condition_type_facts is not None:
+            self.ctx.narrowed_types = dict(condition_type_facts)
+        else:
+            # Restore from saved state (preserves narrowing proven before the loop)
+            self.ctx.narrowed_types = dict(before[6])
 
     def merge_branches(self, then_state: FlowState, else_state: FlowState) -> None:
-        then_assigned, then_term, then_rvalue, then_prov, then_non_none, then_non_none_exprs, then_nn_ptr, then_narrowed = then_state
-        else_assigned, else_term, else_rvalue, else_prov, else_non_none, else_non_none_exprs, else_nn_ptr, else_narrowed = else_state
+        then_assigned, then_term, then_rvalue, then_prov, then_non_none_exprs, then_nn_ptr, then_narrowed = then_state
+        else_assigned, else_term, else_rvalue, else_prov, else_non_none_exprs, else_nn_ptr, else_narrowed = else_state
         if then_term and else_term:
             self.ctx.definitely_assigned = set(then_assigned | else_assigned)
             self.ctx.init_terminated = True
@@ -138,15 +136,6 @@ class InitTracker:
             self.ctx.param_provenance_vars = set(then_prov)
         else:
             self.ctx.param_provenance_vars = set(then_prov & else_prov)
-        # Non-None facts merge like definite assignment facts.
-        if then_term and else_term:
-            self.ctx.non_none_vars = set(then_non_none | else_non_none)
-        elif then_term:
-            self.ctx.non_none_vars = set(else_non_none)
-        elif else_term:
-            self.ctx.non_none_vars = set(then_non_none)
-        else:
-            self.ctx.non_none_vars = set(then_non_none & else_non_none)
         if then_term and else_term:
             self.ctx.non_none_exprs = set(then_non_none_exprs | else_non_none_exprs)
         elif then_term:
@@ -164,7 +153,7 @@ class InitTracker:
             self.ctx.non_null_ptr_vars = set(then_nn_ptr)
         else:
             self.ctx.non_null_ptr_vars = set(then_nn_ptr & else_nn_ptr)
-        # Union type narrowing merge: intersection when both branches live.
+        # Type narrowing merge: intersection when both branches live.
         then_narrowed_dict = dict(then_narrowed)
         else_narrowed_dict = dict(else_narrowed)
         if then_term and else_term:

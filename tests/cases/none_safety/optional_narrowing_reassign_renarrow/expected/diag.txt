@@ -1,0 +1,2 @@
+main.tp.py:11: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'a')
+main.tp.py:11: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'b')

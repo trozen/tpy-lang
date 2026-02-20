@@ -108,8 +108,8 @@ modeled as `Array` or a frozen list.
 Used in 12/56 files. For deduplication, membership testing, dependency tracking.
 
 ```python
-non_none_vars: set[str]
 definitely_assigned: set[str]
+hoisted_vars: set[str]
 ```
 
 Maps to `std::unordered_set<T>`. Needs: construction, `.add()`, `.discard()`,

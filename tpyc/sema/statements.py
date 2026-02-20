@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, PtrType, ConstPtrType, NoneType, OptionalType,
+    ListLiteralInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
     unwrap_readonly,
     INT32, VOID, BIGINT, is_protocol_type,
 )
@@ -188,18 +188,23 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
-            then_facts, else_facts = self.narrowing.condition_name_facts(stmt.condition)
             then_expr_facts, else_expr_facts = self.narrowing.condition_expr_facts(stmt.condition)
             then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
-            stmt.then_type_facts = then_type_facts
-            stmt.else_type_facts = else_type_facts
+            # Only union-origin facts go to codegen (Optional narrowing is implicit)
+            stmt.then_type_facts = {
+                name: ty for name, ty in then_type_facts.items()
+                if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
+            }
+            stmt.else_type_facts = {
+                name: ty for name, ty in else_type_facts.items()
+                if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
+            }
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
             # Save binding types for ReadonlyType merge after branches
             bindings_before = dict(self.ctx.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
-            self.ctx.non_none_vars.update(then_facts)
             self.ctx.non_none_exprs.update(then_expr_facts)
             self.ctx.narrowed_types.update(then_type_facts)
             for s in stmt.then_body:
@@ -210,7 +215,6 @@ class StatementAnalyzer:
             self.ctx.current_scope.bindings.update(bindings_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
-            self.ctx.non_none_vars.update(else_facts)
             self.ctx.non_none_exprs.update(else_expr_facts)
             self.ctx.narrowed_types.update(else_type_facts)
             for s in stmt.else_body:
@@ -250,7 +254,7 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyWhile):
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
-            then_facts, _ = self.narrowing.condition_name_facts(stmt.condition)
+            then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
             before = self.init.save()
             # Save namespace types -- loop_scope() restores scope bindings
@@ -259,7 +263,7 @@ class StatementAnalyzer:
             with self.scopes.loop_scope():
                 self.init.apply_loop_entry_facts(
                     before,
-                    condition_non_none=then_facts,
+                    condition_type_facts=then_type_facts,
                     condition_non_none_exprs=then_expr_facts,
                 )
                 for s in stmt.body:
@@ -327,9 +331,9 @@ class StatementAnalyzer:
                 self.expr.analyze_expr(stmt.message)
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
-            then_facts, _ = self.narrowing.condition_name_facts(stmt.condition)
+            then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             then_expr_facts, _ = self.narrowing.condition_expr_facts(stmt.condition)
-            self.ctx.non_none_vars.update(then_facts)
+            self.ctx.narrowed_types.update(then_type_facts)
             self.ctx.non_none_exprs.update(then_expr_facts)
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)

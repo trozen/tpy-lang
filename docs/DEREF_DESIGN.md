@@ -130,7 +130,7 @@ User-defined records with `__deref__()` now get `operator*()` generated in the C
 
 ### Stage 8: Provenance-based null-check elision — Done
 
-Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `param_provenance_vars` and `non_none_vars`). The set tracks pointer variables with known non-null provenance through the same save/restore/merge infrastructure used by definite assignment and Optional narrowing.
+Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `param_provenance_vars` and `narrowed_types`). The set tracks pointer variables with known non-null provenance through the same save/restore/merge infrastructure used by definite assignment and Optional narrowing.
 
 **Tracking**: When a variable is assigned from `Ptr(x)` or `ConstPtr(x)` (constructor with an argument), it's marked non-null. Assignment from another known non-null variable propagates the fact. Reassignment to unknown source (function return, null constructor, etc.) clears it. Branch merges use intersection (conservative).
 

@@ -114,8 +114,6 @@ class SemanticContext:
     # --- Definite-assignment tracking ---
     definitely_assigned: set[str] = field(default_factory=set)
     init_terminated: bool = False
-    # Variables proven non-None at current control-flow point.
-    non_none_vars: set[str] = field(default_factory=set)
     # Expression identities (e.g. x.field, x[i]) proven non-None.
     non_none_exprs: set[tuple[str, ...]] = field(default_factory=set)
     # Union type narrowing: var_name -> narrowed member type (from isinstance checks).
@@ -215,7 +213,6 @@ class SemanticContext:
         self.current_lvalue_reassigned.clear()
         self.definitely_assigned.clear()
         self.init_terminated = False
-        self.non_none_vars.clear()
         self.non_none_exprs.clear()
         self.narrowed_types.clear()
         self.literal_default_vars.clear()

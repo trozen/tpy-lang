@@ -1,8 +1,8 @@
 """
-TurboPython Optional Narrowing Tracker
+TurboPython Narrowing Tracker
 
-Centralizes None-safety flow analysis: condition facts, expression-identity
-narrowing, and fact invalidation on writes/calls.
+Centralizes type narrowing (Optional + Union), expression-identity narrowing,
+and fact invalidation on writes/calls.
 """
 
 from __future__ import annotations
@@ -32,9 +32,9 @@ ExprIdentity = tuple[str, ...]
 
 
 class NarrowingTracker:
-    """Centralized Optional narrowing and expression-identity flow analysis.
+    """Centralized type narrowing and expression-identity flow analysis.
 
-    Operates on ctx.non_none_vars and ctx.non_none_exprs without owning them.
+    Operates on ctx.narrowed_types and ctx.non_none_exprs without owning them.
     """
 
     def __init__(
@@ -56,14 +56,7 @@ class NarrowingTracker:
 
     def narrow_name_type(self, name: str, typ: TpyType) -> TpyType:
         """Narrow Optional/Union name type using flow facts."""
-        if name in self.ctx.narrowed_types:
-            return self.ctx.narrowed_types[name]
-        if isinstance(typ, OptionalType) and name in self.ctx.non_none_vars:
-            return typ.inner
-        # Handle ReadonlyType(OptionalType(T)) -> ReadonlyType(T)
-        if isinstance(typ, ReadonlyType) and isinstance(typ.wrapped, OptionalType) and name in self.ctx.non_none_vars:
-            return ReadonlyType(typ.wrapped.inner)
-        return typ
+        return self.ctx.narrowed_types.get(name, typ)
 
     def declared_type_for_name(self, name: str) -> TpyType | None:
         """Get a variable's declared type (without applying flow narrowing)."""
@@ -230,43 +223,12 @@ class NarrowingTracker:
             typ = typ.wrapped
         return isinstance(typ, OptionalType)
 
-    def _name_none_facts(self, expr: TpyExpr) -> tuple[set[str], set[str]]:
-        """Return (facts_if_true, facts_if_false) for Optional None-check conditions."""
-        if isinstance(expr, TpyName):
-            declared = self.declared_type_for_name(expr.name)
-            if self._is_optional_type(declared):
-                return {expr.name}, set()
-
-        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            true_facts, false_facts = self._name_none_facts(expr.operand)
-            return false_facts, true_facts
-
-        if isinstance(expr, TpyBinOp):
-            if expr.op in ("is", "is not"):
-                name: str | None = None
-                if isinstance(expr.left, TpyName) and isinstance(expr.right, TpyNoneLiteral):
-                    name = expr.left.name
-                elif isinstance(expr.right, TpyName) and isinstance(expr.left, TpyNoneLiteral):
-                    name = expr.right.name
-                if name is not None:
-                    declared = self.declared_type_for_name(name)
-                    if self._is_optional_type(declared):
-                        if expr.op == "is not":
-                            return {name}, set()
-                        return set(), {name}
-            if expr.op == "&&":
-                left_true, left_false = self._name_none_facts(expr.left)
-                right_true, right_false = self._name_none_facts(expr.right)
-                return left_true | right_true, left_false & right_false
-            if expr.op == "||":
-                left_true, left_false = self._name_none_facts(expr.left)
-                right_true, right_false = self._name_none_facts(expr.right)
-                return left_true & right_true, left_false | right_false
-        return set(), set()
-
-    def condition_name_facts(self, condition: TpyExpr) -> tuple[set[str], set[str]]:
-        """Get (true_facts, false_facts) for Optional name narrowing."""
-        return self._name_none_facts(condition)
+    @staticmethod
+    def _optional_inner_type(typ: TpyType) -> TpyType:
+        """Extract inner type from Optional, preserving ReadonlyType wrapper."""
+        if isinstance(typ, ReadonlyType):
+            return ReadonlyType(typ.wrapped.inner)
+        return typ.inner
 
     def _expr_none_facts(self, expr: TpyExpr) -> tuple[set[ExprIdentity], set[ExprIdentity]]:
         """Return (facts_if_true, facts_if_false) for Optional expression identities."""
@@ -310,12 +272,16 @@ class NarrowingTracker:
         """Get (true_facts, false_facts) for Optional expression-identity narrowing."""
         return self._expr_none_facts(condition)
 
-    # -- Union isinstance narrowing ------------------------------------
+    # -- Type narrowing (isinstance, is None, truthiness) ---------------
 
     def _isinstance_facts(
         self, expr: TpyExpr,
     ) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
-        """Extract (true_facts, false_facts) for isinstance-based union narrowing."""
+        """Extract (true_facts, false_facts) for type narrowing.
+
+        Handles isinstance checks (union), is/is not None (union + optional),
+        and truthiness (optional).
+        """
         if isinstance(expr, TpyCall) and expr.isinstance_var is not None and expr.isinstance_type is not None:
             name = expr.isinstance_var
             check_type = expr.isinstance_type
@@ -323,6 +289,8 @@ class NarrowingTracker:
             effective = self.ctx.narrowed_types.get(name)
             if effective is None:
                 effective = self.declared_type_for_name(name)
+            # NOTE: doesn't unwrap ReadonlyType -- readonly unions can't
+            # reach here today, but add unwrap_readonly if that changes.
             if isinstance(effective, UnionType):
                 remaining = [m for m in effective.members if m != check_type]
                 if remaining:
@@ -331,7 +299,7 @@ class NarrowingTracker:
                     false_type = check_type
                 return {name: check_type}, {name: false_type}
 
-        # is None / is not None on union types with NoneType member
+        # is None / is not None on union or optional types
         match = match_is_none(expr)
         if match is not None:
             name, is_not_none = match
@@ -344,6 +312,21 @@ class NarrowingTracker:
                     return {name: non_none_type}, {name: none_type}
                 else:
                     return {name: none_type}, {name: non_none_type}
+            if self._is_optional_type(effective):
+                inner_type = self._optional_inner_type(effective)
+                if is_not_none:
+                    return {name: inner_type}, {}
+                else:
+                    return {}, {name: inner_type}
+
+        # Truthiness on Optional: `if x:` narrows to inner type in true branch
+        if isinstance(expr, TpyName):
+            effective = self.ctx.narrowed_types.get(expr.name)
+            if effective is None:
+                effective = self.declared_type_for_name(expr.name)
+            if self._is_optional_type(effective):
+                inner_type = self._optional_inner_type(effective)
+                return {expr.name: inner_type}, {}
 
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
             true_facts, false_facts = self._isinstance_facts(expr.operand)
@@ -370,7 +353,7 @@ class NarrowingTracker:
     def condition_type_facts(
         self, condition: TpyExpr,
     ) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
-        """Get (true_facts, false_facts) for isinstance union type narrowing."""
+        """Get (true_facts, false_facts) for type narrowing (isinstance, is None, truthiness)."""
         return self._isinstance_facts(condition)
 
     # -- Truthiness warnings -------------------------------------------
@@ -419,21 +402,15 @@ class NarrowingTracker:
     ) -> None:
         """Update flow facts after assigning/writing a variable."""
         self.ctx.narrowed_types.pop(name, None)
-        # Unwrap ReadonlyType for Optional checks
+        # For Optional targets, re-narrow if RHS is provably non-None
         inner_target = unwrap_readonly(target_type)
         if not isinstance(inner_target, OptionalType):
-            self.ctx.non_none_vars.discard(name)
             return
-        if isinstance(rhs_type, NoneType) or isinstance(rhs_expr, TpyNoneLiteral):
-            self.ctx.non_none_vars.discard(name)
-            return
-        if isinstance(rhs_type, OptionalType):
-            self.ctx.non_none_vars.discard(name)
+        if isinstance(rhs_type, (NoneType, OptionalType)) or isinstance(rhs_expr, TpyNoneLiteral):
             return
         if rhs_type is None:
-            self.ctx.non_none_vars.discard(name)
             return
-        self.ctx.non_none_vars.add(name)
+        self.ctx.narrowed_types[name] = self._optional_inner_type(target_type)
 
     def _identity_root_name(self, expr: TpyExpr) -> str | None:
         if isinstance(expr, TpyName):

@@ -38,11 +38,12 @@ def area(s: Shape) -> float:
 | **Phase 7** | `A \| B \| None` with `std::monostate`, `is None`/`is not None` on unions | **Done** |
 | **Phase 8** | Type aliases (`Shape = Circle \| Rect`) | Not designed |
 | **Phase 9** | Equality `==`/`!=` on unions (if all members support it) | Not designed |
-| **Phase 10** | Unify `narrowed_types` with `non_none_vars` | Not designed |
+| **Phase 10** | Unify `narrowed_types` with `non_none_vars` | **Done** |
+| **Phase 11** | `assert isinstance(x, T)` codegen for unions | Not designed |
+| **Later** | While-loop condition narrows union types (codegen extraction) | Not designed |
 | **Later** | `isinstance(x, (A, B))` tuple form (narrow to subset of union) | Design only |
 | **Later** | Exhaustiveness checking (isinstance chains + match/case) | Design only |
 | **Later** | isinstance on non-name expressions (`x.field`, `x[i]`) | Not designed |
-| **Later** | While-loop isinstance narrowing | Not designed |
 | **Later** | Common-method dispatch (call shared method without narrowing) | Design only |
 | **Later** | Copy/nocopy enforcement for unions with `@nocopy` members | Not designed |
 | **Later** | Generic unions (`Union[T, U]` in generic context) | Not designed |
@@ -288,24 +289,24 @@ This is the core change that makes union narrowing (and future narrowing
 extensions) possible. It generalizes the current Optional-only narrowing
 system.
 
-### Current state
+### Current state (after Phase 10 unification)
 
-File: `tpyc/sema/context.py` (lines 117-120)
+File: `tpyc/sema/context.py`
 
 ```python
-non_none_vars: set[str]       # variables proven non-None
-non_none_exprs: set[tuple]    # expression identities proven non-None
+narrowed_types: dict[str, TpyType]  # variable -> current narrowed type (Optional + Union)
+non_none_exprs: set[tuple]          # expression identities proven non-None
 ```
 
-File: `tpyc/sema/narrowing.py` (lines 230-262)
+File: `tpyc/sema/narrowing.py`
 
-`_name_none_facts()` returns `(true_facts: set[str], false_facts: set[str])`
--- just name sets, boolean "is proven non-None".
+`condition_type_facts()` returns `(true_facts: dict[str, TpyType], false_facts: dict[str, TpyType])`
+-- maps variable names to their narrowed types.
 
-File: `tpyc/sema/init_tracker.py` (lines 17-20)
+File: `tpyc/sema/init_tracker.py`
 
 `FlowState` is a 7-tuple carrying all flow-sensitive state including
-`non_none_vars` and `non_none_exprs`.
+`narrowed_types` and `non_none_exprs`.
 
 ### New design: `narrowed_types`
 
@@ -319,20 +320,19 @@ When `isinstance(x, T)` is True, `narrowed_types["x"] = T`. When the
 analyzer queries the type of `x`, it checks `narrowed_types` first -- if
 present, returns the narrowed type instead of the declared type.
 
-### Relationship to non_none_vars
+### Relationship to Optional narrowing
 
 Optional narrowing is a special case of type narrowing:
-- `x is not None` where `x: Optional[T]` means `narrowed_types["x"] = T`
-- This subsumes `non_none_vars`
+- `x is not None` where `x: Optional[T]` sets `narrowed_types["x"] = T`
+- `if x:` (truthiness) on Optional sets `narrowed_types["x"] = T`
+- Reassignment to a non-None value re-narrows: `narrowed_types["x"] = T`
 
-**Migration strategy**: keep `non_none_vars` initially for backward
-compatibility. Add `narrowed_types` for union isinstance narrowing. Later,
-migrate Optional narrowing to use `narrowed_types` too and remove
-`non_none_vars`.
+The old `non_none_vars: set[str]` was removed in Phase 10; all narrowing
+(Optional and Union) now flows through `narrowed_types`.
 
-### FlowState extension
+### FlowState
 
-Add `narrowed_types` as an 8th element to the FlowState tuple:
+`narrowed_types` is the 7th element of the FlowState tuple:
 
 ```python
 FlowState = tuple[
@@ -340,7 +340,6 @@ FlowState = tuple[
     bool,                              # init_terminated
     frozenset[str],                    # rvalue_vars
     frozenset[str],                    # param_provenance_vars
-    frozenset[str],                    # non_none_vars
     frozenset[ExprIdentity],           # non_none_exprs
     frozenset[str],                    # non_null_ptr_vars
     frozenset[tuple[str, TpyType]],    # narrowed_types (as frozenset of pairs)
@@ -352,7 +351,7 @@ FlowState = tuple[
 In `merge_branches()`:
 
 ```
-narrowed_types merge rules (same pattern as non_none_vars):
+narrowed_types merge rules:
     - Both branches reach merge: intersection (keep only common narrowings)
     - One branch terminates (return/raise): take the other's narrowings
     - Both terminate: union of narrowings
@@ -367,15 +366,15 @@ narrows to `Circle`, other to `Rect`), drop the narrowing for that variable.
 When a variable is reassigned, remove it from `narrowed_types`:
 
 ```python
-def update_after_write(self, name: str) -> None:
+def update_after_write(self, name, target_type, rhs_type=None, rhs_expr=None):
     self.ctx.narrowed_types.pop(name, None)
-    # ... existing non_none_vars invalidation ...
+    # For Optional targets, re-narrow if RHS is provably non-None
 ```
 
 ### Condition facts for isinstance
 
-Extend `condition_name_facts()` (or add a parallel function) to return
-type-aware facts for isinstance conditions:
+`condition_type_facts()` returns type-aware facts for isinstance and
+Optional narrowing conditions:
 
 ```python
 def condition_type_facts(self, condition: TpyExpr
@@ -555,9 +554,9 @@ to that member directly (not a single-member union).
 
 `isinstance(x, T)` where `x: T | None` narrows `x` to `T`, equivalent to
 `x is not None`. This provides isinstance as an alternative narrowing syntax
-for Optional types. Implementation: when the declared type is `OptionalType`
-(not `UnionType`), isinstance narrowing uses the existing non_none_vars
-mechanism.
+for Optional types. Implementation: `_isinstance_facts()` handles
+`OptionalType` the same way as `UnionType` -- both set
+`narrowed_types["x"] = T`.
 
 ---
 
@@ -693,13 +692,13 @@ last branch is not a plain `else:`.
 - **No `isinstance(x, (A, B))` tuple form**: narrowing to a subset of union
   members via tuple syntax is future work.
 
-- **No while-loop isinstance narrowing**: isinstance narrowing is only applied
-  in if/elif/else chains, not in while-loop conditions.
+- **`assert isinstance(x, T)` on unions**: sema narrows correctly after assert,
+  but codegen doesn't emit `std::get<T>()` extraction. Needs `then_type_facts`
+  on `TpyAssert` nodes and extraction logic in the assert codegen path.
 
-- **`narrowed_types` subsumes `non_none_vars` conceptually**: Optional
-  narrowing (`x is not None`) could be unified with union narrowing via
-  `narrowed_types`. This is a future simplification -- currently both
-  systems coexist independently.
+- **While-loop union narrowing codegen**: condition-proven type facts are now
+  preserved in loops (via `condition_type_facts`), but codegen doesn't emit
+  `std::get<T>()` extraction for loop-body union narrowing.
 
 ---
 
