@@ -23,6 +23,11 @@ struct Impl;
 extern std::string_view __name__;
 extern Impl* obj;
 
+template<Child T_x>
+int32_t read_via_child(T_x& x);
+template<Child T>
+int32_t read_via_bound(const T& x);
+
 // 19: class Impl:
 struct Impl {
   // 20:     value: Int32

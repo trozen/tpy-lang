@@ -9,6 +9,9 @@ struct Box;
 
 extern std::string_view __name__;
 
+void observe(Box& b);
+int32_t use(Box& b);
+
 // 4: class Box:
 struct Box {
   // 5:     value: Int32 | None
@@ -25,9 +28,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
      << ")";
   return os;
 }
-
-void observe(Box& b);
-int32_t use(Box& b);
 
 void __tpy_init();
 } // namespace tpy_user::main

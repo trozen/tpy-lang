@@ -63,6 +63,8 @@ concept BarUser = requires(T& t) {
 
 extern std::string_view __name__;
 
+void main();
+
 // # Record with the bound protocol as a type parameter bound
 // 21: class Bar[T: FooMaker]:
 template<FooMaker T>
@@ -88,8 +90,6 @@ inline std::ostream& operator<<(std::ostream& os, const Bar<T>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

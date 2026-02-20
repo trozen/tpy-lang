@@ -15,6 +15,10 @@ struct Value;
 
 extern std::string_view __name__;
 
+template<Duplicable T_d>
+void double_it(T_d& d);
+void main();
+
 // 8: class Value:
 struct Value {
   // 9:     x: Int32
@@ -44,7 +48,6 @@ void double_it(T_d& d) {
   // 18:     result = d.duplicate()
   auto result = d.duplicate();
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

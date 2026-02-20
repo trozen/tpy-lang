@@ -11,6 +11,9 @@ struct GrandChild;
 
 extern std::string_view __name__;
 
+template<tpy::OptIterator<int32_t> T_it>
+int32_t sum_iter(T_it& it);
+
 // 3: class Counter:
 struct Counter {
   // 4:     current: Int32

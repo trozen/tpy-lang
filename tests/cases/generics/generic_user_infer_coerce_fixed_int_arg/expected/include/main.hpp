@@ -8,6 +8,9 @@ namespace tpy_user::main {
 extern std::string_view __name__;
 extern int32_t value;
 
+template<typename T>
+tpy::return_val_or_ref_t<T> echo_with_delta(tpy::param_val_or_ref_t<T> x, int64_t delta);
+
 // 5: def echo_with_delta[T](x: T, delta: Int64) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> echo_with_delta(tpy::param_val_or_ref_t<T> x, int64_t delta) {

@@ -11,6 +11,9 @@ struct Triangle;
 
 extern std::string_view __name__;
 
+double area(std::variant<Circle, Rect, Triangle>& s);
+void main();
+
 // # isinstance elif chain with three-member union
 // 2: class Circle:
 struct Circle {
@@ -70,9 +73,6 @@ inline std::ostream& operator<<(std::ostream& os, const Triangle& obj) {
      << ")";
   return os;
 }
-
-double area(std::variant<Circle, Rect, Triangle>& s);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -11,6 +11,11 @@ extern std::string_view __name__;
 extern Pair<int32_t, std::string_view>* p1;
 extern Pair<std::string_view, int32_t>* p2;
 
+template<typename A, typename B>
+Pair<B, A> swap_pair(Pair<A, B>& p);
+template<typename A, typename B>
+Pair<A, B> create_pair(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b);
+
 // 5: class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {

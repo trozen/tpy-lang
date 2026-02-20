@@ -12,6 +12,5 @@ extern int32_t c;
 extern int16_t d;
 extern int8_t e;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

@@ -9,6 +9,5 @@ extern std::string_view __name__;
 extern int32_t x;
 extern uint8_t y;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

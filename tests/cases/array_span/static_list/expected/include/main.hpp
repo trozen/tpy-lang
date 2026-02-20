@@ -12,6 +12,9 @@ extern StaticList<Item, 16>* items;
 extern StaticList<int32_t, 8>* nums;
 extern StaticList<int32_t, 8>* filled;
 
+void process_list(StaticList<Item, 16>& items);
+void print_list(StaticList<Item, 16>& items);
+
 // 3: class Item:
 struct Item {
   // 4:     value: Int32
@@ -28,9 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
      << ")";
   return os;
 }
-
-void process_list(StaticList<Item, 16>& items);
-void print_list(StaticList<Item, 16>& items);
 
 void __tpy_init();
 } // namespace tpy_user::main

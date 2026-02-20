@@ -8,6 +8,5 @@ namespace tpy_user::main {
 extern std::string_view __name__;
 extern std::optional<int32_t> x;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

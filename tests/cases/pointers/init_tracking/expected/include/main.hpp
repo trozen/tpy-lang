@@ -9,6 +9,17 @@ struct Point;
 
 extern std::string_view __name__;
 
+void direct_assign();
+void param_use(Point& p);
+void value_init();
+void assign_before_if(bool cond);
+void then_returns(bool cond);
+int32_t both_return(bool cond);
+void both_branches_assign(bool cond);
+void else_returns(bool cond);
+void decl_then_assign();
+void loop_shadow_outer();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -29,17 +40,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-void direct_assign();
-void param_use(Point& p);
-void value_init();
-void assign_before_if(bool cond);
-void then_returns(bool cond);
-int32_t both_return(bool cond);
-void both_branches_assign(bool cond);
-void else_returns(bool cond);
-void decl_then_assign();
-void loop_shadow_outer();
 
 void __tpy_init();
 } // namespace tpy_user::main

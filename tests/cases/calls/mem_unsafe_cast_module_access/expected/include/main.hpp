@@ -10,6 +10,5 @@ extern std::array<int32_t, 2>* arr;
 extern int32_t* p;
 extern uint32_t* q;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

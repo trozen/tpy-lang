@@ -13,6 +13,5 @@ extern int32_t* p0;
 extern int64_t diff;
 extern int64_t diff2;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

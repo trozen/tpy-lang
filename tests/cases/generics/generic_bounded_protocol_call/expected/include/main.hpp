@@ -35,6 +35,24 @@ struct Box;
 
 extern std::string_view __name__;
 
+template<tpy::Sized T>
+int32_t get_length(tpy::param_val_or_ref_t<T> item);
+template<Stringable T>
+std::string_view stringify(tpy::param_val_or_ref_t<T> item);
+template<tpy::Sized T, Stringable U>
+int32_t process_both(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b);
+template<MultiMethod T>
+void use_multi(tpy::param_val_or_ref_t<T> item);
+template<tpy::Sized T>
+int32_t inner_len(tpy::param_val_or_ref_t<T> x);
+template<tpy::Sized T>
+int32_t outer_len(tpy::param_val_or_ref_t<T> x);
+template<Clonable T>
+T clone_it(tpy::param_val_or_ref_t<T> item);
+template<tpy::Comparable T>
+bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+void main();
+
 // # Test 4: Generic class with bounded type parameter
 // 19: class Printer[T: Stringable]:
 template<Stringable T>
@@ -230,7 +248,6 @@ bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
   // 67:     return a < b  # Uses __lt__ which takes Self parameter
   return (a < b);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

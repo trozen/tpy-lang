@@ -13,6 +13,5 @@ concept Printable = requires(T& t) {
 
 extern std::string_view __name__;
 
-
 void __tpy_init();
 } // namespace tpy_user::traits

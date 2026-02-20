@@ -10,6 +10,8 @@ struct Container;
 
 extern std::string_view __name__;
 
+void main();
+
 // 5: class Point:
 struct Point {
   // 6:     x: Int32
@@ -55,8 +57,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

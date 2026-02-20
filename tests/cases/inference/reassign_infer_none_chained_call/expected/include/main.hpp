@@ -11,6 +11,8 @@ struct Factory;
 extern std::string_view __name__;
 extern Product* x;
 
+Factory get_factory();
+
 // 4: class Product:
 struct Product {
   // 5:     value: Int32
@@ -45,8 +47,6 @@ inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
      << ")";
   return os;
 }
-
-Factory get_factory();
 
 void __tpy_init();
 } // namespace tpy_user::main

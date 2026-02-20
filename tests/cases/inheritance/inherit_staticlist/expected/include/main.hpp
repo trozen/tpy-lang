@@ -9,6 +9,8 @@ struct IntStack;
 
 extern std::string_view __name__;
 
+int32_t main();
+
 // 4: class IntStack(StaticList[Int32, 100]):
 struct IntStack : StaticList<int32_t, 100> {
   // 5:     name: str
@@ -31,8 +33,6 @@ inline std::ostream& operator<<(std::ostream& os, const IntStack& obj) {
      << ")";
   return os;
 }
-
-int32_t main();
 
 void __tpy_init();
 } // namespace tpy_user::main

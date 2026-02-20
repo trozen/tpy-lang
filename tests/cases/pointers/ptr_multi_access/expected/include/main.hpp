@@ -9,6 +9,10 @@ struct Point;
 
 extern std::string_view __name__;
 
+void use_fields(Point* p);
+void use_methods(Point* p);
+void test();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -35,10 +39,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-void use_fields(Point* p);
-void use_methods(Point* p);
-void test();
 
 void __tpy_init();
 } // namespace tpy_user::main

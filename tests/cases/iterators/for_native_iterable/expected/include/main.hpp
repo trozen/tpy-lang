@@ -7,6 +7,18 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+template<tpy::NativeIterable<int32_t> T_items>
+int32_t sum_iter(T_items& items);
+template<tpy::NativeIterable<int32_t> T_items>
+void print_all(T_items& items);
+template<tpy::NativeIterable<int32_t> T_items>
+int32_t process_and_sum(T_items& items);
+template<tpy::NativeIterable<int32_t> T_outer, tpy::NativeIterable<int32_t> T_inner>
+int32_t nested_iteration(T_outer& outer, T_inner& inner);
+template<tpy::NativeIterable<int32_t> T_items>
+bool contains_value(T_items& items, int32_t target);
+void main();
+
 // 3: def sum_iter(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
 int32_t sum_iter(T_items& items) {
@@ -62,7 +74,6 @@ bool contains_value(T_items& items, int32_t target) {
   // 28:     return target in items
   return (std::find(items.begin(), items.end(), target) != items.end());
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

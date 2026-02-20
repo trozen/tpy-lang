@@ -9,6 +9,10 @@ struct Handle;
 
 extern std::string_view __name__;
 
+int32_t close(Handle h);
+int32_t forward(Handle h);
+void main();
+
 // @nocopy
 // 6: class Handle:
 struct Handle {
@@ -28,10 +32,6 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
      << ")";
   return os;
 }
-
-int32_t close(Handle h);
-int32_t forward(Handle h);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

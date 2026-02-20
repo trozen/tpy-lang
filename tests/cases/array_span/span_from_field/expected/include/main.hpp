@@ -9,6 +9,8 @@ struct Box;
 
 extern std::string_view __name__;
 
+void main();
+
 // 3: class Box:
 struct Box {
   // 4:     items: Array[Int32, 3]
@@ -25,8 +27,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

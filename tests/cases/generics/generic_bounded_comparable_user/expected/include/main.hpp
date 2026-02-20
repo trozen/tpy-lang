@@ -9,6 +9,12 @@ struct MyInt;
 
 extern std::string_view __name__;
 
+template<tpy::Comparable T>
+bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+template<tpy::Comparable T>
+tpy::return_val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+void main();
+
 // 6: class MyInt:
 struct MyInt {
   // 7:     value: Int32
@@ -63,7 +69,6 @@ tpy::return_val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_va
   // 26:     return b
   return b;
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

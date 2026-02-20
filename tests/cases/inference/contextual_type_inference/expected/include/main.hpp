@@ -10,6 +10,13 @@ template<typename A, typename B> struct Pair;
 
 extern std::string_view __name__;
 
+template<typename T>
+Container<T> make_box();
+template<typename T>
+tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
+Container<int32_t> get_box();
+void main();
+
 // 4: class Container[T]:
 template<typename T>
 struct Container {
@@ -62,8 +69,6 @@ tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
   // 18:     return x
   return x;
 }
-Container<int32_t> get_box();
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

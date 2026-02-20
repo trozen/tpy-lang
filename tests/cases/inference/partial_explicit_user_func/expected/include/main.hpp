@@ -10,6 +10,10 @@ template<typename A, typename B> struct Wrapper;
 
 extern std::string_view __name__;
 
+template<typename A, typename B>
+Wrapper<A, B> wrap_with_tag(A&& inner, B&& tag);
+void main();
+
 // 4: class Box[T]:
 template<typename T>
 struct Box {
@@ -58,7 +62,6 @@ Wrapper<A, B> wrap_with_tag(A&& inner, B&& tag) {
   // 17:     return Wrapper[A, B](inner, tag)
   return Wrapper<A, B>(std::forward<A>(inner), std::forward<B>(tag));
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

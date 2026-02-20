@@ -11,6 +11,8 @@ struct Picker;
 extern std::string_view __name__;
 extern Point* p;
 
+void foo(bool cond);
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -65,8 +67,6 @@ inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
      << ")";
   return os;
 }
-
-void foo(bool cond);
 
 void __tpy_init();
 } // namespace tpy_user::main

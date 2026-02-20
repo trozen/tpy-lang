@@ -14,6 +14,9 @@ extern int32_t z;
 extern double f;
 extern std::optional<bool> flag;
 
+Point make_point();
+bool get_flag();
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -30,9 +33,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-Point make_point();
-bool get_flag();
 
 void __tpy_init();
 } // namespace tpy_user::main

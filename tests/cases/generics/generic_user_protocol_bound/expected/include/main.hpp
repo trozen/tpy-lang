@@ -17,6 +17,14 @@ struct StrBox;
 
 extern std::string_view __name__;
 
+template<Container<int32_t> C>
+int32_t extract(tpy::param_val_or_ref_t<C> c);
+template<Container<int32_t> C>
+void update(tpy::param_val_or_ref_t<C> c, int32_t v);
+template<Container<std::string_view> C>
+std::string_view extract_str(tpy::param_val_or_ref_t<C> c);
+void main();
+
 // 15: class IntBox:
 struct IntBox {
   // 16:     value: Int32
@@ -93,7 +101,6 @@ std::string_view extract_str(tpy::param_val_or_ref_t<C> c) {
   // 50:     return c.get()
   return c.get();
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -10,6 +10,9 @@ struct Point;
 extern std::string_view __name__;
 extern Point* ORIGIN;
 
+Point& get_origin();
+void main();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -28,9 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-Point& get_origin();
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

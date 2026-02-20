@@ -9,6 +9,12 @@ struct IntWrapper;
 
 extern std::string_view __name__;
 
+template<tpy::Sequence<int32_t> T_s>
+int32_t sum_seq(T_s& s);
+template<tpy::Sequence<int32_t> T_s>
+int32_t first(T_s& s);
+void main();
+
 // 4: class IntWrapper:
 struct IntWrapper {
   // 5:     data: list[Int32]
@@ -65,7 +71,6 @@ int32_t first(T_s& s) {
   // 25:     return s[0]
   return tpy::__getitem__(s, 0);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

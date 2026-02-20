@@ -9,6 +9,10 @@ struct MyContainer;
 
 extern std::string_view __name__;
 
+template<tpy::Sized T_items>
+int32_t count(T_items& items);
+void main();
+
 // 4: class MyContainer:
 struct MyContainer {
   // 5:     size: Int32
@@ -38,7 +42,6 @@ int32_t count(T_items& items) {
   // 14:     return len(items)
   return tpy::__len__(items);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

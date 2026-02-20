@@ -11,6 +11,5 @@ extern std::vector<int32_t>* nums;
 extern std::vector<int32_t>* empty;
 extern std::vector<int32_t>* neg;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

@@ -9,6 +9,14 @@ struct Point;
 
 extern std::string_view __name__;
 
+template<typename T>
+tpy::return_val_or_ref_t<T> first_val(std::vector<T> items);
+template<typename T>
+void consume_list(std::vector<T> items);
+template<typename T>
+void consume_both(T&& a, T&& b);
+void main();
+
 // 5: class Point:
 struct Point {
   // 6:     x: Int32
@@ -44,7 +52,6 @@ template<typename T>
 void consume_both(T&& a, T&& b) {
   // 19:     pass
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

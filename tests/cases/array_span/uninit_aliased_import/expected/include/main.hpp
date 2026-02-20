@@ -9,6 +9,5 @@ extern std::string_view __name__;
 extern UninitArrayStorage<int32_t, 2>* a;
 extern UninitHeapStorage<int32_t>* h;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

@@ -18,6 +18,11 @@ extern int32_t first_num;
 extern int32_t second_num;
 extern int32_t result;
 
+template<typename T>
+tpy::return_val_or_ref_t<T> First(std::vector<T>& items);
+template<typename T>
+tpy::return_val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx);
+
 // # Generic function with record type
 // 9: class Point:
 struct Point {

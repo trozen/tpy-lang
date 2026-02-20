@@ -9,6 +9,9 @@ struct Point;
 
 extern std::string_view __name__;
 
+Point make_point(int32_t x, int32_t y);
+void main();
+
 // 5: class Point:
 struct Point {
   // 6:     x: Int32
@@ -27,9 +30,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-Point make_point(int32_t x, int32_t y);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

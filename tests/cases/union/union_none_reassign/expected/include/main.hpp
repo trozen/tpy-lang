@@ -9,6 +9,10 @@ struct Dog;
 
 extern std::string_view __name__;
 
+std::string_view test_reassign_to_none();
+std::string_view test_init_none_then_assign();
+void main();
+
 // 4: class Dog:
 struct Dog {
   // 5:     name: str
@@ -25,10 +29,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
      << ")";
   return os;
 }
-
-std::string_view test_reassign_to_none();
-std::string_view test_init_none_then_assign();
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

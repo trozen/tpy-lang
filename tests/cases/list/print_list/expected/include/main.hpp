@@ -9,6 +9,5 @@ extern std::string_view __name__;
 extern std::vector<int32_t>* nums;
 extern std::vector<std::vector<int32_t>>* nested;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

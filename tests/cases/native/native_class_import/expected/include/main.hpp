@@ -11,6 +11,7 @@ namespace tpy_user::main {
 extern std::string_view __name__;
 
 void main();
+
 extern "C" int32_t rect_area(Rect* r);
 
 void __tpy_init();

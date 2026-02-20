@@ -17,6 +17,10 @@ struct DefaultFactory;
 
 extern std::string_view __name__;
 
+template<PointFactory T>
+Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y);
+void main();
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -62,7 +66,6 @@ Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {
   // 20:     return factory.create_point(x, y)
   return factory.create_point(x, y);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

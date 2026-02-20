@@ -10,6 +10,13 @@ struct B;
 
 extern std::string_view __name__;
 
+tpy::BigInt test_and_rhs(std::variant<A, B>& v);
+tpy::BigInt test_and_true(std::variant<A, B>& v);
+bool test_or_rhs(std::variant<A, B>& v);
+tpy::BigInt test_negation(std::variant<A, B>& v);
+tpy::BigInt test_multi_var(std::variant<A, B>& a, std::variant<A, B>& b);
+void main();
+
 // # isinstance in compound conditions: and/or, negation, multi-variable
 // 2: class A:
 struct A {
@@ -44,13 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
      << ")";
   return os;
 }
-
-tpy::BigInt test_and_rhs(std::variant<A, B>& v);
-tpy::BigInt test_and_true(std::variant<A, B>& v);
-bool test_or_rhs(std::variant<A, B>& v);
-tpy::BigInt test_negation(std::variant<A, B>& v);
-tpy::BigInt test_multi_var(std::variant<A, B>& a, std::variant<A, B>& b);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

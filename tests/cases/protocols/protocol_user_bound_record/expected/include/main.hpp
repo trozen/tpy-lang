@@ -49,6 +49,10 @@ struct DefaultFactory;
 
 extern std::string_view __name__;
 
+template<ContainerFactory F>
+Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text);
+void main();
+
 // # Record with user-defined protocol bound
 // 19: class Container[T: Printable]:
 template<Printable T>
@@ -101,7 +105,6 @@ Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::str
   // 39:     return factory.make(text)
   return factory.make(text);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

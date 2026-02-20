@@ -10,6 +10,9 @@ struct Rect;
 
 extern std::string_view __name__;
 
+double area(std::variant<Circle, Rect>& s);
+void main();
+
 // # isinstance narrowing on two-member union with field access
 // 2: class Circle:
 struct Circle {
@@ -48,9 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
      << ")";
   return os;
 }
-
-double area(std::variant<Circle, Rect>& s);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

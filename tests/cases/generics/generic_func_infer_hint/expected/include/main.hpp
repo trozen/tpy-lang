@@ -11,6 +11,9 @@ extern int32_t result;
 extern std::vector<tpy::BigInt>* nums;
 extern tpy::BigInt result2;
 
+template<typename T>
+tpy::return_val_or_ref_t<T> first(std::vector<T>& items);
+
 // 5: def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {

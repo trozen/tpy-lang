@@ -10,6 +10,10 @@ struct Cat;
 
 extern std::string_view __name__;
 
+void greet_dog(Dog& d);
+void greet_cat(Cat& c);
+void main();
+
 // # Pass narrowed union var to function expecting the member type
 // 2: class Dog:
 struct Dog {
@@ -44,10 +48,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
      << ")";
   return os;
 }
-
-void greet_dog(Dog& d);
-void greet_cat(Cat& c);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

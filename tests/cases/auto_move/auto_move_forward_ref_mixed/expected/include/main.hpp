@@ -9,6 +9,10 @@ struct Box;
 
 extern std::string_view __name__;
 
+template<typename T>
+void mixed(T&& x, tpy::param_val_or_ref_t<T> y);
+void main();
+
 // 5: class Box:
 struct Box {
   // 6:     value: Int32
@@ -29,7 +33,6 @@ template<typename T>
 void mixed(T&& x, tpy::param_val_or_ref_t<T> y) {
   // 10:     pass
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

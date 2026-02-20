@@ -13,6 +13,9 @@ struct OptHolder;
 
 extern std::string_view __name__;
 
+Point* find_point(std::vector<Point>& pts, int32_t x);
+void main();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -140,9 +143,6 @@ inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
      << ")";
   return os;
 }
-
-Point* find_point(std::vector<Point>& pts, int32_t x);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

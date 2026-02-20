@@ -59,6 +59,5 @@ inline std::ostream& operator<<(std::ostream& os, const LabeledContainer& obj) {
   return os;
 }
 
-
 void __tpy_init();
 } // namespace tpy_user::main

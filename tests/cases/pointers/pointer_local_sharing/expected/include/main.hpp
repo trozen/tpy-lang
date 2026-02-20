@@ -12,6 +12,21 @@ extern std::string_view __name__;
 extern Point* g;
 extern Point* pt;
 
+void test_local_sharing();
+void test_copy_independence();
+void test_init_from_param(Point& p);
+void test_init_from_element();
+void test_foreach_mutation();
+void test_rebinding();
+void test_rvalue_append();
+void test_build_with_copy();
+void test_init_from_global();
+void test_rebind_to_global();
+void test_list_sharing();
+void test_pointer_chain();
+void test_method_on_pointer_local();
+void test_foreach_value_from_pointer_local();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -56,21 +71,6 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
      << ")";
   return os;
 }
-
-void test_local_sharing();
-void test_copy_independence();
-void test_init_from_param(Point& p);
-void test_init_from_element();
-void test_foreach_mutation();
-void test_rebinding();
-void test_rvalue_append();
-void test_build_with_copy();
-void test_init_from_global();
-void test_rebind_to_global();
-void test_list_sharing();
-void test_pointer_chain();
-void test_method_on_pointer_local();
-void test_foreach_value_from_pointer_local();
 
 void __tpy_init();
 } // namespace tpy_user::main

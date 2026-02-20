@@ -10,6 +10,9 @@ struct Point;
 extern std::string_view __name__;
 extern std::vector<Point>* points;
 
+int32_t use_without_check(Point* p);
+Point* find(std::vector<Point>& pts, int32_t target);
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -36,9 +39,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-int32_t use_without_check(Point* p);
-Point* find(std::vector<Point>& pts, int32_t target);
 
 void __tpy_init();
 } // namespace tpy_user::main

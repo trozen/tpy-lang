@@ -10,6 +10,5 @@ extern int32_t* p;
 extern int32_t x;
 extern const int32_t* cp;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

@@ -12,6 +12,8 @@ extern std::string_view __name__;
 extern Outer* o1;
 extern Outer* o2;
 
+int32_t read(Outer& o);
+
 // 4: class Inner:
 struct Inner {
   // 5:     value: Int32 | None
@@ -45,8 +47,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
      << ")";
   return os;
 }
-
-int32_t read(Outer& o);
 
 void __tpy_init();
 } // namespace tpy_user::main

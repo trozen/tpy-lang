@@ -9,6 +9,10 @@ struct Point;
 
 extern std::string_view __name__;
 
+int32_t observe(const Point& p);
+int32_t call_readonly_method(const Point& p);
+void main();
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -36,10 +40,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-int32_t observe(const Point& p);
-int32_t call_readonly_method(const Point& p);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

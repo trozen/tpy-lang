@@ -11,6 +11,5 @@ extern int64_t b;
 extern tpy::BigInt c;
 extern std::vector<int64_t>* items;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

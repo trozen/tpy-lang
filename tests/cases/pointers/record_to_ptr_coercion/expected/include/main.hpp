@@ -9,6 +9,10 @@ struct Point;
 
 extern std::string_view __name__;
 
+void modify_point(Point* p);
+int32_t read_point(const Point* p);
+void test_coercion();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -29,10 +33,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-void modify_point(Point* p);
-int32_t read_point(const Point* p);
-void test_coercion();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -9,6 +9,7 @@ namespace tpy_user::main {
 extern std::string_view __name__;
 
 void main();
+
 extern "C" int32_t rect_area(c_rect* r);
 
 void __tpy_init();

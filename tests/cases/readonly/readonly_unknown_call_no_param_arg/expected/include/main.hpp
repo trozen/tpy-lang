@@ -9,6 +9,9 @@ struct Box;
 
 extern std::string_view __name__;
 
+void mutate(Box& b);
+int32_t ok(Box& b);
+
 // 6: class Box:
 struct Box {
   // 7:     value: Int32
@@ -25,9 +28,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
      << ")";
   return os;
 }
-
-void mutate(Box& b);
-int32_t ok(Box& b);
 
 void __tpy_init();
 } // namespace tpy_user::main

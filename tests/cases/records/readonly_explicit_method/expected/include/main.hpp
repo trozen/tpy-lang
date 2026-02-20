@@ -9,6 +9,8 @@ struct Counter;
 
 extern std::string_view __name__;
 
+void main();
+
 // 4: class Counter:
 struct Counter {
   // 5:     value: Int32
@@ -39,8 +41,6 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

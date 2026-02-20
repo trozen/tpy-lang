@@ -9,6 +9,8 @@ template<typename T> struct Box;
 
 extern std::string_view __name__;
 
+void main();
+
 // 3: class Box[T]:
 template<typename T>
 struct Box {
@@ -33,8 +35,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -10,6 +10,8 @@ struct Timer;
 extern std::string_view __name__;
 extern Timer* time;
 
+void f();
+
 // 4: class Timer:
 struct Timer {
   // 5:     x: Int32
@@ -24,8 +26,6 @@ inline std::ostream& operator<<(std::ostream& os, const Timer& obj) {
      << ")";
   return os;
 }
-
-void f();
 
 void __tpy_init();
 } // namespace tpy_user::main

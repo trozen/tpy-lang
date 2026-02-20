@@ -10,6 +10,10 @@ struct Message;
 
 extern std::string_view __name__;
 
+template<tpy_user::traits::Printable T_p>
+void show(T_p& p);
+int32_t main();
+
 // 4: class Message:
 struct Message {
   // 5:     text: str
@@ -39,7 +43,6 @@ void show(T_p& p) {
   // 14:     print(p.to_string())
   std::cout << p.to_string() << "\n";
 }
-int32_t main();
 
 void __tpy_init();
 } // namespace tpy_user::main

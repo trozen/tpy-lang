@@ -9,6 +9,8 @@ struct Token;
 
 extern std::string_view __name__;
 
+tpy::BigInt build_flag();
+
 // 4: class Token:
 struct Token {
 
@@ -20,8 +22,6 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
      << ")";
   return os;
 }
-
-tpy::BigInt build_flag();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -11,6 +11,8 @@ extern std::string_view __name__;
 extern Box* b1;
 extern Box* b2;
 
+int32_t next_value(Box& b);
+
 // 4: class Box:
 struct Box {
   // 5:     value: Int32 | None
@@ -27,8 +29,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
      << ")";
   return os;
 }
-
-int32_t next_value(Box& b);
 
 void __tpy_init();
 } // namespace tpy_user::main

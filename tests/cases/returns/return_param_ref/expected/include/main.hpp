@@ -9,6 +9,14 @@ struct Point;
 
 extern std::string_view __name__;
 
+Point& find_max(std::vector<Point>& points);
+Point& get_first(std::vector<Point>& points);
+Point& get_x(Point& p);
+Point& get_field_ref(Point& p);
+Point& chained(std::vector<Point>& points);
+Point& both_branches(std::vector<Point>& points, bool flag);
+void main();
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -27,14 +35,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-Point& find_max(std::vector<Point>& points);
-Point& get_first(std::vector<Point>& points);
-Point& get_x(Point& p);
-Point& get_field_ref(Point& p);
-Point& chained(std::vector<Point>& points);
-Point& both_branches(std::vector<Point>& points, bool flag);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

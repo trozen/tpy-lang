@@ -7,6 +7,12 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+template<tpy::Sequence<char> T_s>
+char first_char(T_s& s);
+template<tpy::Sequence<char> T_s>
+int32_t count_chars(T_s& s);
+void main();
+
 // 4: def first_char(s: Sequence[Char]) -> Char:
 template<tpy::Sequence<char> T_s>
 char first_char(T_s& s) {
@@ -19,7 +25,6 @@ int32_t count_chars(T_s& s) {
   // 8:     return len(s)
   return tpy::__len__(s);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -43,6 +43,16 @@ template<HasValue T> struct Wrapper;
 
 extern std::string_view __name__;
 
+template<HasValue T>
+int32_t get_value(tpy::param_val_or_ref_t<T> item);
+template<HasXY T>
+int32_t sum_xy(tpy::param_val_or_ref_t<T> item);
+template<Container T>
+int32_t describe(tpy::param_val_or_ref_t<T> item);
+template<Holder<int32_t> T>
+int32_t get_item(tpy::param_val_or_ref_t<T> holder);
+void main();
+
 // # Record conforming to HasValue
 // 30: class Point:
 struct Point {
@@ -184,7 +194,6 @@ int32_t get_item(tpy::param_val_or_ref_t<T> holder) {
   // 96:     return holder.item
   return holder.item;
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

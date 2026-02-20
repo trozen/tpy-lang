@@ -8,6 +8,5 @@ namespace tpy_user::main {
 extern std::string_view __name__;
 extern StaticList<tpy::BigInt, 3>* x;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

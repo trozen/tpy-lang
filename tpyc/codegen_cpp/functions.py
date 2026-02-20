@@ -111,12 +111,45 @@ class FunctionGenerator:
             return True
         return bool(self.protocols.get_protocol_params(func.params))
 
-    def gen_function_decl(self, out: TextIO, func: TpyFunction) -> None:
-        """Generate a function declaration (or full definition for template functions)."""
+    def gen_function_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
+        """Generate a function forward declaration (signature only, no body).
+
+        Emitted before record definitions so that inline constructor/method
+        bodies can call free functions declared later in the header.
+        Returns True if a declaration was emitted.
+        """
         from ..parse.nodes import FunctionLinkage
-        # @native (C++ import) declarations are handled outside the namespace by generator.py
+        if func.linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C):
+            return False
+        if func.is_stub:
+            return False
+
+        protocol_params = self.protocols.get_protocol_params(func.params)
+        is_generic = bool(func.type_params)
+
+        if is_generic or protocol_params:
+            out.write(self.protocols.gen_combined_template_header(
+                func.type_params, protocol_params, func.type_param_bounds
+            ))
+            ret_type = func.return_type.to_cpp_return()
+            params = (self.gen_params_with_protocols(func.params, func.type_params)
+                      if protocol_params else self.gen_params(func.params, func.type_params))
+            out.write(f"{ret_type} {func.name}({params});\n")
+        else:
+            ret_type = func.return_type.to_cpp_return()
+            params = self.gen_params(func.params, func.type_params)
+            out.write(f"{ret_type} {func.name}({params});\n")
+        return True
+
+    def gen_function_decl(self, out: TextIO, func: TpyFunction) -> bool:
+        """Generate a function declaration (or full definition for template functions).
+
+        Non-template non-stub functions are skipped (already forward-declared).
+        Returns True if something was emitted.
+        """
+        from ..parse.nodes import FunctionLinkage
         if func.linkage == FunctionLinkage.NATIVE:
-            return
+            return False
 
         # @native_c and @extern_c both use extern "C" linkage
         if func.linkage in (FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C):
@@ -124,7 +157,7 @@ class FunctionGenerator:
             ret_type = func.return_type.to_cpp_return()
             params = self.gen_c_params(func.params)
             out.write(f'extern "C" {ret_type} {c_name}({params});\n')
-            return
+            return True
 
         protocol_params = self.protocols.get_protocol_params(func.params)
         is_generic = bool(func.type_params)
@@ -133,7 +166,6 @@ class FunctionGenerator:
             # Template functions: emit full definition in header so that
             # importing modules can instantiate them.
             if func.is_stub:
-                # Stubs are declaration-only
                 out.write(self.protocols.gen_combined_template_header(
                     func.type_params, protocol_params, func.type_param_bounds
                 ))
@@ -143,10 +175,15 @@ class FunctionGenerator:
                 out.write(f"{ret_type} {func.name}({params});\n")
             else:
                 self.gen_function_def(out, func)
-        else:
-            ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params(func.params, func.type_params)
-            out.write(f"{ret_type} {func.name}({params});\n")
+            return True
+
+        # Non-template non-stub: already forward-declared
+        if not func.is_stub:
+            return False
+        ret_type = func.return_type.to_cpp_return()
+        params = self.gen_params(func.params, func.type_params)
+        out.write(f"{ret_type} {func.name}({params});\n")
+        return True
 
     def gen_extern_c_redecl(self, out: TextIO, func_info: FunctionInfo) -> None:
         """Emit an extern "C" re-declaration for a C-linkage function.

@@ -9,6 +9,11 @@ struct Dog;
 
 extern std::string_view __name__;
 
+std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag);
+std::string_view test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v);
+std::string_view test_or(std::variant<std::monostate, Dog, int32_t>& v, std::variant<std::monostate, Dog, int32_t>& w);
+void main();
+
 // 4: class Dog:
 struct Dog {
   // 5:     name: str
@@ -25,11 +30,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
      << ")";
   return os;
 }
-
-std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag);
-std::string_view test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v);
-std::string_view test_or(std::variant<std::monostate, Dog, int32_t>& v, std::variant<std::monostate, Dog, int32_t>& w);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

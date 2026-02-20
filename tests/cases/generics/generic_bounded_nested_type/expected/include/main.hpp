@@ -16,6 +16,8 @@ template<ItemsProvider<int32_t> V> struct Wrapper;
 
 extern std::string_view __name__;
 
+void main();
+
 // 9: class IntListHolder:
 struct IntListHolder {
   // 10:     data: list[Int32]
@@ -64,8 +66,6 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -9,6 +9,8 @@ struct Holder;
 
 extern std::string_view __name__;
 
+void main();
+
 // 5: class Holder:
 struct Holder {
   // 6:     value: Int32 | None
@@ -25,8 +27,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

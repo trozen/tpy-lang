@@ -18,6 +18,10 @@ struct DefaultPairFactory;
 
 extern std::string_view __name__;
 
+template<PairFactory T>
+SortedPair<int32_t> create_pair(tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b);
+void main();
+
 // # A generic record with a bounded type parameter
 // 5: class SortedPair[T: Comparable]:
 template<tpy::Comparable T>
@@ -79,7 +83,6 @@ SortedPair<int32_t> create_pair(tpy::param_val_or_ref_t<T> factory, int32_t a, i
   // 26:     return factory.make_pair(a, b)
   return factory.make_pair(a, b);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

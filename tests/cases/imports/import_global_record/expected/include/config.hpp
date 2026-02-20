@@ -37,6 +37,5 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
   return os;
 }
 
-
 void __tpy_init();
 } // namespace tpy_user::config

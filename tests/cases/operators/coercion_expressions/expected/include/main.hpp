@@ -12,6 +12,15 @@ struct Outer;
 
 extern std::string_view __name__;
 
+int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b);
+int32_t take_int32(int32_t n);
+void test_bigint_expr_to_int32();
+void modify_via_ptr(Point* p);
+int32_t read_via_const_ptr(const Point* p);
+void test_field_access_to_ptr();
+void test_nested_field_to_ptr();
+void test_literal_expr_to_int32();
+
 // 11: class Counter:
 struct Counter {
   // 12:     value: int
@@ -95,15 +104,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
      << ")";
   return os;
 }
-
-int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b);
-int32_t take_int32(int32_t n);
-void test_bigint_expr_to_int32();
-void modify_via_ptr(Point* p);
-int32_t read_via_const_ptr(const Point* p);
-void test_field_access_to_ptr();
-void test_nested_field_to_ptr();
-void test_literal_expr_to_int32();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -11,6 +11,5 @@ extern tpy::BigInt y;
 extern tpy::BigInt z;
 extern std::vector<tpy::BigInt>* items;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

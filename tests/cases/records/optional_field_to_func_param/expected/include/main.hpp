@@ -11,6 +11,8 @@ struct Holder;
 extern std::string_view __name__;
 extern Holder* h;
 
+void describe(Point* p);
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -47,8 +49,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
      << ")";
   return os;
 }
-
-void describe(Point* p);
 
 void __tpy_init();
 } // namespace tpy_user::main

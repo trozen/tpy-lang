@@ -9,6 +9,10 @@ struct Dog;
 
 extern std::string_view __name__;
 
+std::string_view describe(std::variant<std::monostate, Dog, int32_t>& v);
+void process(std::variant<std::monostate, Dog, int32_t>& v);
+void main();
+
 // 4: class Dog:
 struct Dog {
   // 5:     name: str
@@ -25,10 +29,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
      << ")";
   return os;
 }
-
-std::string_view describe(std::variant<std::monostate, Dog, int32_t>& v);
-void process(std::variant<std::monostate, Dog, int32_t>& v);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

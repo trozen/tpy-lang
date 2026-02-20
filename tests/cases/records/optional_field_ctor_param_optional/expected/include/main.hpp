@@ -16,6 +16,8 @@ extern Edge* e2;
 extern Edge* e3;
 extern Edge* e4;
 
+Point* find(std::vector<Point>& items, int32_t target);
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -53,8 +55,6 @@ inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
      << ")";
   return os;
 }
-
-Point* find(std::vector<Point>& items, int32_t target);
 
 void __tpy_init();
 } // namespace tpy_user::main

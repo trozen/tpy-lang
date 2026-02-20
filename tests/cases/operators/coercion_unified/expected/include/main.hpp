@@ -9,6 +9,24 @@ struct Point;
 
 extern std::string_view __name__;
 
+int32_t take_int32(int32_t n);
+void take_ptr(Point* p);
+int32_t take_const_ptr(const Point* p);
+int32_t take_point(Point& p);
+int32_t take_span(std::span<const int32_t> s);
+int32_t return_bigint_as_int32();
+void test_bigint_to_int32();
+void test_record_to_ptr();
+void test_record_to_const_ptr();
+Point& return_record_from_ptr(Point* p);
+void test_ptr_to_record();
+int32_t take_const_ptr_val(const Point* p);
+void test_ptr_to_const_ptr();
+void test_staticlist_to_span();
+void test_array_to_span();
+void test_list_to_span();
+void test_subscript_to_ptr();
+
 // # --- Records for pointer coercion tests ---
 // 13: class Point:
 struct Point {
@@ -30,24 +48,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-int32_t take_int32(int32_t n);
-void take_ptr(Point* p);
-int32_t take_const_ptr(const Point* p);
-int32_t take_point(Point& p);
-int32_t take_span(std::span<const int32_t> s);
-int32_t return_bigint_as_int32();
-void test_bigint_to_int32();
-void test_record_to_ptr();
-void test_record_to_const_ptr();
-Point& return_record_from_ptr(Point* p);
-void test_ptr_to_record();
-int32_t take_const_ptr_val(const Point* p);
-void test_ptr_to_const_ptr();
-void test_staticlist_to_span();
-void test_array_to_span();
-void test_list_to_span();
-void test_subscript_to_ptr();
 
 void __tpy_init();
 } // namespace tpy_user::main

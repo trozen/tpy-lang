@@ -29,6 +29,5 @@ inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {
   return os;
 }
 
-
 void __tpy_init();
 } // namespace tpy_user::main

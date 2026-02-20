@@ -15,6 +15,10 @@ struct Point;
 
 extern std::string_view __name__;
 
+template<Addable T_a, Addable T_b>
+void add_points(T_a& a, T_b& b);
+void main();
+
 // 8: class Point:
 struct Point {
   // 9:     x: Int32
@@ -53,7 +57,6 @@ void add_points(T_a& a, T_b& b) {
   // 21:     result = a + b
   auto result = (a + b);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

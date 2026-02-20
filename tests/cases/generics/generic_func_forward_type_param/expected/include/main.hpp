@@ -10,6 +10,18 @@ template<typename T> struct Container;
 
 extern std::string_view __name__;
 
+template<typename T>
+void sink(T&& x);
+template<typename T>
+tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
+template<typename T>
+void wrapper(T&& x);
+template<typename T>
+std::vector<T>& wrap_list(std::vector<T>& items);
+template<typename A, typename B>
+tpy::return_val_or_ref_t<A> multi(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b);
+void main();
+
 // 5: class Box:
 struct Box {
   // 6:     value: Int32
@@ -81,7 +93,6 @@ tpy::return_val_or_ref_t<A> multi(tpy::param_val_or_ref_t<A> a, tpy::param_val_o
   // 29:     return identity[A](a)  # tpyc: ok
   return identity<A>(a);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -10,6 +10,11 @@ extern std::vector<int32_t>* nums;
 extern std::vector<std::string_view>* words;
 extern std::vector<int32_t>* vals;
 
+template<typename T>
+tpy::return_val_or_ref_t<T> first(std::vector<T>& items);
+template<typename T>
+tpy::return_val_or_ref_t<T> last(std::vector<T>& items);
+
 // 5: def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {

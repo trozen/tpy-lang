@@ -9,6 +9,21 @@ struct Point;
 
 extern std::string_view __name__;
 
+void loop_escape_copy_ok();
+void loop_rvalue_ok();
+void foreach_outer_container();
+void value_type_ok();
+void foreach_shadow_safe();
+void param_reused_as_loop_var(Point& p);
+void sequential_loops_same_var();
+void same_scope_ok();
+void lvalue_init_rvalue_rebind();
+void rvalue_alias_preserved();
+void if_branch_rvalue_rebind();
+void if_else_rvalue_rebinds();
+void if_alias_preserved();
+void while_rvalue_rebind();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -29,21 +44,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-void loop_escape_copy_ok();
-void loop_rvalue_ok();
-void foreach_outer_container();
-void value_type_ok();
-void foreach_shadow_safe();
-void param_reused_as_loop_var(Point& p);
-void sequential_loops_same_var();
-void same_scope_ok();
-void lvalue_init_rvalue_rebind();
-void rvalue_alias_preserved();
-void if_branch_rvalue_rebind();
-void if_else_rvalue_rebinds();
-void if_alias_preserved();
-void while_rvalue_rebind();
 
 void __tpy_init();
 } // namespace tpy_user::main

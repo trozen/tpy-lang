@@ -9,6 +9,12 @@ template<typename T> struct Box;
 
 extern std::string_view __name__;
 
+template<typename T>
+Box<T> wrap(tpy::param_val_or_ref_t<T> v);
+void sink(Box<int32_t> b);
+void take_two(Box<int32_t> a, Box<int32_t> b);
+void main();
+
 // 4: class Box[T]:
 template<typename T>
 struct Box {
@@ -34,9 +40,6 @@ Box<T> wrap(tpy::param_val_or_ref_t<T> v) {
   // 11:     return Box[T](v)
   return Box<T>(v);
 }
-void sink(Box<int32_t> b);
-void take_two(Box<int32_t> a, Box<int32_t> b);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

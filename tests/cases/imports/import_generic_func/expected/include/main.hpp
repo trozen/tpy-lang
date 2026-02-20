@@ -10,6 +10,5 @@ extern std::string_view __name__;
 extern std::vector<int32_t>* nums;
 extern std::vector<std::string_view>* words;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

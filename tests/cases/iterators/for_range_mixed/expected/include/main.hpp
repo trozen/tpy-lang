@@ -12,6 +12,5 @@ extern int32_t count;
 extern int32_t end;
 extern tpy::BigInt big_start;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

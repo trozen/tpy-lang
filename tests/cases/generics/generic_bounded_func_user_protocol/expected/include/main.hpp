@@ -15,6 +15,10 @@ struct Point;
 
 extern std::string_view __name__;
 
+template<Printable T>
+void print_item(tpy::param_val_or_ref_t<T> item);
+void main();
+
 // 9: class Point:
 struct Point {
   // 10:     x: Int32
@@ -50,7 +54,6 @@ void print_item(tpy::param_val_or_ref_t<T> item) {
   // 23:     print("got printable")
   std::cout << "got printable" << "\n";
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

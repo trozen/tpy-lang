@@ -9,6 +9,10 @@ struct Point;
 
 extern std::string_view __name__;
 
+template<typename T>
+void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val);
+void main();
+
 // 5: class Point:
 struct Point {
   // 6:     x: Int32
@@ -36,7 +40,6 @@ void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val) {
   // 13:     unsafe_store(p, idx, val)
   p[idx] = val;
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

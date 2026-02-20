@@ -7,6 +7,11 @@ namespace tpy_user::helpers {
 
 extern std::string_view __name__;
 
+template<typename T>
+tpy::return_val_or_ref_t<T> first(std::vector<T>& items);
+template<typename T>
+int32_t length(std::vector<T>& items);
+
 // 4: def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {

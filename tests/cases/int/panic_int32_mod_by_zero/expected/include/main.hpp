@@ -10,6 +10,5 @@ extern int32_t x;
 extern int32_t y;
 extern int32_t z;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

@@ -10,6 +10,5 @@ extern std::vector<int32_t>* items;
 extern StaticList<int32_t, 10>* sl;
 extern std::array<int32_t, 3>* arr;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

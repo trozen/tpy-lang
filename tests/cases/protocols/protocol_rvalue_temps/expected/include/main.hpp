@@ -17,6 +17,10 @@ struct BoxContainer;
 
 extern std::string_view __name__;
 
+template<HasValue T_h>
+void show(T_h& h);
+void main();
+
 // 14: class IntBox:
 struct IntBox {
   // 15:     v: Int32
@@ -83,7 +87,6 @@ void show(T_h& h) {
   // 30:     print(h.get())
   std::cout << h.get() << "\n";
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

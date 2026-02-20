@@ -9,6 +9,10 @@ struct MyContainer;
 
 extern std::string_view __name__;
 
+template<tpy::Sized T>
+int32_t get_length(tpy::param_val_or_ref_t<T> item);
+void main();
+
 // 6: class MyContainer:
 struct MyContainer {
   // 7:     data: list[Int32]
@@ -40,7 +44,6 @@ int32_t get_length(tpy::param_val_or_ref_t<T> item) {
   // 18:     return 42
   return 42;
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

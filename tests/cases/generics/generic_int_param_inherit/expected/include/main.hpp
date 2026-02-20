@@ -11,6 +11,8 @@ template<typename T, std::size_t N> struct GrandChild;
 
 extern std::string_view __name__;
 
+void main();
+
 // 4: class Base[T, N: int]:
 template<typename T, std::size_t N>
 struct Base {
@@ -75,8 +77,6 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild<T, N>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

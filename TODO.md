@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- C++ header ordering: inline method bodies in structs (constructors, methods) can't call free functions declared later in the header. Affects cases like `self.value = func()` when func is defined before the class in Python but its C++ forward declaration is emitted after the struct. Fix: emit function forward declarations before struct definitions, or move method bodies out-of-line.
 - Static methods on generic classes don't infer class type params: `Box.from_optional(next)` where `Box[T]` has `from_optional(value: Own[T] | None)` fails because `_analyze_static_method_call` doesn't run type inference -- params still contain unresolved `TypeParamRef('T')`
 - `ClassName[TypeArgs].method()` syntax not supported for static calls: `Box[Node].from_optional(x)` fails because `Box[Node]` is parsed as a subscript, not recognized as a type-qualified static method call
 - move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
@@ -84,6 +83,7 @@
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
+- Large value-type copy warning: estimate record sizes from fields and warn when Own[T] passes a large type by value (e.g. >128 bytes). For inline data there's no cheap move -- the bits are the object. Suggest Own[Box[T]] for cheap ownership transfer (moves a pointer) or Ptr[T]/ConstPtr[T] for borrowing. Stricter threshold in @noalloc contexts.
 - Box[T] with only Ptr[T] inside, unsafe_alloc/free/init/drop; compiler optimizie Box|None to just pointer, None as nullptr
 - handling user object copy via __copy__ (e.g. heap allocated)
 - language restriction documentation

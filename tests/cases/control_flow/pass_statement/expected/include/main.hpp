@@ -9,6 +9,12 @@ struct Counter;
 
 extern std::string_view __name__;
 
+void empty_function();
+int32_t function_with_pass_branch(int32_t x);
+int32_t pass_in_loop();
+int32_t pass_in_elif(int32_t x);
+void test_class_with_pass();
+
 // 35: class Counter:
 struct Counter {
   // 36:     value: Int32
@@ -41,12 +47,6 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
      << ")";
   return os;
 }
-
-void empty_function();
-int32_t function_with_pass_branch(int32_t x);
-int32_t pass_in_loop();
-int32_t pass_in_elif(int32_t x);
-void test_class_with_pass();
 
 void __tpy_init();
 } // namespace tpy_user::main

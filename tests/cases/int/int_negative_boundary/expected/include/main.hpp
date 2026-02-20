@@ -11,6 +11,5 @@ extern tpy::BigInt b;
 extern int32_t c;
 extern tpy::BigInt d;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

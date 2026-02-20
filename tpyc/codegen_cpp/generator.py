@@ -442,6 +442,15 @@ class CodeGenerator:
             self.functions.gen_global_extern(hpp, stmt)
         hpp.write("\n")
 
+        # Function forward declarations (before records, so inline
+        # constructor/method bodies can call free functions)
+        emitted_fwd_func = False
+        for func in module.functions:
+            if self.functions.gen_function_forward_decl(hpp, func):
+                emitted_fwd_func = True
+        if emitted_fwd_func:
+            hpp.write("\n")
+
         # Full record definitions (skip those already defined early)
         sorted_records = self.records.sort_records_by_inheritance(module.records)
         for record in sorted_records:
@@ -452,9 +461,12 @@ class CodeGenerator:
             self.records.gen_record_decl(hpp, record)
             hpp.write("\n")
 
-        # Function declarations
+        # Function declarations (template definitions, stubs, and extern "C";
+        # non-template signatures are already forward-declared above)
+        emitted_func_decl = False
         for func in module.functions:
-            self.functions.gen_function_decl(hpp, func)
+            if self.functions.gen_function_decl(hpp, func):
+                emitted_func_decl = True
 
         # Re-declare imported C-linkage functions in this namespace so they're
         # visible without cross-module namespace qualification. This is legal
@@ -467,7 +479,9 @@ class CodeGenerator:
             func_info = self.ctx.analyzer.registry.get_function(local_name)
             if func_info and (func_info.is_native_c or func_info.is_extern_c):
                 self.functions.gen_extern_c_redecl(hpp, func_info)
-        hpp.write("\n")
+                emitted_func_decl = True
+        if emitted_func_decl:
+            hpp.write("\n")
 
         # Re-exported functions
         if self.ctx.reexported_functions:

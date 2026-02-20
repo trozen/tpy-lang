@@ -50,6 +50,8 @@ template<WrapperMaker T> struct Container;
 
 extern std::string_view __name__;
 
+void main();
+
 // # Record with user-defined bound, referenced by a bound protocol
 // 19: class Wrapper[T: Printable]:
 template<Printable T>
@@ -120,8 +122,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

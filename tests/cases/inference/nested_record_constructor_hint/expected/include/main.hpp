@@ -10,6 +10,10 @@ struct Holder;
 
 extern std::string_view __name__;
 
+template<typename T>
+Box<T> wrap(tpy::param_val_or_ref_t<T> v);
+void main();
+
 // 4: class Box[T]:
 template<typename T>
 struct Box {
@@ -52,7 +56,6 @@ Box<T> wrap(tpy::param_val_or_ref_t<T> v) {
   // 15:     return Box[T](v)
   return Box<T>(v);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

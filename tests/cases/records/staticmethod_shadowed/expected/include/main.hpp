@@ -10,6 +10,8 @@ struct Helper;
 extern std::string_view __name__;
 extern Helper* h;
 
+int32_t use_helper(Helper& Helper);
+
 // 4: class Helper:
 struct Helper {
   // 5:     value: Int32
@@ -39,8 +41,6 @@ inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
      << ")";
   return os;
 }
-
-int32_t use_helper(Helper& Helper);
 
 void __tpy_init();
 } // namespace tpy_user::main

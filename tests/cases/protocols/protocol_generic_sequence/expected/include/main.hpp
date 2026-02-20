@@ -7,6 +7,13 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+template<tpy::Sequence<int32_t> T_items>
+int32_t first(T_items& items);
+template<tpy::Sequence<int32_t> T_items>
+int32_t sum_all(T_items& items);
+int32_t use_span(std::span<const int32_t> s);
+void main();
+
 // 4: def first(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>
 int32_t first(T_items& items) {
@@ -30,8 +37,6 @@ int32_t sum_all(T_items& items) {
   // 13:     return total
   return total;
 }
-int32_t use_span(std::span<const int32_t> s);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

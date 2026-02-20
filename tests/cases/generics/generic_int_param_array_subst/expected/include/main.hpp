@@ -10,6 +10,10 @@ template<typename T, std::size_t N> struct Buffer;
 extern std::string_view __name__;
 extern std::array<int32_t, 3>* arr_global;
 
+void use_array(std::array<int32_t, 3>& arr);
+std::array<int32_t, 3>& get_global_array();
+void main();
+
 // 4: class Buffer[T, N: int]:
 template<typename T, std::size_t N>
 struct Buffer {
@@ -41,10 +45,6 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer<T, N>& obj) {
      << ")";
   return os;
 }
-
-void use_array(std::array<int32_t, 3>& arr);
-std::array<int32_t, 3>& get_global_array();
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -9,6 +9,10 @@ struct Box;
 
 extern std::string_view __name__;
 
+template<typename T>
+int32_t take_optional(std::optional<T> item, int32_t fallback);
+void main();
+
 // 5: class Box:
 struct Box {
   // 6:     value: Int32
@@ -30,7 +34,6 @@ int32_t take_optional(std::optional<T> item, int32_t fallback) {
   // 10:     return fallback
   return fallback;
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

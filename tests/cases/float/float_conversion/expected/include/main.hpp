@@ -10,6 +10,5 @@ extern double a;
 extern double b;
 extern double c;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

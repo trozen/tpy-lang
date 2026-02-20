@@ -9,6 +9,9 @@ template<typename T> struct Box;
 
 extern std::string_view __name__;
 
+void modify_list(std::vector<int32_t>& items);
+void main();
+
 // 4: class Box[T]:
 template<typename T>
 struct Box {
@@ -39,9 +42,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
      << ")";
   return os;
 }
-
-void modify_list(std::vector<int32_t>& items);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

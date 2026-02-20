@@ -9,6 +9,8 @@ template<typename A, typename B> struct Pair;
 
 extern std::string_view __name__;
 
+void main();
+
 // 3: class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
@@ -43,8 +45,6 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

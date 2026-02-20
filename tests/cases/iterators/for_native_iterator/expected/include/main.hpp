@@ -9,6 +9,13 @@ struct Counter;
 
 extern std::string_view __name__;
 
+template<tpy::OptIterator<int32_t> T_it>
+int32_t sum_iter(T_it& it);
+template<tpy::OptIterator<int32_t> T_it>
+int32_t count_iter(T_it& it);
+template<tpy::OptIterator<int32_t> T_it>
+int32_t first_or_fallback(T_it& it, int32_t fallback);
+
 // 3: class Counter:
 struct Counter {
   // 4:     current: Int32

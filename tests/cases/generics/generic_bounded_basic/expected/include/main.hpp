@@ -9,6 +9,8 @@ template<tpy::Sized T> struct Container;
 
 extern std::string_view __name__;
 
+void main();
+
 // 5: class Container[T: Sized]:
 template<tpy::Sized T>
 struct Container {
@@ -33,8 +35,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

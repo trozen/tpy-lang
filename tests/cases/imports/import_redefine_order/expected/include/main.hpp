@@ -10,6 +10,5 @@ extern std::string_view __name__;
 extern int32_t MAX;
 extern tpy::BigInt MIN;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

@@ -9,6 +9,9 @@ struct Container;
 
 extern std::string_view __name__;
 
+void read_items(const Container& c);
+void main();
+
 // 5: class Container:
 struct Container {
   // 6:     _items: list[Int32]
@@ -45,9 +48,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
      << ")";
   return os;
 }
-
-void read_items(const Container& c);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

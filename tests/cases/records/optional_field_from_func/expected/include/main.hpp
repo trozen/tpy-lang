@@ -12,6 +12,8 @@ extern std::string_view __name__;
 extern std::vector<Point>* pts;
 extern Holder* h;
 
+Point* find(std::vector<Point>& items, int32_t target);
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -48,8 +50,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
      << ")";
   return os;
 }
-
-Point* find(std::vector<Point>& items, int32_t target);
 
 void __tpy_init();
 } // namespace tpy_user::main

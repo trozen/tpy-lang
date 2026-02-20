@@ -17,6 +17,11 @@ struct Impl;
 extern std::string_view __name__;
 extern Impl* obj;
 
+template<Mixed T_m>
+int32_t safe_read(T_m& m);
+template<Mixed T_m>
+int32_t use_both(T_m& m);
+
 // 16: class Impl:
 struct Impl {
   // 17:     value: Int32

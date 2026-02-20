@@ -16,6 +16,8 @@ extern std::vector<Point>* pts;
 extern Line* line2;
 extern Line* line3;
 
+Point* find_point(std::vector<Point>& points, int32_t target);
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -75,8 +77,6 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
      << ")";
   return os;
 }
-
-Point* find_point(std::vector<Point>& points, int32_t target);
 
 void __tpy_init();
 } // namespace tpy_user::main

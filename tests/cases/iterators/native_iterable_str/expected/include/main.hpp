@@ -7,6 +7,14 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+template<tpy::NativeIterable<char> T_text>
+int32_t count_chars(T_text& text);
+template<tpy::NativeIterable<char> T_text>
+char first_char(T_text& text);
+template<tpy::NativeIterable<int32_t> T_items>
+int32_t sum_span(T_items& items);
+void main();
+
 // 4: def count_chars(text: NativeIterable[Char]) -> Int32:
 template<tpy::NativeIterable<char> T_text>
 int32_t count_chars(T_text& text) {
@@ -47,7 +55,6 @@ int32_t sum_span(T_items& items) {
   // 22:     return total
   return total;
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -10,6 +10,5 @@ extern std::string_view s;
 extern const char* cp;
 extern char* p;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

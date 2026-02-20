@@ -8,6 +8,9 @@ namespace tpy_user::main {
 extern std::string_view __name__;
 extern std::optional<int32_t> x;
 
+template<typename T>
+tpy::return_val_or_ref_t<T> first(std::vector<T>& items);
+
 // 4: def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {

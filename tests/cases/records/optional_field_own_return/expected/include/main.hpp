@@ -11,6 +11,9 @@ struct Holder;
 extern std::string_view __name__;
 extern Holder* h;
 
+std::optional<Point> maybe_make(int32_t x);
+void test();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -47,9 +50,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
      << ")";
   return os;
 }
-
-std::optional<Point> maybe_make(int32_t x);
-void test();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -11,6 +11,5 @@ extern int32_t* base;
 extern int32_t delta;
 extern int32_t* p1;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

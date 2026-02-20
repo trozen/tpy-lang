@@ -10,6 +10,12 @@ struct Outer;
 
 extern std::string_view __name__;
 
+void modify_inner(Inner* p);
+int32_t read_inner(const Inner* p);
+void test_field_to_ptr();
+void test_field_to_const_ptr();
+void test_subscript_to_ptr();
+
 // 3: class Inner:
 struct Inner {
   // 4:     x: Int32
@@ -43,12 +49,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
      << ")";
   return os;
 }
-
-void modify_inner(Inner* p);
-int32_t read_inner(const Inner* p);
-void test_field_to_ptr();
-void test_field_to_const_ptr();
-void test_subscript_to_ptr();
 
 void __tpy_init();
 } // namespace tpy_user::main

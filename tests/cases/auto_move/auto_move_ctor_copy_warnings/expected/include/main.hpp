@@ -15,6 +15,12 @@ struct Outer;
 
 extern std::string_view __name__;
 
+void test_nested_field_move(Outer& o, Inner inner);
+void test_nested_field_copy(Outer& o, Inner inner);
+void test_subscript_move(std::vector<Inner>& xs, Inner inner);
+void test_subscript_copy(std::vector<Inner>& xs, Inner inner);
+void main();
+
 // 6: class Inner:
 struct Inner {
   // 7:     value: Int32
@@ -163,12 +169,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
      << ")";
   return os;
 }
-
-void test_nested_field_move(Outer& o, Inner inner);
-void test_nested_field_copy(Outer& o, Inner inner);
-void test_subscript_move(std::vector<Inner>& xs, Inner inner);
-void test_subscript_copy(std::vector<Inner>& xs, Inner inner);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -9,6 +9,8 @@ struct time;
 
 extern std::string_view __name__;
 
+void main();
+
 // 3: class time:
 struct time {
   // 4:     value: int
@@ -25,8 +27,6 @@ inline std::ostream& operator<<(std::ostream& os, const time& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

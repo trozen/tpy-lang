@@ -11,6 +11,8 @@ template<typename T> struct GenericHolder;
 
 extern std::string_view __name__;
 
+void main();
+
 // @nocopy
 // 6: class Handle:
 struct Handle {
@@ -76,8 +78,6 @@ inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

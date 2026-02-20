@@ -16,6 +16,5 @@ extern bool b6;
 extern bool b7;
 extern bool b8;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

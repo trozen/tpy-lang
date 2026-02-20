@@ -9,6 +9,8 @@ template<typename T> struct Stack;
 
 extern std::string_view __name__;
 
+void main();
+
 // 3: class Stack[T]:
 template<typename T>
 struct Stack {
@@ -44,8 +46,6 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
      << ")";
   return os;
 }
-
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -12,6 +12,5 @@ extern std::vector<int32_t>* empty;
 extern int32_t n;
 extern std::vector<int32_t>* dynamic;
 
-
 void __tpy_init();
 } // namespace tpy_user::main

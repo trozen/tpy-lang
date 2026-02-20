@@ -9,6 +9,13 @@ struct Box;
 
 extern std::string_view __name__;
 
+int32_t consume(Box x);
+template<typename T>
+void sink(T&& x);
+template<typename T>
+void wrapper(T&& x);
+void main();
+
 // 5: class Box:
 struct Box {
   // 6:     value: Int32
@@ -24,7 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
   return os;
 }
 
-int32_t consume(Box x);
 // 13: def sink[T](x: Own[T]) -> None:
 template<typename T>
 void sink(T&& x) {
@@ -36,7 +42,6 @@ void wrapper(T&& x) {
   // 18:     sink[T](x)  # std::forward<T>(x) at last use
   sink<T>(std::forward<T>(x));
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -10,6 +10,11 @@ struct Holder;
 
 extern std::string_view __name__;
 
+Holder make_holder(Point& p);
+void test_init_from_temp();
+void test_rebind_from_temp();
+void test_rebind_in_block();
+
 // 4: class Point:
 struct Point {
   // 5:     x: Int32
@@ -46,11 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
      << ")";
   return os;
 }
-
-Holder make_holder(Point& p);
-void test_init_from_temp();
-void test_rebind_from_temp();
-void test_rebind_in_block();
 
 void __tpy_init();
 } // namespace tpy_user::main

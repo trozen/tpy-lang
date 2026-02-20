@@ -7,6 +7,12 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+template<tpy::Sequence<int32_t> T_s>
+int32_t seq_at(T_s& s, int32_t i);
+template<tpy::Sequence<std::string_view> T_s>
+std::string_view seq_str_at(T_s& s, int32_t i);
+void main();
+
 // 6: def seq_at(s: Sequence[Int32], i: Int32) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
 int32_t seq_at(T_s& s, int32_t i) {
@@ -19,7 +25,6 @@ std::string_view seq_str_at(T_s& s, int32_t i) {
   // 10:     return s[i]
   return tpy::__getitem__(s, i);
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

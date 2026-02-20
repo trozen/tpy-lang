@@ -13,6 +13,8 @@ extern std::vector<void*>* parg_list;
 extern void* carg_ptr;
 extern Sink* sink;
 
+int32_t take_ptr(void* p);
+
 // 11: class Sink:
 struct Sink {
 
@@ -30,8 +32,6 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
      << ")";
   return os;
 }
-
-int32_t take_ptr(void* p);
 
 void __tpy_init();
 } // namespace tpy_user::main

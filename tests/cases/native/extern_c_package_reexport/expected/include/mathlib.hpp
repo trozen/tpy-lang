@@ -8,7 +8,6 @@ namespace tpy_user::mathlib {
 
 extern std::string_view __name__;
 
-
 extern "C" int32_t abs(int32_t x);
 extern "C" int32_t tpy_clock();
 

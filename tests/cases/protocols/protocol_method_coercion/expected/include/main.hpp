@@ -16,6 +16,10 @@ struct SimpleCalc;
 
 extern std::string_view __name__;
 
+template<Calculator T_c>
+void use_calc(T_c& c);
+void main();
+
 // 9: class SimpleCalc:
 struct SimpleCalc {
   // 10:     base: Int32
@@ -58,7 +62,6 @@ void use_calc(T_c& c) {
   // 27:     print(result2)
   std::cout << result2 << "\n";
 }
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

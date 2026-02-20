@@ -7,6 +7,13 @@ namespace tpy_user::main {
 
 extern std::string_view __name__;
 
+template<tpy::Sized T_s>
+int32_t get_len(T_s& s);
+template<tpy::Sequence<int32_t> T_s>
+int32_t get_first(T_s& s);
+void observe(const std::vector<int32_t>& items);
+void main();
+
 // 5: def get_len(s: Sized) -> Int32:
 template<tpy::Sized T_s>
 int32_t get_len(T_s& s) {
@@ -19,8 +26,6 @@ int32_t get_first(T_s& s) {
   // 9:     return s[0]
   return tpy::__getitem__(s, 0);
 }
-void observe(const std::vector<int32_t>& items);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

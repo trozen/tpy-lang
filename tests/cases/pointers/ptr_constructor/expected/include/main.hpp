@@ -9,6 +9,15 @@ struct Point;
 
 extern std::string_view __name__;
 
+void read_via_ptr(Point* p);
+void read_via_constptr(const Point* p);
+void test_null_constructors();
+void test_ptr_explicit();
+void test_ptr_inferred();
+void test_constptr_explicit();
+void test_constptr_inferred();
+void test_ptr_write();
+
 // 3: class Point:
 struct Point {
   // 4:     x: Int32
@@ -29,15 +38,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-void read_via_ptr(Point* p);
-void read_via_constptr(const Point* p);
-void test_null_constructors();
-void test_ptr_explicit();
-void test_ptr_inferred();
-void test_constptr_explicit();
-void test_constptr_inferred();
-void test_ptr_write();
 
 void __tpy_init();
 } // namespace tpy_user::main

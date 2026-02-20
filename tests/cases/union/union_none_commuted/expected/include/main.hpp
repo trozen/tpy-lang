@@ -9,6 +9,10 @@ struct Cat;
 
 extern std::string_view __name__;
 
+std::string_view check(std::variant<std::monostate, Cat, int32_t>& v);
+std::string_view check_not(std::variant<std::monostate, Cat, int32_t>& v);
+void main();
+
 // 4: class Cat:
 struct Cat {
   // 5:     name: str
@@ -25,10 +29,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
      << ")";
   return os;
 }
-
-std::string_view check(std::variant<std::monostate, Cat, int32_t>& v);
-std::string_view check_not(std::variant<std::monostate, Cat, int32_t>& v);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

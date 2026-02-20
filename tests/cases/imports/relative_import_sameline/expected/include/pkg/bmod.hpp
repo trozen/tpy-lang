@@ -7,6 +7,5 @@ namespace tpy_user::pkg::bmod {
 
 extern std::string_view __name__;
 
-
 void __tpy_init();
 } // namespace tpy_user::pkg::bmod

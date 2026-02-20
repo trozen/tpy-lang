@@ -9,6 +9,8 @@ struct Ops;
 
 extern std::string_view __name__;
 
+int32_t add_one(int32_t x);
+
 // 4: class Ops:
 struct Ops {
 
@@ -28,8 +30,6 @@ inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {
      << ")";
   return os;
 }
-
-int32_t add_one(int32_t x);
 
 void __tpy_init();
 } // namespace tpy_user::main

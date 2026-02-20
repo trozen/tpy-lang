@@ -9,6 +9,8 @@ struct Logger;
 
 extern std::string_view __name__;
 
+tpy::BigInt ok();
+
 // 4: class Logger:
 struct Logger {
 
@@ -24,8 +26,6 @@ inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
      << ")";
   return os;
 }
-
-tpy::BigInt ok();
 
 void __tpy_init();
 } // namespace tpy_user::main

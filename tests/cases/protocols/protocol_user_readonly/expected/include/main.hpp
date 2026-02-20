@@ -16,6 +16,9 @@ struct GoodReader;
 extern std::string_view __name__;
 extern GoodReader* g;
 
+template<Readable T_r>
+int32_t use_readable(T_r& r);
+
 // 13: class GoodReader:
 struct GoodReader {
   // 14:     value: Int32

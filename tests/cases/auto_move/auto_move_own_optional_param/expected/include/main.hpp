@@ -9,6 +9,10 @@ struct Point;
 
 extern std::string_view __name__;
 
+int32_t consume_own(Point p);
+int32_t forward_optional(std::optional<Point> p);
+void main();
+
 // 5: class Point:
 struct Point {
   // 6:     x: Int32
@@ -27,10 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
      << ")";
   return os;
 }
-
-int32_t consume_own(Point p);
-int32_t forward_optional(std::optional<Point> p);
-void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

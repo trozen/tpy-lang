@@ -9,6 +9,5 @@ extern std::string_view __name__;
 extern std::array<int32_t, 3>* arr;
 extern int32_t* p;
 
-
 void __tpy_init();
 } // namespace tpy_user::main
