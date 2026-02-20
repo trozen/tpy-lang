@@ -323,7 +323,7 @@ class FunctionGenerator:
         if isinstance(var_type, OwnType):
             var_type = var_type.wrapped
         # Optional non-value types use inner type (pointer-global adds T*)
-        elif isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+        elif isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
             var_type = var_type.inner
         # Normalize unresolved int literals to configured default integer type.
         default_int = self.ctx.analyzer.ctx.default_int_type

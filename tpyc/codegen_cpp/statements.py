@@ -97,7 +97,7 @@ class StatementGenerator:
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             actual = unwrap_readonly(ptype)
-            if isinstance(actual, OptionalType) and not actual.inner.is_value_type():
+            if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                 self.ctx.pointer_locals.add(pname)
             # Own[T] and Own[T] | None params are movable (caller gave up ownership)
             own_actual = unwrap_optional_own(actual)
@@ -180,7 +180,7 @@ class StatementGenerator:
             if stmt.value:
                 ret_type = self.ctx.current_return_type
                 if isinstance(ret_type, OptionalType):
-                    if ret_type.inner.is_value_type():
+                    if not ret_type.uses_pointer_repr():
                         # Value-type Optional: return std::nullopt or plain value
                         if isinstance(stmt.value, TpyNoneLiteral):
                             return f"{indent}return std::nullopt;\n"
@@ -196,7 +196,7 @@ class StatementGenerator:
                     # Field access with non-value Optional produces std::optional<T>, convert to T*
                     if isinstance(stmt.value, TpyFieldAccess):
                         val_type = self.ctx.get_expr_type(stmt.value)
-                        if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
+                        if isinstance(val_type, OptionalType) and val_type.uses_pointer_repr():
                             return f"{indent}return tpy::optional_to_ptr({ret_expr});\n"
                     # Take address of lvalue
                     return f"{indent}return &({ret_expr});\n"
@@ -252,7 +252,7 @@ class StatementGenerator:
         if target_type is None:
             return False
         # Optional[T] for non-value T is always a pointer-local
-        if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
+        if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
             return True
         if target_type.is_value_type():
             return False
@@ -297,7 +297,7 @@ class StatementGenerator:
             if isinstance(elem, IntLiteralType):
                 var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(elem))
         # Optional non-value types use inner type (pointer-local adds T*)
-        if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+        if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
             var_type = var_type.inner
         return var_type
 
@@ -414,9 +414,9 @@ class StatementGenerator:
         # Optional non-value non-field source -> T* pass-through
         # Optional non-value field on rvalue -> falls through to rvalue path
         is_opt_field = (isinstance(init_type, OptionalType)
-                        and not init_type.inner.is_value_type()
+                        and init_type.uses_pointer_repr()
                         and isinstance(init, TpyFieldAccess))
-        if isinstance(init_type, OptionalType) and not init_type.inner.is_value_type():
+        if isinstance(init_type, OptionalType) and init_type.uses_pointer_repr():
             if isinstance(init, TpyFieldAccess):
                 if not self.ctx.is_rvalue_source(init):
                     init_expr = self.expressions.gen_expr(init, target_type)
@@ -509,9 +509,9 @@ class StatementGenerator:
         # Optional non-value non-field source -> T* pass-through
         # Optional non-value field on rvalue -> falls through to rvalue path
         is_opt_field = (isinstance(init_type, OptionalType)
-                        and not init_type.inner.is_value_type()
+                        and init_type.uses_pointer_repr()
                         and isinstance(init, TpyFieldAccess))
-        if isinstance(init_type, OptionalType) and not init_type.inner.is_value_type():
+        if isinstance(init_type, OptionalType) and init_type.uses_pointer_repr():
             if isinstance(init, TpyFieldAccess):
                 if not self.ctx.is_rvalue_source(init):
                     init_expr = self.expressions.gen_expr(init, target_type)
@@ -578,7 +578,7 @@ class StatementGenerator:
                 if stmt.name in self.ctx.pointer_locals:
                     # OptionalType uses inner type (pointer-local adds T*)
                     resolve_type = var_type
-                    if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+                    if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
                         resolve_type = var_type.inner
                     cpp_type = self.types.type_to_cpp(resolve_type) if resolve_type else "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
@@ -673,7 +673,7 @@ class StatementGenerator:
         # Assignment to optional field: std::optional<T> storage needs boundary conversion
         if isinstance(stmt.target, TpyFieldAccess):
             target_type = self.ctx.get_expr_type(stmt.target)
-            if isinstance(target_type, OptionalType) and not target_type.inner.is_value_type():
+            if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
                 target = self.expressions.gen_expr(stmt.target)
                 # Value source is T* (pointer-local, function returning Optional) -> wrap
                 if self.ctx.is_indirect_name(stmt.value):
@@ -876,7 +876,7 @@ class StatementGenerator:
                     and name not in self.ctx.native_global_names):
                 # OptionalType uses inner type (pointer-local adds T*)
                 resolve_type = var_type
-                if isinstance(var_type, OptionalType) and not var_type.inner.is_value_type():
+                if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
                     resolve_type = var_type.inner
                 cpp_type = self.types.type_to_cpp(resolve_type)
                 self.ctx.declared_vars.add(name)

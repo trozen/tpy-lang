@@ -777,6 +777,7 @@ class Parser:
         elif isinstance(node, ast.Subscript):
             if isinstance(node.value, ast.Name):
                 container = node.value.id
+                # TODO: resolve to qualified names (typing.Optional, tpy.readonly, etc.)
                 # Resolve tpy import aliases for container names
                 resolved_container = self._imports.tpy_import_aliases.get(container, container)
                 # Check if tpy type was explicitly imported
@@ -794,6 +795,11 @@ class Parser:
                 elif resolved_container == "readonly":
                     inner = self._parse_type_annotation(node.slice, type_param_scope)
                     return ReadonlyType(inner)
+                elif container == "Optional":
+                    source = self._imports.get_import_source(container)
+                    if source and source[0] == "typing":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return OptionalType(inner)
 
                 # Generic protocols (e.g., Sequence[Int32])
                 if protocol_def := lookup_builtin_protocol(resolved_container):

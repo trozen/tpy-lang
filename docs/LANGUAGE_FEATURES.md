@@ -1707,6 +1707,13 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Functions returning `T | None` return `T*` in C++
+- **Working**: `Optional[T]` from `typing` is equivalent to `T | None` at parse time
+  - `from typing import Optional` then `Optional[Int32]` produces the same type as `Int32 | None`
+  - Works in all positions: parameters, returns, local annotations, class fields
+- **Working**: `T | None` in generic contexts → `std::optional<T>` (C++ templates)
+  - Generic type parameters (`TypeParamRef`) use `std::optional<T>` representation, not `T*`
+  - Ensures correct codegen when the inner type may be either value or reference at instantiation time
+  - `None` literals in generic Optional positions emit `std::nullopt` (not `nullptr`)
 - **Working**: `T | None` for value types (`Int32 | None`, `bool | None`, `float | None`) → `std::optional<T>`
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks

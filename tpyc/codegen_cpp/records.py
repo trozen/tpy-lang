@@ -402,7 +402,7 @@ class RecordGenerator:
                                             value = f"std::move({value})"
                                             break
                                 # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't
-                                if isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type():
+                                if isinstance(fld_type, OptionalType) and fld_type.uses_pointer_repr():
                                     raw_val_type = self.ctx.get_expr_type(stmt.value)
                                     val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
                                     source = self.ctx.unwrap_copy(stmt.value)

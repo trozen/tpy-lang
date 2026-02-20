@@ -73,7 +73,7 @@ class ExpressionGenerator:
         analyzed_type = self.ctx.get_expr_type(expr)
         if (
             target_type is not None
-            and isinstance(expr_type, OptionalType) and expr_type.inner.is_value_type()
+            and isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr()
             and not isinstance(target_type, OptionalType)
         ):
             # If sema already narrowed this expression to non-Optional, unwrap
@@ -239,7 +239,7 @@ class ExpressionGenerator:
 
         expr_type = self.types.get_resolved_type(expr)
         rendered = self.gen_expr(expr)
-        if isinstance(expr_type, OptionalType) and expr_type.inner.is_value_type():
+        if isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr():
             return f"tpy::is_truthy({rendered})"
         return rendered
 
@@ -363,21 +363,21 @@ class ExpressionGenerator:
                 # Only unwrap operands that flow analysis has proven non-None.
                 left_analyzed = self.ctx.get_expr_type(expr.left)
                 right_analyzed = self.ctx.get_expr_type(expr.right)
-                if isinstance(left_type, OptionalType) and left_type.inner.is_value_type():
+                if isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr():
                     if not isinstance(left_analyzed, OptionalType):
                         left_target = left_type.inner
-                    elif not (isinstance(right_type, OptionalType) and right_type.inner.is_value_type()):
+                    elif not (isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr()):
                         right_target = left_type.inner
-                if isinstance(right_type, OptionalType) and right_type.inner.is_value_type():
+                if isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr():
                     if not isinstance(right_analyzed, OptionalType):
                         right_target = right_type.inner
-                    elif not (isinstance(left_type, OptionalType) and left_type.inner.is_value_type()):
+                    elif not (isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr()):
                         left_target = right_type.inner
             else:
                 # Ordering operators / non-Optional: unwrap with runtime check
-                if isinstance(left_type, OptionalType) and left_type.inner.is_value_type():
+                if isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr():
                     left_target = left_type.inner
-                if isinstance(right_type, OptionalType) and right_type.inner.is_value_type():
+                if isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr():
                     right_target = right_type.inner
 
             # When comparing Char with string literal, output literal as char.
@@ -491,7 +491,7 @@ class ExpressionGenerator:
             return self._gen_int_literal_value(-expr.operand.value, target_type)
         resolved_operand_type = self.types.get_resolved_type(expr.operand)
         unary_target = target_type
-        if isinstance(resolved_operand_type, OptionalType) and resolved_operand_type.inner.is_value_type():
+        if isinstance(resolved_operand_type, OptionalType) and not resolved_operand_type.uses_pointer_repr():
             unary_target = resolved_operand_type.inner
         operand = self.gen_expr_deref(expr.operand, unary_target)
 
@@ -614,7 +614,7 @@ class ExpressionGenerator:
                     arg = expr.args[0]
                     arg_type = self.ctx.get_expr_type(arg)
                     # Optional non-value: keep native representation (T* or std::optional<T>)
-                    if isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
+                    if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
                         return self.gen_expr(arg)
                     return self.gen_expr_deref(arg)
                 # Check for module function
@@ -641,7 +641,7 @@ class ExpressionGenerator:
 
                 # Optional non-value params are T* / const T* -- pass raw pointer
                 actual_ptype = unwrap_readonly(resolved_ptype)
-                if isinstance(actual_ptype, OptionalType) and not actual_ptype.inner.is_value_type():
+                if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
                     if isinstance(arg, TpyNoneLiteral):
                         gen_args.append("nullptr")
                     elif self.ctx.is_indirect_name(arg):
@@ -721,7 +721,9 @@ class ExpressionGenerator:
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
-                gen_args.append(self.gen_call_arg(a, ptype, target_type=expr.call_type))
+                # None literals need param type to decide nullptr vs std::nullopt
+                t_type = ptype if isinstance(a, TpyNoneLiteral) and ptype else expr.call_type
+                gen_args.append(self.gen_call_arg(a, ptype, target_type=t_type))
             args = ", ".join(gen_args)
             # Use qualified type name for imported records
             type_cpp = self.types.type_to_cpp(expr.call_type)
@@ -735,7 +737,7 @@ class ExpressionGenerator:
                 ptype = init_params[i].type if i < len(init_params) else None
                 # Optional non-value params are T* / const T* -- same logic as function calls
                 actual_ptype = unwrap_readonly(ptype) if ptype else ptype
-                if isinstance(actual_ptype, OptionalType) and not actual_ptype.inner.is_value_type():
+                if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
                     if isinstance(a, TpyNoneLiteral):
                         gen_args.append("nullptr")
                     elif self.ctx.is_indirect_name(a):
@@ -796,7 +798,7 @@ class ExpressionGenerator:
             if module_name == "tpy" and expr.method == "copy":
                 arg = expr.args[0]
                 arg_type = self.ctx.get_expr_type(arg)
-                if isinstance(arg_type, OptionalType) and not arg_type.inner.is_value_type():
+                if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
                     return self.gen_expr(arg)
                 return self.gen_expr_deref(arg)
             # Special-handling functions with cpp_template resolved by sema
@@ -920,13 +922,15 @@ class ExpressionGenerator:
                                 gen_args.append(self.gen_expr_deref(arg))
                         else:
                             rptype = resolved_params[i].type if i < len(resolved_params) else ptype
-                            gen_args.append(self.gen_call_arg(arg, rptype, target_type=None))
+                            # None literals need target type to decide nullptr vs std::nullopt
+                            arg_target = rptype if isinstance(arg, TpyNoneLiteral) else None
+                            gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target))
                     args = ", ".join(gen_args)
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions
         # (OptionalType non-value expressions like function calls return T*)
         obj_type = self.ctx.get_expr_type(expr.obj)
-        is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
+        is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
@@ -991,7 +995,7 @@ class ExpressionGenerator:
         # Narrowed vars (from isinstance std::get) are direct references, not pointers
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
-        is_optional_ptr = isinstance(obj_type, OptionalType) and not obj_type.inner.is_value_type()
+        is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
@@ -1078,7 +1082,7 @@ class ExpressionGenerator:
         if (
             expr.needs_optional_runtime_check
             and isinstance(analyzed_obj_type, OptionalType)
-            and not analyzed_obj_type.inner.is_value_type()
+            and analyzed_obj_type.uses_pointer_repr()
         ):
             if isinstance(expr.obj, TpyFieldAccess):
                 subscript_obj = f"tpy::deref_optional_check({obj})"

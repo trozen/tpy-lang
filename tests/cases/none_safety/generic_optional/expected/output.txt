@@ -1,0 +1,7 @@
+got: 42
+after set: None
+restored: 99
+none init: ok
+maybe: 7
+maybe None: ok
+done

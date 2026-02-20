@@ -23,9 +23,9 @@ they don't change how existing code compiles. These two do:
    None-narrowing is a special case. Supports if/elif/else isinstance, assert isinstance,
    while-loop isinstance, and assignment narrowing.
 
-2. **Generic Optional codegen fix** (A3) -- changes what C++ is emitted for existing
-   `T | None` patterns when `T` is a type parameter. Every Optional-related codegen path
-   (check, unwrap, assign None) potentially produces different output for generic code.
+2. **Generic Optional codegen fix** (A3) -- **Done.** Changed what C++ is emitted for
+   `T | None` patterns when `T` is a type parameter. All Optional-related codegen paths
+   now use `uses_pointer_repr()` instead of `is_value_type()`.
 
 3. **Dynamic dispatch** (B4 + B5) -- method definition codegen goes from "always
    non-virtual" to "decide per method: virtual or not?" affecting every class hierarchy.
@@ -47,7 +47,7 @@ existing compiler model stays the same for existing code.
 |---|---------|--------|--------|---------|
 | A1 | Final constants | S | Not started | [I](#final--constant-globals) |
 | A2 | Type aliases | S | Done | [I](#type-aliases) |
-| A3 | Generic Optional codegen fix | M | Known bug | [I](#generic-optional-codegen-fix) |
+| A3 | Generic Optional codegen fix | M | Done | [I](#generic-optional-codegen-fix) |
 | A4 | DynStr (owned strings) | M | Designed | [I](#string-ownership-dynstr) |
 | A5 | Enums | M | Not started | [I](#enums) |
 | A6 | Keyword args + default values | M | Not started | [VII](#keyword-arguments-and-default-values) |
@@ -205,23 +205,15 @@ assignment. Dict iteration needs both tuple and dict.
 
 ### Generic Optional Codegen Fix
 
-Currently `T | None` in generic contexts generates `T*`/`nullptr` instead of
-`std::optional<T>`. This breaks C++ concepts expecting `std::optional<ElemT>`
-(specifically `tpy::OptIterator`).
+**Done.** `T | None` in generic contexts now generates `std::optional<T>` instead of
+`T*`/`nullptr`. Concrete non-value types (records, lists) still use pointer representation.
 
-**Why it matters**: Blocks generic iterators, generic containers with None, and any generic
-code that uses Optional. This is a correctness bug, not just a missing feature.
-
-Options:
-- Always `std::optional<T>` (uniform but wrapping overhead for non-value types)
-- `T*` only for known record types, `std::optional` otherwise (current, inconsistent)
-- `tpy::Optional<T>` wrapper adapting by `is_value_type<T>`
-
-**Current state**: Known bug (TODO.md, ITERATOR_DESIGN.md).
+Added `OptionalType.uses_pointer_repr()` method that returns `True` only for concrete
+non-value inner types (no `TypeParamRef` anywhere in the type tree). All 33 codegen sites
+updated to use this instead of `is_value_type()`. Also: `Optional[T]` from `typing` is
+now equivalent to `T | None` at parse time.
 
 **Dependencies**: Interacts with union types (Optional is a degenerate union).
-
-**Effort**: M (codegen refactor, concept compatibility testing)
 
 ---
 

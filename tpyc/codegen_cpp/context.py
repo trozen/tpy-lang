@@ -459,7 +459,7 @@ class CodeGenContext:
         expr_type = self.get_expr_type(expr)
         if isinstance(expr_type, (PtrType, ConstPtrType)):
             return rendered
-        if isinstance(expr_type, OptionalType) and not expr_type.inner.is_value_type():
+        if isinstance(expr_type, OptionalType) and expr_type.uses_pointer_repr():
             return rendered
         return f"(*{rendered})"
 

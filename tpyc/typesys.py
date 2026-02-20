@@ -721,6 +721,13 @@ class NoneType(TpyType):
         return True
 
 
+def _contains_type_param(t: TpyType) -> bool:
+    """Return True if the type contains any TypeParamRef (recursively)."""
+    if isinstance(t, TypeParamRef):
+        return True
+    return any(_contains_type_param(inner) for inner in t.inner_types())
+
+
 @dataclass(frozen=True)
 class OptionalType(TpyType):
     """Nullable wrapper: T | None.
@@ -736,23 +743,33 @@ class OptionalType(TpyType):
     def is_value_type(self) -> bool:
         return self.inner.is_value_type()
 
+    def uses_pointer_repr(self) -> bool:
+        """Whether this Optional uses T* (pointer) repr instead of std::optional<T>.
+
+        Returns True only for concrete non-value inner types (e.g. records).
+        Returns False for value types, type parameters, or types containing
+        type parameters -- generic Optional must always use std::optional<T>
+        since C++ templates cannot conditionally switch representations.
+        """
+        return not self.inner.is_value_type() and not _contains_type_param(self.inner)
+
     def to_cpp_return(self) -> str:
-        if not self.inner.is_value_type():
+        if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
-        if not self.inner.is_value_type():
+        if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}*"
         return self.to_cpp()
 
     def to_cpp_param(self, name: str) -> str:
-        if not self.inner.is_value_type():
+        if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
         return f"{self.to_cpp()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
-        if not self.inner.is_value_type():
+        if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
         return f"{self.to_cpp()} {name}"
 
