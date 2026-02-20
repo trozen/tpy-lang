@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, TypeParamRef, UnionType,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -98,14 +98,16 @@ class StatementGenerator:
             actual = unwrap_readonly(ptype)
             if isinstance(actual, OptionalType) and not actual.inner.is_value_type():
                 self.ctx.pointer_locals.add(pname)
-            # Own[T] params are movable (caller gave up ownership)
-            if isinstance(actual, OwnType) and not actual.wrapped.is_value_type():
+            # Own[T] and Own[T] | None params are movable (caller gave up ownership)
+            own_actual = unwrap_optional_own(actual)
+            if own_actual is not None and not own_actual.wrapped.is_value_type():
                 self.ctx.movable_locals.add(pname)
-                # T&& forwarding refs only apply to free function template params
-                # (where T is deduced at the call site). Class method params use
-                # T by value, so they get std::move, not std::forward.
-                if isinstance(actual.wrapped, TypeParamRef) and not is_method:
-                    self.ctx.forwarding_params[pname] = actual.wrapped.name
+                # T&& forwarding refs only apply to bare Own[T] free function template params
+                # (where T is deduced at the call site). Own[T] | None shouldn't use
+                # std::forward<T> and class method params use T by value.
+                if (isinstance(actual, OwnType)
+                        and isinstance(own_actual.wrapped, TypeParamRef) and not is_method):
+                    self.ctx.forwarding_params[pname] = own_actual.wrapped.name
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type

@@ -10,7 +10,7 @@ from typing import Final, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
-    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, UnionType,
+    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
     ResolvedBinop
 )
@@ -110,7 +110,7 @@ class ExpressionGenerator:
         not literal coercion).
         """
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
-        if ptype is not None and isinstance(unwrap_readonly(ptype), OwnType):
+        if ptype is not None and unwrap_optional_own(unwrap_readonly(ptype)) is not None:
             gen_arg = self._maybe_move(arg, gen_arg)
         return gen_arg
 

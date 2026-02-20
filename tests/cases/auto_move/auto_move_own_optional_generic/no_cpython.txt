@@ -1,0 +1,1 @@
+Explicit generic type args (func[T]()) not supported by CPython

@@ -8,10 +8,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, ListType, PendingListType, IntLiteralType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
-    UnionType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly,
+    UnionType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName, TpyFunction
 from ..namespace import BindingKind
@@ -518,6 +518,20 @@ class CallAnalyzer:
                 arg,
             )
 
+    def check_own_param(self, arg: TpyExpr, arg_type: TpyType,
+                        pname: str, ptype: TpyType) -> None:
+        """Run Own[T] / Own[T]|None param checks: implicit-copy error and unnecessary-copy warning.
+
+        Handles both bare Own[T] and Own[T] | None parameter types.
+        Call this for every parameter that might be ownership-taking.
+        """
+        own_ptype = unwrap_optional_own(ptype)
+        if own_ptype is None:
+            return
+        if not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
+            self._check_own_param_arg(arg, arg_type, pname, own_ptype)
+        self._warn_unnecessary_copy(arg)
+
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
         """Validate and resolve generic type constructor calls.
 
@@ -853,12 +867,7 @@ class CallAnalyzer:
                     arg
                 )
 
-            # Check for T passed to Own[T] parameter - would be implicit copy
-            if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                self._check_own_param_arg(arg, arg_type, pname, ptype)
-
-            if isinstance(ptype, OwnType):
-                self._warn_unnecessary_copy(arg)
+            self.check_own_param(arg, arg_type, pname, ptype)
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
@@ -953,12 +962,7 @@ class CallAnalyzer:
                     arg
                 )
 
-            # Check for T passed to Own[T] parameter - would be implicit copy
-            if isinstance(resolved_ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                self._check_own_param_arg(arg, arg_type, pname, resolved_ptype)
-
-            if isinstance(resolved_ptype, OwnType):
-                self._warn_unnecessary_copy(arg)
+            self.check_own_param(arg, arg_type, pname, resolved_ptype)
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(resolved_ptype, CharType) and isinstance(arg_type, StrType) and
@@ -1027,10 +1031,7 @@ class CallAnalyzer:
                 for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                     resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst) if type_subst else ptype
                     arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
-                    if isinstance(resolved_ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                        self._check_own_param_arg(arg, arg_type, pname, resolved_ptype)
-                    if isinstance(resolved_ptype, OwnType):
-                        self._warn_unnecessary_copy(arg)
+                    self.check_own_param(arg, arg_type, pname, resolved_ptype)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)
             else:
@@ -1074,10 +1075,7 @@ class CallAnalyzer:
                     type_subst = inferred
                     for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                         resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
-                        if isinstance(resolved_ptype, OwnType) and not isinstance(arg_types[i], OwnType) and not arg_types[i].is_value_type():
-                            self._check_own_param_arg(arg, arg_types[i], pname, resolved_ptype)
-                        if isinstance(resolved_ptype, OwnType):
-                            self._warn_unnecessary_copy(arg)
+                        self.check_own_param(arg, arg_types[i], pname, resolved_ptype)
                         expr.args[i] = self.compat.coerce_expr(
                             arg, arg_types[i], resolved_ptype,
                             f"argument '{pname}'", coercion_ctx=CoercionContext.ARG
@@ -1129,10 +1127,7 @@ class CallAnalyzer:
                 )
             for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                 arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                    self._check_own_param_arg(arg, arg_type, pname, ptype)
-                if isinstance(ptype, OwnType):
-                    self._warn_unnecessary_copy(arg)
+                self.check_own_param(arg, arg_type, pname, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
         else:
@@ -1165,11 +1160,7 @@ class CallAnalyzer:
                 )
 
             # Check for T passed to Own[T] parameter - would be implicit copy
-            if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                self._check_own_param_arg(arg, arg_type, pname, ptype)
-
-            if isinstance(ptype, OwnType):
-                self._warn_unnecessary_copy(arg)
+            self.check_own_param(arg, arg_type, pname, ptype)
 
             # Special case: single-char string literal can be passed as Char
             if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and

@@ -3,7 +3,6 @@
 ## Next
 - move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
-- `Own[T] | None` params not recognized as movable -- auto-move and copy warning suppression don't apply because `_is_movable_var` only checks `OwnType`, not `OptionalType(OwnType(...))`
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
 - make Box[T] example great again
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check

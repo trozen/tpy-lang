@@ -691,6 +691,15 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
+    """Extract OwnType from Own[T] or Own[T] | None."""
+    if isinstance(t, OwnType):
+        return t
+    if isinstance(t, OptionalType) and isinstance(t.inner, OwnType):
+        return t.inner
+    return None
+
+
 @dataclass(frozen=True)
 class NoneType(TpyType):
     """The type of the None literal (distinct from VoidType which is for return types)."""

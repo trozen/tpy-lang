@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, SpanType, StrType, OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
-    is_protocol_type, unwrap_readonly,
+    is_protocol_type, unwrap_readonly, unwrap_optional_own,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -357,7 +357,7 @@ class TypeCompatibility:
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:
                 if pname == name:
-                    return isinstance(unwrap_readonly(ptype), OwnType)
+                    return unwrap_optional_own(unwrap_readonly(ptype)) is not None
             if name in self.ctx.hoisted_vars:
                 return False  # Hoisted -> T* pointer-local
             var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None

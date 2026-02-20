@@ -421,10 +421,7 @@ class MethodAnalyzer:
             expr.resolved_function_info = resolved
             for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
                 arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
-                if isinstance(ptype, OwnType) and not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
-                    self.calls._check_own_param_arg(arg, arg_type, pname, ptype)
-                if isinstance(ptype, OwnType):
-                    self.calls._warn_unnecessary_copy(arg)
+                self.calls.check_own_param(arg, arg_type, pname, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
             return resolved.return_type
@@ -443,10 +440,7 @@ class MethodAnalyzer:
             if resolved is not None:
                 expr.resolved_function_info = resolved
                 for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, resolved.params)):
-                    if isinstance(ptype, OwnType) and not isinstance(arg_types[i], OwnType) and not arg_types[i].is_value_type():
-                        self.calls._check_own_param_arg(arg, arg_types[i], pname, ptype)
-                    if isinstance(ptype, OwnType):
-                        self.calls._warn_unnecessary_copy(arg)
+                    self.calls.check_own_param(arg, arg_types[i], pname, ptype)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_types[i], ptype, f"{pname} argument",
                                                             coercion_ctx=CoercionContext.ARG)
                 return resolved.return_type
