@@ -144,6 +144,8 @@ class StatementGenerator:
             self._gen_while(out, stmt, indent)
         elif isinstance(stmt, TpyForEach):
             self._gen_for_each(out, stmt, indent)
+        elif isinstance(stmt, TpyAssert):
+            self._gen_assert(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
@@ -208,26 +210,6 @@ class StatementGenerator:
             return ""  # No C++ output -- just a sema directive
         elif isinstance(stmt, TpyRaiseStopIteration):
             return f"{indent}return std::nullopt;\n"
-        elif isinstance(stmt, TpyAssert):
-            # Constant-fold trivially-known assertions.
-            if isinstance(stmt.condition, TpyBoolLiteral):
-                if stmt.condition.value:
-                    return ""
-                if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
-                    msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-                    return f'{indent}tpy::tpy_panic("{msg}");\n'
-                return f'{indent}tpy::tpy_panic("assertion failed");\n'
-            if isinstance(stmt.condition, TpyNoneLiteral):
-                if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
-                    msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-                    return f'{indent}tpy::tpy_panic("{msg}");\n'
-                return f'{indent}tpy::tpy_panic("assertion failed");\n'
-            # Use Python-style truthiness conversion for assert conditions.
-            bool_cond = self.expressions.gen_truthy_expr(stmt.condition)
-            if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
-                msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-                return f'{indent}if (!({bool_cond})) tpy::tpy_panic("{msg}");\n'
-            return f'{indent}if (!({bool_cond})) tpy::tpy_panic("assertion failed");\n'
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for actual user modules (not builtins)
             # Check is_builtin flag to handle single-file/REPL mode where builtins
@@ -801,17 +783,19 @@ class StatementGenerator:
             return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
 
     def _emit_isinstance_extractions(
-        self, out: TextIO, type_facts: dict[str, TpyType], stmt: TpyIf,
+        self, out: TextIO, type_facts: dict[str, TpyType], indent_extra: int = 1,
     ) -> dict[str, str | None]:
         """Emit std::get extractions for isinstance-narrowed variables.
 
         Returns saved narrowed_vars entries for later restoration.
         Only emits extraction when the fact is a concrete (non-union) type.
+        indent_extra controls how many indent levels past the current level to emit at:
+        1 (default) for inside an if-block, 0 for after an assert at the current level.
         """
         saved: dict[str, str | None] = {}
         if not type_facts:
             return saved
-        inner_indent = "  " * (self.ctx.indent_level + 1)
+        inner_indent = "  " * (self.ctx.indent_level + indent_extra)
         for var_name, narrowed_type in type_facts.items():
             if isinstance(narrowed_type, (UnionType, NoneType)):
                 continue
@@ -840,6 +824,37 @@ class StatementGenerator:
                 self.ctx.narrowed_vars[var_name] = prev
             else:
                 self.ctx.narrowed_vars.pop(var_name, None)
+
+    def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
+        """Generate an assert statement with optional isinstance union narrowing."""
+        # Constant-fold trivially-known assertions (no temps to flush).
+        if isinstance(stmt.condition, TpyBoolLiteral):
+            if stmt.condition.value:
+                return
+            if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
+                msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
+                out.write(f'{indent}tpy::tpy_panic("{msg}");\n')
+                return
+            out.write(f'{indent}tpy::tpy_panic("assertion failed");\n')
+            return
+        if isinstance(stmt.condition, TpyNoneLiteral):
+            if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
+                msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
+                out.write(f'{indent}tpy::tpy_panic("{msg}");\n')
+                return
+            out.write(f'{indent}tpy::tpy_panic("assertion failed");\n')
+            return
+        bool_cond = self.expressions.gen_truthy_expr(stmt.condition)
+        self.ctx.temps.flush(out, indent)
+        if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
+            msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
+            out.write(f'{indent}if (!({bool_cond})) tpy::tpy_panic("{msg}");\n')
+        else:
+            out.write(f'{indent}if (!({bool_cond})) tpy::tpy_panic("assertion failed");\n')
+        # Emit std::get<T> extractions for isinstance-narrowed union variables.
+        # Unlike if-branch narrowing, assert narrowing persists for the rest of scope,
+        # so we do NOT call _restore_narrowed_vars.
+        self._emit_isinstance_extractions(out, stmt.then_type_facts, indent_extra=0)
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if statement."""
@@ -882,7 +897,7 @@ class StatementGenerator:
         out.write(f"{indent}if ({cond}) {{\n")
 
         # isinstance narrowing: emit std::get extractions from sema-computed type facts
-        then_saved = self._emit_isinstance_extractions(out, stmt.then_type_facts, stmt)
+        then_saved = self._emit_isinstance_extractions(out, stmt.then_type_facts)
 
         self.ctx.indent_level += 1
         for s in stmt.then_body:
@@ -894,7 +909,7 @@ class StatementGenerator:
 
         if stmt.else_body:
             out.write(f"{indent}}} else {{\n")
-            else_saved = self._emit_isinstance_extractions(out, stmt.else_type_facts, stmt)
+            else_saved = self._emit_isinstance_extractions(out, stmt.else_type_facts)
 
             self.ctx.indent_level += 1
             for s in stmt.else_body:

@@ -1675,6 +1675,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Mixed `readonly`/non-`readonly` in unions is a parse error
   - Generic functions returning `T | U` where `T == U` at instantiation produce a sema error (duplicate variant members)
   - `isinstance(x, T)` narrowing in if/elif/else branches: narrows union variable to member type
+  - `assert isinstance(x, T)` narrowing: `std::get<T>` extraction persists for the rest of the scope
   - Compound conditions: `isinstance(x, T) and x.field > 0` narrows `x` on the RHS of `and`
   - `isinstance(x, T) or x.other_field > 0` narrows `x` to remaining members on `or` RHS
   - Negative (else-branch) narrowing: remaining union members after isinstance check

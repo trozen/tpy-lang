@@ -177,15 +177,8 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
-            # Only union-origin facts go to codegen (Optional narrowing is implicit)
-            stmt.then_type_facts = {
-                name: ty for name, ty in then_type_facts.items()
-                if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
-            }
-            stmt.else_type_facts = {
-                name: ty for name, ty in else_type_facts.items()
-                if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
-            }
+            stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
+            stmt.else_type_facts = self._filter_union_codegen_facts(else_type_facts)
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
@@ -315,6 +308,7 @@ class StatementAnalyzer:
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
+            stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             self.ctx.narrowed_types.update(then_type_facts)
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)
@@ -323,6 +317,19 @@ class StatementAnalyzer:
             if not isinstance(func, TpyFunction) or func.name != "__next__":
                 raise self.ctx.error("'raise StopIteration' can only be used inside a __next__ method", stmt)
             self.init.mark_terminated()
+
+    def _filter_union_codegen_facts(
+        self, facts: dict[str, TpyType],
+    ) -> dict[str, TpyType]:
+        """Keep only union-origin narrowing facts for codegen.
+
+        Optional narrowing is handled implicitly by std::optional in C++,
+        so only UnionType variables need explicit std::get<T> extraction.
+        """
+        return {
+            name: ty for name, ty in facts.items()
+            if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
+        }
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

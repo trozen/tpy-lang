@@ -249,6 +249,8 @@ class TpyAssert(TpyStmt):
     """Assert statement."""
     condition: TpyExpr
     message: TpyExpr | None = None
+    # Set by sema: isinstance union narrowing facts that hold after a passing assert
+    then_type_facts: dict[str, TpyType] = field(default_factory=dict)
 
 
 @dataclass

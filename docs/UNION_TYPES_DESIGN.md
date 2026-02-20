@@ -39,7 +39,8 @@ def area(s: Shape) -> float:
 | **Phase 8** | Type aliases (`Shape = Circle \| Rect`) | Not designed |
 | **Phase 9** | Equality `==`/`!=` on unions (if all members support it) | Not designed |
 | **Phase 10** | Unify `narrowed_types` with `non_none_vars` | **Done** |
-| **Phase 11** | `assert isinstance(x, T)` codegen for unions | Not designed |
+| **Phase 11** | `assert isinstance(x, T)` codegen for unions | **Done** |
+| **Later** | Assignment narrowing: `v = Rect(...)` narrows `v: A \| B` to `Rect` when RHS type is a known member | Not designed |
 | **Later** | While-loop condition narrows union types (codegen extraction) | Not designed |
 | **Later** | `isinstance(x, (A, B))` tuple form (narrow to subset of union) | Design only |
 | **Later** | Exhaustiveness checking (isinstance chains + match/case) | Design only |
@@ -688,10 +689,6 @@ last branch is not a plain `else:`.
 
 - **No `isinstance(x, (A, B))` tuple form**: narrowing to a subset of union
   members via tuple syntax is future work.
-
-- **`assert isinstance(x, T)` on unions**: sema narrows correctly after assert,
-  but codegen doesn't emit `std::get<T>()` extraction. Needs `then_type_facts`
-  on `TpyAssert` nodes and extraction logic in the assert codegen path.
 
 - **While-loop union narrowing codegen**: condition-proven type facts are now
   preserved in loops (via `condition_type_facts`), but codegen doesn't emit
