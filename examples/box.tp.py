@@ -52,7 +52,6 @@ class Box[T](Deref[T]):
 
     # TODO: readonly deref?
 
-    # TODO: __del__() method
     # TODO: __bool__() method
     # TODO: __copy__() method?
     # TODO: __str__() method?

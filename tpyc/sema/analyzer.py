@@ -9,7 +9,7 @@ from typing import Optional
 
 from ..typesys import TpyType, TypeRegistry, NamedType, STR, NoneType, VoidType, INT32, ReadonlyType, unwrap_readonly
 from ..namespace import Namespace
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, is_super_del_call
 
 from .diagnostics import Scope, Diagnostic, SemanticError
 from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
@@ -402,7 +402,7 @@ class SemanticAnalyzer:
                 if self.ctx.super_del_call is not None:
                     # super().__del__() must be the last non-docstring statement
                     last_real_stmt = MethodAnalyzer.find_last_non_docstring_stmt(method.body)
-                    if last_real_stmt is not None and not MethodAnalyzer._is_super_del_call(last_real_stmt):
+                    if last_real_stmt is not None and not is_super_del_call(last_real_stmt):
                         raise self._error(
                             "super().__del__() must be the last statement in __del__",
                             self.ctx.super_del_call

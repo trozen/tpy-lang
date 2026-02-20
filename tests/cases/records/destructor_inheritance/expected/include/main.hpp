@@ -26,8 +26,8 @@ struct Base {
   }
   Base& operator=(Base&& other) noexcept {
     if (this != &other) {
-      __tpy_owned_ = other.__tpy_owned_;
-      other.__tpy_owned_ = false;
+      this->~Base();
+      new (this) Base(std::move(other));
     }
     return *this;
   }
@@ -62,10 +62,8 @@ struct Child : Base {
   }
   Child& operator=(Child&& other) noexcept {
     if (this != &other) {
-      Base::operator=(std::move(other));
-      label = std::move(other.label);
-      __tpy_owned_ = other.__tpy_owned_;
-      other.__tpy_owned_ = false;
+      this->~Child();
+      new (this) Child(std::move(other));
     }
     return *this;
   }

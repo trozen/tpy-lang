@@ -30,9 +30,8 @@ struct Resource {
   }
   Resource& operator=(Resource&& other) noexcept {
     if (this != &other) {
-      name = std::move(other.name);
-      __tpy_owned_ = other.__tpy_owned_;
-      other.__tpy_owned_ = false;
+      this->~Resource();
+      new (this) Resource(std::move(other));
     }
     return *this;
   }

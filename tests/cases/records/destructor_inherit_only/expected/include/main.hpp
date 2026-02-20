@@ -29,9 +29,8 @@ struct Base {
   }
   Base& operator=(Base&& other) noexcept {
     if (this != &other) {
-      name = std::move(other.name);
-      __tpy_owned_ = other.__tpy_owned_;
-      other.__tpy_owned_ = false;
+      this->~Base();
+      new (this) Base(std::move(other));
     }
     return *this;
   }

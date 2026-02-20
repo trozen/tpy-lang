@@ -13,7 +13,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
-    TpyMethodCall, TpyFieldAccess, TpyName
+    TpyMethodCall, TpyFieldAccess, TpyName, is_super_del_call,
 )
 from ..namespace import Namespace
 
@@ -287,24 +287,13 @@ class RecordGenerator:
                     return True
         return False
 
-    def _is_super_del_call(self, stmt: TpyStmt) -> bool:
-        """Check if a statement is a super().__del__() call.
-
-        NOTE: duplicates MethodAnalyzer._is_super_del_call in sema/methods.py.
-        Consider unifying into a shared helper if more super-call patterns emerge.
-        """
-        if isinstance(stmt, TpyExprStmt):
-            expr = stmt.expr
-            if isinstance(expr, TpyMethodCall) and expr.method == "__del__":
-                return expr.super_parent_type is not None
-        return False
-
     def _gen_move_and_destructor(self, out: TextIO, record: TpyRecord) -> None:
         """Generate a C++ destructor with drop-flag protection from a __del__ method.
 
         Emits:
         1. Custom move constructor that sets source's __tpy_owned_ = false
-        2. Custom move assignment with self-check and flag transfer
+        2. Custom move assignment via destroy-and-reconstruct (runs destructor on
+           old value, then placement-new move-constructs the new value)
         3. Destructor guarded by __tpy_owned_ to skip body on moved-from objects
 
         super().__del__() calls are dropped -- parent destructors are called
@@ -318,7 +307,7 @@ class RecordGenerator:
         record_info = self.ctx.analyzer.registry.get_record(name)
 
         # Filter out super().__del__() calls -- they're automatic in C++
-        body_stmts = [s for s in del_method.body if not self._is_super_del_call(s)]
+        body_stmts = [s for s in del_method.body if not is_super_del_call(s)]
 
         # --- Custom move constructor ---
         init_parts = []
@@ -336,16 +325,11 @@ class RecordGenerator:
         out.write(f"    other.__tpy_owned_ = false;\n")
         out.write(f"  }}\n")
 
-        # --- Custom move assignment ---
+        # --- Custom move assignment (destroy-and-reconstruct) ---
         out.write(f"  {name}& operator=({name}&& other) noexcept {{\n")
         out.write(f"    if (this != &other) {{\n")
-        if record_info and record_info.parent:
-            parent_cpp = record_info.parent.to_cpp()
-            out.write(f"      {parent_cpp}::operator=(std::move(other));\n")
-        for fld in record.fields:
-            out.write(f"      {fld.name} = std::move(other.{fld.name});\n")
-        out.write(f"      __tpy_owned_ = other.__tpy_owned_;\n")
-        out.write(f"      other.__tpy_owned_ = false;\n")
+        out.write(f"      this->~{name}();\n")
+        out.write(f"      new (this) {name}(std::move(other));\n")
         out.write(f"    }}\n")
         out.write(f"    return *this;\n")
         out.write(f"  }}\n")

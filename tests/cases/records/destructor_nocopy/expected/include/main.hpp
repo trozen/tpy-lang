@@ -29,9 +29,8 @@ struct Handle {
   }
   Handle& operator=(Handle&& other) noexcept {
     if (this != &other) {
-      id = std::move(other.id);
-      __tpy_owned_ = other.__tpy_owned_;
-      other.__tpy_owned_ = false;
+      this->~Handle();
+      new (this) Handle(std::move(other));
     }
     return *this;
   }

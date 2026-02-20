@@ -28,9 +28,8 @@ struct Tracker {
   }
   Tracker& operator=(Tracker&& other) noexcept {
     if (this != &other) {
-      name = std::move(other.name);
-      __tpy_owned_ = other.__tpy_owned_;
-      other.__tpy_owned_ = false;
+      this->~Tracker();
+      new (this) Tracker(std::move(other));
     }
     return *this;
   }

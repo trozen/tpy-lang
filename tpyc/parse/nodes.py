@@ -505,3 +505,12 @@ class TpyModule:
     bare_module_imports: set[str] = field(default_factory=set)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
+
+
+def is_super_del_call(stmt: TpyStmt) -> bool:
+    """Check if a statement is a super().__del__() call."""
+    if isinstance(stmt, TpyExprStmt):
+        expr = stmt.expr
+        if isinstance(expr, TpyMethodCall) and expr.method == "__del__":
+            return expr.super_parent_type is not None
+    return False

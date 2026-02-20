@@ -15,6 +15,7 @@ from .nodes import (
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol,
     ParseWarning, TpyModule,
+    is_super_del_call,
 )
 
 from .imports import (
@@ -35,6 +36,7 @@ __all__ = [
     "TpyPassStmt", "TpyGlobal", "TpyRaiseStopIteration",
     "RelativeImportKey", "TpyImport", "TpyFunction", "TpyRecord", "TpyProtocol",
     "ParseWarning", "TpyModule",
+    "is_super_del_call",
     # imports
     "SPECIAL_MODULES", "TPY_TYPES",
     "check_tpy_type_imported", "ImportProcessor",

@@ -13,7 +13,8 @@ from ..typesys import (
     PtrType, ConstPtrType, ReadonlyType,
 )
 from ..parse import (
-    TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt
+    TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
+    is_super_del_call,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -799,11 +800,3 @@ class MethodAnalyzer:
             return None
         return stmts[-1]
 
-    @staticmethod
-    def _is_super_del_call(stmt: TpyStmt) -> bool:
-        """Check if a statement is a super().__del__() call."""
-        if isinstance(stmt, TpyExprStmt):
-            expr = stmt.expr
-            if isinstance(expr, TpyMethodCall) and expr.method == "__del__":
-                return expr.super_parent_type is not None
-        return False
