@@ -1,13 +1,11 @@
 # TODO
 
 ## Next
-- Static methods on generic classes don't infer class type params: `Box.from_optional(next)` where `Box[T]` has `from_optional(value: Own[T] | None)` fails because `_analyze_static_method_call` doesn't run type inference -- params still contain unresolved `TypeParamRef('T')`
-- `ClassName[TypeArgs].method()` syntax not supported for static calls: `Box[Node].from_optional(x)` fails because `Box[Node]` is parsed as a subscript, not recognized as a type-qualified static method call
 - move from narrowed optional at last use: after `if x is not None`, `*x` unwrap should emit `std::move(*x)` when `x` is at its last use and the type is non-copyable/Own
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - union types and narrowing (docs/UNION_TYPES_DESIGN.md)
-- make Box[T] example great again
 - `list.append(copy(x))` doesn't fire unnecessary-copy warning -- builtin method args bypass CallAnalyzer's copy check
+- stubs for tpy modules for CPython, so that we can run (some) TPy code in CPython, but also for use in IDEs etc. (we have already something for tests, so maybe it can be extracted)
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
 - Type params in generic function bodies: `list[T]` as local variable annotation fails ("Type parameter 'T' used outside of generic context"), and `return []` can't infer element type from return type when it contains a type param
 - dynamic protocols and dynamic dispatch

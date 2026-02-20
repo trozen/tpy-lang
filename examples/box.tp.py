@@ -57,13 +57,6 @@ class Box[T](Deref[T]):
     #   3. Long-term: full move/borrow tracking (Rust-style borrow checker)
 
 
-# HACK: workaround for the problem with from_optional
-def box_from_optional[T](value: Own[T] | None) -> Own[Box[T]] | None:
-    if value is not None:
-        return Box(value)
-    return None
-
-
 # Int32
 b = Box[Int32](42)
 print("b.get():", b.get())
@@ -105,12 +98,7 @@ class Node:
     # TODO: Own[T]|None not recognized as moveable
     def __init__(self, value: Int32, next: Own[Node] | None):
         self.value = value
-        # TODO: self.next = Box.from_optional(next)
-        # TODO: self.next = box_from_optional(next)
-        if next is not None:
-            self.next = Box(next)
-        else:
-            self.next = None
+        self.next = Box.from_optional(next)
 
 # TODO: how to make it work
 print("Node:", Node(0, None))

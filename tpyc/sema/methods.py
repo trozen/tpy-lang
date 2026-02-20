@@ -222,6 +222,15 @@ class MethodAnalyzer:
         if not overloads[0].is_staticmethod:
             raise self.ctx.error(f"Method '{expr.method}' requires an instance (not a static method)", expr)
 
+        if record_info.is_generic():
+            return self._analyze_generic_static_method_call(expr, record_info, overloads)
+
+        if expr.type_args or expr.type_args_parse_error:
+            raise self.ctx.error(
+                f"'{record_info.name}' is not generic and does not accept type arguments",
+                expr,
+            )
+
         if len(overloads) == 1:
             resolved = overloads[0]
             if len(expr.args) != len(resolved.params):
@@ -249,6 +258,43 @@ class MethodAnalyzer:
 
         expr.is_static_call = True
         return resolved.return_type
+
+    def _analyze_generic_static_method_call(
+        self, expr: TpyMethodCall, record_info, overloads: list[FunctionInfo],
+    ) -> TpyType:
+        """Resolve a static method call on a generic record (inference or explicit type args).
+
+        Creates a virtual FunctionInfo with the record's type params merged in,
+        then delegates to _analyze_user_function_call (same path as regular generic calls).
+        """
+        # Type args on the class name must match the record's type param count exactly
+        # (no partial application -- these are class-level, not function-level)
+        if expr.type_args and len(expr.type_args) != len(record_info.type_params):
+            raise self.ctx.error(
+                f"'{record_info.name}' expects {len(record_info.type_params)} "
+                f"type arguments, got {len(expr.type_args)}",
+                expr,
+            )
+        # NOTE: picks first overload. If overloaded static methods on generic
+        # classes are added, this needs overload resolution per-candidate with
+        # inference (similar to _analyze_builtin_function_overloads).
+        method = overloads[0]
+        virtual_func = FunctionInfo(
+            name=method.name, params=method.params, return_type=method.return_type,
+            is_staticmethod=method.is_staticmethod,
+            type_params=list(record_info.type_params),
+            type_param_bounds=dict(record_info.type_param_bounds),
+        )
+        temp_call = TpyCall(func=expr.method, args=expr.args,
+                            type_args=expr.type_args,
+                            type_args_parse_error=expr.type_args_parse_error,
+                            loc=expr.loc)
+        result = self.calls._analyze_user_function_call(temp_call, virtual_func)
+        expr.args = temp_call.args
+        expr.resolved_function_info = temp_call.resolved_function_info
+        expr.inferred_type_args = temp_call.inferred_type_args
+        expr.is_static_call = True
+        return result
 
     def _analyze_module_method_call(
         self, expr: TpyMethodCall, module_name: str | None = None,

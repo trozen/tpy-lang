@@ -824,6 +824,17 @@ class Parser:
             type_args.append(self._parse_type_annotation(s))
         return tuple(type_args)
 
+    def _try_parse_type_args(self, node: ast.Subscript) -> tuple[tuple[TpyType, ...], str | None]:
+        """Try to parse type args from a subscript, capturing parse errors.
+
+        Returns (type_args, parse_error). On success parse_error is None.
+        On failure type_args is empty and parse_error holds the message.
+        """
+        try:
+            return self._parse_type_args_from_subscript(node), None
+        except ParseError as e:
+            return (), e.message
+
     def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
         """Parse a module-defined generic type using its metadata."""
         param_kinds = type_def.param_kinds
@@ -1031,6 +1042,19 @@ class Parser:
             if isinstance(node.func, ast.Name):
                 return TpyCall(node.func.id, args, kwargs=kwargs, loc=loc)
             elif isinstance(node.func, ast.Attribute):
+                # ClassName[TypeArgs].method(args) -- static call with explicit class type args
+                if (isinstance(node.func.value, ast.Subscript)
+                        and isinstance(node.func.value.value, ast.Name)
+                        and node.func.value.value.id[0].isupper()):
+                    name = node.func.value.value.id
+                    type_args, type_args_parse_error = self._try_parse_type_args(node.func.value)
+                    if type_args or type_args_parse_error:
+                        return TpyMethodCall(
+                            TpyName(name, loc=loc), node.func.attr, args,
+                            type_args=type_args, type_args_parse_error=type_args_parse_error,
+                            loc=loc,
+                        )
+                    # No type args and no error: fall through (e.g., variable[index].method())
                 obj = self._parse_expr(node.func.value)
                 return TpyMethodCall(obj, node.func.attr, args, loc=loc)
             elif isinstance(node.func, ast.Subscript):
@@ -1040,14 +1064,9 @@ class Parser:
                 if isinstance(node.func.value, ast.Name):
                     name = node.func.value.id
                     # Try to extract type_args for potential generic function call
-                    type_args = ()
-                    type_args_parse_error = None
-                    try:
-                        type_args = self._parse_type_args_from_subscript(node.func)
-                    except ParseError as e:
-                        # Store error - sema will report it if this turns out to be a function call
-                        # (For type instantiations like StaticList[Int32, 8], non-type args are valid)
-                        type_args_parse_error = e.message
+                    # (for type instantiations like StaticList[Int32, 8], non-type args are valid
+                    # so parse error is stored and sema decides whether to report it)
+                    type_args, type_args_parse_error = self._try_parse_type_args(node.func)
                     # If name looks like a type (starts with uppercase or is registered), also parse as call_type
                     call_type = None
                     if name[0].isupper() or self.registry.is_known_type(name):
@@ -1063,12 +1082,7 @@ class Parser:
                     # module.func[T](args) -- method call with explicit type args
                     obj = self._parse_expr(node.func.value.value)
                     method = node.func.value.attr
-                    type_args = ()
-                    type_args_parse_error = None
-                    try:
-                        type_args = self._parse_type_args_from_subscript(node.func)
-                    except ParseError as e:
-                        type_args_parse_error = e.message
+                    type_args, type_args_parse_error = self._try_parse_type_args(node.func)
                     return TpyMethodCall(obj, method, args, type_args=type_args,
                                          type_args_parse_error=type_args_parse_error, loc=loc)
                 raise ParseError("Unsupported generic call target", node)

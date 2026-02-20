@@ -1,0 +1,1 @@
+main.tp.py:14: error: Cannot infer type arguments for 'default_value'. Specify explicitly: default_value[T](...)

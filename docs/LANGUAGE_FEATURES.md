@@ -2005,7 +2005,7 @@ struct SortedContainer {
 - **Working**: `__init__`
 - **Working**: Instance methods
 - **Working**: Generic classes (Python 3.12+ syntax)
-- **Working**: `@staticmethod` → static methods
+- **Working**: `@staticmethod` → static methods (including on generic classes with type inference)
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)
@@ -2073,6 +2073,28 @@ Pair<std::string_view, int32_t> pair{"hello", 100};
 - When mixing int literals with `Int32`, inference upgrades to `Int32`: `Same(1, x: Int32)` → `Same[Int32]`
 - Supports inference through wrapper types: `Ptr[T]`, `ConstPtr[T]`, `Own[T]`, `list[T]`
 - `Ptr[T]` arguments match `ConstPtr[T]` parameters (follows coercion rules)
+
+**Generic Static Methods**:
+
+Static methods on generic classes can use the class type parameters. Type arguments are inferred from call arguments or specified explicitly with `ClassName[TypeArgs].method(...)` syntax:
+
+```python
+class Box[T]:
+    value: T
+    def __init__(self, value: Own[T]):
+        self.value = value
+
+    @staticmethod
+    def from_optional(v: Own[T] | None) -> Own[Box[T]] | None:
+        if v is not None:
+            return Box(v)
+        return None
+
+b1 = Box.from_optional(42)              # Inferred: T = int
+b2 = Box[Int32].from_optional(None)     # Explicit: T = Int32
+```
+
+Generated C++: `Box<int32_t>::from_optional(42)`, `Box<int32_t>::from_optional(std::nullopt)`.
 
 ### Integer Type Parameters
 

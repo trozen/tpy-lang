@@ -862,7 +862,11 @@ class ExpressionGenerator:
                 cpp_class = record_info.native_name or expr.obj.name
                 cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
                 return f"{cpp_class}::{cpp_method}({args})"
-            return f"{expr.obj.name}::{expr.method}({args})"
+            class_name = expr.obj.name
+            if expr.inferred_type_args:
+                type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
+                class_name = f"{class_name}<{type_args_str}>"
+            return f"{class_name}::{expr.method}({args})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
         if isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.analyzer.imports:

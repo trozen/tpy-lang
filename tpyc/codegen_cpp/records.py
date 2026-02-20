@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
-    ListType, ArrayType, SpanType, ModuleType, unwrap_readonly,
+    ListType, ArrayType, SpanType, ModuleType, unwrap_readonly, unwrap_optional_own,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -300,35 +300,47 @@ class RecordGenerator:
         # Build field name -> type map for target type passing
         field_types = {fld.name: fld.type for fld in record.fields}
         own_field_names = set(field_types.keys())
-        inits = []
-        for stmt in init_method.body:
-            if isinstance(stmt, TpyAssign):
-                if isinstance(stmt.target, TpyFieldAccess):
-                    if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
-                        field_name = stmt.target.field
-                        # Only add to member init list if it's this class's own field
-                        if field_name in own_field_names:
-                            fld_type = field_types[field_name]
-                            value = self.expressions.gen_expr(stmt.value, fld_type)
-                            # Auto-move Own[T] params at last use in member init list.
-                            # Ctor params are by value (T, not T&&) so always use std::move.
-                            if (isinstance(stmt.value, TpyName)
-                                    and id(stmt.value) in self.ctx.analyzer.ctx.all_last_uses):
-                                for pname, ptype in init_method.params:
-                                    if pname == stmt.value.name and isinstance(unwrap_readonly(ptype), OwnType):
-                                        value = f"std::move({value})"
-                                        break
-                            # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't
-                            if isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type():
-                                raw_val_type = self.ctx.get_expr_type(stmt.value)
-                                val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
-                                source = self.ctx.unwrap_copy(stmt.value)
-                                if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
-                                    # Own[T] | None is already std::optional<T>; T | None is T* needing conversion
-                                    if not (isinstance(val_type, OptionalType) and isinstance(val_type.inner, OwnType)):
-                                        value = f"tpy::ptr_to_optional({value})"
-                            inits.append((field_name, value))
-        return inits
+        # Temporarily populate movable_locals with constructor Own params so that
+        # gen_call_arg/_maybe_move can emit std::move() for last-use args inside
+        # init list expressions (e.g. Box.from_optional(next)).
+        saved_movable = self.ctx.movable_locals.copy()
+        for pname, ptype in init_method.params:
+            actual = unwrap_readonly(ptype)
+            own = unwrap_optional_own(actual)
+            if own is not None and not own.wrapped.is_value_type():
+                self.ctx.movable_locals.add(pname)
+        try:
+            inits = []
+            for stmt in init_method.body:
+                if isinstance(stmt, TpyAssign):
+                    if isinstance(stmt.target, TpyFieldAccess):
+                        if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
+                            field_name = stmt.target.field
+                            # Only add to member init list if it's this class's own field
+                            if field_name in own_field_names:
+                                fld_type = field_types[field_name]
+                                value = self.expressions.gen_expr(stmt.value, fld_type)
+                                # Auto-move Own[T] params at last use in member init list.
+                                # Ctor params are by value (T, not T&&) so always use std::move.
+                                if (isinstance(stmt.value, TpyName)
+                                        and id(stmt.value) in self.ctx.analyzer.ctx.all_last_uses):
+                                    for pname, ptype in init_method.params:
+                                        if pname == stmt.value.name and isinstance(unwrap_readonly(ptype), OwnType):
+                                            value = f"std::move({value})"
+                                            break
+                                # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't
+                                if isinstance(fld_type, OptionalType) and not fld_type.inner.is_value_type():
+                                    raw_val_type = self.ctx.get_expr_type(stmt.value)
+                                    val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
+                                    source = self.ctx.unwrap_copy(stmt.value)
+                                    if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
+                                        # Own[T] | None is already std::optional<T>; T | None is T* needing conversion
+                                        if not (isinstance(val_type, OptionalType) and isinstance(val_type.inner, OwnType)):
+                                            value = f"tpy::ptr_to_optional({value})"
+                                inits.append((field_name, value))
+            return inits
+        finally:
+            self.ctx.movable_locals = saved_movable
 
     def _get_non_init_stmts(self, init_method: TpyFunction, record: TpyRecord) -> list[TpyStmt]:
         """Get statements from __init__ that aren't simple field assignments.
