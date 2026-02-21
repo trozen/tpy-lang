@@ -1027,6 +1027,12 @@ class ExpressionGenerator:
         elem_target = None
         if target_type and target_type.needs_explicit_element_target():
             elem_target = target_type.get_element_type()
+        # For list literals with Optional/Union element types, pass element target
+        # so None generates std::nullopt instead of nullptr
+        if elem_target is None and target_type:
+            et = target_type.get_element_type()
+            if isinstance(et, (OptionalType, UnionType)):
+                elem_target = et
         elements = ", ".join(self.gen_expr_deref(e, elem_target) for e in expr.elements)
         literal = f"{{{elements}}}"
         # std::array of std::array needs an extra brace level

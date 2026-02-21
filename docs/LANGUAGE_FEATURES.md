@@ -416,6 +416,13 @@ def caller2():
     return reader(data)
 ```
 
+**Contextual element-type widening**: When the annotation's element type is wider than the literal's inferred element type, the literal adopts the annotation's type. This enables mixed-type literals:
+```python
+# Union element types: literal elements are checked against the annotation
+items: list[Int32 | None] = [Int32(1), None, Int32(3)]
+empty: list[Int32 | None] = []
+```
+
 Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to functions expecting mutable reference parameters works - the compiler generates temporary variables automatically.
 
 `Span[T]` is a non-owning read-only view that accepts any contiguous memory:

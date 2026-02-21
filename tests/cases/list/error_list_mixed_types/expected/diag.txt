@@ -1,0 +1,1 @@
+main.tp.py:12: error: List literal has mixed types: element 2 is Circle, but earlier elements are Rect. Use a type annotation like list[Rect | Circle]
