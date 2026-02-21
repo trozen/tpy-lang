@@ -304,7 +304,6 @@ class ProtocolGenerator:
             return
 
         all_methods = self.collect_concept_methods(protocol.name)
-        all_fields = self.collect_concept_fields(protocol.name)
 
         base_name = f"__tpy_Base_{protocol.name}"
         adapter_name = f"__tpy_Adapter_{protocol.name}"
@@ -316,9 +315,6 @@ class ProtocolGenerator:
             const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
             params_cpp = self._dynamic_param_list(method_sig)
             out.write(f"    virtual {ret_cpp} {method_sig.name}({params_cpp}){const_qual} = 0;\n")
-        for field_name, field_type in all_fields:
-            field_cpp = field_type.to_cpp()
-            out.write(f"    virtual {field_cpp} get_{field_name}() const = 0;\n")
         out.write(f"    virtual ~{base_name}() = default;\n")
         out.write("};\n\n")
 
@@ -328,7 +324,7 @@ class ProtocolGenerator:
         out.write(f"    T inner;\n")
         out.write(f"    template<typename... Args>\n")
         out.write(f"    {adapter_name}(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
-        self._gen_adapter_overrides(out, all_methods, all_fields, protocol_info)
+        self._gen_adapter_overrides(out, all_methods, protocol_info)
         out.write("};\n\n")
 
         # -- Ref adapter template (for lvalue call-site args, zero-copy) --
@@ -337,13 +333,12 @@ class ProtocolGenerator:
         out.write(f"struct {ref_adapter_name} : {base_name} {{\n")
         out.write(f"    T& inner;\n")
         out.write(f"    {ref_adapter_name}(T& ref) : inner(ref) {{}}\n")
-        self._gen_adapter_overrides(out, all_methods, all_fields, protocol_info)
+        self._gen_adapter_overrides(out, all_methods, protocol_info)
         out.write("};\n")
 
     def _gen_adapter_overrides(self, out: TextIO, all_methods: list[MethodSignature],
-                               all_fields: list[tuple[str, TpyType]],
                                protocol_info: 'ProtocolInfo') -> None:
-        """Emit method and field override bodies shared by owning and ref adapters."""
+        """Emit method override bodies shared by owning and ref adapters."""
         for method_sig in all_methods:
             ret_cpp = self._dynamic_return_type(method_sig)
             const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
@@ -352,10 +347,6 @@ class ProtocolGenerator:
             ret_kw = "" if is_void else "return "
             call_expr = self._dynamic_forward_call(method_sig)
             out.write(f"    {ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
-
-        for field_name, field_type in all_fields:
-            field_cpp = field_type.to_cpp()
-            out.write(f"    {field_cpp} get_{field_name}() const override {{ return inner.{field_name}; }}\n")
 
     def _is_readonly_method(self, method_sig: MethodSignature, protocol_info: 'ProtocolInfo') -> bool:
         from ..typesys import ProtocolInfo as _PI
