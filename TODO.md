@@ -1,6 +1,8 @@
 # TODO
 
 ## Next
+- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
+- argument default values
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - stubs for tpy modules for CPython, so that we can run (some) TPy code in CPython, but also for use in IDEs etc. (we have already something for tests, so maybe it can be extracted)
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
@@ -12,7 +14,6 @@
 - constant global variables (see `Final` in Language Features Roadmap)
 - "@native_c, @native, @extern_c, @readonly, @noalloc are all hard-coded parser keywords" -- should be handled like normal functions eventually (maybe in tpy.extern package?)
 - move native_c_global and native_global to tpy.extern package? (or tpy.native?)
-- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
@@ -24,7 +25,6 @@
 - keyword arguments
 - REPL: arr=[1,2,3]; arr[-4]
 - better C++ code formatting? 4 space indentation (or tab?)
-- argument default values
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
 - coerce int32 -> uint32?
 - remove the need for __tpy_owned_ in destructor (moved out, when there is a single pointer in class and the pointer may not be null; can it also work for |None case?)
@@ -124,8 +124,7 @@ Random items that may or may not be implemented in the future, but putting them 
 ## Code Review Items (2026-01-27)
 - Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
 - Unknown record types not rejected: `bar: UnknownType` passes sema, fails at C++ compile
-- Unary `not` not type-checked: `not items` (container) passes sema, fails C++ compile
-- `list.extend` lacks type validation: element type mismatch not checked
+- `list.extend` lacks type validation: element type mismatch not checked when types are related but not identical (e.g. `list[Int32].extend(list[int])` passes sema, fails C++)
 - `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
 
 ## Known Limitations

@@ -1,0 +1,5 @@
+list truthy
+list falsy
+str truthy
+str falsy
+and/or works

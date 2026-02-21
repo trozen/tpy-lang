@@ -489,12 +489,11 @@ class ExpressionAnalyzer:
         if expr.op == "!":
             if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType, OptionalType)):
                 return BOOL
-            if isinstance(effective_type, NamedType):
-                record = self.ctx.registry.get_record(effective_type.name)
-                if record and (record.get_method_overloads("__bool__")
-                               or record.get_method_overloads("__len__")):
-                    return BOOL
-            raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected Bool or numeric type)", expr)
+            record = self.ctx.registry.get_record_for_type(effective_type)
+            if record and (record.get_method_overloads("__bool__")
+                           or record.get_method_overloads("__len__")):
+                return BOOL
+            raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
 
         # FloatType supports unary negation
         if isinstance(effective_type, FloatType):
