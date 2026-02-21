@@ -277,7 +277,11 @@ class FunctionGenerator:
         out.write("}\n")
 
     def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
-        """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals."""
+        """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals.
+
+        Collects the full inherited surface (own + ancestor methods) since the C++
+        base class emits pure virtuals for all inherited protocol methods.
+        """
         record_info = self.ctx.analyzer.registry.get_record(record_name)
         if not record_info:
             return {}
@@ -285,7 +289,8 @@ class FunctionGenerator:
         for proto in record_info.implemented_protocols:
             proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
             if proto_info and proto_info.is_dynamic:
-                for method_sig in proto_info.methods:
+                all_methods = self.protocols.collect_concept_methods(proto.name)
+                for method_sig in all_methods:
                     is_const = method_sig.is_readonly or proto_info.is_readonly
                     result[method_sig.name] = is_const
         return result
