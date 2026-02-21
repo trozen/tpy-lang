@@ -71,7 +71,6 @@
 - list(str)
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
-- implicit truthiness: `if obj:` / `while obj:` / `and`/`or` should auto-call `__bool__()` (with fallback to `__len__() != 0` like Python)
 - `Self` type
 
 ## Random items
@@ -90,7 +89,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- support more dunder methods: `__bool__`, `__hash__`, etc.
+- support more dunder methods: `__hash__`, etc.
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - ability to define `__str__` method (currently works as explicit call `obj.__str__()`, but `str(obj)` doesn't dispatch to it)
@@ -103,7 +102,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
 - hoisted variable slots: keep them at the lowest scope that satisfies lifetime, instead of always hoisting to function scope
-- eliminate trivial temps for value-type constructor args: `wrap(Int32(10))` generates `int32_t __tmp = 10; wrap(__tmp)` instead of `wrap(10)`
 - runtime `using` declarations in global namespace (`tpy.hpp`): generated code should use `tpy::` prefix instead of relying on `using tpy::BigInt` etc.
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 - investigate other backends than c++

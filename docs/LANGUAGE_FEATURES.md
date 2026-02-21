@@ -1095,10 +1095,10 @@ The `tpy::Sized` concept uses the `tpy::__len__()` free function, which has over
 
 #### Working: Built-in `Truthy` Protocol
 
-The built-in `Truthy` protocol is available from the `typing` module. Types that implement `__bool__()` conform to `Truthy`, and `bool()` dispatches to `__bool__()` for user-defined types:
+The built-in `Truthy` protocol is available from the `tpy` module. Types that implement `__bool__()` conform to `Truthy`, and `bool()` dispatches to `__bool__()` for user-defined types:
 
 ```python
-from typing import Truthy
+from tpy import Truthy
 
 class Container:
     count: int
@@ -1111,7 +1111,7 @@ def is_truthy(x: Truthy) -> bool:
 
 Generated C++ uses `tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The `tpy::Truthy` concept constrains generic parameters.
 
-**Note**: Implicit truthiness in `if obj:` / `while obj:` / `and`/`or` is not yet supported -- these still require explicit `bool` type.
+Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it.
 
 #### Working: User-Defined Protocols
 

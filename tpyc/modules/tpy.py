@@ -274,6 +274,13 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::Deref",
     )
 
+    # Truthy protocol: types that support bool() conversion via __bool__()
+    module.protocol("Truthy",
+        methods={"__bool__": MethodDef(params=[], returns=BOOL, cpp="tpy::__bool__({self})")},
+        cpp_concept="tpy::Truthy",
+        is_readonly=True,
+    )
+
     # Comparable protocol
     module.protocol("Comparable",
         methods={

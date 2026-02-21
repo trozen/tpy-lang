@@ -49,13 +49,6 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::MutableSequence",
     )
 
-    # Truthy protocol: types that support bool() conversion via __bool__()
-    module.protocol("Truthy",
-        methods={"__bool__": MethodDef(params=[], returns=BOOL, cpp="tpy::__bool__({self})")},
-        cpp_concept="tpy::Truthy",
-        is_readonly=True,
-    )
-
     # Protocol is recognized by the parser as the base class for user-defined protocols
     # e.g., `class Measurable(Protocol):` generates a C++20 concept
 

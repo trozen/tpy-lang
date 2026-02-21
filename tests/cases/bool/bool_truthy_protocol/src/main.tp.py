@@ -1,5 +1,5 @@
 # Test Truthy protocol as a type bound for generic functions
-from typing import Truthy
+from tpy import Truthy
 
 class Box:
     value: int

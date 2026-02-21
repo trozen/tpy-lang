@@ -241,6 +241,16 @@ class ExpressionGenerator:
         rendered = self.gen_expr(expr)
         if isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr():
             return f"tpy::is_truthy({rendered})"
+        # User-defined types with __bool__() or __len__() fallback
+        if isinstance(expr_type, NamedType):
+            record = self.ctx.analyzer.registry.get_record(expr_type.name)
+            if record:
+                if self.ctx.is_indirect_name(expr):
+                    rendered = f"(*{rendered})"
+                if record.get_method_overloads("__bool__"):
+                    return f"tpy::__bool__({rendered})"
+                if record.get_method_overloads("__len__"):
+                    return f"(tpy::__len__({rendered}) != 0)"
         return rendered
 
     def _gen_binop(self, expr: TpyBinOp, target_type: TpyType | None) -> str:

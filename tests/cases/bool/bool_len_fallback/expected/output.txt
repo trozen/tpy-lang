@@ -1,0 +1,4 @@
+True
+False
+s1 truthy
+s2 falsy
