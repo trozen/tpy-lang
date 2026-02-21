@@ -12,7 +12,7 @@
 | **Phase 6** | Compiler trait protocols (`NativeContiguous`, `MutableSequence`, `NativeRangeConstructible`) | Done |
 | **Phase 7** | User-defined protocols (moved to Phase 1) | Done |
 | **Phase 8** | Python-compatible `Iterable[T]`/`Iterator[T]` with `__iter__`/`__next__` | Planned |
-| **Phase 9** | Dynamic protocol dispatch (`@dynamic`, `Dyn[P]`, `Box[P]`, vtables) | Planned |
+| **Phase 9** | Dynamic protocol dispatch (`@dynamic`, vtables, zero-allocation stack dispatch) | Partial (steps 1-2) |
 
 ## Overview
 
@@ -559,11 +559,20 @@ Both are currently marked "Open" in LANGUAGE_FEATURES.md.
 | `Iterable[T]` | `typing` | Yes | ✅ | Yes | Phase 8 |
 | `Iterator[T]` | `typing` | Yes | N/A | Yes | Phase 8 |
 
-## 12. Dynamic Protocol Dispatch (Design -- Not Implemented)
+## 12. Dynamic Protocol Dispatch
 
 Static protocols (C++20 concepts) are zero-cost but monomorphized -- each concrete type
 produces a separate template instantiation. Dynamic protocols add runtime dispatch via
-vtables, enabling type-erased storage and heterogeneous collections.
+vtables, enabling polymorphism where the concrete type is erased at compile time.
+
+### Design Principles
+
+- **No hidden allocations** -- dynamic dispatch uses stack-allocated adapters and the
+  existing pointer-local/slot mechanism. Heap allocation only happens when the user
+  explicitly requests it (e.g., `Box[P]`, `list[Box[P]]`).
+- **Structural conformance** -- a type conforms to a `@dynamic` protocol if it has the
+  required methods. No explicit `extends` declaration needed (same as non-dynamic protocols).
+- **Pythonic syntax** -- `pet: Pet = Dog()` just works. No wrapper types required.
 
 ### `@dynamic` Annotation
 
@@ -582,75 +591,185 @@ class Drawable(Protocol):
     def draw(self, x: Int32, y: Int32) -> None: ...
 ```
 
-Without `@dynamic`, using a protocol in `Box[P]`, `Dyn[P]`, or `Ptr[P]` is a compile error.
+Without `@dynamic`, a protocol is always statically dispatched (C++20 concept, template
+monomorphization). This is the existing behavior, unchanged.
 
-`@dynamic` means "this protocol **can** be dispatched dynamically" -- it is a capability
-declaration, not a mandate. Static dispatch remains the default for bare parameter types.
+`@dynamic` means "this protocol supports vtable dispatch." It enables using the protocol
+as a type annotation for variables and parameters with runtime polymorphism.
 
-### Dispatch Modes by Usage Context
+### Dispatch Modes
 
-The same `@dynamic` protocol supports both static and dynamic dispatch depending on how
-it is used:
+A `@dynamic` protocol supports both static and dynamic dispatch, selected by syntax:
 
-| Usage | Dispatch | Owns? | Nullable? | C++ |
-|-------|----------|-------|-----------|-----|
-| `animal: Speakable` | static | -- | -- | `template<tpy::Speakable T> f(const T&)` |
-| `animal: Dyn[Speakable]` | dynamic | no | no | `const SpeakableBase&` |
-| `animal: Ptr[Speakable]` | dynamic | no | yes | `SpeakableBase*` |
-| `animal: Box[Speakable]` | dynamic | yes (unique) | no | `unique_ptr<SpeakableBase>` |
-| `animal: Rc[Speakable]` | dynamic | yes (shared) | no | `shared_ptr<SpeakableBase>` |
+| Usage | Dispatch | C++ |
+|-------|----------|-----|
+| `pet: Speakable` (param) | dynamic | `void f(__tpy_Speakable_Base& pet)` |
+| `pet: Speakable` (local) | dynamic | `__tpy_Speakable_Base* pet` (pointer-local) |
+| `T: Speakable` (type bound) | static | `template<Speakable T> void f(T& pet)` |
 
-- **`Speakable` (bare)** -- template with concept constraint, monomorphized (current behavior).
-- **`Dyn[Speakable]`** -- non-nullable borrowed reference to a type-erased object. Valid as
-  parameter or local variable only (not as a field -- storing a reference in a struct is
-  problematic in C++).
-- **`Ptr[Speakable]`** -- nullable pointer to a type-erased object.
-- **`Box[Speakable]`** -- heap-owned type-erased object (move-only). Suitable for fields
-  and containers (`list[Box[Speakable]]`).
-- **`Rc[Speakable]`** -- shared-ownership type-erased object (copyable via refcount).
+- **Bare protocol type** (`pet: Speakable`) -- dynamic dispatch via vtable. Works for
+  function parameters (passed as `Base&`) and local variables (pointer-local to
+  stack-allocated adapter).
+- **Type bound** (`T: Speakable`) -- static dispatch via C++20 concept constraint,
+  monomorphized. Same as non-dynamic protocols. Use this when you want zero-cost
+  dispatch and don't need type erasure.
 
-### Implicit Wrapping
+For non-`@dynamic` protocols, `pet: Proto` remains static (template), same as today.
 
-The compiler automatically wraps concrete types when assigned to a dynamic protocol context:
+### Usage Examples
 
 ```python
 @dynamic
-class Speakable(Protocol):
-    def speak(self) -> None: ...
+class Pet(Protocol):
+    def make_noise(self) -> None: ...
 
 class Dog:
-    def speak(self) -> None:
+    def make_noise(self) -> None:
         print("Woof")
 
 class Cat:
-    def speak(self) -> None:
+    def make_noise(self) -> None:
         print("Meow")
 
-# Implicit wrapping -- compiler inserts adapter
-dog = Dog()
-box: Box[Speakable] = Box(dog)        # Dog -> SpeakableAdapter<Dog>
-box2: Box[Speakable] = Box(Cat())     # Cat -> SpeakableAdapter<Cat>
+# --- Dynamic dispatch (type-erased, vtable) ---
 
-# Explicit type arg also works
-box3 = Box[Speakable](Dog())
+def greet(pet: Pet) -> None:
+    pet.make_noise()         # virtual dispatch
 
-# Passing to a function expecting Dyn[Speakable]
-def make_speak(animal: Dyn[Speakable]) -> None:
-    animal.speak()
+dog: Pet = Dog()             # stack-allocated adapter, pointer-local
+dog.make_noise()             # virtual dispatch
+greet(dog)                   # pass erased value
 
-make_speak(dog)                        # implicit wrap + borrow
+my_dog = Dog()
+greet(my_dog)                # implicit wrap: temporary adapter at call site
 
-# Heterogeneous container
-animals: list[Box[Speakable]] = [Box(Dog()), Box(Cat())]
-for animal in animals:
-    animal.speak()                     # dynamic dispatch via vtable
+# Reassignment to different concrete type
+pet: Pet = Dog()
+pet = Cat()                  # rebind pointer to new adapter slot
+pet.make_noise()             # "Meow"
+
+# --- Static dispatch (monomorphized, zero-cost) ---
+
+def greet_fast[T: Pet](pet: T) -> None:
+    pet.make_noise()         # direct call, no vtable
 ```
+
+### Zero-Allocation Stack Dispatch
+
+Dynamic protocol variables use the existing pointer-local and slot hoisting
+infrastructure. No heap allocation occurs.
+
+**Local variable:**
+
+```python
+pet: Pet = Dog()
+pet.make_noise()
+```
+
+Generated C++:
+
+```cpp
+// Adapter contains Dog by value, stack-allocated
+__tpy_Pet_Adapter<Dog> __pet_slot_0;
+// Pointer-local (same model as reassigned records)
+__tpy_Pet_Base* pet = &__pet_slot_0;
+// Virtual dispatch via pointer
+pet->make_noise();
+```
+
+**Reassignment** creates additional slots, hoisted to the variable's declaration scope:
+
+```python
+pet: Pet = Dog()
+if condition:
+    pet = Cat()
+pet.make_noise()
+```
+
+Generated C++:
+
+```cpp
+// Both slots hoisted to function scope (same as existing hoisted_vars)
+__tpy_Pet_Adapter<Dog> __pet_slot_0;
+__tpy_Pet_Adapter<Cat> __pet_slot_1;
+__tpy_Pet_Base* pet = &__pet_slot_0;
+if (condition) {
+    pet = &__pet_slot_1;
+}
+pet->make_noise();  // dispatches to Dog or Cat
+```
+
+**Function parameters:**
+
+```python
+def greet(pet: Pet) -> None:
+    pet.make_noise()
+
+greet(my_dog)     # my_dog is Dog (concrete)
+greet(erased_pet) # erased_pet is Pet (already erased)
+```
+
+Generated C++:
+
+```cpp
+void greet(__tpy_Pet_Base& pet) {
+    pet.make_noise();
+}
+
+// Calling with concrete type -- temporary adapter on stack
+Dog my_dog;
+__tpy_Pet_Adapter<Dog> __tmp(my_dog);
+greet(__tmp);
+
+// Calling with erased value -- dereference pointer-local
+greet(*erased_pet);
+```
+
+### Return Types
+
+Returning a `@dynamic` protocol type is allowed when the value provably outlives the
+caller -- i.e., when it refers to a global or a parameter (not a locally-constructed
+value, since the stack adapter would be destroyed):
+
+```python
+global_dog: Pet = Dog()
+
+def get_global_pet() -> Pet:
+    return global_dog          # OK: global outlives caller
+
+def echo_pet(pet: Pet) -> Pet:
+    return pet                 # OK: parameter outlives caller
+
+def make_pet() -> Pet:
+    return Dog()               # ERROR: local adapter destroyed on return
+```
+
+For returning locally-constructed dynamic values, use explicit heap allocation:
+
+```python
+def make_pet() -> Box[Pet]:
+    return Box(Dog())          # OK: heap-allocated, caller owns
+```
+
+### What Requires Explicit Wrapping
+
+Dynamic protocol types cannot be used directly in contexts that require owning storage
+with unknown lifetime. These require explicit `Box[P]` (or future `Rc[P]`):
+
+| Context | Direct `Pet` | `Box[Pet]` |
+|---------|-------------|------------|
+| Local variable | OK (stack adapter) | OK (heap) |
+| Function param | OK (reference) | OK |
+| Return value | Only if source outlives caller | OK |
+| Record field | No (size unknown) | OK |
+| `list[Pet]` | No (elements need ownership) | `list[Box[Pet]]` |
 
 ### C++ Code Generation
 
-For each `@dynamic` protocol, the compiler generates three things:
+For each `@dynamic` protocol, the compiler generates three artifacts:
 
-**1. C++20 concept (static dispatch -- same as non-dynamic protocols):**
+**1. C++20 concept** (for `T: Proto` static dispatch -- same as non-dynamic):
+
 ```cpp
 template<typename T>
 concept Speakable = requires(T& t) {
@@ -658,75 +777,85 @@ concept Speakable = requires(T& t) {
 };
 ```
 
-**2. Abstract base class (dynamic dispatch target):**
+**2. Abstract base class** (vtable target):
+
 ```cpp
-struct SpeakableBase {
+struct __tpy_Speakable_Base {
     virtual void speak() = 0;
-    virtual ~SpeakableBase() = default;
+    virtual ~__tpy_Speakable_Base() = default;
 };
 ```
 
-**3. Adapter template (bridges concrete types to the abstract base):**
+**3. Adapter template** (bridges concrete types to the abstract base):
+
 ```cpp
 template<Speakable T>
-struct SpeakableAdapter : SpeakableBase {
+struct __tpy_Speakable_Adapter : __tpy_Speakable_Base {
     T inner;
 
     template<typename... Args>
-    SpeakableAdapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    __tpy_Speakable_Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
 
     void speak() override { inner.speak(); }
 };
 ```
 
-Usage in generated code:
-
-```cpp
-// Box[Speakable] = Box(Dog())
-auto box = std::unique_ptr<SpeakableBase>(
-    std::make_unique<SpeakableAdapter<Dog>>(Dog())
-);
-
-// Dyn[Speakable] parameter
-void make_speak(const SpeakableBase& animal) {
-    animal.speak();
-}
-
-// Ptr[Speakable]
-SpeakableBase* ptr = ...;
-```
-
 ### Object Safety
 
-Not all protocols can be `@dynamic`. The compiler validates that a `@dynamic` protocol
-is object-safe:
+Not all protocols can be `@dynamic`. The compiler validates at definition site:
 
 - All methods must have concrete (non-generic) signatures
-- No `Self` type in parameter positions (return position is also problematic --
-  the vtable can't know the concrete return size)
-- No static methods (they have no receiver to dispatch on)
+- No `Self` type (deferred -- `Self` support may be added later with restrictions)
+- No static methods (no receiver to dispatch on)
+- Marker protocols cannot be `@dynamic` (no methods to dispatch)
 
-A non-object-safe protocol with `@dynamic` is a compile error at definition site.
+A non-object-safe protocol with `@dynamic` is a compile error.
 
-### Relationship to `Deref[T]`
+### Conformance
 
-`Box[T]` and `Rc[T]` implement `Deref[T]`, so the existing auto-deref mechanism
-handles transparent method access:
+Dynamic protocols use the same structural conformance as static protocols. A concrete
+type conforms if it has all required methods with compatible signatures. No explicit
+`extends` is needed:
 
 ```python
-box: Box[Speakable] = Box(Dog())
-box.speak()    # auto-deref: box.__deref__().speak()
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> None: ...
+
+class Dog:
+    def make_noise(self) -> None:    # structurally conforms to Pet
+        print("Woof")
+
+dog: Pet = Dog()                     # OK: Dog has make_noise() -> None
 ```
 
-For `Box[Speakable]`, `__deref__()` returns `Dyn[Speakable]` (a reference to the
-abstract base), and `speak()` dispatches through the vtable.
+This is consistent with non-dynamic protocols (e.g., `Sized` checks for `__len__`
+without requiring `extends`). Explicit `extends` remains for marker protocols only.
+
+### Future Extensions
+
+- **`Box[P]`** -- heap-owned dynamic value for fields, containers, returns. Requires
+  `Box[T]` implementation (Phase 6 of move semantics).
+- **`Rc[P]`** -- shared-ownership dynamic value for reference-counted sharing.
+- **`Self` type in `@dynamic`** -- may be supported with restrictions (e.g., `Self` in
+  return position only, behind `Box`).
+- **Generic `@dynamic` protocols** -- e.g., `@dynamic class Comparable(Protocol): def __lt__(self, other: Self) -> bool: ...`
+  Requires Self support first.
+- **Multiple protocol conformance** -- `pet: Pet & Drawable` for intersection types.
 
 ### Phase 9 Implementation Steps
 
-1. **`@dynamic` annotation** -- parser recognizes decorator, sema stores flag on ProtocolInfo
-2. **Object-safety validation** -- check protocol methods are vtable-compatible
-3. **Abstract base + adapter codegen** -- generate SpeakableBase and SpeakableAdapter<T>
-4. **`Dyn[P]` type** -- new builtin type wrapper, parameter/local only, maps to `const PBase&`
-5. **Implicit wrapping** -- coercion from `T` to `Dyn[P]`/`Box[P]` where T conforms to P
-6. **Integration with Box/Rc** -- Box/Rc with protocol type args use dynamic dispatch
-7. **Heterogeneous containers** -- `list[Box[P]]` works naturally once Box works
+1. **`@dynamic` decorator** (done) -- parser recognizes `@dynamic` on protocol classes,
+   sema stores `is_dynamic` flag on ProtocolInfo, object-safety validation at definition
+   site (no marker protocols, no generic protocols, no Self type)
+2. **Abstract base + adapter codegen** (done) -- generate `__tpy_Proto_Base` and
+   `__tpy_Proto_Adapter<T>` for each `@dynamic` protocol in the header
+3. **Protocol-typed locals** -- `pet: Pet = Dog()` generates stack adapter slot +
+   pointer-local (`__tpy_Pet_Base*`), with slot hoisting for reassignment
+4. **Protocol-typed function params** -- `def f(pet: Pet)` generates
+   `f(__tpy_Pet_Base& pet)`, with implicit adapter wrapping at call sites for concrete
+   arguments
+5. **Return types** -- allow returning protocol-typed values when provably long-lived
+   (globals, parameters); error on returning local adapters
+6. **`Box[P]` integration** (future) -- heap-allocated dynamic values for fields,
+   containers, and unrestricted returns

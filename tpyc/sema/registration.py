@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo, FunctionLinkage,
-    TypeParamKind, OptionalType, VoidType, ParamInfo, is_protocol_type,
+    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
+    TypeParamKind, OptionalType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
@@ -476,9 +476,47 @@ class TypeRegistrar:
             methods=resolved_methods,
             fields=protocol.fields,
             type_params=protocol.type_params,
-            parent_protocols=protocol.parent_protocols
+            parent_protocols=protocol.parent_protocols,
+            is_dynamic=protocol.is_dynamic,
         )
         self.ctx.registry.register_protocol(info)
+
+        if protocol.is_dynamic:
+            self._validate_dynamic_object_safety(protocol, resolved_methods)
+
+    def _validate_dynamic_object_safety(self, protocol: TpyProtocol, methods: list[MethodSignature]) -> None:
+        """Validate that a @dynamic protocol is object-safe for runtime dispatch."""
+        if not methods:
+            raise SemanticError(
+                f"@dynamic protocol '{protocol.name}' must have at least one method",
+                protocol.loc
+            )
+        if protocol.type_params:
+            raise SemanticError(
+                f"@dynamic protocol '{protocol.name}' cannot be generic. "
+                f"Generic @dynamic protocols are not yet supported",
+                protocol.loc
+            )
+
+        def _contains_self_type(typ: TpyType) -> bool:
+            if isinstance(typ, SelfType):
+                return True
+            return any(_contains_self_type(inner) for inner in typ.inner_types())
+
+        for msig in methods:
+            if _contains_self_type(msig.return_type):
+                raise SemanticError(
+                    f"@dynamic protocol '{protocol.name}' cannot use Self type "
+                    f"in method '{msig.name}' return type",
+                    protocol.loc
+                )
+            for pname, ptype in msig.params:
+                if _contains_self_type(ptype):
+                    raise SemanticError(
+                        f"@dynamic protocol '{protocol.name}' cannot use Self type "
+                        f"in method '{msig.name}' parameter '{pname}'",
+                        protocol.loc
+                    )
 
     def validate_protocol_parents(self, protocol: TpyProtocol) -> None:
         """Validate that all parent protocols are actual protocols.

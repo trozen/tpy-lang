@@ -322,6 +322,14 @@ class CodeGenerator:
 
         return deps
 
+    def _emit_concept_and_dynamic(self, hpp: TextIO, protocol: 'TpyProtocol') -> None:
+        """Emit concept for a protocol, plus base/adapter if @dynamic."""
+        from ..parse import TpyProtocol as _TP
+        self.protocols.gen_concept_decl(hpp, protocol)
+        if protocol.is_dynamic:
+            hpp.write("\n")
+            self.protocols.gen_dynamic_base_and_adapter(hpp, protocol)
+
     def _generate_forward_decls_and_concepts(
         self, hpp: TextIO, module: TpyModule, deps: _ProtocolDeps
     ) -> None:
@@ -342,7 +350,7 @@ class CodeGenerator:
         # Prereq protocol concepts
         for protocol in module.protocols:
             if protocol.name in deps.prereq_protocols:
-                self.protocols.gen_concept_decl(hpp, protocol)
+                self._emit_concept_and_dynamic(hpp, protocol)
                 hpp.write("\n")
 
         # Forward declare records referenced by bound protocols
@@ -369,7 +377,7 @@ class CodeGenerator:
         # Bound protocol concepts (skip prereq protocols already emitted)
         for protocol in module.protocols:
             if protocol.name in deps.bound_protocols and protocol.name not in deps.prereq_protocols:
-                self.protocols.gen_concept_decl(hpp, protocol)
+                self._emit_concept_and_dynamic(hpp, protocol)
                 hpp.write("\n")
 
         # Fully define records referenced by bound protocols
@@ -410,7 +418,7 @@ class CodeGenerator:
         # Remaining C++20 concepts for user-defined protocols
         for protocol in module.protocols:
             if protocol.name not in deps.bound_protocols and protocol.name not in deps.prereq_protocols:
-                self.protocols.gen_concept_decl(hpp, protocol)
+                self._emit_concept_and_dynamic(hpp, protocol)
                 hpp.write("\n")
 
     def _generate_definitions_and_reexports(

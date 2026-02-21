@@ -453,6 +453,15 @@ def noalloc(func):
     return func
 
 
+def dynamic(cls):
+    """Decorator marking a protocol for dynamic dispatch.
+
+    In CPython simulation, this is a no-op.
+    The compiler generates vtable base/adapter classes.
+    """
+    return cls
+
+
 class readonly:
     """Decorator and type modifier for readonly references.
 

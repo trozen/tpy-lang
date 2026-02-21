@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType,
+    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType,
     MethodSignature, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyProtocol, TpyRecord
@@ -286,6 +286,93 @@ class ProtocolGenerator:
             out.write(f"    {{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
 
         out.write("};\n")
+
+    def gen_dynamic_base_and_adapter(self, out: TextIO, protocol: TpyProtocol) -> None:
+        """Generate abstract base class and type-erasing adapter for @dynamic protocol.
+
+        Emitted after the concept so the adapter can use the concept as a constraint.
+        """
+        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        if protocol_info is None:
+            return
+
+        all_methods = self.collect_concept_methods(protocol.name)
+        all_fields = self.collect_concept_fields(protocol.name)
+
+        base_name = f"__tpy_{protocol.name}_Base"
+        adapter_name = f"__tpy_{protocol.name}_Adapter"
+
+        # -- Abstract base class --
+        out.write(f"struct {base_name} {{\n")
+        for method_sig in all_methods:
+            ret_cpp = self._dynamic_return_type(method_sig)
+            const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
+            params_cpp = self._dynamic_param_list(method_sig)
+            out.write(f"    virtual {ret_cpp} {method_sig.name}({params_cpp}){const_qual} = 0;\n")
+        for field_name, field_type in all_fields:
+            field_cpp = field_type.to_cpp()
+            out.write(f"    virtual {field_cpp} get_{field_name}() const = 0;\n")
+        out.write(f"    virtual ~{base_name}() = default;\n")
+        out.write("};\n\n")
+
+        # -- Adapter template --
+        out.write(f"template<{protocol.name} T>\n")
+        out.write(f"struct {adapter_name} : {base_name} {{\n")
+        out.write(f"    T inner;\n")
+        out.write(f"    template<typename... Args>\n")
+        out.write(f"    {adapter_name}(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
+
+        for method_sig in all_methods:
+            ret_cpp = self._dynamic_return_type(method_sig)
+            const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
+            params_cpp = self._dynamic_param_list(method_sig)
+            is_void = isinstance(method_sig.return_type, VoidType)
+            ret_kw = "" if is_void else "return "
+
+            # Build forwarding call
+            call_expr = self._dynamic_forward_call(method_sig)
+            out.write(f"    {ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
+
+        for field_name, field_type in all_fields:
+            field_cpp = field_type.to_cpp()
+            out.write(f"    {field_cpp} get_{field_name}() const override {{ return inner.{field_name}; }}\n")
+
+        out.write("};\n")
+
+    def _is_readonly_method(self, method_sig: MethodSignature, protocol_info: 'ProtocolInfo') -> bool:
+        from ..typesys import ProtocolInfo as _PI
+        return method_sig.is_readonly or protocol_info.is_readonly
+
+    def _dynamic_return_type(self, method_sig: MethodSignature) -> str:
+        """C++ return type for a dynamic dispatch method."""
+        if isinstance(method_sig.return_type, VoidType):
+            return "void"
+        return method_sig.return_type.to_cpp()
+
+    def _dynamic_param_list(self, method_sig: MethodSignature) -> str:
+        """C++ parameter list for a dynamic dispatch method (excluding self)."""
+        parts = []
+        for pname, ptype in method_sig.params:
+            parts.append(ptype.to_cpp_param(pname))
+        return ", ".join(parts)
+
+    def _dynamic_forward_call(self, method_sig: MethodSignature) -> str:
+        """Generate the forwarding call expression for an adapter method."""
+        arg_names = [pname for pname, _ in method_sig.params]
+        args_str = ", ".join(arg_names)
+
+        # Dunder methods with tpy:: free function equivalents
+        if method_sig.name == "__len__":
+            return f"tpy::__len__(inner)"
+        if method_sig.name == "__getitem__" and len(method_sig.params) == 1:
+            return f"tpy::__getitem__(inner, {args_str})"
+        if method_sig.name == "__setitem__" and len(method_sig.params) == 2:
+            return f"tpy::__setitem__(inner, {args_str})"
+        if method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
+            cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
+            return f"inner {cpp_op} {arg_names[0]}"
+
+        return f"inner.{method_sig.name}({args_str})"
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
         """Recursively collect all record type names from a type."""

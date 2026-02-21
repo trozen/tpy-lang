@@ -1363,6 +1363,7 @@ class ProtocolInfo:
     cpp_concept: str | None = None  # C++ concept name for builtin protocols
     is_marker: bool = False  # Marker protocols require explicit extends
     is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
+    is_dynamic: bool = False  # Supports runtime dispatch via base/adapter
 
 
 @dataclass

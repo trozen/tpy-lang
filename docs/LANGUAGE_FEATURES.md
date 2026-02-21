@@ -1448,6 +1448,44 @@ Planned design:
 Current limitations:
 - **User records**: we generate `operator[]` from `__getitem__`, but it currently returns by value. This prevents mutating elements through `items[i].method()` for user-defined record containers. Addressing this likely requires reference-capable `__getitem__` or a dedicated mutation API in the type system.
 
+#### Working: `@dynamic` Protocol Declaration (Phase 9 -- Foundation)
+
+The `@dynamic` decorator marks a protocol for runtime dispatch support. When applied, the compiler generates a C++ abstract base class and type-erasing adapter template alongside the concept:
+
+```python
+from tpy import dynamic
+from typing import Protocol
+
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str:
+        ...
+```
+
+This generates:
+1. **Concept** (`Pet`) -- for static dispatch via `T: Pet` bounds (same as non-dynamic protocols)
+2. **Abstract base** (`__tpy_Pet_Base`) -- virtual methods for runtime dispatch
+3. **Adapter template** (`__tpy_Pet_Adapter<T>`) -- concept-constrained wrapper that forwards to a concrete type
+
+**Object safety rules** -- `@dynamic` protocols must be:
+- **Non-empty**: at least one method required (no marker protocols)
+- **Non-generic**: type parameters not supported (e.g., `class Container[T](Protocol)`)
+- **Self-free**: no `Self` type in method params or return types
+
+Static dispatch (`T: Pet`) works identically for both `@dynamic` and regular protocols:
+
+```python
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str:
+        ...
+
+def speak[T: Pet](animal: T) -> None:
+    print(animal.make_noise())  # static dispatch via template
+```
+
+**Current status**: Foundation only (parsing, validation, codegen of base/adapter). Protocol-typed locals, function parameters, and return types are planned in future phases. See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) section 12 for the full design.
+
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 
 `NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol.

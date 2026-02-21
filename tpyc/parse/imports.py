@@ -35,7 +35,7 @@ PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None"})
 TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence"})
 
 # All tpy type names (union of TPY_TYPES + decorators/modifiers)
-TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy"}
+TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic"}
 
 
 class ImportProcessor:
