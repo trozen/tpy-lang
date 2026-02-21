@@ -448,7 +448,7 @@ class StatementAnalyzer:
                     (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
                     or self.ctx.record_ctx.type_params
                 )
-                self.type_ops.validate_type(stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc)
+                self.type_ops.validate_type(stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc, allow_forward_ref=False)
             except SemanticError as e:
                 raise self.ctx.error(str(e), stmt)
 

@@ -1111,7 +1111,7 @@ def is_truthy(x: Truthy) -> bool:
 
 Generated C++ uses `tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The `tpy::Truthy` concept constrains generic parameters.
 
-Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it.
+Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it. Built-in containers (`list`, `str`, `Array`, `Span`, `StaticList`) use `__len__() != 0` for truthiness, matching Python semantics where empty containers are falsy.
 
 #### Working: User-Defined Protocols
 
@@ -2195,6 +2195,7 @@ struct SortedContainer {
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)
+- **Working**: Docstrings in class and method bodies (silently ignored)
 - **Open**: `@classmethod` → if use case is clear
 - **Open**: `@property` → getter/setter methods
 

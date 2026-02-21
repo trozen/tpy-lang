@@ -155,7 +155,6 @@ tests/
 │               ├── include/main.hpp   # Generated header (if compiles)
 │               ├── src/main.cpp       # Generated source (if compiles)
 │               └── output.txt         # Runtime output (or panic.txt)
-├── harness/tpy/              # CPython simulation module
 ├── conftest.py               # Pytest fixtures and shared utilities
 ├── test_comp.py              # Fast compilation tests (diagnostics, codegen)
 ├── test_exec.py              # Execution tests (C++ build, run, compare to output.txt)
@@ -294,6 +293,18 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `system.hpp` | `time_*`, `sys_argv` |
 
 Generated code requires C++23 (for `std::ranges` concepts).
+
+### Libraries (`lib/`)
+
+Python implementations of TurboPython types for CPython execution and IDE support:
+
+| Directory | Purpose |
+|-----------|---------|
+| `tpy/` | Built-in types (Int32, Ptr, Array, etc.), decorators, protocols -- mirrors `tpyc/modules/tpy.py` |
+| `tplib/` | TPy standard library (future: Box[T], custom collections) |
+| `stdlib/` | Python stdlib subset for TPy (future: argparse, etc.) |
+
+CPython tests (`test_cpy.py`) add `lib/` to PYTHONPATH so `from tpy import Int32` resolves to `lib/tpy/`.
 
 ## Performance Profiles (Planned)
 
