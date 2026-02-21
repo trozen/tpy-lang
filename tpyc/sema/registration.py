@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, RecordInfo, FunctionInfo, FunctionLinkage,
-    TypeParamKind, OptionalType, VoidType, ParamInfo, is_protocol_type,
+    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
+    TypeParamKind, OptionalType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
@@ -476,14 +476,26 @@ class TypeRegistrar:
             methods=resolved_methods,
             fields=protocol.fields,
             type_params=protocol.type_params,
-            parent_protocols=protocol.parent_protocols
+            parent_protocols=protocol.parent_protocols,
+            is_dynamic=protocol.is_dynamic,
         )
         self.ctx.registry.register_protocol(info)
+
+        if protocol.is_dynamic:
+            # Generic check can run immediately (doesn't need parent info)
+            if protocol.type_params:
+                raise SemanticError(
+                    f"@dynamic protocol '{protocol.name}' cannot be generic. "
+                    f"Generic @dynamic protocols are not yet supported",
+                    protocol.loc
+                )
 
     def validate_protocol_parents(self, protocol: TpyProtocol) -> None:
         """Validate that all parent protocols are actual protocols.
 
         Called after all protocols are registered to allow forward references.
+        Also validates object safety for @dynamic protocols over the full inherited
+        surface (methods + fields from all ancestor protocols).
         """
         for parent_name in protocol.parent_protocols:
             parent_info = self.ctx.registry.get_protocol(parent_name)
@@ -500,6 +512,92 @@ class TypeRegistrar:
                     f"without type arguments. Generic protocol inheritance is not yet supported.",
                     protocol.loc
                 )
+
+        if protocol.is_dynamic:
+            self._validate_dynamic_object_safety(protocol)
+
+    def _validate_dynamic_object_safety(self, protocol: TpyProtocol) -> None:
+        """Validate that a @dynamic protocol is object-safe for runtime dispatch.
+
+        Checks the full inherited surface (methods + fields from all ancestors),
+        since codegen emits all inherited members into the C++ base class.
+        """
+        all_methods = self._collect_all_protocol_methods(protocol.name)
+        all_fields = self._collect_all_protocol_fields(protocol.name)
+
+        if not all_methods and not all_fields:
+            raise SemanticError(
+                f"@dynamic protocol '{protocol.name}' must have at least one method or field",
+                protocol.loc
+            )
+
+        def _contains_self_type(typ: TpyType) -> bool:
+            if isinstance(typ, SelfType):
+                return True
+            return any(_contains_self_type(inner) for inner in typ.inner_types())
+
+        for msig in all_methods:
+            if _contains_self_type(msig.return_type):
+                raise SemanticError(
+                    f"@dynamic protocol '{protocol.name}' cannot use Self type "
+                    f"in method '{msig.name}' return type",
+                    protocol.loc
+                )
+            for pname, ptype in msig.params:
+                if _contains_self_type(ptype):
+                    raise SemanticError(
+                        f"@dynamic protocol '{protocol.name}' cannot use Self type "
+                        f"in method '{msig.name}' parameter '{pname}'",
+                        protocol.loc
+                    )
+
+        for field_name, field_type in all_fields:
+            if _contains_self_type(field_type):
+                raise SemanticError(
+                    f"@dynamic protocol '{protocol.name}' cannot use Self type "
+                    f"in field '{field_name}'",
+                    protocol.loc
+                )
+
+    def _collect_all_protocol_methods(self, protocol_name: str,
+                                       visited: set[str] | None = None) -> list[MethodSignature]:
+        """Collect methods from a protocol and all ancestors."""
+        if visited is None:
+            visited = set()
+        if protocol_name in visited:
+            return []
+        visited.add(protocol_name)
+        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        if protocol_info is None:
+            return []
+        methods_by_name: dict[str, MethodSignature] = {}
+        for method in protocol_info.methods:
+            methods_by_name[method.name] = method
+        for parent_name in protocol_info.parent_protocols:
+            for method in self._collect_all_protocol_methods(parent_name, visited):
+                if method.name not in methods_by_name:
+                    methods_by_name[method.name] = method
+        return list(methods_by_name.values())
+
+    def _collect_all_protocol_fields(self, protocol_name: str,
+                                      visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
+        """Collect fields from a protocol and all ancestors."""
+        if visited is None:
+            visited = set()
+        if protocol_name in visited:
+            return []
+        visited.add(protocol_name)
+        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        if protocol_info is None:
+            return []
+        fields_by_name: dict[str, tuple[str, TpyType]] = {}
+        for field_name, field_type in protocol_info.fields:
+            fields_by_name[field_name] = (field_name, field_type)
+        for parent_name in protocol_info.parent_protocols:
+            for field_name, field_type in self._collect_all_protocol_fields(parent_name, visited):
+                if field_name not in fields_by_name:
+                    fields_by_name[field_name] = (field_name, field_type)
+        return list(fields_by_name.values())
 
     def register_function(self, func: TpyFunction) -> None:
         """Register a function."""
@@ -538,13 +636,16 @@ class TypeRegistrar:
                 func.loc
             )
 
-        # Protocol types cannot be used as return types (but TypeParamRef is OK)
+        # Protocol types cannot be used as return types (but TypeParamRef is OK).
+        # Exception: @dynamic protocols can be returned (lifetime-checked in sema).
         if is_protocol_type(resolved_return):
-            raise SemanticError(
-                f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
-                f"Protocols are only valid for function parameters",
-                func.loc
-            )
+            pi = self.ctx.registry.get_protocol(resolved_return.name)
+            if not (pi and pi.is_dynamic):
+                raise SemanticError(
+                    f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
+                    f"Protocols are only valid for function parameters",
+                    func.loc
+                )
 
         # Convert parsed bounds to NamedType (validate they are protocols)
         type_param_bounds: dict[str, NamedType] = {}

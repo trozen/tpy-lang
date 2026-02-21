@@ -475,6 +475,7 @@ class TpyProtocol:
     fields: list[tuple[str, TpyType]] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)
     parent_protocols: list[str] = field(default_factory=list)
+    is_dynamic: bool = False
     loc: SourceLocation | None = None
 
 

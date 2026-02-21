@@ -1,0 +1,1 @@
+Multi-module test (CPython can't resolve cross-module imports in the test harness)

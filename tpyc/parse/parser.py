@@ -513,8 +513,15 @@ class Parser:
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
-        if node.decorator_list:
-            raise ParseError(f"Decorators not allowed on protocol '{node.name}'", node)
+        is_dynamic = False
+        for dec in node.decorator_list:
+            if isinstance(dec, ast.Name):
+                resolved = self._resolve_type_name(dec.id)
+                if resolved == ("tpy", "dynamic"):
+                    is_dynamic = True
+                    continue
+            raise ParseError(f"Unsupported decorator on protocol '{node.name}'. "
+                             f"Only @dynamic (from tpy) is allowed on protocols", dec)
 
         # Extract parent protocols (excluding Protocol itself)
         parent_protocols = []
@@ -619,7 +626,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, loc=self._loc(node))
+        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, loc=self._loc(node))
 
     # Decorator names that set method linkage (for method renaming on native classes)
     _METHOD_LINKAGE_DECORATORS: dict[str, FunctionLinkage] = {

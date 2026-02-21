@@ -1,0 +1,1 @@
+main.tp.py:6: error: @dynamic protocol 'Marker' must have at least one method or field

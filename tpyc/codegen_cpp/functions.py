@@ -86,7 +86,11 @@ class FunctionGenerator:
 
     def gen_params_with_protocols(self, params: list[tuple[str, TpyType]],
                                    func_type_params: list[str] | None = None) -> str:
-        """Generate function parameter list, using template types for protocol params."""
+        """Generate function parameter list, using template types for protocol params.
+
+        Static protocols use template types (T_paramname).
+        @dynamic protocols use concrete __tpy_Base& reference params.
+        """
         result = []
         for pname, ptype in params:
             # Resolve type in case it's a NamedType that's actually a protocol
@@ -97,13 +101,46 @@ class FunctionGenerator:
             else:
                 resolved = self.protocols.resolve_type_for_codegen(unwrapped)
                 if is_protocol_type(resolved):
-                    if isinstance(ptype, ReadonlyType):
-                        result.append(f"const T_{pname}& {pname}")
+                    protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                    if protocol_info and protocol_info.is_dynamic:
+                        base_type = self.protocols.get_dynamic_base_name(resolved.name)
+                        if isinstance(ptype, ReadonlyType):
+                            result.append(f"const {base_type}& {pname}")
+                        else:
+                            result.append(f"{base_type}& {pname}")
                     else:
-                        result.append(f"T_{pname}& {pname}")
+                        if isinstance(ptype, ReadonlyType):
+                            result.append(f"const T_{pname}& {pname}")
+                        else:
+                            result.append(f"T_{pname}& {pname}")
                 else:
                     result.append(ptype.to_cpp_param(pname))
         return ", ".join(result)
+
+    def _resolve_return_type(self, return_type: TpyType, *, const: bool = False) -> str:
+        """Map a return type to C++, using __tpy_Base_{Name}& for @dynamic protocols."""
+        unwrapped = unwrap_readonly(return_type)
+        if is_protocol_type(unwrapped) and isinstance(unwrapped, NamedType):
+            pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
+            if pi and pi.is_dynamic:
+                base = self.protocols.get_dynamic_base_name(unwrapped.name)
+                if const or isinstance(return_type, ReadonlyType):
+                    return f"const {base}&"
+                return f"{base}&"
+        if const:
+            return return_type.to_cpp_return_const()
+        return return_type.to_cpp_return()
+
+    def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
+        """Check if any params are @dynamic protocol types (need Base& codegen)."""
+        for _, ptype in params:
+            unwrapped = unwrap_readonly(ptype)
+            resolved = self.protocols.resolve_type_for_codegen(unwrapped)
+            if is_protocol_type(resolved):
+                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                if protocol_info and protocol_info.is_dynamic:
+                    return True
+        return False
 
     def is_template_function(self, func: TpyFunction) -> bool:
         """Check if a function needs a C++ template (generic type params or protocol params)."""
@@ -125,19 +162,20 @@ class FunctionGenerator:
             return False
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
 
         if is_generic or protocol_params:
             out.write(self.protocols.gen_combined_template_header(
                 func.type_params, protocol_params, func.type_param_bounds
             ))
-            ret_type = func.return_type.to_cpp_return()
+            ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)
-                      if protocol_params else self.gen_params(func.params, func.type_params))
+                      if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
             out.write(f"{ret_type} {func.name}({params});\n")
         else:
-            ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params(func.params, func.type_params)
+            ret_type = self._resolve_return_type(func.return_type)
+            params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params});\n")
         return True
 
@@ -160,6 +198,7 @@ class FunctionGenerator:
             return True
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
 
         if is_generic or protocol_params:
@@ -169,9 +208,9 @@ class FunctionGenerator:
                 out.write(self.protocols.gen_combined_template_header(
                     func.type_params, protocol_params, func.type_param_bounds
                 ))
-                ret_type = func.return_type.to_cpp_return()
+                ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params)
-                          if protocol_params else self.gen_params(func.params, func.type_params))
+                          if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
                 out.write(f"{ret_type} {func.name}({params});\n")
             else:
                 self.gen_function_def(out, func)
@@ -180,8 +219,8 @@ class FunctionGenerator:
         # Non-template non-stub: already forward-declared
         if not func.is_stub:
             return False
-        ret_type = func.return_type.to_cpp_return()
-        params = self.gen_params(func.params, func.type_params)
+        ret_type = self._resolve_return_type(func.return_type)
+        params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
         out.write(f"{ret_type} {func.name}({params});\n")
         return True
 
@@ -226,6 +265,7 @@ class FunctionGenerator:
             return
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
 
         if is_generic or protocol_params:
@@ -233,13 +273,13 @@ class FunctionGenerator:
             out.write(self.protocols.gen_combined_template_header(
                 func.type_params, protocol_params, func.type_param_bounds
             ))
-            ret_type = func.return_type.to_cpp_return()
+            ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)
-                      if protocol_params else self.gen_params(func.params, func.type_params))
+                      if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
             out.write(f"{ret_type} {func.name}({params}) {{\n")
         else:
-            ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params(func.params, func.type_params)
+            ret_type = self._resolve_return_type(func.return_type)
+            params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -250,7 +290,27 @@ class FunctionGenerator:
 
         out.write("}\n")
 
-    def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
+    def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
+        """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals.
+
+        Collects the full inherited surface (own + ancestor methods) since the C++
+        base class emits pure virtuals for all inherited protocol methods.
+        """
+        record_info = self.ctx.analyzer.registry.get_record(record_name)
+        if not record_info:
+            return {}
+        result: dict[str, bool] = {}
+        for proto in record_info.implemented_protocols:
+            proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
+            if proto_info and proto_info.is_dynamic:
+                all_methods = self.protocols.collect_concept_methods(proto.name)
+                for method_sig in all_methods:
+                    is_const = method_sig.is_readonly or proto_info.is_readonly
+                    result[method_sig.name] = is_const
+        return result
+
+    def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
+                       dynamic_overrides: dict[str, bool] | None = None) -> None:
         """Generate a method definition inside a struct."""
         # __next__() -> T is emitted as __next_opt__() -> std::optional<T>
         is_dunder_next = method.name == "__next__"
@@ -262,17 +322,25 @@ class FunctionGenerator:
         is_const = method.is_readonly
         is_static = method.is_staticmethod
 
+        # Determine if this method overrides a @dynamic protocol virtual
+        override_const: bool | None = None
+        if dynamic_overrides and method.name in dynamic_overrides:
+            override_const = dynamic_overrides[method.name]
+
         if is_const and not is_static:
             # Readonly method: const overload always.
             # Dual overload (+ non-const) only when the return could be a
             # reference -- value-type returns are copies so const alone suffices.
-            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=True)
+            is_override = override_const is True  # base is const -> const overload overrides
+            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
+                                      const=True, override=is_override)
             needs_dual = not cpp_return_type.is_value_type() or isinstance(cpp_return_type, TypeParamRef)
             if needs_dual:
                 self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False)
         else:
+            is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                      static=is_static)
+                                      static=is_static, override=is_override)
 
         # Also emit a __next__() panic stub so direct calls compile but fail at runtime
         if is_dunder_next:
@@ -284,19 +352,21 @@ class FunctionGenerator:
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,
         cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
+        override: bool = False,
     ) -> None:
         """Emit a single method overload (const or non-const)."""
-        ret_type = cpp_return_type.to_cpp_return_const() if const else cpp_return_type.to_cpp_return()
+        ret_type = self._resolve_return_type(cpp_return_type, const=const)
         if const:
             params = self.gen_params(method.params, method.type_params, const_params=True)
         else:
             params = self.gen_params(method.params, method.type_params)
         const_suffix = " const" if const else ""
+        override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent="  ")
         self.ctx.emit_source_comment(out, method.loc, indent="  ")
-        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix} {{\n")
+        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:
@@ -333,6 +403,18 @@ class FunctionGenerator:
             var_type = ArrayType(default_int, var_type.size)
         return var_type
 
+    def _global_cpp_type(self, var_type: TpyType) -> str:
+        """Map a global variable type to C++.
+
+        @dynamic protocol types use __tpy_Base_{Name} instead of the concept
+        template placeholder, since globals need a concrete pointer type.
+        """
+        if is_protocol_type(var_type) and isinstance(var_type, NamedType):
+            pi = self.ctx.analyzer.registry.get_protocol(var_type.name)
+            if pi and pi.is_dynamic:
+                return self.protocols.get_dynamic_base_name(var_type.name)
+        return var_type.to_cpp()
+
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a global variable definition in source file.
 
@@ -344,7 +426,7 @@ class FunctionGenerator:
         self.ctx.emit_preceding_comments(out, stmt.loc)
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
-        cpp_type = var_type.to_cpp()
+        cpp_type = self._global_cpp_type(var_type)
         if var_type.is_value_type():
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
             init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType)) else ""
@@ -355,7 +437,7 @@ class FunctionGenerator:
     def gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate an extern declaration for a global variable in header file."""
         var_type = self._resolve_global_type(stmt)
-        cpp_type = var_type.to_cpp()
+        cpp_type = self._global_cpp_type(var_type)
         if var_type.is_value_type():
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:

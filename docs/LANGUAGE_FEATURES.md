@@ -1482,6 +1482,135 @@ Planned design:
 Current limitations:
 - **User records**: we generate `operator[]` from `__getitem__`, but it currently returns by value. This prevents mutating elements through `items[i].method()` for user-defined record containers. Addressing this likely requires reference-capable `__getitem__` or a dedicated mutation API in the type system.
 
+#### Working: `@dynamic` Protocol Declaration and Dispatch (Phase 9)
+
+The `@dynamic` decorator marks a protocol for runtime dispatch support. When applied, the compiler generates C++ artifacts for virtual dispatch:
+
+```python
+from tpy import dynamic
+from typing import Protocol
+
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str:
+        ...
+```
+
+This generates:
+1. **Concept** (`Pet`) -- for static dispatch via `T: Pet` bounds (same as non-dynamic protocols)
+2. **Abstract base** (`__tpy_Base_Pet`) -- virtual methods for runtime dispatch
+3. **Owning adapter** (`__tpy_Adapter_Pet<T>`) -- concept-constrained wrapper storing `T inner` by value
+4. **Ref adapter** (`__tpy_RefAdapter_Pet<T>`) -- zero-copy wrapper storing `T& inner` by reference
+
+**Object safety rules** -- `@dynamic` protocols must be:
+- **Non-empty**: at least one method required (no marker protocols)
+- **Non-generic**: type parameters not supported (e.g., `class Container[T](Protocol)`)
+- **Self-free**: no `Self` type in method params or return types
+
+Static dispatch (`T: Pet`) works identically for both `@dynamic` and regular protocols:
+
+```python
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str:
+        ...
+
+def speak[T: Pet](animal: T) -> None:
+    print(animal.make_noise())  # static dispatch via template
+```
+
+**Dynamic dispatch** -- protocol-typed variables and function parameters use runtime polymorphism:
+
+```python
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str: ...
+
+class Dog(Pet):
+    def make_noise(self) -> str: return "Woof"
+class Cat(Pet):
+    def make_noise(self) -> str: return "Meow"
+
+# Protocol-typed local variable
+pet: Pet = Dog()
+pet.make_noise()    # virtual dispatch -> "Woof"
+pet = Cat()         # rebind to different concrete type
+pet.make_noise()    # virtual dispatch -> "Meow"
+
+# Function parameter
+def greet(pet: Pet) -> None:
+    print(pet.make_noise())
+
+greet(Dog())        # implicit upcast (Dog inherits __tpy_Base_Pet)
+greet(pet)          # already-erased value passed directly
+```
+
+**Three dispatch paths** -- the compiler chooses the optimal path based on how the type relates to the protocol:
+
+| Scenario | C++ mechanism | Overhead |
+|----------|---------------|----------|
+| Class explicitly inherits protocol (`class Dog(Pet)`) | Direct C++ inheritance (`struct Dog : __tpy_Base_Pet`), implicit upcast to `Base&` | Zero -- same as hand-written virtual dispatch |
+| Structural conformance, lvalue arg (`greet(parrot)`) | Ref adapter (`__tpy_RefAdapter_Pet<Parrot>{parrot}`) | One indirection, zero copy |
+| Structural conformance, rvalue arg (`greet(Parrot())`) | Owning adapter (`__tpy_Adapter_Pet<Parrot>{Parrot()}`) | Owns the value, no dangling |
+| Local protocol variable (`pet: Pet = Dog()`) | Stack slot + `__tpy_Base_Pet*` pointer-local | Zero (direct inheritance) or adapter (structural) |
+
+When a class explicitly inherits a `@dynamic` protocol, the compiler generates C++ struct inheritance with `override` on matching methods:
+```python
+class Dog(Pet):                    # -> struct Dog : __tpy_Base_Pet {
+    def make_noise(self) -> str:   # ->   string_view make_noise() override { ... }
+        return "Woof"
+```
+
+Structural conformance (satisfying the protocol without inheriting it) uses adapter wrapping at dispatch points. The ref adapter ensures lvalue arguments are passed by reference (mutations visible to caller), while the owning adapter is used for rvalues.
+
+**Conditional/loop reassignment** -- when a dynamic protocol variable is declared or reassigned inside an `if`/`else` branch, the adapter slot is hoisted to function scope via `std::optional` so the value outlives the block:
+
+```python
+def choose_pet(cond: bool) -> None:
+    if cond:
+        pet: Pet = Dog()
+    else:
+        pet = Cat()
+    print(pet.make_noise())   # safe -- slots live at function scope
+```
+
+**Return types** -- returning a `@dynamic` protocol type is allowed when the value provably outlives the caller (globals, parameters). Returning a locally-constructed value is an error (the stack adapter would be destroyed):
+
+```python
+def echo(pet: Pet) -> Pet:
+    return pet             # OK: parameter outlives caller
+
+def bad() -> Pet:
+    return Dog()           # ERROR: local adapter destroyed on return
+```
+
+**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error (until `Box[P]` exists for heap-owned dynamic values).
+
+**Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpy_user::pets::__tpy_Base_Pet`).
+
+**Protocol inheritance** -- a `@dynamic` protocol can extend another `@dynamic` protocol. The base class inherits from the parent's base (`struct __tpy_Base_NamedPet : __tpy_Base_Pet`), so a `NamedPet`-typed value can be passed to a `Pet`-typed parameter via implicit C++ upcast:
+
+```python
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str: ...
+
+@dynamic
+class NamedPet(Pet, Protocol):
+    def name(self) -> str: ...
+
+class Dog(NamedPet):
+    def make_noise(self) -> str: return "Woof"
+    def name(self) -> str: return "Rex"
+
+def greet_pet(pet: Pet) -> None:
+    print(pet.make_noise())
+
+greet_pet(Dog())  # Dog -> Base_NamedPet -> Base_Pet (transitive upcast)
+```
+
+See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for the full design.
+
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 
 `NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol.

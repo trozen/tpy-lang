@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .expressions import ExpressionGenerator
     from .builtins import BuiltinGenerator
+    from .protocols import ProtocolGenerator
 
 
 class StatementGenerator:
@@ -43,10 +44,12 @@ class StatementGenerator:
         ctx: CodeGenContext,
         types: TypeResolver,
         builtins: BuiltinGenerator,
+        protocols: ProtocolGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.builtins = builtins
+        self.protocols = protocols
         # Will be set after expressions is created
         self.expressions: ExpressionGenerator | None = None
 
@@ -263,6 +266,80 @@ class StatementGenerator:
         if init is not None and not self.ctx.is_rvalue_source(init):
             return True
         return False
+
+    def _is_dynamic_protocol_type(self, target_type: TpyType | None) -> bool:
+        """Check if the type is a @dynamic protocol (needs adapter slot codegen)."""
+        if target_type is None or not is_protocol_type(target_type):
+            return False
+        protocol_info = self.ctx.analyzer.registry.get_protocol(target_type.name)
+        return protocol_info is not None and protocol_info.is_dynamic
+
+    def _gen_dynamic_protocol_init(self, name: str, target_type: NamedType,
+                                    init: 'TpyExpr', indent: str) -> str:
+        """Generate slot + pointer-local for a @dynamic protocol variable.
+
+        If the concrete type directly inherits the protocol base, emit a plain
+        concrete slot (no adapter). Otherwise use adapter wrapping.
+        If the init is already an erased protocol variable, just copy the pointer.
+        Uses brace init to avoid C++ most-vexing-parse with constructor calls.
+        """
+        concrete_type = self.ctx.get_expr_type(init)
+        proto_name = target_type.name
+        base_type = self.protocols.get_dynamic_base_name(proto_name)
+
+        if is_protocol_type(concrete_type):
+            # Already erased -- copy the pointer
+            init_expr = self.expressions.gen_expr_deref(init, concrete_type)
+            return f"{indent}{base_type}* {name} = &{init_expr};\n"
+
+        concrete_cpp = self.types.type_to_cpp(concrete_type)
+        init_slot = self.ctx.slots.next_slot()
+        init_expr = self.expressions.gen_expr(init, concrete_type)
+
+        if self.protocols.directly_implements_dynamic(concrete_type, proto_name):
+            # Direct inheritance -- plain concrete slot, implicit upcast
+            slot_type = concrete_cpp
+        else:
+            # Structural conformance -- adapter wrapping
+            adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
+            slot_type = f"{adapter_name}<{concrete_cpp}>"
+
+        return (f"{indent}{slot_type} {init_slot}{{{init_expr}}};\n"
+                f"{indent}{base_type}* {name} = &{init_slot};\n")
+
+    def _gen_dynamic_protocol_rebind(self, name: str, target_type: NamedType,
+                                      init: 'TpyExpr', indent: str) -> str:
+        """Generate slot rebind for a @dynamic protocol variable reassignment.
+
+        Slots are hoisted to function scope via pending_hoist_decls so they
+        survive block scopes (if/else branches, loops).
+        """
+        concrete_type = self.ctx.get_expr_type(init)
+        proto_name = target_type.name
+
+        if is_protocol_type(concrete_type):
+            # Already erased -- rebind pointer to same object
+            init_expr = self.expressions.gen_expr_deref(init, concrete_type)
+            return f"{indent}{name} = &{init_expr};\n"
+
+        concrete_cpp = self.types.type_to_cpp(concrete_type)
+        rebind_slot = self.ctx.slots.next_slot()
+        init_expr = self.expressions.gen_expr(init, concrete_type)
+
+        if self.protocols.directly_implements_dynamic(concrete_type, proto_name):
+            slot_type = concrete_cpp
+        else:
+            adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
+            slot_type = f"{adapter_name}<{concrete_cpp}>"
+
+        # Hoist slot to function scope (survives block scopes).
+        # Global scope (__tpy_init) needs 'static' so slots outlive the function.
+        static_kw = "static " if self.ctx.slots.global_scope else ""
+        self.ctx.pending_hoist_decls.append(
+            f"  {static_kw}std::optional<{slot_type}> {rebind_slot};\n"
+        )
+        return (f"{indent}{rebind_slot}.emplace({init_expr});\n"
+                f"{indent}{name} = &*{rebind_slot};\n")
 
     def _resolve_target_type(self, stmt: TpyVarDecl) -> TpyType | None:
         """Resolve the target type for a variable declaration."""
@@ -576,6 +653,9 @@ class StatementGenerator:
                 var_type = self.ctx.var_types.get(stmt.name)
                 # Pointer-local reassignment
                 if stmt.name in self.ctx.pointer_locals:
+                    # @dynamic protocol reassignment: new adapter slot + rebind
+                    if self._is_dynamic_protocol_type(var_type):
+                        return self._gen_dynamic_protocol_rebind(stmt.name, var_type, stmt.init, indent)
                     # OptionalType uses inner type (pointer-local adds T*)
                     resolve_type = var_type
                     if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
@@ -597,6 +677,12 @@ class StatementGenerator:
             self.ctx.current_ns.bind_variable(stmt.name, target_type)
 
         cpp_type = self._resolve_cpp_type(stmt)
+
+        # @dynamic protocol types always use adapter slots + Base* pointer-local
+        if self._is_dynamic_protocol_type(target_type):
+            assert stmt.init, f"@dynamic protocol local '{stmt.name}' requires initializer"
+            self.ctx.pointer_locals.add(stmt.name)
+            return self._gen_dynamic_protocol_init(stmt.name, target_type, stmt.init, indent)
 
         # Indirection for non-value types in function/method scope
         if self._needs_indirection(target_type, stmt.name, stmt.init):
@@ -874,6 +960,18 @@ class StatementGenerator:
             if (name not in self.ctx.declared_vars
                     and name not in self.ctx.global_declared_vars
                     and name not in self.ctx.native_global_names):
+                # @dynamic protocol branch-declared vars: just pre-declare Base* pointer.
+                # Per-assignment slots are created by rebind (hoisted to function scope).
+                if self._is_dynamic_protocol_type(var_type):
+                    base_type = self.protocols.get_dynamic_base_name(var_type.name)
+                    out.write(f"{indent}{base_type}* {name};\n")
+                    self.ctx.pointer_locals.add(name)
+                    self.ctx.declared_vars.add(name)
+                    self.ctx.local_scope_names.add(name)
+                    self.ctx.var_types[name] = var_type
+                    if self.ctx.current_ns and var_type:
+                        self.ctx.current_ns.bind_variable(name, var_type)
+                    continue
                 # OptionalType uses inner type (pointer-local adds T*)
                 resolve_type = var_type
                 if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():

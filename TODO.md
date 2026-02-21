@@ -6,7 +6,7 @@
 - argument default values
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
-- dynamic protocols and dynamic dispatch
+- dynamic protocols: steps 1-8, 10-11 done (parsing, validation, base/adapter/ref-adapter codegen, locals, params, direct C++ inheritance, hoisted slots, return types, Optional rejection, cross-module, @dynamic extending @dynamic). Remaining: step 7 (protocol params in record methods), step 9 (protocol field access), steps 12-15 (generics, Box[P], record fields, heterogeneous containers). See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for full progress.
 - bi-directional contextual type inference (Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
 files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
@@ -31,7 +31,7 @@ files are for TurboPython dialect, may or may not run with regular CPython, or s
 ## Bugs
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
 - Constructor codegen uses body assignments instead of initializer lists: when `__init__` has control flow (if/else, loops), fields are default-constructed then assigned (`this->tag = tag;`) instead of using C++ initializer lists (`: tag(tag)`). Works for trivial types but breaks for non-default-constructible types, `@nocopy` types, and eventually `const` fields. Needs either: (a) analyze which fields can still use initializer list even with control flow, (b) use `std::optional` wrappers for deferred init, or (c) restructure to always emit initializer lists with conditional logic factored differently.
-
+- Protocol `@readonly` conformance too strict: if a protocol method is `@readonly`, the implementing class method must also be `@readonly`. But a mutable method trivially satisfies a readonly contract -- it just does more. Should allow non-readonly implementations to satisfy readonly protocol methods.
 
 ## Examples
 - example: StaticList, using UninitArrayStorage
@@ -59,6 +59,7 @@ files are for TurboPython dialect, may or may not run with regular CPython, or s
 - Protocol-typed local variables: allow protocol types as variable types (e.g. `seq: Sequence[Int32] = items`)
 
 ## Python features
+- `@override` decorator (Python 3.12 `typing.override`): mark methods that override a parent/protocol method; error if the method doesn't actually override anything (typo protection). C++ codegen already emits `override` automatically.
 - dict full support
 - set
 - str full support
@@ -113,6 +114,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - extract c++ compiler interface
 - analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
+- in future: __tpy_Pet_Base, adapters etc - how can we make the names better for c++ interop (__tpy prefix is for internal TPy stuff) (or __tpy_Base_Pet, __tpy_Adapter/__tpy_RefAdapter)
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str

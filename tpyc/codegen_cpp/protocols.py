@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType,
+    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType,
     MethodSignature, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyProtocol, TpyRecord
@@ -38,12 +38,19 @@ class ProtocolGenerator:
         return typ
 
     def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType]]:
-        """Get list of protocol-typed parameters (unwraps readonly[protocol])."""
+        """Get list of static protocol-typed parameters (unwraps readonly[protocol]).
+
+        Excludes @dynamic protocols -- those use concrete __tpy_Base& params
+        instead of template parameters.
+        """
         result = []
         for pname, ptype in params:
             unwrapped = unwrap_readonly(ptype)
             resolved = self.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved):
+                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                if protocol_info and protocol_info.is_dynamic:
+                    continue
                 result.append((pname, resolved))
         return result
 
@@ -59,6 +66,65 @@ class ProtocolGenerator:
             return qualified_cpp_name(source_module, original_name)
         # User-defined protocol - use the protocol name directly
         return protocol.name
+
+    def get_dynamic_base_name(self, protocol_name: str) -> str:
+        """Get the (possibly qualified) C++ name for __tpy_Base_{Name}."""
+        if protocol_name in self.ctx.user_imported_protocols:
+            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
+            return qualified_cpp_name(source_module, f"__tpy_Base_{original_name}")
+        return f"__tpy_Base_{protocol_name}"
+
+    def get_dynamic_adapter_name(self, protocol_name: str) -> str:
+        """Get the (possibly qualified) C++ name for __tpy_Adapter_{Name}."""
+        if protocol_name in self.ctx.user_imported_protocols:
+            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
+            return qualified_cpp_name(source_module, f"__tpy_Adapter_{original_name}")
+        return f"__tpy_Adapter_{protocol_name}"
+
+    def get_dynamic_ref_adapter_name(self, protocol_name: str) -> str:
+        """Get the (possibly qualified) C++ name for __tpy_RefAdapter_{Name}."""
+        if protocol_name in self.ctx.user_imported_protocols:
+            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
+            return qualified_cpp_name(source_module, f"__tpy_RefAdapter_{original_name}")
+        return f"__tpy_RefAdapter_{protocol_name}"
+
+    def _protocol_inherits_from(self, protocol_name: str, ancestor_name: str) -> bool:
+        """Check if protocol_name transitively inherits from ancestor_name."""
+        visited: set[str] = set()
+        stack = [protocol_name]
+        while stack:
+            name = stack.pop()
+            if name == ancestor_name:
+                return True
+            if name in visited:
+                continue
+            visited.add(name)
+            info = self.ctx.analyzer.registry.get_protocol(name)
+            if info:
+                stack.extend(info.parent_protocols)
+        return False
+
+    def directly_implements_dynamic(self, concrete_type: TpyType, proto_name: str) -> bool:
+        """Check if concrete_type inherits a @dynamic protocol (directly or transitively).
+
+        Returns True when the record explicitly implements a @dynamic protocol that
+        is (or transitively inherits from) proto_name. This means the C++ struct
+        inherits __tpy_Base_{proto_name} through the inheritance chain and no adapter
+        wrapping is needed.
+        """
+        if not isinstance(concrete_type, NamedType) or not concrete_type.is_record:
+            return False
+        record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
+        if not record_info:
+            return False
+        for p in record_info.implemented_protocols:
+            pi = self.ctx.analyzer.registry.get_protocol(p.name)
+            if pi and pi.is_dynamic:
+                if p.name == proto_name:
+                    return True
+                if self._protocol_inherits_from(p.name, proto_name):
+                    return True
+        return False
 
     def gen_record_template_header(
         self,
@@ -286,6 +352,115 @@ class ProtocolGenerator:
             out.write(f"    {{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
 
         out.write("};\n")
+
+    def gen_dynamic_base_and_adapter(self, out: TextIO, protocol: TpyProtocol) -> None:
+        """Generate abstract base class and type-erasing adapter for @dynamic protocol.
+
+        Emitted after the concept so the adapter can use the concept as a constraint.
+        When this protocol extends other @dynamic protocols, the base class inherits
+        from their bases (e.g., __tpy_Base_NamedPet : __tpy_Base_Pet) and only declares
+        methods not already present in parent bases. Adapters still override all methods.
+        """
+        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        if protocol_info is None:
+            return
+
+        all_methods = self.collect_concept_methods(protocol.name)
+
+        base_name = f"__tpy_Base_{protocol.name}"
+        adapter_name = f"__tpy_Adapter_{protocol.name}"
+
+        # Collect @dynamic parent bases and their already-declared methods
+        dynamic_parent_bases: list[str] = []
+        parent_dynamic_methods: set[str] = set()
+        for parent_name in protocol_info.parent_protocols:
+            parent_info = self.ctx.analyzer.registry.get_protocol(parent_name)
+            if parent_info and parent_info.is_dynamic:
+                dynamic_parent_bases.append(self.get_dynamic_base_name(parent_name))
+                for m in self.collect_concept_methods(parent_name):
+                    parent_dynamic_methods.add(m.name)
+
+        # Methods to declare in this base class (exclude those in @dynamic parents)
+        base_methods = [m for m in all_methods if m.name not in parent_dynamic_methods]
+
+        # -- Abstract base class --
+        if dynamic_parent_bases:
+            bases_str = ", ".join(dynamic_parent_bases)
+            out.write(f"struct {base_name} : {bases_str} {{\n")
+        else:
+            out.write(f"struct {base_name} {{\n")
+        for method_sig in base_methods:
+            ret_cpp = self._dynamic_return_type(method_sig)
+            const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
+            params_cpp = self._dynamic_param_list(method_sig)
+            out.write(f"    virtual {ret_cpp} {method_sig.name}({params_cpp}){const_qual} = 0;\n")
+        out.write(f"    virtual ~{base_name}() = default;\n")
+        out.write("};\n\n")
+
+        # -- Owning adapter template (for locals and rvalue call-site args) --
+        out.write(f"template<{protocol.name} T>\n")
+        out.write(f"struct {adapter_name} : {base_name} {{\n")
+        out.write(f"    T inner;\n")
+        out.write(f"    template<typename... Args>\n")
+        out.write(f"    {adapter_name}(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
+        self._gen_adapter_overrides(out, all_methods, protocol_info)
+        out.write("};\n\n")
+
+        # -- Ref adapter template (for lvalue call-site args, zero-copy) --
+        ref_adapter_name = f"__tpy_RefAdapter_{protocol.name}"
+        out.write(f"template<{protocol.name} T>\n")
+        out.write(f"struct {ref_adapter_name} : {base_name} {{\n")
+        out.write(f"    T& inner;\n")
+        out.write(f"    {ref_adapter_name}(T& ref) : inner(ref) {{}}\n")
+        self._gen_adapter_overrides(out, all_methods, protocol_info)
+        out.write("};\n")
+
+    def _gen_adapter_overrides(self, out: TextIO, all_methods: list[MethodSignature],
+                               protocol_info: 'ProtocolInfo') -> None:
+        """Emit method override bodies shared by owning and ref adapters."""
+        for method_sig in all_methods:
+            ret_cpp = self._dynamic_return_type(method_sig)
+            const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
+            params_cpp = self._dynamic_param_list(method_sig)
+            is_void = isinstance(method_sig.return_type, VoidType)
+            ret_kw = "" if is_void else "return "
+            call_expr = self._dynamic_forward_call(method_sig)
+            out.write(f"    {ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
+
+    def _is_readonly_method(self, method_sig: MethodSignature, protocol_info: 'ProtocolInfo') -> bool:
+        from ..typesys import ProtocolInfo as _PI
+        return method_sig.is_readonly or protocol_info.is_readonly
+
+    def _dynamic_return_type(self, method_sig: MethodSignature) -> str:
+        """C++ return type for a dynamic dispatch method."""
+        if isinstance(method_sig.return_type, VoidType):
+            return "void"
+        return method_sig.return_type.to_cpp()
+
+    def _dynamic_param_list(self, method_sig: MethodSignature) -> str:
+        """C++ parameter list for a dynamic dispatch method (excluding self)."""
+        parts = []
+        for pname, ptype in method_sig.params:
+            parts.append(ptype.to_cpp_param(pname))
+        return ", ".join(parts)
+
+    def _dynamic_forward_call(self, method_sig: MethodSignature) -> str:
+        """Generate the forwarding call expression for an adapter method."""
+        arg_names = [pname for pname, _ in method_sig.params]
+        args_str = ", ".join(arg_names)
+
+        # Dunder methods with tpy:: free function equivalents
+        if method_sig.name == "__len__":
+            return f"tpy::__len__(inner)"
+        if method_sig.name == "__getitem__" and len(method_sig.params) == 1:
+            return f"tpy::__getitem__(inner, {args_str})"
+        if method_sig.name == "__setitem__" and len(method_sig.params) == 2:
+            return f"tpy::__setitem__(inner, {args_str})"
+        if method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
+            cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
+            return f"inner {cpp_op} {arg_names[0]}"
+
+        return f"inner.{method_sig.name}({args_str})"
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
         """Recursively collect all record type names from a type."""

@@ -296,6 +296,8 @@ class SemanticAnalyzer:
         self.ctx.reset_function_tracking()
 
         self.ctx.current_function = func
+        # Resolve return type (sets is_protocol for cross-module imports)
+        func.return_type = self.type_ops.resolve_type(func.return_type)
         self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
 
         # Add parameters to scope and namespace. ReadonlyType is kept for
@@ -411,6 +413,8 @@ class SemanticAnalyzer:
             self.ctx.reset_function_tracking()
     
             self.ctx.current_function = method
+            # Resolve return type (sets is_protocol for cross-module imports)
+            method.return_type = self.type_ops.resolve_type(method.return_type)
             self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
 
             # Add self/params to scope and namespace. @readonly wraps non-value types.

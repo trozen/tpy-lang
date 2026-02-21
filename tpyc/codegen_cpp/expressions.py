@@ -648,6 +648,42 @@ class ExpressionGenerator:
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
+                # @dynamic protocol params: wrap concrete args in temp adapter
+                unwrapped_ptype = unwrap_readonly(resolved_ptype)
+                if is_protocol_type(unwrapped_ptype):
+                    protocol_info = self.ctx.analyzer.registry.get_protocol(unwrapped_ptype.name)
+                    if protocol_info and protocol_info.is_dynamic:
+                        arg_type = self.ctx.get_expr_type(arg)
+                        if is_protocol_type(arg_type):
+                            # Already erased (dynamic protocol var) -- dereference pointer-local
+                            gen_args.append(self.gen_expr_deref(arg, resolved_ptype))
+                        elif self.protocols.directly_implements_dynamic(arg_type, unwrapped_ptype.name):
+                            # Direct inheritance -- implicit upcast to Base&, no adapter
+                            if self.ctx.is_temporary_expr(arg):
+                                # Rvalue can't bind to non-const lvalue ref -- materialize
+                                concrete_cpp = self.types.type_to_cpp(arg_type)
+                                arg_expr = self.gen_expr(arg, arg_type)
+                                temp_name = self.ctx.temps.create_typed(concrete_cpp, arg_expr, brace_init=True)
+                                gen_args.append(temp_name)
+                            else:
+                                gen_args.append(self.gen_call_arg(arg, resolved_ptype))
+                        else:
+                            # Structural conformance -- wrap in adapter
+                            concrete_cpp = self.types.type_to_cpp(arg_type)
+                            proto_name = unwrapped_ptype.name
+                            arg_expr = self.gen_expr_deref(arg, arg_type)
+                            if self.ctx.is_temporary_expr(arg):
+                                # Rvalue: owning adapter (value must live in the temp)
+                                adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
+                                adapter_type = f"{adapter_name}<{concrete_cpp}>"
+                            else:
+                                # Lvalue: ref adapter (zero-copy, mutations visible)
+                                ref_adapter_name = self.protocols.get_dynamic_ref_adapter_name(proto_name)
+                                adapter_type = f"{ref_adapter_name}<{concrete_cpp}>"
+                            temp_name = self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
+                            gen_args.append(temp_name)
+                        continue
+
                 # Optional non-value params are T* / const T* -- pass raw pointer
                 actual_ptype = unwrap_readonly(resolved_ptype)
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
