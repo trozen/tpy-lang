@@ -106,6 +106,41 @@ class StatementAnalyzer:
         if self.ctx.current_ns:
             self.ctx.current_ns.update_variable_type(name, typ)
 
+    def _sync_promoted_var_types(self, names: set[str] | None = None) -> None:
+        """Sync scope and namespace with var_types after a control-flow restore.
+
+        After restoring scope/namespace to a pre-block state (if-branch,
+        while, for-each), variables whose canonical declaration type was
+        widened inside the block (e.g., Int32 promoted to BigInt, or None
+        promoted to Optional[T]) need to be re-synced so that subsequent
+        analysis sees the correct type.
+
+        Args:
+            names: Variable names to check. If None, checks all tracked
+                   variable declarations in the current function.
+        """
+        items = (
+            self.ctx.var_decl_by_name.items() if names is None
+            else ((n, self.ctx.var_decl_by_name[n]) for n in names if n in self.ctx.var_decl_by_name)
+        )
+        for name, var_decl in items:
+            canonical = self.ctx.var_types.get(id(var_decl))
+            if canonical is None:
+                continue
+            current = self.ctx.current_scope.lookup(name)
+            # Preserve ReadonlyType from branch merge: var_types stores
+            # unwrapped types, so re-wrap with ReadonlyType if the merge
+            # determined this variable should be readonly.
+            if isinstance(current, ReadonlyType):
+                if unwrap_readonly(current) == canonical:
+                    continue
+                target = ReadonlyType(canonical)
+            else:
+                target = canonical
+            if target != current:
+                self.ctx.current_scope.define(name, target)
+            self._sync_ns_var_type(name, target)
+
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
         """Reject assignments through readonly references (type-based check)."""
         if isinstance(target, (TpyFieldAccess, TpySubscript)):
@@ -215,6 +250,11 @@ class StatementAnalyzer:
                         merged = ReadonlyType(unwrap_readonly(then_type))
                         self.ctx.current_scope.define(name, merged)
                         self._sync_ns_var_type(name, merged)
+            # Sync scope/namespace with var_types for variables whose
+            # declaration type was promoted inside a branch.
+            self._sync_promoted_var_types(
+                set(bindings_after_then) | set(bindings_after_else)
+            )
             # Detect variables first declared inside branches that need
             # pre-declaration. Skip when both branches terminate (no code
             # after the if needs the variable).
@@ -252,6 +292,7 @@ class StatementAnalyzer:
             # Restore namespace to pre-loop state (scope was already restored
             # by loop_scope context manager)
             self._restore_ns_var_types(ns_types_before_while)
+            self._sync_promoted_var_types()
         elif isinstance(stmt, TpyForEach):
             iterable_type = self.expr.analyze_expr(stmt.iterable)
             is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
@@ -293,6 +334,7 @@ class StatementAnalyzer:
             self.init.restore(before)
             self.ctx.non_null_ptr_vars &= body_end_nn_ptr
             self._restore_ns_var_types(ns_types_before_foreach)
+            self._sync_promoted_var_types()
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)

@@ -34,7 +34,7 @@
 ## Bugs
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
 - Constructor codegen uses body assignments instead of initializer lists: when `__init__` has control flow (if/else, loops), fields are default-constructed then assigned (`this->tag = tag;`) instead of using C++ initializer lists (`: tag(tag)`). Works for trivial types but breaks for non-default-constructible types, `@nocopy` types, and eventually `const` fields. Needs either: (a) analyze which fields can still use initializer list even with control flow, (b) use `std::optional` wrappers for deferred init, or (c) restructure to always emit initializer lists with conditional logic factored differently.
-- examples/brainfuck.py fails
+
 
 ## Examples
 - example: StaticList, using UninitArrayStorage
