@@ -1574,7 +1574,42 @@ def choose_pet(cond: bool) -> None:
     print(pet.make_noise())   # safe -- slots live at function scope
 ```
 
-**Current status**: Dynamic dispatch working for locals and function parameters with all three dispatch paths. Return types are not yet supported (needs lifetime analysis). See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for the full design.
+**Return types** -- returning a `@dynamic` protocol type is allowed when the value provably outlives the caller (globals, parameters). Returning a locally-constructed value is an error (the stack adapter would be destroyed):
+
+```python
+def echo(pet: Pet) -> Pet:
+    return pet             # OK: parameter outlives caller
+
+def bad() -> Pet:
+    return Dog()           # ERROR: local adapter destroyed on return
+```
+
+**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error (until `Box[P]` exists for heap-owned dynamic values).
+
+**Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpy_user::pets::__tpy_Base_Pet`).
+
+**Protocol inheritance** -- a `@dynamic` protocol can extend another `@dynamic` protocol. The base class inherits from the parent's base (`struct __tpy_Base_NamedPet : __tpy_Base_Pet`), so a `NamedPet`-typed value can be passed to a `Pet`-typed parameter via implicit C++ upcast:
+
+```python
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str: ...
+
+@dynamic
+class NamedPet(Pet, Protocol):
+    def name(self) -> str: ...
+
+class Dog(NamedPet):
+    def make_noise(self) -> str: return "Woof"
+    def name(self) -> str: return "Rex"
+
+def greet_pet(pet: Pet) -> None:
+    print(pet.make_noise())
+
+greet_pet(Dog())  # Dog -> Base_NamedPet -> Base_Pet (transitive upcast)
+```
+
+See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for the full design.
 
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 

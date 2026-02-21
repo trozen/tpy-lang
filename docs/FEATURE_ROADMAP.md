@@ -27,11 +27,11 @@ they don't change how existing code compiles. These two do:
    `T | None` patterns when `T` is a type parameter. All Optional-related codegen paths
    now use `uses_pointer_repr()` instead of `is_value_type()`.
 
-3. **Dynamic dispatch** (B4 + B5) -- method definition codegen goes from "always
-   non-virtual" to "decide per method: virtual or not?" affecting every class hierarchy.
-   Method call codegen needs a static-vs-vtable dispatch decision. Protocol conformance
-   checking goes from "yes/no validation" to "generate conformance adapters" -- the
-   protocol system starts producing codegen artifacts, not just type-checking results.
+3. **Dynamic dispatch** (B4) -- **Done.** `@dynamic` protocols generate vtable-based
+   dispatch: abstract base classes, owning/ref adapters, direct C++ inheritance for
+   explicit implementors, structural conformance wrapping at call sites. Supports locals,
+   params, return types, cross-module, and protocol inheritance chains. B5 (virtual
+   methods in class inheritance without protocols) remains not started.
 
 Everything else -- effect system, closures, generators, exceptions, Box, match/case,
 dict, tuples -- is **additive**: important and sometimes touching many files, but the
@@ -62,7 +62,7 @@ existing compiler model stays the same for existing code.
 | B1 | Box[T] heap ownership | M | Not started | [II](#boxt----heap-ownership) |
 | B2 | Union types / ADTs | L | Partial | [I](#union-types--algebraic-data-types) |
 | B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
-| B4 | Dynamic dispatch -- Dyn[P] | L | Designed | [II](#dynamic-dispatch-dynp) |
+| B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Virtual methods in inheritance | M | Not started | [II](#virtual-methods-in-inheritance) |
 
 ### Phase C: Error Handling + Effects
@@ -385,36 +385,38 @@ Phase 6 of MOVE_SEMANTICS_DESIGN. Well-specified, implementation-ready.
 
 ---
 
-### Dynamic Dispatch (Dyn[P])
+### Dynamic Dispatch (@dynamic protocols)
+
+**Done.** The `@dynamic` decorator on protocols enables runtime dispatch via vtables.
+The compiler generates abstract base classes, owning/ref adapter templates, and C++20
+concepts for each `@dynamic` protocol. Syntax uses bare protocol types for dynamic
+dispatch (`pet: Pet`) and type bounds for static dispatch (`T: Pet`).
 
 ```python
-class Drawable(Protocol):
-    def draw(self) -> None: ...
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str: ...
 
-shapes: list[Box[Dyn[Drawable]]] = [Box(Circle()), Box(Square())]
-for s in shapes:
-    s.draw()   # runtime dispatch via vtable
+class Dog(Pet):
+    def make_noise(self) -> str: return "Woof"
+
+def greet(pet: Pet) -> None:      # dynamic dispatch via __tpy_Base_Pet&
+    print(pet.make_noise())
+
+greet(Dog())                       # implicit upcast, zero cost
 ```
 
-Phase 9 of PROTOCOL_DESIGN. Requires vtable adapter generation, object-safety validation,
-and `Box[Dyn[P]]` as the type-erased container.
+Working: locals, function params, return types (provably long-lived), cross-module,
+`@dynamic` extending `@dynamic` (base class inheritance chain), direct C++ inheritance,
+structural conformance (adapter wrapping), conditional/loop reassignment (hoisted slots),
+`Optional[@dynamic]` rejection.
 
-**Why it matters**: Without this, heterogeneous collections are impossible. The language is
-limited to "C with better syntax" for OOP patterns. Combined with ADTs, this gives TPy
-two complementary polymorphism stories:
-- ADTs: closed hierarchies, stack-allocated, exhaustive match, `@noalloc`
-- `Dyn[P]`: open extension, heap-allocated, vtable, dynamic
+Remaining (needs `Box[P]`): record fields typed as `@dynamic` protocol, `list[Box[P]]`
+heterogeneous containers, generic `@dynamic` protocols.
 
-This also enables **protocol-typed local variables**: `seq: Sequence[Int32] = items`
-where the concrete type is erased behind the protocol. Currently protocol types can only
-appear in generic bounds (`T: Sequence`), not as variable types.
+See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for full progress.
 
-**Current state**: Fully designed (PROTOCOL_DESIGN.md Phase 9), nothing built.
-All current protocols compile to C++20 concepts (static dispatch only).
-
-**Dependencies**: Requires `Box[T]`. Protocol system (done) provides the foundation.
-
-**Effort**: L (vtable generation, adapter structs, object-safety validation)
+**Dependencies**: `Box[T]` needed for remaining items (record fields, containers).
 
 ---
 

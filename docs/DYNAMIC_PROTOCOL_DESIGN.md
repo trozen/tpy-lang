@@ -17,7 +17,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 8 | `Optional[Pet]` sema rejection | Done |
 | 9 | Protocol field access through erased type | Future |
 | 10 | Cross-module `@dynamic` protocols | Done |
-| 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Gap |
+| 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Done |
 | 12 | Generic `@dynamic` protocols | Future |
 | 13 | `Box[P]` integration (heap-allocated dynamic values) | Future |
 | 14 | Record fields typed as `@dynamic` protocol (needs `Box[P]`) | Future |
@@ -352,14 +352,9 @@ without requiring `extends`). Explicit `extends` remains for marker protocols on
 
 Compiler infrastructure issues (not blocked on `Box[P]`):
 
-- **`Optional[Pet]`** -- falls through to broken C++ (`auto* = nullptr`). Needs sema
-  error rejecting `Optional` of a `@dynamic` protocol (until `Box[P]` exists).
 - **Protocol fields on `@dynamic`** -- field access on protocol-typed variables fails
   in sema ("Cannot access field"). Virtual getters are generated in the base class but
   sema doesn't resolve field access through the erased type.
-- **`@dynamic` extending `@dynamic`** -- `__tpy_Base_Child` doesn't inherit from
-  `__tpy_Base_Parent`, so passing a `Child`-typed variable to a `Parent`-typed param
-  fails at C++ level. Needs `__tpy_Base_Child : __tpy_Base_Parent` inheritance chain.
 - **Method params with `@dynamic` protocol type** -- sema rejects protocol types as
   method parameters ("Protocols are only valid for free function parameters"). Keep
   rejection for now; revisit when use cases arise.

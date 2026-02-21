@@ -274,20 +274,6 @@ class StatementGenerator:
         protocol_info = self.ctx.analyzer.registry.get_protocol(target_type.name)
         return protocol_info is not None and protocol_info.is_dynamic
 
-    def _directly_implements_dynamic(self, concrete_type: TpyType, proto_name: str) -> bool:
-        """Check if concrete_type explicitly inherits a @dynamic protocol."""
-        if not isinstance(concrete_type, NamedType) or not concrete_type.is_record:
-            return False
-        record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
-        if not record_info:
-            return False
-        for p in record_info.implemented_protocols:
-            if p.name == proto_name:
-                pi = self.ctx.analyzer.registry.get_protocol(p.name)
-                if pi and pi.is_dynamic:
-                    return True
-        return False
-
     def _gen_dynamic_protocol_init(self, name: str, target_type: NamedType,
                                     init: 'TpyExpr', indent: str) -> str:
         """Generate slot + pointer-local for a @dynamic protocol variable.
@@ -310,7 +296,7 @@ class StatementGenerator:
         init_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
 
-        if self._directly_implements_dynamic(concrete_type, proto_name):
+        if self.protocols.directly_implements_dynamic(concrete_type, proto_name):
             # Direct inheritance -- plain concrete slot, implicit upcast
             slot_type = concrete_cpp
         else:
@@ -340,7 +326,7 @@ class StatementGenerator:
         rebind_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
 
-        if self._directly_implements_dynamic(concrete_type, proto_name):
+        if self.protocols.directly_implements_dynamic(concrete_type, proto_name):
             slot_type = concrete_cpp
         else:
             adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)

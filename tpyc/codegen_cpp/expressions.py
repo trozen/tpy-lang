@@ -57,20 +57,6 @@ class ExpressionGenerator:
         # Wire up builtins to use our gen_expr methods
         self.builtins.set_expr_generator(self.gen_expr, self.gen_expr_deref, self.gen_call_arg)
 
-    def _directly_implements_dynamic(self, concrete_type: TpyType, proto_name: str) -> bool:
-        """Check if concrete_type explicitly inherits a @dynamic protocol (C++ Base class)."""
-        if not isinstance(concrete_type, NamedType) or not concrete_type.is_record:
-            return False
-        record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
-        if not record_info:
-            return False
-        for p in record_info.implemented_protocols:
-            if p.name == proto_name:
-                pi = self.ctx.analyzer.registry.get_protocol(p.name)
-                if pi and pi.is_dynamic:
-                    return True
-        return False
-
     def gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression, dereferencing globals.
 
@@ -672,7 +658,7 @@ class ExpressionGenerator:
                         if is_protocol_type(arg_type):
                             # Already erased (dynamic protocol var) -- dereference pointer-local
                             gen_args.append(self.gen_expr_deref(arg, resolved_ptype))
-                        elif self._directly_implements_dynamic(arg_type, unwrapped_ptype.name):
+                        elif self.protocols.directly_implements_dynamic(arg_type, unwrapped_ptype.name):
                             # Direct inheritance -- implicit upcast to Base&, no adapter
                             if self.ctx.is_temporary_expr(arg):
                                 # Rvalue can't bind to non-const lvalue ref -- materialize

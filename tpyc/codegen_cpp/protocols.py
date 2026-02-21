@@ -88,6 +88,44 @@ class ProtocolGenerator:
             return qualified_cpp_name(source_module, f"__tpy_RefAdapter_{original_name}")
         return f"__tpy_RefAdapter_{protocol_name}"
 
+    def _protocol_inherits_from(self, protocol_name: str, ancestor_name: str) -> bool:
+        """Check if protocol_name transitively inherits from ancestor_name."""
+        visited: set[str] = set()
+        stack = [protocol_name]
+        while stack:
+            name = stack.pop()
+            if name == ancestor_name:
+                return True
+            if name in visited:
+                continue
+            visited.add(name)
+            info = self.ctx.analyzer.registry.get_protocol(name)
+            if info:
+                stack.extend(info.parent_protocols)
+        return False
+
+    def directly_implements_dynamic(self, concrete_type: TpyType, proto_name: str) -> bool:
+        """Check if concrete_type inherits a @dynamic protocol (directly or transitively).
+
+        Returns True when the record explicitly implements a @dynamic protocol that
+        is (or transitively inherits from) proto_name. This means the C++ struct
+        inherits __tpy_Base_{proto_name} through the inheritance chain and no adapter
+        wrapping is needed.
+        """
+        if not isinstance(concrete_type, NamedType) or not concrete_type.is_record:
+            return False
+        record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
+        if not record_info:
+            return False
+        for p in record_info.implemented_protocols:
+            pi = self.ctx.analyzer.registry.get_protocol(p.name)
+            if pi and pi.is_dynamic:
+                if p.name == proto_name:
+                    return True
+                if self._protocol_inherits_from(p.name, proto_name):
+                    return True
+        return False
+
     def gen_record_template_header(
         self,
         type_params: list[str],
@@ -319,6 +357,9 @@ class ProtocolGenerator:
         """Generate abstract base class and type-erasing adapter for @dynamic protocol.
 
         Emitted after the concept so the adapter can use the concept as a constraint.
+        When this protocol extends other @dynamic protocols, the base class inherits
+        from their bases (e.g., __tpy_Base_NamedPet : __tpy_Base_Pet) and only declares
+        methods not already present in parent bases. Adapters still override all methods.
         """
         protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
         if protocol_info is None:
@@ -329,9 +370,26 @@ class ProtocolGenerator:
         base_name = f"__tpy_Base_{protocol.name}"
         adapter_name = f"__tpy_Adapter_{protocol.name}"
 
+        # Collect @dynamic parent bases and their already-declared methods
+        dynamic_parent_bases: list[str] = []
+        parent_dynamic_methods: set[str] = set()
+        for parent_name in protocol_info.parent_protocols:
+            parent_info = self.ctx.analyzer.registry.get_protocol(parent_name)
+            if parent_info and parent_info.is_dynamic:
+                dynamic_parent_bases.append(self.get_dynamic_base_name(parent_name))
+                for m in self.collect_concept_methods(parent_name):
+                    parent_dynamic_methods.add(m.name)
+
+        # Methods to declare in this base class (exclude those in @dynamic parents)
+        base_methods = [m for m in all_methods if m.name not in parent_dynamic_methods]
+
         # -- Abstract base class --
-        out.write(f"struct {base_name} {{\n")
-        for method_sig in all_methods:
+        if dynamic_parent_bases:
+            bases_str = ", ".join(dynamic_parent_bases)
+            out.write(f"struct {base_name} : {bases_str} {{\n")
+        else:
+            out.write(f"struct {base_name} {{\n")
+        for method_sig in base_methods:
             ret_cpp = self._dynamic_return_type(method_sig)
             const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
             params_cpp = self._dynamic_param_list(method_sig)
