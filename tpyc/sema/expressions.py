@@ -122,8 +122,10 @@ class ExpressionAnalyzer:
         is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements
 
         if is_generic_constructor or is_empty_literal:
-            # Unwrap ReadonlyType so readonly[list[T]] hint works for list() inference
+            # Unwrap ReadonlyType/OwnType so hints like Own[list[T]] work
             inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
             # Check if type_hint matches the constructor's generic type
             hint_matches = False
             if is_generic_constructor:
@@ -167,6 +169,23 @@ class ExpressionAnalyzer:
                         expr.call_type = inner_hint  # type: ignore
                     self.ctx.set_expr_type(expr, inner_hint)
                     return inner_hint
+
+        # Non-empty array literal with list type hint
+        # (e.g. return [x, y] with -> Own[list[T]])
+        if isinstance(expr, TpyArrayLiteral) and expr.elements:
+            inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
+            if isinstance(inner_hint, ListType):
+                result = self.analyze_expr(expr)
+                if isinstance(result, PendingListType):
+                    info = self.ctx.list_literals.get(result.literal_id)
+                    if info:
+                        info.has_explicit_annotation = True
+                        info.explicit_type = inner_hint
+                        if info.coerced_element_type is None:
+                            info.coerced_element_type = inner_hint.element_type
+                return result
 
         # Fall back to regular analysis, propagating hint through context
         # for functions that need it (e.g. unsafe_cast)

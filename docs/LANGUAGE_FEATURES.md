@@ -367,6 +367,7 @@ Context-dependent inference for Python-first semantics:
 | Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is read-only view, no mutation possible |
 | Explicit annotation `x: Array[T, N]` | `Array` | `std::array` | User opted into fixed size |
 | Explicit annotation `x: list[T]` | `list` | `std::vector` | User opted into dynamic list |
+| Return type `-> Own[list[T]]` | `list` | `std::vector` | Return type context propagates to literal |
 
 This gives the best of both worlds:
 - **Python semantics by default**: Globals behave like Python module variables (mutable, shareable)
@@ -400,6 +401,12 @@ def caller_direct():
     use_list([1, 2, 3])    # → temp std::vector passed to function
     use_list(list())       # → temp empty std::vector
     use_list([])           # → temp empty std::vector
+
+def make_items() -> Own[list[int]]:
+    return [1, 2, 3]       # → std::vector (return type context)
+
+def make_empty[T]() -> Own[list[T]]:
+    return []              # → std::vector<T> (generic return type context)
 
 def reader(items: Span[int]) -> int:
     return items[0]

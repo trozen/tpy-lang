@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- `return []` in generic functions can't infer element type from return type (e.g. `-> Own[list[T]]`); also `[x]` produces `std::array<T,1>` instead of `std::vector<T>` when return type is `list[T]` -- needs return-type-aware list literal inference
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - stubs for tpy modules for CPython, so that we can run (some) TPy code in CPython, but also for use in IDEs etc. (we have already something for tests, so maybe it can be extracted)
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
