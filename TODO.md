@@ -59,6 +59,7 @@ files are for TurboPython dialect, may or may not run with regular CPython, or s
 - Protocol-typed local variables: allow protocol types as variable types (e.g. `seq: Sequence[Int32] = items`)
 
 ## Python features
+- `@override` decorator (Python 3.12 `typing.override`): mark methods that override a parent/protocol method; error if the method doesn't actually override anything (typo protection). C++ codegen already emits `override` automatically.
 - dict full support
 - set
 - str full support
