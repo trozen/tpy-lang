@@ -291,12 +291,19 @@ class StatementGenerator:
 
         If the concrete type directly inherits the protocol base, emit a plain
         concrete slot (no adapter). Otherwise use adapter wrapping.
+        If the init is already an erased protocol variable, just copy the pointer.
         Uses brace init to avoid C++ most-vexing-parse with constructor calls.
         """
         concrete_type = self.ctx.get_expr_type(init)
-        concrete_cpp = self.types.type_to_cpp(concrete_type)
         proto_name = target_type.name
         base_type = f"__tpy_Base_{proto_name}"
+
+        if is_protocol_type(concrete_type):
+            # Already erased -- copy the pointer
+            init_expr = self.expressions.gen_expr_deref(init, concrete_type)
+            return f"{indent}{base_type}* {name} = &{init_expr};\n"
+
+        concrete_cpp = self.types.type_to_cpp(concrete_type)
         init_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
 
@@ -314,8 +321,14 @@ class StatementGenerator:
                                       init: 'TpyExpr', indent: str) -> str:
         """Generate slot rebind for a @dynamic protocol variable reassignment."""
         concrete_type = self.ctx.get_expr_type(init)
-        concrete_cpp = self.types.type_to_cpp(concrete_type)
         proto_name = target_type.name
+
+        if is_protocol_type(concrete_type):
+            # Already erased -- rebind pointer to same object
+            init_expr = self.expressions.gen_expr_deref(init, concrete_type)
+            return f"{indent}{name} = &{init_expr};\n"
+
+        concrete_cpp = self.types.type_to_cpp(concrete_type)
         rebind_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
 
