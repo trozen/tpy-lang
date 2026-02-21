@@ -1,1 +1,1 @@
-main.tp.py:17: error: Type mismatch in argument 'p': expected Point, got ConstPtr[Point]
+main.py:17: error: Type mismatch in argument 'p': expected Point, got ConstPtr[Point]

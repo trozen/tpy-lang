@@ -1,1 +1,1 @@
-main.tp.py:13: error: variable 'x' may be used before assignment
+main.py:13: error: variable 'x' may be used before assignment

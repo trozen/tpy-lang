@@ -1,1 +1,1 @@
-main.tp.py:2: error: Cannot check 'IntLiteral(1)' membership in str (expected str or Char)
+main.py:2: error: Cannot check 'IntLiteral(1)' membership in str (expected str or Char)

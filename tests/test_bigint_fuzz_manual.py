@@ -93,7 +93,7 @@ def test_bigint_differential_fuzz_manual(tmp_path):
     include_pow_cases = _env_int("BIGINT_FUZZ_POW_CASES", 120)
     rng = random.Random(seed)
 
-    src_file = tmp_path / "bigint_fuzz.tp.py"
+    src_file = tmp_path / "bigint_fuzz.py"
     build_dir = tmp_path / "__tpyc__"
 
     lines: list[str] = [

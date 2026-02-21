@@ -1,1 +1,1 @@
-main.tp.py:7: error: super() requires a parent class, but 'Standalone' has no parent
+main.py:7: error: super() requires a parent class, but 'Standalone' has no parent

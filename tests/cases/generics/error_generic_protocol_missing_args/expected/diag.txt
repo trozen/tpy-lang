@@ -1,1 +1,1 @@
-main.tp.py:8: error: Generic protocol 'Container' requires type arguments: Container[T]
+main.py:8: error: Generic protocol 'Container' requires type arguments: Container[T]

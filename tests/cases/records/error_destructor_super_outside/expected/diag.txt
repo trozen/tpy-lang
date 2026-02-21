@@ -1,1 +1,1 @@
-main.tp.py:9: error: super().__del__() can only be called inside __del__
+main.py:9: error: super().__del__() can only be called inside __del__

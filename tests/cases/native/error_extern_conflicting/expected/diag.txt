@@ -1,1 +1,1 @@
-main.tp.py:5: error: Function 'bad_func' cannot have both @native and @native_c
+main.py:5: error: Function 'bad_func' cannot have both @native and @native_c

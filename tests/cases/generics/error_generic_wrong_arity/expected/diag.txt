@@ -1,1 +1,1 @@
-main.tp.py:11: error: Record 'Box' expects 1 type arguments, got 2
+main.py:11: error: Record 'Box' expects 1 type arguments, got 2

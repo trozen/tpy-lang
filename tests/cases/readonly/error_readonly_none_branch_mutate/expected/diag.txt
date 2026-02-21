@@ -1,1 +1,1 @@
-main.tp.py:19: error: Cannot call non-readonly method 'set_v' on readonly reference
+main.py:19: error: Cannot call non-readonly method 'set_v' on readonly reference

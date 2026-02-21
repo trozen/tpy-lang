@@ -1,1 +1,1 @@
-main.tp.py:10: error: super().__del__() can only be called once
+main.py:10: error: super().__del__() can only be called once

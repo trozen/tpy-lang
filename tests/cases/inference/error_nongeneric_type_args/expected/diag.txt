@@ -1,1 +1,1 @@
-main.tp.py:8: error: Function 'inc' is not generic and does not accept type arguments
+main.py:8: error: Function 'inc' is not generic and does not accept type arguments

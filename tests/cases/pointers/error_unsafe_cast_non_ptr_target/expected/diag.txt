@@ -1,1 +1,1 @@
-main.tp.py:6: error: unsafe_cast() target must be Ptr[T] or ConstPtr[T], got Int32
+main.py:6: error: unsafe_cast() target must be Ptr[T] or ConstPtr[T], got Int32

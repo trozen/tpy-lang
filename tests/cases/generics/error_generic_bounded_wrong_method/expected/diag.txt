@@ -1,1 +1,1 @@
-main.tp.py:9: error: Protocol 'Stringable' has no method 'other_method'
+main.py:9: error: Protocol 'Stringable' has no method 'other_method'

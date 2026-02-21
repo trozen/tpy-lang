@@ -1,1 +1,1 @@
-main.tp.py:2: error: 'tpy.Int32' requires: import tpy
+main.py:2: error: 'tpy.Int32' requires: import tpy

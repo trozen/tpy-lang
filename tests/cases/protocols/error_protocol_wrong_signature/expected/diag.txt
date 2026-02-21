@@ -1,1 +1,1 @@
-main.tp.py:15: error: Type WrongReturn does not conform to protocol Sized in argument 'items'
+main.py:15: error: Type WrongReturn does not conform to protocol Sized in argument 'items'

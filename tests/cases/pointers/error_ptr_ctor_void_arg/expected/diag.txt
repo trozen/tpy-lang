@@ -1,1 +1,1 @@
-main.tp.py:5: error: Ptr[None]() does not accept arguments
+main.py:5: error: Ptr[None]() does not accept arguments

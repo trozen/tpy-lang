@@ -1,1 +1,1 @@
-main.tp.py:6: error: @dynamic protocol 'Container' cannot be generic. Generic @dynamic protocols are not yet supported
+main.py:6: error: @dynamic protocol 'Container' cannot be generic. Generic @dynamic protocols are not yet supported

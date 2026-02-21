@@ -1308,9 +1308,9 @@ Currently the compiler stops at the first error. Better UX: continue analysis af
 errors and report multiple diagnostics per compilation.
 
 ```
-file.tp.py:5: error: Unknown type 'Foo'
-file.tp.py:12: error: No matching overload for 'bar(Int32)'
-file.tp.py:18: warning: Unused variable 'x'
+file.py:5: error: Unknown type 'Foo'
+file.py:12: error: No matching overload for 'bar(Int32)'
+file.py:18: warning: Unused variable 'x'
 3 errors, 1 warning
 ```
 

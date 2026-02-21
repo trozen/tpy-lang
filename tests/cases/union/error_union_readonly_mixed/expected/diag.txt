@@ -1,1 +1,1 @@
-main.tp.py:5: error: Cannot mix readonly and non-readonly types in a union
+main.py:5: error: Cannot mix readonly and non-readonly types in a union

@@ -1,1 +1,1 @@
-main.tp.py:5: error: Cannot call method 'to_str' on type T
+main.py:5: error: Cannot call method 'to_str' on type T

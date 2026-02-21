@@ -1,8 +1,8 @@
 # TODO
 
 ## Next
-- how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top? (differentiate between .py and .tp.py files - .tp.py - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
 - better C++ code formatting? 4 space indentation (or tab?)
+- unsafe: alloc/free/init/drop
 - argument default values
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns

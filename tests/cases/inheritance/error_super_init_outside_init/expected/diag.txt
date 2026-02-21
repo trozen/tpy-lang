@@ -1,1 +1,1 @@
-main.tp.py:15: error: super().__init__() can only be called inside __init__
+main.py:15: error: super().__init__() can only be called inside __init__

@@ -1,1 +1,1 @@
-main.tp.py:12: error: Assignment to 'x' is incompatible with later annotation 'Point' at line 13: Type mismatch: expected Point, got None
+main.py:12: error: Assignment to 'x' is incompatible with later annotation 'Point' at line 13: Type mismatch: expected Point, got None

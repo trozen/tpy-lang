@@ -154,7 +154,7 @@ DG_ScreenBuffer: Ptr[Int32] = extern_c.var("DG_ScreenBuffer")
 bindings using `@extern_c`. It's pure TurboPython — just function declarations:
 
 ```python
-# tpy_sdl2/sdl2.tp.py
+# tpy_sdl2/sdl2.py
 from tpy import extern_c, Int32, Ptr
 
 extern_c.include("SDL2/SDL.h")
@@ -206,7 +206,7 @@ needed beyond the initial `@extern_c` support.
 ### What the TPy Platform Layer Looks Like
 
 ```python
-# doomgeneric_tpy.tp.py
+# doomgeneric_tpy.py
 from tpy import extern_c, Int32, Ptr, Array
 from tpy_sdl2 import (
     SDL_Init, SDL_CreateWindow, SDL_CreateRenderer, SDL_CreateTexture,
@@ -266,7 +266,7 @@ Compile TPy output to `.o`, compile DOOM `.c` files to `.o`, link together with 
 
 ```
 DOOM C sources (*.c)  ──→  gcc -c  ──→  doom_engine.o (multiple .o files)
-TPy platform (*.tp.py) ──→  tpyc    ──→  platform.cpp ──→  g++ -c ──→  platform.o
+TPy platform (*.py)    ──→  tpyc    ──→  platform.cpp ──→  g++ -c ──→  platform.o
                                                                           │
 SDL2 library (libSDL2) ─────────────────────────────────────────────────┐ │
                                                                         ↓ ↓
@@ -412,7 +412,7 @@ Modules ordered from easiest to hardest, based on C features used.
 **`doomkeys.h`** (~50 lines) — Pure constants. Doom key code definitions.
 
 ```python
-# doomkeys.tp.py
+# doomkeys.py
 from tpy import Int32
 
 KEY_RIGHTARROW: Int32 = Int32(0xae)
@@ -430,7 +430,7 @@ KEY_ESCAPE: Int32 = Int32(27)
 (fixed-point). No logic, just data.
 
 ```python
-# tables.tp.py
+# tables.py
 from tpy import Int32, Array
 
 FINEANGLES: Int32 = Int32(8192)
@@ -443,7 +443,7 @@ finecosine_offset: Int32 = Int32(2048)  # finecosine = &finesine[FINEANGLES/4]
 arithmetic and bitwise shifts:
 
 ```python
-# m_fixed.tp.py
+# m_fixed.py
 from tpy import Int32
 
 FRACBITS: Int32 = Int32(16)
@@ -542,7 +542,7 @@ everything.
 ### Phase 3 build pipeline (gradual migration)
 
 As modules get ported from C to TPy:
-- Replace individual `.c` files with `.tp.py` equivalents
+- Replace individual `.c` files with `.py` equivalents
 - The TPy-generated C++ implements the same functions with the same signatures
 - Link everything together as before
 - The C and TPy modules coexist, sharing headers/types via `extern "C"`

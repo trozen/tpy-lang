@@ -1,1 +1,1 @@
-main.tp.py:12: error: Class 'Dog' declares implementation of protocol 'Pet' but is missing required methods: name
+main.py:12: error: Class 'Dog' declares implementation of protocol 'Pet' but is missing required methods: name

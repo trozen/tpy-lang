@@ -1,1 +1,1 @@
-main.tp.py:9: error: Type mismatch in argument 'values': expected Span[Char], got str
+main.py:9: error: Type mismatch in argument 'values': expected Span[Char], got str

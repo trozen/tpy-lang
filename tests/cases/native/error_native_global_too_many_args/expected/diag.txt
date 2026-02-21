@@ -1,1 +1,1 @@
-main.tp.py:3: error: native_global() takes 0 or 1 arguments
+main.py:3: error: native_global() takes 0 or 1 arguments

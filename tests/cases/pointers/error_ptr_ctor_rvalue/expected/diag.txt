@@ -1,1 +1,1 @@
-main.tp.py:11: error: argument 'x' must be a mutable lvalue
+main.py:11: error: argument 'x' must be a mutable lvalue

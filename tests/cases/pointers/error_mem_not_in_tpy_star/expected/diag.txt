@@ -1,1 +1,1 @@
-main.tp.py:5: error: Unknown function or type: 'unsafe_ptr'
+main.py:5: error: Unknown function or type: 'unsafe_ptr'

@@ -1,1 +1,1 @@
-main.tp.py:6: error: @dynamic protocol 'Container' cannot use Self type in field 'value'
+main.py:6: error: @dynamic protocol 'Container' cannot use Self type in field 'value'

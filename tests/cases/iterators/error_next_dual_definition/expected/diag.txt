@@ -1,1 +1,1 @@
-main.tp.py:15: error: Cannot define both __next__ and __next_opt__ in the same class
+main.py:15: error: Cannot define both __next__ and __next_opt__ in the same class

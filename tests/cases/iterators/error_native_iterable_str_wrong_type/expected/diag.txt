@@ -1,1 +1,1 @@
-main.tp.py:12: error: Type str does not conform to protocol NativeIterable[Int32] in argument 'items'
+main.py:12: error: Type str does not conform to protocol NativeIterable[Int32] in argument 'items'

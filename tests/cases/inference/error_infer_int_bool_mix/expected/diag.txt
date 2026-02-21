@@ -1,1 +1,1 @@
-main.tp.py:2: error: Type mismatch in reassignment to 'b': expected Int32, got bool
+main.py:2: error: Type mismatch in reassignment to 'b': expected Int32, got bool

@@ -1,1 +1,1 @@
-main.tp.py:13: error: Cannot return local or temporary value; the returned pointer/reference would dangle
+main.py:13: error: Cannot return local or temporary value; the returned pointer/reference would dangle

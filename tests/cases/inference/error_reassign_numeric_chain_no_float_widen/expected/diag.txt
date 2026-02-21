@@ -1,1 +1,1 @@
-main.tp.py:10: error: Type mismatch in reassignment to 'f': expected Int32, got float
+main.py:10: error: Type mismatch in reassignment to 'f': expected Int32, got float

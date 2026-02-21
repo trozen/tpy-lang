@@ -1,1 +1,1 @@
-main.tp.py:4: error: Methods on @native_c classes must have '...' body (stub declaration)
+main.py:4: error: Methods on @native_c classes must have '...' body (stub declaration)

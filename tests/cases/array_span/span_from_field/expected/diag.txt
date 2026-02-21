@@ -1,1 +1,1 @@
-main.tp.py:7: warning: copies Array[Int32, 3] into field; use copy() to make this explicit
+main.py:7: warning: copies Array[Int32, 3] into field; use copy() to make this explicit

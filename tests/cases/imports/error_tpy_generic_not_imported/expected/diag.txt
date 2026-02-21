@@ -1,1 +1,1 @@
-main.tp.py:1: error: 'StaticList' is not defined. Did you mean: from tpy import StaticList
+main.py:1: error: 'StaticList' is not defined. Did you mean: from tpy import StaticList

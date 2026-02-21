@@ -1,1 +1,0 @@
-Multi-module test: config.tp.py not importable as config by CPython

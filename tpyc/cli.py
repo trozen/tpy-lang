@@ -2,15 +2,15 @@
 TurboPython Compiler CLI
 
 Usage:
-    tpyc input.tp.py              # Compile to C++ in __tpyc__/
-    tpyc input.tp.py -o out/      # Compile to C++ in out/
-    tpyc input.tp.py --build      # Compile to C++ and build binary
-    tpyc input.tp.py --exec       # Compile, build, and run
-    tpyc --exec <<EOF             # Read from stdin, build, and run
-    tpyc --dump-code <<EOF        # Print generated C++ to stdout
-    tpyc --repl                   # Start interactive REPL
-    tpyc --repl file.tp.py        # Load file then start REPL
-    tpyc --repl --verbose         # REPL with C++ output shown
+    tpyc input.py              # Compile to C++ in __tpyc__/
+    tpyc input.py -o out/      # Compile to C++ in out/
+    tpyc input.py --build      # Compile to C++ and build binary
+    tpyc input.py --exec       # Compile, build, and run
+    tpyc --exec <<EOF          # Read from stdin, build, and run
+    tpyc --dump-code <<EOF     # Print generated C++ to stdout
+    tpyc --repl                # Start interactive REPL
+    tpyc --repl file.py        # Load file then start REPL
+    tpyc --repl --verbose      # REPL with C++ output shown
 """
 
 from __future__ import annotations
@@ -36,12 +36,9 @@ def get_runtime_dir() -> Path:
 
 
 def get_module_name(input_path: Path) -> str:
-    """Get module name from source file (e.g., hello.tp.py -> hello)."""
+    """Get module name from source file (e.g., hello.py -> hello)."""
     name = input_path.name
-    # Strip .tp.py or .py suffix
-    if name.endswith(".tp.py"):
-        return name[:-6]
-    elif name.endswith(".py"):
+    if name.endswith(".py"):
         return name[:-3]
     return name
 
@@ -51,7 +48,7 @@ def main() -> int:
         prog="tpyc",
         description="TurboPython Compiler - compiles TurboPython to C++"
     )
-    parser.add_argument("input", nargs="?", help="Input TurboPython source file (.tp.py)")
+    parser.add_argument("input", nargs="?", help="Input TurboPython source file (.py)")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v for info, -vv for commands)")
     parser.add_argument("-b", "--build", action="store_true", help="Compile C++ to binary after generating")

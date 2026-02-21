@@ -1,1 +1,1 @@
-main.tp.py:4: error: Cannot assign to elements of Span[Int32] (read-only)
+main.py:4: error: Cannot assign to elements of Span[Int32] (read-only)

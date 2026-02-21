@@ -1,1 +1,1 @@
-main.tp.py:14: error: Cannot assign through ConstPtr (read-only pointer)
+main.py:14: error: Cannot assign through ConstPtr (read-only pointer)

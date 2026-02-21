@@ -11,7 +11,7 @@
 
 ## Problem
 
-TurboPython compiles each `.tp.py` module to a `.hpp`/`.cpp` pair. Currently,
+TurboPython compiles each `.py` module to a `.hpp`/`.cpp` pair. Currently,
 a module's `.hpp` contains everything: forward declarations, full record
 definitions (including template records with all method bodies inline),
 function declarations, and template function definitions.

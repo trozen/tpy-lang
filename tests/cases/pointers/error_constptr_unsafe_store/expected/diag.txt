@@ -1,1 +1,1 @@
-main.tp.py:7: error: unsafe_store() requires a mutable Ptr, got ConstPtr[Int32]
+main.py:7: error: unsafe_store() requires a mutable Ptr, got ConstPtr[Int32]

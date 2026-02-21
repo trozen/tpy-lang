@@ -1,1 +1,1 @@
-main.tp.py:9: error: 'raise StopIteration' does not accept arguments
+main.py:9: error: 'raise StopIteration' does not accept arguments

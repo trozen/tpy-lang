@@ -1,1 +1,1 @@
-main.tp.py:21: error: Cannot pass Own[Point] directly to parameter 'p' (object types are passed by reference). Assign to a variable first: x = func(); other_func(x)
+main.py:21: error: Cannot pass Own[Point] directly to parameter 'p' (object types are passed by reference). Assign to a variable first: x = func(); other_func(x)

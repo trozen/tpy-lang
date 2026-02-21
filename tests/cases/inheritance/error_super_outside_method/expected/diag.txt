@@ -1,1 +1,1 @@
-main.tp.py:3: error: super() can only be used inside a method
+main.py:3: error: super() can only be used inside a method

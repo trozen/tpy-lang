@@ -1,1 +1,1 @@
-main.tp.py:13: error: Cannot reassign loop variable 'p' of type 'Point'; assign to a new local variable instead
+main.py:13: error: Cannot reassign loop variable 'p' of type 'Point'; assign to a new local variable instead

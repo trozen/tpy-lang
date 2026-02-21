@@ -1,1 +1,1 @@
-main.tp.py:1: error: Method 'f' cannot have '...' body on a regular class (only allowed on @native/@native_c classes)
+main.py:1: error: Method 'f' cannot have '...' body on a regular class (only allowed on @native/@native_c classes)

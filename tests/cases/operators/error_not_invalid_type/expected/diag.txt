@@ -1,1 +1,1 @@
-main.tp.py:12: error: Invalid operand type for 'not': Point (expected bool, numeric, or type with __bool__/__len__)
+main.py:12: error: Invalid operand type for 'not': Point (expected bool, numeric, or type with __bool__/__len__)

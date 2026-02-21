@@ -1,1 +1,1 @@
-main.tp.py:10: error: Unknown type: T
+main.py:10: error: Unknown type: T

@@ -1,2 +1,2 @@
-main.tp.py:19: warning: 'p' is declared in a loop body; storage hoisted to function scope
-main.tp.py:20: warning: copies Point into field; use copy() to make this explicit
+main.py:19: warning: 'p' is declared in a loop body; storage hoisted to function scope
+main.py:20: warning: copies Point into field; use copy() to make this explicit

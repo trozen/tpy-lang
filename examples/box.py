@@ -1,3 +1,5 @@
+# TODO: define proper `# tpy:` annotation
+# tpy: default
 # Box[T] proof-of-concept -- heap-allocated owning container.
 # Simplified version of Rust's Box<T>, using UninitHeapStorage as backing.
 from __future__ import annotations

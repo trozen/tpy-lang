@@ -1,2 +1,2 @@
-main.tp.py:9: warning: Integer literal -2147483649 is outside default Int32 range; inferring int (BigInt).
-main.tp.py:17: warning: Integer literal 2147483648 is outside default Int32 range; inferring int (BigInt).
+main.py:9: warning: Integer literal -2147483649 is outside default Int32 range; inferring int (BigInt).
+main.py:17: warning: Integer literal 2147483648 is outside default Int32 range; inferring int (BigInt).

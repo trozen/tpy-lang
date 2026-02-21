@@ -1,1 +1,1 @@
-main.tp.py:23: error: Cannot infer type arguments for 'get_value'. Specify explicitly: get_value[T](...)
+main.py:23: error: Cannot infer type arguments for 'get_value'. Specify explicitly: get_value[T](...)

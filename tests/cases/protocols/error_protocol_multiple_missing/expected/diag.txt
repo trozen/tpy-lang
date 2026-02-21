@@ -1,1 +1,1 @@
-main.tp.py:15: error: Class 'BadBox' declares implementation of protocol 'Measurable' but is missing required methods: size
+main.py:15: error: Class 'BadBox' declares implementation of protocol 'Measurable' but is missing required methods: size

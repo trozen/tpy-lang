@@ -1,1 +1,1 @@
-main.tp.py:8: error: No matching overload for unsafe_store(Ptr[Int32], UInt32, str): type parameter T inferred as Int32 and str
+main.py:8: error: No matching overload for unsafe_store(Ptr[Int32], UInt32, str): type parameter T inferred as Int32 and str

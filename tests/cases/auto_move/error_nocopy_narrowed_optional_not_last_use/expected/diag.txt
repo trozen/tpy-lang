@@ -1,1 +1,1 @@
-main.tp.py:18: error: @nocopy type 'Handle' is used after this point and cannot be moved into 'h: Own[Handle]'. Remove later uses or restructure the code.
+main.py:18: error: @nocopy type 'Handle' is used after this point and cannot be moved into 'h: Own[Handle]'. Remove later uses or restructure the code.

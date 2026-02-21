@@ -1,1 +1,1 @@
-main.tp.py:10: error: Type NativeIterable[bool] does not conform to protocol NativeIterable[Int32] in argument 'items'
+main.py:10: error: Type NativeIterable[bool] does not conform to protocol NativeIterable[Int32] in argument 'items'

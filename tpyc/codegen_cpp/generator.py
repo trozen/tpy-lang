@@ -79,7 +79,7 @@ class CodeGenerator:
             module: The parsed TurboPython module AST.
             module_name: Name for the generated files (used in #include).
             is_entry_point: True if this is the entry point module (generates main()).
-            actual_user_modules: Set of module names that are actually user modules (have .tp.py files).
+            actual_user_modules: Set of module names that are actually user modules (have source files).
                                  If None, uses module.user_module_imports (legacy behavior).
             reexported_functions: Dict of {local_name: (source_module, original_name)} for re-exports.
             reexported_records: Dict of {local_name: (source_module, original_name)} for re-exports.

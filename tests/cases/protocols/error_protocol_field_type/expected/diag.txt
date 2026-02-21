@@ -1,1 +1,1 @@
-main.tp.py:6: error: Protocol type 'Sized' cannot be used as a field type in 'BadRecord'. Protocols are only valid for function parameters
+main.py:6: error: Protocol type 'Sized' cannot be used as a field type in 'BadRecord'. Protocols are only valid for function parameters

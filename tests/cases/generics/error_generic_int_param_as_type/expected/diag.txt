@@ -1,1 +1,1 @@
-main.tp.py:2: error: Integer type parameter 'N' cannot be used as a type annotation
+main.py:2: error: Integer type parameter 'N' cannot be used as a type annotation

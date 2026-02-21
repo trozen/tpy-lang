@@ -1,1 +1,1 @@
-main.tp.py:2: error: Cannot infer element type for list(); use list[T](), provide a type annotation, or pass an iterable
+main.py:2: error: Cannot infer element type for list(); use list[T](), provide a type annotation, or pass an iterable

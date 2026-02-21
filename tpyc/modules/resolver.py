@@ -30,12 +30,12 @@ class ModuleResolver:
     """Resolves module names to file paths.
 
     Modules are resolved relative to a base directory (the directory containing
-    the entry point file). Resolution order: .tp.py first, then .py.
+    the entry point file).
 
     Supports:
-    - Flat modules: "utils" -> utils.tp.py or utils.py
-    - Dotted module paths: "mypackage.submod" -> mypackage/submod.tp.py
-    - Package imports: "mypackage" -> mypackage/__init__.tp.py
+    - Flat modules: "utils" -> utils.py
+    - Dotted module paths: "mypackage.submod" -> mypackage/submod.py
+    - Package imports: "mypackage" -> mypackage/__init__.py
     - Namespace packages: Submodule imports work without __init__ files
     """
     base_dir: Path
@@ -65,21 +65,19 @@ class ModuleResolver:
         final = parts[-1]
         package_name = '.'.join(parts[:-1]) if len(parts) > 1 else None
 
-        # Try module file: .tp.py then .py
-        for ext in [".tp.py", ".py"]:
-            candidate = current / f"{final}{ext}"
-            if candidate.exists():
-                return ResolvedModule(
-                    path=candidate,
-                    canonical_name=module_path,
-                    package_name=package_name
-                )
+        candidate = current / f"{final}.py"
+        if candidate.exists():
+            return ResolvedModule(
+                path=candidate,
+                canonical_name=module_path,
+                package_name=package_name
+            )
 
-        # Try as package with __init__: dir/__init__.tp.py
+        # Try as package with __init__
         pkg_dir = current / final
         if pkg_dir.is_dir():
-            init = self._find_init(pkg_dir)
-            if init:
+            init = pkg_dir / "__init__.py"
+            if init.exists():
                 return ResolvedModule(
                     path=init,
                     canonical_name=module_path,
@@ -87,21 +85,6 @@ class ModuleResolver:
                     is_package_init=True
                 )
 
-        return None
-
-    def _find_init(self, directory: Path) -> Path | None:
-        """Find __init__ file in a directory.
-
-        Args:
-            directory: Directory to search.
-
-        Returns:
-            Path to __init__.tp.py or __init__.py, or None if not found.
-        """
-        for name in ["__init__.tp.py", "__init__.py"]:
-            init = directory / name
-            if init.exists():
-                return init
         return None
 
     def resolve_relative(self, current_module: str, level: int,
@@ -148,16 +131,10 @@ class ModuleResolver:
         """Extract module name from path.
 
         Examples:
-            utils.tp.py -> utils
             utils.py -> utils
-            __init__.tp.py -> __init__
-
-        Note: For canonical names of packages, use resolve() which returns
-        the full dotted path.
+            __init__.py -> __init__
         """
         name = path.name
-        if name.endswith(".tp.py"):
-            return name[:-6]
-        elif name.endswith(".py"):
+        if name.endswith(".py"):
             return name[:-3]
         return name

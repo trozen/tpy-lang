@@ -1,1 +1,1 @@
-main.tp.py:9: error: super().__del__() takes no arguments
+main.py:9: error: super().__del__() takes no arguments

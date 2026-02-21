@@ -1,1 +1,1 @@
-main.tp.py:8: error: Protocol 'Child' inherits from 'NotAProtocol', which is not a defined protocol
+main.py:8: error: Protocol 'Child' inherits from 'NotAProtocol', which is not a defined protocol

@@ -1,1 +1,1 @@
-main.tp.py:41: warning: Parent class has __del__() which will be called automatically by C++ after this destructor runs. Unlike Python, you do not need super().__del__() -- but it also means the parent destructor always runs even without an explicit call.
+main.py:41: warning: Parent class has __del__() which will be called automatically by C++ after this destructor runs. Unlike Python, you do not need super().__del__() -- but it also means the parent destructor always runs even without an explicit call.

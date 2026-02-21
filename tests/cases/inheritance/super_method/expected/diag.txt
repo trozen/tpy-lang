@@ -1,1 +1,1 @@
-main.tp.py:16: warning: Method 'Dog.speak' hides 'Animal.speak'. In Python, parent methods calling 'self.speak()' use dynamic dispatch (child method called). In C++, static dispatch is used (parent method called). This may cause different behavior between TurboPython and CPython.
+main.py:16: warning: Method 'Dog.speak' hides 'Animal.speak'. In Python, parent methods calling 'self.speak()' use dynamic dispatch (child method called). In C++, static dispatch is used (parent method called). This may cause different behavior between TurboPython and CPython.

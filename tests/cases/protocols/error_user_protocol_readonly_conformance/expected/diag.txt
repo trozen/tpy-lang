@@ -1,1 +1,1 @@
-main.tp.py:27: error: Type BadReader does not conform to protocol Readable in argument 'r'
+main.py:27: error: Type BadReader does not conform to protocol Readable in argument 'r'

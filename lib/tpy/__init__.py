@@ -2,7 +2,7 @@
 TurboPython built-in types and decorators.
 
 Provides Python implementations of TurboPython-specific types (Int32, Ptr, Array, etc.),
-allowing .tp.py files to run in CPython and enabling IDE support (autocompletion, type checking).
+allowing TurboPython source files to run in CPython and enabling IDE support.
 """
 
 from __future__ import annotations
@@ -522,38 +522,3 @@ class Comparable(_Protocol):
 class Truthy(_Protocol):
     """Protocol for types supporting bool() conversion via __bool__."""
     def __bool__(self) -> bool: ...
-
-
-# ---------------------------------------------------------------------------
-# Import hook for .tp.py files
-# ---------------------------------------------------------------------------
-
-import sys
-import os
-from importlib.machinery import ModuleSpec
-from importlib.util import spec_from_file_location
-
-
-class TpyModuleFinder:
-    """Import hook to find .tp.py files (with .py fallback).
-
-    Allows TurboPython modules to be imported in CPython.
-    """
-
-    def find_spec(self, name, path, target=None):
-        if name in sys.modules:
-            return None
-
-        search_paths = path if path else sys.path
-        for dir_path in search_paths:
-            if not isinstance(dir_path, str):
-                continue
-            for ext in [".tp.py", ".py"]:
-                file_path = os.path.join(dir_path, f"{name}{ext}")
-                if os.path.isfile(file_path):
-                    return spec_from_file_location(name, file_path,
-                        submodule_search_locations=[])
-        return None
-
-
-sys.meta_path.insert(0, TpyModuleFinder())

@@ -326,7 +326,7 @@ are not tracked (future work if needed).
 
 ### Phase 6: Box[T] as library type
 
-- Define `Box[T]` in std lib (.tp.py file with native backing)
+- Define `Box[T]` in std lib (.py file with native backing)
 - `@nocopy`, implements `Deref[T]`
 - Wraps `std::unique_ptr<T>`
 - Integrates with dynamic dispatch (Phase 9 of protocol design)

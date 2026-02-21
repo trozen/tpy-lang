@@ -1,1 +1,1 @@
-main.tp.py:8: error: Unknown type: UnknownType
+main.py:8: error: Unknown type: UnknownType

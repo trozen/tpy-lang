@@ -1,1 +1,1 @@
-main.tp.py:26: error: Type BadContainer does not conform to protocol Sequence[Int32] in argument 's'
+main.py:26: error: Type BadContainer does not conform to protocol Sequence[Int32] in argument 's'

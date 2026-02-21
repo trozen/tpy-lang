@@ -112,7 +112,7 @@ list[T]     → etl::vector<T, N>
 
 Usage:
 ```bash
-tpyc --backend=trading src/order_handler.tp.py
+tpyc --backend=trading src/order_handler.py
 ```
 
 This allows the same TurboPython source to target different environments without code changes.
@@ -2900,7 +2900,7 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Working**: User-defined modules (multi-file projects)
-- **Working**: Package support (dotted imports, `__init__.tp.py`, namespace packages)
+- **Working**: Package support (dotted imports, `__init__.py`, namespace packages)
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
 - **Working**: Re-exports in `__init__.py` (functions, records, protocols, variables)
 - **Working**: Shadowing warnings -- defining a class that shadows an imported special name (e.g., `class Sized` after `from typing import Sized`) emits a warning
@@ -2909,10 +2909,10 @@ Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership
 
 ### User-Defined Modules (Working)
 
-TurboPython supports importing from other `.tp.py` files in the same directory:
+TurboPython supports importing from other `.py` files in the same directory:
 
 ```python
-# utils.tp.py
+# utils.py
 from tpy import Int32
 
 class Point:
@@ -2930,7 +2930,7 @@ MAX: Int32 = Int32(100)
 ```
 
 ```python
-# main.tp.py
+# main.py
 from tpy import Int32
 from utils import Point, add, MAX
 
@@ -2945,8 +2945,8 @@ print(MAX)  # 100
 - `from mod import X as Y` - import with alias
 
 **Module resolution:**
-- Looks for `mod.tp.py` first, falls back to `mod.py`
-- Supports package directories with `__init__.tp.py` or `__init__.py`
+- Looks for `mod.py` in the project directory
+- Supports package directories with `__init__.py`
 
 **`__name__` variable:**
 - Entry point module: `__name__ == "__main__"`
@@ -2955,7 +2955,7 @@ print(MAX)  # 100
 **Import execution order:** Imports execute at their source location, matching Python semantics. Top-level code in imported modules runs when the import statement is reached, not hoisted to the beginning:
 
 ```python
-# main.tp.py
+# main.py
 print("before import")  # runs first
 from helper import func  # helper's top-level code runs now
 print("after import")   # runs last
@@ -2965,26 +2965,26 @@ Each module initializes only once (double-init guard prevents diamond dependency
 
 **Circular imports:** Detected at compile time with clear error messages.
 
-**Shadowing builtin modules:** User modules can shadow builtin modules (`math`, `time`, `sys`). If you create `math.tp.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
+**Shadowing builtin modules:** User modules can shadow builtin modules (`math`, `time`, `sys`). If you create `math.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
 ```
-main.tp.py:1: warning: import 'math' shadows builtin module
+main.py:1: warning: import 'math' shadows builtin module
 ```
 
 **C++ mapping:** Each module gets its own namespace (`tpy_user::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpy_user::mypackage::submod::func`).
 
 ### Packages (Working)
 
-TurboPython supports Python-style packages with `__init__.tp.py` files:
+TurboPython supports Python-style packages with `__init__.py` files:
 
 ```
 project/
-├── main.tp.py
+├── main.py
 └── mypackage/
-    ├── __init__.tp.py    # Package init (can export functions/variables)
-    ├── utils.tp.py       # Submodule
+    ├── __init__.py    # Package init (can export functions/variables)
+    ├── utils.py       # Submodule
     └── inner/
-        ├── __init__.tp.py
-        └── core.tp.py
+        ├── __init__.py
+        └── core.py
 ```
 
 **Importing from packages:**
@@ -2999,13 +2999,13 @@ from mypackage import CONST, func
 from mypackage.inner.core import helper
 ```
 
-**Namespace packages:** TurboPython supports namespace packages (no `__init__` required for simple submodule imports). If `mypackage/utils.tp.py` exists, `from mypackage.utils import X` works without requiring `mypackage/__init__.tp.py`.
+**Namespace packages:** TurboPython supports namespace packages (no `__init__` required for simple submodule imports). If `mypackage/utils.py` exists, `from mypackage.utils import X` works without requiring `mypackage/__init__.py`.
 
 **Package initialization:** Parent package `__init__` files are discovered and initialized before submodules, matching Python import semantics. When importing `from mypackage.submod import X`, the `mypackage/__init__` is executed first (side effects like `print()` run), then the submodule is initialized.
 
 **C++ mapping:**
-- `mypackage/__init__.tp.py` → `namespace tpy_user::mypackage`
-- `mypackage/utils.tp.py` → `namespace tpy_user::mypackage::utils`
+- `mypackage/__init__.py` → `namespace tpy_user::mypackage`
+- `mypackage/utils.py` → `namespace tpy_user::mypackage::utils`
 - Output structure: `__tpyc__/mypackage/utils.d/utils.{hpp,cpp}`
 
 ### Relative Imports (Working)
@@ -3060,7 +3060,7 @@ VERSION: Int32 = Int32(42)       # Package-level variable
 ```
 
 ```python
-# main.tp.py - import from package level
+# main.py - import from package level
 from mypackage import add, Point, VERSION
 
 result = add(1, 2)     # Uses mypackage.utils.add via re-export
@@ -3370,7 +3370,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 The compiler shouldn't hardcode special classes like `Model`. Instead, classes can define compile-time hooks that the compiler calls during generation:
 
 ```python
-# tpy/model.tp.py - library code, not compiler magic
+# tpy/model.py - library code, not compiler magic
 class Model:
     @compile_time  # this method runs during C++ generation
     def __generate__(cls, fields: list[FieldInfo]) -> list[Method]:

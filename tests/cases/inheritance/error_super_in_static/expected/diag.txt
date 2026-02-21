@@ -1,1 +1,1 @@
-main.tp.py:11: error: super() cannot be used in a static method
+main.py:11: error: super() cannot be used in a static method

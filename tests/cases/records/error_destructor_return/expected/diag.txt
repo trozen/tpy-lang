@@ -1,1 +1,1 @@
-main.tp.py:4: error: '__del__' must return None, got 'int'
+main.py:4: error: '__del__' must return None, got 'int'

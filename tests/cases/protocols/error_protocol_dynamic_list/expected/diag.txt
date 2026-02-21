@@ -1,1 +1,1 @@
-main.tp.py:13: error: Protocol type 'Pet' cannot be used as a container element type
+main.py:13: error: Protocol type 'Pet' cannot be used as a container element type

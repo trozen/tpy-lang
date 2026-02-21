@@ -1,1 +1,1 @@
-main.tp.py:3: error: Generic protocol 'NativeIterable' requires type arguments: NativeIterable[T]
+main.py:3: error: Generic protocol 'NativeIterable' requires type arguments: NativeIterable[T]

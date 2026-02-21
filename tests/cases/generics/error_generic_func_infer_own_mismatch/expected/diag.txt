@@ -1,1 +1,1 @@
-main.tp.py:18: error: Cannot infer type arguments for 'merge'. Specify explicitly: merge[T](...)
+main.py:18: error: Cannot infer type arguments for 'merge'. Specify explicitly: merge[T](...)

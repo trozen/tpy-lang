@@ -1,1 +1,1 @@
-main.tp.py:9: error: Cannot parse type annotation: BinOp(left=Name(id='int', ctx=Load()), op=Add(), right=Name(id='str', ctx=Load()))
+main.py:9: error: Cannot parse type annotation: BinOp(left=Name(id='int', ctx=Load()), op=Add(), right=Name(id='str', ctx=Load()))

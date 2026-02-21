@@ -1,1 +1,1 @@
-main.tp.py:14: error: Cannot iterate over type BadArity
+main.py:14: error: Cannot iterate over type BadArity

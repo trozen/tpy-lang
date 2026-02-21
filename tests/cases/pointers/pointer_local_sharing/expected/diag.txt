@@ -1,1 +1,1 @@
-main.tp.py:74: warning: unnecessary copy() -- 'p' is at its last use and would be moved automatically
+main.py:74: warning: unnecessary copy() -- 'p' is at its last use and would be moved automatically

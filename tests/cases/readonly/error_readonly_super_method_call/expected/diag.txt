@@ -1,1 +1,1 @@
-main.tp.py:12: error: Cannot call non-readonly method 'value' on readonly reference
+main.py:12: error: Cannot call non-readonly method 'value' on readonly reference

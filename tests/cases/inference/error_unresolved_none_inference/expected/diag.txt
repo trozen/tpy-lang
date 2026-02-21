@@ -1,1 +1,1 @@
-main.tp.py:1: error: Cannot infer type for 'x': assigned None but never assigned a concrete value; add a type annotation (e.g., x: T | None = None)
+main.py:1: error: Cannot infer type for 'x': assigned None but never assigned a concrete value; add a type annotation (e.g., x: T | None = None)

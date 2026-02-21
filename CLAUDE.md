@@ -16,28 +16,28 @@ TurboPython (TPy) is a proof-of-concept compiler (tpyc) that translates Python t
 
 ```bash
 # Compile and run (debug build, default)
-uv run tpyc -x examples/hello.tp.py
+uv run tpyc -x examples/hello.py
 
 # Compile and run (release build, optimized)
-uv run tpyc -xO examples/hello.tp.py
+uv run tpyc -xO examples/hello.py
 
 # Compile and run a snippet (write to file first, no heredocs)
-uv run tpyc -x /tmp/agents/snippet.tp.py
+uv run tpyc -x /tmp/agents/snippet.py
 
 # Print generated C++ to stdout
-uv run tpyc --dump-code /tmp/agents/snippet.tp.py
+uv run tpyc --dump-code /tmp/agents/snippet.py
 
 # Compile to C++ and build binary
-uv run tpyc -b examples/hello.tp.py
+uv run tpyc -b examples/hello.py
 
 # Compile to C++ only (output in __tpyc__/ next to source)
-uv run tpyc examples/hello.tp.py
+uv run tpyc examples/hello.py
 
 # Compile to specific output directory
-uv run tpyc examples/hello.tp.py -o out/
+uv run tpyc examples/hello.py -o out/
 
 # Verbose mode (-v for info, -vv for compilation commands)
-uv run tpyc -x examples/hello.tp.py -vv
+uv run tpyc -x examples/hello.py -vv
 
 # Interactive REPL
 uv run tpyc -i
@@ -56,14 +56,14 @@ To inspect generated C++:
 
 ```bash
 # Write snippet to /tmp/agents/, then dump
-uv run tpyc --dump-code /tmp/agents/scratch.tp.py
+uv run tpyc --dump-code /tmp/agents/scratch.py
 ```
 
 To run a snippet quickly:
 
 ```bash
 # Write snippet to /tmp/agents/, then run
-uv run tpyc -x /tmp/agents/scratch.tp.py
+uv run tpyc -x /tmp/agents/scratch.py
 ```
 
 ## Testing
@@ -146,7 +146,7 @@ tests/
 │       ├── error_{name}/     # Compilation error test
 │       └── panic_{name}/     # Runtime panic test
 │           ├── src/
-│           │   ├── main.tp.py
+│           │   ├── main.py
 │           │   ├── native_types.hpp   # (optional) C++ type defs for native interop tests
 │           │   └── native_types.cpp   # (optional) C++ stubs for native interop tests
 │           ├── no_cpython.txt         # (optional) Skip CPython compatibility test
@@ -168,7 +168,7 @@ tests/
    - `{name}/` - normal tests that compile and run
    - `error_{name}/` - tests for compilation errors
    - `panic_{name}/` - tests for runtime panics
-2. Add source file: `src/main.tp.py` with a short comment (1-2 lines) at the very top explaining what the test covers -- test names alone are often not enough context
+2. Add source file: `src/main.py` with a short comment (1-2 lines) at the very top explaining what the test covers -- test names alone are often not enough context
    - Prefer putting test logic inside functions (e.g. `def main(): ...` + `main()`) rather than as top-level statements. Top-level codegen differs from function codegen (globals use pointer slots, different variable model), so use top-level statements only when specifically testing global variable behavior.
 3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
    - `# tpyc: ok` - line should compile without error
@@ -197,7 +197,7 @@ For `tpyc/` compiler modules:
 The compiler follows a 4-stage pipeline:
 
 ```
-TurboPython Source (.tp.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++ (.hpp/.cpp)
+TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++ (.hpp/.cpp)
 ```
 
 ### Core Modules (`tpyc/`)
@@ -300,7 +300,7 @@ Python implementations of TurboPython types for CPython execution and IDE suppor
 
 | Directory | Purpose |
 |-----------|---------|
-| `tpy/` | Built-in types (Int32, Ptr, Array, etc.), decorators, protocols -- mirrors `tpyc/modules/tpy.py` |
+| `tpy/` | Built-in types (Int32, Ptr, Array, etc.), decorators, protocols; submodules: `mem`, `unsafe` |
 | `tplib/` | TPy standard library (future: Box[T], custom collections) |
 | `stdlib/` | Python stdlib subset for TPy (future: argparse, etc.) |
 

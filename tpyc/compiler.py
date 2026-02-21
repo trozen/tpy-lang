@@ -254,7 +254,7 @@ class Compiler:
         """Initialize compiler with entry point path.
 
         Args:
-            entry_point: Path to the main .tp.py file.
+            entry_point: Path to the main source file.
             default_int: Unannotated integer literal default type.
         """
         self.entry_point = entry_point.resolve()
@@ -502,10 +502,10 @@ class Compiler:
 
     def _discover_package_inits(self, dotted_name: str, import_chain: list[str],
                                  import_lineno: int | None) -> None:
-        """Ensure all parent package __init__.tp.py files are discovered.
+        """Ensure all parent package __init__.py files are discovered.
 
-        For "a.b.c", ensures a/__init__.tp.py and a/b/__init__.tp.py are discovered
-        (if they exist) before a/b/c.tp.py.
+        For "a.b.c", ensures a/__init__.py and a/b/__init__.py are discovered
+        (if they exist) before a/b/c.py.
 
         Args:
             dotted_name: Dotted module path (e.g., "mypackage.submod").

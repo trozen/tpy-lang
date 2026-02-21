@@ -1,1 +1,1 @@
-main.tp.py:16: error: Cannot pass readonly[Box] as mutable Box in argument 'b'
+main.py:16: error: Cannot pass readonly[Box] as mutable Box in argument 'b'

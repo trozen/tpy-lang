@@ -422,14 +422,14 @@ def _discover_from_dirs(base_dirs: list[Path]):
             if not src_dir.is_dir():
                 continue
             case_dir = src_dir.parent
-            src_files = list(src_dir.glob("*.tp.py"))
+            src_files = list(src_dir.glob("*.py"))
             if not src_files:
                 continue
 
-            # Prefer main.tp.py as entry point, otherwise pick first alphabetically
+            # Prefer main.py as entry point, otherwise pick first alphabetically
             main_src = None
             for sf in src_files:
-                if sf.name == "main.tp.py":
+                if sf.name == "main.py":
                     main_src = sf
                     break
             if main_src is None:

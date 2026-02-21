@@ -27,7 +27,7 @@ class TestCompilerFromSource:
     def test_matches_file_compilation(self, tmp_path):
         """Verify that from_source and file-based compilation produce the same AST structure."""
         source = 'def add(a: int, b: int) -> int:\n    return a + b\nprint(add(1, 2))'
-        src_file = tmp_path / "check.tp.py"
+        src_file = tmp_path / "check.py"
         src_file.write_text(source)
 
         file_compiler = Compiler(src_file)

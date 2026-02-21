@@ -1,1 +1,1 @@
-main.tp.py:12: error: Cannot take mutable pointer to read-only or temporary value in variable 'p'; use ConstPtr for read-only access, or assign to a variable first
+main.py:12: error: Cannot take mutable pointer to read-only or temporary value in variable 'p'; use ConstPtr for read-only access, or assign to a variable first

@@ -23,10 +23,10 @@ No external C/C++ libraries are required by the runtime. A C++23 compiler is eno
 uv sync
 
 # Compile and run a program
-tpyc -x examples/hello.tp.py
+tpyc -x examples/hello.py
 
 # Release build (optimized)
-tpyc -xO examples/hello.tp.py
+tpyc -xO examples/hello.py
 
 # Interactive REPL
 tpyc -i
@@ -54,10 +54,10 @@ Examples:
 
 ```bash
 # Performance-first default (same as implicit default)
-tpyc -x --default-int=Int32 examples/hello.tp.py
+tpyc -x --default-int=Int32 examples/hello.py
 
 # CPython-like unbounded integer behavior for unannotated literals
-tpyc -x --default-int=BigInt examples/hello.tp.py
+tpyc -x --default-int=BigInt examples/hello.py
 ```
 
 ## Testing
@@ -83,7 +83,7 @@ tpyc --print-types | glow -p
 If you need to compile the generated C++ manually:
 
 ```bash
-tpyc examples/hello.tp.py -o out/
+tpyc examples/hello.py -o out/
 g++ -std=c++23 -I runtime -o out/program out/hello.d/hello.cpp
 ./out/program
 ```

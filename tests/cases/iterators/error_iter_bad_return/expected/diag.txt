@@ -1,1 +1,1 @@
-main.tp.py:16: error: Cannot iterate over type Container
+main.py:16: error: Cannot iterate over type Container

@@ -138,7 +138,7 @@ When calling `helper_add()` from TPy code, the compiler emits `Helper_Add()` in 
 Native C functions imported in one module can be used in another via normal Python imports. The compiler re-declares the `extern "C"` symbol in each module that uses it:
 
 ```python
-# lib.tp.py
+# lib.py
 from tpy import native_c, Int32
 
 @native_c
@@ -149,7 +149,7 @@ def get_clock() -> Int32: ...
 ```
 
 ```python
-# main.tp.py
+# main.py
 from tpy import extern_c, Int32
 from lib import abs, get_clock
 
@@ -430,7 +430,7 @@ extern "C" {
 Generate a standalone C header (`.h`) from all `@extern_c` declarations in a module, so C projects can include it directly:
 
 ```bash
-tpyc --emit-c-header src/game.tp.py -o game_api.h
+tpyc --emit-c-header src/game.py -o game_api.h
 ```
 
 Output:
@@ -462,10 +462,10 @@ void GameState_reset(GameState* self);
 Instead of manually writing `@native_c` declarations, parse C headers and generate them automatically. Inspired by Rust's `bindgen` and Zig's `@cImport` which can directly consume C headers.
 
 ```bash
-tpyc --bindgen /usr/include/SDL2/SDL.h -o sdl.tp.py
+tpyc --bindgen /usr/include/SDL2/SDL.h -o sdl.py
 ```
 
-This would produce a `.tp.py` file with `@native_c` declarations for all functions, structs, enums, and constants found in the header. The generated file is checked in and can be hand-edited.
+This would produce a `.py` file with `@native_c` declarations for all functions, structs, enums, and constants found in the header. The generated file is checked in and can be hand-edited.
 
 A more ambitious approach (Zig-style) would let the compiler parse headers at compile time:
 
