@@ -14,7 +14,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
 | 6 | Return types (provably long-lived values only) | Done |
 | 7 | `@dynamic` protocol params in record methods | Deferred |
-| 8 | `Optional[Pet]` sema rejection | Gap |
+| 8 | `Optional[Pet]` sema rejection | Done |
 | 9 | Protocol field access through erased type | Gap |
 | 10 | Cross-module `@dynamic` protocols | Gap |
 | 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Gap |
