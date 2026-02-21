@@ -74,6 +74,7 @@ class TypeOperations:
 
     def validate_type(
         self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
+        allow_forward_ref: bool = True,
     ) -> None:
         """Validate that a type is well-formed.
 
@@ -81,6 +82,7 @@ class TypeOperations:
             typ: The type to validate.
             allow_type_param_ref: If True, TypeParamRef is allowed (for generic class definitions).
             loc: Optional source location for error messages.
+            allow_forward_ref: If True, unknown NamedType records are allowed (for class registration).
         """
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:
@@ -91,7 +93,8 @@ class TypeOperations:
         if isinstance(typ, NamedType) and typ.is_record:
             record_info = self.ctx.registry.get_record(typ.name)
             if not record_info:
-                # Allow forward references during registration
+                if not allow_forward_ref:
+                    raise SemanticError(f"Unknown type: {typ.name}", loc)
                 pass
             elif typ.type_args:
                 # Validate type arguments for generic record

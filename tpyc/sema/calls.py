@@ -726,7 +726,7 @@ class CallAnalyzer:
                 (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
                 or self.ctx.record_ctx.type_params
             )
-            self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc)
+            self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc, allow_forward_ref=False)
 
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.

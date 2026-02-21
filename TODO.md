@@ -72,6 +72,7 @@
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
 - `Self` type
+- properties with getter/setter
 
 ## Random items
 Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
@@ -95,7 +96,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - ability to define `__str__` method (currently works as explicit call `obj.__str__()`, but `str(obj)` doesn't dispatch to it)
 - better class operator<< tests (but missing str formatting/concatenation)
 - formatting/linting like in genweb
-- properties with getter/setter
 - list[Ptr[Point]] not supported, but it should be, eventually
 - `Span(list([1,2,3]))` not supported
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code

@@ -484,6 +484,8 @@ class Parser:
                 pass
             elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Constant) and item.value.value is ...:
                 pass  # Ellipsis for opaque native types
+            elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Constant) and isinstance(item.value.value, str):
+                pass  # Docstring
             else:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 

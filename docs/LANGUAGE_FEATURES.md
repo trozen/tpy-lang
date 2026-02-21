@@ -2066,6 +2066,7 @@ struct SortedContainer {
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)
+- **Working**: Docstrings in class and method bodies (silently ignored)
 - **Open**: `@classmethod` → if use case is clear
 - **Open**: `@property` → getter/setter methods
 
