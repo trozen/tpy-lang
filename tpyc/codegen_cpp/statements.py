@@ -271,39 +271,60 @@ class StatementGenerator:
         protocol_info = self.ctx.analyzer.registry.get_protocol(target_type.name)
         return protocol_info is not None and protocol_info.is_dynamic
 
+    def _directly_implements_dynamic(self, concrete_type: TpyType, proto_name: str) -> bool:
+        """Check if concrete_type explicitly inherits a @dynamic protocol."""
+        if not isinstance(concrete_type, NamedType) or not concrete_type.is_record:
+            return False
+        record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
+        if not record_info:
+            return False
+        for p in record_info.implemented_protocols:
+            if p.name == proto_name:
+                pi = self.ctx.analyzer.registry.get_protocol(p.name)
+                if pi and pi.is_dynamic:
+                    return True
+        return False
+
     def _gen_dynamic_protocol_init(self, name: str, target_type: NamedType,
                                     init: 'TpyExpr', indent: str) -> str:
-        """Generate adapter slot + pointer-local for a @dynamic protocol variable.
+        """Generate slot + pointer-local for a @dynamic protocol variable.
 
-        Emits: __tpy_Pet_Adapter<Dog> __slot_N{init_expr};
-               __tpy_Pet_Base* name = &__slot_N;
-
+        If the concrete type directly inherits the protocol base, emit a plain
+        concrete slot (no adapter). Otherwise use adapter wrapping.
         Uses brace init to avoid C++ most-vexing-parse with constructor calls.
         """
         concrete_type = self.ctx.get_expr_type(init)
         concrete_cpp = self.types.type_to_cpp(concrete_type)
         proto_name = target_type.name
-        adapter_type = f"__tpy_{proto_name}_Adapter<{concrete_cpp}>"
-        base_type = f"__tpy_{proto_name}_Base"
+        base_type = f"__tpy_Base_{proto_name}"
         init_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
-        return (f"{indent}{adapter_type} {init_slot}{{{init_expr}}};\n"
+
+        if self._directly_implements_dynamic(concrete_type, proto_name):
+            # Direct inheritance -- plain concrete slot, implicit upcast
+            slot_type = concrete_cpp
+        else:
+            # Structural conformance -- adapter wrapping
+            slot_type = f"__tpy_Adapter_{proto_name}<{concrete_cpp}>"
+
+        return (f"{indent}{slot_type} {init_slot}{{{init_expr}}};\n"
                 f"{indent}{base_type}* {name} = &{init_slot};\n")
 
     def _gen_dynamic_protocol_rebind(self, name: str, target_type: NamedType,
                                       init: 'TpyExpr', indent: str) -> str:
-        """Generate adapter slot rebind for a @dynamic protocol variable reassignment.
-
-        Emits: __tpy_Pet_Adapter<Cat> __slot_N{init_expr};
-               name = &__slot_N;
-        """
+        """Generate slot rebind for a @dynamic protocol variable reassignment."""
         concrete_type = self.ctx.get_expr_type(init)
         concrete_cpp = self.types.type_to_cpp(concrete_type)
         proto_name = target_type.name
-        adapter_type = f"__tpy_{proto_name}_Adapter<{concrete_cpp}>"
         rebind_slot = self.ctx.slots.next_slot()
         init_expr = self.expressions.gen_expr(init, concrete_type)
-        return (f"{indent}{adapter_type} {rebind_slot}{{{init_expr}}};\n"
+
+        if self._directly_implements_dynamic(concrete_type, proto_name):
+            slot_type = concrete_cpp
+        else:
+            slot_type = f"__tpy_Adapter_{proto_name}<{concrete_cpp}>"
+
+        return (f"{indent}{slot_type} {rebind_slot}{{{init_expr}}};\n"
                 f"{indent}{name} = &{rebind_slot};\n")
 
     def _resolve_target_type(self, stmt: TpyVarDecl) -> TpyType | None:

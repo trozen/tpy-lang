@@ -12,16 +12,23 @@ concept Describable = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string_view>;
 };
 
-struct __tpy_Describable_Base {
+struct __tpy_Base_Describable {
     virtual std::string_view describe() = 0;
-    virtual ~__tpy_Describable_Base() = default;
+    virtual ~__tpy_Base_Describable() = default;
 };
 
 template<Describable T>
-struct __tpy_Describable_Adapter : __tpy_Describable_Base {
+struct __tpy_Adapter_Describable : __tpy_Base_Describable {
     T inner;
     template<typename... Args>
-    __tpy_Describable_Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    __tpy_Adapter_Describable(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string_view describe() override { return inner.describe(); }
+};
+
+template<Describable T>
+struct __tpy_RefAdapter_Describable : __tpy_Base_Describable {
+    T& inner;
+    __tpy_RefAdapter_Describable(T& ref) : inner(ref) {}
     std::string_view describe() override { return inner.describe(); }
 };
 
@@ -32,16 +39,23 @@ concept Noise = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string_view>;
 };
 
-struct __tpy_Noise_Base {
+struct __tpy_Base_Noise {
     virtual std::string_view make_noise() = 0;
-    virtual ~__tpy_Noise_Base() = default;
+    virtual ~__tpy_Base_Noise() = default;
 };
 
 template<Noise T>
-struct __tpy_Noise_Adapter : __tpy_Noise_Base {
+struct __tpy_Adapter_Noise : __tpy_Base_Noise {
     T inner;
     template<typename... Args>
-    __tpy_Noise_Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    __tpy_Adapter_Noise(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string_view make_noise() override { return inner.make_noise(); }
+};
+
+template<Noise T>
+struct __tpy_RefAdapter_Noise : __tpy_Base_Noise {
+    T& inner;
+    __tpy_RefAdapter_Noise(T& ref) : inner(ref) {}
     std::string_view make_noise() override { return inner.make_noise(); }
 };
 
@@ -50,23 +64,23 @@ struct Cat;
 
 extern std::string_view __name__;
 
-void show_desc(__tpy_Describable_Base& d);
-void show_noise(__tpy_Noise_Base& n);
+void show_desc(__tpy_Base_Describable& d);
+void show_noise(__tpy_Base_Noise& n);
 void main();
 
 // 15: class Dog(Describable, Noise):
-struct Dog {
+struct Dog : __tpy_Base_Describable, __tpy_Base_Noise {
 
   Dog() = default;
 
   // 16:     def describe(self) -> str:
-  std::string_view describe() {
+  std::string_view describe() override {
     // 17:         return "a dog"
     return "a dog";
   }
 
   // 18:     def make_noise(self) -> str:
-  std::string_view make_noise() {
+  std::string_view make_noise() override {
     // 19:         return "Woof"
     return "Woof";
   }
@@ -79,18 +93,18 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 // 21: class Cat(Describable, Noise):
-struct Cat {
+struct Cat : __tpy_Base_Describable, __tpy_Base_Noise {
 
   Cat() = default;
 
   // 22:     def describe(self) -> str:
-  std::string_view describe() {
+  std::string_view describe() override {
     // 23:         return "a cat"
     return "a cat";
   }
 
   // 24:     def make_noise(self) -> str:
-  std::string_view make_noise() {
+  std::string_view make_noise() override {
     // 25:         return "Meow"
     return "Meow";
   }

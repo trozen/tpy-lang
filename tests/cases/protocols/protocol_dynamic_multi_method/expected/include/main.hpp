@@ -14,18 +14,27 @@ concept Shape = requires(T& t) {
     { t.scale(std::declval<double>()) } -> std::convertible_to<void>;
 };
 
-struct __tpy_Shape_Base {
+struct __tpy_Base_Shape {
     virtual double area() = 0;
     virtual std::string_view name() = 0;
     virtual void scale(double factor) = 0;
-    virtual ~__tpy_Shape_Base() = default;
+    virtual ~__tpy_Base_Shape() = default;
 };
 
 template<Shape T>
-struct __tpy_Shape_Adapter : __tpy_Shape_Base {
+struct __tpy_Adapter_Shape : __tpy_Base_Shape {
     T inner;
     template<typename... Args>
-    __tpy_Shape_Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    __tpy_Adapter_Shape(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    double area() override { return inner.area(); }
+    std::string_view name() override { return inner.name(); }
+    void scale(double factor) override { inner.scale(factor); }
+};
+
+template<Shape T>
+struct __tpy_RefAdapter_Shape : __tpy_Base_Shape {
+    T& inner;
+    __tpy_RefAdapter_Shape(T& ref) : inner(ref) {}
     double area() override { return inner.area(); }
     std::string_view name() override { return inner.name(); }
     void scale(double factor) override { inner.scale(factor); }
@@ -38,7 +47,7 @@ extern std::string_view __name__;
 void main();
 
 // 14: class Circle(Shape):
-struct Circle {
+struct Circle : __tpy_Base_Shape {
   // 15:     radius: float
   double radius;
 
@@ -47,19 +56,19 @@ struct Circle {
   explicit Circle(double radius) : radius(radius) {}
 
   // 20:     def area(self) -> float:
-  double area() {
+  double area() override {
     // 21:         return 3.14159 * self.radius * self.radius
     return ((((3.14159) * (this->radius))) * (this->radius));
   }
 
   // 23:     def name(self) -> str:
-  std::string_view name() {
+  std::string_view name() override {
     // 24:         return "Circle"
     return "Circle";
   }
 
   // 26:     def scale(self, factor: float) -> None:
-  void scale(double factor) {
+  void scale(double factor) override {
     // 27:         self.radius = self.radius * factor
     this->radius = ((this->radius) * (factor));
   }

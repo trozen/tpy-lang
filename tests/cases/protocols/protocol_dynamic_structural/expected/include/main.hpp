@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Pet(Protocol):
+// 7: class Pet(Protocol):
 template<typename T>
 concept Pet = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string_view>;
@@ -32,46 +32,28 @@ struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
     std::string_view make_noise() override { return inner.make_noise(); }
 };
 
-struct Dog;
-struct Cat;
+struct Parrot;
 
 extern std::string_view __name__;
 
 void greet(__tpy_Base_Pet& pet);
 void main();
 
-// 10: class Dog(Pet):
-struct Dog : __tpy_Base_Pet {
+// # Parrot satisfies Pet structurally but does NOT inherit it
+// 12: class Parrot:
+struct Parrot {
 
-  Dog() = default;
+  Parrot() = default;
 
-  // 11:     def make_noise(self) -> str:
-  std::string_view make_noise() override {
-    // 12:         return "Woof"
-    return "Woof";
+  // 13:     def make_noise(self) -> str:
+  std::string_view make_noise() {
+    // 14:         return "Squawk"
+    return "Squawk";
   }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
-}
-
-// 14: class Cat(Pet):
-struct Cat : __tpy_Base_Pet {
-
-  Cat() = default;
-
-  // 15:     def make_noise(self) -> str:
-  std::string_view make_noise() override {
-    // 16:         return "Meow"
-    return "Meow";
-  }
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
+inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
+  os << "Parrot("
      << ")";
   return os;
 }

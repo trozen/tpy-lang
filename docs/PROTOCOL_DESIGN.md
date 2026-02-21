@@ -12,7 +12,7 @@
 | **Phase 6** | Compiler trait protocols (`NativeContiguous`, `MutableSequence`, `NativeRangeConstructible`) | Done |
 | **Phase 7** | User-defined protocols (moved to Phase 1) | Done |
 | **Phase 8** | Python-compatible `Iterable[T]`/`Iterator[T]` with `__iter__`/`__next__` | Planned |
-| **Phase 9** | Dynamic protocol dispatch (`@dynamic`, vtables, zero-allocation stack dispatch) | Partial (steps 1-4) |
+| **Phase 9** | Dynamic protocol dispatch (`@dynamic`, vtables, zero-allocation stack dispatch) | Partial (steps 1-5; return types pending) |
 
 ## Overview
 
@@ -603,8 +603,8 @@ A `@dynamic` protocol supports both static and dynamic dispatch, selected by syn
 
 | Usage | Dispatch | C++ |
 |-------|----------|-----|
-| `pet: Speakable` (param) | dynamic | `void f(__tpy_Speakable_Base& pet)` |
-| `pet: Speakable` (local) | dynamic | `__tpy_Speakable_Base* pet` (pointer-local) |
+| `pet: Speakable` (param) | dynamic | `void f(__tpy_Base_Speakable& pet)` |
+| `pet: Speakable` (local) | dynamic | `__tpy_Base_Speakable* pet` (pointer-local) |
 | `T: Speakable` (type bound) | static | `template<Speakable T> void f(T& pet)` |
 
 - **Bare protocol type** (`pet: Speakable`) -- dynamic dispatch via vtable. Works for
@@ -659,69 +659,79 @@ def greet_fast[T: Pet](pet: T) -> None:
 Dynamic protocol variables use the existing pointer-local and slot hoisting
 infrastructure. No heap allocation occurs.
 
-**Local variable:**
+**Local variable** -- when Dog explicitly inherits Pet, the slot is a plain Dog (direct
+inheritance from `__tpy_Base_Pet`). Otherwise an owning adapter wraps the value:
+
+```python
+pet: Pet = Dog()       # Dog(Pet) -> direct inheritance
+pet.make_noise()
+```
+
+Generated C++ (direct inheritance):
+
+```cpp
+Dog __slot_1{Dog()};
+__tpy_Base_Pet* pet = &__slot_1;
+pet->make_noise();   // virtual dispatch
+```
+
+Generated C++ (structural conformance, no explicit inheritance):
+
+```cpp
+__tpy_Adapter_Pet<Parrot> __slot_1{Parrot()};
+__tpy_Base_Pet* pet = &__slot_1;
+pet->make_noise();   // virtual dispatch via adapter
+```
+
+**Reassignment** creates additional slots at each reassignment site:
 
 ```python
 pet: Pet = Dog()
+pet = Cat()
 pet.make_noise()
 ```
 
 Generated C++:
 
 ```cpp
-// Adapter contains Dog by value, stack-allocated
-__tpy_Pet_Adapter<Dog> __pet_slot_0;
-// Pointer-local (same model as reassigned records)
-__tpy_Pet_Base* pet = &__pet_slot_0;
-// Virtual dispatch via pointer
-pet->make_noise();
+Dog __slot_1{Dog()};
+__tpy_Base_Pet* pet = &__slot_1;
+Cat __slot_2{Cat()};
+pet = &__slot_2;
+pet->make_noise();  // dispatches to Cat
 ```
 
-**Reassignment** creates additional slots, hoisted to the variable's declaration scope:
-
-```python
-pet: Pet = Dog()
-if condition:
-    pet = Cat()
-pet.make_noise()
-```
-
-Generated C++:
-
-```cpp
-// Both slots hoisted to function scope (same as existing hoisted_vars)
-__tpy_Pet_Adapter<Dog> __pet_slot_0;
-__tpy_Pet_Adapter<Cat> __pet_slot_1;
-__tpy_Pet_Base* pet = &__pet_slot_0;
-if (condition) {
-    pet = &__pet_slot_1;
-}
-pet->make_noise();  // dispatches to Dog or Cat
-```
-
-**Function parameters:**
+**Function parameters** -- the compiler selects the optimal call-site mechanism:
 
 ```python
 def greet(pet: Pet) -> None:
     pet.make_noise()
 
-greet(my_dog)     # my_dog is Dog (concrete)
-greet(erased_pet) # erased_pet is Pet (already erased)
+greet(my_dog)     # Dog inherits Pet -> implicit upcast, zero cost
+greet(parrot)     # structural conformance lvalue -> RefAdapter (zero-copy)
+greet(Parrot())   # structural conformance rvalue -> owning Adapter
+greet(erased_pet) # already-erased Pet -> dereference pointer-local
 ```
 
 Generated C++:
 
 ```cpp
-void greet(__tpy_Pet_Base& pet) {
+void greet(__tpy_Base_Pet& pet) {
     pet.make_noise();
 }
 
-// Calling with concrete type -- temporary adapter on stack
-Dog my_dog;
-__tpy_Pet_Adapter<Dog> __tmp(my_dog);
-greet(__tmp);
+// Direct inheritor (lvalue): implicit upcast to Base&
+greet(my_dog);
 
-// Calling with erased value -- dereference pointer-local
+// Structural conformance (lvalue): ref adapter, zero-copy, mutations visible
+__tpy_RefAdapter_Pet<Parrot> __tmp_1{parrot};
+greet(__tmp_1);
+
+// Structural conformance (rvalue): owning adapter
+__tpy_Adapter_Pet<Parrot> __tmp_2{Parrot()};
+greet(__tmp_2);
+
+// Already erased: dereference pointer-local
 greet(*erased_pet);
 ```
 
@@ -766,7 +776,7 @@ with unknown lifetime. These require explicit `Box[P]` (or future `Rc[P]`):
 
 ### C++ Code Generation
 
-For each `@dynamic` protocol, the compiler generates three artifacts:
+For each `@dynamic` protocol, the compiler generates four artifacts:
 
 **1. C++20 concept** (for `T: Proto` static dispatch -- same as non-dynamic):
 
@@ -780,25 +790,44 @@ concept Speakable = requires(T& t) {
 **2. Abstract base class** (vtable target):
 
 ```cpp
-struct __tpy_Speakable_Base {
+struct __tpy_Base_Speakable {
     virtual void speak() = 0;
-    virtual ~__tpy_Speakable_Base() = default;
+    virtual ~__tpy_Base_Speakable() = default;
 };
 ```
 
-**3. Adapter template** (bridges concrete types to the abstract base):
+**3. Owning adapter template** (for locals and rvalue call-site args):
 
 ```cpp
 template<Speakable T>
-struct __tpy_Speakable_Adapter : __tpy_Speakable_Base {
+struct __tpy_Adapter_Speakable : __tpy_Base_Speakable {
     T inner;
-
     template<typename... Args>
-    __tpy_Speakable_Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-
+    __tpy_Adapter_Speakable(Args&&... args) : inner(std::forward<Args>(args)...) {}
     void speak() override { inner.speak(); }
 };
 ```
+
+**4. Ref adapter template** (for lvalue call-site args, zero-copy):
+
+```cpp
+template<Speakable T>
+struct __tpy_RefAdapter_Speakable : __tpy_Base_Speakable {
+    T& inner;
+    __tpy_RefAdapter_Speakable(T& ref) : inner(ref) {}
+    void speak() override { inner.speak(); }
+};
+```
+
+When a class explicitly inherits a `@dynamic` protocol (`class Dog(Speakable)`), the
+compiler generates direct C++ inheritance (`struct Dog : __tpy_Base_Speakable`) with
+`override` on matching methods. This eliminates adapter wrapping entirely -- the object
+IS-A `__tpy_Base_Speakable` and can be passed directly. The adapters are only used for
+structural conformance (types that satisfy the protocol without explicit inheritance).
+
+**Naming convention**: `__tpy_Base_{Name}`, `__tpy_Adapter_{Name}`, `__tpy_RefAdapter_{Name}`.
+The `__tpy_` prefix marks these as compiler-internal. The role prefix (`Base_`, `Adapter_`,
+`RefAdapter_`) groups related types together.
 
 ### Object Safety
 
@@ -848,14 +877,20 @@ without requiring `extends`). Explicit `extends` remains for marker protocols on
 1. **`@dynamic` decorator** (done) -- parser recognizes `@dynamic` on protocol classes,
    sema stores `is_dynamic` flag on ProtocolInfo, object-safety validation at definition
    site (no marker protocols, no generic protocols, no Self type)
-2. **Abstract base + adapter codegen** (done) -- generate `__tpy_Proto_Base` and
-   `__tpy_Proto_Adapter<T>` for each `@dynamic` protocol in the header
-3. **Protocol-typed locals** -- `pet: Pet = Dog()` generates stack adapter slot +
-   pointer-local (`__tpy_Pet_Base*`), with slot hoisting for reassignment
-4. **Protocol-typed function params** -- `def f(pet: Pet)` generates
-   `f(__tpy_Pet_Base& pet)`, with implicit adapter wrapping at call sites for concrete
-   arguments
-5. **Return types** -- allow returning protocol-typed values when provably long-lived
+2. **Abstract base + adapter codegen** (done) -- generate `__tpy_Base_Proto`,
+   `__tpy_Adapter_Proto<T>`, and `__tpy_RefAdapter_Proto<T>` for each `@dynamic`
+   protocol in the header
+3. **Protocol-typed locals** (done) -- `pet: Pet = Dog()` generates stack slot +
+   pointer-local (`__tpy_Base_Pet*`). Direct inheritors use plain concrete slot;
+   structural conformance uses owning adapter slot. Reassignment allocates new slots.
+4. **Protocol-typed function params** (done) -- `def f(pet: Pet)` generates
+   `f(__tpy_Base_Pet& pet)`. Call-site dispatch: direct inheritors pass by implicit
+   upcast (zero cost); structural lvalues use RefAdapter (zero-copy, mutations visible);
+   structural rvalues use owning Adapter.
+5. **Direct C++ inheritance** (done) -- when a class explicitly inherits a `@dynamic`
+   protocol (`class Dog(Pet)`), the C++ struct inherits `__tpy_Base_Pet` and matching
+   methods get `override`. Eliminates adapter wrapping entirely.
+6. **Return types** -- allow returning protocol-typed values when provably long-lived
    (globals, parameters); error on returning local adapters
-6. **`Box[P]` integration** (future) -- heap-allocated dynamic values for fields,
+7. **`Box[P]` integration** (future) -- heap-allocated dynamic values for fields,
    containers, and unrestricted returns

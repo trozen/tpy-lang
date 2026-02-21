@@ -6,7 +6,7 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 // 18: def greet(pet: Pet) -> None:
-void greet(__tpy_Pet_Base& pet) {
+void greet(__tpy_Base_Pet& pet) {
   // 19:     print(pet.make_noise())
   std::cout << pet.make_noise() << "\n";
 }
@@ -14,10 +14,10 @@ void greet(__tpy_Pet_Base& pet) {
 // 21: def main() -> None:
 void main() {
   // 22:     greet(Dog())
-  __tpy_Pet_Adapter<Dog> __tmp_1{Dog()};
+  Dog __tmp_1{Dog()};
   greet(__tmp_1);
   // 23:     greet(Cat())
-  __tpy_Pet_Adapter<Cat> __tmp_2{Cat()};
+  Cat __tmp_2{Cat()};
   greet(__tmp_2);
 }
 

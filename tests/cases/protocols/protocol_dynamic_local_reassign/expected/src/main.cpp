@@ -8,12 +8,12 @@ std::string_view __name__;
 // 18: def main() -> None:
 void main() {
   // 19:     pet: Pet = Dog()
-  __tpy_Pet_Adapter<Dog> __slot_1{Dog()};
-  __tpy_Pet_Base* pet = &__slot_1;
+  Dog __slot_1{Dog()};
+  __tpy_Base_Pet* pet = &__slot_1;
   // 20:     print(pet.make_noise())
   std::cout << pet->make_noise() << "\n";
   // 21:     pet = Cat()
-  __tpy_Pet_Adapter<Cat> __slot_2{Cat()};
+  Cat __slot_2{Cat()};
   pet = &__slot_2;
   // 22:     print(pet.make_noise())
   std::cout << pet->make_noise() << "\n";

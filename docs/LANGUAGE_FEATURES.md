@@ -1448,9 +1448,9 @@ Planned design:
 Current limitations:
 - **User records**: we generate `operator[]` from `__getitem__`, but it currently returns by value. This prevents mutating elements through `items[i].method()` for user-defined record containers. Addressing this likely requires reference-capable `__getitem__` or a dedicated mutation API in the type system.
 
-#### Working: `@dynamic` Protocol Declaration (Phase 9 -- Foundation)
+#### Working: `@dynamic` Protocol Declaration and Dispatch (Phase 9)
 
-The `@dynamic` decorator marks a protocol for runtime dispatch support. When applied, the compiler generates a C++ abstract base class and type-erasing adapter template alongside the concept:
+The `@dynamic` decorator marks a protocol for runtime dispatch support. When applied, the compiler generates C++ artifacts for virtual dispatch:
 
 ```python
 from tpy import dynamic
@@ -1464,8 +1464,9 @@ class Pet(Protocol):
 
 This generates:
 1. **Concept** (`Pet`) -- for static dispatch via `T: Pet` bounds (same as non-dynamic protocols)
-2. **Abstract base** (`__tpy_Pet_Base`) -- virtual methods for runtime dispatch
-3. **Adapter template** (`__tpy_Pet_Adapter<T>`) -- concept-constrained wrapper that forwards to a concrete type
+2. **Abstract base** (`__tpy_Base_Pet`) -- virtual methods for runtime dispatch
+3. **Owning adapter** (`__tpy_Adapter_Pet<T>`) -- concept-constrained wrapper storing `T inner` by value
+4. **Ref adapter** (`__tpy_RefAdapter_Pet<T>`) -- zero-copy wrapper storing `T& inner` by reference
 
 **Object safety rules** -- `@dynamic` protocols must be:
 - **Non-empty**: at least one method required (no marker protocols)
@@ -1496,21 +1497,39 @@ class Dog(Pet):
 class Cat(Pet):
     def make_noise(self) -> str: return "Meow"
 
-# Protocol-typed local variable (stack-allocated adapter, pointer-local)
+# Protocol-typed local variable
 pet: Pet = Dog()
 pet.make_noise()    # virtual dispatch -> "Woof"
 pet = Cat()         # rebind to different concrete type
 pet.make_noise()    # virtual dispatch -> "Meow"
 
-# Function parameter (concrete args wrapped in temporary adapter)
+# Function parameter
 def greet(pet: Pet) -> None:
     print(pet.make_noise())
 
-greet(Dog())        # call-site adapter wrapping
+greet(Dog())        # implicit upcast (Dog inherits __tpy_Base_Pet)
 greet(pet)          # already-erased value passed directly
 ```
 
-**Current status**: Foundation + dynamic dispatch for locals and function parameters. Return types are not yet supported (needs lifetime analysis). See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) section 12 for the full design.
+**Three dispatch paths** -- the compiler chooses the optimal path based on how the type relates to the protocol:
+
+| Scenario | C++ mechanism | Overhead |
+|----------|---------------|----------|
+| Class explicitly inherits protocol (`class Dog(Pet)`) | Direct C++ inheritance (`struct Dog : __tpy_Base_Pet`), implicit upcast to `Base&` | Zero -- same as hand-written virtual dispatch |
+| Structural conformance, lvalue arg (`greet(parrot)`) | Ref adapter (`__tpy_RefAdapter_Pet<Parrot>{parrot}`) | One indirection, zero copy |
+| Structural conformance, rvalue arg (`greet(Parrot())`) | Owning adapter (`__tpy_Adapter_Pet<Parrot>{Parrot()}`) | Owns the value, no dangling |
+| Local protocol variable (`pet: Pet = Dog()`) | Stack slot + `__tpy_Base_Pet*` pointer-local | Zero (direct inheritance) or adapter (structural) |
+
+When a class explicitly inherits a `@dynamic` protocol, the compiler generates C++ struct inheritance with `override` on matching methods:
+```python
+class Dog(Pet):                    # -> struct Dog : __tpy_Base_Pet {
+    def make_noise(self) -> str:   # ->   string_view make_noise() override { ... }
+        return "Woof"
+```
+
+Structural conformance (satisfying the protocol without inheriting it) uses adapter wrapping at dispatch points. The ref adapter ensures lvalue arguments are passed by reference (mutations visible to caller), while the owning adapter is used for rvalues.
+
+**Current status**: Dynamic dispatch working for locals and function parameters with all three dispatch paths. Return types are not yet supported (needs lifetime analysis). See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design.
 
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 

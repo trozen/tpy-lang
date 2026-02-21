@@ -117,8 +117,17 @@ class RecordGenerator:
             out.write(f"{template_header}\n")
 
         # Generate struct with optional inheritance
+        # Collect base classes: user-defined parent + @dynamic protocol bases
+        bases = []
         if record_info and record_info.parent:
-            out.write(f"struct {record.name} : {record_info.parent.to_cpp()} {{\n")
+            bases.append(record_info.parent.to_cpp())
+        if record_info:
+            for proto in record_info.implemented_protocols:
+                proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
+                if proto_info and proto_info.is_dynamic:
+                    bases.append(f"__tpy_Base_{proto.name}")
+        if bases:
+            out.write(f"struct {record.name} : {', '.join(bases)} {{\n")
         else:
             out.write(f"struct {record.name} {{\n")
 
@@ -204,10 +213,11 @@ class RecordGenerator:
         self._gen_move_and_destructor(out, record)
 
         # Generate methods (excluding __init__ and __del__)
+        dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
         for method in record.methods:
             if method.name in ("__init__", "__del__"):
                 continue
-            self.functions.gen_method_def(out, method, record.name)
+            self.functions.gen_method_def(out, method, record.name, dynamic_overrides)
 
         # Generate const operator[] for subscript read syntax (obj[i])
         self._gen_subscript_operators(out, record)

@@ -13,17 +13,25 @@ concept Describable = requires(T& t) {
     { t.id() } -> std::convertible_to<int32_t>;
 };
 
-struct __tpy_Describable_Base {
+struct __tpy_Base_Describable {
     virtual std::string_view describe() = 0;
     virtual int32_t id() = 0;
-    virtual ~__tpy_Describable_Base() = default;
+    virtual ~__tpy_Base_Describable() = default;
 };
 
 template<Describable T>
-struct __tpy_Describable_Adapter : __tpy_Describable_Base {
+struct __tpy_Adapter_Describable : __tpy_Base_Describable {
     T inner;
     template<typename... Args>
-    __tpy_Describable_Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    __tpy_Adapter_Describable(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string_view describe() override { return inner.describe(); }
+    int32_t id() override { return inner.id(); }
+};
+
+template<Describable T>
+struct __tpy_RefAdapter_Describable : __tpy_Base_Describable {
+    T& inner;
+    __tpy_RefAdapter_Describable(T& ref) : inner(ref) {}
     std::string_view describe() override { return inner.describe(); }
     int32_t id() override { return inner.id(); }
 };
@@ -35,7 +43,7 @@ extern std::string_view __name__;
 void main();
 
 // 12: class Item(Describable):
-struct Item {
+struct Item : __tpy_Base_Describable {
   // 13:     _name: str
   std::string_view _name;
   // 14:     _id: Int32
@@ -46,13 +54,13 @@ struct Item {
   explicit Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
   // 20:     def describe(self) -> str:
-  std::string_view describe() {
+  std::string_view describe() override {
     // 21:         return self._name
     return this->_name;
   }
 
   // 23:     def id(self) -> Int32:
-  int32_t id() {
+  int32_t id() override {
     // 24:         return self._id
     return this->_id;
   }

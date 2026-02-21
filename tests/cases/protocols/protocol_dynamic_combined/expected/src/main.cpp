@@ -6,13 +6,13 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 // 27: def show_desc(d: Describable) -> None:
-void show_desc(__tpy_Describable_Base& d) {
+void show_desc(__tpy_Base_Describable& d) {
   // 28:     print(d.describe())
   std::cout << d.describe() << "\n";
 }
 
 // 30: def show_noise(n: Noise) -> None:
-void show_noise(__tpy_Noise_Base& n) {
+void show_noise(__tpy_Base_Noise& n) {
   // 31:     print(n.make_noise())
   std::cout << n.make_noise() << "\n";
 }
@@ -20,30 +20,30 @@ void show_noise(__tpy_Noise_Base& n) {
 // 33: def main() -> None:
 void main() {
   // 34:     d: Describable = Dog()
-  __tpy_Describable_Adapter<Dog> __slot_1{Dog()};
-  __tpy_Describable_Base* d = &__slot_1;
+  Dog __slot_1{Dog()};
+  __tpy_Base_Describable* d = &__slot_1;
   // 35:     show_desc(d)
   show_desc((*d));
   // 36:     d = Cat()
-  __tpy_Describable_Adapter<Cat> __slot_2{Cat()};
+  Cat __slot_2{Cat()};
   d = &__slot_2;
   // 37:     show_desc(d)
   show_desc((*d));
   // 39:     n: Noise = Cat()
-  __tpy_Noise_Adapter<Cat> __slot_3{Cat()};
-  __tpy_Noise_Base* n = &__slot_3;
+  Cat __slot_3{Cat()};
+  __tpy_Base_Noise* n = &__slot_3;
   // 40:     show_noise(n)
   show_noise((*n));
   // 41:     n = Dog()
-  __tpy_Noise_Adapter<Dog> __slot_4{Dog()};
+  Dog __slot_4{Dog()};
   n = &__slot_4;
   // 42:     show_noise(n)
   show_noise((*n));
   // 44:     show_desc(Dog())
-  __tpy_Describable_Adapter<Dog> __tmp_1{Dog()};
+  Dog __tmp_1{Dog()};
   show_desc(__tmp_1);
   // 45:     show_noise(Cat())
-  __tpy_Noise_Adapter<Cat> __tmp_2{Cat()};
+  Cat __tmp_2{Cat()};
   show_noise(__tmp_2);
 }
 

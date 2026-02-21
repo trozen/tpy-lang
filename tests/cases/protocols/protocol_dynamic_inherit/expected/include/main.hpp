@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Pet(Protocol):
+// 7: class Pet(Protocol):
 template<typename T>
 concept Pet = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string_view>;
@@ -33,45 +33,27 @@ struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
 };
 
 struct Dog;
-struct Cat;
 
 extern std::string_view __name__;
 
 void greet(__tpy_Base_Pet& pet);
+void use_dog(Dog& d);
 void main();
 
-// 10: class Dog(Pet):
+// 11: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
   Dog() = default;
 
-  // 11:     def make_noise(self) -> str:
+  // 12:     def make_noise(self) -> str:
   std::string_view make_noise() override {
-    // 12:         return "Woof"
+    // 13:         return "Woof"
     return "Woof";
   }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
   os << "Dog("
-     << ")";
-  return os;
-}
-
-// 14: class Cat(Pet):
-struct Cat : __tpy_Base_Pet {
-
-  Cat() = default;
-
-  // 15:     def make_noise(self) -> str:
-  std::string_view make_noise() override {
-    // 16:         return "Meow"
-    return "Meow";
-  }
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
      << ")";
   return os;
 }

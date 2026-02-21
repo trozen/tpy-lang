@@ -12,16 +12,23 @@ concept Pet = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string_view>;
 };
 
-struct __tpy_Pet_Base {
+struct __tpy_Base_Pet {
     virtual std::string_view make_noise() = 0;
-    virtual ~__tpy_Pet_Base() = default;
+    virtual ~__tpy_Base_Pet() = default;
 };
 
 template<Pet T>
-struct __tpy_Pet_Adapter : __tpy_Pet_Base {
+struct __tpy_Adapter_Pet : __tpy_Base_Pet {
     T inner;
     template<typename... Args>
-    __tpy_Pet_Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    __tpy_Adapter_Pet(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string_view make_noise() override { return inner.make_noise(); }
+};
+
+template<Pet T>
+struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
+    T& inner;
+    __tpy_RefAdapter_Pet(T& ref) : inner(ref) {}
     std::string_view make_noise() override { return inner.make_noise(); }
 };
 
@@ -29,16 +36,16 @@ struct Dog;
 
 extern std::string_view __name__;
 
-void greet(__tpy_Pet_Base& pet);
+void greet(__tpy_Base_Pet& pet);
 void main();
 
 // 10: class Dog(Pet):
-struct Dog {
+struct Dog : __tpy_Base_Pet {
 
   Dog() = default;
 
   // 11:     def make_noise(self) -> str:
-  std::string_view make_noise() {
+  std::string_view make_noise() override {
     // 12:         return "Woof"
     return "Woof";
   }

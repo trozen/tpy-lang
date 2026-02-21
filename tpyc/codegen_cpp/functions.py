@@ -103,7 +103,7 @@ class FunctionGenerator:
                 if is_protocol_type(resolved):
                     protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                     if protocol_info and protocol_info.is_dynamic:
-                        base_type = f"__tpy_{resolved.name}_Base"
+                        base_type = f"__tpy_Base_{resolved.name}"
                         if isinstance(ptype, ReadonlyType):
                             result.append(f"const {base_type}& {pname}")
                         else:
@@ -276,7 +276,22 @@ class FunctionGenerator:
 
         out.write("}\n")
 
-    def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str) -> None:
+    def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
+        """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals."""
+        record_info = self.ctx.analyzer.registry.get_record(record_name)
+        if not record_info:
+            return {}
+        result: dict[str, bool] = {}
+        for proto in record_info.implemented_protocols:
+            proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
+            if proto_info and proto_info.is_dynamic:
+                for method_sig in proto_info.methods:
+                    is_const = method_sig.is_readonly or proto_info.is_readonly
+                    result[method_sig.name] = is_const
+        return result
+
+    def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
+                       dynamic_overrides: dict[str, bool] | None = None) -> None:
         """Generate a method definition inside a struct."""
         # __next__() -> T is emitted as __next_opt__() -> std::optional<T>
         is_dunder_next = method.name == "__next__"
@@ -288,17 +303,25 @@ class FunctionGenerator:
         is_const = method.is_readonly
         is_static = method.is_staticmethod
 
+        # Determine if this method overrides a @dynamic protocol virtual
+        override_const: bool | None = None
+        if dynamic_overrides and method.name in dynamic_overrides:
+            override_const = dynamic_overrides[method.name]
+
         if is_const and not is_static:
             # Readonly method: const overload always.
             # Dual overload (+ non-const) only when the return could be a
             # reference -- value-type returns are copies so const alone suffices.
-            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=True)
+            is_override = override_const is True  # base is const -> const overload overrides
+            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
+                                      const=True, override=is_override)
             needs_dual = not cpp_return_type.is_value_type() or isinstance(cpp_return_type, TypeParamRef)
             if needs_dual:
                 self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False)
         else:
+            is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                      static=is_static)
+                                      static=is_static, override=is_override)
 
         # Also emit a __next__() panic stub so direct calls compile but fail at runtime
         if is_dunder_next:
@@ -310,6 +333,7 @@ class FunctionGenerator:
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,
         cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
+        override: bool = False,
     ) -> None:
         """Emit a single method overload (const or non-const)."""
         ret_type = cpp_return_type.to_cpp_return_const() if const else cpp_return_type.to_cpp_return()
@@ -318,11 +342,12 @@ class FunctionGenerator:
         else:
             params = self.gen_params(method.params, method.type_params)
         const_suffix = " const" if const else ""
+        override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent="  ")
         self.ctx.emit_source_comment(out, method.loc, indent="  ")
-        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix} {{\n")
+        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:
