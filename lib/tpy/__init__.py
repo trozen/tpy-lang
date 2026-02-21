@@ -1,21 +1,27 @@
 """
-TurboPython CPython simulation module.
+TurboPython built-in types and decorators.
 
-This module provides Python implementations of TurboPython types,
-allowing .tp.py files to run in CPython for testing purposes.
+Provides Python implementations of TurboPython-specific types (Int32, Ptr, Array, etc.),
+allowing .tp.py files to run in CPython and enabling IDE support (autocompletion, type checking).
 """
 
 from __future__ import annotations
-from typing import Generic, TypeVar, get_args, get_origin
-from collections.abc import Sized
+from typing import Generic, TypeVar, Protocol as _Protocol, runtime_checkable as _runtime_checkable
+import copy as _copy_module
 
 T = TypeVar('T')
 
 
-# Char maps to single-character string in Python
+# ---------------------------------------------------------------------------
+# Char
+# ---------------------------------------------------------------------------
+
 Char = str
 
 
+# ---------------------------------------------------------------------------
+# Fixed-width integer types
+# ---------------------------------------------------------------------------
 
 def _make_fixed_int_type(name: str, bits: int, signed: bool):
     """Factory for fixed-width integer types with overflow wrapping."""
@@ -76,15 +82,17 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
 
 Int8 = _make_fixed_int_type("Int8", 8, True)
 Int16 = _make_fixed_int_type("Int16", 16, True)
+Int32 = _make_fixed_int_type("Int32", 32, True)
 Int64 = _make_fixed_int_type("Int64", 64, True)
 UInt8 = _make_fixed_int_type("UInt8", 8, False)
 UInt16 = _make_fixed_int_type("UInt16", 16, False)
 UInt32 = _make_fixed_int_type("UInt32", 32, False)
 UInt64 = _make_fixed_int_type("UInt64", 64, False)
 
-# Rebuild Int32 using the same factory for consistency
-Int32 = _make_fixed_int_type("Int32", 32, True)
 
+# ---------------------------------------------------------------------------
+# Pointer types
+# ---------------------------------------------------------------------------
 
 class _Ptr(Generic[T]):
     """Mutable pointer simulation."""
@@ -105,8 +113,6 @@ class _Ptr(Generic[T]):
             setattr(self._obj, name, value)
 
     def __deepcopy__(self, memo):
-        # Pointers shallow-copy: new Ptr wrapper pointing to same object
-        # This matches C++ where copying T* gives another pointer to same object
         return _Ptr(self._obj)
 
     def __copy__(self):
@@ -137,7 +143,6 @@ class _ConstPtr(Generic[T]):
         return int(self._obj)
 
     def __deepcopy__(self, memo):
-        # Pointers shallow-copy: new ConstPtr wrapper pointing to same object
         return _ConstPtr(self._obj)
 
     def __copy__(self):
@@ -179,6 +184,10 @@ class Own(metaclass=_OwnMeta):
         return obj
 
 
+# ---------------------------------------------------------------------------
+# Container types
+# ---------------------------------------------------------------------------
+
 class StaticListMeta(type):
     """Metaclass to support StaticList[T, N] syntax."""
 
@@ -202,9 +211,6 @@ class StaticList(metaclass=StaticListMeta):
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
-        # Initialize _data in __new__ so it's available even if subclass
-        # doesn't call super().__init__() (mimics C++ behavior where base
-        # class default ctor is automatically called)
         instance._data = []
         return instance
 
@@ -228,19 +234,16 @@ class StaticList(metaclass=StaticListMeta):
         return Ptr(obj)
 
     def get(self, index: int):
-        """Get element at index (returns value directly)."""
         if index < 0 or index >= len(self._data):
             raise RuntimeError(f"StaticList index out of bounds: {index}")
         return self._data[index]
 
     def get_mut(self, index: int):
-        """Get mutable pointer to element at index."""
         if index < 0 or index >= len(self._data):
             raise RuntimeError(f"StaticList index out of bounds: {index}")
         return Ptr(self._data[index])
 
     def set(self, index: int, value) -> None:
-        """Set element at index."""
         if index < 0 or index >= len(self._data):
             raise RuntimeError(f"StaticList index out of bounds: {index}")
         self._data[index] = value
@@ -261,12 +264,10 @@ class StaticList(metaclass=StaticListMeta):
         return iter(self._data)
 
     def pop(self, index: int = None):
-        """Remove and return element at index (default last)."""
         if len(self._data) == 0:
             raise RuntimeError("StaticList pop from empty list")
         if index is None:
             return self._data.pop()
-        # Normalize negative index
         if index < 0:
             index += len(self._data)
         if index < 0 or index >= len(self._data):
@@ -274,19 +275,15 @@ class StaticList(metaclass=StaticListMeta):
         return self._data.pop(index)
 
     def clear(self) -> None:
-        """Remove all elements."""
         self._data.clear()
 
     def extend(self, iterable) -> None:
-        """Extend with elements from iterable."""
         for item in iterable:
             self.append(item)
 
     def insert(self, index: int, value) -> None:
-        """Insert value at index."""
         if len(self._data) >= self._capacity:
             raise RuntimeError(f"StaticList capacity exceeded")
-        # Clamp index like Python's list.insert
         if index < 0:
             index += len(self._data)
             if index < 0:
@@ -296,25 +293,21 @@ class StaticList(metaclass=StaticListMeta):
         self._data.insert(index, value)
 
     def remove(self, value) -> None:
-        """Remove first occurrence of value."""
         try:
             self._data.remove(value)
         except ValueError:
             raise RuntimeError("list.remove(x): x not in list")
 
     def index(self, value) -> Int32:
-        """Return index of first occurrence of value."""
         try:
             return Int32(self._data.index(value))
         except ValueError:
             raise RuntimeError("list.index(x): x not in list")
 
     def count(self, value) -> Int32:
-        """Return number of occurrences of value."""
         return Int32(self._data.count(value))
 
     def reverse(self) -> None:
-        """Reverse in place."""
         self._data.reverse()
 
     def __repr__(self) -> str:
@@ -354,13 +347,11 @@ class Array(metaclass=ArrayMeta):
             self._data = list(data)
 
     def get(self, index: int):
-        """Get element at index."""
         if index < 0 or index >= self._size:
             raise RuntimeError(f"Array index out of bounds: {index}")
         return self._data[index]
 
     def set(self, index: int, value) -> None:
-        """Set element at index."""
         if index < 0 or index >= self._size:
             raise RuntimeError(f"Array index out of bounds: {index}")
         self._data[index] = value
@@ -412,7 +403,6 @@ class Span(metaclass=SpanMeta):
             self._data = list(data)
 
     def get(self, index: int):
-        """Get element at index."""
         if index < 0 or index >= len(self._data):
             raise RuntimeError(f"Span index out of bounds: {index}")
         return self._data[index]
@@ -430,26 +420,22 @@ class Span(metaclass=SpanMeta):
         return iter(self._data)
 
     def __copy__(self):
-        """Shallow copy: new Span pointing to same data (like std::span)."""
         new_span = object.__new__(type(self))
-        new_span._data = self._data  # Same reference, not copied
+        new_span._data = self._data
         return new_span
 
     def __deepcopy__(self, memo):
-        """Deep copy for Span is still shallow - it's a view type."""
-        # Views copy shallowly: new Span wrapper pointing to same underlying data
-        # This matches std::span semantics in C++
         new_span = object.__new__(type(self))
-        new_span._data = self._data  # Same reference, not copied
+        new_span._data = self._data
         return new_span
 
 
-def noalloc(func):
-    """Decorator marking a function as no-allocation.
+# ---------------------------------------------------------------------------
+# Decorators and modifiers
+# ---------------------------------------------------------------------------
 
-    In CPython simulation, this is a no-op.
-    The compiler enforces this constraint at compile time.
-    """
+def noalloc(func):
+    """No-op in CPython. The compiler enforces no-allocation at compile time."""
     return func
 
 
@@ -457,7 +443,7 @@ class readonly:
     """Decorator and type modifier for readonly references.
 
     Supports @readonly decorator and readonly[T] subscript syntax.
-    In CPython simulation, both forms are no-ops.
+    No-op in CPython.
     """
     def __class_getitem__(cls, item):
         return item
@@ -469,11 +455,7 @@ class readonly:
 
 
 class _ExternLinkage:
-    """Decorator for native/native_c/extern_c linkage.
-
-    In CPython simulation, this is a no-op — the decorated function runs as-is.
-    The compiler uses this to emit appropriate linkage declarations.
-    """
+    """Decorator for native/native_c/extern_c linkage. No-op in CPython."""
     def __call__(self, name_or_func):
         if callable(name_or_func):
             return name_or_func
@@ -484,43 +466,34 @@ class _ExternLinkage:
 native = _ExternLinkage()
 native_c = _ExternLinkage()
 extern_c = _ExternLinkage()
-# Kept for backward compatibility during transition
 extern_cpp = _ExternLinkage()
 
 
-import copy as _copy_module
+# ---------------------------------------------------------------------------
+# Functions
+# ---------------------------------------------------------------------------
 
 def copy(obj):
     """Explicit copy for ownership transfer.
 
     In CPython, uses copy.deepcopy() to match C++ by-value semantics.
-    When C++ returns a container by value, it deep-copies all elements.
-    In TurboPython, this marks the value as owned (by-value return).
     """
     return _copy_module.deepcopy(obj)
 
 
-# NativeIterable protocol for CPython compatibility
-from typing import Protocol as _Protocol, runtime_checkable as _runtime_checkable
-
+# ---------------------------------------------------------------------------
+# Protocols
+# ---------------------------------------------------------------------------
 
 @_runtime_checkable
 class NativeIterable(_Protocol[T]):
-    """Types that support C++ range-based for loops.
-
-    In CPython, this matches any iterable type.
-    The TurboPython compiler uses this for types with begin()/end().
-    """
+    """Types that support C++ range-based for loops."""
     def __iter__(self): ...
 
 
 @_runtime_checkable
 class OptIterator(_Protocol[T]):
-    """Types that produce values lazily via next().
-
-    In CPython, this matches any iterable type (for-loop compatibility).
-    The TurboPython compiler uses this for types with a next() -> Optional[T] method.
-    """
+    """Types that produce values lazily via next()."""
     def __iter__(self): ...
 
 
@@ -542,7 +515,10 @@ class Truthy(_Protocol):
     def __bool__(self) -> bool: ...
 
 
-# Import hook to find .tp.py files (with .py fallback)
+# ---------------------------------------------------------------------------
+# Import hook for .tp.py files
+# ---------------------------------------------------------------------------
+
 import sys
 import os
 from importlib.machinery import ModuleSpec
@@ -552,21 +528,17 @@ from importlib.util import spec_from_file_location
 class TpyModuleFinder:
     """Import hook to find .tp.py files (with .py fallback).
 
-    This allows TurboPython modules to be imported in CPython for testing.
-    The hook is registered at the start of sys.meta_path to intercept imports.
+    Allows TurboPython modules to be imported in CPython.
     """
 
     def find_spec(self, name, path, target=None):
-        # Don't intercept standard library or installed packages
         if name in sys.modules:
             return None
 
-        # Search in path (or sys.path if path is None)
         search_paths = path if path else sys.path
         for dir_path in search_paths:
             if not isinstance(dir_path, str):
                 continue
-            # Prefer .tp.py, fallback to .py
             for ext in [".tp.py", ".py"]:
                 file_path = os.path.join(dir_path, f"{name}{ext}")
                 if os.path.isfile(file_path):
@@ -575,5 +547,4 @@ class TpyModuleFinder:
         return None
 
 
-# Register the import hook
 sys.meta_path.insert(0, TpyModuleFinder())

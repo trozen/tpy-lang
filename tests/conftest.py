@@ -31,17 +31,17 @@ CPP_CONFIG = CppCompilerConfig.from_env()
 # Paths
 TESTS_DIR = Path(__file__).parent
 CASES_DIR = TESTS_DIR / "cases"    # All tests (grouped by feature)
-HARNESS_DIR = TESTS_DIR / "harness"
 PROJECT_ROOT = TESTS_DIR.parent
+LIB_DIR = PROJECT_ROOT / "lib"
 RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
 
 
 def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
-    # Include both harness dir and source dir for multi-module imports
+    # Include lib dir (for tpy module) and source dir (for multi-module imports)
     src_dir = src_file.parent
-    env["PYTHONPATH"] = f"{HARNESS_DIR}{os.pathsep}{src_dir}"
+    env["PYTHONPATH"] = f"{LIB_DIR}{os.pathsep}{src_dir}"
 
     result = subprocess.run(
         [sys.executable, str(src_file)],
@@ -51,7 +51,7 @@ def run_cpython(src_file: Path) -> str:
     )
 
     if result.returncode != 0:
-        stderr_text = _filter_harness_traceback(result.stderr)
+        stderr_text = _filter_lib_traceback(result.stderr)
         pytest.fail(
             f"CPython execution failed for {src_file} (exit code {result.returncode}).\n"
             f"--- stderr ---\n{stderr_text}",
@@ -391,13 +391,13 @@ def _format_unified_diff(expected: str, actual: str, fromfile: str, tofile: str,
     return "\n".join(diff_lines)
 
 
-def _filter_harness_traceback(stderr: str) -> str:
-    """Hide harness frames from traceback output while preserving the error."""
+def _filter_lib_traceback(stderr: str) -> str:
+    """Hide lib/tpy frames from traceback output while preserving the error."""
     lines = stderr.splitlines()
     filtered: list[str] = []
     for line in lines:
         normalized = line.replace("\\", "/")
-        if '/tests/harness/' in normalized:
+        if '/lib/tpy/' in normalized:
             continue
         filtered.append(line)
     out = "\n".join(filtered).strip()

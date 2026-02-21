@@ -1,14 +1,14 @@
 # TODO
 
 ## Next
-- better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
+- how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top? (differentiate between .py and .tp.py files - .tp.py - better local/global variable type deduction (e.g. if multiple assignment but first is literal, it should be postponed to look at next etc)
+- better C++ code formatting? 4 space indentation (or tab?)
 - argument default values
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
-- stubs for tpy modules for CPython, so that we can run (some) TPy code in CPython, but also for use in IDEs etc. (we have already something for tests, so maybe it can be extracted)
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
 - dynamic protocols and dynamic dispatch
 - bi-directional contextual type inference (Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
-- how to mark turbo-python files? using .tp.py is not good since it breaks python packages; maybe add an `# tpy` or `# tpy: options...` comment at the top? (differentiate between .py and .tp.py files - .tp.py files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
+files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
 - constant global variables (see `Final` in Language Features Roadmap)
@@ -24,7 +24,6 @@
 - proper string handling (STRING_HANDLING.md)
 - keyword arguments
 - REPL: arr=[1,2,3]; arr[-4]
-- better C++ code formatting? 4 space indentation (or tab?)
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
 - coerce int32 -> uint32?
 - remove the need for __tpy_owned_ in destructor (moved out, when there is a single pointer in class and the pointer may not be null; can it also work for |None case?)
@@ -65,7 +64,6 @@
 - str full support
 - tuple, multiple returns (mandelbrot TODOs)
 - list slicing (`items[1:3]`)
-- make sure docstrings work in every context
 - list/StaticList operator (+=, *, +, in), sort
 - bytes type
 - list(str)
@@ -123,7 +121,6 @@ Random items that may or may not be implemented in the future, but putting them 
 
 ## Code Review Items (2026-01-27)
 - Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
-- Unknown record types not rejected: `bar: UnknownType` passes sema, fails at C++ compile
 - `list.extend` lacks type validation: element type mismatch not checked when types are related but not identical (e.g. `list[Int32].extend(list[int])` passes sema, fails C++)
 - `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
 
