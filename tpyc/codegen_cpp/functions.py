@@ -103,7 +103,7 @@ class FunctionGenerator:
                 if is_protocol_type(resolved):
                     protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                     if protocol_info and protocol_info.is_dynamic:
-                        base_type = f"__tpy_Base_{resolved.name}"
+                        base_type = self.protocols.get_dynamic_base_name(resolved.name)
                         if isinstance(ptype, ReadonlyType):
                             result.append(f"const {base_type}& {pname}")
                         else:
@@ -123,7 +123,7 @@ class FunctionGenerator:
         if is_protocol_type(unwrapped) and isinstance(unwrapped, NamedType):
             pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
             if pi and pi.is_dynamic:
-                base = f"__tpy_Base_{unwrapped.name}"
+                base = self.protocols.get_dynamic_base_name(unwrapped.name)
                 if const or isinstance(return_type, ReadonlyType):
                     return f"const {base}&"
                 return f"{base}&"
@@ -412,7 +412,7 @@ class FunctionGenerator:
         if is_protocol_type(var_type) and isinstance(var_type, NamedType):
             pi = self.ctx.analyzer.registry.get_protocol(var_type.name)
             if pi and pi.is_dynamic:
-                return f"__tpy_Base_{var_type.name}"
+                return self.protocols.get_dynamic_base_name(var_type.name)
         return var_type.to_cpp()
 
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:

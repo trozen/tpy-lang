@@ -57,11 +57,12 @@ class CodeGenerator:
         self.protocols = ProtocolGenerator(self.ctx)
         self.builtins = BuiltinGenerator(self.ctx, self.types)
         self.expressions = ExpressionGenerator(self.ctx, self.types, self.builtins, self.protocols)
-        self.statements = StatementGenerator(self.ctx, self.types, self.builtins)
+        self.statements = StatementGenerator(self.ctx, self.types, self.builtins, self.protocols)
         self.records = RecordGenerator(self.ctx, self.types, self.protocols)
         self.functions = FunctionGenerator(self.ctx, self.types, self.protocols)
 
         # Wire up circular dependencies
+        self.types.set_protocols(self.protocols)
         self.statements.set_expressions(self.expressions)
         self.records.set_dependencies(self.expressions, self.functions)
         self.functions.set_statements(self.statements)

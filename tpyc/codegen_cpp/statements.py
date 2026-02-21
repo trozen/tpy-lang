@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .expressions import ExpressionGenerator
     from .builtins import BuiltinGenerator
+    from .protocols import ProtocolGenerator
 
 
 class StatementGenerator:
@@ -43,10 +44,12 @@ class StatementGenerator:
         ctx: CodeGenContext,
         types: TypeResolver,
         builtins: BuiltinGenerator,
+        protocols: ProtocolGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.builtins = builtins
+        self.protocols = protocols
         # Will be set after expressions is created
         self.expressions: ExpressionGenerator | None = None
 
@@ -296,7 +299,7 @@ class StatementGenerator:
         """
         concrete_type = self.ctx.get_expr_type(init)
         proto_name = target_type.name
-        base_type = f"__tpy_Base_{proto_name}"
+        base_type = self.protocols.get_dynamic_base_name(proto_name)
 
         if is_protocol_type(concrete_type):
             # Already erased -- copy the pointer
@@ -312,7 +315,8 @@ class StatementGenerator:
             slot_type = concrete_cpp
         else:
             # Structural conformance -- adapter wrapping
-            slot_type = f"__tpy_Adapter_{proto_name}<{concrete_cpp}>"
+            adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
+            slot_type = f"{adapter_name}<{concrete_cpp}>"
 
         return (f"{indent}{slot_type} {init_slot}{{{init_expr}}};\n"
                 f"{indent}{base_type}* {name} = &{init_slot};\n")
@@ -339,7 +343,8 @@ class StatementGenerator:
         if self._directly_implements_dynamic(concrete_type, proto_name):
             slot_type = concrete_cpp
         else:
-            slot_type = f"__tpy_Adapter_{proto_name}<{concrete_cpp}>"
+            adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
+            slot_type = f"{adapter_name}<{concrete_cpp}>"
 
         # Hoist slot to function scope (survives block scopes).
         # Global scope (__tpy_init) needs 'static' so slots outlive the function.
@@ -972,7 +977,7 @@ class StatementGenerator:
                 # @dynamic protocol branch-declared vars: just pre-declare Base* pointer.
                 # Per-assignment slots are created by rebind (hoisted to function scope).
                 if self._is_dynamic_protocol_type(var_type):
-                    base_type = f"__tpy_Base_{var_type.name}"
+                    base_type = self.protocols.get_dynamic_base_name(var_type.name)
                     out.write(f"{indent}{base_type}* {name};\n")
                     self.ctx.pointer_locals.add(name)
                     self.ctx.declared_vars.add(name)

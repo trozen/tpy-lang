@@ -125,7 +125,7 @@ class RecordGenerator:
             for proto in record_info.implemented_protocols:
                 proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
                 if proto_info and proto_info.is_dynamic:
-                    bases.append(f"__tpy_Base_{proto.name}")
+                    bases.append(self.protocols.get_dynamic_base_name(proto.name))
         if bases:
             out.write(f"struct {record.name} : {', '.join(bases)} {{\n")
         else:

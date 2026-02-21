@@ -15,8 +15,8 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 6 | Return types (provably long-lived values only) | Done |
 | 7 | `@dynamic` protocol params in record methods | Deferred |
 | 8 | `Optional[Pet]` sema rejection | Done |
-| 9 | Protocol field access through erased type | Gap |
-| 10 | Cross-module `@dynamic` protocols | Gap |
+| 9 | Protocol field access through erased type | Future |
+| 10 | Cross-module `@dynamic` protocols | Done |
 | 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Gap |
 | 12 | Generic `@dynamic` protocols | Future |
 | 13 | `Box[P]` integration (heap-allocated dynamic values) | Future |
@@ -357,9 +357,6 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **Protocol fields on `@dynamic`** -- field access on protocol-typed variables fails
   in sema ("Cannot access field"). Virtual getters are generated in the base class but
   sema doesn't resolve field access through the erased type.
-- **Cross-module `@dynamic`** -- importing a `@dynamic` protocol from another module
-  and using it as a variable type fails ("Type mismatch: expected Pet, got Dog").
-  The `is_dynamic` flag or protocol conformance isn't resolved across module boundaries.
 - **`@dynamic` extending `@dynamic`** -- `__tpy_Base_Child` doesn't inherit from
   `__tpy_Base_Parent`, so passing a `Child`-typed variable to a `Parent`-typed param
   fails at C++ level. Needs `__tpy_Base_Child : __tpy_Base_Parent` inheritance chain.

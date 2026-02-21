@@ -436,6 +436,10 @@ class StatementAnalyzer:
                 return t.map_inner_types(_resolve)
             stmt.type = _resolve(stmt.type)
 
+        # Resolve type to set is_protocol flag on imported protocol NamedTypes
+        if stmt.type:
+            stmt.type = self.type_ops.resolve_type(stmt.type)
+
         # Validate the type annotation if present
         # Allow TypeParamRef inside generic functions or generic record methods
         if stmt.type:

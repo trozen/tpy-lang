@@ -20,6 +20,7 @@ from .context import qualified_cpp_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
+    from .protocols import ProtocolGenerator
 
 
 class TypeResolver:
@@ -27,6 +28,12 @@ class TypeResolver:
 
     def __init__(self, ctx: CodeGenContext):
         self.ctx = ctx
+        # Will be set after protocols is created
+        self.protocols: ProtocolGenerator | None = None
+
+    def set_protocols(self, protocols: ProtocolGenerator):
+        """Set protocols generator (created after TypeResolver)."""
+        self.protocols = protocols
 
     def get_resolved_type(self, expr: TpyExpr, target_type: TpyType | None = None) -> TpyType:
         """Get the resolved type of an expression, handling PendingListType.
@@ -203,7 +210,7 @@ class TypeResolver:
         if is_protocol_type(typ):
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
             if protocol_info and protocol_info.is_dynamic:
-                return f"__tpy_Base_{typ.name}"
+                return self.protocols.get_dynamic_base_name(typ.name)
         if isinstance(typ, NamedType) and typ.is_record:
             # Native records use their native C++ name directly (globally visible)
             record_info = self.ctx.analyzer.registry.get_record(typ.name)

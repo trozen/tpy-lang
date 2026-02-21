@@ -67,6 +67,27 @@ class ProtocolGenerator:
         # User-defined protocol - use the protocol name directly
         return protocol.name
 
+    def get_dynamic_base_name(self, protocol_name: str) -> str:
+        """Get the (possibly qualified) C++ name for __tpy_Base_{Name}."""
+        if protocol_name in self.ctx.user_imported_protocols:
+            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
+            return qualified_cpp_name(source_module, f"__tpy_Base_{original_name}")
+        return f"__tpy_Base_{protocol_name}"
+
+    def get_dynamic_adapter_name(self, protocol_name: str) -> str:
+        """Get the (possibly qualified) C++ name for __tpy_Adapter_{Name}."""
+        if protocol_name in self.ctx.user_imported_protocols:
+            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
+            return qualified_cpp_name(source_module, f"__tpy_Adapter_{original_name}")
+        return f"__tpy_Adapter_{protocol_name}"
+
+    def get_dynamic_ref_adapter_name(self, protocol_name: str) -> str:
+        """Get the (possibly qualified) C++ name for __tpy_RefAdapter_{Name}."""
+        if protocol_name in self.ctx.user_imported_protocols:
+            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
+            return qualified_cpp_name(source_module, f"__tpy_RefAdapter_{original_name}")
+        return f"__tpy_RefAdapter_{protocol_name}"
+
     def gen_record_template_header(
         self,
         type_params: list[str],
