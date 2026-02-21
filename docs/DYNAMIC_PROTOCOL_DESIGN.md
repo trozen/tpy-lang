@@ -13,7 +13,15 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 5 | Direct C++ inheritance (`class Dog(Pet)` -> `struct Dog : __tpy_Base_Pet`) | Done |
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
 | 6 | Return types (provably long-lived values only) | Planned |
-| 7 | `Box[P]` integration (heap-allocated dynamic values) | Future |
+| 7 | `@dynamic` protocol params in record methods | Deferred |
+| 8 | `Optional[Pet]` sema rejection | Gap |
+| 9 | Protocol field access through erased type | Gap |
+| 10 | Cross-module `@dynamic` protocols | Gap |
+| 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Gap |
+| 12 | Generic `@dynamic` protocols | Future |
+| 13 | `Box[P]` integration (heap-allocated dynamic values) | Future |
+| 14 | Record fields typed as `@dynamic` protocol (needs `Box[P]`) | Future |
+| 15 | `list[Box[P]]` heterogeneous containers | Future |
 
 ## Overview
 
@@ -340,6 +348,25 @@ dog: Pet = Dog()                     # OK: Dog has make_noise() -> None
 This is consistent with non-dynamic protocols (e.g., `Sized` checks for `__len__`
 without requiring `extends`). Explicit `extends` remains for marker protocols only.
 
+## Known Gaps
+
+Compiler infrastructure issues (not blocked on `Box[P]`):
+
+- **`Optional[Pet]`** -- falls through to broken C++ (`auto* = nullptr`). Needs sema
+  error rejecting `Optional` of a `@dynamic` protocol (until `Box[P]` exists).
+- **Protocol fields on `@dynamic`** -- field access on protocol-typed variables fails
+  in sema ("Cannot access field"). Virtual getters are generated in the base class but
+  sema doesn't resolve field access through the erased type.
+- **Cross-module `@dynamic`** -- importing a `@dynamic` protocol from another module
+  and using it as a variable type fails ("Type mismatch: expected Pet, got Dog").
+  The `is_dynamic` flag or protocol conformance isn't resolved across module boundaries.
+- **`@dynamic` extending `@dynamic`** -- `__tpy_Base_Child` doesn't inherit from
+  `__tpy_Base_Parent`, so passing a `Child`-typed variable to a `Parent`-typed param
+  fails at C++ level. Needs `__tpy_Base_Child : __tpy_Base_Parent` inheritance chain.
+- **Method params with `@dynamic` protocol type** -- sema rejects protocol types as
+  method parameters ("Protocols are only valid for free function parameters"). Keep
+  rejection for now; revisit when use cases arise.
+
 ## Future Extensions
 
 - **`Box[P]`** -- heap-owned dynamic value for fields, containers, returns. Requires
@@ -350,6 +377,8 @@ without requiring `extends`). Explicit `extends` remains for marker protocols on
 - **Generic `@dynamic` protocols** -- e.g., `@dynamic class Comparable(Protocol): def __lt__(self, other: Self) -> bool: ...`
   Requires Self support first.
 - **Multiple protocol conformance** -- `pet: Pet & Drawable` for intersection types.
+- **`list[Box[P]]`** -- heterogeneous containers with heap-owned dynamic values.
+  Requires `Box[P]` first.
 
 ## Implementation Steps
 

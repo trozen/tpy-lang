@@ -120,6 +120,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - extract c++ compiler interface
 - analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
+- in future: __tpy_Pet_Base, adapters etc - how can we make the names better for c++ interop (__tpy prefix is for internal TPy stuff) (or __tpy_Base_Pet, __tpy_Adapter/__tpy_RefAdapter)
 
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
