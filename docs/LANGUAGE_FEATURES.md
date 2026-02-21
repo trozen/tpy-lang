@@ -1529,7 +1529,18 @@ class Dog(Pet):                    # -> struct Dog : __tpy_Base_Pet {
 
 Structural conformance (satisfying the protocol without inheriting it) uses adapter wrapping at dispatch points. The ref adapter ensures lvalue arguments are passed by reference (mutations visible to caller), while the owning adapter is used for rvalues.
 
-**Current status**: Dynamic dispatch working for locals and function parameters with all three dispatch paths. Return types are not yet supported (needs lifetime analysis). See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design.
+**Conditional/loop reassignment** -- when a dynamic protocol variable is declared or reassigned inside an `if`/`else` branch, the adapter slot is hoisted to function scope via `std::optional` so the value outlives the block:
+
+```python
+def choose_pet(cond: bool) -> None:
+    if cond:
+        pet: Pet = Dog()
+    else:
+        pet = Cat()
+    print(pet.make_noise())   # safe -- slots live at function scope
+```
+
+**Current status**: Dynamic dispatch working for locals and function parameters with all three dispatch paths. Return types are not yet supported (needs lifetime analysis). See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for the full design.
 
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 

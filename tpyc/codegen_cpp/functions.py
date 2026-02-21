@@ -389,6 +389,18 @@ class FunctionGenerator:
             var_type = ArrayType(default_int, var_type.size)
         return var_type
 
+    def _global_cpp_type(self, var_type: TpyType) -> str:
+        """Map a global variable type to C++.
+
+        @dynamic protocol types use __tpy_Base_{Name} instead of the concept
+        template placeholder, since globals need a concrete pointer type.
+        """
+        if is_protocol_type(var_type) and isinstance(var_type, NamedType):
+            pi = self.ctx.analyzer.registry.get_protocol(var_type.name)
+            if pi and pi.is_dynamic:
+                return f"__tpy_Base_{var_type.name}"
+        return var_type.to_cpp()
+
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a global variable definition in source file.
 
@@ -400,7 +412,7 @@ class FunctionGenerator:
         self.ctx.emit_preceding_comments(out, stmt.loc)
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
-        cpp_type = var_type.to_cpp()
+        cpp_type = self._global_cpp_type(var_type)
         if var_type.is_value_type():
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
             init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType)) else ""
@@ -411,7 +423,7 @@ class FunctionGenerator:
     def gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate an extern declaration for a global variable in header file."""
         var_type = self._resolve_global_type(stmt)
-        cpp_type = var_type.to_cpp()
+        cpp_type = self._global_cpp_type(var_type)
         if var_type.is_value_type():
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:

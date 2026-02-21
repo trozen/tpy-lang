@@ -13,6 +13,7 @@ void greet(__tpy_Base_Pet& pet) {
 
 // 20: def main() -> None:
 void main() {
+  std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
   // 21:     p1: Pet = Dog()
   Dog __slot_1{Dog()};
   __tpy_Base_Pet* p1 = &__slot_1;
@@ -24,8 +25,8 @@ void main() {
   greet((*p2));
   // 25:     # Reassign to concrete, then back to erased
   // 26:     p2 = Cat()
-  __tpy_Adapter_Pet<Cat> __slot_2{Cat()};
-  p2 = &__slot_2;
+  __slot_2.emplace(Cat());
+  p2 = &*__slot_2;
   // 27:     greet(p2)
   greet((*p2));
   // 28:     p2 = p1

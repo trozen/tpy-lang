@@ -7,14 +7,15 @@ std::string_view __name__;
 
 // 18: def main() -> None:
 void main() {
+  std::optional<Cat> __slot_2;
   // 19:     pet: Pet = Dog()
   Dog __slot_1{Dog()};
   __tpy_Base_Pet* pet = &__slot_1;
   // 20:     print(pet.make_noise())
   std::cout << pet->make_noise() << "\n";
   // 21:     pet = Cat()
-  Cat __slot_2{Cat()};
-  pet = &__slot_2;
+  __slot_2.emplace(Cat());
+  pet = &*__slot_2;
   // 22:     print(pet.make_noise())
   std::cout << pet->make_noise() << "\n";
 }

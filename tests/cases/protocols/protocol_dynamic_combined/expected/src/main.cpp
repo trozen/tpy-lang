@@ -19,14 +19,16 @@ void show_noise(__tpy_Base_Noise& n) {
 
 // 33: def main() -> None:
 void main() {
+  std::optional<Cat> __slot_2;
+  std::optional<Dog> __slot_4;
   // 34:     d: Describable = Dog()
   Dog __slot_1{Dog()};
   __tpy_Base_Describable* d = &__slot_1;
   // 35:     show_desc(d)
   show_desc((*d));
   // 36:     d = Cat()
-  Cat __slot_2{Cat()};
-  d = &__slot_2;
+  __slot_2.emplace(Cat());
+  d = &*__slot_2;
   // 37:     show_desc(d)
   show_desc((*d));
   // 39:     n: Noise = Cat()
@@ -35,8 +37,8 @@ void main() {
   // 40:     show_noise(n)
   show_noise((*n));
   // 41:     n = Dog()
-  Dog __slot_4{Dog()};
-  n = &__slot_4;
+  __slot_4.emplace(Dog());
+  n = &*__slot_4;
   // 42:     show_noise(n)
   show_noise((*n));
   // 44:     show_desc(Dog())
