@@ -123,4 +123,15 @@ concept Comparable = requires(const T& a, const T& b) {
     { a < b } -> std::convertible_to<bool>;
 };
 
+/**
+ * Truthy concept - types that support tpy::__bool__()
+ *
+ * A type is Truthy if tpy::__bool__(x) is valid and returns bool.
+ * Used for bool() conversion on user-defined types.
+ */
+template<typename T>
+concept Truthy = requires(const T& t) {
+    { tpy::__bool__(t) } -> std::convertible_to<bool>;
+};
+
 } // namespace tpy

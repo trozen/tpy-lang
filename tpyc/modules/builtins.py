@@ -17,6 +17,9 @@ T = TypeParamRef("T")
 # Sized protocol type for len() parameter
 SIZED = NamedType("Sized", is_protocol=True)
 
+# Truthy protocol type for bool() parameter
+TRUTHY = NamedType("Truthy", is_protocol=True)
+
 NAME = "builtins"
 
 # Methods that mutate the list (used by sema to track list literal mutation)
@@ -371,6 +374,7 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", BIGINT)], returns=BOOL, cpp="({0} != 0)"),
         MethodDef(params=[ParamDef("x", FLOAT)], returns=BOOL, cpp="({0} != 0.0)"),
         MethodDef(params=[ParamDef("x", STR)], returns=BOOL, cpp="(std::string_view({0}).size() != 0)"),
+        MethodDef(params=[ParamDef("x", TRUTHY)], returns=BOOL, cpp="tpy::__bool__({0})", is_readonly=True),
     ], methods={})
 
     # Char: Single character type

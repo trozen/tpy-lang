@@ -1,0 +1,1 @@
+Truthy protocol is TurboPython-specific, not available in CPython's typing module

@@ -1093,6 +1093,26 @@ int32_t count(const T_items& items) {
 
 The `tpy::Sized` concept uses the `tpy::__len__()` free function, which has overloads for `std::vector`, `std::array`, `std::span`, `std::string_view`, and `StaticList`, plus a default template for user types with `__len__()` method.
 
+#### Working: Built-in `Truthy` Protocol
+
+The built-in `Truthy` protocol is available from the `typing` module. Types that implement `__bool__()` conform to `Truthy`, and `bool()` dispatches to `__bool__()` for user-defined types:
+
+```python
+from typing import Truthy
+
+class Container:
+    count: int
+    def __bool__(self) -> bool:
+        return self.count != 0
+
+def is_truthy(x: Truthy) -> bool:
+    return bool(x)
+```
+
+Generated C++ uses `tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The `tpy::Truthy` concept constrains generic parameters.
+
+**Note**: Implicit truthiness in `if obj:` / `while obj:` / `and`/`or` is not yet supported -- these still require explicit `bool` type.
+
 #### Working: User-Defined Protocols
 
 You can define your own protocols, but **prefer using existing CPython protocols** (like `Sized` from `typing`) when possible. This ensures compatibility with both CPython and TurboPython, and avoids duplicating standard definitions.
@@ -1159,7 +1179,7 @@ use(GoodReader(1))  # OK
 use(BadReader(1))   # ERROR: BadReader does not conform to Readable
 ```
 
-Dunders in the implicit readonly set (`__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.) are automatically treated as readonly in protocol signatures, matching the behavior for record methods. Use `@readonly(False)` to opt out.
+Dunders in the implicit readonly set (`__bool__`, `__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.) are automatically treated as readonly in protocol signatures, matching the behavior for record methods. Use `@readonly(False)` to opt out.
 
 #### Working: Protocol Inheritance
 
@@ -2675,6 +2695,15 @@ b = bool(0)       # → False
 b = bool(42)      # → True (non-zero)
 b = bool(Int32(0))  # → False
 b = bool(Int32(1))  # → True
+
+# User-defined __bool__() dispatch
+class Container:
+    count: int
+    def __bool__(self) -> bool:
+        return self.count != 0
+
+c = Container(3)
+b = bool(c)       # → True (calls c.__bool__())
 ```
 
 **`copy()` (Working)**:

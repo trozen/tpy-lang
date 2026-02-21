@@ -145,4 +145,15 @@ void __setitem__(T& x, int32_t i, V&& v) {
     x.__setitem__(i, std::forward<V>(v));
 }
 
+// =============================================
+// tpy::__bool__
+// =============================================
+
+// Default template: user types that define __bool__() method
+template<typename T>
+    requires requires(const T& t) { { t.__bool__() } -> std::convertible_to<bool>; }
+bool __bool__(const T& x) {
+    return x.__bool__();
+}
+
 } // namespace tpy

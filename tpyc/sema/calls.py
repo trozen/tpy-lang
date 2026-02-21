@@ -663,6 +663,15 @@ class CallAnalyzer:
                 expr.resolved_function_info = ctor
                 return ctor.return_type
 
+        # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
+        matched = resolve_overload(
+            record_info.constructors, arg_types,
+            protocol_checker=self.protocols.type_conforms_to_protocol,
+        )
+        if matched:
+            expr.resolved_function_info = matched
+            return matched.return_type
+
         # No matching overload found
         if not record_info.constructors:
             raise self.ctx.error(f"{type_name}() is not callable", expr)

@@ -71,7 +71,7 @@
 - list(str)
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
-- add `__bool__()` and a proper protocol (bool() function should have overload consuming that protocol)
+- implicit truthiness: `if obj:` / `while obj:` / `and`/`or` should auto-call `__bool__()` (with fallback to `__len__() != 0` like Python)
 - `Self` type
 
 ## Random items

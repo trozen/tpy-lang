@@ -5,7 +5,7 @@ Provides Protocol types matching Python's typing module.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, VOID, TypeParamRef
+from tpyc.typesys import BOOL, INT32, VOID, TypeParamRef
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -47,6 +47,13 @@ def init_module() -> BuiltinModule:
             "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="tpy::__setitem__({self}, {0}, {1})"),
         },
         cpp_concept="tpy::MutableSequence",
+    )
+
+    # Truthy protocol: types that support bool() conversion via __bool__()
+    module.protocol("Truthy",
+        methods={"__bool__": MethodDef(params=[], returns=BOOL, cpp="tpy::__bool__({self})")},
+        cpp_concept="tpy::Truthy",
+        is_readonly=True,
     )
 
     # Protocol is recognized by the parser as the base class for user-defined protocols
