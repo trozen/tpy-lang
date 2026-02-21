@@ -7,45 +7,45 @@ std::string_view __name__;
 
 // 9: def consume(h: Own[Handle]) -> Int32:
 int32_t consume(Handle h) {
-  // 10:     return h.value
-  return h.value;
+    // 10:     return h.value
+    return h.value;
 }
 
 // 13: def test() -> Int32:
 int32_t test() {
-  // 14:     h: Handle | None
-  Handle* h = nullptr;
-  // 15:     h = Handle()
-  Handle __slot_1 = Handle();
-  h = &__slot_1;
-  // 16:     h.value = Int32(77)
-  h->value = 77;
-  // 17:     assert h is not None
-  if (!((h != nullptr))) tpy::tpy_panic("assertion failed");
-  // 18:     return consume(h)  # tpyc: ok
-  return consume(std::move((*h)));
+    // 14:     h: Handle | None
+    Handle* h = nullptr;
+    // 15:     h = Handle()
+    Handle __slot_1 = Handle();
+    h = &__slot_1;
+    // 16:     h.value = Int32(77)
+    h->value = 77;
+    // 17:     assert h is not None
+    if (!((h != nullptr))) tpy::tpy_panic("assertion failed");
+    // 18:     return consume(h)  # tpyc: ok
+    return consume(std::move((*h)));
 }
 
 // 21: def main():
 void main() {
-  // 22:     print(test())
-  std::cout << test() << "\n";
+    // 22:     print(test())
+    std::cout << test() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 25: main()
-  main();
+    __name__ = "__main__";
+    // 25: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

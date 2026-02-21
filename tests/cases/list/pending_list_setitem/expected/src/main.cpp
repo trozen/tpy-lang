@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 8: def test_setitem_mutation():
 void test_setitem_mutation() {
-  // 9:     # Function-local: should resolve to list (not Array) because __setitem__ mutates
-  // 10:     items = [Int32(1), Int32(2), Int32(3)]
-  std::vector<int32_t> items = {1, 2, 3};
-  // 11:     items.__setitem__(Int32(0), Int32(99))
-  tpy::set_item(items, 0, 99);
-  // 12:     print(items[Int32(0)])  # 99
-  std::cout << tpy::get_item(items, 0) << "\n";
-  // 13:     print(items[Int32(1)])  # 2
-  std::cout << tpy::get_item(items, 1) << "\n";
-  // 14:     print(items[Int32(2)])  # 3
-  std::cout << tpy::get_item(items, 2) << "\n";
+    // 9:     # Function-local: should resolve to list (not Array) because __setitem__ mutates
+    // 10:     items = [Int32(1), Int32(2), Int32(3)]
+    std::vector<int32_t> items = {1, 2, 3};
+    // 11:     items.__setitem__(Int32(0), Int32(99))
+    tpy::set_item(items, 0, 99);
+    // 12:     print(items[Int32(0)])  # 99
+    std::cout << tpy::get_item(items, 0) << "\n";
+    // 13:     print(items[Int32(1)])  # 2
+    std::cout << tpy::get_item(items, 1) << "\n";
+    // 14:     print(items[Int32(2)])  # 3
+    std::cout << tpy::get_item(items, 2) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test that __setitem__ marks a pending list as mutated.
-  // 16: test_setitem_mutation()
-  test_setitem_mutation();
+    __name__ = "__main__";
+    // 1: """Test that __setitem__ marks a pending list as mutated.
+    // 16: test_setitem_mutation()
+    test_setitem_mutation();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

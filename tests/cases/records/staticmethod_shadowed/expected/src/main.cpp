@@ -10,34 +10,34 @@ Helper* h{};
 
 // 17: def use_helper(Helper: Helper) -> Int32:
 int32_t use_helper(Helper& Helper) {
-  // 18:     # Inside this function, 'Helper' is the parameter (an instance), not the class
-  // 19:     # So Helper.get() should call the instance method, not try to find a static method
-  // 20:     return Helper.get()
-  return Helper.get();
+    // 18:     # Inside this function, 'Helper' is the parameter (an instance), not the class
+    // 19:     # So Helper.get() should call the instance method, not try to find a static method
+    // 20:     return Helper.get()
+    return Helper.get();
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test that local variables correctly shadow class names for method calls."""
-  // 22: # Static method call via class name
-  // 23: print(Helper.add(10, 20))
-  std::cout << Helper::add(10, 20) << "\n";
-  // 25: # Create instance and call function
-  // 26: h = Helper(42)
-  static Helper __global_slot_1 = Helper(42);
-  h = &__global_slot_1;
-  // 27: print(use_helper(h))
-  std::cout << use_helper((*h)) << "\n";
+    __name__ = "__main__";
+    // 1: """Test that local variables correctly shadow class names for method calls."""
+    // 22: # Static method call via class name
+    // 23: print(Helper.add(10, 20))
+    std::cout << Helper::add(10, 20) << "\n";
+    // 25: # Create instance and call function
+    // 26: h = Helper(42)
+    static Helper __global_slot_1 = Helper(42);
+    h = &__global_slot_1;
+    // 27: print(use_helper(h))
+    std::cout << use_helper((*h)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

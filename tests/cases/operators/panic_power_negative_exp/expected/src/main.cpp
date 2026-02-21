@@ -13,24 +13,24 @@ int32_t y{};
 int32_t z{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Test that negative exponent panics at runtime
-  // 2: x = 2
-  x = 2;
-  // 3: y = -1
-  y = -1;
-  // 4: z = x ** y  # Should panic
-  z = (tpy::pow_check<int32_t>(x, y));
+    __name__ = "__main__";
+    // 1: # Test that negative exponent panics at runtime
+    // 2: x = 2
+    x = 2;
+    // 3: y = -1
+    y = -1;
+    // 4: z = x ** y  # Should panic
+    z = (tpy::pow_check<int32_t>(x, y));
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

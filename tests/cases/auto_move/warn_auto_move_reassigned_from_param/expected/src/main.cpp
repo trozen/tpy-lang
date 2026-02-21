@@ -7,35 +7,35 @@ std::string_view __name__;
 
 // 9: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 10:     return p.x
-  return p.x;
+    // 10:     return p.x
+    return p.x;
 }
 
 // 13: def test(a: Point) -> Int32:
 int32_t test(Point& a) {
-  // 14:     p = Point()
-  Point __slot_1 = Point();
-  Point* p = &__slot_1;
-  // 15:     p.x = 10
-  p->x = 10;
-  // 16:     p = a  # rebind to param alias -> lvalue reassignment
-  p = &(a);
-  // 17:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
-  return consume((*p));
+    // 14:     p = Point()
+    Point __slot_1 = Point();
+    Point* p = &__slot_1;
+    // 15:     p.x = 10
+    p->x = 10;
+    // 16:     p = a  # rebind to param alias -> lvalue reassignment
+    p = &(a);
+    // 17:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
+    return consume((*p));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

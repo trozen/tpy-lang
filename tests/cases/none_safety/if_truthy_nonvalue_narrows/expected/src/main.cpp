@@ -9,34 +9,34 @@ Point* pt{};
 
 // 11: def score(p: Point | None) -> Int32:
 int32_t score(Point* p) {
-  // 12:     if p:  # tpyc: ok
-  if (p) {
-    // 13:         return p.x + 1  # tpyc: ok
-    return (tpy::add_check<int32_t>(p->x, 1));
-  }
-  // 14:     return 0
-  return 0;
+    // 12:     if p:  # tpyc: ok
+    if (p) {
+        // 13:         return p.x + 1  # tpyc: ok
+        return (tpy::add_check<int32_t>(p->x, 1));
+    }
+    // 14:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 17: pt: Point = Point(2)
-  static Point __global_slot_1 = Point(2);
-  pt = &__global_slot_1;
-  // 18: print(score(pt))
-  std::cout << score(pt) << "\n";
-  // 19: print(score(None))
-  std::cout << score(nullptr) << "\n";
+    __name__ = "__main__";
+    // 17: pt: Point = Point(2)
+    static Point __global_slot_1 = Point(2);
+    pt = &__global_slot_1;
+    // 18: print(score(pt))
+    std::cout << score(pt) << "\n";
+    // 19: print(score(None))
+    std::cout << score(nullptr) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

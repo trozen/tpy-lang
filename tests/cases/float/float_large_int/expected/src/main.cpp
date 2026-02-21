@@ -18,39 +18,39 @@ tpy::BigInt d;
 tpy::BigInt e;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Test converting large floats to int (requires GMP, not int64)
-  // 2: a = int(1e18)  # Within int64 range
-  a = tpy::BigInt::from_float(1e+18);
-  // 3: b = int(1e50)  # Way beyond int64 range
-  b = tpy::BigInt::from_float(1e+50);
-  // 4: c = int(-1e50)  # Negative large value
-  c = tpy::BigInt::from_float(-(1e+50));
-  // 6: print(a)
-  std::cout << a << "\n";
-  // 7: print(b)
-  std::cout << b << "\n";
-  // 8: print(c)
-  std::cout << c << "\n";
-  // 10: # Also test that truncation toward zero works
-  // 11: d = int(1.9e20)
-  d = tpy::BigInt::from_float(1.9e+20);
-  // 12: e = int(-1.9e20)
-  e = tpy::BigInt::from_float(-(1.9e+20));
-  // 13: print(d)
-  std::cout << d << "\n";
-  // 14: print(e)
-  std::cout << e << "\n";
+    __name__ = "__main__";
+    // 1: # Test converting large floats to int (requires GMP, not int64)
+    // 2: a = int(1e18)  # Within int64 range
+    a = tpy::BigInt::from_float(1e+18);
+    // 3: b = int(1e50)  # Way beyond int64 range
+    b = tpy::BigInt::from_float(1e+50);
+    // 4: c = int(-1e50)  # Negative large value
+    c = tpy::BigInt::from_float(-(1e+50));
+    // 6: print(a)
+    std::cout << a << "\n";
+    // 7: print(b)
+    std::cout << b << "\n";
+    // 8: print(c)
+    std::cout << c << "\n";
+    // 10: # Also test that truncation toward zero works
+    // 11: d = int(1.9e20)
+    d = tpy::BigInt::from_float(1.9e+20);
+    // 12: e = int(-1.9e20)
+    e = tpy::BigInt::from_float(-(1.9e+20));
+    // 13: print(d)
+    std::cout << d << "\n";
+    // 14: print(e)
+    std::cout << e << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

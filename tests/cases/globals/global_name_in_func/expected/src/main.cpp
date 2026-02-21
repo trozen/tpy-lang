@@ -8,25 +8,25 @@ std::string_view __name__;
 
 // 3: def f():
 void f() {
-  // 4:     print(__name__)
-  std::cout << __name__ << "\n";
+    // 4:     print(__name__)
+    std::cout << __name__ << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  // 1: __name__ = "custom"
-  __name__ = "custom";
-  // 6: f()
-  f();
+    // 1: __name__ = "custom"
+    __name__ = "custom";
+    // 6: f()
+    f();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

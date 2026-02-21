@@ -7,26 +7,26 @@ std::string_view __name__;
 
 // 4: def bump_positive(n: Int32) -> Int32:
 int32_t bump_positive(int32_t n) {
-  // 5:     assert n > 0, "n must be positive"
-  if (!((n > 0))) tpy::tpy_panic("n must be positive");
-  // 6:     return n + 1
-  return (tpy::add_check<int32_t>(n, 1));
+    // 5:     assert n > 0, "n must be positive"
+    if (!((n > 0))) tpy::tpy_panic("n must be positive");
+    // 6:     return n + 1
+    return (tpy::add_check<int32_t>(n, 1));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: print(bump_positive(4))
-  std::cout << bump_positive(4) << "\n";
+    __name__ = "__main__";
+    // 9: print(bump_positive(4))
+    std::cout << bump_positive(4) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

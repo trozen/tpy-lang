@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 11: def observe(items: readonly[list[Int32]]) -> None:
 void observe(const std::vector<int32_t>& items) {
-  // 12:     print(get_len(items))
-  std::cout << get_len(items) << "\n";
-  // 13:     print(get_first(items))
-  std::cout << get_first(items) << "\n";
+    // 12:     print(get_len(items))
+    std::cout << get_len(items) << "\n";
+    // 13:     print(get_first(items))
+    std::cout << get_first(items) << "\n";
 }
 
 // 15: def main() -> None:
 void main() {
-  // 16:     xs: list[Int32] = [Int32(10), Int32(20), Int32(30)]
-  std::vector<int32_t> xs = {10, 20, 30};
-  // 17:     observe(xs)
-  observe(xs);
+    // 16:     xs: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    std::vector<int32_t> xs = {10, 20, 30};
+    // 17:     observe(xs)
+    observe(xs);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 19: main()
-  main();
+    __name__ = "__main__";
+    // 19: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

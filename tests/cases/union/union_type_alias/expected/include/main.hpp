@@ -15,40 +15,40 @@ void main();
 
 // 5: class Circle:
 struct Circle {
-  // 6:     radius: Int32
-  int32_t radius;
+    // 6:     radius: Int32
+    int32_t radius;
 
-  // 8:     def __init__(self, radius: Int32) -> None:
-  Circle() = default;
-  explicit Circle(int32_t radius) : radius(radius) {}
+    // 8:     def __init__(self, radius: Int32) -> None:
+    Circle() = default;
+    explicit Circle(int32_t radius) : radius(radius) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "radius=" << obj.radius
-     << ")";
-  return os;
+    os << "Circle("
+       << "radius=" << obj.radius
+       << ")";
+    return os;
 }
 
 // 12: class Rect:
 struct Rect {
-  // 13:     width: Int32
-  int32_t width;
-  // 14:     height: Int32
-  int32_t height;
+    // 13:     width: Int32
+    int32_t width;
+    // 14:     height: Int32
+    int32_t height;
 
-  // 16:     def __init__(self, width: Int32, height: Int32) -> None:
-  Rect() = default;
-  explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
+    // 16:     def __init__(self, width: Int32, height: Int32) -> None:
+    Rect() = default;
+    explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-  os << "Rect("
-     << "width=" << obj.width
-     << ", "
-     << "height=" << obj.height
-     << ")";
-  return os;
+    os << "Rect("
+       << "width=" << obj.width
+       << ", "
+       << "height=" << obj.height
+       << ")";
+    return os;
 }
 
 using Shape = std::variant<Circle, Rect>;

@@ -8,24 +8,24 @@ std::string_view __name__;
 Child* c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 19: c = Child(10, 20)
-  static Child __global_slot_1 = Child(tpy::BigInt(10), tpy::BigInt(20));
-  c = &__global_slot_1;
-  // 20: print(c.value)
-  std::cout << c->value << "\n";
-  // 21: print(c.extra)
-  std::cout << c->extra << "\n";
+    __name__ = "__main__";
+    // 19: c = Child(10, 20)
+    static Child __global_slot_1 = Child(tpy::BigInt(10), tpy::BigInt(20));
+    c = &__global_slot_1;
+    // 20: print(c.value)
+    std::cout << c->value << "\n";
+    // 21: print(c.extra)
+    std::cout << c->extra << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

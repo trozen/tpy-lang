@@ -12,28 +12,28 @@ const char* cp{};
 char* p{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
-  // 4: s: str = "hello"
-  s = "hello";
-  // 5: cp: ConstPtr[Char] = unsafe_ptr(s)
-  cp = s.data();
-  // 6: p: Ptr[Char] = unsafe_const_cast(cp)
-  p = const_cast<char*>(cp);
-  // 7: print(unsafe_load(p, UInt32(0)))
-  std::cout << p[0] << "\n";
-  // 8: print(unsafe_load(p, UInt32(4)))
-  std::cout << p[4] << "\n";
+    __name__ = "__main__";
+    // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
+    // 4: s: str = "hello"
+    s = "hello";
+    // 5: cp: ConstPtr[Char] = unsafe_ptr(s)
+    cp = s.data();
+    // 6: p: Ptr[Char] = unsafe_const_cast(cp)
+    p = const_cast<char*>(cp);
+    // 7: print(unsafe_load(p, UInt32(0)))
+    std::cout << p[0] << "\n";
+    // 8: print(unsafe_load(p, UInt32(4)))
+    std::cout << p[4] << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

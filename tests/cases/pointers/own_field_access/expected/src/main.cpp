@@ -7,51 +7,51 @@ std::string_view __name__;
 
 // 20: def make_point(x: Int32, y: Int32) -> Own[Point]:
 Point make_point(int32_t x, int32_t y) {
-  // 21:     return Point(x, y)
-  return Point(x, y);
+    // 21:     return Point(x, y)
+    return Point(x, y);
 }
 
 // 24: def use_owned_point(p: Own[Point]) -> Int32:
 int32_t use_owned_point(Point p) {
-  // 25:     # Field access on Own[T] parameter
-  // 26:     return p.x + p.y
-  return (tpy::add_check<int32_t>(p.x, p.y));
+    // 25:     # Field access on Own[T] parameter
+    // 26:     return p.x + p.y
+    return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 29: def main():
 void main() {
-  // 30:     # Direct field access on function returning Own[T]
-  // 31:     print(make_point(10, 20).x)
-  std::cout << make_point(10, 20).x << "\n";
-  // 32:     print(make_point(30, 40).y)
-  std::cout << make_point(30, 40).y << "\n";
-  // 34:     # Field access through Own[T] parameter
-  // 35:     print(use_owned_point(make_point(50, 60)))
-  std::cout << use_owned_point(make_point(50, 60)) << "\n";
-  // 37:     # Chained: return value assigned to Point, then accessed
-  // 38:     pt: Point = make_point(70, 80)
-  Point pt = make_point(70, 80);
-  // 39:     print(pt.x)
-  std::cout << pt.x << "\n";
-  // 40:     print(pt.y)
-  std::cout << pt.y << "\n";
+    // 30:     # Direct field access on function returning Own[T]
+    // 31:     print(make_point(10, 20).x)
+    std::cout << make_point(10, 20).x << "\n";
+    // 32:     print(make_point(30, 40).y)
+    std::cout << make_point(30, 40).y << "\n";
+    // 34:     # Field access through Own[T] parameter
+    // 35:     print(use_owned_point(make_point(50, 60)))
+    std::cout << use_owned_point(make_point(50, 60)) << "\n";
+    // 37:     # Chained: return value assigned to Point, then accessed
+    // 38:     pt: Point = make_point(70, 80)
+    Point pt = make_point(70, 80);
+    // 39:     print(pt.x)
+    std::cout << pt.x << "\n";
+    // 40:     print(pt.y)
+    std::cout << pt.y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Tests field access on Own[T] types.
-  // 43: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Tests field access on Own[T] types.
+    // 43: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,24 +7,24 @@ std::string_view __name__;
 
 // 1: def fail_now() -> None:
 void fail_now() {
-  // 2:     assert False, "boom"
-  tpy::tpy_panic("boom");
+    // 2:     assert False, "boom"
+    tpy::tpy_panic("boom");
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 5: fail_now()
-  fail_now();
+    __name__ = "__main__";
+    // 5: fail_now()
+    fail_now();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -10,29 +10,29 @@ std::vector<int32_t>* nums{};
 std::vector<std::vector<int32_t>>* nested{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: nums = [1, 2, 3]
-  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
-  nums = &__global_slot_1;
-  // 2: print(nums)
-  std::cout << tpy::ListPrinter((*nums)) << "\n";
-  // 3: print([10, 20, 30])
-  std::cout << tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
-  // 4: nested = [[1, 2], [3, 4]]
-  static std::vector<std::vector<int32_t>> __global_slot_2 = {{1, 2}, {3, 4}};
-  nested = &__global_slot_2;
-  // 5: print(nested)
-  std::cout << tpy::ListPrinter((*nested)) << "\n";
+    __name__ = "__main__";
+    // 1: nums = [1, 2, 3]
+    static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
+    nums = &__global_slot_1;
+    // 2: print(nums)
+    std::cout << tpy::ListPrinter((*nums)) << "\n";
+    // 3: print([10, 20, 30])
+    std::cout << tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
+    // 4: nested = [[1, 2], [3, 4]]
+    static std::vector<std::vector<int32_t>> __global_slot_2 = {{1, 2}, {3, 4}};
+    nested = &__global_slot_2;
+    // 5: print(nested)
+    std::cout << tpy::ListPrinter((*nested)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

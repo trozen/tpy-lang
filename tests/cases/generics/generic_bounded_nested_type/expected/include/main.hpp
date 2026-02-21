@@ -20,51 +20,51 @@ void main();
 
 // 9: class IntListHolder:
 struct IntListHolder {
-  // 10:     data: list[Int32]
-  std::vector<int32_t> data;
+    // 10:     data: list[Int32]
+    std::vector<int32_t> data;
 
-  // 12:     def __init__(self, data: list[Int32]) -> None:
-  IntListHolder() = default;
-  explicit IntListHolder(const std::vector<int32_t>& data) : data(data) {}
+    // 12:     def __init__(self, data: list[Int32]) -> None:
+    IntListHolder() = default;
+    explicit IntListHolder(const std::vector<int32_t>& data) : data(data) {}
 
-  // 15:     def items(self) -> list[Int32]:
-  std::vector<int32_t>& items() {
-    // 16:         return self.data
-    return this->data;
-  }
+    // 15:     def items(self) -> list[Int32]:
+    std::vector<int32_t>& items() {
+        // 16:         return self.data
+        return this->data;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
-  os << "IntListHolder("
-     << "data=" << tpy::ListPrinter(obj.data)
-     << ")";
-  return os;
+    os << "IntListHolder("
+       << "data=" << tpy::ListPrinter(obj.data)
+       << ")";
+    return os;
 }
 
 // # Bound is ItemsProvider[Int32], so items() must return list[Int32]
 // 19: class Wrapper[V: ItemsProvider[Int32]]:
 template<ItemsProvider<int32_t> V>
 struct Wrapper {
-  // 20:     holder: V
-  V holder;
+    // 20:     holder: V
+    V holder;
 
-  // 22:     def __init__(self, holder: V) -> None:
-  Wrapper() = default;
-  explicit Wrapper(const V& holder) : holder(holder) {}
+    // 22:     def __init__(self, holder: V) -> None:
+    Wrapper() = default;
+    explicit Wrapper(const V& holder) : holder(holder) {}
 
-  // 25:     def get_holder(self) -> V:
-  tpy::return_val_or_ref_t<V> get_holder() {
-    // 26:         return self.holder
-    return this->holder;
-  }
+    // 25:     def get_holder(self) -> V:
+    tpy::return_val_or_ref_t<V> get_holder() {
+        // 26:         return self.holder
+        return this->holder;
+    }
 };
 
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
-  os << "Wrapper("
-     << "holder=" << tpy::ValuePrinter(obj.holder)
-     << ")";
-  return os;
+    os << "Wrapper("
+       << "holder=" << tpy::ValuePrinter(obj.holder)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

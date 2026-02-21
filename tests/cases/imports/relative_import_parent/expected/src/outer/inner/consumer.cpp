@@ -7,19 +7,19 @@ std::string_view __name__;
 
 // 4: def compute() -> Int32:
 int32_t compute() {
-  // 5:     return add(Int32(100), Int32(23))
-  return ::tpy_user::outer::utils::add(100, 23);
+    // 5:     return add(Int32(100), Int32(23))
+    return ::tpy_user::outer::utils::add(100, 23);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "outer.inner.consumer";
-  // 2: from ..utils import add
-  ::tpy_user::outer::__tpy_init();
-  ::tpy_user::outer::utils::__tpy_init();
+    __name__ = "outer.inner.consumer";
+    // 2: from ..utils import add
+    ::tpy_user::outer::__tpy_init();
+    ::tpy_user::outer::utils::__tpy_init();
 }
 
 } // namespace tpy_user::outer::inner::consumer

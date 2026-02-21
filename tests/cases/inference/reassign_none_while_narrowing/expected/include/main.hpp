@@ -14,19 +14,19 @@ void test_while();
 
 // 5: class Box:
 struct Box {
-  // 6:     v: Int32
-  int32_t v;
+    // 6:     v: Int32
+    int32_t v;
 
-  // 7:     def __init__(self, v: Int32) -> None:
-  Box() = default;
-  explicit Box(int32_t v) : v(v) {}
+    // 7:     def __init__(self, v: Int32) -> None:
+    Box() = default;
+    explicit Box(int32_t v) : v(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "v=" << obj.v
-     << ")";
-  return os;
+    os << "Box("
+       << "v=" << obj.v
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -14,36 +14,36 @@ void main();
 // 3: class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-  // 4:     first: A
-  A first;
-  // 5:     second: B
-  B second;
+    // 4:     first: A
+    A first;
+    // 5:     second: B
+    B second;
 
-  // 7:     def __init__(self, first: A, second: B) -> None:
-  Pair() = default;
-  explicit Pair(const A& first, const B& second) : first(first), second(second) {}
+    // 7:     def __init__(self, first: A, second: B) -> None:
+    Pair() = default;
+    explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 
-  // 11:     def get_first(self) -> A:
-  tpy::return_val_or_ref_t<A> get_first() {
-    // 12:         return self.first
-    return this->first;
-  }
+    // 11:     def get_first(self) -> A:
+    tpy::return_val_or_ref_t<A> get_first() {
+        // 12:         return self.first
+        return this->first;
+    }
 
-  // 14:     def get_second(self) -> B:
-  tpy::return_val_or_ref_t<B> get_second() {
-    // 15:         return self.second
-    return this->second;
-  }
+    // 14:     def get_second(self) -> B:
+    tpy::return_val_or_ref_t<B> get_second() {
+        // 15:         return self.second
+        return this->second;
+    }
 };
 
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
-  os << "Pair("
-     << "first=" << tpy::ValuePrinter(obj.first)
-     << ", "
-     << "second=" << tpy::ValuePrinter(obj.second)
-     << ")";
-  return os;
+    os << "Pair("
+       << "first=" << tpy::ValuePrinter(obj.first)
+       << ", "
+       << "second=" << tpy::ValuePrinter(obj.second)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

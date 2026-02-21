@@ -14,48 +14,48 @@ void main();
 
 // 5: class Point:
 struct Point {
-  // 6:     x: Int32
-  int32_t x;
-  // 7:     y: Int32
-  int32_t y;
+    // 6:     x: Int32
+    int32_t x;
+    // 7:     y: Int32
+    int32_t y;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 10: class Container:
 struct Container {
-  // 11:     val: Int32
-  int32_t val;
+    // 11:     val: Int32
+    int32_t val;
 
-  Container() = default;
+    Container() = default;
 
-  // 13:     def take(self, p: Own[Point] | None) -> None:
-  void take(std::optional<Point> p) {
-    // 14:         if p is not None:
-    if ((p.has_value())) {
-      // 15:             self.val = Int32(1)
-      this->val = 1;
-    } else {
-      // 17:             self.val = Int32(0)
-      this->val = 0;
+    // 13:     def take(self, p: Own[Point] | None) -> None:
+    void take(std::optional<Point> p) {
+        // 14:         if p is not None:
+        if ((p.has_value())) {
+            // 15:             self.val = Int32(1)
+            this->val = 1;
+        } else {
+            // 17:             self.val = Int32(0)
+            this->val = 0;
+        }
     }
-  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-  os << "Container("
-     << "val=" << obj.val
-     << ")";
-  return os;
+    os << "Container("
+       << "val=" << obj.val
+       << ")";
+    return os;
 }
 
 void __tpy_init();

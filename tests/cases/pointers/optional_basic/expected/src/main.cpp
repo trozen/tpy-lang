@@ -7,35 +7,35 @@ std::string_view __name__;
 
 // 13: def test() -> None:
 void test() {
-  // 14:     p: Point | None = None
-  std::optional<Point> __slot_1;
-  Point* p = nullptr;
-  // 15:     print(p is None)
-  std::cout << tpy::print_bool((p == nullptr)) << "\n";
-  // 16:     p = Point(1, 2)
-  p = &*(__slot_1 = Point(1, 2));
-  // 17:     print(p is None)
-  std::cout << tpy::print_bool((p == nullptr)) << "\n";
-  // 18:     print(p is not None)
-  std::cout << tpy::print_bool((p != nullptr)) << "\n";
-  // 19:     print(p.x)
-  std::cout << p->x << "\n";
+    // 14:     p: Point | None = None
+    std::optional<Point> __slot_1;
+    Point* p = nullptr;
+    // 15:     print(p is None)
+    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    // 16:     p = Point(1, 2)
+    p = &*(__slot_1 = Point(1, 2));
+    // 17:     print(p is None)
+    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    // 18:     print(p is not None)
+    std::cout << tpy::print_bool((p != nullptr)) << "\n";
+    // 19:     print(p.x)
+    std::cout << p->x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: test()
-  test();
+    __name__ = "__main__";
+    // 22: test()
+    test();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

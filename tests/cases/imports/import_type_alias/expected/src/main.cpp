@@ -11,30 +11,30 @@ char ch{};
 
 // 4: def greet(n: I, c: C) -> None:
 void greet(int32_t n, char c) {
-  // 5:     print(n)
-  std::cout << n << "\n";
-  // 6:     print(c)
-  std::cout << c << "\n";
+    // 5:     print(n)
+    std::cout << n << "\n";
+    // 6:     print(c)
+    std::cout << c << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 8: x: I = I(42)
-  x = 42;
-  // 9: ch: C = "x"  # Char from string literal, not constructor
-  ch = 'x';
-  // 10: greet(x, ch)
-  greet(x, ch);
+    __name__ = "__main__";
+    // 8: x: I = I(42)
+    x = 42;
+    // 9: ch: C = "x"  # Char from string literal, not constructor
+    ch = 'x';
+    // 10: greet(x, ch)
+    greet(x, ch);
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

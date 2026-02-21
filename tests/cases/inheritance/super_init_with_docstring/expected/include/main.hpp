@@ -14,38 +14,38 @@ extern Child* c;
 // # Test: docstring before super().__init__() is allowed
 // 3: class Parent:
 struct Parent {
-  // 4:     value: int
-  tpy::BigInt value;
+    // 4:     value: int
+    tpy::BigInt value;
 
-  // 6:     def __init__(self, value: int) -> None:
-  Parent() = default;
-  explicit Parent(const tpy::BigInt& value) : value(value) {}
+    // 6:     def __init__(self, value: int) -> None:
+    Parent() = default;
+    explicit Parent(const tpy::BigInt& value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
-  os << "Parent("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Parent("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 10: class Child(Parent):
 struct Child : Parent {
-  // 11:     extra: int
-  tpy::BigInt extra;
+    // 11:     extra: int
+    tpy::BigInt extra;
 
-  // 13:     def __init__(self, value: int, extra: int) -> None:
-  Child() = default;
-  explicit Child(const tpy::BigInt& value, const tpy::BigInt& extra) : Parent(value), extra(extra) {
-    // 14:         """Initialize Child with value and extra."""
-  }
+    // 13:     def __init__(self, value: int, extra: int) -> None:
+    Child() = default;
+    explicit Child(const tpy::BigInt& value, const tpy::BigInt& extra) : Parent(value), extra(extra) {
+        // 14:         """Initialize Child with value and extra."""
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-  os << "Child("
-     << "extra=" << obj.extra
-     << ")";
-  return os;
+    os << "Child("
+       << "extra=" << obj.extra
+       << ")";
+    return os;
 }
 
 void __tpy_init();

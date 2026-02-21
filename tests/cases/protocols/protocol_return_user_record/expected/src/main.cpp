@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 22: def main() -> None:
 void main() {
-  // 23:     factory = DefaultFactory()
-  DefaultFactory factory = DefaultFactory();
-  // 24:     p = make_point(factory, 10, 20)
-  Point p = make_point<DefaultFactory>(factory, 10, 20);
-  // 25:     print(p.x)
-  std::cout << p.x << "\n";
-  // 26:     print(p.y)
-  std::cout << p.y << "\n";
+    // 23:     factory = DefaultFactory()
+    DefaultFactory factory = DefaultFactory();
+    // 24:     p = make_point(factory, 10, 20)
+    Point p = make_point<DefaultFactory>(factory, 10, 20);
+    // 25:     print(p.x)
+    std::cout << p.x << "\n";
+    // 26:     print(p.y)
+    std::cout << p.y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: main()
-  main();
+    __name__ = "__main__";
+    // 28: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

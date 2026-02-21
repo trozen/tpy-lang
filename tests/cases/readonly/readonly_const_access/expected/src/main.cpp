@@ -7,38 +7,38 @@ std::string_view __name__;
 
 // 19: def read_items(c: readonly[Container]) -> None:
 void read_items(const Container& c) {
-  // 20:     items = c.items()
-  std::vector<int32_t> items = c.items();
-  // 21:     print(len(items))
-  std::cout << tpy::__len__(items) << "\n";
-  // 22:     print(items[0])
-  std::cout << tpy::get_item(items, 0) << "\n";
+    // 20:     items = c.items()
+    std::vector<int32_t> items = c.items();
+    // 21:     print(len(items))
+    std::cout << tpy::__len__(items) << "\n";
+    // 22:     print(items[0])
+    std::cout << tpy::get_item(items, 0) << "\n";
 }
 
 // 24: def main() -> None:
 void main() {
-  // 25:     c = Container()
-  Container c = Container();
-  // 26:     read_items(c)
-  read_items(c);
-  // 27:     print(c.count())
-  std::cout << c.count() << "\n";
+    // 25:     c = Container()
+    Container c = Container();
+    // 26:     read_items(c)
+    read_items(c);
+    // 27:     print(c.count())
+    std::cout << c.count() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 29: main()
-  main();
+    __name__ = "__main__";
+    // 29: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

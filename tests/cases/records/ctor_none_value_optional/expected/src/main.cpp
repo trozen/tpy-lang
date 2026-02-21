@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 11: def main():
 void main() {
-  // 12:     h1 = Holder(None)
-  Holder h1 = Holder(std::nullopt);
-  // 13:     print(h1.value is None)
-  std::cout << tpy::print_bool((!h1.value.has_value())) << "\n";
-  // 15:     h2 = Holder(Int32(42))
-  Holder h2 = Holder(42);
-  // 16:     print(h2.value)
-  std::cout << tpy::print_optional_val(h2.value) << "\n";
+    // 12:     h1 = Holder(None)
+    Holder h1 = Holder(std::nullopt);
+    // 13:     print(h1.value is None)
+    std::cout << tpy::print_bool((!h1.value.has_value())) << "\n";
+    // 15:     h2 = Holder(Int32(42))
+    Holder h2 = Holder(42);
+    // 16:     print(h2.value)
+    std::cout << tpy::print_optional_val(h2.value) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 18: main()
-  main();
+    __name__ = "__main__";
+    // 18: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

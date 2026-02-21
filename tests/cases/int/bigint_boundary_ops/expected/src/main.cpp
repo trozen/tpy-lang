@@ -32,173 +32,173 @@ tpy::BigInt in_i64_from_big;
 
 // 7: def probe(label: str, a: int, b: int, shift: Int32) -> None:
 void probe(std::string_view label, const tpy::BigInt& a, const tpy::BigInt& b, int32_t shift) {
-  // 8:     print("===")
-  std::cout << "===" << "\n";
-  // 9:     print(label)
-  std::cout << label << "\n";
-  // 10:     print("===")
-  std::cout << "===" << "\n";
-  // 11:     print(a)
-  std::cout << a << "\n";
-  // 12:     print(b)
-  std::cout << b << "\n";
-  // 13:     print(a + b)
-  std::cout << ((a) + (b)) << "\n";
-  // 14:     print(a - b)
-  std::cout << ((a) - (b)) << "\n";
-  // 15:     print(a * b)
-  std::cout << ((a) * (b)) << "\n";
-  // 16:     if b != 0:
-  if ((b != 0)) {
-    // 17:         print(a // b)
-    std::cout << ((a) / (b)) << "\n";
-    // 18:         print(a % b)
-    std::cout << ((a) % (b)) << "\n";
-  }
-  // 19:     print(a & b)
-  std::cout << ((a) & (b)) << "\n";
-  // 20:     print(a | b)
-  std::cout << ((a) | (b)) << "\n";
-  // 21:     print(a ^ b)
-  std::cout << ((a) ^ (b)) << "\n";
-  // 22:     print(a << shift)
-  std::cout << ((a) << (tpy::BigInt(shift))) << "\n";
-  // 23:     print(a >> shift)
-  std::cout << ((a) >> (tpy::BigInt(shift))) << "\n";
-  // 24:     print(-a)
-  std::cout << -(a) << "\n";
-  // 25:     print(~a)
-  std::cout << ~(a) << "\n";
-  // 26:     print(a == b)
-  std::cout << tpy::print_bool((a == b)) << "\n";
-  // 27:     print(a != b)
-  std::cout << tpy::print_bool((a != b)) << "\n";
-  // 28:     print(a < b)
-  std::cout << tpy::print_bool((a < b)) << "\n";
-  // 29:     print(a <= b)
-  std::cout << tpy::print_bool((a <= b)) << "\n";
-  // 30:     print(a > b)
-  std::cout << tpy::print_bool((a > b)) << "\n";
-  // 31:     print(a >= b)
-  std::cout << tpy::print_bool((a >= b)) << "\n";
+    // 8:     print("===")
+    std::cout << "===" << "\n";
+    // 9:     print(label)
+    std::cout << label << "\n";
+    // 10:     print("===")
+    std::cout << "===" << "\n";
+    // 11:     print(a)
+    std::cout << a << "\n";
+    // 12:     print(b)
+    std::cout << b << "\n";
+    // 13:     print(a + b)
+    std::cout << ((a) + (b)) << "\n";
+    // 14:     print(a - b)
+    std::cout << ((a) - (b)) << "\n";
+    // 15:     print(a * b)
+    std::cout << ((a) * (b)) << "\n";
+    // 16:     if b != 0:
+    if ((b != 0)) {
+        // 17:         print(a // b)
+        std::cout << ((a) / (b)) << "\n";
+        // 18:         print(a % b)
+        std::cout << ((a) % (b)) << "\n";
+    }
+    // 19:     print(a & b)
+    std::cout << ((a) & (b)) << "\n";
+    // 20:     print(a | b)
+    std::cout << ((a) | (b)) << "\n";
+    // 21:     print(a ^ b)
+    std::cout << ((a) ^ (b)) << "\n";
+    // 22:     print(a << shift)
+    std::cout << ((a) << (tpy::BigInt(shift))) << "\n";
+    // 23:     print(a >> shift)
+    std::cout << ((a) >> (tpy::BigInt(shift))) << "\n";
+    // 24:     print(-a)
+    std::cout << -(a) << "\n";
+    // 25:     print(~a)
+    std::cout << ~(a) << "\n";
+    // 26:     print(a == b)
+    std::cout << tpy::print_bool((a == b)) << "\n";
+    // 27:     print(a != b)
+    std::cout << tpy::print_bool((a != b)) << "\n";
+    // 28:     print(a < b)
+    std::cout << tpy::print_bool((a < b)) << "\n";
+    // 29:     print(a <= b)
+    std::cout << tpy::print_bool((a <= b)) << "\n";
+    // 30:     print(a > b)
+    std::cout << tpy::print_bool((a > b)) << "\n";
+    // 31:     print(a >= b)
+    std::cout << tpy::print_bool((a >= b)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 34: B: int = 1 << 62
-  B = ((tpy::BigInt(1)) << (tpy::BigInt(62)));
-  // 35: SMALL_MAX: int = B - 1
-  SMALL_MAX = ((B) - (tpy::BigInt(1)));
-  // 36: SMALL_MIN: int = -B
-  SMALL_MIN = -(B);
-  // 37: BIG_POS: int = B
-  BIG_POS = B;
-  // 38: BIG_NEG: int = -B - 1
-  BIG_NEG = ((-(B)) - (tpy::BigInt(1)));
-  // 39: WIDE_POS: int = 1 << 70
-  WIDE_POS = ((tpy::BigInt(1)) << (tpy::BigInt(70)));
-  // 40: WIDE_NEG: int = -(1 << 70)
-  WIDE_NEG = -(((tpy::BigInt(1)) << (tpy::BigInt(70))));
-  // 41: ONE_BIG: int = 1
-  ONE_BIG = tpy::BigInt(1);
-  // 43: # Boundary transitions around int63 small-int optimization.
-  // 44: print(SMALL_MAX)
-  std::cout << SMALL_MAX << "\n";
-  // 45: print(SMALL_MAX + 1)
-  std::cout << ((SMALL_MAX) + (tpy::BigInt(1))) << "\n";
-  // 46: print(BIG_POS - 1)
-  std::cout << ((BIG_POS) - (tpy::BigInt(1))) << "\n";
-  // 47: print(SMALL_MIN)
-  std::cout << SMALL_MIN << "\n";
-  // 48: print(SMALL_MIN - 1)
-  std::cout << ((SMALL_MIN) - (tpy::BigInt(1))) << "\n";
-  // 49: print(BIG_NEG + 1)
-  std::cout << ((BIG_NEG) + (tpy::BigInt(1))) << "\n";
-  // 50: print(((B + 1) - 2))
-  std::cout << ((((B) + (tpy::BigInt(1)))) - (tpy::BigInt(2))) << "\n";
-  // 51: print(((-B - 1) + 2))
-  std::cout << ((((-(B)) - (tpy::BigInt(1)))) + (tpy::BigInt(2))) << "\n";
-  // 53: # Core operation matrix with mixed signs and magnitudes.
-  // 54: probe("small_max + one", SMALL_MAX, 1, Int32(1))
-  probe("small_max + one", SMALL_MAX, tpy::BigInt(1), 1);
-  // 55: probe("small_min + minus_one", SMALL_MIN, -1, Int32(1))
-  probe("small_min + minus_one", SMALL_MIN, tpy::BigInt(-1), 1);
-  // 56: probe("big_pos + three", BIG_POS, 3, Int32(2))
-  probe("big_pos + three", BIG_POS, tpy::BigInt(3), 2);
-  // 57: probe("big_neg + three", BIG_NEG, 3, Int32(2))
-  probe("big_neg + three", BIG_NEG, tpy::BigInt(3), 2);
-  // 58: probe("wide_pos + minus_five", WIDE_POS, -5, Int32(31))
-  probe("wide_pos + minus_five", WIDE_POS, tpy::BigInt(-5), 31);
-  // 59: probe("wide_neg + seven", WIDE_NEG, 7, Int32(31))
-  probe("wide_neg + seven", WIDE_NEG, tpy::BigInt(7), 31);
-  // 60: probe("zero + big_pos", 0, BIG_POS, Int32(63))
-  probe("zero + big_pos", tpy::BigInt(0), BIG_POS, 63);
-  // 61: probe("minus_one + wide_pos", -1, WIDE_POS, Int32(64))
-  probe("minus_one + wide_pos", tpy::BigInt(-1), WIDE_POS, 64);
-  // 63: # Shift behavior at and beyond machine-word boundaries.
-  // 64: print(BIG_POS << 63)
-  std::cout << ((BIG_POS) << (tpy::BigInt(63))) << "\n";
-  // 65: print(BIG_POS >> 63)
-  std::cout << ((BIG_POS) >> (tpy::BigInt(63))) << "\n";
-  // 66: print(BIG_NEG << 63)
-  std::cout << ((BIG_NEG) << (tpy::BigInt(63))) << "\n";
-  // 67: print(BIG_NEG >> 63)
-  std::cout << ((BIG_NEG) >> (tpy::BigInt(63))) << "\n";
-  // 68: print((-1) >> 200)
-  std::cout << -1 << "\n";
-  // 69: print((ONE_BIG << 200) >> 199)
-  std::cout << ((((ONE_BIG) << (tpy::BigInt(200)))) >> (tpy::BigInt(199))) << "\n";
-  // 70: shift_count: int = 65
-  shift_count = tpy::BigInt(65);
-  // 71: print(BIG_POS << shift_count)
-  std::cout << ((BIG_POS) << (shift_count)) << "\n";
-  // 72: print(BIG_NEG >> shift_count)
-  std::cout << ((BIG_NEG) >> (shift_count)) << "\n";
-  // 74: # Power behavior with BigInt values.
-  // 75: print((B + 1) ** 2)
-  std::cout << ((((B) + (tpy::BigInt(1)))).pow(tpy::BigInt(2))) << "\n";
-  // 76: print((-B - 1) ** 3)
-  std::cout << ((((-(B)) - (tpy::BigInt(1)))).pow(tpy::BigInt(3))) << "\n";
-  // 77: print((-(B + 1)) ** 4)
-  std::cout << ((-(((B) + (tpy::BigInt(1))))).pow(tpy::BigInt(4))) << "\n";
-  // 78: print((WIDE_NEG) ** 0)
-  std::cout << ((WIDE_NEG).pow(tpy::BigInt(0))) << "\n";
-  // 79: print((WIDE_POS // (ONE_BIG << 60)) ** 6)
-  std::cout << ((((WIDE_POS) / (((ONE_BIG) << (tpy::BigInt(60)))))).pow(tpy::BigInt(6))) << "\n";
-  // 81: # Constructor conversions from BigInt to fixed-width integers.
-  // 82: in_i32_max: int = (ONE_BIG << 31) - 1
-  in_i32_max = ((((ONE_BIG) << (tpy::BigInt(31)))) - (tpy::BigInt(1)));
-  // 83: in_i32_min: int = -(ONE_BIG << 31)
-  in_i32_min = -(((ONE_BIG) << (tpy::BigInt(31))));
-  // 84: in_i64_from_big: int = (ONE_BIG << 62) + 123
-  in_i64_from_big = ((((ONE_BIG) << (tpy::BigInt(62)))) + (tpy::BigInt(123)));
-  // 85: print(Int32(in_i32_max))
-  std::cout << (in_i32_max).to_fixed_check<int32_t>() << "\n";
-  // 86: print(Int32(in_i32_min))
-  std::cout << (in_i32_min).to_fixed_check<int32_t>() << "\n";
-  // 87: print(Int64(in_i64_from_big))
-  std::cout << (in_i64_from_big).to_fixed_check<int64_t>() << "\n";
-  // 88: print(Int64(-in_i64_from_big))
-  std::cout << (-(in_i64_from_big)).to_fixed_check<int64_t>() << "\n";
-  // 90: # String and float conversions through int() constructor.
-  // 91: print(int("  +123456789012345678901234567890  "))
-  std::cout << tpy::BigInt::from_str("  +123456789012345678901234567890  ") << "\n";
-  // 92: print(int(" -999999999999999999999999999999 "))
-  std::cout << tpy::BigInt::from_str(" -999999999999999999999999999999 ") << "\n";
-  // 93: print(int(1.9e20))
-  std::cout << tpy::BigInt::from_float(1.9e+20) << "\n";
-  // 94: print(int(-1.9e20))
-  std::cout << tpy::BigInt::from_float(-(1.9e+20)) << "\n";
+    __name__ = "__main__";
+    // 34: B: int = 1 << 62
+    B = ((tpy::BigInt(1)) << (tpy::BigInt(62)));
+    // 35: SMALL_MAX: int = B - 1
+    SMALL_MAX = ((B) - (tpy::BigInt(1)));
+    // 36: SMALL_MIN: int = -B
+    SMALL_MIN = -(B);
+    // 37: BIG_POS: int = B
+    BIG_POS = B;
+    // 38: BIG_NEG: int = -B - 1
+    BIG_NEG = ((-(B)) - (tpy::BigInt(1)));
+    // 39: WIDE_POS: int = 1 << 70
+    WIDE_POS = ((tpy::BigInt(1)) << (tpy::BigInt(70)));
+    // 40: WIDE_NEG: int = -(1 << 70)
+    WIDE_NEG = -(((tpy::BigInt(1)) << (tpy::BigInt(70))));
+    // 41: ONE_BIG: int = 1
+    ONE_BIG = tpy::BigInt(1);
+    // 43: # Boundary transitions around int63 small-int optimization.
+    // 44: print(SMALL_MAX)
+    std::cout << SMALL_MAX << "\n";
+    // 45: print(SMALL_MAX + 1)
+    std::cout << ((SMALL_MAX) + (tpy::BigInt(1))) << "\n";
+    // 46: print(BIG_POS - 1)
+    std::cout << ((BIG_POS) - (tpy::BigInt(1))) << "\n";
+    // 47: print(SMALL_MIN)
+    std::cout << SMALL_MIN << "\n";
+    // 48: print(SMALL_MIN - 1)
+    std::cout << ((SMALL_MIN) - (tpy::BigInt(1))) << "\n";
+    // 49: print(BIG_NEG + 1)
+    std::cout << ((BIG_NEG) + (tpy::BigInt(1))) << "\n";
+    // 50: print(((B + 1) - 2))
+    std::cout << ((((B) + (tpy::BigInt(1)))) - (tpy::BigInt(2))) << "\n";
+    // 51: print(((-B - 1) + 2))
+    std::cout << ((((-(B)) - (tpy::BigInt(1)))) + (tpy::BigInt(2))) << "\n";
+    // 53: # Core operation matrix with mixed signs and magnitudes.
+    // 54: probe("small_max + one", SMALL_MAX, 1, Int32(1))
+    probe("small_max + one", SMALL_MAX, tpy::BigInt(1), 1);
+    // 55: probe("small_min + minus_one", SMALL_MIN, -1, Int32(1))
+    probe("small_min + minus_one", SMALL_MIN, tpy::BigInt(-1), 1);
+    // 56: probe("big_pos + three", BIG_POS, 3, Int32(2))
+    probe("big_pos + three", BIG_POS, tpy::BigInt(3), 2);
+    // 57: probe("big_neg + three", BIG_NEG, 3, Int32(2))
+    probe("big_neg + three", BIG_NEG, tpy::BigInt(3), 2);
+    // 58: probe("wide_pos + minus_five", WIDE_POS, -5, Int32(31))
+    probe("wide_pos + minus_five", WIDE_POS, tpy::BigInt(-5), 31);
+    // 59: probe("wide_neg + seven", WIDE_NEG, 7, Int32(31))
+    probe("wide_neg + seven", WIDE_NEG, tpy::BigInt(7), 31);
+    // 60: probe("zero + big_pos", 0, BIG_POS, Int32(63))
+    probe("zero + big_pos", tpy::BigInt(0), BIG_POS, 63);
+    // 61: probe("minus_one + wide_pos", -1, WIDE_POS, Int32(64))
+    probe("minus_one + wide_pos", tpy::BigInt(-1), WIDE_POS, 64);
+    // 63: # Shift behavior at and beyond machine-word boundaries.
+    // 64: print(BIG_POS << 63)
+    std::cout << ((BIG_POS) << (tpy::BigInt(63))) << "\n";
+    // 65: print(BIG_POS >> 63)
+    std::cout << ((BIG_POS) >> (tpy::BigInt(63))) << "\n";
+    // 66: print(BIG_NEG << 63)
+    std::cout << ((BIG_NEG) << (tpy::BigInt(63))) << "\n";
+    // 67: print(BIG_NEG >> 63)
+    std::cout << ((BIG_NEG) >> (tpy::BigInt(63))) << "\n";
+    // 68: print((-1) >> 200)
+    std::cout << -1 << "\n";
+    // 69: print((ONE_BIG << 200) >> 199)
+    std::cout << ((((ONE_BIG) << (tpy::BigInt(200)))) >> (tpy::BigInt(199))) << "\n";
+    // 70: shift_count: int = 65
+    shift_count = tpy::BigInt(65);
+    // 71: print(BIG_POS << shift_count)
+    std::cout << ((BIG_POS) << (shift_count)) << "\n";
+    // 72: print(BIG_NEG >> shift_count)
+    std::cout << ((BIG_NEG) >> (shift_count)) << "\n";
+    // 74: # Power behavior with BigInt values.
+    // 75: print((B + 1) ** 2)
+    std::cout << ((((B) + (tpy::BigInt(1)))).pow(tpy::BigInt(2))) << "\n";
+    // 76: print((-B - 1) ** 3)
+    std::cout << ((((-(B)) - (tpy::BigInt(1)))).pow(tpy::BigInt(3))) << "\n";
+    // 77: print((-(B + 1)) ** 4)
+    std::cout << ((-(((B) + (tpy::BigInt(1))))).pow(tpy::BigInt(4))) << "\n";
+    // 78: print((WIDE_NEG) ** 0)
+    std::cout << ((WIDE_NEG).pow(tpy::BigInt(0))) << "\n";
+    // 79: print((WIDE_POS // (ONE_BIG << 60)) ** 6)
+    std::cout << ((((WIDE_POS) / (((ONE_BIG) << (tpy::BigInt(60)))))).pow(tpy::BigInt(6))) << "\n";
+    // 81: # Constructor conversions from BigInt to fixed-width integers.
+    // 82: in_i32_max: int = (ONE_BIG << 31) - 1
+    in_i32_max = ((((ONE_BIG) << (tpy::BigInt(31)))) - (tpy::BigInt(1)));
+    // 83: in_i32_min: int = -(ONE_BIG << 31)
+    in_i32_min = -(((ONE_BIG) << (tpy::BigInt(31))));
+    // 84: in_i64_from_big: int = (ONE_BIG << 62) + 123
+    in_i64_from_big = ((((ONE_BIG) << (tpy::BigInt(62)))) + (tpy::BigInt(123)));
+    // 85: print(Int32(in_i32_max))
+    std::cout << (in_i32_max).to_fixed_check<int32_t>() << "\n";
+    // 86: print(Int32(in_i32_min))
+    std::cout << (in_i32_min).to_fixed_check<int32_t>() << "\n";
+    // 87: print(Int64(in_i64_from_big))
+    std::cout << (in_i64_from_big).to_fixed_check<int64_t>() << "\n";
+    // 88: print(Int64(-in_i64_from_big))
+    std::cout << (-(in_i64_from_big)).to_fixed_check<int64_t>() << "\n";
+    // 90: # String and float conversions through int() constructor.
+    // 91: print(int("  +123456789012345678901234567890  "))
+    std::cout << tpy::BigInt::from_str("  +123456789012345678901234567890  ") << "\n";
+    // 92: print(int(" -999999999999999999999999999999 "))
+    std::cout << tpy::BigInt::from_str(" -999999999999999999999999999999 ") << "\n";
+    // 93: print(int(1.9e20))
+    std::cout << tpy::BigInt::from_float(1.9e+20) << "\n";
+    // 94: print(int(-1.9e20))
+    std::cout << tpy::BigInt::from_float(-(1.9e+20)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

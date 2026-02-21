@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 19: def main() -> None:
 void main() {
-  // 20:     # Narrowed Optional — flow analysis proves non-None
-  // 21:     r: Ref | None = Ref(Point(10, 20))
-  Ref __slot_1 = Ref(Point(10, 20));
-  Ref* r = &__slot_1;
-  // 22:     print(r.x)
-  std::cout << r->__deref__().x << "\n";
-  // 23:     print(r.sum())
-  std::cout << r->__deref__().sum() << "\n";
+    // 20:     # Narrowed Optional — flow analysis proves non-None
+    // 21:     r: Ref | None = Ref(Point(10, 20))
+    Ref __slot_1 = Ref(Point(10, 20));
+    Ref* r = &__slot_1;
+    // 22:     print(r.x)
+    std::cout << r->__deref__().x << "\n";
+    // 23:     print(r.sum())
+    std::cout << r->__deref__().sum() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 25: main()
-  main();
+    __name__ = "__main__";
+    // 25: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

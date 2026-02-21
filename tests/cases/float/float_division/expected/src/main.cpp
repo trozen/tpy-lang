@@ -6,29 +6,29 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # True division (/) always returns float
-  // 2: print(10 / 4)
-  std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(4)))) << "\n";
-  // 3: print(10 / 2)
-  std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(2)))) << "\n";
-  // 4: print(9 / 3)
-  std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(9)) / static_cast<double>(tpy::BigInt(3)))) << "\n";
-  // 6: # Floor division (//) preserves type
-  // 7: print(10 // 4)
-  std::cout << 2 << "\n";
-  // 8: print(10.0 // 4.0)
-  std::cout << tpy::print_float((std::floor((10.0) / (4.0)))) << "\n";
+    __name__ = "__main__";
+    // 1: # True division (/) always returns float
+    // 2: print(10 / 4)
+    std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(4)))) << "\n";
+    // 3: print(10 / 2)
+    std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(2)))) << "\n";
+    // 4: print(9 / 3)
+    std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(9)) / static_cast<double>(tpy::BigInt(3)))) << "\n";
+    // 6: # Floor division (//) preserves type
+    // 7: print(10 // 4)
+    std::cout << 2 << "\n";
+    // 8: print(10.0 // 4.0)
+    std::cout << tpy::print_float((std::floor((10.0) / (4.0)))) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

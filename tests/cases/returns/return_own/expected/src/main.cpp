@@ -7,40 +7,40 @@ std::string_view __name__;
 
 // 9: def create_point(x: Int32, y: Int32) -> Own[Point]:
 Point create_point(int32_t x, int32_t y) {
-  // 10:     p: Point = Point()
-  Point p = Point();
-  // 11:     p.x = x
-  p.x = x;
-  // 12:     p.y = y
-  p.y = y;
-  // 13:     return copy(p)  # tpyc: warning(/unnecessary copy/)
-  return p;
+    // 10:     p: Point = Point()
+    Point p = Point();
+    // 11:     p.x = x
+    p.x = x;
+    // 12:     p.y = y
+    p.y = y;
+    // 13:     return copy(p)  # tpyc: warning(/unnecessary copy/)
+    return p;
 }
 
 // 16: def main():
 void main() {
-  // 17:     pt: Point = create_point(10, 20)
-  Point pt = create_point(10, 20);
-  // 18:     print(pt.x)
-  std::cout << pt.x << "\n";
-  // 19:     print(pt.y)
-  std::cout << pt.y << "\n";
+    // 17:     pt: Point = create_point(10, 20)
+    Point pt = create_point(10, 20);
+    // 18:     print(pt.x)
+    std::cout << pt.x << "\n";
+    // 19:     print(pt.y)
+    std::cout << pt.y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: main()
-  main();
+    __name__ = "__main__";
+    // 22: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

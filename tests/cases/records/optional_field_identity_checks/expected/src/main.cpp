@@ -8,40 +8,40 @@ std::string_view __name__;
 Holder* h{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 19: h = Holder()
-  static Holder __global_slot_1 = Holder();
-  h = &__global_slot_1;
-  // 21: # None field: all four combinations
-  // 22: print(h.value is None)
-  std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-  // 23: print(h.value is not None)
-  std::cout << tpy::print_bool((h->value.has_value())) << "\n";
-  // 24: print(None is h.value)
-  std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-  // 25: print(None is not h.value)
-  std::cout << tpy::print_bool((h->value.has_value())) << "\n";
-  // 27: h.value = copy(Point(1, 2))
-  h->value = Point(1, 2);
-  // 29: # Non-None field: all four combinations
-  // 30: print(h.value is None)
-  std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-  // 31: print(h.value is not None)
-  std::cout << tpy::print_bool((h->value.has_value())) << "\n";
-  // 32: print(None is h.value)
-  std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-  // 33: print(None is not h.value)
-  std::cout << tpy::print_bool((h->value.has_value())) << "\n";
+    __name__ = "__main__";
+    // 19: h = Holder()
+    static Holder __global_slot_1 = Holder();
+    h = &__global_slot_1;
+    // 21: # None field: all four combinations
+    // 22: print(h.value is None)
+    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    // 23: print(h.value is not None)
+    std::cout << tpy::print_bool((h->value.has_value())) << "\n";
+    // 24: print(None is h.value)
+    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    // 25: print(None is not h.value)
+    std::cout << tpy::print_bool((h->value.has_value())) << "\n";
+    // 27: h.value = copy(Point(1, 2))
+    h->value = Point(1, 2);
+    // 29: # Non-None field: all four combinations
+    // 30: print(h.value is None)
+    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    // 31: print(h.value is not None)
+    std::cout << tpy::print_bool((h->value.has_value())) << "\n";
+    // 32: print(None is h.value)
+    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    // 33: print(None is not h.value)
+    std::cout << tpy::print_bool((h->value.has_value())) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

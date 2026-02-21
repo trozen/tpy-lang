@@ -9,34 +9,34 @@ std::string_view __name__;
 Counter* c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test @staticmethod decorator on class methods."""
-  // 21: # Call static method via class name
-  // 22: print(Counter.zero())
-  std::cout << Counter::zero() << "\n";
-  // 23: print(Counter.add(10, 20))
-  std::cout << Counter::add(10, 20) << "\n";
-  // 25: # Call static method via instance (also valid)
-  // 26: c = Counter(100)
-  static Counter __global_slot_1 = Counter(100);
-  c = &__global_slot_1;
-  // 27: print(c.zero())
-  std::cout << c->zero() << "\n";
-  // 28: print(c.add(3, 4))
-  std::cout << c->add(3, 4) << "\n";
-  // 30: # Regular instance method still works
-  // 31: print(c.get())
-  std::cout << c->get() << "\n";
+    __name__ = "__main__";
+    // 1: """Test @staticmethod decorator on class methods."""
+    // 21: # Call static method via class name
+    // 22: print(Counter.zero())
+    std::cout << Counter::zero() << "\n";
+    // 23: print(Counter.add(10, 20))
+    std::cout << Counter::add(10, 20) << "\n";
+    // 25: # Call static method via instance (also valid)
+    // 26: c = Counter(100)
+    static Counter __global_slot_1 = Counter(100);
+    c = &__global_slot_1;
+    // 27: print(c.zero())
+    std::cout << c->zero() << "\n";
+    // 28: print(c.add(3, 4))
+    std::cout << c->add(3, 4) << "\n";
+    // 30: # Regular instance method still works
+    // 31: print(c.get())
+    std::cout << c->get() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

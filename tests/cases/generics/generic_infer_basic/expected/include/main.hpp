@@ -15,20 +15,20 @@ extern Box<int32_t>* box32;
 // 5: class Box[T]:
 template<typename T>
 struct Box {
-  // 6:     value: T
-  T value;
+    // 6:     value: T
+    T value;
 
-  // 8:     def __init__(self, value: T) -> None:
-  Box() = default;
-  explicit Box(const T& value) : value(value) {}
+    // 8:     def __init__(self, value: T) -> None:
+    Box() = default;
+    explicit Box(const T& value) : value(value) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

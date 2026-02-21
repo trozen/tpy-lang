@@ -7,92 +7,92 @@ std::string_view __name__;
 
 // 13: def test_straight():
 void test_straight() {
-  // 14:     r = Resource("a")
-  Resource __slot_1 = Resource("a");
-  std::optional<Resource> __slot_2;
-  Resource* r = &__slot_1;
-  // 15:     r = Resource("b")
-  r = &*(__slot_2 = Resource("b"));
-  // 16:     r = Resource("c")
-  r = &*(__slot_2 = Resource("c"));
-  // 17:     print("alive:", r.name)
-  std::cout << "alive:" << " " << r->name << "\n";
+    // 14:     r = Resource("a")
+    Resource __slot_1 = Resource("a");
+    std::optional<Resource> __slot_2;
+    Resource* r = &__slot_1;
+    // 15:     r = Resource("b")
+    r = &*(__slot_2 = Resource("b"));
+    // 16:     r = Resource("c")
+    r = &*(__slot_2 = Resource("c"));
+    // 17:     print("alive:", r.name)
+    std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // 19: def test_loop():
 void test_loop() {
-  // 20:     r = Resource("init")
-  Resource __slot_1 = Resource("init");
-  std::optional<Resource> __slot_2;
-  Resource* r = &__slot_1;
-  // 21:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
-    // 22:         r = Resource("loop")
-    r = &*(__slot_2 = Resource("loop"));
-  }
-  // 23:     print("alive:", r.name)
-  std::cout << "alive:" << " " << r->name << "\n";
+    // 20:     r = Resource("init")
+    Resource __slot_1 = Resource("init");
+    std::optional<Resource> __slot_2;
+    Resource* r = &__slot_1;
+    // 21:     for i in range(3):
+    for (int32_t i = 0; i < 3; ++i) {
+        // 22:         r = Resource("loop")
+        r = &*(__slot_2 = Resource("loop"));
+    }
+    // 23:     print("alive:", r.name)
+    std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // 25: def test_conditional(flag: Int32):
 void test_conditional(int32_t flag) {
-  // 26:     r = Resource("start")
-  Resource __slot_1 = Resource("start");
-  std::optional<Resource> __slot_2;
-  Resource* r = &__slot_1;
-  // 27:     if flag > 0:
-  if ((flag > 0)) {
-    // 28:         r = Resource("branch")
-    r = &*(__slot_2 = Resource("branch"));
-  }
-  // 29:     print("alive:", r.name)
-  std::cout << "alive:" << " " << r->name << "\n";
+    // 26:     r = Resource("start")
+    Resource __slot_1 = Resource("start");
+    std::optional<Resource> __slot_2;
+    Resource* r = &__slot_1;
+    // 27:     if flag > 0:
+    if ((flag > 0)) {
+        // 28:         r = Resource("branch")
+        r = &*(__slot_2 = Resource("branch"));
+    }
+    // 29:     print("alive:", r.name)
+    std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // 44: def test_inherit():
 void test_inherit() {
-  // 45:     c = Child("x")
-  Child __slot_1 = Child("x");
-  std::optional<Child> __slot_2;
-  Child* c = &__slot_1;
-  // 46:     c = Child("y")
-  c = &*(__slot_2 = Child("y"));
-  // 47:     c = Child("z")
-  c = &*(__slot_2 = Child("z"));
-  // 48:     print("alive:", c.tag)
-  std::cout << "alive:" << " " << c->tag << "\n";
+    // 45:     c = Child("x")
+    Child __slot_1 = Child("x");
+    std::optional<Child> __slot_2;
+    Child* c = &__slot_1;
+    // 46:     c = Child("y")
+    c = &*(__slot_2 = Child("y"));
+    // 47:     c = Child("z")
+    c = &*(__slot_2 = Child("z"));
+    // 48:     print("alive:", c.tag)
+    std::cout << "alive:" << " " << c->tag << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 50: test_straight()
-  test_straight();
-  // 51: print("---")
-  std::cout << "---" << "\n";
-  // 52: test_loop()
-  test_loop();
-  // 53: print("---")
-  std::cout << "---" << "\n";
-  // 54: test_conditional(1)
-  test_conditional(1);
-  // 55: print("---")
-  std::cout << "---" << "\n";
-  // 56: test_conditional(0)
-  test_conditional(0);
-  // 57: print("---")
-  std::cout << "---" << "\n";
-  // 58: test_inherit()
-  test_inherit();
+    __name__ = "__main__";
+    // 50: test_straight()
+    test_straight();
+    // 51: print("---")
+    std::cout << "---" << "\n";
+    // 52: test_loop()
+    test_loop();
+    // 53: print("---")
+    std::cout << "---" << "\n";
+    // 54: test_conditional(1)
+    test_conditional(1);
+    // 55: print("---")
+    std::cout << "---" << "\n";
+    // 56: test_conditional(0)
+    test_conditional(0);
+    // 57: print("---")
+    std::cout << "---" << "\n";
+    // 58: test_inherit()
+    test_inherit();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

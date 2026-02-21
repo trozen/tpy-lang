@@ -7,44 +7,44 @@ std::string_view __name__;
 
 // 29: def main() -> None:
 void main() {
-  // 30:     x = MyInt(10)
-  MyInt x = MyInt(10);
-  // 31:     y = MyInt(20)
-  MyInt y = MyInt(20);
-  // 32:     z = MyInt(10)
-  MyInt z = MyInt(10);
-  // 34:     # Test comparison via Comparable bound
-  // 35:     print(is_less(x, y))  # True
-  std::cout << tpy::print_bool(is_less<MyInt>(x, y)) << "\n";
-  // 36:     print(is_less(y, x))  # False
-  std::cout << tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
-  // 38:     # Test returning bounded type
-  // 39:     result = find_min(x, y)
-  MyInt& result = find_min<MyInt>(x, y);
-  // 40:     print(result.value)  # 10
-  std::cout << result.value << "\n";
-  // 42:     # Test equality
-  // 43:     print(x == z)  # True
-  std::cout << tpy::print_bool((x == z)) << "\n";
-  // 44:     print(x == y)  # False
-  std::cout << tpy::print_bool((x == y)) << "\n";
+    // 30:     x = MyInt(10)
+    MyInt x = MyInt(10);
+    // 31:     y = MyInt(20)
+    MyInt y = MyInt(20);
+    // 32:     z = MyInt(10)
+    MyInt z = MyInt(10);
+    // 34:     # Test comparison via Comparable bound
+    // 35:     print(is_less(x, y))  # True
+    std::cout << tpy::print_bool(is_less<MyInt>(x, y)) << "\n";
+    // 36:     print(is_less(y, x))  # False
+    std::cout << tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
+    // 38:     # Test returning bounded type
+    // 39:     result = find_min(x, y)
+    MyInt& result = find_min<MyInt>(x, y);
+    // 40:     print(result.value)  # 10
+    std::cout << result.value << "\n";
+    // 42:     # Test equality
+    // 43:     print(x == z)  # True
+    std::cout << tpy::print_bool((x == z)) << "\n";
+    // 44:     print(x == y)  # False
+    std::cout << tpy::print_bool((x == y)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test user-defined record with __lt__ satisfies Comparable bound."""
-  // 47: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Test user-defined record with __lt__ satisfies Comparable bound."""
+    // 47: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

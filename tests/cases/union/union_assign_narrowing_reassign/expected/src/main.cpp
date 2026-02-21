@@ -7,50 +7,50 @@ std::string_view __name__;
 
 // 16: def check(s: Circle | Rect) -> None:
 void check(std::variant<Circle, Rect>& s) {
-  // 17:     if isinstance(s, Circle):
-  if (std::holds_alternative<Circle>(s)) {
-    auto& __s = std::get<Circle>(s);
-    // 18:         print(s.radius)
-    std::cout << tpy::print_float(__s.radius) << "\n";
-  } else {
-    auto& __s = std::get<Rect>(s);
-    // 20:         print(s.width)
-    std::cout << tpy::print_float(__s.width) << "\n";
-  }
+    // 17:     if isinstance(s, Circle):
+    if (std::holds_alternative<Circle>(s)) {
+        auto& __s = std::get<Circle>(s);
+        // 18:         print(s.radius)
+        std::cout << tpy::print_float(__s.radius) << "\n";
+    } else {
+        auto& __s = std::get<Rect>(s);
+        // 20:         print(s.width)
+        std::cout << tpy::print_float(__s.width) << "\n";
+    }
 }
 
 // 22: def main() -> None:
 void main() {
-  // 23:     s: Circle | Rect = Circle(1.0)
-  std::variant<Circle, Rect> __slot_1 = Circle(1.0);
-  std::optional<std::variant<Circle, Rect>> __slot_2;
-  std::variant<Circle, Rect>* s = &__slot_1;
-  // 24:     print(s.radius)
-  std::cout << tpy::print_float(std::get<Circle>((*s)).radius) << "\n";
-  // 25:     s = Rect(3.0, 4.0)
-  s = &*(__slot_2 = Rect(3.0, 4.0));
-  // 26:     if isinstance(s, Rect):
-  if (std::holds_alternative<Rect>((*s))) {
-    auto& __s = std::get<Rect>((*s));
-    // 27:         print(s.width)
-    std::cout << tpy::print_float(__s.width) << "\n";
-  }
+    // 23:     s: Circle | Rect = Circle(1.0)
+    std::variant<Circle, Rect> __slot_1 = Circle(1.0);
+    std::optional<std::variant<Circle, Rect>> __slot_2;
+    std::variant<Circle, Rect>* s = &__slot_1;
+    // 24:     print(s.radius)
+    std::cout << tpy::print_float(std::get<Circle>((*s)).radius) << "\n";
+    // 25:     s = Rect(3.0, 4.0)
+    s = &*(__slot_2 = Rect(3.0, 4.0));
+    // 26:     if isinstance(s, Rect):
+    if (std::holds_alternative<Rect>((*s))) {
+        auto& __s = std::get<Rect>((*s));
+        // 27:         print(s.width)
+        std::cout << tpy::print_float(__s.width) << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 29: main()
-  main();
+    __name__ = "__main__";
+    // 29: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

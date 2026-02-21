@@ -14,39 +14,39 @@ void main();
 
 // 5: class Tracker:
 struct Tracker {
-  // 6:     name: str
-  std::string_view name;
-  bool __tpy_owned_ = true;
+    // 6:     name: str
+    std::string_view name;
+    bool __tpy_owned_ = true;
 
-  // 7:     def __init__(self, name: str):
-  Tracker() = default;
-  explicit Tracker(std::string_view name) : name(name) {}
-  Tracker(const Tracker&) = delete;
-  Tracker& operator=(const Tracker&) = delete;
-  Tracker(Tracker&& other) noexcept : name(std::move(other.name)) {
-    other.__tpy_owned_ = false;
-  }
-  Tracker& operator=(Tracker&& other) noexcept {
-    if (this != &other) {
-      this->~Tracker();
-      new (this) Tracker(std::move(other));
+    // 7:     def __init__(self, name: str):
+    Tracker() = default;
+    explicit Tracker(std::string_view name) : name(name) {}
+    Tracker(const Tracker&) = delete;
+    Tracker& operator=(const Tracker&) = delete;
+    Tracker(Tracker&& other) noexcept : name(std::move(other.name)) {
+        other.__tpy_owned_ = false;
     }
-    return *this;
-  }
-  // 9:     def __del__(self):
+    Tracker& operator=(Tracker&& other) noexcept {
+        if (this != &other) {
+            this->~Tracker();
+            new (this) Tracker(std::move(other));
+        }
+        return *this;
+    }
+    // 9:     def __del__(self):
 
-  ~Tracker() {
-    if (!__tpy_owned_) return;
-    // 10:         print("drop", self.name)
-    std::cout << "drop" << " " << this->name << "\n";
-  }
+    ~Tracker() {
+        if (!__tpy_owned_) return;
+        // 10:         print("drop", self.name)
+        std::cout << "drop" << " " << this->name << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
-  os << "Tracker("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Tracker("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -8,24 +8,24 @@ std::string_view __name__;
 Wrapper<std::string_view>* w{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 24: w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
-  static Wrapper<std::string_view> __global_slot_1 = Wrapper<std::string_view>("hello", 42);
-  w = &__global_slot_1;
-  // 25: print(w.get_value())
-  std::cout << w->get_value() << "\n";
-  // 26: print(w.get_extra())
-  std::cout << w->get_extra() << "\n";
+    __name__ = "__main__";
+    // 24: w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
+    static Wrapper<std::string_view> __global_slot_1 = Wrapper<std::string_view>("hello", 42);
+    w = &__global_slot_1;
+    // 25: print(w.get_value())
+    std::cout << w->get_value() << "\n";
+    // 26: print(w.get_extra())
+    std::cout << w->get_extra() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,29 +7,29 @@ std::string_view __name__;
 
 // 10: def main() -> None:
 void main() {
-  // 11:     c: Counter = Counter(42)
-  Counter c = Counter(42);
-  // 12:     cp: ConstPtr[Counter] = ConstPtr(c)
-  const Counter* cp = &c;
-  // 13:     # Const-safe dunder method call through ConstPtr auto-deref
-  // 14:     print(cp.__len__())
-  std::cout << cp->__len__() << "\n";
+    // 11:     c: Counter = Counter(42)
+    Counter c = Counter(42);
+    // 12:     cp: ConstPtr[Counter] = ConstPtr(c)
+    const Counter* cp = &c;
+    // 13:     # Const-safe dunder method call through ConstPtr auto-deref
+    // 14:     print(cp.__len__())
+    std::cout << cp->__len__() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 16: main()
-  main();
+    __name__ = "__main__";
+    // 16: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

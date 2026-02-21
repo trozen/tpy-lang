@@ -12,30 +12,30 @@ extern Settings* s;
 
 // 4: class Settings:
 struct Settings {
-  // 5:     count: Int32 | None
-  std::optional<int32_t> count;
-  // 6:     flag: bool | None
-  std::optional<bool> flag;
-  // 7:     ratio: float | None
-  std::optional<double> ratio;
-  // 8:     label: str | None
-  std::optional<std::string_view> label;
+    // 5:     count: Int32 | None
+    std::optional<int32_t> count;
+    // 6:     flag: bool | None
+    std::optional<bool> flag;
+    // 7:     ratio: float | None
+    std::optional<double> ratio;
+    // 8:     label: str | None
+    std::optional<std::string_view> label;
 
-  // 10:     def __init__(self) -> None:
-  Settings() : count(std::nullopt), flag(std::nullopt), ratio(std::nullopt), label(std::nullopt) {}
+    // 10:     def __init__(self) -> None:
+    Settings() : count(std::nullopt), flag(std::nullopt), ratio(std::nullopt), label(std::nullopt) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
-  os << "Settings("
-     << "count=" << tpy::print_optional_val(obj.count)
-     << ", "
-     << "flag=" << tpy::print_optional_val<tpy::print_bool, bool>(obj.flag)
-     << ", "
-     << "ratio=" << tpy::print_optional_val<tpy::print_float, double>(obj.ratio)
-     << ", "
-     << "label=" << (obj.label.has_value() ? std::string("\"") + std::string(obj.label.value()) + "\"" : std::string("None"))
-     << ")";
-  return os;
+    os << "Settings("
+       << "count=" << tpy::print_optional_val(obj.count)
+       << ", "
+       << "flag=" << tpy::print_optional_val<tpy::print_bool, bool>(obj.flag)
+       << ", "
+       << "ratio=" << tpy::print_optional_val<tpy::print_float, double>(obj.ratio)
+       << ", "
+       << "label=" << (obj.label.has_value() ? std::string("\"") + std::string(obj.label.value()) + "\"" : std::string("None"))
+       << ")";
+    return os;
 }
 
 void __tpy_init();

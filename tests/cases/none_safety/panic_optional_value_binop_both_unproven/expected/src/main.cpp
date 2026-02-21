@@ -7,26 +7,26 @@ std::string_view __name__;
 
 // 4: def add_pair(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
-  // 5:     return a + b  # tpyc: warning(/Potential None access/)
-  return (tpy::add_check<int32_t>(tpy::deref_optional_check(a), tpy::deref_optional_check(b)));
+    // 5:     return a + b  # tpyc: warning(/Potential None access/)
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(a), tpy::deref_optional_check(b)));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 8: print(add_pair(1, 2))
-  std::cout << add_pair(1, 2) << "\n";
-  // 9: print(add_pair(None, 2))
-  std::cout << add_pair(std::nullopt, 2) << "\n";
+    __name__ = "__main__";
+    // 8: print(add_pair(1, 2))
+    std::cout << add_pair(1, 2) << "\n";
+    // 9: print(add_pair(None, 2))
+    std::cout << add_pair(std::nullopt, 2) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

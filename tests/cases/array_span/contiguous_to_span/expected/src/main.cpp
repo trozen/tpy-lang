@@ -7,84 +7,84 @@ std::string_view __name__;
 
 // 4: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {
-  // 5:     """Function accepting Span - any NativeContiguous[Int32] should work."""
-  // 6:     total: Int32 = 0
-  int32_t total = 0;
-  // 7:     for v in values:
-  for (int32_t v : values) {
-    // 8:         total += v
-    total = tpy::add_check<int32_t>(total, v);
-  }
-  // 9:     return total
-  return total;
+    // 5:     """Function accepting Span - any NativeContiguous[Int32] should work."""
+    // 6:     total: Int32 = 0
+    int32_t total = 0;
+    // 7:     for v in values:
+    for (int32_t v : values) {
+        // 8:         total += v
+        total = tpy::add_check<int32_t>(total, v);
+    }
+    // 9:     return total
+    return total;
 }
 
 // 11: def sum_span_bigint(values: Span[int]) -> int:
 tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> values) {
-  // 12:     """Function accepting Span[int] (BigInt) - tests IntLiteral coercion."""
-  // 13:     total: int = 0
-  tpy::BigInt total = tpy::BigInt(0);
-  // 14:     for v in values:
-  for (tpy::BigInt v : values) {
-    // 15:         total += v
-    total = (total) + (v);
-  }
-  // 16:     return total
-  return total;
+    // 12:     """Function accepting Span[int] (BigInt) - tests IntLiteral coercion."""
+    // 13:     total: int = 0
+    tpy::BigInt total = tpy::BigInt(0);
+    // 14:     for v in values:
+    for (tpy::BigInt v : values) {
+        // 15:         total += v
+        total = (total) + (v);
+    }
+    // 16:     return total
+    return total;
 }
 
 // 18: def main() -> None:
 void main() {
-  // 19:     # Array coerces to Span
-  // 20:     arr: Array[Int32, 4] = [1, 2, 3, 4]
-  std::array<int32_t, 4> arr = {1, 2, 3, 4};
-  // 21:     print(sum_span(arr))  # 10
-  std::cout << sum_span(tpy::as_span(arr)) << "\n";
-  // 23:     # StaticList coerces to Span
-  // 24:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
-  StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
-  // 25:     sl.append(10)
-  sl.push_back(10);
-  // 26:     sl.append(20)
-  sl.push_back(20);
-  // 27:     sl.append(30)
-  sl.push_back(30);
-  // 28:     print(sum_span(sl))  # 60
-  std::cout << sum_span(tpy::as_span(sl)) << "\n";
-  // 30:     # list coerces to Span
-  // 31:     lst: list[Int32] = [100, 200, 300, 400]
-  std::vector<int32_t> lst = {100, 200, 300, 400};
-  // 32:     print(sum_span(lst))  # 1000
-  std::cout << sum_span(tpy::as_span(lst)) << "\n";
-  // 34:     # Literal array coerces to Span (via PendingListType)
-  // 35:     print(sum_span([5, 5, 5, 5, 5]))  # 25
-  std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{5, 5, 5, 5, 5})) << "\n";
-  // 37:     # BigInt tests - IntLiteral elements coerce to BigInt
-  // 38:     # list[int] coerces to Span[int]
-  // 39:     bigint_list: list[int] = [1000, 2000, 3000]
-  std::vector<tpy::BigInt> bigint_list = {1000, 2000, 3000};
-  // 40:     print(sum_span_bigint(bigint_list))  # 6000
-  std::cout << sum_span_bigint(tpy::as_span(bigint_list)) << "\n";
-  // 42:     # PendingListType with IntLiteral → Span[int] (BigInt)
-  // 43:     print(sum_span_bigint([100, 200, 300]))  # 600
-  std::cout << sum_span_bigint(tpy::as_span(std::array<tpy::BigInt, 3>{tpy::BigInt(100), tpy::BigInt(200), tpy::BigInt(300)})) << "\n";
+    // 19:     # Array coerces to Span
+    // 20:     arr: Array[Int32, 4] = [1, 2, 3, 4]
+    std::array<int32_t, 4> arr = {1, 2, 3, 4};
+    // 21:     print(sum_span(arr))  # 10
+    std::cout << sum_span(tpy::as_span(arr)) << "\n";
+    // 23:     # StaticList coerces to Span
+    // 24:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
+    StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
+    // 25:     sl.append(10)
+    sl.push_back(10);
+    // 26:     sl.append(20)
+    sl.push_back(20);
+    // 27:     sl.append(30)
+    sl.push_back(30);
+    // 28:     print(sum_span(sl))  # 60
+    std::cout << sum_span(tpy::as_span(sl)) << "\n";
+    // 30:     # list coerces to Span
+    // 31:     lst: list[Int32] = [100, 200, 300, 400]
+    std::vector<int32_t> lst = {100, 200, 300, 400};
+    // 32:     print(sum_span(lst))  # 1000
+    std::cout << sum_span(tpy::as_span(lst)) << "\n";
+    // 34:     # Literal array coerces to Span (via PendingListType)
+    // 35:     print(sum_span([5, 5, 5, 5, 5]))  # 25
+    std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{5, 5, 5, 5, 5})) << "\n";
+    // 37:     # BigInt tests - IntLiteral elements coerce to BigInt
+    // 38:     # list[int] coerces to Span[int]
+    // 39:     bigint_list: list[int] = [1000, 2000, 3000]
+    std::vector<tpy::BigInt> bigint_list = {1000, 2000, 3000};
+    // 40:     print(sum_span_bigint(bigint_list))  # 6000
+    std::cout << sum_span_bigint(tpy::as_span(bigint_list)) << "\n";
+    // 42:     # PendingListType with IntLiteral → Span[int] (BigInt)
+    // 43:     print(sum_span_bigint([100, 200, 300]))  # 600
+    std::cout << sum_span_bigint(tpy::as_span(std::array<tpy::BigInt, 3>{tpy::BigInt(100), tpy::BigInt(200), tpy::BigInt(300)})) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Tests that NativeContiguous[T] types can coerce to Span[T]."""
-  // 45: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Tests that NativeContiguous[T] types can coerce to Span[T]."""
+    // 45: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

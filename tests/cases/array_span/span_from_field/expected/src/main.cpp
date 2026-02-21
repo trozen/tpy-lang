@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 9: def main() -> None:
 void main() {
-  // 10:     arr: Array[Int32, 3] = [1, 2, 3]
-  std::array<int32_t, 3> arr = {1, 2, 3};
-  // 11:     box: Box = Box(arr)
-  Box box = Box(arr);
-  // 12:     s: Span[Int32] = box.items
-  std::span<const int32_t> s = tpy::as_span(box.items);
-  // 13:     print(s[0])
-  std::cout << s[0] << "\n";
-  // 14:     print(s[2])
-  std::cout << s[2] << "\n";
+    // 10:     arr: Array[Int32, 3] = [1, 2, 3]
+    std::array<int32_t, 3> arr = {1, 2, 3};
+    // 11:     box: Box = Box(arr)
+    Box box = Box(arr);
+    // 12:     s: Span[Int32] = box.items
+    std::span<const int32_t> s = tpy::as_span(box.items);
+    // 13:     print(s[0])
+    std::cout << s[0] << "\n";
+    // 14:     print(s[2])
+    std::cout << s[2] << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 16: main()
-  main();
+    __name__ = "__main__";
+    // 16: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

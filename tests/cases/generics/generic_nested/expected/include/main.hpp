@@ -15,57 +15,57 @@ void main();
 // 3: class Box[T]:
 template<typename T>
 struct Box {
-  // 4:     value: T
-  T value;
+    // 4:     value: T
+    T value;
 
-  // 6:     def __init__(self, value: T) -> None:
-  Box() = default;
-  explicit Box(const T& value) : value(value) {}
+    // 6:     def __init__(self, value: T) -> None:
+    Box() = default;
+    explicit Box(const T& value) : value(value) {}
 
-  // 9:     def get(self) -> T:
-  tpy::return_val_or_ref_t<T> get() {
-    // 10:         return self.value
-    return this->value;
-  }
+    // 9:     def get(self) -> T:
+    tpy::return_val_or_ref_t<T> get() {
+        // 10:         return self.value
+        return this->value;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // 13: class Container[T]:
 template<typename T>
 struct Container {
-  // 14:     inner: Box[T]
-  Box<T> inner;
+    // 14:     inner: Box[T]
+    Box<T> inner;
 
-  // 16:     def __init__(self, value: T) -> None:
-  Container() = default;
-  explicit Container(const T& value) : inner(Box<T>(value)) {}
+    // 16:     def __init__(self, value: T) -> None:
+    Container() = default;
+    explicit Container(const T& value) : inner(Box<T>(value)) {}
 
-  // 19:     def get_inner(self) -> Box[T]:
-  Box<T>& get_inner() {
-    // 20:         return self.inner
-    return this->inner;
-  }
+    // 19:     def get_inner(self) -> Box[T]:
+    Box<T>& get_inner() {
+        // 20:         return self.inner
+        return this->inner;
+    }
 
-  // 22:     def get_value(self) -> T:
-  tpy::return_val_or_ref_t<T> get_value() {
-    // 23:         return self.inner.get()
-    return this->inner.get();
-  }
+    // 22:     def get_value(self) -> T:
+    tpy::return_val_or_ref_t<T> get_value() {
+        // 23:         return self.inner.get()
+        return this->inner.get();
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "inner=" << obj.inner
-     << ")";
-  return os;
+    os << "Container("
+       << "inner=" << obj.inner
+       << ")";
+    return os;
 }
 
 void __tpy_init();

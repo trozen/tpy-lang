@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 4: def after_break(x: Int32 | None, flag: bool) -> Int32:
 int32_t after_break(std::optional<int32_t> x, bool flag) {
-  // 5:     while flag:
-  while (flag) {
-    // 6:         if x is None:
-    if ((!x.has_value())) {
-      // 7:             break
-      break;
+    // 5:     while flag:
+    while (flag) {
+        // 6:         if x is None:
+        if ((!x.has_value())) {
+            // 7:             break
+            break;
+        }
+        // 8:         flag = False
+        flag = false;
     }
-    // 8:         flag = False
-    flag = false;
-  }
-  // 9:     return x + 1  # tpyc: warning(/Potential None access/)
-  return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
+    // 9:     return x + 1  # tpyc: warning(/Potential None access/)
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 12: print(after_break(2, False))
-  std::cout << after_break(2, false) << "\n";
+    __name__ = "__main__";
+    // 12: print(after_break(2, False))
+    std::cout << after_break(2, false) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

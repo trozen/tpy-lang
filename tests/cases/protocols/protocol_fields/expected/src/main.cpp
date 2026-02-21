@@ -7,51 +7,51 @@ std::string_view __name__;
 
 // 99: def main() -> None:
 void main() {
-  // 100:     # Test generic function with protocol field
-  // 101:     p = Point(42)
-  Point p = Point(42);
-  // 102:     print(get_value(p))
-  std::cout << get_value<Point>(p) << "\n";
-  // 104:     # Test protocol with multiple fields
-  // 105:     v = Vec2(10, 20)
-  Vec2 v = Vec2(10, 20);
-  // 106:     print(sum_xy(v))
-  std::cout << sum_xy<Vec2>(v) << "\n";
-  // 108:     # Test protocol with field + method
-  // 109:     b1 = Box(5)
-  Box b1 = Box(5);
-  // 110:     b2 = Box(0)
-  Box b2 = Box(0);
-  // 111:     print(describe(b1))
-  std::cout << describe<Box>(b1) << "\n";
-  // 112:     print(describe(b2))
-  std::cout << describe<Box>(b2) << "\n";
-  // 114:     # Test generic class with protocol field bound
-  // 115:     w = Wrapper(Point(100))
-  Wrapper<Point> w = Wrapper<Point>(Point(100));
-  // 116:     print(w.get_inner_value())
-  std::cout << w.get_inner_value() << "\n";
-  // 118:     # Test generic protocol with type parameter in field
-  // 119:     ih = IntHolder(77)
-  IntHolder ih = IntHolder(77);
-  // 120:     print(get_item(ih))
-  std::cout << get_item<IntHolder>(ih) << "\n";
+    // 100:     # Test generic function with protocol field
+    // 101:     p = Point(42)
+    Point p = Point(42);
+    // 102:     print(get_value(p))
+    std::cout << get_value<Point>(p) << "\n";
+    // 104:     # Test protocol with multiple fields
+    // 105:     v = Vec2(10, 20)
+    Vec2 v = Vec2(10, 20);
+    // 106:     print(sum_xy(v))
+    std::cout << sum_xy<Vec2>(v) << "\n";
+    // 108:     # Test protocol with field + method
+    // 109:     b1 = Box(5)
+    Box b1 = Box(5);
+    // 110:     b2 = Box(0)
+    Box b2 = Box(0);
+    // 111:     print(describe(b1))
+    std::cout << describe<Box>(b1) << "\n";
+    // 112:     print(describe(b2))
+    std::cout << describe<Box>(b2) << "\n";
+    // 114:     # Test generic class with protocol field bound
+    // 115:     w = Wrapper(Point(100))
+    Wrapper<Point> w = Wrapper<Point>(Point(100));
+    // 116:     print(w.get_inner_value())
+    std::cout << w.get_inner_value() << "\n";
+    // 118:     # Test generic protocol with type parameter in field
+    // 119:     ih = IntHolder(77)
+    IntHolder ih = IntHolder(77);
+    // 120:     print(get_item(ih))
+    std::cout << get_item<IntHolder>(ih) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 123: main()
-  main();
+    __name__ = "__main__";
+    // 123: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

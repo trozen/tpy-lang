@@ -7,41 +7,41 @@ std::string_view __name__;
 
 // 16: def greet(pet: Pet) -> None:
 void greet(__tpy_Base_Pet& pet) {
-  // 17:     print(pet.make_noise())
-  std::cout << pet.make_noise() << "\n";
+    // 17:     print(pet.make_noise())
+    std::cout << pet.make_noise() << "\n";
 }
 
 // 19: def main() -> None:
 void main() {
-  // 20:     greet(Parrot())       # rvalue: owning adapter
-  __tpy_Adapter_Pet<Parrot> __tmp_1{Parrot()};
-  greet(__tmp_1);
-  // 21:     p = Parrot()
-  Parrot p = Parrot();
-  // 22:     greet(p)              # lvalue: ref adapter (zero-copy)
-  __tpy_RefAdapter_Pet<Parrot> __tmp_2{p};
-  greet(__tmp_2);
-  // 23:     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
-  __tpy_Adapter_Pet<Parrot> __slot_1{Parrot()};
-  __tpy_Base_Pet* pet = &__slot_1;
-  // 24:     print(pet.make_noise())
-  std::cout << pet->make_noise() << "\n";
+    // 20:     greet(Parrot())       # rvalue: owning adapter
+    __tpy_Adapter_Pet<Parrot> __tmp_1{Parrot()};
+    greet(__tmp_1);
+    // 21:     p = Parrot()
+    Parrot p = Parrot();
+    // 22:     greet(p)              # lvalue: ref adapter (zero-copy)
+    __tpy_RefAdapter_Pet<Parrot> __tmp_2{p};
+    greet(__tmp_2);
+    // 23:     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
+    __tpy_Adapter_Pet<Parrot> __slot_1{Parrot()};
+    __tpy_Base_Pet* pet = &__slot_1;
+    // 24:     print(pet.make_noise())
+    std::cout << pet->make_noise() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 26: main()
-  main();
+    __name__ = "__main__";
+    // 26: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

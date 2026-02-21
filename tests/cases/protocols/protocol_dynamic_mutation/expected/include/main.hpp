@@ -47,59 +47,59 @@ void main();
 // # Direct inheritor
 // 14: class MyCounter(Counter):
 struct MyCounter : __tpy_Base_Counter {
-  // 15:     count: Int32
-  int32_t count;
+    // 15:     count: Int32
+    int32_t count;
 
-  // 16:     def __init__(self) -> None:
-  MyCounter() : count(0) {}
+    // 16:     def __init__(self) -> None:
+    MyCounter() : count(0) {}
 
-  // 18:     def increment(self) -> None:
-  void increment() override {
-    // 19:         self.count = self.count + Int32(1)
-    this->count = (tpy::add_check<int32_t>(this->count, 1));
-  }
+    // 18:     def increment(self) -> None:
+    void increment() override {
+        // 19:         self.count = self.count + Int32(1)
+        this->count = (tpy::add_check<int32_t>(this->count, 1));
+    }
 
-  // 20:     def value(self) -> Int32:
-  int32_t value() override {
-    // 21:         return self.count
-    return this->count;
-  }
+    // 20:     def value(self) -> Int32:
+    int32_t value() override {
+        // 21:         return self.count
+        return this->count;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyCounter& obj) {
-  os << "MyCounter("
-     << "count=" << obj.count
-     << ")";
-  return os;
+    os << "MyCounter("
+       << "count=" << obj.count
+       << ")";
+    return os;
 }
 
 // # Structural conformance (no inheritance)
 // 24: class Tally:
 struct Tally {
-  // 25:     count: Int32
-  int32_t count;
+    // 25:     count: Int32
+    int32_t count;
 
-  // 26:     def __init__(self) -> None:
-  Tally() : count(0) {}
+    // 26:     def __init__(self) -> None:
+    Tally() : count(0) {}
 
-  // 28:     def increment(self) -> None:
-  void increment() {
-    // 29:         self.count = self.count + Int32(1)
-    this->count = (tpy::add_check<int32_t>(this->count, 1));
-  }
+    // 28:     def increment(self) -> None:
+    void increment() {
+        // 29:         self.count = self.count + Int32(1)
+        this->count = (tpy::add_check<int32_t>(this->count, 1));
+    }
 
-  // 30:     def value(self) -> Int32:
-  int32_t value() {
-    // 31:         return self.count
-    return this->count;
-  }
+    // 30:     def value(self) -> Int32:
+    int32_t value() {
+        // 31:         return self.count
+        return this->count;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
-  os << "Tally("
-     << "count=" << obj.count
-     << ")";
-  return os;
+    os << "Tally("
+       << "count=" << obj.count
+       << ")";
+    return os;
 }
 
 void __tpy_init();

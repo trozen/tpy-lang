@@ -14,13 +14,13 @@ tpy::BigInt build_flag();
 // 4: class Token:
 struct Token {
 
-  Token() = default;
+    Token() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
-  os << "Token("
-     << ")";
-  return os;
+    os << "Token("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

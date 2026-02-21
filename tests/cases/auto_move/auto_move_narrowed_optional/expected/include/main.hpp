@@ -15,17 +15,17 @@ void main();
 
 // 5: class Handle:
 struct Handle {
-  // 6:     value: Int32
-  int32_t value;
+    // 6:     value: Int32
+    int32_t value;
 
-  Handle() = default;
+    Handle() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-  os << "Handle("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Handle("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -16,62 +16,62 @@ StaticList<int32_t, 4>* items{};
 
 // 3: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {
-  // 4:     total: Int32 = 0
-  int32_t total = 0;
-  // 5:     i: Int32 = 0
-  int32_t i = 0;
-  // 6:     while i < len(values):
-  while ((i < tpy::__len__(values))) {
-    // 7:         total += values[i]
-    total = tpy::add_check<int32_t>(total, values[i]);
-    // 8:         i += 1
-    i = tpy::add_check<int32_t>(i, 1);
-  }
-  // 9:     return total
-  return total;
+    // 4:     total: Int32 = 0
+    int32_t total = 0;
+    // 5:     i: Int32 = 0
+    int32_t i = 0;
+    // 6:     while i < len(values):
+    while ((i < tpy::__len__(values))) {
+        // 7:         total += values[i]
+        total = tpy::add_check<int32_t>(total, values[i]);
+        // 8:         i += 1
+        i = tpy::add_check<int32_t>(i, 1);
+    }
+    // 9:     return total
+    return total;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 11: # Test 1: Array literal passed directly to Span parameter
-  // 12: print(sum_span([1, 2, 3, 4, 5]))
-  std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
-  // 14: # Test 2: Array literal assigned to variable with explicit type, then passed
-  // 15: nums: Array[Int32, 3] = [10, 20, 30]
-  static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
-  nums = &__global_slot_1;
-  // 16: print(sum_span(nums))
-  std::cout << sum_span(tpy::as_span((*nums))) << "\n";
-  // 18: # Test 3: Array with explicit type annotation
-  // 19: arr: Array[Int32, 3] = [100, 200, 300]
-  static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
-  arr = &__global_slot_2;
-  // 20: print(sum_span(arr))
-  std::cout << sum_span(tpy::as_span((*arr))) << "\n";
-  // 22: # Test 4: StaticList -> Span conversion
-  // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-  static StaticList<int32_t, 4> __global_slot_3 = StaticList<int32_t, 4>();
-  items = &__global_slot_3;
-  // 24: items.append(1000)
-  (*items).push_back(1000);
-  // 25: items.append(2000)
-  (*items).push_back(2000);
-  // 26: items.append(3000)
-  (*items).push_back(3000);
-  // 27: items.append(4000)
-  (*items).push_back(4000);
-  // 28: print(sum_span(items))
-  std::cout << sum_span(tpy::as_span((*items))) << "\n";
+    __name__ = "__main__";
+    // 11: # Test 1: Array literal passed directly to Span parameter
+    // 12: print(sum_span([1, 2, 3, 4, 5]))
+    std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
+    // 14: # Test 2: Array literal assigned to variable with explicit type, then passed
+    // 15: nums: Array[Int32, 3] = [10, 20, 30]
+    static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
+    nums = &__global_slot_1;
+    // 16: print(sum_span(nums))
+    std::cout << sum_span(tpy::as_span((*nums))) << "\n";
+    // 18: # Test 3: Array with explicit type annotation
+    // 19: arr: Array[Int32, 3] = [100, 200, 300]
+    static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
+    arr = &__global_slot_2;
+    // 20: print(sum_span(arr))
+    std::cout << sum_span(tpy::as_span((*arr))) << "\n";
+    // 22: # Test 4: StaticList -> Span conversion
+    // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
+    static StaticList<int32_t, 4> __global_slot_3 = StaticList<int32_t, 4>();
+    items = &__global_slot_3;
+    // 24: items.append(1000)
+    (*items).push_back(1000);
+    // 25: items.append(2000)
+    (*items).push_back(2000);
+    // 26: items.append(3000)
+    (*items).push_back(3000);
+    // 27: items.append(4000)
+    (*items).push_back(4000);
+    // 28: print(sum_span(items))
+    std::cout << sum_span(tpy::as_span((*items))) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

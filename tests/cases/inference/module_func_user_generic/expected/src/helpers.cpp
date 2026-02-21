@@ -6,11 +6,11 @@ namespace tpy_user::helpers {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "helpers";
+    __name__ = "helpers";
 }
 
 } // namespace tpy_user::helpers

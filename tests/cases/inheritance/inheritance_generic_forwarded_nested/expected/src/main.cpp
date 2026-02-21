@@ -12,32 +12,32 @@ Child<std::string_view>* c{};
 std::vector<std::string_view>* val{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 24: items: list[str] = ["hello", "world"]
-  static std::vector<std::string_view> __global_slot_1 = {"hello", "world"};
-  items = &__global_slot_1;
-  // 25: c: Child[str] = Child[str](items, Int32(42))
-  static Child<std::string_view> __global_slot_2 = Child<std::string_view>((*items), 42);
-  c = &__global_slot_2;
-  // 26: val: list[str] = c.get_value()
-  static std::vector<std::string_view> __global_slot_3 = c->get_value();
-  val = &__global_slot_3;
-  // 27: print(val[0])
-  std::cout << tpy::get_item((*val), 0) << "\n";
-  // 28: print(val[1])
-  std::cout << tpy::get_item((*val), 1) << "\n";
-  // 29: print(c.get_extra())
-  std::cout << c->get_extra() << "\n";
+    __name__ = "__main__";
+    // 24: items: list[str] = ["hello", "world"]
+    static std::vector<std::string_view> __global_slot_1 = {"hello", "world"};
+    items = &__global_slot_1;
+    // 25: c: Child[str] = Child[str](items, Int32(42))
+    static Child<std::string_view> __global_slot_2 = Child<std::string_view>((*items), 42);
+    c = &__global_slot_2;
+    // 26: val: list[str] = c.get_value()
+    static std::vector<std::string_view> __global_slot_3 = c->get_value();
+    val = &__global_slot_3;
+    // 27: print(val[0])
+    std::cout << tpy::get_item((*val), 0) << "\n";
+    // 28: print(val[1])
+    std::cout << tpy::get_item((*val), 1) << "\n";
+    // 29: print(c.get_extra())
+    std::cout << c->get_extra() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,65 +7,65 @@ std::string_view __name__;
 
 // 13: def sum_array(arr: Array[Int32, 3]) -> Int32:
 int32_t sum_array(std::array<int32_t, 3>& arr) {
-  // 14:     return arr[0] + arr[1] + arr[2]
-  return (tpy::add_check<int32_t>((tpy::add_check<int32_t>(arr[0], arr[1])), arr[2]));
+    // 14:     return arr[0] + arr[1] + arr[2]
+    return (tpy::add_check<int32_t>((tpy::add_check<int32_t>(arr[0], arr[1])), arr[2]));
 }
 
 // 17: def main():
 void main() {
-  // 18:     # List literal assigned to Array variable
-  // 19:     arr1: Array[Int32, 3] = [1, 2, 3]
-  std::array<int32_t, 3> arr1 = {1, 2, 3};
-  // 20:     print(sum_array(arr1))  # 6
-  std::cout << sum_array(arr1) << "\n";
-  // 22:     # List literal passed directly to Array parameter
-  // 23:     print(sum_array([10, 20, 30]))  # 60
-  std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
-  std::cout << sum_array(__tmp_1) << "\n";
-  // 25:     # List literal in variable initializer
-  // 26:     result: Int32 = sum_array([100, 200, 300])
-  std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
-  int32_t result = sum_array(__tmp_2);
-  // 27:     print(result)  # 600
-  std::cout << result << "\n";
-  // 29:     # List literal in condition
-  // 30:     if sum_array([1, 1, 1]) > 0:
-  std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
-  if ((sum_array(__tmp_3) > 0)) {
-    // 31:         print(1)  # 1
-    std::cout << 1 << "\n";
-  } else {
-    // 33:         print(0)
-    std::cout << 0 << "\n";
-  }
-  // 35:     # List literal in while condition (edge case)
-  // 36:     count: Int32 = 0
-  int32_t count = 0;
-  // 37:     while sum_array([1, 0, 0]) > count:
-  std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
-  while ((sum_array(__tmp_4) > count)) {
-    // 38:         count = count + 1
-    count = (tpy::add_check<int32_t>(count, 1));
-  }
-  // 39:     print(count)  # 1
-  std::cout << count << "\n";
+    // 18:     # List literal assigned to Array variable
+    // 19:     arr1: Array[Int32, 3] = [1, 2, 3]
+    std::array<int32_t, 3> arr1 = {1, 2, 3};
+    // 20:     print(sum_array(arr1))  # 6
+    std::cout << sum_array(arr1) << "\n";
+    // 22:     # List literal passed directly to Array parameter
+    // 23:     print(sum_array([10, 20, 30]))  # 60
+    std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
+    std::cout << sum_array(__tmp_1) << "\n";
+    // 25:     # List literal in variable initializer
+    // 26:     result: Int32 = sum_array([100, 200, 300])
+    std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
+    int32_t result = sum_array(__tmp_2);
+    // 27:     print(result)  # 600
+    std::cout << result << "\n";
+    // 29:     # List literal in condition
+    // 30:     if sum_array([1, 1, 1]) > 0:
+    std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
+    if ((sum_array(__tmp_3) > 0)) {
+        // 31:         print(1)  # 1
+        std::cout << 1 << "\n";
+    } else {
+        // 33:         print(0)
+        std::cout << 0 << "\n";
+    }
+    // 35:     # List literal in while condition (edge case)
+    // 36:     count: Int32 = 0
+    int32_t count = 0;
+    // 37:     while sum_array([1, 0, 0]) > count:
+    std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
+    while ((sum_array(__tmp_4) > count)) {
+        // 38:         count = count + 1
+        count = (tpy::add_check<int32_t>(count, 1));
+    }
+    // 39:     print(count)  # 1
+    std::cout << count << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Tests that list literals can be coerced to Array types.
-  // 42: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Tests that list literals can be coerced to Array types.
+    // 42: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -13,36 +13,36 @@ void main();
 
 // 3: class Numbers:
 struct Numbers {
-  // 4:     data: list[Int32]
-  std::vector<int32_t> data;
+    // 4:     data: list[Int32]
+    std::vector<int32_t> data;
 
-  // 6:     def __init__(self, items: list[Int32]) -> None:
-  Numbers() = default;
-  explicit Numbers(const std::vector<int32_t>& items) : data(items) {}
+    // 6:     def __init__(self, items: list[Int32]) -> None:
+    Numbers() = default;
+    explicit Numbers(const std::vector<int32_t>& items) : data(items) {}
 
-  // 9:     def sum(self) -> Int32:
-  int32_t sum() {
-    // 10:         total: Int32 = 0
-    int32_t total = 0;
-    // 11:         i: Int32 = 0
-    int32_t i = 0;
-    // 12:         while i < len(self.data):
-    while ((i < tpy::__len__(this->data))) {
-      // 13:             total += self.data[i]
-      total = tpy::add_check<int32_t>(total, tpy::get_item(this->data, i));
-      // 14:             i += 1
-      i = tpy::add_check<int32_t>(i, 1);
+    // 9:     def sum(self) -> Int32:
+    int32_t sum() {
+        // 10:         total: Int32 = 0
+        int32_t total = 0;
+        // 11:         i: Int32 = 0
+        int32_t i = 0;
+        // 12:         while i < len(self.data):
+        while ((i < tpy::__len__(this->data))) {
+            // 13:             total += self.data[i]
+            total = tpy::add_check<int32_t>(total, tpy::get_item(this->data, i));
+            // 14:             i += 1
+            i = tpy::add_check<int32_t>(i, 1);
+        }
+        // 15:         return total
+        return total;
     }
-    // 15:         return total
-    return total;
-  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
-  os << "Numbers("
-     << "data=" << tpy::ListPrinter(obj.data)
-     << ")";
-  return os;
+    os << "Numbers("
+       << "data=" << tpy::ListPrinter(obj.data)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

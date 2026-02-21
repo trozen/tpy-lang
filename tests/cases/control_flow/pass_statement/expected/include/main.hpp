@@ -17,35 +17,35 @@ void test_class_with_pass();
 
 // 35: class Counter:
 struct Counter {
-  // 36:     value: Int32
-  int32_t value;
+    // 36:     value: Int32
+    int32_t value;
 
-  // 38:     def __init__(self, v: Int32) -> None:
-  Counter() = default;
-  explicit Counter(int32_t v) : value(v) {}
+    // 38:     def __init__(self, v: Int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t v) : value(v) {}
 
-  // 41:     def do_nothing(self) -> None:
-  void do_nothing() {
-    // 42:         pass
-  }
-
-  // 44:     def maybe_increment(self, flag: Int32) -> None:
-  void maybe_increment(int32_t flag) {
-    // 45:         if flag > 0:
-    if ((flag > 0)) {
-      // 46:             self.value += 1
-      this->value = tpy::add_check<int32_t>(this->value, 1);
-    } else {
-      // 48:             pass
+    // 41:     def do_nothing(self) -> None:
+    void do_nothing() {
+        // 42:         pass
     }
-  }
+
+    // 44:     def maybe_increment(self, flag: Int32) -> None:
+    void maybe_increment(int32_t flag) {
+        // 45:         if flag > 0:
+        if ((flag > 0)) {
+            // 46:             self.value += 1
+            this->value = tpy::add_check<int32_t>(this->value, 1);
+        } else {
+            // 48:             pass
+        }
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Counter("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

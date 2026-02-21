@@ -9,41 +9,41 @@ std::string_view __name__;
 Car* c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 54: # Test combined inheritance with multiple protocols
-  // 55: c = Car("Toyota", 2023, "Camry", 1500)
-  static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);
-  c = &__global_slot_1;
-  // 57: # Access inherited fields
-  // 58: print(c.brand)
-  std::cout << c->brand << "\n";
-  // 59: print(c.year)
-  std::cout << c->year << "\n";
-  // 61: # Access own fields
-  // 62: print(c.model)
-  std::cout << c->model << "\n";
-  // 63: print(c.car_weight)
-  std::cout << c->car_weight << "\n";
-  // 65: # Call inherited method
-  // 66: print(c.get_brand())
-  std::cout << c->get_brand() << "\n";
-  // 68: # Call protocol methods
-  // 69: print(c.__str__())
-  std::cout << c->__str__() << "\n";
-  // 70: print(c.weight())
-  std::cout << c->weight() << "\n";
-  // 71: print(c.describe())
-  std::cout << c->describe() << "\n";
+    __name__ = "__main__";
+    // 54: # Test combined inheritance with multiple protocols
+    // 55: c = Car("Toyota", 2023, "Camry", 1500)
+    static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);
+    c = &__global_slot_1;
+    // 57: # Access inherited fields
+    // 58: print(c.brand)
+    std::cout << c->brand << "\n";
+    // 59: print(c.year)
+    std::cout << c->year << "\n";
+    // 61: # Access own fields
+    // 62: print(c.model)
+    std::cout << c->model << "\n";
+    // 63: print(c.car_weight)
+    std::cout << c->car_weight << "\n";
+    // 65: # Call inherited method
+    // 66: print(c.get_brand())
+    std::cout << c->get_brand() << "\n";
+    // 68: # Call protocol methods
+    // 69: print(c.__str__())
+    std::cout << c->__str__() << "\n";
+    // 70: print(c.weight())
+    std::cout << c->weight() << "\n";
+    // 71: print(c.describe())
+    std::cout << c->describe() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

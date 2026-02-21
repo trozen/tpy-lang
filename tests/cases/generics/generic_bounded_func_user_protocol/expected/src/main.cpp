@@ -7,27 +7,27 @@ std::string_view __name__;
 
 // 25: def main() -> None:
 void main() {
-  // 26:     p = Point(10, 20)
-  Point p = Point(10, 20);
-  // 27:     # Point satisfies Printable, so inference should work
-  // 28:     print_item(p)
-  print_item<Point>(p);
+    // 26:     p = Point(10, 20)
+    Point p = Point(10, 20);
+    // 27:     # Point satisfies Printable, so inference should work
+    // 28:     print_item(p)
+    print_item<Point>(p);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 30: main()
-  main();
+    __name__ = "__main__";
+    // 30: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

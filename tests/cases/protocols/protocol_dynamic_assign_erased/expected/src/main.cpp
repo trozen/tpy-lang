@@ -7,48 +7,48 @@ std::string_view __name__;
 
 // 17: def greet(pet: Pet) -> None:
 void greet(__tpy_Base_Pet& pet) {
-  // 18:     print(pet.name())
-  std::cout << pet.name() << "\n";
+    // 18:     print(pet.name())
+    std::cout << pet.name() << "\n";
 }
 
 // 20: def main() -> None:
 void main() {
   std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
-  // 21:     p1: Pet = Dog()
-  Dog __slot_1{Dog()};
-  __tpy_Base_Pet* p1 = &__slot_1;
-  // 22:     p2: Pet = p1
-  __tpy_Base_Pet* p2 = &(*p1);
-  // 23:     greet(p1)
-  greet((*p1));
-  // 24:     greet(p2)
-  greet((*p2));
-  // 25:     # Reassign to concrete, then back to erased
-  // 26:     p2 = Cat()
-  __slot_2.emplace(Cat());
-  p2 = &*__slot_2;
-  // 27:     greet(p2)
-  greet((*p2));
-  // 28:     p2 = p1
-  p2 = &(*p1);
-  // 29:     greet(p2)
-  greet((*p2));
+    // 21:     p1: Pet = Dog()
+    Dog __slot_1{Dog()};
+    __tpy_Base_Pet* p1 = &__slot_1;
+    // 22:     p2: Pet = p1
+    __tpy_Base_Pet* p2 = &(*p1);
+    // 23:     greet(p1)
+    greet((*p1));
+    // 24:     greet(p2)
+    greet((*p2));
+    // 25:     # Reassign to concrete, then back to erased
+    // 26:     p2 = Cat()
+    __slot_2.emplace(Cat());
+    p2 = &*__slot_2;
+    // 27:     greet(p2)
+    greet((*p2));
+    // 28:     p2 = p1
+    p2 = &(*p1);
+    // 29:     greet(p2)
+    greet((*p2));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 31: main()
-  main();
+    __name__ = "__main__";
+    // 31: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -15,52 +15,52 @@ void test();
 
 // 3: class Point:
 struct Point {
-  // 4:     x: Int32
-  int32_t x;
-  // 5:     y: Int32
-  int32_t y;
+    // 4:     x: Int32
+    int32_t x;
+    // 5:     y: Int32
+    int32_t y;
 
-  // 6:     def __init__(self, x: Int32, y: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 6:     def __init__(self, x: Int32, y: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 10: class Box[T]:
 template<typename T>
 struct Box {
-  // 11:     _value: T
-  T _value;
+    // 11:     _value: T
+    T _value;
 
-  // 12:     def __init__(self, value: T) -> None:
-  Box() = default;
-  explicit Box(const T& value) : _value(value) {}
+    // 12:     def __init__(self, value: T) -> None:
+    Box() = default;
+    explicit Box(const T& value) : _value(value) {}
 
-  // 14:     def __deref__(self) -> T:
-  tpy::return_val_or_ref_t<T> __deref__() {
-    // 15:         return self._value
-    return this->_value;
-  }
+    // 14:     def __deref__(self) -> T:
+    tpy::return_val_or_ref_t<T> __deref__() {
+        // 15:         return self._value
+        return this->_value;
+    }
 
-  auto operator*() -> decltype(__deref__()) {
-    return __deref__();
-  }
+    auto operator*() -> decltype(__deref__()) {
+        return __deref__();
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "_value=" << tpy::ValuePrinter(obj._value)
-     << ")";
-  return os;
+    os << "Box("
+       << "_value=" << tpy::ValuePrinter(obj._value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

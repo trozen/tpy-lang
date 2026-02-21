@@ -14,26 +14,26 @@ void observe_method(bool flag, Box& p);
 
 // 5: class Box:
 struct Box {
-  // 6:     v: Int32
-  int32_t v;
+    // 6:     v: Int32
+    int32_t v;
 
-  // 7:     def __init__(self, v: Int32) -> None:
-  Box() = default;
-  explicit Box(int32_t v) : v(v) {}
+    // 7:     def __init__(self, v: Int32) -> None:
+    Box() = default;
+    explicit Box(int32_t v) : v(v) {}
 
-  //     @readonly
-  // 11:     def get_v(self) -> Int32:
-  int32_t get_v() const {
-    // 12:         return self.v
-    return this->v;
-  }
+    //     @readonly
+    // 11:     def get_v(self) -> Int32:
+    int32_t get_v() const {
+        // 12:         return self.v
+        return this->v;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "v=" << obj.v
-     << ")";
-  return os;
+    os << "Box("
+       << "v=" << obj.v
+       << ")";
+    return os;
 }
 
 void __tpy_init();

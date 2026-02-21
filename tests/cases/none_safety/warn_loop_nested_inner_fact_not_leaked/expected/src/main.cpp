@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 4: def nested_warn(x: Int32 | None, y: Int32 | None) -> Int32:
 int32_t nested_warn(std::optional<int32_t> x, std::optional<int32_t> y) {
-  // 5:     while x is not None:
-  while ((x.has_value())) {
-    // 6:         while y is not None:
-    while ((y.has_value())) {
-      // 7:             break
-      break;
+    // 5:     while x is not None:
+    while ((x.has_value())) {
+        // 6:         while y is not None:
+        while ((y.has_value())) {
+            // 7:             break
+            break;
+        }
+        // 8:         return y + 1  # tpyc: warning(/Potential None access/)
+        return (tpy::add_check<int32_t>(tpy::deref_optional_check(y), 1));
     }
-    // 8:         return y + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::add_check<int32_t>(tpy::deref_optional_check(y), 1));
-  }
-  // 9:     return 0
-  return 0;
+    // 9:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 12: print(nested_warn(4, 1))
-  std::cout << nested_warn(4, 1) << "\n";
+    __name__ = "__main__";
+    // 12: print(nested_warn(4, 1))
+    std::cout << nested_warn(4, 1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

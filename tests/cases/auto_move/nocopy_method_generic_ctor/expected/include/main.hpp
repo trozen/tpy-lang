@@ -16,67 +16,67 @@ void main();
 // @nocopy
 // 6: class Handle:
 struct Handle {
-  // 7:     fd: Int32
-  int32_t fd;
+    // 7:     fd: Int32
+    int32_t fd;
 
-  Handle() = default;
-  Handle(const Handle&) = delete;
-  Handle& operator=(const Handle&) = delete;
-  Handle(Handle&&) = default;
-  Handle& operator=(Handle&&) = default;
+    Handle() = default;
+    Handle(const Handle&) = delete;
+    Handle& operator=(const Handle&) = delete;
+    Handle(Handle&&) = default;
+    Handle& operator=(Handle&&) = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-  os << "Handle("
-     << "fd=" << obj.fd
-     << ")";
-  return os;
+    os << "Handle("
+       << "fd=" << obj.fd
+       << ")";
+    return os;
 }
 
 // 10: class Holder:
 struct Holder {
-  // 11:     h: Handle
-  Handle h;
+    // 11:     h: Handle
+    Handle h;
 
-  Holder() = default;
+    Holder() = default;
 
-  // 13:     def take(self, h: Own[Handle]) -> None:
-  void take(Handle h) {
-    // 14:         self.h = h
-    this->h = std::move(h);
-  }
+    // 13:     def take(self, h: Own[Handle]) -> None:
+    void take(Handle h) {
+        // 14:         self.h = h
+        this->h = std::move(h);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-  os << "Holder("
-     << "h=" << obj.h
-     << ")";
-  return os;
+    os << "Holder("
+       << "h=" << obj.h
+       << ")";
+    return os;
 }
 
 // 17: class GenericHolder[T]:
 template<typename T>
 struct GenericHolder {
-  // 18:     item: T
-  T item;
+    // 18:     item: T
+    T item;
 
-  // 20:     def __init__(self, item: Own[T]):
-  GenericHolder() = default;
-  explicit GenericHolder(T item) : item(std::move(item)) {}
+    // 20:     def __init__(self, item: Own[T]):
+    GenericHolder() = default;
+    explicit GenericHolder(T item) : item(std::move(item)) {}
 
-  // 23:     def replace(self, item: Own[T]) -> None:
-  void replace(T item) {
-    // 24:         self.item = item
-    this->item = std::move(item);
-  }
+    // 23:     def replace(self, item: Own[T]) -> None:
+    void replace(T item) {
+        // 24:         self.item = item
+        this->item = std::move(item);
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
-  os << "GenericHolder("
-     << "item=" << tpy::ValuePrinter(obj.item)
-     << ")";
-  return os;
+    os << "GenericHolder("
+       << "item=" << tpy::ValuePrinter(obj.item)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

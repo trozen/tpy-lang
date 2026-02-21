@@ -7,33 +7,33 @@ std::string_view __name__;
 
 // 4: def shrink(x: Int32 | None) -> Int32:
 int32_t shrink(std::optional<int32_t> x) {
-  // 5:     while x is not None and x > 0:
-  while (((x.has_value()) && ((*x) > 0))) {
-    // 6:         x = x - 1  # tpyc: ok
-    x = (tpy::sub_check<int32_t>((*x), 1));
-  }
-  // 7:     return 0
-  return 0;
+    // 5:     while x is not None and x > 0:
+    while (((x.has_value()) && ((*x) > 0))) {
+        // 6:         x = x - 1  # tpyc: ok
+        x = (tpy::sub_check<int32_t>((*x), 1));
+    }
+    // 7:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 10: print(shrink(2))
-  std::cout << shrink(2) << "\n";
-  // 11: print(shrink(0))
-  std::cout << shrink(0) << "\n";
-  // 12: print(shrink(None))
-  std::cout << shrink(std::nullopt) << "\n";
+    __name__ = "__main__";
+    // 10: print(shrink(2))
+    std::cout << shrink(2) << "\n";
+    // 11: print(shrink(0))
+    std::cout << shrink(0) << "\n";
+    // 12: print(shrink(None))
+    std::cout << shrink(std::nullopt) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -17,95 +17,95 @@ extern Wrapper<std::string_view>* w;
 // # Case 1: Generic class inheriting from non-generic class
 // 4: class Animal:
 struct Animal {
-  // 5:     name: str
-  std::string_view name;
+    // 5:     name: str
+    std::string_view name;
 
-  // 6:     def __init__(self, name: str) -> None:
-  Animal() = default;
-  explicit Animal(std::string_view name) : name(name) {}
+    // 6:     def __init__(self, name: str) -> None:
+    Animal() = default;
+    explicit Animal(std::string_view name) : name(name) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
-  os << "Animal("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Animal("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 // # Case 2: Generic class inheriting from concrete generic parent
 // 18: class Container[T]:
 template<typename T>
 struct Container {
-  // 19:     value: T
-  T value;
+    // 19:     value: T
+    T value;
 
-  // 20:     def __init__(self, value: T) -> None:
-  Container() = default;
-  explicit Container(const T& value) : value(value) {}
+    // 20:     def __init__(self, value: T) -> None:
+    Container() = default;
+    explicit Container(const T& value) : value(value) {}
 
-  // 22:     def get(self) -> T:
-  tpy::return_val_or_ref_t<T> get() {
-    // 23:         return self.value
-    return this->value;
-  }
+    // 22:     def get(self) -> T:
+    tpy::return_val_or_ref_t<T> get() {
+        // 23:         return self.value
+        return this->value;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Container("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // 9: class Box[T](Animal):
 template<typename T>
 struct Box : Animal {
-  // 10:     value: T
-  T value;
+    // 10:     value: T
+    T value;
 
-  // 11:     def __init__(self, name: str, value: T) -> None:
-  Box() = default;
-  explicit Box(std::string_view name, const T& value) : value(value) {
-    // 12:         self.name = name
-    this->name = name;
-  }
+    // 11:     def __init__(self, name: str, value: T) -> None:
+    Box() = default;
+    explicit Box(std::string_view name, const T& value) : value(value) {
+        // 12:         self.name = name
+        this->name = name;
+    }
 
-  // 14:     def get(self) -> T:
-  tpy::return_val_or_ref_t<T> get() {
-    // 15:         return self.value
-    return this->value;
-  }
+    // 14:     def get(self) -> T:
+    tpy::return_val_or_ref_t<T> get() {
+        // 15:         return self.value
+        return this->value;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // 25: class Wrapper[U](Container[Int32]):
 template<typename U>
 struct Wrapper : Container<int32_t> {
-  // 26:     extra: U
-  U extra;
+    // 26:     extra: U
+    U extra;
 
-  // 27:     def __init__(self, value: Int32, extra: U) -> None:
-  Wrapper() = default;
-  explicit Wrapper(int32_t value, const U& extra) : extra(extra) {
-    // 28:         self.value = value
-    this->value = value;
-  }
+    // 27:     def __init__(self, value: Int32, extra: U) -> None:
+    Wrapper() = default;
+    explicit Wrapper(int32_t value, const U& extra) : extra(extra) {
+        // 28:         self.value = value
+        this->value = value;
+    }
 };
 
 template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<U>& obj) {
-  os << "Wrapper("
-     << "extra=" << tpy::ValuePrinter(obj.extra)
-     << ")";
-  return os;
+    os << "Wrapper("
+       << "extra=" << tpy::ValuePrinter(obj.extra)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -18,48 +18,48 @@ tpy::BigInt big;
 double z{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test abs() builtin function for Int32, BigInt, and float."""
-  // 4: # Test abs with Int32
-  // 5: x: Int32 = -42
-  x = -42;
-  // 6: print(abs(x))
-  std::cout << std::abs(x) << "\n";
-  // 7: print(abs(Int32(10)))
-  std::cout << std::abs(10) << "\n";
-  // 8: print(abs(Int32(0)))
-  std::cout << std::abs(0) << "\n";
-  // 10: # Test abs with BigInt (default int)
-  // 11: y = -100
-  y = -100;
-  // 12: print(abs(y))
-  std::cout << std::abs(y) << "\n";
-  // 13: print(abs(99))
-  std::cout << std::abs(99) << "\n";
-  // 14: # Large BigInt
-  // 15: big = int(-1000000)
-  big = tpy::BigInt(static_cast<int64_t>(-1000000));
-  // 16: print(abs(big))
-  std::cout << tpy::BigInt::abs(big) << "\n";
-  // 18: # Test abs with float
-  // 19: z: float = -3.14
-  z = -(3.14);
-  // 20: print(abs(z))
-  std::cout << tpy::print_float(std::fabs(z)) << "\n";
-  // 21: print(abs(2.5))
-  std::cout << tpy::print_float(std::fabs(2.5)) << "\n";
-  // 22: print(abs(-0.0))
-  std::cout << tpy::print_float(std::fabs(-(0.0))) << "\n";
+    __name__ = "__main__";
+    // 1: """Test abs() builtin function for Int32, BigInt, and float."""
+    // 4: # Test abs with Int32
+    // 5: x: Int32 = -42
+    x = -42;
+    // 6: print(abs(x))
+    std::cout << std::abs(x) << "\n";
+    // 7: print(abs(Int32(10)))
+    std::cout << std::abs(10) << "\n";
+    // 8: print(abs(Int32(0)))
+    std::cout << std::abs(0) << "\n";
+    // 10: # Test abs with BigInt (default int)
+    // 11: y = -100
+    y = -100;
+    // 12: print(abs(y))
+    std::cout << std::abs(y) << "\n";
+    // 13: print(abs(99))
+    std::cout << std::abs(99) << "\n";
+    // 14: # Large BigInt
+    // 15: big = int(-1000000)
+    big = tpy::BigInt(static_cast<int64_t>(-1000000));
+    // 16: print(abs(big))
+    std::cout << tpy::BigInt::abs(big) << "\n";
+    // 18: # Test abs with float
+    // 19: z: float = -3.14
+    z = -(3.14);
+    // 20: print(abs(z))
+    std::cout << tpy::print_float(std::fabs(z)) << "\n";
+    // 21: print(abs(2.5))
+    std::cout << tpy::print_float(std::fabs(2.5)) << "\n";
+    // 22: print(abs(-0.0))
+    std::cout << tpy::print_float(std::fabs(-(0.0))) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

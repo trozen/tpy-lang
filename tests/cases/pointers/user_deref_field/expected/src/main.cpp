@@ -7,31 +7,31 @@ std::string_view __name__;
 
 // 17: def main() -> None:
 void main() {
-  // 18:     pt: Point = Point(10, 20)
-  Point pt = Point(10, 20);
-  // 19:     r: Ref = Ref(pt)
-  Ref r = Ref(pt);
-  // 20:     # Field access through user-defined __deref__
-  // 21:     print(r.x)
-  std::cout << r.__deref__().x << "\n";
-  // 22:     print(r.y)
-  std::cout << r.__deref__().y << "\n";
+    // 18:     pt: Point = Point(10, 20)
+    Point pt = Point(10, 20);
+    // 19:     r: Ref = Ref(pt)
+    Ref r = Ref(pt);
+    // 20:     # Field access through user-defined __deref__
+    // 21:     print(r.x)
+    std::cout << r.__deref__().x << "\n";
+    // 22:     print(r.y)
+    std::cout << r.__deref__().y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 24: main()
-  main();
+    __name__ = "__main__";
+    // 24: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -9,30 +9,30 @@ std::optional<int32_t> x;
 
 // 6: def prove() -> None:
 void prove() {
-  // 7:     assert x is not None
-  if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
+    // 7:     assert x is not None
+    if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
 }
 
 // 10: def use() -> Int32:
 int32_t use() {
-  // 11:     return x + 1  # tpyc: warning(/Potential None access/)
-  return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
+    // 11:     return x + 1  # tpyc: warning(/Potential None access/)
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: x: Int32 | None = None
-  x = std::nullopt;
+    __name__ = "__main__";
+    // 3: x: Int32 | None = None
+    x = std::nullopt;
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

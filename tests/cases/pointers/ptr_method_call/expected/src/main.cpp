@@ -7,31 +7,31 @@ std::string_view __name__;
 
 // 14: def main() -> None:
 void main() {
-  // 15:     pt: Point = Point(10, 20)
-  Point pt = Point(10, 20);
-  // 16:     p: Ptr[Point] = Ptr(pt)
-  Point* p = &pt;
-  // 17:     # Method call through Ptr auto-deref
-  // 18:     print(p.sum())
-  std::cout << p->sum() << "\n";
-  // 19:     print(p.describe())
-  std::cout << p->describe() << "\n";
+    // 15:     pt: Point = Point(10, 20)
+    Point pt = Point(10, 20);
+    // 16:     p: Ptr[Point] = Ptr(pt)
+    Point* p = &pt;
+    // 17:     # Method call through Ptr auto-deref
+    // 18:     print(p.sum())
+    std::cout << p->sum() << "\n";
+    // 19:     print(p.describe())
+    std::cout << p->describe() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 21: main()
-  main();
+    __name__ = "__main__";
+    // 21: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

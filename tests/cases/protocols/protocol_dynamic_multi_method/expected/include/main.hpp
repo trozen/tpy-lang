@@ -48,37 +48,37 @@ void main();
 
 // 14: class Circle(Shape):
 struct Circle : __tpy_Base_Shape {
-  // 15:     radius: float
-  double radius;
+    // 15:     radius: float
+    double radius;
 
-  // 17:     def __init__(self, radius: float) -> None:
-  Circle() = default;
-  explicit Circle(double radius) : radius(radius) {}
+    // 17:     def __init__(self, radius: float) -> None:
+    Circle() = default;
+    explicit Circle(double radius) : radius(radius) {}
 
-  // 20:     def area(self) -> float:
-  double area() override {
-    // 21:         return 3.14159 * self.radius * self.radius
-    return ((((3.14159) * (this->radius))) * (this->radius));
-  }
+    // 20:     def area(self) -> float:
+    double area() override {
+        // 21:         return 3.14159 * self.radius * self.radius
+        return ((((3.14159) * (this->radius))) * (this->radius));
+    }
 
-  // 23:     def name(self) -> str:
-  std::string_view name() override {
-    // 24:         return "Circle"
-    return "Circle";
-  }
+    // 23:     def name(self) -> str:
+    std::string_view name() override {
+        // 24:         return "Circle"
+        return "Circle";
+    }
 
-  // 26:     def scale(self, factor: float) -> None:
-  void scale(double factor) override {
-    // 27:         self.radius = self.radius * factor
-    this->radius = ((this->radius) * (factor));
-  }
+    // 26:     def scale(self, factor: float) -> None:
+    void scale(double factor) override {
+        // 27:         self.radius = self.radius * factor
+        this->radius = ((this->radius) * (factor));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "radius=" << obj.radius
-     << ")";
-  return os;
+    os << "Circle("
+       << "radius=" << obj.radius
+       << ")";
+    return os;
 }
 
 void __tpy_init();

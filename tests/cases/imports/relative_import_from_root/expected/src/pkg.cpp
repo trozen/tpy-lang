@@ -6,11 +6,11 @@ namespace tpy_user::pkg {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "pkg";
+    __name__ = "pkg";
 }
 
 } // namespace tpy_user::pkg

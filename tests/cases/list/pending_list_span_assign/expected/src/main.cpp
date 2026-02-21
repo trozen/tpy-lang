@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 3: def main() -> None:
 void main() {
-  // 4:     data = [1, 2, 3]
-  std::array<int32_t, 3> data = {1, 2, 3};
-  // 5:     s: Span[Int32] = data
-  std::span<const int32_t> s = tpy::as_span(data);
-  // 6:     print(s[0])
-  std::cout << s[0] << "\n";
-  // 7:     print(s[2])
-  std::cout << s[2] << "\n";
+    // 4:     data = [1, 2, 3]
+    std::array<int32_t, 3> data = {1, 2, 3};
+    // 5:     s: Span[Int32] = data
+    std::span<const int32_t> s = tpy::as_span(data);
+    // 6:     print(s[0])
+    std::cout << s[0] << "\n";
+    // 7:     print(s[2])
+    std::cout << s[2] << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: main()
-  main();
+    __name__ = "__main__";
+    // 9: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

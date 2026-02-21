@@ -7,31 +7,31 @@ std::string_view __name__;
 
 // 3: def main():
 void main() {
-  // 4:     # Just verify the alias works - don't print actual time (varies between runs)
-  // 5:     t: float = get_time()
-  double t = tpy::time_time();
-  // 6:     if t > 0.0:
-  if ((t > 0.0)) {
-    // 7:         print("time alias works")
-    std::cout << "time alias works" << "\n";
-  }
+    // 4:     # Just verify the alias works - don't print actual time (varies between runs)
+    // 5:     t: float = get_time()
+    double t = tpy::time_time();
+    // 6:     if t > 0.0:
+    if ((t > 0.0)) {
+        // 7:         print("time alias works")
+        std::cout << "time alias works" << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: from time import time as get_time
-  // 9: main()
-  main();
+    __name__ = "__main__";
+    // 1: from time import time as get_time
+    // 9: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

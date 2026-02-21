@@ -7,35 +7,35 @@ std::string_view __name__;
 
 // 11: def main() -> None:
 void main() {
-  // 12:     # Test basic integer type parameter
-  // 13:     c1: Container[str, 10] = Container[str, 10]("hello")
-  Container<std::string_view, 10> c1 = Container<std::string_view, 10>("hello");
-  // 14:     print(c1.value)
-  std::cout << c1.value << "\n";
-  // 16:     c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
-  Container<int32_t, 5> c2 = Container<int32_t, 5>(42);
-  // 17:     print(c2.value)
-  std::cout << c2.value << "\n";
-  // 19:     c3: Container[str, 100] = Container[str, 100]("world")
-  Container<std::string_view, 100> c3 = Container<std::string_view, 100>("world");
-  // 20:     print(c3.value)
-  std::cout << c3.value << "\n";
+    // 12:     # Test basic integer type parameter
+    // 13:     c1: Container[str, 10] = Container[str, 10]("hello")
+    Container<std::string_view, 10> c1 = Container<std::string_view, 10>("hello");
+    // 14:     print(c1.value)
+    std::cout << c1.value << "\n";
+    // 16:     c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
+    Container<int32_t, 5> c2 = Container<int32_t, 5>(42);
+    // 17:     print(c2.value)
+    std::cout << c2.value << "\n";
+    // 19:     c3: Container[str, 100] = Container[str, 100]("world")
+    Container<std::string_view, 100> c3 = Container<std::string_view, 100>("world");
+    // 20:     print(c3.value)
+    std::cout << c3.value << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 23: main()
-  main();
+    __name__ = "__main__";
+    // 23: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

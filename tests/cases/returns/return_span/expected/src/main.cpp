@@ -8,36 +8,36 @@ std::string_view __name__;
 // # Returning Span should return by value (std::span is a view type)
 // 4: def get_span(arr: Array[Int32, 4]) -> Span[Int32]:
 std::span<const int32_t> get_span(std::array<int32_t, 4>& arr) {
-  // 5:     return arr  # tpyc: ok
-  return tpy::as_span(arr);
+    // 5:     return arr  # tpyc: ok
+    return tpy::as_span(arr);
 }
 
 // 7: def main():
 void main() {
-  // 8:     nums: Array[Int32, 4] = [1, 2, 3, 4]
-  std::array<int32_t, 4> nums = {1, 2, 3, 4};
-  // 9:     s: Span[Int32] = get_span(nums)
-  std::span<const int32_t> s = get_span(nums);
-  // 10:     print(s[0])
-  std::cout << s[0] << "\n";
-  // 11:     print(s[3])
-  std::cout << s[3] << "\n";
+    // 8:     nums: Array[Int32, 4] = [1, 2, 3, 4]
+    std::array<int32_t, 4> nums = {1, 2, 3, 4};
+    // 9:     s: Span[Int32] = get_span(nums)
+    std::span<const int32_t> s = get_span(nums);
+    // 10:     print(s[0])
+    std::cout << s[0] << "\n";
+    // 11:     print(s[3])
+    std::cout << s[3] << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: main()
-  main();
+    __name__ = "__main__";
+    // 13: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

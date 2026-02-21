@@ -9,48 +9,48 @@ std::string_view __name__;
 
 // 28: def main() -> None:
 void main() {
-  // 29:     v = Vec2(Int32(3), Int32(4))
-  Vec2 v = Vec2(3, 4);
-  // 30:     print(v.x)
-  std::cout << v.x << "\n";
-  // 31:     print(v.y)
-  std::cout << v.y << "\n";
-  // 32:     print(vec2_sum(Ptr(v)))
-  std::cout << vec2_sum(&v) << "\n";
-  // 33:     print(v.sum())
-  std::cout << v.sum() << "\n";
-  // 34:     print(v.dot(Vec2(Int32(1), Int32(2))))
-  std::cout << v.dot(Vec2(1, 2)) << "\n";
-  // 36:     z = Vec2.zero()
-  Vec2 z = Vec2::zero();
-  // 37:     print(z.x)
-  std::cout << z.x << "\n";
-  // 38:     print(z.y)
-  std::cout << z.y << "\n";
-  // 40:     c = Color(Int32(100), Int32(150), Int32(200))
-  ns::Color c = ns::Color(100, 150, 200);
-  // 41:     print(c.r)
-  std::cout << c.r << "\n";
-  // 42:     print(color_brightness(Ptr(c)))
-  std::cout << color_brightness(&c) << "\n";
-  // 43:     print(c.brightness())
-  std::cout << c.brightness() << "\n";
+    // 29:     v = Vec2(Int32(3), Int32(4))
+    Vec2 v = Vec2(3, 4);
+    // 30:     print(v.x)
+    std::cout << v.x << "\n";
+    // 31:     print(v.y)
+    std::cout << v.y << "\n";
+    // 32:     print(vec2_sum(Ptr(v)))
+    std::cout << vec2_sum(&v) << "\n";
+    // 33:     print(v.sum())
+    std::cout << v.sum() << "\n";
+    // 34:     print(v.dot(Vec2(Int32(1), Int32(2))))
+    std::cout << v.dot(Vec2(1, 2)) << "\n";
+    // 36:     z = Vec2.zero()
+    Vec2 z = Vec2::zero();
+    // 37:     print(z.x)
+    std::cout << z.x << "\n";
+    // 38:     print(z.y)
+    std::cout << z.y << "\n";
+    // 40:     c = Color(Int32(100), Int32(150), Int32(200))
+    ns::Color c = ns::Color(100, 150, 200);
+    // 41:     print(c.r)
+    std::cout << c.r << "\n";
+    // 42:     print(color_brightness(Ptr(c)))
+    std::cout << color_brightness(&c) << "\n";
+    // 43:     print(c.brightness())
+    std::cout << c.brightness() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 45: main()
-  main();
+    __name__ = "__main__";
+    // 45: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

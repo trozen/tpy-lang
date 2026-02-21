@@ -12,26 +12,26 @@ int32_t y{};
 int32_t z{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test Int32 modulo by zero panic at runtime."""
-  // 4: x: Int32 = 42
-  x = 42;
-  // 5: y: Int32 = 0
-  y = 0;
-  // 6: z: Int32 = x % y  # Should panic
-  z = (tpy::mod_check<int32_t>(x, y));
-  // 7: print(z)
-  std::cout << z << "\n";
+    __name__ = "__main__";
+    // 1: """Test Int32 modulo by zero panic at runtime."""
+    // 4: x: Int32 = 42
+    x = 42;
+    // 5: y: Int32 = 0
+    y = 0;
+    // 6: z: Int32 = x % y  # Should panic
+    z = (tpy::mod_check<int32_t>(x, y));
+    // 7: print(z)
+    std::cout << z << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

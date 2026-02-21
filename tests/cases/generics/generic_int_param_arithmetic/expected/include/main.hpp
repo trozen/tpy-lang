@@ -15,32 +15,32 @@ void main();
 template<typename T, std::size_t N>
 struct Container {
 
-  Container() = default;
+    Container() = default;
 
-  // 5:     def get_double(self) -> Int32:
-  int32_t get_double() {
-    // 6:         return Int32(N * 2)
-    return (tpy::mul_check<int32_t>(N, 2));
-  }
+    // 5:     def get_double(self) -> Int32:
+    int32_t get_double() {
+        // 6:         return Int32(N * 2)
+        return (tpy::mul_check<int32_t>(N, 2));
+    }
 
-  // 8:     def get_plus_one(self) -> Int32:
-  int32_t get_plus_one() {
-    // 9:         return Int32(N + 1)
-    return (tpy::add_check<int32_t>(N, 1));
-  }
+    // 8:     def get_plus_one(self) -> Int32:
+    int32_t get_plus_one() {
+        // 9:         return Int32(N + 1)
+        return (tpy::add_check<int32_t>(N, 1));
+    }
 
-  // 11:     def get_minus_five(self) -> Int32:
-  int32_t get_minus_five() {
-    // 12:         return Int32(N - 5)
-    return (tpy::sub_check<int32_t>(N, 5));
-  }
+    // 11:     def get_minus_five(self) -> Int32:
+    int32_t get_minus_five() {
+        // 12:         return Int32(N - 5)
+        return (tpy::sub_check<int32_t>(N, 5));
+    }
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
-  os << "Container("
-     << ")";
-  return os;
+    os << "Container("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

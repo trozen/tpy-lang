@@ -15,44 +15,44 @@ Sink* sink{};
 
 // 8: def take_ptr(p: Ptr[None]) -> Int32:
 int32_t take_ptr(void* p) {
-  // 9:     return Int32(10)
-  return 10;
+    // 9:     return Int32(10)
+    return 10;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: from tpy.unsafe import unsafe_cast, unsafe_ptr
-  // 6: carg: list[Int32] = [Int32(1)]
-  static std::vector<int32_t> __global_slot_1 = {1};
-  carg = &__global_slot_1;
-  // 15: parg_list = list[Ptr[None]]()
-  static std::vector<void*> __global_slot_2 = std::vector<void*>();
-  parg_list = &__global_slot_2;
-  // 17: carg_ptr: Ptr[None] = unsafe_cast(unsafe_ptr(carg))
-  carg_ptr = reinterpret_cast<void*>((*carg).data());
-  // 18: parg_list.append(carg_ptr)
-  (*parg_list).push_back(carg_ptr);
-  // 19: parg_list.append(unsafe_cast(unsafe_ptr(carg)))  # tpyc: ok
-  (*parg_list).push_back(reinterpret_cast<void*>((*carg).data()));
-  // 21: print(take_ptr(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
-  std::cout << take_ptr(reinterpret_cast<void*>((*carg).data())) << "\n";
-  // 22: sink = Sink()
-  static Sink __global_slot_3 = Sink();
-  sink = &__global_slot_3;
-  // 23: print(sink.put(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
-  std::cout << sink->put(reinterpret_cast<void*>((*carg).data())) << "\n";
-  // 24: print(len(parg_list))
-  std::cout << tpy::__len__((*parg_list)) << "\n";
+    __name__ = "__main__";
+    // 4: from tpy.unsafe import unsafe_cast, unsafe_ptr
+    // 6: carg: list[Int32] = [Int32(1)]
+    static std::vector<int32_t> __global_slot_1 = {1};
+    carg = &__global_slot_1;
+    // 15: parg_list = list[Ptr[None]]()
+    static std::vector<void*> __global_slot_2 = std::vector<void*>();
+    parg_list = &__global_slot_2;
+    // 17: carg_ptr: Ptr[None] = unsafe_cast(unsafe_ptr(carg))
+    carg_ptr = reinterpret_cast<void*>((*carg).data());
+    // 18: parg_list.append(carg_ptr)
+    (*parg_list).push_back(carg_ptr);
+    // 19: parg_list.append(unsafe_cast(unsafe_ptr(carg)))  # tpyc: ok
+    (*parg_list).push_back(reinterpret_cast<void*>((*carg).data()));
+    // 21: print(take_ptr(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
+    std::cout << take_ptr(reinterpret_cast<void*>((*carg).data())) << "\n";
+    // 22: sink = Sink()
+    static Sink __global_slot_3 = Sink();
+    sink = &__global_slot_3;
+    // 23: print(sink.put(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
+    std::cout << sink->put(reinterpret_cast<void*>((*carg).data())) << "\n";
+    // 24: print(len(parg_list))
+    std::cout << tpy::__len__((*parg_list)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

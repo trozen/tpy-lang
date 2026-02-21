@@ -23,48 +23,48 @@ void main();
 
 // 4: class Point:
 struct Point {
-  // 5:     x: Int32
-  int32_t x;
-  // 6:     y: Int32
-  int32_t y;
+    // 5:     x: Int32
+    int32_t x;
+    // 6:     y: Int32
+    int32_t y;
 
-  // 8:     def __init__(self, x: Int32, y: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 8:     def __init__(self, x: Int32, y: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 15: class DefaultFactory:
 struct DefaultFactory {
 
-  DefaultFactory() = default;
+    DefaultFactory() = default;
 
-  // 16:     def create_point(self, x: Int32, y: Int32) -> Own[Point]:
-  Point create_point(int32_t x, int32_t y) {
-    // 17:         return Point(x, y)
-    return Point(x, y);
-  }
+    // 16:     def create_point(self, x: Int32, y: Int32) -> Own[Point]:
+    Point create_point(int32_t x, int32_t y) {
+        // 17:         return Point(x, y)
+        return Point(x, y);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
-  os << "DefaultFactory("
-     << ")";
-  return os;
+    os << "DefaultFactory("
+       << ")";
+    return os;
 }
 
 // 19: def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
 template<PointFactory T>
 Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {
-  // 20:     return factory.create_point(x, y)
-  return factory.create_point(x, y);
+    // 20:     return factory.create_point(x, y)
+    return factory.create_point(x, y);
 }
 
 void __tpy_init();

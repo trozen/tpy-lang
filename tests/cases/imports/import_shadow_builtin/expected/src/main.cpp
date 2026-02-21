@@ -7,28 +7,28 @@ std::string_view __name__;
 
 // 3: def main():
 void main() {
-  // 4:     result = custom_add(MAGIC, 8)
-  int32_t result = ::tpy_user::math::custom_add(::tpy_user::math::MAGIC, 8);
-  // 5:     print(result)
-  std::cout << result << "\n";
+    // 4:     result = custom_add(MAGIC, 8)
+    int32_t result = ::tpy_user::math::custom_add(::tpy_user::math::MAGIC, 8);
+    // 5:     print(result)
+    std::cout << result << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: from math import custom_add, MAGIC  # tpyc: warning(/shadows builtin module/)
-  ::tpy_user::math::__tpy_init();
-  // 7: main()
-  main();
+    __name__ = "__main__";
+    // 1: from math import custom_add, MAGIC  # tpyc: warning(/shadows builtin module/)
+    ::tpy_user::math::__tpy_init();
+    // 7: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

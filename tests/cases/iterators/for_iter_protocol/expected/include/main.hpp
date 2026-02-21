@@ -13,69 +13,69 @@ extern NumberRange* nums;
 
 // 3: class RangeIter:
 struct RangeIter {
-  // 4:     current: Int32
-  int32_t current;
-  // 5:     limit: Int32
-  int32_t limit;
+    // 4:     current: Int32
+    int32_t current;
+    // 5:     limit: Int32
+    int32_t limit;
 
-  // 7:     def __init__(self, start: Int32, limit: Int32) -> None:
-  RangeIter() = default;
-  explicit RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+    // 7:     def __init__(self, start: Int32, limit: Int32) -> None:
+    RangeIter() = default;
+    explicit RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
-  // 11:     def __next__(self) -> Int32:
-  std::optional<int32_t> __next_opt__() {
-    // 12:         if self.current < self.limit:
-    if ((this->current < this->limit)) {
-      // 13:             result = self.current
-      int32_t result = this->current;
-      // 14:             self.current += 1
-      this->current = tpy::add_check<int32_t>(this->current, 1);
-      // 15:             return result
-      return result;
+    // 11:     def __next__(self) -> Int32:
+    std::optional<int32_t> __next_opt__() {
+        // 12:         if self.current < self.limit:
+        if ((this->current < this->limit)) {
+            // 13:             result = self.current
+            int32_t result = this->current;
+            // 14:             self.current += 1
+            this->current = tpy::add_check<int32_t>(this->current, 1);
+            // 15:             return result
+            return result;
+        }
+        // 16:         raise StopIteration
+        return std::nullopt;
     }
-    // 16:         raise StopIteration
-    return std::nullopt;
-  }
 
-  int32_t __next__() {
-    tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
-  }
+    int32_t __next__() {
+        tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
-  os << "RangeIter("
-     << "current=" << obj.current
-     << ", "
-     << "limit=" << obj.limit
-     << ")";
-  return os;
+    os << "RangeIter("
+       << "current=" << obj.current
+       << ", "
+       << "limit=" << obj.limit
+       << ")";
+    return os;
 }
 
 // 18: class NumberRange:
 struct NumberRange {
-  // 19:     start: Int32
-  int32_t start;
-  // 20:     limit: Int32
-  int32_t limit;
+    // 19:     start: Int32
+    int32_t start;
+    // 20:     limit: Int32
+    int32_t limit;
 
-  // 22:     def __init__(self, start: Int32, limit: Int32) -> None:
-  NumberRange() = default;
-  explicit NumberRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
+    // 22:     def __init__(self, start: Int32, limit: Int32) -> None:
+    NumberRange() = default;
+    explicit NumberRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
-  // 26:     def __iter__(self) -> Own[RangeIter]:
-  RangeIter __iter__() {
-    // 27:         return RangeIter(self.start, self.limit)
-    return RangeIter(this->start, this->limit);
-  }
+    // 26:     def __iter__(self) -> Own[RangeIter]:
+    RangeIter __iter__() {
+        // 27:         return RangeIter(self.start, self.limit)
+        return RangeIter(this->start, this->limit);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NumberRange& obj) {
-  os << "NumberRange("
-     << "start=" << obj.start
-     << ", "
-     << "limit=" << obj.limit
-     << ")";
-  return os;
+    os << "NumberRange("
+       << "start=" << obj.start
+       << ", "
+       << "limit=" << obj.limit
+       << ")";
+    return os;
 }
 
 void __tpy_init();

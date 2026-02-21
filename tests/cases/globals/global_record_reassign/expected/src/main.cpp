@@ -9,33 +9,33 @@ std::string_view __name__;
 Container* c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: # First assignment (creates global slot)
-  // 10: c = Container(1)
-  static Container __global_slot_1 = Container(1);
-  c = &__global_slot_1;
-  // 11: print(c.value)
-  std::cout << c->value << "\n";
-  // 13: # Rvalue reassignment (was generating invalid &* on plain T slot)
-  // 14: c = Container(2)
-  c = &(__global_slot_1 = Container(2));
-  // 15: print(c.value)
-  std::cout << c->value << "\n";
-  // 17: # Another reassignment
-  // 18: c = Container(3)
-  c = &(__global_slot_1 = Container(3));
-  // 19: print(c.value)
-  std::cout << c->value << "\n";
+    __name__ = "__main__";
+    // 9: # First assignment (creates global slot)
+    // 10: c = Container(1)
+    static Container __global_slot_1 = Container(1);
+    c = &__global_slot_1;
+    // 11: print(c.value)
+    std::cout << c->value << "\n";
+    // 13: # Rvalue reassignment (was generating invalid &* on plain T slot)
+    // 14: c = Container(2)
+    c = &(__global_slot_1 = Container(2));
+    // 15: print(c.value)
+    std::cout << c->value << "\n";
+    // 17: # Another reassignment
+    // 18: c = Container(3)
+    c = &(__global_slot_1 = Container(3));
+    // 19: print(c.value)
+    std::cout << c->value << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

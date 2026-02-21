@@ -12,38 +12,38 @@ extern std::vector<int32_t>* result;
 
 // 3: class Counter:
 struct Counter {
-  // 4:     current: Int32
-  int32_t current;
-  // 5:     limit: Int32
-  int32_t limit;
+    // 4:     current: Int32
+    int32_t current;
+    // 5:     limit: Int32
+    int32_t limit;
 
-  // 7:     def __init__(self, limit: Int32) -> None:
-  Counter() = default;
-  explicit Counter(int32_t limit) : current(0), limit(limit) {}
+    // 7:     def __init__(self, limit: Int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-  // 11:     def __next_opt__(self) -> Int32 | None:
-  std::optional<int32_t> __next_opt__() {
-    // 12:         if self.current < self.limit:
-    if ((this->current < this->limit)) {
-      // 13:             val = self.current
-      int32_t val = this->current;
-      // 14:             self.current += 1
-      this->current = tpy::add_check<int32_t>(this->current, 1);
-      // 15:             return val
-      return val;
+    // 11:     def __next_opt__(self) -> Int32 | None:
+    std::optional<int32_t> __next_opt__() {
+        // 12:         if self.current < self.limit:
+        if ((this->current < this->limit)) {
+            // 13:             val = self.current
+            int32_t val = this->current;
+            // 14:             self.current += 1
+            this->current = tpy::add_check<int32_t>(this->current, 1);
+            // 15:             return val
+            return val;
+        }
+        // 16:         return None
+        return std::nullopt;
     }
-    // 16:         return None
-    return std::nullopt;
-  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "current=" << obj.current
-     << ", "
-     << "limit=" << obj.limit
-     << ")";
-  return os;
+    os << "Counter("
+       << "current=" << obj.current
+       << ", "
+       << "limit=" << obj.limit
+       << ")";
+    return os;
 }
 
 void __tpy_init();

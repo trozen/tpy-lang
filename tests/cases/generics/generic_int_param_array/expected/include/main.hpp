@@ -14,33 +14,33 @@ void main();
 // 4: class Buffer[T, N: int]:
 template<typename T, std::size_t N>
 struct Buffer {
-  // 5:     data: Array[T, N]
-  std::array<T, N> data;
+    // 5:     data: Array[T, N]
+    std::array<T, N> data;
 
-  // 7:     def __init__(self) -> None:
-  Buffer() {
-    // 8:         pass
-  }
+    // 7:     def __init__(self) -> None:
+    Buffer() {
+        // 8:         pass
+    }
 
-  // 10:     def set(self, idx: Int32, val: T) -> None:
-  void set(int32_t idx, tpy::param_val_or_ref_t<T> val) {
-    // 11:         self.data[idx] = val
-    this->data[idx] = val;
-  }
+    // 10:     def set(self, idx: Int32, val: T) -> None:
+    void set(int32_t idx, tpy::param_val_or_ref_t<T> val) {
+        // 11:         self.data[idx] = val
+        this->data[idx] = val;
+    }
 
-  // 13:     def get(self, idx: Int32) -> T:
-  tpy::return_val_or_ref_t<T> get(int32_t idx) {
-    // 14:         return self.data[idx]
-    return this->data[idx];
-  }
+    // 13:     def get(self, idx: Int32) -> T:
+    tpy::return_val_or_ref_t<T> get(int32_t idx) {
+        // 14:         return self.data[idx]
+        return this->data[idx];
+    }
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Buffer<T, N>& obj) {
-  os << "Buffer("
-     << "data=" << tpy::ListPrinter(obj.data)
-     << ")";
-  return os;
+    os << "Buffer("
+       << "data=" << tpy::ListPrinter(obj.data)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

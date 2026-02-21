@@ -7,26 +7,26 @@ std::string_view __name__;
 
 // 4: def negate_checked(x: Int32 | None) -> Int32:
 int32_t negate_checked(std::optional<int32_t> x) {
-  // 5:     assert x is not None
-  if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-  // 6:     return -x  # tpyc: ok
-  return tpy::neg_check<int32_t>((*x));
+    // 5:     assert x is not None
+    if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
+    // 6:     return -x  # tpyc: ok
+    return tpy::neg_check<int32_t>((*x));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: print(negate_checked(3))
-  std::cout << negate_checked(3) << "\n";
+    __name__ = "__main__";
+    // 9: print(negate_checked(3))
+    std::cout << negate_checked(3) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

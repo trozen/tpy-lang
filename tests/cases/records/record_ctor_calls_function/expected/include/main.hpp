@@ -14,23 +14,23 @@ void main();
 
 // 8: class Pair:
 struct Pair {
-  // 9:     a: Int32
-  int32_t a;
-  // 10:     b: Int32
-  int32_t b;
+    // 9:     a: Int32
+    int32_t a;
+    // 10:     b: Int32
+    int32_t b;
 
-  // 12:     def __init__(self, x: Int32):
-  Pair() = default;
-  explicit Pair(int32_t x) : a(x), b(twice(x)) {}
+    // 12:     def __init__(self, x: Int32):
+    Pair() = default;
+    explicit Pair(int32_t x) : a(x), b(twice(x)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
-  os << "Pair("
-     << "a=" << obj.a
-     << ", "
-     << "b=" << obj.b
-     << ")";
-  return os;
+    os << "Pair("
+       << "a=" << obj.a
+       << ", "
+       << "b=" << obj.b
+       << ")";
+    return os;
 }
 
 void __tpy_init();

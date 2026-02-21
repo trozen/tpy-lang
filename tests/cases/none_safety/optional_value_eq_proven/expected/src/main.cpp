@@ -7,28 +7,28 @@ std::string_view __name__;
 
 // 4: def eq_proven(x: Int32 | None, y: Int32) -> bool:
 bool eq_proven(std::optional<int32_t> x, int32_t y) {
-  // 5:     assert x is not None
-  if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-  // 6:     return x == y  # tpyc: ok
-  return ((*x) == y);
+    // 5:     assert x is not None
+    if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
+    // 6:     return x == y  # tpyc: ok
+    return ((*x) == y);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: print(eq_proven(5, 5))
-  std::cout << tpy::print_bool(eq_proven(5, 5)) << "\n";
-  // 10: print(eq_proven(3, 5))
-  std::cout << tpy::print_bool(eq_proven(3, 5)) << "\n";
+    __name__ = "__main__";
+    // 9: print(eq_proven(5, 5))
+    std::cout << tpy::print_bool(eq_proven(5, 5)) << "\n";
+    // 10: print(eq_proven(3, 5))
+    std::cout << tpy::print_bool(eq_proven(3, 5)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

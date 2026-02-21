@@ -10,37 +10,37 @@ std::string_view __name__;
 // 12: def conditional_hoist() -> None:
 void conditional_hoist() {
   std::optional<Point> __slot_2;
-  // 13:     saved: Point = Point(0, 0)
-  Point __slot_1 = Point(0, 0);
-  Point* saved = &__slot_1;
-  // 14:     for i in range(5):
-  for (int32_t i = 0; i < 5; ++i) {
-    // 15:         p: Point = Point(i, i * 3)
-    Point* p = &*(__slot_2 = Point(i, (tpy::mul_check<int32_t>(i, 3))));
-    // 16:         if i > 2:
-    if ((i > 2)) {
-      // 17:             saved = p  # tpyc: warning(/hoisted to function scope/)
-      saved = p;
+    // 13:     saved: Point = Point(0, 0)
+    Point __slot_1 = Point(0, 0);
+    Point* saved = &__slot_1;
+    // 14:     for i in range(5):
+    for (int32_t i = 0; i < 5; ++i) {
+        // 15:         p: Point = Point(i, i * 3)
+        Point* p = &*(__slot_2 = Point(i, (tpy::mul_check<int32_t>(i, 3))));
+        // 16:         if i > 2:
+        if ((i > 2)) {
+            // 17:             saved = p  # tpyc: warning(/hoisted to function scope/)
+            saved = p;
+        }
     }
-  }
-  // 18:     print(saved.x, saved.y)
-  std::cout << saved->x << " " << saved->y << "\n";
+    // 18:     print(saved.x, saved.y)
+    std::cout << saved->x << " " << saved->y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 20: conditional_hoist()
-  conditional_hoist();
+    __name__ = "__main__";
+    // 20: conditional_hoist()
+    conditional_hoist();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

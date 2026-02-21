@@ -15,25 +15,25 @@ int32_t get_mag(Point* p);
 
 // 4: class Point:
 struct Point {
-  // 5:     x: Int32
-  int32_t x;
+    // 5:     x: Int32
+    int32_t x;
 
-  // 7:     def __init__(self, x: Int32):
-  Point() = default;
-  explicit Point(int32_t x) : x(x) {}
+    // 7:     def __init__(self, x: Int32):
+    Point() = default;
+    explicit Point(int32_t x) : x(x) {}
 
-  // 10:     def mag(self) -> Int32:
-  int32_t mag() {
-    // 11:         return self.x
-    return this->x;
-  }
+    // 10:     def mag(self) -> Int32:
+    int32_t mag() {
+        // 11:         return self.x
+        return this->x;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 void __tpy_init();

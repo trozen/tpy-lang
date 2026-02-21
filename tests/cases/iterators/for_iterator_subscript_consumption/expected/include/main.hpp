@@ -12,48 +12,48 @@ extern std::vector<Counter>* items;
 
 // 4: class Counter:
 struct Counter {
-  // 5:     current: Int32
-  int32_t current;
-  // 6:     limit: Int32
-  int32_t limit;
+    // 5:     current: Int32
+    int32_t current;
+    // 6:     limit: Int32
+    int32_t limit;
 
-  // 8:     def __init__(self, limit: Int32) -> None:
-  Counter() = default;
-  explicit Counter(int32_t limit) : current(0), limit(limit) {}
+    // 8:     def __init__(self, limit: Int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-  // 12:     def __iter__(self) -> Counter:
-  Counter& __iter__() {
-    // 13:         return self
-    return (*this);
-  }
-
-  // 15:     def __next__(self) -> Int32:
-  std::optional<int32_t> __next_opt__() {
-    // 16:         if self.current < self.limit:
-    if ((this->current < this->limit)) {
-      // 17:             result = self.current
-      int32_t result = this->current;
-      // 18:             self.current += 1
-      this->current = tpy::add_check<int32_t>(this->current, 1);
-      // 19:             return result
-      return result;
+    // 12:     def __iter__(self) -> Counter:
+    Counter& __iter__() {
+        // 13:         return self
+        return (*this);
     }
-    // 20:         raise StopIteration
-    return std::nullopt;
-  }
 
-  int32_t __next__() {
-    tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
-  }
+    // 15:     def __next__(self) -> Int32:
+    std::optional<int32_t> __next_opt__() {
+        // 16:         if self.current < self.limit:
+        if ((this->current < this->limit)) {
+            // 17:             result = self.current
+            int32_t result = this->current;
+            // 18:             self.current += 1
+            this->current = tpy::add_check<int32_t>(this->current, 1);
+            // 19:             return result
+            return result;
+        }
+        // 20:         raise StopIteration
+        return std::nullopt;
+    }
+
+    int32_t __next__() {
+        tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "current=" << obj.current
-     << ", "
-     << "limit=" << obj.limit
-     << ")";
-  return os;
+    os << "Counter("
+       << "current=" << obj.current
+       << ", "
+       << "limit=" << obj.limit
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 3: def main():
 void main() {
-  // 4:     # sys.argv should at least contain the program name
-  // 5:     if len(sys.argv) >= 1:
-  if ((tpy::__len__(tpy::sys_argv) >= 1)) {
-    // 6:         print("ok")
-    std::cout << "ok" << "\n";
-  } else {
-    // 8:         print("error: sys.argv is empty")
-    std::cout << "error: sys.argv is empty" << "\n";
-  }
+    // 4:     # sys.argv should at least contain the program name
+    // 5:     if len(sys.argv) >= 1:
+    if ((tpy::__len__(tpy::sys_argv) >= 1)) {
+        // 6:         print("ok")
+        std::cout << "ok" << "\n";
+    } else {
+        // 8:         print("error: sys.argv is empty")
+        std::cout << "error: sys.argv is empty" << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: import sys
-  // 10: main()
-  main();
+    __name__ = "__main__";
+    // 1: import sys
+    // 10: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

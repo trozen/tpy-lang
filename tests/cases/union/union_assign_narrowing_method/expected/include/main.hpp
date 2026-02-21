@@ -15,52 +15,52 @@ void main();
 // # Assignment narrowing works for method calls on narrowed union vars
 // 2: class Circle:
 struct Circle {
-  // 3:     radius: float
-  double radius;
+    // 3:     radius: float
+    double radius;
 
-  // 5:     def __init__(self, radius: float) -> None:
-  Circle() = default;
-  explicit Circle(double radius) : radius(radius) {}
+    // 5:     def __init__(self, radius: float) -> None:
+    Circle() = default;
+    explicit Circle(double radius) : radius(radius) {}
 
-  // 8:     def area(self) -> float:
-  double area() {
-    // 9:         return 3.14 * self.radius * self.radius
-    return ((((3.14) * (this->radius))) * (this->radius));
-  }
+    // 8:     def area(self) -> float:
+    double area() {
+        // 9:         return 3.14 * self.radius * self.radius
+        return ((((3.14) * (this->radius))) * (this->radius));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "radius=" << obj.radius
-     << ")";
-  return os;
+    os << "Circle("
+       << "radius=" << obj.radius
+       << ")";
+    return os;
 }
 
 // 11: class Rect:
 struct Rect {
-  // 12:     width: float
-  double width;
-  // 13:     height: float
-  double height;
+    // 12:     width: float
+    double width;
+    // 13:     height: float
+    double height;
 
-  // 15:     def __init__(self, width: float, height: float) -> None:
-  Rect() = default;
-  explicit Rect(double width, double height) : width(width), height(height) {}
+    // 15:     def __init__(self, width: float, height: float) -> None:
+    Rect() = default;
+    explicit Rect(double width, double height) : width(width), height(height) {}
 
-  // 19:     def area(self) -> float:
-  double area() {
-    // 20:         return self.width * self.height
-    return ((this->width) * (this->height));
-  }
+    // 19:     def area(self) -> float:
+    double area() {
+        // 20:         return self.width * self.height
+        return ((this->width) * (this->height));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-  os << "Rect("
-     << "width=" << obj.width
-     << ", "
-     << "height=" << obj.height
-     << ")";
-  return os;
+    os << "Rect("
+       << "width=" << obj.width
+       << ", "
+       << "height=" << obj.height
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -7,28 +7,28 @@ std::string_view __name__;
 
 // 5: def main() -> None:
 void main() {
-  // 6:     # Local should shadow the native global
-  // 7:     score: Int32 = Int32(42)
-  int32_t score = 42;
-  // 8:     print(score)
-  std::cout << score << "\n";
+    // 6:     # Local should shadow the native global
+    // 7:     score: Int32 = Int32(42)
+    int32_t score = 42;
+    // 8:     print(score)
+    std::cout << score << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: score: Int32 = native_global("engine::score")
-  // 10: main()
-  main();
+    __name__ = "__main__";
+    // 3: score: Int32 = native_global("engine::score")
+    // 10: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -6,22 +6,22 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: for i in range(1, 10, 0):
-  for (int32_t i : tpy::Range<int32_t>(1, 10, 0)) {
-    // 4:     print(i)
-    std::cout << i << "\n";
-  }
+    __name__ = "__main__";
+    // 3: for i in range(1, 10, 0):
+    for (int32_t i : tpy::Range<int32_t>(1, 10, 0)) {
+        // 4:     print(i)
+        std::cout << i << "\n";
+    }
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

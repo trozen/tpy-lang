@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 7: def describe(s: Shape) -> str:
 std::string_view describe(Shape& s) {
-  // 8:     return "shape"
-  return "shape";
+    // 8:     return "shape"
+    return "shape";
 }
 
 // 11: def main() -> None:
 void main() {
-  // 12:     print("ok")
-  std::cout << "ok" << "\n";
+    // 12:     print("ok")
+    std::cout << "ok" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: from shapes import Shape
-  ::tpy_user::shapes::__tpy_init();
-  // 14: main()
-  main();
+    __name__ = "__main__";
+    // 4: from shapes import Shape
+    ::tpy_user::shapes::__tpy_init();
+    // 14: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

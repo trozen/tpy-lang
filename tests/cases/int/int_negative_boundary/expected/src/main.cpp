@@ -18,37 +18,37 @@ int32_t c{};
 tpy::BigInt d;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: # Exactly Int32 min -- should stay Int32
-  // 5: a = -2147483648
-  a = -2147483648;
-  // 6: print(a)
-  std::cout << a << "\n";
-  // 8: # One below Int32 min -- should promote to BigInt with warning
-  // 9: b = -2147483649  # tpyc: warning(/outside default Int32 range/)
-  b = tpy::BigInt(static_cast<int64_t>(-2147483649LL));
-  // 10: print(b)
-  std::cout << b << "\n";
-  // 12: # Exactly Int32 max -- should stay Int32
-  // 13: c = 2147483647
-  c = 2147483647;
-  // 14: print(c)
-  std::cout << c << "\n";
-  // 16: # One above Int32 max -- should promote to BigInt with warning
-  // 17: d = 2147483648  # tpyc: warning(/outside default Int32 range/)
-  d = tpy::BigInt(static_cast<int64_t>(2147483648LL));
-  // 18: print(d)
-  std::cout << d << "\n";
+    __name__ = "__main__";
+    // 4: # Exactly Int32 min -- should stay Int32
+    // 5: a = -2147483648
+    a = -2147483648;
+    // 6: print(a)
+    std::cout << a << "\n";
+    // 8: # One below Int32 min -- should promote to BigInt with warning
+    // 9: b = -2147483649  # tpyc: warning(/outside default Int32 range/)
+    b = tpy::BigInt(static_cast<int64_t>(-2147483649LL));
+    // 10: print(b)
+    std::cout << b << "\n";
+    // 12: # Exactly Int32 max -- should stay Int32
+    // 13: c = 2147483647
+    c = 2147483647;
+    // 14: print(c)
+    std::cout << c << "\n";
+    // 16: # One above Int32 max -- should promote to BigInt with warning
+    // 17: d = 2147483648  # tpyc: warning(/outside default Int32 range/)
+    d = tpy::BigInt(static_cast<int64_t>(2147483648LL));
+    // 18: print(d)
+    std::cout << d << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

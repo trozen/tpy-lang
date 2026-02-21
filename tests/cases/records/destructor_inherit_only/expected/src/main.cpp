@@ -7,38 +7,38 @@ std::string_view __name__;
 
 // 19: def consume(c: Own[Child]) -> None:
 void consume(Child c) {
-  // 20:     print("consumed", c.name, c.tag)
-  std::cout << "consumed" << " " << c.name << " " << c.tag << "\n";
+    // 20:     print("consumed", c.name, c.tag)
+    std::cout << "consumed" << " " << c.name << " " << c.tag << "\n";
 }
 
 // 22: def main():
 void main() {
-  // 23:     c = Child("x", "t1")
-  Child c = Child("x", "t1");
-  // 24:     consume(c)
-  consume(std::move(c));
-  // 25:     print("---")
-  std::cout << "---" << "\n";
-  // 27:     consume(Child("y", "t2"))
-  consume(Child("y", "t2"));
-  // 28:     print("done")
-  std::cout << "done" << "\n";
+    // 23:     c = Child("x", "t1")
+    Child c = Child("x", "t1");
+    // 24:     consume(c)
+    consume(std::move(c));
+    // 25:     print("---")
+    std::cout << "---" << "\n";
+    // 27:     consume(Child("y", "t2"))
+    consume(Child("y", "t2"));
+    // 28:     print("done")
+    std::cout << "done" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 30: main()
-  main();
+    __name__ = "__main__";
+    // 30: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

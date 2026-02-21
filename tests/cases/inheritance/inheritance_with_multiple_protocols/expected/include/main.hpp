@@ -33,74 +33,74 @@ extern Car* c;
 // # Base class
 // 5: class Vehicle:
 struct Vehicle {
-  // 6:     brand: str
-  std::string_view brand;
-  // 7:     year: Int32
-  int32_t year;
+    // 6:     brand: str
+    std::string_view brand;
+    // 7:     year: Int32
+    int32_t year;
 
-  // 9:     def __init__(self, brand: str, year: Int32) -> None:
-  Vehicle() = default;
-  explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
+    // 9:     def __init__(self, brand: str, year: Int32) -> None:
+    Vehicle() = default;
+    explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
-  // 13:     def get_brand(self) -> str:
-  std::string_view get_brand() {
-    // 14:         return self.brand
-    return this->brand;
-  }
+    // 13:     def get_brand(self) -> str:
+    std::string_view get_brand() {
+        // 14:         return self.brand
+        return this->brand;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
-  os << "Vehicle("
-     << "brand=" << "\"" << obj.brand << "\""
-     << ", "
-     << "year=" << obj.year
-     << ")";
-  return os;
+    os << "Vehicle("
+       << "brand=" << "\"" << obj.brand << "\""
+       << ", "
+       << "year=" << obj.year
+       << ")";
+    return os;
 }
 
 // # Inherit from class AND implement multiple protocols
 // 34: class Car(Vehicle, Printable, Measurable, Describable):
 struct Car : Vehicle {
-  // 35:     model: str
-  std::string_view model;
-  // 36:     car_weight: Int32
-  int32_t car_weight;
+    // 35:     model: str
+    std::string_view model;
+    // 36:     car_weight: Int32
+    int32_t car_weight;
 
-  // 38:     def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
-  Car() = default;
-  explicit Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
-    // 39:         self.brand = brand
-    this->brand = brand;
-    // 40:         self.year = year
-    this->year = year;
-  }
+    // 38:     def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
+    Car() = default;
+    explicit Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
+        // 39:         self.brand = brand
+        this->brand = brand;
+        // 40:         self.year = year
+        this->year = year;
+    }
 
-  // 44:     def __str__(self) -> str:
-  std::string_view __str__() const {
-    // 45:         return self.model
-    return this->model;
-  }
+    // 44:     def __str__(self) -> str:
+    std::string_view __str__() const {
+        // 45:         return self.model
+        return this->model;
+    }
 
-  // 47:     def weight(self) -> Int32:
-  int32_t weight() {
-    // 48:         return self.car_weight
-    return this->car_weight;
-  }
+    // 47:     def weight(self) -> Int32:
+    int32_t weight() {
+        // 48:         return self.car_weight
+        return this->car_weight;
+    }
 
-  // 50:     def describe(self) -> str:
-  std::string_view describe() {
-    // 51:         return "A car"
-    return "A car";
-  }
+    // 50:     def describe(self) -> str:
+    std::string_view describe() {
+        // 51:         return "A car"
+        return "A car";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
-  os << "Car("
-     << "model=" << "\"" << obj.model << "\""
-     << ", "
-     << "car_weight=" << obj.car_weight
-     << ")";
-  return os;
+    os << "Car("
+       << "model=" << "\"" << obj.model << "\""
+       << ", "
+       << "car_weight=" << obj.car_weight
+       << ")";
+    return os;
 }
 
 void __tpy_init();

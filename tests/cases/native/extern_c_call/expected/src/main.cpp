@@ -9,8 +9,8 @@ std::string_view __name__;
 // @extern_c("Helper_Add")
 // 5: def helper_add(x: Int32) -> Int32:
 extern "C" int32_t Helper_Add(int32_t x) {
-  // 6:     return x + Int32(1)
-  return (tpy::add_check<int32_t>(x, 1));
+    // 6:     return x + Int32(1)
+    return (tpy::add_check<int32_t>(x, 1));
 }
 
 // # Export that calls the renamed function above.
@@ -18,24 +18,24 @@ extern "C" int32_t Helper_Add(int32_t x) {
 // @extern_c
 // 11: def app_init() -> None:
 extern "C" void app_init() {
-  // 12:     y: Int32 = helper_add(Int32(42))
-  int32_t y = Helper_Add(42);
-  // 13:     print(y)
-  std::cout << y << "\n";
+    // 12:     y: Int32 = helper_add(Int32(42))
+    int32_t y = Helper_Add(42);
+    // 13:     print(y)
+    std::cout << y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

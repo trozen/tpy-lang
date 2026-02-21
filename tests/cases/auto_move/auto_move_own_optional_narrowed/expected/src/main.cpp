@@ -7,41 +7,41 @@ std::string_view __name__;
 
 // 12: def use_optional(p: Own[Point] | None) -> Int32:
 int32_t use_optional(std::optional<Point> p) {
-  // 13:     if p is not None:
-  if ((p.has_value())) {
-    // 14:         return p.x
-    return p.x;
-  }
-  // 15:     return Int32(0)
-  return 0;
+    // 13:     if p is not None:
+    if ((p.has_value())) {
+        // 14:         return p.x
+        return p.x;
+    }
+    // 15:     return Int32(0)
+    return 0;
 }
 
 // 18: def main():
 void main() {
-  // 19:     pt = Point()
-  Point pt = Point();
-  // 20:     pt.x = Int32(42)
-  pt.x = 42;
-  // 21:     pt.y = Int32(7)
-  pt.y = 7;
-  // 22:     print(use_optional(pt))
-  std::cout << use_optional(std::move(pt)) << "\n";
+    // 19:     pt = Point()
+    Point pt = Point();
+    // 20:     pt.x = Int32(42)
+    pt.x = 42;
+    // 21:     pt.y = Int32(7)
+    pt.y = 7;
+    // 22:     print(use_optional(pt))
+    std::cout << use_optional(std::move(pt)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 25: main()
-  main();
+    __name__ = "__main__";
+    // 25: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

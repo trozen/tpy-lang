@@ -10,63 +10,63 @@ UninitHeapStorage<int32_t>* storage{};
 // # Move via return (NRVO or move construction)
 // 6: def make_storage() -> Own[UninitHeapStorage[Int32]]:
 UninitHeapStorage<int32_t> make_storage() {
-  // 7:     s = UninitHeapStorage[Int32](4)
-  UninitHeapStorage<int32_t> s = 4;
-  // 8:     s.init(0, 100)
-  s.init(0, 100);
-  // 9:     s.init(1, 200)
-  s.init(1, 200);
-  // 10:     return s
-  return s;
+    // 7:     s = UninitHeapStorage[Int32](4)
+    UninitHeapStorage<int32_t> s = 4;
+    // 8:     s.init(0, 100)
+    s.init(0, 100);
+    // 9:     s.init(1, 200)
+    s.init(1, 200);
+    // 10:     return s
+    return s;
 }
 
 // # Move via Own parameter (auto-move at last use)
 // 19: def consume(s: Own[UninitHeapStorage[Int32]]) -> Int32:
 int32_t consume(UninitHeapStorage<int32_t> s) {
-  // 20:     val: Int32 = s.load(0)
-  int32_t val = s.load(0);
-  // 21:     s.drop(0)
-  s.drop(0);
-  // 22:     return val
-  return val;
+    // 20:     val: Int32 = s.load(0)
+    int32_t val = s.load(0);
+    // 21:     s.drop(0)
+    s.drop(0);
+    // 22:     return val
+    return val;
 }
 
 // 24: def test_pass_own() -> None:
 void test_pass_own() {
-  // 25:     s2 = UninitHeapStorage[Int32](2)
-  UninitHeapStorage<int32_t> s2 = 2;
-  // 26:     s2.init(0, 300)
-  s2.init(0, 300);
-  // 27:     print(consume(s2))
-  std::cout << consume(std::move(s2)) << "\n";
+    // 25:     s2 = UninitHeapStorage[Int32](2)
+    UninitHeapStorage<int32_t> s2 = 2;
+    // 26:     s2.init(0, 300)
+    s2.init(0, 300);
+    // 27:     print(consume(s2))
+    std::cout << consume(std::move(s2)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: from tpy.mem import UninitHeapStorage
-  // 12: storage = make_storage()
-  static UninitHeapStorage<int32_t> __global_slot_1 = make_storage();
-  storage = &__global_slot_1;
-  // 13: print(storage.load(0))
-  std::cout << (*storage).load(0) << "\n";
-  // 14: print(storage.load(1))
-  std::cout << (*storage).load(1) << "\n";
-  // 15: storage.drop(0)
-  (*storage).drop(0);
-  // 16: storage.drop(1)
-  (*storage).drop(1);
-  // 29: test_pass_own()
-  test_pass_own();
+    __name__ = "__main__";
+    // 3: from tpy.mem import UninitHeapStorage
+    // 12: storage = make_storage()
+    static UninitHeapStorage<int32_t> __global_slot_1 = make_storage();
+    storage = &__global_slot_1;
+    // 13: print(storage.load(0))
+    std::cout << (*storage).load(0) << "\n";
+    // 14: print(storage.load(1))
+    std::cout << (*storage).load(1) << "\n";
+    // 15: storage.drop(0)
+    (*storage).drop(0);
+    // 16: storage.drop(1)
+    (*storage).drop(1);
+    // 29: test_pass_own()
+    test_pass_own();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

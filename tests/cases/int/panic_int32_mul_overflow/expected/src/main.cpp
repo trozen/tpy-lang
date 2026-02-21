@@ -10,24 +10,24 @@ int32_t x{};
 int32_t y{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test Int32 multiplication overflow panic at runtime."""
-  // 4: x: Int32 = 2147483647  # INT32_MAX
-  x = 2147483647;
-  // 5: y: Int32 = x * 2       # Should panic
-  y = (tpy::mul_check<int32_t>(x, 2));
-  // 6: print(y)
-  std::cout << y << "\n";
+    __name__ = "__main__";
+    // 1: """Test Int32 multiplication overflow panic at runtime."""
+    // 4: x: Int32 = 2147483647  # INT32_MAX
+    x = 2147483647;
+    // 5: y: Int32 = x * 2       # Should panic
+    y = (tpy::mul_check<int32_t>(x, 2));
+    // 6: print(y)
+    std::cout << y << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

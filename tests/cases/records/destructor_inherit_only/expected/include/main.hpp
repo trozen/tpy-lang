@@ -15,56 +15,56 @@ void main();
 
 // 6: class Base:
 struct Base {
-  // 7:     name: str
-  std::string_view name;
-  bool __tpy_owned_ = true;
+    // 7:     name: str
+    std::string_view name;
+    bool __tpy_owned_ = true;
 
-  // 8:     def __init__(self, name: str):
-  Base() = default;
-  explicit Base(std::string_view name) : name(name) {}
-  Base(const Base&) = delete;
-  Base& operator=(const Base&) = delete;
-  Base(Base&& other) noexcept : name(std::move(other.name)) {
-    other.__tpy_owned_ = false;
-  }
-  Base& operator=(Base&& other) noexcept {
-    if (this != &other) {
-      this->~Base();
-      new (this) Base(std::move(other));
+    // 8:     def __init__(self, name: str):
+    Base() = default;
+    explicit Base(std::string_view name) : name(name) {}
+    Base(const Base&) = delete;
+    Base& operator=(const Base&) = delete;
+    Base(Base&& other) noexcept : name(std::move(other.name)) {
+        other.__tpy_owned_ = false;
     }
-    return *this;
-  }
-  // 10:     def __del__(self):
+    Base& operator=(Base&& other) noexcept {
+        if (this != &other) {
+            this->~Base();
+            new (this) Base(std::move(other));
+        }
+        return *this;
+    }
+    // 10:     def __del__(self):
 
-  ~Base() {
-    if (!__tpy_owned_) return;
-    // 11:         print("drop", self.name)
-    std::cout << "drop" << " " << this->name << "\n";
-  }
+    ~Base() {
+        if (!__tpy_owned_) return;
+        // 11:         print("drop", self.name)
+        std::cout << "drop" << " " << this->name << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-  os << "Base("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Base("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 // 13: class Child(Base):
 struct Child : Base {
-  // 14:     tag: str
-  std::string_view tag;
+    // 14:     tag: str
+    std::string_view tag;
 
-  // 15:     def __init__(self, name: str, tag: str):
-  Child() = default;
-  explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
+    // 15:     def __init__(self, name: str, tag: str):
+    Child() = default;
+    explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-  os << "Child("
-     << "tag=" << "\"" << obj.tag << "\""
-     << ")";
-  return os;
+    os << "Child("
+       << "tag=" << "\"" << obj.tag << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

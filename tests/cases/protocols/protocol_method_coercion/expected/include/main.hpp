@@ -22,45 +22,45 @@ void main();
 
 // 9: class SimpleCalc:
 struct SimpleCalc {
-  // 10:     base: Int32
-  int32_t base;
+    // 10:     base: Int32
+    int32_t base;
 
-  // 12:     def __init__(self, b: Int32) -> None:
-  SimpleCalc() = default;
-  explicit SimpleCalc(int32_t b) : base(b) {}
+    // 12:     def __init__(self, b: Int32) -> None:
+    SimpleCalc() = default;
+    explicit SimpleCalc(int32_t b) : base(b) {}
 
-  // 15:     def add(self, x: Int32) -> Int32:
-  int32_t add(int32_t x) {
-    // 16:         return self.base + x
-    return (tpy::add_check<int32_t>(this->base, x));
-  }
+    // 15:     def add(self, x: Int32) -> Int32:
+    int32_t add(int32_t x) {
+        // 16:         return self.base + x
+        return (tpy::add_check<int32_t>(this->base, x));
+    }
 
-  // 18:     def multiply(self, x: Int32, y: Int32) -> Int32:
-  int32_t multiply(int32_t x, int32_t y) {
-    // 19:         return x * y
-    return (tpy::mul_check<int32_t>(x, y));
-  }
+    // 18:     def multiply(self, x: Int32, y: Int32) -> Int32:
+    int32_t multiply(int32_t x, int32_t y) {
+        // 19:         return x * y
+        return (tpy::mul_check<int32_t>(x, y));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
-  os << "SimpleCalc("
-     << "base=" << obj.base
-     << ")";
-  return os;
+    os << "SimpleCalc("
+       << "base=" << obj.base
+       << ")";
+    return os;
 }
 
 // 21: def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
 void use_calc(T_c& c) {
-  // 22:     # Test: Literal coercion to Int32 in protocol method calls
-  // 23:     result1 = c.add(10)
-  int32_t result1 = c.add(10);
-  // 24:     print(result1)
-  std::cout << result1 << "\n";
-  // 26:     result2 = c.multiply(6, 7)
-  int32_t result2 = c.multiply(6, 7);
-  // 27:     print(result2)
-  std::cout << result2 << "\n";
+    // 22:     # Test: Literal coercion to Int32 in protocol method calls
+    // 23:     result1 = c.add(10)
+    int32_t result1 = c.add(10);
+    // 24:     print(result1)
+    std::cout << result1 << "\n";
+    // 26:     result2 = c.multiply(6, 7)
+    int32_t result2 = c.multiply(6, 7);
+    // 27:     print(result2)
+    std::cout << result2 << "\n";
 }
 
 void __tpy_init();

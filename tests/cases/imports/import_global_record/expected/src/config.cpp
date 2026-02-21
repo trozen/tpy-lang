@@ -8,15 +8,15 @@ std::string_view __name__;
 Settings* DEFAULT{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "config";
-  // 1: """Module that exports a non-value-type global."""
-  // 17: DEFAULT: Settings = Settings(Int32(800), Int32(600))
-  static Settings __global_slot_1 = Settings(800, 600);
-  DEFAULT = &__global_slot_1;
+    __name__ = "config";
+    // 1: """Module that exports a non-value-type global."""
+    // 17: DEFAULT: Settings = Settings(Int32(800), Int32(600))
+    static Settings __global_slot_1 = Settings(800, 600);
+    DEFAULT = &__global_slot_1;
 }
 
 } // namespace tpy_user::config

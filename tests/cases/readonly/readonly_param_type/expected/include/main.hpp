@@ -15,30 +15,30 @@ void main();
 
 // 4: class Point:
 struct Point {
-  // 5:     x: Int32
-  int32_t x;
-  // 6:     y: Int32
-  int32_t y;
+    // 5:     x: Int32
+    int32_t x;
+    // 6:     y: Int32
+    int32_t y;
 
-  // 8:     def __init__(self, x: Int32, y: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 8:     def __init__(self, x: Int32, y: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-  //     @readonly
-  // 13:     def magnitude_sq(self) -> Int32:
-  int32_t magnitude_sq() const {
-    // 14:         return self.x * self.x + self.y * self.y
-    return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, this->x)), (tpy::mul_check<int32_t>(this->y, this->y))));
-  }
+    //     @readonly
+    // 13:     def magnitude_sq(self) -> Int32:
+    int32_t magnitude_sq() const {
+        // 14:         return self.x * self.x + self.y * self.y
+        return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, this->x)), (tpy::mul_check<int32_t>(this->y, this->y))));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 void __tpy_init();

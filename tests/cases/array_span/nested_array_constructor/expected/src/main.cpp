@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 8: def take_span_nested(s: Span[Array[Int32, 2]]) -> Int32:
 int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s) {
-  // 9:     return s[0][0] + s[1][1]
-  return (tpy::add_check<int32_t>(s[0][0], s[1][1]));
+    // 9:     return s[0][0] + s[1][1]
+    return (tpy::add_check<int32_t>(s[0][0], s[1][1]));
 }
 
 // 11: def main() -> None:
 void main() {
-  // 12:     # Inline nested array constructor passed to Span parameter
-  // 13:     result: Int32 = take_span_nested(Array[Array[Int32, 2], 2]([[1, 2], [3, 4]]))
-  int32_t result = take_span_nested(tpy::as_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
-  // 14:     print(result)  # 1 + 4 = 5
-  std::cout << result << "\n";
+    // 12:     # Inline nested array constructor passed to Span parameter
+    // 13:     result: Int32 = take_span_nested(Array[Array[Int32, 2], 2]([[1, 2], [3, 4]]))
+    int32_t result = take_span_nested(tpy::as_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
+    // 14:     print(result)  # 1 + 4 = 5
+    std::cout << result << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Tests nested array constructor with proper brace generation.
-  // 16: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Tests nested array constructor with proper brace generation.
+    // 16: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

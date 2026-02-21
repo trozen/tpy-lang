@@ -8,15 +8,15 @@ std::string_view __name__;
 int32_t VERSION{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "mypackage";
-  // 2: from .utils import add
-  ::tpy_user::mypackage::utils::__tpy_init();
-  // 4: VERSION: Int32 = Int32(42)
-  VERSION = 42;
+    __name__ = "mypackage";
+    // 2: from .utils import add
+    ::tpy_user::mypackage::utils::__tpy_init();
+    // 4: VERSION: Int32 = Int32(42)
+    VERSION = 42;
 }
 
 } // namespace tpy_user::mypackage

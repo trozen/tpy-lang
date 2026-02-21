@@ -16,54 +16,54 @@ extern std::vector<std::string_view>* val;
 // 3: class Container[T]:
 template<typename T>
 struct Container {
-  // 4:     value: T
-  T value;
+    // 4:     value: T
+    T value;
 
-  // 6:     def __init__(self, value: T) -> None:
-  Container() = default;
-  explicit Container(const T& value) : value(value) {}
+    // 6:     def __init__(self, value: T) -> None:
+    Container() = default;
+    explicit Container(const T& value) : value(value) {}
 
-  // 9:     def get_value(self) -> T:
-  tpy::return_val_or_ref_t<T> get_value() {
-    // 10:         return self.value
-    return this->value;
-  }
+    // 9:     def get_value(self) -> T:
+    tpy::return_val_or_ref_t<T> get_value() {
+        // 10:         return self.value
+        return this->value;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Container("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // 13: class Child[T](Container[list[T]]):
 template<typename T>
 struct Child : Container<std::vector<T>> {
-  // 14:     extra: Int32
-  int32_t extra;
+    // 14:     extra: Int32
+    int32_t extra;
 
-  // 16:     def __init__(self, value: list[T], extra: Int32) -> None:
-  Child() = default;
-  explicit Child(const std::vector<T>& value, int32_t extra) : extra(extra) {
-    // 17:         self.value = value
-    this->value = value;
-  }
+    // 16:     def __init__(self, value: list[T], extra: Int32) -> None:
+    Child() = default;
+    explicit Child(const std::vector<T>& value, int32_t extra) : extra(extra) {
+        // 17:         self.value = value
+        this->value = value;
+    }
 
-  // 20:     def get_extra(self) -> Int32:
-  int32_t get_extra() {
-    // 21:         return self.extra
-    return this->extra;
-  }
+    // 20:     def get_extra(self) -> Int32:
+    int32_t get_extra() {
+        // 21:         return self.extra
+        return this->extra;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Child<T>& obj) {
-  os << "Child("
-     << "extra=" << obj.extra
-     << ")";
-  return os;
+    os << "Child("
+       << "extra=" << obj.extra
+       << ")";
+    return os;
 }
 
 void __tpy_init();

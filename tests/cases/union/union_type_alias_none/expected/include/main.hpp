@@ -15,36 +15,36 @@ void main();
 
 // 5: class Circle:
 struct Circle {
-  // 6:     radius: Int32
-  int32_t radius;
+    // 6:     radius: Int32
+    int32_t radius;
 
-  // 8:     def __init__(self, radius: Int32) -> None:
-  Circle() = default;
-  explicit Circle(int32_t radius) : radius(radius) {}
+    // 8:     def __init__(self, radius: Int32) -> None:
+    Circle() = default;
+    explicit Circle(int32_t radius) : radius(radius) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "radius=" << obj.radius
-     << ")";
-  return os;
+    os << "Circle("
+       << "radius=" << obj.radius
+       << ")";
+    return os;
 }
 
 // 12: class Rect:
 struct Rect {
-  // 13:     width: Int32
-  int32_t width;
+    // 13:     width: Int32
+    int32_t width;
 
-  // 15:     def __init__(self, width: Int32) -> None:
-  Rect() = default;
-  explicit Rect(int32_t width) : width(width) {}
+    // 15:     def __init__(self, width: Int32) -> None:
+    Rect() = default;
+    explicit Rect(int32_t width) : width(width) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-  os << "Rect("
-     << "width=" << obj.width
-     << ")";
-  return os;
+    os << "Rect("
+       << "width=" << obj.width
+       << ")";
+    return os;
 }
 
 using MaybeShape = std::variant<std::monostate, Circle, Rect>;

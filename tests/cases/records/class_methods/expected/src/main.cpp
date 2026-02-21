@@ -14,46 +14,46 @@ int32_t a{};
 int32_t b{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 21: # Test __init__ with parameter
-  // 22: c = Counter(100)
-  static Counter __global_slot_1 = Counter(100);
-  c = &__global_slot_1;
-  // 23: print(c.get())
-  std::cout << c->get() << "\n";
-  // 25: # Test methods
-  // 26: c.increment()
-  c->increment();
-  // 27: print(c.get())
-  std::cout << c->get() << "\n";
-  // 29: c.add(5)
-  c->add(5);
-  // 30: print(c.get())
-  std::cout << c->get() << "\n";
-  // 32: c.reset()
-  c->reset();
-  // 33: print(c.get())
-  std::cout << c->get() << "\n";
-  // 35: # Test multiple print arguments
-  // 36: a: Int32 = 42
-  a = 42;
-  // 37: b: Int32 = 99
-  b = 99;
-  // 38: print(a, b)
-  std::cout << a << " " << b << "\n";
-  // 40: # Test string printing
-  // 41: print("done")
-  std::cout << "done" << "\n";
+    __name__ = "__main__";
+    // 21: # Test __init__ with parameter
+    // 22: c = Counter(100)
+    static Counter __global_slot_1 = Counter(100);
+    c = &__global_slot_1;
+    // 23: print(c.get())
+    std::cout << c->get() << "\n";
+    // 25: # Test methods
+    // 26: c.increment()
+    c->increment();
+    // 27: print(c.get())
+    std::cout << c->get() << "\n";
+    // 29: c.add(5)
+    c->add(5);
+    // 30: print(c.get())
+    std::cout << c->get() << "\n";
+    // 32: c.reset()
+    c->reset();
+    // 33: print(c.get())
+    std::cout << c->get() << "\n";
+    // 35: # Test multiple print arguments
+    // 36: a: Int32 = 42
+    a = 42;
+    // 37: b: Int32 = 99
+    b = 99;
+    // 38: print(a, b)
+    std::cout << a << " " << b << "\n";
+    // 40: # Test string printing
+    // 41: print("done")
+    std::cout << "done" << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

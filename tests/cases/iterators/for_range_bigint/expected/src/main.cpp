@@ -9,54 +9,54 @@ std::string_view __name__;
 tpy::BigInt base;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Big integers that exceed Int32 range -- forces BigInt path
-  // 2: base = 1 << 100  # tpyc: warning(/outside default Int32 range/)
-  base = ((tpy::BigInt(1)) << (tpy::BigInt(100)));
-  // 4: # 1. BigInt range with start/stop
-  // 5: for i in range(base, base + 5):
-  tpy::BigInt __start_0 = base;
-  tpy::BigInt __stop_0 = ((base) + (tpy::BigInt(5)));
-  for (tpy::BigInt i = __start_0; i < __stop_0; ++i) {
-    // 6:     print(i)
-    std::cout << i << "\n";
-  }
-  // 8: # 2. BigInt range with step
-  // 9: for i in range(base, base + 10, 3):
-  tpy::BigInt __start_1 = base;
-  tpy::BigInt __stop_1 = ((base) + (tpy::BigInt(10)));
-  for (tpy::BigInt i = __start_1; i < __stop_1; i += tpy::BigInt(3)) {
-    // 10:     print(i)
-    std::cout << i << "\n";
-  }
-  // 12: # 3. Negative BigInt step
-  // 13: for i in range(base + 4, base - 1, -1):
-  tpy::BigInt __start_2 = ((base) + (tpy::BigInt(4)));
-  tpy::BigInt __stop_2 = ((base) - (tpy::BigInt(1)));
-  for (tpy::BigInt i = __start_2; i > __stop_2; --i) {
-    // 14:     print(i)
-    std::cout << i << "\n";
-  }
-  // 16: # 4. Empty BigInt range
-  // 17: for i in range(base + 5, base):
-  tpy::BigInt __start_3 = ((base) + (tpy::BigInt(5)));
-  tpy::BigInt __stop_3 = base;
-  for (tpy::BigInt i = __start_3; i < __stop_3; ++i) {
-    // 18:     print(i)
-    std::cout << i << "\n";
-  }
-  // 19: print("done")
-  std::cout << "done" << "\n";
+    __name__ = "__main__";
+    // 1: # Big integers that exceed Int32 range -- forces BigInt path
+    // 2: base = 1 << 100  # tpyc: warning(/outside default Int32 range/)
+    base = ((tpy::BigInt(1)) << (tpy::BigInt(100)));
+    // 4: # 1. BigInt range with start/stop
+    // 5: for i in range(base, base + 5):
+    tpy::BigInt __start_0 = base;
+    tpy::BigInt __stop_0 = ((base) + (tpy::BigInt(5)));
+    for (tpy::BigInt i = __start_0; i < __stop_0; ++i) {
+        // 6:     print(i)
+        std::cout << i << "\n";
+    }
+    // 8: # 2. BigInt range with step
+    // 9: for i in range(base, base + 10, 3):
+    tpy::BigInt __start_1 = base;
+    tpy::BigInt __stop_1 = ((base) + (tpy::BigInt(10)));
+    for (tpy::BigInt i = __start_1; i < __stop_1; i += tpy::BigInt(3)) {
+        // 10:     print(i)
+        std::cout << i << "\n";
+    }
+    // 12: # 3. Negative BigInt step
+    // 13: for i in range(base + 4, base - 1, -1):
+    tpy::BigInt __start_2 = ((base) + (tpy::BigInt(4)));
+    tpy::BigInt __stop_2 = ((base) - (tpy::BigInt(1)));
+    for (tpy::BigInt i = __start_2; i > __stop_2; --i) {
+        // 14:     print(i)
+        std::cout << i << "\n";
+    }
+    // 16: # 4. Empty BigInt range
+    // 17: for i in range(base + 5, base):
+    tpy::BigInt __start_3 = ((base) + (tpy::BigInt(5)));
+    tpy::BigInt __stop_3 = base;
+    for (tpy::BigInt i = __start_3; i < __stop_3; ++i) {
+        // 18:     print(i)
+        std::cout << i << "\n";
+    }
+    // 19: print("done")
+    std::cout << "done" << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

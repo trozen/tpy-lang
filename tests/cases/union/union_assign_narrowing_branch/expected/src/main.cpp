@@ -7,52 +7,52 @@ std::string_view __name__;
 
 // 16: def describe(s: Circle | Rect) -> str:
 std::string_view describe(std::variant<Circle, Rect>& s) {
-  // 17:     if isinstance(s, Circle):
-  if (std::holds_alternative<Circle>(s)) {
-    auto& __s = std::get<Circle>(s);
-    // 18:         return "circle"
-    return "circle";
-  } else {
-    auto& __s = std::get<Rect>(s);
-    // 20:         return "rect"
-    return "rect";
-  }
+    // 17:     if isinstance(s, Circle):
+    if (std::holds_alternative<Circle>(s)) {
+        auto& __s = std::get<Circle>(s);
+        // 18:         return "circle"
+        return "circle";
+    } else {
+        auto& __s = std::get<Rect>(s);
+        // 20:         return "rect"
+        return "rect";
+    }
 }
 
 // 22: def main() -> None:
 void main() {
-  // 23:     c: Circle | Rect = Circle(5.0)
-  std::variant<Circle, Rect> c = Circle(5.0);
-  // 24:     print(c.radius)
-  std::cout << tpy::print_float(std::get<Circle>(c).radius) << "\n";
-  // 25:     if isinstance(c, Circle):
-  if (std::holds_alternative<Circle>(c)) {
-    auto& __c = std::get<Circle>(c);
-    // 26:         print("yes circle")
-    std::cout << "yes circle" << "\n";
-  } else {
-    auto& __c = std::get<Rect>(c);
-    // 28:         print("no")
-    std::cout << "no" << "\n";
-  }
-  // 29:     print(describe(c))
-  std::cout << describe(c) << "\n";
+    // 23:     c: Circle | Rect = Circle(5.0)
+    std::variant<Circle, Rect> c = Circle(5.0);
+    // 24:     print(c.radius)
+    std::cout << tpy::print_float(std::get<Circle>(c).radius) << "\n";
+    // 25:     if isinstance(c, Circle):
+    if (std::holds_alternative<Circle>(c)) {
+        auto& __c = std::get<Circle>(c);
+        // 26:         print("yes circle")
+        std::cout << "yes circle" << "\n";
+    } else {
+        auto& __c = std::get<Rect>(c);
+        // 28:         print("no")
+        std::cout << "no" << "\n";
+    }
+    // 29:     print(describe(c))
+    std::cout << describe(c) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 31: main()
-  main();
+    __name__ = "__main__";
+    // 31: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

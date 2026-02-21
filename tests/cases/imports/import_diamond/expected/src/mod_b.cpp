@@ -7,18 +7,18 @@ std::string_view __name__;
 
 // 4: def b_value() -> Int32:
 int32_t b_value() {
-  // 5:     return d_value() + Int32(10)
-  return (tpy::add_check<int32_t>(::tpy_user::mod_d::d_value(), 10));
+    // 5:     return d_value() + Int32(10)
+    return (tpy::add_check<int32_t>(::tpy_user::mod_d::d_value(), 10));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "mod_b";
-  // 2: from mod_d import d_value
-  ::tpy_user::mod_d::__tpy_init();
+    __name__ = "mod_b";
+    // 2: from mod_d import d_value
+    ::tpy_user::mod_d::__tpy_init();
 }
 
 } // namespace tpy_user::mod_b

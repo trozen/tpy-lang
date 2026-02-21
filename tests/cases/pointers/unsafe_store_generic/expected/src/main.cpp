@@ -7,43 +7,43 @@ std::string_view __name__;
 
 // 15: def main() -> None:
 void main() {
-  // 16:     nums: Array[Int32, 3] = [10, 20, 30]
-  std::array<int32_t, 3> nums = {10, 20, 30};
-  // 17:     np: Ptr[Int32] = unsafe_ptr(nums)
-  int32_t* np = nums.data();
-  // 18:     store_at(np, UInt32(1), Int32(99))
-  int32_t __tmp_1 = 99;
-  store_at<int32_t>(np, 1, __tmp_1);
-  // 19:     print(unsafe_load(np, UInt32(1)))
-  std::cout << np[1] << "\n";
-  // 21:     pts: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
-  std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
-  // 22:     pp: Ptr[Point] = unsafe_ptr(pts)
-  Point* pp = pts.data();
-  // 23:     store_at(pp, UInt32(0), Point(10, 20))
-  Point __tmp_2 = Point(10, 20);
-  store_at<Point>(pp, 0, __tmp_2);
-  // 24:     print(unsafe_load(pp, UInt32(0)).x)
-  std::cout << pp[0].x << "\n";
-  // 25:     print(unsafe_load(pp, UInt32(0)).y)
-  std::cout << pp[0].y << "\n";
+    // 16:     nums: Array[Int32, 3] = [10, 20, 30]
+    std::array<int32_t, 3> nums = {10, 20, 30};
+    // 17:     np: Ptr[Int32] = unsafe_ptr(nums)
+    int32_t* np = nums.data();
+    // 18:     store_at(np, UInt32(1), Int32(99))
+    int32_t __tmp_1 = 99;
+    store_at<int32_t>(np, 1, __tmp_1);
+    // 19:     print(unsafe_load(np, UInt32(1)))
+    std::cout << np[1] << "\n";
+    // 21:     pts: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
+    std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
+    // 22:     pp: Ptr[Point] = unsafe_ptr(pts)
+    Point* pp = pts.data();
+    // 23:     store_at(pp, UInt32(0), Point(10, 20))
+    Point __tmp_2 = Point(10, 20);
+    store_at<Point>(pp, 0, __tmp_2);
+    // 24:     print(unsafe_load(pp, UInt32(0)).x)
+    std::cout << pp[0].x << "\n";
+    // 25:     print(unsafe_load(pp, UInt32(0)).y)
+    std::cout << pp[0].y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
-  // 27: main()
-  main();
+    __name__ = "__main__";
+    // 3: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
+    // 27: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

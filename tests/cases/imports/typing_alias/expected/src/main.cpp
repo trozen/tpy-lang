@@ -7,37 +7,37 @@ std::string_view __name__;
 
 // 5: def maybe_double(x: Opt[Int32]) -> Int32:
 int32_t maybe_double(std::optional<int32_t> x) {
-  // 6:     if x is not None:
-  if ((x.has_value())) {
-    // 7:         return x * Int32(2)
-    return (tpy::mul_check<int32_t>((*x), 2));
-  }
-  // 8:     return Int32(0)
-  return 0;
+    // 6:     if x is not None:
+    if ((x.has_value())) {
+        // 7:         return x * Int32(2)
+        return (tpy::mul_check<int32_t>((*x), 2));
+    }
+    // 8:     return Int32(0)
+    return 0;
 }
 
 // 10: def main():
 void main() {
-  // 11:     print(maybe_double(Int32(5)))
-  std::cout << maybe_double(5) << "\n";
-  // 12:     print(maybe_double(None))
-  std::cout << maybe_double(std::nullopt) << "\n";
+    // 11:     print(maybe_double(Int32(5)))
+    std::cout << maybe_double(5) << "\n";
+    // 12:     print(maybe_double(None))
+    std::cout << maybe_double(std::nullopt) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 14: main()
-  main();
+    __name__ = "__main__";
+    // 14: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -20,29 +20,29 @@ extern Person* p;
 // # Class that explicitly implements Printable
 // 11: class Person(Printable):
 struct Person {
-  // 12:     name: str
-  std::string_view name;
-  // 13:     age: Int32
-  int32_t age;
+    // 12:     name: str
+    std::string_view name;
+    // 13:     age: Int32
+    int32_t age;
 
-  // 15:     def __init__(self, name: str, age: Int32) -> None:
-  Person() = default;
-  explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
+    // 15:     def __init__(self, name: str, age: Int32) -> None:
+    Person() = default;
+    explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
-  // 19:     def __str__(self) -> str:
-  std::string_view __str__() const {
-    // 20:         return self.name
-    return this->name;
-  }
+    // 19:     def __str__(self) -> str:
+    std::string_view __str__() const {
+        // 20:         return self.name
+        return this->name;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
-  os << "Person("
-     << "name=" << "\"" << obj.name << "\""
-     << ", "
-     << "age=" << obj.age
-     << ")";
-  return os;
+    os << "Person("
+       << "name=" << "\"" << obj.name << "\""
+       << ", "
+       << "age=" << obj.age
+       << ")";
+    return os;
 }
 
 void __tpy_init();

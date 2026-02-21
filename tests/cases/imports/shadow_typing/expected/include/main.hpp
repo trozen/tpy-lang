@@ -13,19 +13,19 @@ void main();
 
 // 5: class Sized:  # tpyc: warning(/shadows import from 'typing'/)
 struct Sized {
-  // 6:     val: Int32
-  int32_t val;
+    // 6:     val: Int32
+    int32_t val;
 
-  // 7:     def __init__(self, v: Int32):
-  Sized() = default;
-  explicit Sized(int32_t v) : val(v) {}
+    // 7:     def __init__(self, v: Int32):
+    Sized() = default;
+    explicit Sized(int32_t v) : val(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sized& obj) {
-  os << "Sized("
-     << "val=" << obj.val
-     << ")";
-  return os;
+    os << "Sized("
+       << "val=" << obj.val
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -14,43 +14,43 @@ extern Holder<std::string_view>* s;
 // 5: class Holder[T]:
 template<typename T>
 struct Holder {
-  // 6:     _storage: UninitHeapStorage[T]
-  UninitHeapStorage<T> _storage;
+    // 6:     _storage: UninitHeapStorage[T]
+    UninitHeapStorage<T> _storage;
 
-  // 8:     def __init__(self, value: T):
-  Holder() = default;
-  explicit Holder(const T& value) : _storage(1) {
-    // 10:         self._storage.init0(value)
-    this->_storage.init0(value);
-  }
+    // 8:     def __init__(self, value: T):
+    Holder() = default;
+    explicit Holder(const T& value) : _storage(1) {
+        // 10:         self._storage.init0(value)
+        this->_storage.init0(value);
+    }
 
-  // 12:     def get(self) -> T:
-  tpy::return_val_or_ref_t<T> get() {
-    // 13:         return self._storage.load0()
-    return this->_storage.load0();
-  }
+    // 12:     def get(self) -> T:
+    tpy::return_val_or_ref_t<T> get() {
+        // 13:         return self._storage.load0()
+        return this->_storage.load0();
+    }
 
-  // 15:     def set(self, value: T) -> None:
-  void set(tpy::param_val_or_ref_t<T> value) {
-    // 16:         self._storage.drop0()
-    this->_storage.drop0();
-    // 17:         self._storage.init0(value)
-    this->_storage.init0(value);
-  }
+    // 15:     def set(self, value: T) -> None:
+    void set(tpy::param_val_or_ref_t<T> value) {
+        // 16:         self._storage.drop0()
+        this->_storage.drop0();
+        // 17:         self._storage.init0(value)
+        this->_storage.init0(value);
+    }
 
-  // 19:     def take(self) -> Own[T]:
-  T take() {
-    // 20:         return self._storage.take0()
-    return this->_storage.take0();
-  }
+    // 19:     def take(self) -> Own[T]:
+    T take() {
+        // 20:         return self._storage.take0()
+        return this->_storage.take0();
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-  os << "Holder("
-     << "_storage=" << "<UninitHeapStorage[T]>"
-     << ")";
-  return os;
+    os << "Holder("
+       << "_storage=" << "<UninitHeapStorage[T]>"
+       << ")";
+    return os;
 }
 
 void __tpy_init();

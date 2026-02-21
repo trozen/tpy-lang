@@ -7,16 +7,16 @@ std::string_view __name__;
 
 // 3: def root_func() -> Int32:
 int32_t root_func() {
-  // 4:     return Int32(42)
-  return 42;
+    // 4:     return Int32(42)
+    return 42;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "utils";
+    __name__ = "utils";
 }
 
 } // namespace tpy_user::utils

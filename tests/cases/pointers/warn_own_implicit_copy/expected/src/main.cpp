@@ -7,45 +7,45 @@ std::string_view __name__;
 
 // 9: def take_point(p: Own[Point]) -> Int32:
 int32_t take_point(Point p) {
-  // 10:     return 42
-  return 42;
+    // 10:     return 42
+    return 42;
 }
 
 // 13: def use_point(p: Point) -> None:
 void use_point(Point& p) {
-  // 14:     print(p.x)
-  std::cout << p.x << "\n";
+    // 14:     print(p.x)
+    std::cout << p.x << "\n";
 }
 
 // 17: def main():
 void main() {
-  // 18:     p: Point = Point()
-  Point p = Point();
-  // 19:     p.x = 10
-  p.x = 10;
-  // 20:     # Passing Point to Own[Point] would be implicit copy -- p is used after
-  // 21:     result: Int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
-  int32_t result = take_point(p);
-  // 22:     use_point(p)
-  use_point(p);
-  // 23:     print(result)
-  std::cout << result << "\n";
+    // 18:     p: Point = Point()
+    Point p = Point();
+    // 19:     p.x = 10
+    p.x = 10;
+    // 20:     # Passing Point to Own[Point] would be implicit copy -- p is used after
+    // 21:     result: Int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
+    int32_t result = take_point(p);
+    // 22:     use_point(p)
+    use_point(p);
+    // 23:     print(result)
+    std::cout << result << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 26: main()
-  main();
+    __name__ = "__main__";
+    // 26: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

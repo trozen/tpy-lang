@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 15: def main() -> None:
 void main() {
-  // 16:     c: Container[str, 10] = Container[str, 10]()
-  Container<std::string_view, 10> c = Container<std::string_view, 10>();
-  // 17:     print(c.get_double())      # 20
-  std::cout << c.get_double() << "\n";
-  // 18:     print(c.get_plus_one())    # 11
-  std::cout << c.get_plus_one() << "\n";
-  // 19:     print(c.get_minus_five())  # 5
-  std::cout << c.get_minus_five() << "\n";
+    // 16:     c: Container[str, 10] = Container[str, 10]()
+    Container<std::string_view, 10> c = Container<std::string_view, 10>();
+    // 17:     print(c.get_double())      # 20
+    std::cout << c.get_double() << "\n";
+    // 18:     print(c.get_plus_one())    # 11
+    std::cout << c.get_plus_one() << "\n";
+    // 19:     print(c.get_minus_five())  # 5
+    std::cout << c.get_minus_five() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: main()
-  main();
+    __name__ = "__main__";
+    // 22: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

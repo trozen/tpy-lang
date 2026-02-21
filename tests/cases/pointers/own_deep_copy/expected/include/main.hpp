@@ -15,32 +15,32 @@ void main();
 
 // 9: class Point:
 struct Point {
-  // 10:     x: Int32
-  int32_t x;
+    // 10:     x: Int32
+    int32_t x;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 // 13: class Container:
 struct Container {
-  // 14:     items: list[Point]
-  std::vector<Point> items;
+    // 14:     items: list[Point]
+    std::vector<Point> items;
 
-  Container() = default;
+    Container() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-  os << "Container("
-     << "items=" << tpy::ListPrinter(obj.items)
-     << ")";
-  return os;
+    os << "Container("
+       << "items=" << tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

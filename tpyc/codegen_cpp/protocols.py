@@ -12,7 +12,7 @@ from ..typesys import (
     MethodSignature, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyProtocol, TpyRecord
-from .context import DUNDER_TO_BINARY_OP, qualified_cpp_name
+from .context import INDENT, DUNDER_TO_BINARY_OP, qualified_cpp_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -327,14 +327,14 @@ class ProtocolGenerator:
             # For dunder methods that have tpy:: free function equivalents, use those
             # This allows std types (vector, string, etc.) to satisfy the protocol
             if method_sig.name == "__len__":
-                out.write(f"    {{ tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
+                out.write(f"{INDENT}{{ tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
             elif method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
                 # Binary operators - use C++ operator syntax
                 # e.g., __add__(Self) -> Self becomes { t + std::declval<T>() } -> convertible_to<T>
                 cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
                 _, ptype = method_sig.params[0]
                 param_cpp = subst_to_cpp(ptype)
-                out.write(f"    {{ t {cpp_op} std::declval<{param_cpp}>() }} -> std::convertible_to<{ret_cpp}>;\n")
+                out.write(f"{INDENT}{{ t {cpp_op} std::declval<{param_cpp}>() }} -> std::convertible_to<{ret_cpp}>;\n")
             else:
                 # { t.method_name(args...) } -> std::convertible_to<return_type>;
                 params_str = ""
@@ -343,13 +343,13 @@ class ProtocolGenerator:
                     # SelfType.to_cpp() returns "T", so Self params become std::declval<T>()
                     param_exprs = [f"std::declval<{subst_to_cpp(ptype)}>()" for _, ptype in method_sig.params]
                     params_str = ", ".join(param_exprs)
-                out.write(f"    {{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
+                out.write(f"{INDENT}{{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
 
         # Collect all fields including inherited ones
         all_fields = self.collect_concept_fields(protocol.name)
         for field_name, field_type in all_fields:
             field_cpp = subst_to_cpp(field_type)
-            out.write(f"    {{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
+            out.write(f"{INDENT}{{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
 
         out.write("};\n")
 
@@ -393,16 +393,16 @@ class ProtocolGenerator:
             ret_cpp = self._dynamic_return_type(method_sig)
             const_qual = " const" if self._is_readonly_method(method_sig, protocol_info) else ""
             params_cpp = self._dynamic_param_list(method_sig)
-            out.write(f"    virtual {ret_cpp} {method_sig.name}({params_cpp}){const_qual} = 0;\n")
-        out.write(f"    virtual ~{base_name}() = default;\n")
+            out.write(f"{INDENT}virtual {ret_cpp} {method_sig.name}({params_cpp}){const_qual} = 0;\n")
+        out.write(f"{INDENT}virtual ~{base_name}() = default;\n")
         out.write("};\n\n")
 
         # -- Owning adapter template (for locals and rvalue call-site args) --
         out.write(f"template<{protocol.name} T>\n")
         out.write(f"struct {adapter_name} : {base_name} {{\n")
-        out.write(f"    T inner;\n")
-        out.write(f"    template<typename... Args>\n")
-        out.write(f"    {adapter_name}(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
+        out.write(f"{INDENT}T inner;\n")
+        out.write(f"{INDENT}template<typename... Args>\n")
+        out.write(f"{INDENT}{adapter_name}(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
         self._gen_adapter_overrides(out, all_methods, protocol_info)
         out.write("};\n\n")
 
@@ -410,8 +410,8 @@ class ProtocolGenerator:
         ref_adapter_name = f"__tpy_RefAdapter_{protocol.name}"
         out.write(f"template<{protocol.name} T>\n")
         out.write(f"struct {ref_adapter_name} : {base_name} {{\n")
-        out.write(f"    T& inner;\n")
-        out.write(f"    {ref_adapter_name}(T& ref) : inner(ref) {{}}\n")
+        out.write(f"{INDENT}T& inner;\n")
+        out.write(f"{INDENT}{ref_adapter_name}(T& ref) : inner(ref) {{}}\n")
         self._gen_adapter_overrides(out, all_methods, protocol_info)
         out.write("};\n")
 
@@ -425,7 +425,7 @@ class ProtocolGenerator:
             is_void = isinstance(method_sig.return_type, VoidType)
             ret_kw = "" if is_void else "return "
             call_expr = self._dynamic_forward_call(method_sig)
-            out.write(f"    {ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
+            out.write(f"{INDENT}{ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
 
     def _is_readonly_method(self, method_sig: MethodSignature, protocol_info: 'ProtocolInfo') -> bool:
         from ..typesys import ProtocolInfo as _PI

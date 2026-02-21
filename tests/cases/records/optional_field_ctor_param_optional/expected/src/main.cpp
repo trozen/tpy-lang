@@ -19,64 +19,64 @@ Edge* e4{};
 
 // 19: def find(items: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& items, int32_t target) {
-  // 20:     for p in items:
-  for (auto& p : items) {
-    // 21:         if p.x == target:
-    if ((p.x == target)) {
-      // 22:             return p
-      return &(p);
+    // 20:     for p in items:
+    for (auto& p : items) {
+        // 21:         if p.x == target:
+        if ((p.x == target)) {
+            // 22:             return p
+            return &(p);
+        }
     }
-  }
-  // 23:     return None
-  return nullptr;
+    // 23:     return None
+    return nullptr;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 26: pts: list[Point] = list()
-  static std::vector<Point> __global_slot_1 = std::vector<Point>();
-  pts = &__global_slot_1;
-  // 27: pts.append(Point(5, 50))
-  (*pts).push_back(Point(5, 50));
-  // 28: pts.append(Point(3, 30))
-  (*pts).push_back(Point(3, 30));
-  // 30: e1 = Edge(None)
-  static Edge __global_slot_2 = Edge(nullptr);
-  e1 = &__global_slot_2;
-  // 31: print(e1.target is None)
-  std::cout << tpy::print_bool((!e1->target.has_value())) << "\n";
-  // 33: p = Point(7, 70)
-  static Point __global_slot_3 = Point(7, 70);
-  p = &__global_slot_3;
-  // 34: e2 = Edge(p)
-  static Edge __global_slot_4 = Edge(p);
-  e2 = &__global_slot_4;
-  // 35: print(e2.target is not None)
-  std::cout << tpy::print_bool((e2->target.has_value())) << "\n";
-  // 36: print(e2.target.x)
-  std::cout << tpy::deref_optional_check(e2->target).x << "\n";
-  // 37: print(e2.target.y)
-  std::cout << tpy::deref_optional_check(e2->target).y << "\n";
-  // 39: e3 = Edge(find(pts, 3))
-  static Edge __global_slot_5 = Edge(find((*pts), 3));
-  e3 = &__global_slot_5;
-  // 40: print(e3.target.x)
-  std::cout << tpy::deref_optional_check(e3->target).x << "\n";
-  // 42: e4 = Edge(find(pts, 99))
-  static Edge __global_slot_6 = Edge(find((*pts), 99));
-  e4 = &__global_slot_6;
-  // 43: print(e4.target is None)
-  std::cout << tpy::print_bool((!e4->target.has_value())) << "\n";
+    __name__ = "__main__";
+    // 26: pts: list[Point] = list()
+    static std::vector<Point> __global_slot_1 = std::vector<Point>();
+    pts = &__global_slot_1;
+    // 27: pts.append(Point(5, 50))
+    (*pts).push_back(Point(5, 50));
+    // 28: pts.append(Point(3, 30))
+    (*pts).push_back(Point(3, 30));
+    // 30: e1 = Edge(None)
+    static Edge __global_slot_2 = Edge(nullptr);
+    e1 = &__global_slot_2;
+    // 31: print(e1.target is None)
+    std::cout << tpy::print_bool((!e1->target.has_value())) << "\n";
+    // 33: p = Point(7, 70)
+    static Point __global_slot_3 = Point(7, 70);
+    p = &__global_slot_3;
+    // 34: e2 = Edge(p)
+    static Edge __global_slot_4 = Edge(p);
+    e2 = &__global_slot_4;
+    // 35: print(e2.target is not None)
+    std::cout << tpy::print_bool((e2->target.has_value())) << "\n";
+    // 36: print(e2.target.x)
+    std::cout << tpy::deref_optional_check(e2->target).x << "\n";
+    // 37: print(e2.target.y)
+    std::cout << tpy::deref_optional_check(e2->target).y << "\n";
+    // 39: e3 = Edge(find(pts, 3))
+    static Edge __global_slot_5 = Edge(find((*pts), 3));
+    e3 = &__global_slot_5;
+    // 40: print(e3.target.x)
+    std::cout << tpy::deref_optional_check(e3->target).x << "\n";
+    // 42: e4 = Edge(find(pts, 99))
+    static Edge __global_slot_6 = Edge(find((*pts), 99));
+    e4 = &__global_slot_6;
+    // 43: print(e4.target is None)
+    std::cout << tpy::print_bool((!e4->target.has_value())) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

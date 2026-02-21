@@ -7,100 +7,100 @@ std::string_view __name__;
 
 // 3: def classify(x: Int32) -> Int32:
 int32_t classify(int32_t x) {
-  // 4:     # Test elif
-  // 5:     if x < 0:
-  if ((x < 0)) {
-    // 6:         return -1
-    return -1;
-  } else {
-    // 7:     elif x == 0:
-    if ((x == 0)) {
-      // 8:         return 0
-      return 0;
+    // 4:     # Test elif
+    // 5:     if x < 0:
+    if ((x < 0)) {
+        // 6:         return -1
+        return -1;
     } else {
-      // 10:         return 1
-      return 1;
+        // 7:     elif x == 0:
+        if ((x == 0)) {
+            // 8:         return 0
+            return 0;
+        } else {
+            // 10:         return 1
+            return 1;
+        }
     }
-  }
 }
 
 // 12: def check_range(x: Int32) -> Int32:
 int32_t check_range(int32_t x) {
-  // 13:     # Test and/or
-  // 14:     if x >= 0 and x <= 10:
-  if (((x >= 0) && (x <= 10))) {
-    // 15:         return 1
-    return 1;
-  }
-  // 16:     return 0
-  return 0;
+    // 13:     # Test and/or
+    // 14:     if x >= 0 and x <= 10:
+    if (((x >= 0) && (x <= 10))) {
+        // 15:         return 1
+        return 1;
+    }
+    // 16:     return 0
+    return 0;
 }
 
 // 18: def check_bounds(x: Int32) -> Int32:
 int32_t check_bounds(int32_t x) {
-  // 19:     # Test or
-  // 20:     if x < 0 or x > 100:
-  if (((x < 0) || (x > 100))) {
-    // 21:         return 1
-    return 1;
-  }
-  // 22:     return 0
-  return 0;
+    // 19:     # Test or
+    // 20:     if x < 0 or x > 100:
+    if (((x < 0) || (x > 100))) {
+        // 21:         return 1
+        return 1;
+    }
+    // 22:     return 0
+    return 0;
 }
 
 // 24: def complex_condition(a: Int32, b: Int32) -> Int32:
 int32_t complex_condition(int32_t a, int32_t b) {
-  // 25:     # Test combined and/or with elif
-  // 26:     if a > 0 and b > 0:
-  if (((a > 0) && (b > 0))) {
-    // 27:         return 1
-    return 1;
-  } else {
-    // 28:     elif a < 0 or b < 0:
-    if (((a < 0) || (b < 0))) {
-      // 29:         return -1
-      return -1;
+    // 25:     # Test combined and/or with elif
+    // 26:     if a > 0 and b > 0:
+    if (((a > 0) && (b > 0))) {
+        // 27:         return 1
+        return 1;
     } else {
-      // 31:         return 0
-      return 0;
+        // 28:     elif a < 0 or b < 0:
+        if (((a < 0) || (b < 0))) {
+            // 29:         return -1
+            return -1;
+        } else {
+            // 31:         return 0
+            return 0;
+        }
     }
-  }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 33: print(classify(-5))
-  std::cout << classify(-5) << "\n";
-  // 34: print(classify(0))
-  std::cout << classify(0) << "\n";
-  // 35: print(classify(5))
-  std::cout << classify(5) << "\n";
-  // 36: print(check_range(5))
-  std::cout << check_range(5) << "\n";
-  // 37: print(check_range(15))
-  std::cout << check_range(15) << "\n";
-  // 38: print(check_bounds(-1))
-  std::cout << check_bounds(-1) << "\n";
-  // 39: print(check_bounds(50))
-  std::cout << check_bounds(50) << "\n";
-  // 40: print(check_bounds(101))
-  std::cout << check_bounds(101) << "\n";
-  // 41: print(complex_condition(1, 1))
-  std::cout << complex_condition(1, 1) << "\n";
-  // 42: print(complex_condition(-1, 1))
-  std::cout << complex_condition(-1, 1) << "\n";
-  // 43: print(complex_condition(0, 0))
-  std::cout << complex_condition(0, 0) << "\n";
+    __name__ = "__main__";
+    // 33: print(classify(-5))
+    std::cout << classify(-5) << "\n";
+    // 34: print(classify(0))
+    std::cout << classify(0) << "\n";
+    // 35: print(classify(5))
+    std::cout << classify(5) << "\n";
+    // 36: print(check_range(5))
+    std::cout << check_range(5) << "\n";
+    // 37: print(check_range(15))
+    std::cout << check_range(15) << "\n";
+    // 38: print(check_bounds(-1))
+    std::cout << check_bounds(-1) << "\n";
+    // 39: print(check_bounds(50))
+    std::cout << check_bounds(50) << "\n";
+    // 40: print(check_bounds(101))
+    std::cout << check_bounds(101) << "\n";
+    // 41: print(complex_condition(1, 1))
+    std::cout << complex_condition(1, 1) << "\n";
+    // 42: print(complex_condition(-1, 1))
+    std::cout << complex_condition(-1, 1) << "\n";
+    // 43: print(complex_condition(0, 0))
+    std::cout << complex_condition(0, 0) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

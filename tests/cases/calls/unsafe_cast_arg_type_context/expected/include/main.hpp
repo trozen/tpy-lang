@@ -18,19 +18,19 @@ int32_t take_ptr(void* p);
 // 11: class Sink:
 struct Sink {
 
-  Sink() = default;
+    Sink() = default;
 
-  // 12:     def put(self, p: Ptr[None]) -> Int32:
-  int32_t put(void* p) {
-    // 13:         return Int32(20)
-    return 20;
-  }
+    // 12:     def put(self, p: Ptr[None]) -> Int32:
+    int32_t put(void* p) {
+        // 13:         return Int32(20)
+        return 20;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
-  os << "Sink("
-     << ")";
-  return os;
+    os << "Sink("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

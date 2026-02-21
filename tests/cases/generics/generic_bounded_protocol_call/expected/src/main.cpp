@@ -7,78 +7,78 @@ std::string_view __name__;
 
 // 106: def main() -> None:
 void main() {
-  // 107:     # Test 1: len() on list (builtin Sized)
-  // 108:     items = [1, 2, 3, 4, 5]
-  std::vector<int32_t> items = {1, 2, 3, 4, 5};
-  // 109:     print(get_length(items))  # 5
-  std::cout << get_length<std::vector<int32_t>>(items) << "\n";
-  // 111:     # Test 1b: len() on str (builtin Sized)
-  // 112:     msg = "hello"
-  std::string_view msg = "hello";
-  // 113:     print(get_length(msg))  # 5
-  std::cout << get_length<std::string_view>(msg) << "\n";
-  // 115:     # Test 2: User-defined protocol method
-  // 116:     v = MyValue(42)
-  MyValue v = MyValue(42);
-  // 117:     print(stringify(v))  # value
-  std::cout << stringify<MyValue>(v) << "\n";
-  // 119:     # Test 3: MyValue satisfies Sized too (has __len__)
-  // 120:     print(get_length(v))  # 42
-  std::cout << get_length<MyValue>(v) << "\n";
-  // 122:     # Test 4: Generic class calling method on bounded type param
-  // 123:     printer = Printer[MyValue]()
-  Printer<MyValue> printer = Printer<MyValue>();
-  // 124:     print(printer.get_str(v))  # value
-  std::cout << printer.get_str(v) << "\n";
-  // 126:     # Test 4b: Same generic class with different type
-  // 127:     point_printer = Printer[Point]()
-  Printer<Point> point_printer = Printer<Point>();
-  // 128:     print(point_printer.get_str(Point(10, 20)))  # Point
-  Point __tmp_1 = Point(10, 20);
-  std::cout << point_printer.get_str(__tmp_1) << "\n";
-  // 130:     # Test 6: Multiple type params with different bounds
-  // 131:     print(process_both(items, v))  # value, then 5
-  std::cout << process_both<std::vector<int32_t>, MyValue>(items, v) << "\n";
-  // 133:     # Test 7: Protocol with multiple methods
-  // 134:     w = Widget("test", 99)
-  Widget w = Widget("test", 99);
-  // 135:     use_multi(w)  # test, then 99
-  use_multi<Widget>(w);
-  // 137:     # Test 8: Nested bounded calls
-  // 138:     print(outer_len(items))  # 5
-  std::cout << outer_len<std::vector<int32_t>>(items) << "\n";
-  // 140:     # Test 9: User protocol with Self - clone returns T (Box), not Clonable
-  // 141:     box = Box(123)
-  Box box = Box(123);
-  // 142:     cloned = clone_it(box)  # cloned should be Box, not Clonable
-  Box cloned = clone_it<Box>(box);
-  // 143:     print(cloned.value)  # 123 - accessing Box.value proves type is Box
-  std::cout << cloned.value << "\n";
-  // 145:     # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
-  // 146:     print(is_less(1, 2))  # True
-  int32_t __tmp_2 = 1;
-  int32_t __tmp_3 = 2;
-  std::cout << tpy::print_bool(is_less<int32_t>(__tmp_2, __tmp_3)) << "\n";
-  // 147:     print(is_less(5, 3))  # False
-  int32_t __tmp_4 = 5;
-  int32_t __tmp_5 = 3;
-  std::cout << tpy::print_bool(is_less<int32_t>(__tmp_4, __tmp_5)) << "\n";
+    // 107:     # Test 1: len() on list (builtin Sized)
+    // 108:     items = [1, 2, 3, 4, 5]
+    std::vector<int32_t> items = {1, 2, 3, 4, 5};
+    // 109:     print(get_length(items))  # 5
+    std::cout << get_length<std::vector<int32_t>>(items) << "\n";
+    // 111:     # Test 1b: len() on str (builtin Sized)
+    // 112:     msg = "hello"
+    std::string_view msg = "hello";
+    // 113:     print(get_length(msg))  # 5
+    std::cout << get_length<std::string_view>(msg) << "\n";
+    // 115:     # Test 2: User-defined protocol method
+    // 116:     v = MyValue(42)
+    MyValue v = MyValue(42);
+    // 117:     print(stringify(v))  # value
+    std::cout << stringify<MyValue>(v) << "\n";
+    // 119:     # Test 3: MyValue satisfies Sized too (has __len__)
+    // 120:     print(get_length(v))  # 42
+    std::cout << get_length<MyValue>(v) << "\n";
+    // 122:     # Test 4: Generic class calling method on bounded type param
+    // 123:     printer = Printer[MyValue]()
+    Printer<MyValue> printer = Printer<MyValue>();
+    // 124:     print(printer.get_str(v))  # value
+    std::cout << printer.get_str(v) << "\n";
+    // 126:     # Test 4b: Same generic class with different type
+    // 127:     point_printer = Printer[Point]()
+    Printer<Point> point_printer = Printer<Point>();
+    // 128:     print(point_printer.get_str(Point(10, 20)))  # Point
+    Point __tmp_1 = Point(10, 20);
+    std::cout << point_printer.get_str(__tmp_1) << "\n";
+    // 130:     # Test 6: Multiple type params with different bounds
+    // 131:     print(process_both(items, v))  # value, then 5
+    std::cout << process_both<std::vector<int32_t>, MyValue>(items, v) << "\n";
+    // 133:     # Test 7: Protocol with multiple methods
+    // 134:     w = Widget("test", 99)
+    Widget w = Widget("test", 99);
+    // 135:     use_multi(w)  # test, then 99
+    use_multi<Widget>(w);
+    // 137:     # Test 8: Nested bounded calls
+    // 138:     print(outer_len(items))  # 5
+    std::cout << outer_len<std::vector<int32_t>>(items) << "\n";
+    // 140:     # Test 9: User protocol with Self - clone returns T (Box), not Clonable
+    // 141:     box = Box(123)
+    Box box = Box(123);
+    // 142:     cloned = clone_it(box)  # cloned should be Box, not Clonable
+    Box cloned = clone_it<Box>(box);
+    // 143:     print(cloned.value)  # 123 - accessing Box.value proves type is Box
+    std::cout << cloned.value << "\n";
+    // 145:     # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
+    // 146:     print(is_less(1, 2))  # True
+    int32_t __tmp_2 = 1;
+    int32_t __tmp_3 = 2;
+    std::cout << tpy::print_bool(is_less<int32_t>(__tmp_2, __tmp_3)) << "\n";
+    // 147:     print(is_less(5, 3))  # False
+    int32_t __tmp_4 = 5;
+    int32_t __tmp_5 = 3;
+    std::cout << tpy::print_bool(is_less<int32_t>(__tmp_4, __tmp_5)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 149: main()
-  main();
+    __name__ = "__main__";
+    // 149: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

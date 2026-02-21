@@ -7,112 +7,112 @@ std::string_view __name__;
 
 // 9: def find_max(points: list[Point]) -> Point:
 Point& find_max(std::vector<Point>& points) {
-  // 10:     best = points[0]
-  Point* best = &(tpy::get_item(points, 0));
-  // 11:     for p in points:
-  for (auto& p : points) {
-    // 12:         if p.x > best.x:
-    if ((p.x > best->x)) {
-      // 13:             best = p
-      best = &(p);
+    // 10:     best = points[0]
+    Point* best = &(tpy::get_item(points, 0));
+    // 11:     for p in points:
+    for (auto& p : points) {
+        // 12:         if p.x > best.x:
+        if ((p.x > best->x)) {
+            // 13:             best = p
+            best = &(p);
+        }
     }
-  }
-  // 14:     return best  # tpyc: ok (best derives from param)
-  return (*best);
+    // 14:     return best  # tpyc: ok (best derives from param)
+    return (*best);
 }
 
 // 17: def get_first(points: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& points) {
-  // 18:     return points[0]  # tpyc: ok (param subscript)
-  return tpy::get_item(points, 0);
+    // 18:     return points[0]  # tpyc: ok (param subscript)
+    return tpy::get_item(points, 0);
 }
 
 // 21: def get_x(p: Point) -> Point:
 Point& get_x(Point& p) {
-  // 22:     return p  # tpyc: ok (param directly)
-  return p;
+    // 22:     return p  # tpyc: ok (param directly)
+    return p;
 }
 
 // 25: def get_field_ref(p: Point) -> Point:
 Point& get_field_ref(Point& p) {
-  // 26:     r = p
-  Point& r = p;
-  // 27:     return r  # tpyc: ok (r derives from param)
-  return r;
+    // 26:     r = p
+    Point& r = p;
+    // 27:     return r  # tpyc: ok (r derives from param)
+    return r;
 }
 
 // 30: def chained(points: list[Point]) -> Point:
 Point& chained(std::vector<Point>& points) {
-  // 31:     a = points[0]
-  Point& a = tpy::get_item(points, 0);
-  // 32:     b = a
-  Point& b = a;
-  // 33:     return b  # tpyc: ok (chained provenance)
-  return b;
+    // 31:     a = points[0]
+    Point& a = tpy::get_item(points, 0);
+    // 32:     b = a
+    Point& b = a;
+    // 33:     return b  # tpyc: ok (chained provenance)
+    return b;
 }
 
 // 36: def both_branches(points: list[Point], flag: bool) -> Point:
 Point& both_branches(std::vector<Point>& points, bool flag) {
-  // 37:     if flag:
-  Point* result;
-  if (flag) {
-    // 38:         result = points[1]
-    result = &(tpy::get_item(points, 1));
-  } else {
-    // 40:         result = points[2]
-    result = &(tpy::get_item(points, 2));
-  }
-  // 41:     return result  # tpyc: ok (both branches from param)
-  return (*result);
+    // 37:     if flag:
+    Point* result;
+    if (flag) {
+        // 38:         result = points[1]
+        result = &(tpy::get_item(points, 1));
+    } else {
+        // 40:         result = points[2]
+        result = &(tpy::get_item(points, 2));
+    }
+    // 41:     return result  # tpyc: ok (both branches from param)
+    return (*result);
 }
 
 // 44: def main():
 void main() {
-  // 45:     pts: list[Point] = [Point(), Point(), Point()]
-  std::vector<Point> pts = {Point(), Point(), Point()};
-  // 46:     pts[0].x = 10
-  tpy::get_item(pts, 0).x = 10;
-  // 47:     pts[1].x = 30
-  tpy::get_item(pts, 1).x = 30;
-  // 48:     pts[2].x = 20
-  tpy::get_item(pts, 2).x = 20;
-  // 50:     best: Point = find_max(pts)
-  Point& best = find_max(pts);
-  // 51:     print(best.x)
-  std::cout << best.x << "\n";
-  // 53:     # Mutation through returned reference is visible
-  // 54:     best.x = 99
-  best.x = 99;
-  // 55:     print(pts[1].x)
-  std::cout << tpy::get_item(pts, 1).x << "\n";
-  // 57:     first: Point = get_first(pts)
-  Point& first = get_first(pts);
-  // 58:     print(first.x)
-  std::cout << first.x << "\n";
-  // 60:     c: Point = chained(pts)
-  Point& c = chained(pts);
-  // 61:     print(c.x)
-  std::cout << c.x << "\n";
-  // 63:     b: Point = both_branches(pts, True)
-  Point& b = both_branches(pts, true);
-  // 64:     print(b.x)
-  std::cout << b.x << "\n";
+    // 45:     pts: list[Point] = [Point(), Point(), Point()]
+    std::vector<Point> pts = {Point(), Point(), Point()};
+    // 46:     pts[0].x = 10
+    tpy::get_item(pts, 0).x = 10;
+    // 47:     pts[1].x = 30
+    tpy::get_item(pts, 1).x = 30;
+    // 48:     pts[2].x = 20
+    tpy::get_item(pts, 2).x = 20;
+    // 50:     best: Point = find_max(pts)
+    Point& best = find_max(pts);
+    // 51:     print(best.x)
+    std::cout << best.x << "\n";
+    // 53:     # Mutation through returned reference is visible
+    // 54:     best.x = 99
+    best.x = 99;
+    // 55:     print(pts[1].x)
+    std::cout << tpy::get_item(pts, 1).x << "\n";
+    // 57:     first: Point = get_first(pts)
+    Point& first = get_first(pts);
+    // 58:     print(first.x)
+    std::cout << first.x << "\n";
+    // 60:     c: Point = chained(pts)
+    Point& c = chained(pts);
+    // 61:     print(c.x)
+    std::cout << c.x << "\n";
+    // 63:     b: Point = both_branches(pts, True)
+    Point& b = both_branches(pts, true);
+    // 64:     print(b.x)
+    std::cout << b.x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 67: main()
-  main();
+    __name__ = "__main__";
+    // 67: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -19,69 +19,69 @@ std::optional<int32_t> z;
 // # Global-to-local: must stay on value path, no pointer-local indirection
 // 29: def use_global() -> None:
 void use_global() {
-  // 30:     local: Int32 | None = y
-  std::optional<int32_t> local = y;
-  // 31:     print(local)
-  std::cout << tpy::print_optional_val(local) << "\n";
-  // 32:     inferred = y
-  std::optional<int32_t> inferred = y;
-  // 33:     print(inferred is None)
-  std::cout << tpy::print_bool((!inferred.has_value())) << "\n";
+    // 30:     local: Int32 | None = y
+    std::optional<int32_t> local = y;
+    // 31:     print(local)
+    std::cout << tpy::print_optional_val(local) << "\n";
+    // 32:     inferred = y
+    std::optional<int32_t> inferred = y;
+    // 33:     print(inferred is None)
+    std::cout << tpy::print_bool((!inferred.has_value())) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: x: Int32 | None = None
-  x = std::nullopt;
-  // 4: print(x is None)
-  std::cout << tpy::print_bool((!x.has_value())) << "\n";
-  // 5: print(x)
-  std::cout << tpy::print_optional_val(x) << "\n";
-  // 6: x = 42
-  x = 42;
-  // 7: print(x is None)
-  std::cout << tpy::print_bool((!x.has_value())) << "\n";
-  // 8: print(x)
-  std::cout << tpy::print_optional_val(x) << "\n";
-  // 10: y: Int32 | None = 10
-  y = 10;
-  // 11: print(y)
-  std::cout << tpy::print_optional_val(y) << "\n";
-  // 13: b: bool | None = None
-  b = std::nullopt;
-  // 14: print(b)
-  std::cout << tpy::print_optional_val<tpy::print_bool, bool>(b) << "\n";
-  // 15: b = True
-  b = true;
-  // 16: print(b)
-  std::cout << tpy::print_optional_val<tpy::print_bool, bool>(b) << "\n";
-  // 18: f: float | None = None
-  f = std::nullopt;
-  // 19: print(f)
-  std::cout << tpy::print_optional_val<tpy::print_float, double>(f) << "\n";
-  // 20: f = 3.14
-  f = 3.14;
-  // 21: print(f)
-  std::cout << tpy::print_optional_val<tpy::print_float, double>(f) << "\n";
-  // 23: # 0 must be distinct from None (std::optional<int>(0) has a value)
-  // 24: z: Int32 | None = 0
-  z = 0;
-  // 25: print(z is None)
-  std::cout << tpy::print_bool((!z.has_value())) << "\n";
-  // 26: print(z)
-  std::cout << tpy::print_optional_val(z) << "\n";
-  // 35: use_global()
-  use_global();
+    __name__ = "__main__";
+    // 3: x: Int32 | None = None
+    x = std::nullopt;
+    // 4: print(x is None)
+    std::cout << tpy::print_bool((!x.has_value())) << "\n";
+    // 5: print(x)
+    std::cout << tpy::print_optional_val(x) << "\n";
+    // 6: x = 42
+    x = 42;
+    // 7: print(x is None)
+    std::cout << tpy::print_bool((!x.has_value())) << "\n";
+    // 8: print(x)
+    std::cout << tpy::print_optional_val(x) << "\n";
+    // 10: y: Int32 | None = 10
+    y = 10;
+    // 11: print(y)
+    std::cout << tpy::print_optional_val(y) << "\n";
+    // 13: b: bool | None = None
+    b = std::nullopt;
+    // 14: print(b)
+    std::cout << tpy::print_optional_val<tpy::print_bool, bool>(b) << "\n";
+    // 15: b = True
+    b = true;
+    // 16: print(b)
+    std::cout << tpy::print_optional_val<tpy::print_bool, bool>(b) << "\n";
+    // 18: f: float | None = None
+    f = std::nullopt;
+    // 19: print(f)
+    std::cout << tpy::print_optional_val<tpy::print_float, double>(f) << "\n";
+    // 20: f = 3.14
+    f = 3.14;
+    // 21: print(f)
+    std::cout << tpy::print_optional_val<tpy::print_float, double>(f) << "\n";
+    // 23: # 0 must be distinct from None (std::optional<int>(0) has a value)
+    // 24: z: Int32 | None = 0
+    z = 0;
+    // 25: print(z is None)
+    std::cout << tpy::print_bool((!z.has_value())) << "\n";
+    // 26: print(z)
+    std::cout << tpy::print_optional_val(z) << "\n";
+    // 35: use_global()
+    use_global();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

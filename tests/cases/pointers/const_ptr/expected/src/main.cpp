@@ -7,85 +7,85 @@ std::string_view __name__;
 
 // 13: def read_point(p: ConstPtr[Point]) -> Int32:
 int32_t read_point(const Point* p) {
-  // 14:     """Read from a const pointer - should work."""
-  // 15:     return p.x + p.y
-  return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
+    // 14:     """Read from a const pointer - should work."""
+    // 15:     return p.x + p.y
+    return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
 }
 
 // 17: def modify_via_ptr(p: Ptr[Point], new_x: Int32) -> None:
 void modify_via_ptr(Point* p, int32_t new_x) {
-  // 18:     """Modify via mutable pointer."""
-  // 19:     p.x = new_x
-  tpy::deref_check(p).x = new_x;
+    // 18:     """Modify via mutable pointer."""
+    // 19:     p.x = new_x
+    tpy::deref_check(p).x = new_x;
 }
 
 // 21: def test_ptr_to_const_ptr() -> None:
 void test_ptr_to_const_ptr() {
-  // 22:     """Test Ptr to ConstPtr conversion."""
-  // 23:     pt: Point = Point(10, 20)
-  Point pt = Point(10, 20);
-  // 25:     # Get mutable pointer
-  // 26:     mp: Ptr[Point] = pt
-  Point* mp = &pt;
-  // 28:     # Read via mutable pointer
-  // 29:     print(mp.x)
-  std::cout << tpy::deref_check(mp).x << "\n";
-  // 30:     print(mp.y)
-  std::cout << tpy::deref_check(mp).y << "\n";
-  // 32:     # Modify through mutable pointer
-  // 33:     modify_via_ptr(mp, 100)
-  modify_via_ptr(mp, 100);
-  // 34:     print(pt.x)
-  std::cout << pt.x << "\n";
-  // 36:     # Convert mutable pointer to const pointer (should be allowed)
-  // 37:     cp: ConstPtr[Point] = mp
-  const Point* cp = mp;
-  // 39:     # Read through const pointer
-  // 40:     total: Int32 = read_point(cp)
-  int32_t total = read_point(cp);
-  // 41:     print(total)
-  std::cout << total << "\n";
+    // 22:     """Test Ptr to ConstPtr conversion."""
+    // 23:     pt: Point = Point(10, 20)
+    Point pt = Point(10, 20);
+    // 25:     # Get mutable pointer
+    // 26:     mp: Ptr[Point] = pt
+    Point* mp = &pt;
+    // 28:     # Read via mutable pointer
+    // 29:     print(mp.x)
+    std::cout << tpy::deref_check(mp).x << "\n";
+    // 30:     print(mp.y)
+    std::cout << tpy::deref_check(mp).y << "\n";
+    // 32:     # Modify through mutable pointer
+    // 33:     modify_via_ptr(mp, 100)
+    modify_via_ptr(mp, 100);
+    // 34:     print(pt.x)
+    std::cout << pt.x << "\n";
+    // 36:     # Convert mutable pointer to const pointer (should be allowed)
+    // 37:     cp: ConstPtr[Point] = mp
+    const Point* cp = mp;
+    // 39:     # Read through const pointer
+    // 40:     total: Int32 = read_point(cp)
+    int32_t total = read_point(cp);
+    // 41:     print(total)
+    std::cout << total << "\n";
 }
 
 // 43: def test_const_ptr_preserves_value() -> None:
 void test_const_ptr_preserves_value() {
-  // 44:     """Test that const pointer sees updates to underlying value."""
-  // 45:     pt: Point = Point(1, 2)
-  Point pt = Point(1, 2);
-  // 46:     mp: Ptr[Point] = pt
-  Point* mp = &pt;
-  // 47:     cp: ConstPtr[Point] = mp
-  const Point* cp = mp;
-  // 49:     print(cp.x)
-  std::cout << tpy::deref_check(cp).x << "\n";
-  // 51:     # Modify original via mutable pointer
-  // 52:     mp.x = 999
-  tpy::deref_check(mp).x = 999;
-  // 53:     print(cp.x)
-  std::cout << tpy::deref_check(cp).x << "\n";
+    // 44:     """Test that const pointer sees updates to underlying value."""
+    // 45:     pt: Point = Point(1, 2)
+    Point pt = Point(1, 2);
+    // 46:     mp: Ptr[Point] = pt
+    Point* mp = &pt;
+    // 47:     cp: ConstPtr[Point] = mp
+    const Point* cp = mp;
+    // 49:     print(cp.x)
+    std::cout << tpy::deref_check(cp).x << "\n";
+    // 51:     # Modify original via mutable pointer
+    // 52:     mp.x = 999
+    tpy::deref_check(mp).x = 999;
+    // 53:     print(cp.x)
+    std::cout << tpy::deref_check(cp).x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 55: # Run tests
-  // 56: print("=== ptr to const ===")
-  std::cout << "=== ptr to const ===" << "\n";
-  // 57: test_ptr_to_const_ptr()
-  test_ptr_to_const_ptr();
-  // 58: print("=== preserves value ===")
-  std::cout << "=== preserves value ===" << "\n";
-  // 59: test_const_ptr_preserves_value()
-  test_const_ptr_preserves_value();
+    __name__ = "__main__";
+    // 55: # Run tests
+    // 56: print("=== ptr to const ===")
+    std::cout << "=== ptr to const ===" << "\n";
+    // 57: test_ptr_to_const_ptr()
+    test_ptr_to_const_ptr();
+    // 58: print("=== preserves value ===")
+    std::cout << "=== preserves value ===" << "\n";
+    // 59: test_const_ptr_preserves_value()
+    test_const_ptr_preserves_value();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

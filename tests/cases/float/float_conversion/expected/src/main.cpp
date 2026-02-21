@@ -13,30 +13,30 @@ double b{};
 double c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Type conversions
-  // 2: a = float(5)
-  a = static_cast<double>(5);
-  // 3: b = float(3.14)
-  b = static_cast<double>(3.14);
-  // 4: c: float = 1.0
-  c = 1.0;
-  // 5: print(a)
-  std::cout << tpy::print_float(a) << "\n";
-  // 6: print(b)
-  std::cout << tpy::print_float(b) << "\n";
-  // 7: print(c)
-  std::cout << tpy::print_float(c) << "\n";
+    __name__ = "__main__";
+    // 1: # Type conversions
+    // 2: a = float(5)
+    a = static_cast<double>(5);
+    // 3: b = float(3.14)
+    b = static_cast<double>(3.14);
+    // 4: c: float = 1.0
+    c = 1.0;
+    // 5: print(a)
+    std::cout << tpy::print_float(a) << "\n";
+    // 6: print(b)
+    std::cout << tpy::print_float(b) << "\n";
+    // 7: print(c)
+    std::cout << tpy::print_float(c) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

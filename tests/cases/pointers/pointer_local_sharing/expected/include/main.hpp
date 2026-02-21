@@ -29,47 +29,47 @@ void test_foreach_value_from_pointer_local();
 
 // 3: class Point:
 struct Point {
-  // 4:     x: Int32
-  int32_t x;
-  // 5:     y: Int32
-  int32_t y;
+    // 4:     x: Int32
+    int32_t x;
+    // 5:     y: Int32
+    int32_t y;
 
-  // 6:     def __init__(self, x: Int32, y: Int32):
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 6:     def __init__(self, x: Int32, y: Int32):
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // # Test 13: User-defined method on pointer-local — uses ->
 // 109: class Counter:
 struct Counter {
-  // 110:     val: Int32
-  int32_t val;
+    // 110:     val: Int32
+    int32_t val;
 
-  // 111:     def __init__(self, v: Int32):
-  Counter() = default;
-  explicit Counter(int32_t v) : val(v) {}
+    // 111:     def __init__(self, v: Int32):
+    Counter() = default;
+    explicit Counter(int32_t v) : val(v) {}
 
-  // 113:     def increment(self) -> None:
-  void increment() {
-    // 114:         self.val = self.val + 1
-    this->val = (tpy::add_check<int32_t>(this->val, 1));
-  }
+    // 113:     def increment(self) -> None:
+    void increment() {
+        // 114:         self.val = self.val + 1
+        this->val = (tpy::add_check<int32_t>(this->val, 1));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "val=" << obj.val
-     << ")";
-  return os;
+    os << "Counter("
+       << "val=" << obj.val
+       << ")";
+    return os;
 }
 
 void __tpy_init();

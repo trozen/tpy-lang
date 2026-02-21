@@ -12,36 +12,36 @@ std::string_view __name__;
 void hoist_and_reassign() {
   std::optional<Point> __slot_2;
   std::optional<Point> __slot_3;
-  // 14:     saved: Point = Point(0, 0)
-  Point __slot_1 = Point(0, 0);
-  Point* saved = &__slot_1;
-  // 15:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
-    // 16:         p: Point = Point(i, 0)
-    Point* p = &*(__slot_2 = Point(i, 0));
-    // 17:         p = Point(i, i + 10)
-    p = &*(__slot_3 = Point(i, (tpy::add_check<int32_t>(i, 10))));
-    // 18:         saved = p  # tpyc: warning(/hoisted to function scope/)
-    saved = p;
-  }
-  // 19:     print(saved.x, saved.y)
-  std::cout << saved->x << " " << saved->y << "\n";
+    // 14:     saved: Point = Point(0, 0)
+    Point __slot_1 = Point(0, 0);
+    Point* saved = &__slot_1;
+    // 15:     for i in range(3):
+    for (int32_t i = 0; i < 3; ++i) {
+        // 16:         p: Point = Point(i, 0)
+        Point* p = &*(__slot_2 = Point(i, 0));
+        // 17:         p = Point(i, i + 10)
+        p = &*(__slot_3 = Point(i, (tpy::add_check<int32_t>(i, 10))));
+        // 18:         saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p;
+    }
+    // 19:     print(saved.x, saved.y)
+    std::cout << saved->x << " " << saved->y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 21: hoist_and_reassign()
-  hoist_and_reassign();
+    __name__ = "__main__";
+    // 21: hoist_and_reassign()
+    hoist_and_reassign();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

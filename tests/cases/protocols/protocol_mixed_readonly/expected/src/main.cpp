@@ -8,24 +8,24 @@ std::string_view __name__;
 Impl* obj{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 40: obj = Impl(42)
-  static Impl __global_slot_1 = Impl(42);
-  obj = &__global_slot_1;
-  // 41: print(safe_read(obj))
-  std::cout << safe_read((*obj)) << "\n";
-  // 42: print(use_both(obj))
-  std::cout << use_both((*obj)) << "\n";
+    __name__ = "__main__";
+    // 40: obj = Impl(42)
+    static Impl __global_slot_1 = Impl(42);
+    obj = &__global_slot_1;
+    // 41: print(safe_read(obj))
+    std::cout << safe_read((*obj)) << "\n";
+    // 42: print(use_both(obj))
+    std::cout << use_both((*obj)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

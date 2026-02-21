@@ -17,33 +17,33 @@ void main();
 // 4: class Buffer[T, N: int]:
 template<typename T, std::size_t N>
 struct Buffer {
-  // 5:     data: Array[T, N]
-  std::array<T, N> data;
+    // 5:     data: Array[T, N]
+    std::array<T, N> data;
 
-  // 7:     def __init__(self) -> None:
-  Buffer() {
-    // 8:         pass
-  }
+    // 7:     def __init__(self) -> None:
+    Buffer() {
+        // 8:         pass
+    }
 
-  // 10:     def get_data(self) -> Array[T, N]:
-  std::array<T, N>& get_data() {
-    // 11:         return self.data
-    return this->data;
-  }
+    // 10:     def get_data(self) -> Array[T, N]:
+    std::array<T, N>& get_data() {
+        // 11:         return self.data
+        return this->data;
+    }
 
-  // 13:     def set_data(self, arr: Array[T, N]) -> None:
-  void set_data(std::array<T, N>& arr) {
-    // 14:         self.data = arr
-    this->data = arr;
-  }
+    // 13:     def set_data(self, arr: Array[T, N]) -> None:
+    void set_data(std::array<T, N>& arr) {
+        // 14:         self.data = arr
+        this->data = arr;
+    }
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Buffer<T, N>& obj) {
-  os << "Buffer("
-     << "data=" << tpy::ListPrinter(obj.data)
-     << ")";
-  return os;
+    os << "Buffer("
+       << "data=" << tpy::ListPrinter(obj.data)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

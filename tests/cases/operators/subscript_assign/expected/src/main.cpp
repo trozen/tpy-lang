@@ -12,49 +12,49 @@ std::array<int32_t, 3>* arr{};
 StaticList<int32_t, 4>* items{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: # Array subscript assignment
-  // 4: arr: Array[Int32, 3] = [1, 2, 3]
-  static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
-  arr = &__global_slot_1;
-  // 5: arr[0] = 100
-  (*arr)[0] = 100;
-  // 6: arr[1] = 200
-  (*arr)[1] = 200;
-  // 7: arr[2] = 300
-  (*arr)[2] = 300;
-  // 8: print(arr[0])
-  std::cout << (*arr)[0] << "\n";
-  // 9: print(arr[1])
-  std::cout << (*arr)[1] << "\n";
-  // 10: print(arr[2])
-  std::cout << (*arr)[2] << "\n";
-  // 12: # StaticList subscript assignment
-  // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-  static StaticList<int32_t, 4> __global_slot_2 = StaticList<int32_t, 4>();
-  items = &__global_slot_2;
-  // 14: items.append(10)
-  (*items).push_back(10);
-  // 15: items.append(20)
-  (*items).push_back(20);
-  // 16: items[0] = 99
-  tpy::set_item((*items), 0, 99);
-  // 17: items[1] = 88
-  tpy::set_item((*items), 1, 88);
-  // 18: print(items[0])
-  std::cout << tpy::get_item((*items), 0) << "\n";
-  // 19: print(items[1])
-  std::cout << tpy::get_item((*items), 1) << "\n";
+    __name__ = "__main__";
+    // 3: # Array subscript assignment
+    // 4: arr: Array[Int32, 3] = [1, 2, 3]
+    static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
+    arr = &__global_slot_1;
+    // 5: arr[0] = 100
+    (*arr)[0] = 100;
+    // 6: arr[1] = 200
+    (*arr)[1] = 200;
+    // 7: arr[2] = 300
+    (*arr)[2] = 300;
+    // 8: print(arr[0])
+    std::cout << (*arr)[0] << "\n";
+    // 9: print(arr[1])
+    std::cout << (*arr)[1] << "\n";
+    // 10: print(arr[2])
+    std::cout << (*arr)[2] << "\n";
+    // 12: # StaticList subscript assignment
+    // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
+    static StaticList<int32_t, 4> __global_slot_2 = StaticList<int32_t, 4>();
+    items = &__global_slot_2;
+    // 14: items.append(10)
+    (*items).push_back(10);
+    // 15: items.append(20)
+    (*items).push_back(20);
+    // 16: items[0] = 99
+    tpy::set_item((*items), 0, 99);
+    // 17: items[1] = 88
+    tpy::set_item((*items), 1, 88);
+    // 18: print(items[0])
+    std::cout << tpy::get_item((*items), 0) << "\n";
+    // 19: print(items[1])
+    std::cout << tpy::get_item((*items), 1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

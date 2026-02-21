@@ -7,61 +7,61 @@ std::string_view __name__;
 
 // 8: def main() -> None:
 void main() {
-  // 9:     p: Point = Point()
-  Point p = Point();
-  // 10:     p.x = 1
-  p.x = 1;
-  // 11:     p.y = 2
-  p.y = 2;
-  // 12:     items: list[Point] = []
-  std::vector<Point> items = std::vector<Point>{};
-  // 14:     # lvalue into container method — warns (implicit copy)
-  // 15:     items.append(p)           # tpyc: warning(/copies Point into owned storage/)
-  items.push_back(p);
-  // 16:     items.insert(0, p)        # tpyc: warning(/copies Point into owned storage/)
-  tpy::list_insert(items, 0, p);
-  // 18:     # lvalue into subscript assignment — warns
-  // 19:     items[0] = p              # tpyc: warning(/copies Point into container/)
-  tpy::set_item(items, 0, p);
-  // 21:     # copy() silences the warning
-  // 22:     items.append(copy(p))     # tpyc: ok
-  items.push_back(p);
-  // 23:     items[0] = copy(p)        # tpyc: ok
-  tpy::set_item(items, 0, p);
-  // 24:     items.insert(0, copy(p))  # tpyc: warning(/unnecessary copy/)
-  tpy::list_insert(items, 0, p);
-  // 26:     # rvalue — no warning needed
-  // 27:     items.append(Point())     # tpyc: ok
-  items.push_back(Point());
-  // 28:     items[0] = Point()        # tpyc: ok
-  tpy::set_item(items, 0, Point());
-  // 30:     # value types — no warning
-  // 31:     nums: list[Int32] = []
-  std::vector<int32_t> nums = std::vector<int32_t>{};
-  // 32:     x: Int32 = 42
-  int32_t x = 42;
-  // 33:     nums.append(x)            # tpyc: ok
-  nums.push_back(x);
-  // 34:     nums[0] = x               # tpyc: ok
-  tpy::set_item(nums, 0, x);
-  // 36:     print(len(items))
-  std::cout << tpy::__len__(items) << "\n";
+    // 9:     p: Point = Point()
+    Point p = Point();
+    // 10:     p.x = 1
+    p.x = 1;
+    // 11:     p.y = 2
+    p.y = 2;
+    // 12:     items: list[Point] = []
+    std::vector<Point> items = std::vector<Point>{};
+    // 14:     # lvalue into container method — warns (implicit copy)
+    // 15:     items.append(p)           # tpyc: warning(/copies Point into owned storage/)
+    items.push_back(p);
+    // 16:     items.insert(0, p)        # tpyc: warning(/copies Point into owned storage/)
+    tpy::list_insert(items, 0, p);
+    // 18:     # lvalue into subscript assignment — warns
+    // 19:     items[0] = p              # tpyc: warning(/copies Point into container/)
+    tpy::set_item(items, 0, p);
+    // 21:     # copy() silences the warning
+    // 22:     items.append(copy(p))     # tpyc: ok
+    items.push_back(p);
+    // 23:     items[0] = copy(p)        # tpyc: ok
+    tpy::set_item(items, 0, p);
+    // 24:     items.insert(0, copy(p))  # tpyc: warning(/unnecessary copy/)
+    tpy::list_insert(items, 0, p);
+    // 26:     # rvalue — no warning needed
+    // 27:     items.append(Point())     # tpyc: ok
+    items.push_back(Point());
+    // 28:     items[0] = Point()        # tpyc: ok
+    tpy::set_item(items, 0, Point());
+    // 30:     # value types — no warning
+    // 31:     nums: list[Int32] = []
+    std::vector<int32_t> nums = std::vector<int32_t>{};
+    // 32:     x: Int32 = 42
+    int32_t x = 42;
+    // 33:     nums.append(x)            # tpyc: ok
+    nums.push_back(x);
+    // 34:     nums[0] = x               # tpyc: ok
+    tpy::set_item(nums, 0, x);
+    // 36:     print(len(items))
+    std::cout << tpy::__len__(items) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 38: main()
-  main();
+    __name__ = "__main__";
+    // 38: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

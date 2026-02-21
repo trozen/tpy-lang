@@ -13,19 +13,19 @@ void main();
 
 // 3: class Box:
 struct Box {
-  // 4:     items: Array[Int32, 3]
-  std::array<int32_t, 3> items;
+    // 4:     items: Array[Int32, 3]
+    std::array<int32_t, 3> items;
 
-  // 6:     def __init__(self, items: Array[Int32, 3]) -> None:
-  Box() = default;
-  explicit Box(const std::array<int32_t, 3>& items) : items(items) {}
+    // 6:     def __init__(self, items: Array[Int32, 3]) -> None:
+    Box() = default;
+    explicit Box(const std::array<int32_t, 3>& items) : items(items) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "items=" << tpy::ListPrinter(obj.items)
-     << ")";
-  return os;
+    os << "Box("
+       << "items=" << tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

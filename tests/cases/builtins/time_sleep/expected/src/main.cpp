@@ -7,40 +7,40 @@ std::string_view __name__;
 
 // 3: def main():
 void main() {
-  // 4:     start = time.time()
-  double start = tpy::time_time();
-  // 5:     time.sleep(0.1)  # Sleep for 100ms
-  tpy::time_sleep(0.1);
-  // 6:     end = time.time()
-  double end = tpy::time_time();
-  // 7:     elapsed = end - start
-  double elapsed = ((end) - (start));
-  // 8:     # Check that at least 0.05 seconds passed (allowing for timer variance)
-  // 9:     if elapsed >= 0.05:
-  if ((elapsed >= 0.05)) {
-    // 10:         print("ok")
-    std::cout << "ok" << "\n";
-  } else {
-    // 12:         print("error: sleep too short")
-    std::cout << "error: sleep too short" << "\n";
-  }
+    // 4:     start = time.time()
+    double start = tpy::time_time();
+    // 5:     time.sleep(0.1)  # Sleep for 100ms
+    tpy::time_sleep(0.1);
+    // 6:     end = time.time()
+    double end = tpy::time_time();
+    // 7:     elapsed = end - start
+    double elapsed = ((end) - (start));
+    // 8:     # Check that at least 0.05 seconds passed (allowing for timer variance)
+    // 9:     if elapsed >= 0.05:
+    if ((elapsed >= 0.05)) {
+        // 10:         print("ok")
+        std::cout << "ok" << "\n";
+    } else {
+        // 12:         print("error: sleep too short")
+        std::cout << "error: sleep too short" << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: import time
-  // 14: main()
-  main();
+    __name__ = "__main__";
+    // 1: import time
+    // 14: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

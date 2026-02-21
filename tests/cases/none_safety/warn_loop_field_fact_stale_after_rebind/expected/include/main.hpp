@@ -13,19 +13,19 @@ int32_t stale_after_rebind(Box& b, Box& other);
 
 // 4: class Box:
 struct Box {
-  // 5:     value: Int32 | None
-  std::optional<int32_t> value;
+    // 5:     value: Int32 | None
+    std::optional<int32_t> value;
 
-  // 7:     def __init__(self, value: Int32):
-  Box() = default;
-  explicit Box(int32_t value) : value(value) {}
+    // 7:     def __init__(self, value: Int32):
+    Box() = default;
+    explicit Box(int32_t value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << tpy::print_optional_val(obj.value)
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << tpy::print_optional_val(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

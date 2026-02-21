@@ -7,28 +7,28 @@ std::string_view __name__;
 
 // 37: def main() -> None:
 void main() {
-  // 38:     msg = Message("hello")
-  Message msg = Message("hello");
-  // 39:     c = Container(msg)
-  Container<Message> c = Container<Message>(msg);
-  // 40:     c.describe()
-  c.describe();
+    // 38:     msg = Message("hello")
+    Message msg = Message("hello");
+    // 39:     c = Container(msg)
+    Container<Message> c = Container<Message>(msg);
+    // 40:     c.describe()
+    c.describe();
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 43: main()
-  main();
+    __name__ = "__main__";
+    // 43: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

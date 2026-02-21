@@ -9,32 +9,32 @@ std::string_view __name__;
 double x{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Comparisons
-  // 2: x = 3.14
-  x = 3.14;
-  // 3: print(x > 3.0)
-  std::cout << tpy::print_bool((x > 3.0)) << "\n";
-  // 4: print(x == 3.14)
-  std::cout << tpy::print_bool((x == 3.14)) << "\n";
-  // 5: print(x < 4.0)
-  std::cout << tpy::print_bool((x < 4.0)) << "\n";
-  // 6: print(x >= 3.14)
-  std::cout << tpy::print_bool((x >= 3.14)) << "\n";
-  // 7: print(x <= 3.14)
-  std::cout << tpy::print_bool((x <= 3.14)) << "\n";
-  // 8: print(x != 0.0)
-  std::cout << tpy::print_bool((x != 0.0)) << "\n";
+    __name__ = "__main__";
+    // 1: # Comparisons
+    // 2: x = 3.14
+    x = 3.14;
+    // 3: print(x > 3.0)
+    std::cout << tpy::print_bool((x > 3.0)) << "\n";
+    // 4: print(x == 3.14)
+    std::cout << tpy::print_bool((x == 3.14)) << "\n";
+    // 5: print(x < 4.0)
+    std::cout << tpy::print_bool((x < 4.0)) << "\n";
+    // 6: print(x >= 3.14)
+    std::cout << tpy::print_bool((x >= 3.14)) << "\n";
+    // 7: print(x <= 3.14)
+    std::cout << tpy::print_bool((x <= 3.14)) << "\n";
+    // 8: print(x != 0.0)
+    std::cout << tpy::print_bool((x != 0.0)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

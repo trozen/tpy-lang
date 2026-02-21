@@ -15,25 +15,25 @@ concept Printable = requires(T& t) {
 // # Implementation of Printable
 // 9: class Message:
 struct Message {
-  // 10:     text: str
-  std::string_view text;
+    // 10:     text: str
+    std::string_view text;
 
-  // 12:     def __init__(self, text: str) -> None:
-  Message() = default;
-  explicit Message(std::string_view text) : text(text) {}
+    // 12:     def __init__(self, text: str) -> None:
+    Message() = default;
+    explicit Message(std::string_view text) : text(text) {}
 
-  // 15:     def to_str(self) -> str:
-  std::string_view to_str() {
-    // 16:         return self.text
-    return this->text;
-  }
+    // 15:     def to_str(self) -> str:
+    std::string_view to_str() {
+        // 16:         return self.text
+        return this->text;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
-  os << "Message("
-     << "text=" << "\"" << obj.text << "\""
-     << ")";
-  return os;
+    os << "Message("
+       << "text=" << "\"" << obj.text << "\""
+       << ")";
+    return os;
 }
 
 template<Printable T> struct Container;
@@ -57,53 +57,53 @@ void main();
 // 19: class Container[T: Printable]:
 template<Printable T>
 struct Container {
-  // 20:     value: T
-  T value;
+    // 20:     value: T
+    T value;
 
-  // 22:     def __init__(self, value: T) -> None:
-  Container() = default;
-  explicit Container(const T& value) : value(value) {}
+    // 22:     def __init__(self, value: T) -> None:
+    Container() = default;
+    explicit Container(const T& value) : value(value) {}
 
-  // 25:     def print_value(self) -> None:
-  void print_value() {
-    // 26:         print(self.value.to_str())
-    std::cout << this->value.to_str() << "\n";
-  }
+    // 25:     def print_value(self) -> None:
+    void print_value() {
+        // 26:         print(self.value.to_str())
+        std::cout << this->value.to_str() << "\n";
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Container("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // # Factory implementation
 // 33: class DefaultFactory:
 struct DefaultFactory {
 
-  DefaultFactory() = default;
+    DefaultFactory() = default;
 
-  // 34:     def make(self, text: str) -> Own[Container[Message]]:
-  Container<Message> make(std::string_view text) {
-    // 35:         return Container(Message(text))
-    return Container<Message>(Message(text));
-  }
+    // 34:     def make(self, text: str) -> Own[Container[Message]]:
+    Container<Message> make(std::string_view text) {
+        // 35:         return Container(Message(text))
+        return Container<Message>(Message(text));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
-  os << "DefaultFactory("
-     << ")";
-  return os;
+    os << "DefaultFactory("
+       << ")";
+    return os;
 }
 
 // # Generic function using the factory protocol
 // 38: def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>
 Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text) {
-  // 39:     return factory.make(text)
-  return factory.make(text);
+    // 39:     return factory.make(text)
+    return factory.make(text);
 }
 
 void __tpy_init();

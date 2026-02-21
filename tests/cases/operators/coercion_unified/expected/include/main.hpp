@@ -30,23 +30,23 @@ void test_subscript_to_ptr();
 // # --- Records for pointer coercion tests ---
 // 13: class Point:
 struct Point {
-  // 14:     x: Int32
-  int32_t x;
-  // 15:     y: Int32
-  int32_t y;
+    // 14:     x: Int32
+    int32_t x;
+    // 15:     y: Int32
+    int32_t y;
 
-  // 17:     def __init__(self, x: Int32, y: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 17:     def __init__(self, x: Int32, y: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -13,19 +13,19 @@ void main();
 
 // 5: class Holder:
 struct Holder {
-  // 6:     value: Int32 | None
-  std::optional<int32_t> value;
+    // 6:     value: Int32 | None
+    std::optional<int32_t> value;
 
-  // 8:     def __init__(self, value: Int32 | None):
-  Holder() = default;
-  explicit Holder(std::optional<int32_t> value) : value(value) {}
+    // 8:     def __init__(self, value: Int32 | None):
+    Holder() = default;
+    explicit Holder(std::optional<int32_t> value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-  os << "Holder("
-     << "value=" << tpy::print_optional_val(obj.value)
-     << ")";
-  return os;
+    os << "Holder("
+       << "value=" << tpy::print_optional_val(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

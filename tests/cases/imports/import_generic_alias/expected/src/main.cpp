@@ -8,30 +8,30 @@ std::string_view __name__;
 StaticList<tpy::BigInt, 3>* x{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: x: SL[int, 3] = SL[int, 3]()
-  static StaticList<tpy::BigInt, 3> __global_slot_1 = StaticList<tpy::BigInt, 3>();
-  x = &__global_slot_1;
-  // 4: x.append(1)
-  (*x).push_back(1);
-  // 5: x.append(2)
-  (*x).push_back(2);
-  // 6: print(len(x))
-  std::cout << tpy::__len__((*x)) << "\n";
-  // 7: print(x[0])
-  std::cout << tpy::get_item((*x), 0) << "\n";
-  // 8: print(x[1])
-  std::cout << tpy::get_item((*x), 1) << "\n";
+    __name__ = "__main__";
+    // 3: x: SL[int, 3] = SL[int, 3]()
+    static StaticList<tpy::BigInt, 3> __global_slot_1 = StaticList<tpy::BigInt, 3>();
+    x = &__global_slot_1;
+    // 4: x.append(1)
+    (*x).push_back(1);
+    // 5: x.append(2)
+    (*x).push_back(2);
+    // 6: print(len(x))
+    std::cout << tpy::__len__((*x)) << "\n";
+    // 7: print(x[0])
+    std::cout << tpy::get_item((*x), 0) << "\n";
+    // 8: print(x[1])
+    std::cout << tpy::get_item((*x), 1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -10,15 +10,15 @@ int32_t MAX{};
 int32_t MIN{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "utils";
-  // 3: MAX: Int32 = Int32(100)
-  MAX = 100;
-  // 4: MIN: Int32 = Int32(1)
-  MIN = 1;
+    __name__ = "utils";
+    // 3: MAX: Int32 = Int32(100)
+    MAX = 100;
+    // 4: MIN: Int32 = Int32(1)
+    MIN = 1;
 }
 
 } // namespace tpy_user::utils

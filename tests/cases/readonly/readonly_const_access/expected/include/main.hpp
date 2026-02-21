@@ -14,39 +14,39 @@ void main();
 
 // 5: class Container:
 struct Container {
-  // 6:     _items: list[Int32]
-  std::vector<int32_t> _items;
+    // 6:     _items: list[Int32]
+    std::vector<int32_t> _items;
 
-  // 8:     def __init__(self) -> None:
-  Container() : _items({10, 20, 30}) {}
+    // 8:     def __init__(self) -> None:
+    Container() : _items({10, 20, 30}) {}
 
-  //     @readonly
-  // 12:     def items(self) -> list[Int32]:
-  const std::vector<int32_t>& items() const {
-    // 13:         return self._items
-    return this->_items;
-  }
+    //     @readonly
+    // 12:     def items(self) -> list[Int32]:
+    const std::vector<int32_t>& items() const {
+        // 13:         return self._items
+        return this->_items;
+    }
 
-  //     @readonly
-  // 12:     def items(self) -> list[Int32]:
-  std::vector<int32_t>& items() {
-    // 13:         return self._items
-    return this->_items;
-  }
+    //     @readonly
+    // 12:     def items(self) -> list[Int32]:
+    std::vector<int32_t>& items() {
+        // 13:         return self._items
+        return this->_items;
+    }
 
-  //     @readonly
-  // 16:     def count(self) -> Int32:
-  int32_t count() const {
-    // 17:         return Int32(len(self._items))
-    return tpy::__len__(this->_items);
-  }
+    //     @readonly
+    // 16:     def count(self) -> Int32:
+    int32_t count() const {
+        // 17:         return Int32(len(self._items))
+        return tpy::__len__(this->_items);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-  os << "Container("
-     << "_items=" << tpy::ListPrinter(obj._items)
-     << ")";
-  return os;
+    os << "Container("
+       << "_items=" << tpy::ListPrinter(obj._items)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

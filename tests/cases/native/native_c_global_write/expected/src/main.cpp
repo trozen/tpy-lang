@@ -7,38 +7,38 @@ std::string_view __name__;
 
 // 9: def set_same_name(val: Int32) -> None:
 void set_same_name(int32_t val) {
-  // 10:     global opentop
-  // 11:     opentop = val
-  opentop = val;
+    // 10:     global opentop
+    // 11:     opentop = val
+    opentop = val;
 }
 
 // 13: def set_renamed(val: Int32) -> None:
 void set_renamed(int32_t val) {
-  // 14:     global counter
-  // 15:     counter = val
-  g_counter = val;
+    // 14:     global counter
+    // 15:     counter = val
+    g_counter = val;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: # Write to native_c_global at function scope.
-  // 4: # Renamed globals must use the C name in the assignment target.
-  // 6: opentop: Int32 = native_c_global("opentop")
-  // 7: counter: Int32 = native_c_global("g_counter")
-  // 17: set_same_name(Int32(10))
-  set_same_name(10);
-  // 18: set_renamed(Int32(20))
-  set_renamed(20);
+    __name__ = "__main__";
+    // 3: # Write to native_c_global at function scope.
+    // 4: # Renamed globals must use the C name in the assignment target.
+    // 6: opentop: Int32 = native_c_global("opentop")
+    // 7: counter: Int32 = native_c_global("g_counter")
+    // 17: set_same_name(Int32(10))
+    set_same_name(10);
+    // 18: set_renamed(Int32(20))
+    set_renamed(20);
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

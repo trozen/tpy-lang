@@ -13,25 +13,25 @@ extern std::optional<int32_t> x;
 
 // 4: class Box:
 struct Box {
-  // 5:     value: Int32
-  int32_t value;
+    // 5:     value: Int32
+    int32_t value;
 
-  // 7:     def __init__(self, value: Int32) -> None:
-  Box() = default;
-  explicit Box(int32_t value) : value(value) {}
+    // 7:     def __init__(self, value: Int32) -> None:
+    Box() = default;
+    explicit Box(int32_t value) : value(value) {}
 
-  // 10:     def get(self) -> Int32:
-  int32_t get() {
-    // 11:         return self.value
-    return this->value;
-  }
+    // 10:     def get(self) -> Int32:
+    int32_t get() {
+        // 11:         return self.value
+        return this->value;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

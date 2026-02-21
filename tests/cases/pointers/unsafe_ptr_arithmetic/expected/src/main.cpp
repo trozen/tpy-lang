@@ -22,43 +22,43 @@ int64_t diff{};
 int64_t diff2{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_ptr_add, unsafe_ptr_diff
-  // 6: arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
-  static std::array<int32_t, 4> __global_slot_1 = {10, 20, 30, 40};
-  arr = &__global_slot_1;
-  // 7: base: Ptr[Int32] = unsafe_ptr(arr)
-  base = (*arr).data();
-  // 9: # Advance pointer by 2 elements
-  // 10: p2: Ptr[Int32] = unsafe_ptr_add(base, Int64(2))
-  p2 = (base + 2);
-  // 11: print(unsafe_load(p2, 0))
-  std::cout << p2[0] << "\n";
-  // 13: # Negative offset
-  // 14: p0: Ptr[Int32] = unsafe_ptr_add(p2, Int64(-2))
-  p0 = (p2 + -2);
-  // 15: print(unsafe_load(p0, 0))
-  std::cout << p0[0] << "\n";
-  // 17: # Pointer difference
-  // 18: diff: Int64 = unsafe_ptr_diff(p2, base)
-  diff = static_cast<int64_t>(p2 - base);
-  // 19: print(diff)
-  std::cout << diff << "\n";
-  // 21: # Reverse difference (negative)
-  // 22: diff2: Int64 = unsafe_ptr_diff(base, p2)
-  diff2 = static_cast<int64_t>(base - p2);
-  // 23: print(diff2)
-  std::cout << diff2 << "\n";
+    __name__ = "__main__";
+    // 4: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_ptr_add, unsafe_ptr_diff
+    // 6: arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+    static std::array<int32_t, 4> __global_slot_1 = {10, 20, 30, 40};
+    arr = &__global_slot_1;
+    // 7: base: Ptr[Int32] = unsafe_ptr(arr)
+    base = (*arr).data();
+    // 9: # Advance pointer by 2 elements
+    // 10: p2: Ptr[Int32] = unsafe_ptr_add(base, Int64(2))
+    p2 = (base + 2);
+    // 11: print(unsafe_load(p2, 0))
+    std::cout << p2[0] << "\n";
+    // 13: # Negative offset
+    // 14: p0: Ptr[Int32] = unsafe_ptr_add(p2, Int64(-2))
+    p0 = (p2 + -2);
+    // 15: print(unsafe_load(p0, 0))
+    std::cout << p0[0] << "\n";
+    // 17: # Pointer difference
+    // 18: diff: Int64 = unsafe_ptr_diff(p2, base)
+    diff = static_cast<int64_t>(p2 - base);
+    // 19: print(diff)
+    std::cout << diff << "\n";
+    // 21: # Reverse difference (negative)
+    // 22: diff2: Int64 = unsafe_ptr_diff(base, p2)
+    diff2 = static_cast<int64_t>(base - p2);
+    // 23: print(diff2)
+    std::cout << diff2 << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

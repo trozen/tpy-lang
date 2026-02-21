@@ -7,29 +7,29 @@ std::string_view __name__;
 
 // 20: def main() -> None:
 void main() {
-  // 21:     c = MyContainer([1, 2, 3, 4, 5])
-  MyContainer c = MyContainer({1, 2, 3, 4, 5});
-  // 22:     # MyContainer satisfies Sized, so inference should work
-  // 23:     result = get_length(c)
-  int32_t result = get_length<MyContainer>(c);
-  // 24:     print(result)
-  std::cout << result << "\n";
+    // 21:     c = MyContainer([1, 2, 3, 4, 5])
+    MyContainer c = MyContainer({1, 2, 3, 4, 5});
+    // 22:     # MyContainer satisfies Sized, so inference should work
+    // 23:     result = get_length(c)
+    int32_t result = get_length<MyContainer>(c);
+    // 24:     print(result)
+    std::cout << result << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 26: main()
-  main();
+    __name__ = "__main__";
+    // 26: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

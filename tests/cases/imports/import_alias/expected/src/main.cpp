@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
-  // 5:     p = Pt(Int32(3), Int32(4))
-  ::tpy_user::utils::Point p = ::tpy_user::utils::Point(3, 4);
-  // 6:     print(p.x)
-  std::cout << p.x << "\n";
-  // 7:     print(MAX)
-  std::cout << ::tpy_user::utils::MAX_VALUE << "\n";
-  // 8:     print(sum_nums(Int32(10), Int32(20)))
-  std::cout << ::tpy_user::utils::add(10, 20) << "\n";
-  // 9:     return Int32(0)
-  return 0;
+    // 5:     p = Pt(Int32(3), Int32(4))
+    ::tpy_user::utils::Point p = ::tpy_user::utils::Point(3, 4);
+    // 6:     print(p.x)
+    std::cout << p.x << "\n";
+    // 7:     print(MAX)
+    std::cout << ::tpy_user::utils::MAX_VALUE << "\n";
+    // 8:     print(sum_nums(Int32(10), Int32(20)))
+    std::cout << ::tpy_user::utils::add(10, 20) << "\n";
+    // 9:     return Int32(0)
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from utils import Point as Pt, MAX_VALUE as MAX, add as sum_nums
-  ::tpy_user::utils::__tpy_init();
-  // 11: main()
-  main();
+    __name__ = "__main__";
+    // 2: from utils import Point as Pt, MAX_VALUE as MAX, add as sum_nums
+    ::tpy_user::utils::__tpy_init();
+    // 11: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

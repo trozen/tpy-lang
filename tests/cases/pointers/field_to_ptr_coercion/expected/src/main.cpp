@@ -7,74 +7,74 @@ std::string_view __name__;
 
 // 13: def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {
-  // 14:     p.x = 999
-  tpy::deref_check(p).x = 999;
+    // 14:     p.x = 999
+    tpy::deref_check(p).x = 999;
 }
 
 // 16: def read_inner(p: ConstPtr[Inner]) -> Int32:
 int32_t read_inner(const Inner* p) {
-  // 17:     return p.x
-  return tpy::deref_check(p).x;
+    // 17:     return p.x
+    return tpy::deref_check(p).x;
 }
 
 // 19: def test_field_to_ptr() -> None:
 void test_field_to_ptr() {
-  // 20:     outer: Outer = Outer(42)
-  Outer outer = Outer(42);
-  // 21:     # obj.field -> Ptr coercion
-  // 22:     modify_inner(outer.inner)
-  modify_inner(&outer.inner);
-  // 23:     print(outer.inner.x)
-  std::cout << outer.inner.x << "\n";
+    // 20:     outer: Outer = Outer(42)
+    Outer outer = Outer(42);
+    // 21:     # obj.field -> Ptr coercion
+    // 22:     modify_inner(outer.inner)
+    modify_inner(&outer.inner);
+    // 23:     print(outer.inner.x)
+    std::cout << outer.inner.x << "\n";
 }
 
 // 25: def test_field_to_const_ptr() -> None:
 void test_field_to_const_ptr() {
-  // 26:     outer: Outer = Outer(100)
-  Outer outer = Outer(100);
-  // 27:     # obj.field -> ConstPtr coercion
-  // 28:     result: Int32 = read_inner(outer.inner)
-  int32_t result = read_inner(&outer.inner);
-  // 29:     print(result)
-  std::cout << result << "\n";
+    // 26:     outer: Outer = Outer(100)
+    Outer outer = Outer(100);
+    // 27:     # obj.field -> ConstPtr coercion
+    // 28:     result: Int32 = read_inner(outer.inner)
+    int32_t result = read_inner(&outer.inner);
+    // 29:     print(result)
+    std::cout << result << "\n";
 }
 
 // 31: def test_subscript_to_ptr() -> None:
 void test_subscript_to_ptr() {
-  // 32:     arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
-  std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
-  // 33:     # arr[i] -> Ptr coercion
-  // 34:     modify_inner(arr[1])
-  modify_inner(&arr[1]);
-  // 35:     print(arr[1].x)
-  std::cout << arr[1].x << "\n";
+    // 32:     arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
+    std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
+    // 33:     # arr[i] -> Ptr coercion
+    // 34:     modify_inner(arr[1])
+    modify_inner(&arr[1]);
+    // 35:     print(arr[1].x)
+    std::cout << arr[1].x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 37: # Run tests
-  // 38: print("=== field to ptr ===")
-  std::cout << "=== field to ptr ===" << "\n";
-  // 39: test_field_to_ptr()
-  test_field_to_ptr();
-  // 40: print("=== field to const ptr ===")
-  std::cout << "=== field to const ptr ===" << "\n";
-  // 41: test_field_to_const_ptr()
-  test_field_to_const_ptr();
-  // 42: print("=== subscript to ptr ===")
-  std::cout << "=== subscript to ptr ===" << "\n";
-  // 43: test_subscript_to_ptr()
-  test_subscript_to_ptr();
+    __name__ = "__main__";
+    // 37: # Run tests
+    // 38: print("=== field to ptr ===")
+    std::cout << "=== field to ptr ===" << "\n";
+    // 39: test_field_to_ptr()
+    test_field_to_ptr();
+    // 40: print("=== field to const ptr ===")
+    std::cout << "=== field to const ptr ===" << "\n";
+    // 41: test_field_to_const_ptr()
+    test_field_to_const_ptr();
+    // 42: print("=== subscript to ptr ===")
+    std::cout << "=== subscript to ptr ===" << "\n";
+    // 43: test_subscript_to_ptr()
+    test_subscript_to_ptr();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

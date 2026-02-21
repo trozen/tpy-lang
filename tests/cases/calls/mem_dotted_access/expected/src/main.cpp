@@ -14,33 +14,33 @@ int32_t val{};
 int32_t val2{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: import tpy.unsafe
-  // 4: arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
-  static std::array<int32_t, 4> __global_slot_1 = {10, 20, 30, 40};
-  arr = &__global_slot_1;
-  // 5: p: Ptr[Int32] = tpy.unsafe.unsafe_ptr(arr)
-  p = (*arr).data();
-  // 6: val: Int32 = tpy.unsafe.unsafe_load(p, UInt32(0))
-  val = p[0];
-  // 7: print(val)
-  std::cout << val << "\n";
-  // 8: tpy.unsafe.unsafe_store(p, UInt32(1), Int32(99))
-  p[1] = 99;
-  // 9: val2: Int32 = tpy.unsafe.unsafe_load(p, UInt32(1))
-  val2 = p[1];
-  // 10: print(val2)
-  std::cout << val2 << "\n";
+    __name__ = "__main__";
+    // 1: import tpy.unsafe
+    // 4: arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+    static std::array<int32_t, 4> __global_slot_1 = {10, 20, 30, 40};
+    arr = &__global_slot_1;
+    // 5: p: Ptr[Int32] = tpy.unsafe.unsafe_ptr(arr)
+    p = (*arr).data();
+    // 6: val: Int32 = tpy.unsafe.unsafe_load(p, UInt32(0))
+    val = p[0];
+    // 7: print(val)
+    std::cout << val << "\n";
+    // 8: tpy.unsafe.unsafe_store(p, UInt32(1), Int32(99))
+    p[1] = 99;
+    // 9: val2: Int32 = tpy.unsafe.unsafe_load(p, UInt32(1))
+    val2 = p[1];
+    // 10: print(val2)
+    std::cout << val2 << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

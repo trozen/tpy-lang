@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 34: def main() -> None:
 void main() {
-  // 35:     factory = DefaultFooMaker()
-  DefaultFooMaker factory = DefaultFooMaker();
-  // 36:     bar = Bar(factory)
-  Bar<DefaultFooMaker> bar = Bar<DefaultFooMaker>(factory);
-  // 37:     foo = bar.create_foo()
-  Foo foo = bar.create_foo();
-  // 38:     print(foo.value)
-  std::cout << foo.value << "\n";
+    // 35:     factory = DefaultFooMaker()
+    DefaultFooMaker factory = DefaultFooMaker();
+    // 36:     bar = Bar(factory)
+    Bar<DefaultFooMaker> bar = Bar<DefaultFooMaker>(factory);
+    // 37:     foo = bar.create_foo()
+    Foo foo = bar.create_foo();
+    // 38:     print(foo.value)
+    std::cout << foo.value << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 40: main()
-  main();
+    __name__ = "__main__";
+    // 40: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -8,38 +8,38 @@ std::string_view __name__;
 // 10: def while_escape() -> None:
 void while_escape() {
   std::optional<Point> __slot_2;
-  // 11:     saved: Point = Point(0, 0)
-  Point __slot_1 = Point(0, 0);
-  Point* saved = &__slot_1;
-  // 12:     i: Int32 = 0
-  int32_t i = 0;
-  // 13:     while i < 3:
-  while ((i < 3)) {
-    // 14:         p: Point = Point(i, i)
-    Point* p = &*(__slot_2 = Point(i, i));
-    // 15:         saved = p  # tpyc: warning(/hoisted to function scope/)
-    saved = p;
-    // 16:         i = i + 1
-    i = (tpy::add_check<int32_t>(i, 1));
-  }
-  // 17:     print(saved.x, saved.y)
-  std::cout << saved->x << " " << saved->y << "\n";
+    // 11:     saved: Point = Point(0, 0)
+    Point __slot_1 = Point(0, 0);
+    Point* saved = &__slot_1;
+    // 12:     i: Int32 = 0
+    int32_t i = 0;
+    // 13:     while i < 3:
+    while ((i < 3)) {
+        // 14:         p: Point = Point(i, i)
+        Point* p = &*(__slot_2 = Point(i, i));
+        // 15:         saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p;
+        // 16:         i = i + 1
+        i = (tpy::add_check<int32_t>(i, 1));
+    }
+    // 17:     print(saved.x, saved.y)
+    std::cout << saved->x << " " << saved->y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 19: while_escape()
-  while_escape();
+    __name__ = "__main__";
+    // 19: while_escape()
+    while_escape();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

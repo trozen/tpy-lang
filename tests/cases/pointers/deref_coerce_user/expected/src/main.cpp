@@ -7,36 +7,36 @@ std::string_view __name__;
 
 // 20: def print_point(p: Point) -> None:
 void print_point(Point& p) {
-  // 21:     print(p.x, p.y)
-  std::cout << p.x << " " << p.y << "\n";
+    // 21:     print(p.x, p.y)
+    std::cout << p.x << " " << p.y << "\n";
 }
 
 // 23: def test() -> None:
 void test() {
-  // 24:     pt: Point = Point(10, 20)
-  Point pt = Point(10, 20);
-  // 25:     r: Ref = Ref(pt)
-  Ref r = Ref(pt);
-  // 26:     # Ref has __deref__() -> Point, so it should auto-coerce to Point
-  // 27:     print_point(r)
-  Point __tmp_1 = r.__deref__();
-  print_point(__tmp_1);
+    // 24:     pt: Point = Point(10, 20)
+    Point pt = Point(10, 20);
+    // 25:     r: Ref = Ref(pt)
+    Ref r = Ref(pt);
+    // 26:     # Ref has __deref__() -> Point, so it should auto-coerce to Point
+    // 27:     print_point(r)
+    Point __tmp_1 = r.__deref__();
+    print_point(__tmp_1);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 29: test()
-  test();
+    __name__ = "__main__";
+    // 29: test()
+    test();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

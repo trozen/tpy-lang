@@ -14,39 +14,39 @@ void main();
 // 4: class Container[T]:
 template<typename T>
 struct Container {
-  // 5:     value: T
-  T value;
+    // 5:     value: T
+    T value;
 
-  // 7:     def __init__(self, value: Own[T]):
-  Container() = default;
-  explicit Container(T value) : value(std::move(value)) {}
+    // 7:     def __init__(self, value: Own[T]):
+    Container() = default;
+    explicit Container(T value) : value(std::move(value)) {}
 
-  //     @staticmethod
-  // 11:     def create(v: Own[T]) -> Own[Container[T]]:
-  static Container<T> create(T v) {
-    // 12:         return Container(v)
-    return Container<T>(std::move(v));
-  }
-
-  //     @staticmethod
-  // 15:     def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
-  static std::optional<Container<T>> wrap_optional(std::optional<T> v) {
-    // 16:         if v is not None:
-    if ((v.has_value())) {
-      // 17:             return Container(v)
-      return Container<T>(std::move((*v)));
+    //     @staticmethod
+    // 11:     def create(v: Own[T]) -> Own[Container[T]]:
+    static Container<T> create(T v) {
+        // 12:         return Container(v)
+        return Container<T>(std::move(v));
     }
-    // 18:         return None
-    return std::nullopt;
-  }
+
+    //     @staticmethod
+    // 15:     def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
+    static std::optional<Container<T>> wrap_optional(std::optional<T> v) {
+        // 16:         if v is not None:
+        if ((v.has_value())) {
+            // 17:             return Container(v)
+            return Container<T>(std::move((*v)));
+        }
+        // 18:         return None
+        return std::nullopt;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Container("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

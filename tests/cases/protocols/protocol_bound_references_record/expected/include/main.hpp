@@ -17,38 +17,38 @@ concept FooMaker = requires(T& t) {
 // # A record that will be referenced by a bound protocol
 // 5: class Foo:
 struct Foo {
-  // 6:     value: Int32
-  int32_t value;
+    // 6:     value: Int32
+    int32_t value;
 
-  // 8:     def __init__(self, value: Int32) -> None:
-  Foo() = default;
-  explicit Foo(int32_t value) : value(value) {}
+    // 8:     def __init__(self, value: Int32) -> None:
+    Foo() = default;
+    explicit Foo(int32_t value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
-  os << "Foo("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Foo("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // # Implementation of FooMaker
 // 16: class DefaultFooMaker:
 struct DefaultFooMaker {
 
-  DefaultFooMaker() = default;
+    DefaultFooMaker() = default;
 
-  // 17:     def make(self) -> Own[Foo]:
-  Foo make() {
-    // 18:         return Foo(Int32(42))
-    return Foo(42);
-  }
+    // 17:     def make(self) -> Own[Foo]:
+    Foo make() {
+        // 18:         return Foo(Int32(42))
+        return Foo(42);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultFooMaker& obj) {
-  os << "DefaultFooMaker("
-     << ")";
-  return os;
+    os << "DefaultFooMaker("
+       << ")";
+    return os;
 }
 
 template<FooMaker T> struct Bar;
@@ -69,26 +69,26 @@ void main();
 // 21: class Bar[T: FooMaker]:
 template<FooMaker T>
 struct Bar {
-  // 22:     factory: T
-  T factory;
+    // 22:     factory: T
+    T factory;
 
-  // 24:     def __init__(self, factory: T) -> None:
-  Bar() = default;
-  explicit Bar(const T& factory) : factory(factory) {}
+    // 24:     def __init__(self, factory: T) -> None:
+    Bar() = default;
+    explicit Bar(const T& factory) : factory(factory) {}
 
-  // 27:     def create_foo(self) -> Own[Foo]:
-  Foo create_foo() {
-    // 28:         return self.factory.make()
-    return this->factory.make();
-  }
+    // 27:     def create_foo(self) -> Own[Foo]:
+    Foo create_foo() {
+        // 28:         return self.factory.make()
+        return this->factory.make();
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bar<T>& obj) {
-  os << "Bar("
-     << "factory=" << tpy::ValuePrinter(obj.factory)
-     << ")";
-  return os;
+    os << "Bar("
+       << "factory=" << tpy::ValuePrinter(obj.factory)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

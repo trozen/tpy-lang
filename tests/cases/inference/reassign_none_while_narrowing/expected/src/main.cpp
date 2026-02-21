@@ -7,45 +7,45 @@ std::string_view __name__;
 
 // 10: def make(i: Int32) -> Own[Box]:
 Box make(int32_t i) {
-  // 11:     return Box(i)
-  return Box(i);
+    // 11:     return Box(i)
+    return Box(i);
 }
 
 // 13: def test_while() -> None:
 void test_while() {
-  // 14:     result = None
-  std::optional<Box> __slot_1;
-  Box* result = nullptr;
-  // 15:     i = Int32(0)
-  int32_t i = 0;
-  // 16:     while i < Int32(3):
-  while ((i < 3)) {
-    // 17:         result = make(i)
-    result = &*(__slot_1 = make(i));
-    // 18:         i += Int32(1)
-    i = tpy::add_check<int32_t>(i, 1);
-  }
-  // 19:     if result is not None:
-  if ((result != nullptr)) {
-    // 20:         print(result.v)
-    std::cout << result->v << "\n";
-  }
+    // 14:     result = None
+    std::optional<Box> __slot_1;
+    Box* result = nullptr;
+    // 15:     i = Int32(0)
+    int32_t i = 0;
+    // 16:     while i < Int32(3):
+    while ((i < 3)) {
+        // 17:         result = make(i)
+        result = &*(__slot_1 = make(i));
+        // 18:         i += Int32(1)
+        i = tpy::add_check<int32_t>(i, 1);
+    }
+    // 19:     if result is not None:
+    if ((result != nullptr)) {
+        // 20:         print(result.v)
+        std::cout << result->v << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: test_while()
-  test_while();
+    __name__ = "__main__";
+    // 22: test_while()
+    test_while();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 28: def main() -> None:
 void main() {
-  // 29:     h = IntListHolder([1, 2, 3])
-  IntListHolder h = IntListHolder({1, 2, 3});
-  // 30:     w = Wrapper[IntListHolder](h)
-  Wrapper<IntListHolder> w = Wrapper<IntListHolder>(h);
-  // 31:     result = w.get_holder()
-  IntListHolder result = w.get_holder();
-  // 32:     print(len(result.items()))
-  std::cout << tpy::__len__(result.items()) << "\n";
+    // 29:     h = IntListHolder([1, 2, 3])
+    IntListHolder h = IntListHolder({1, 2, 3});
+    // 30:     w = Wrapper[IntListHolder](h)
+    Wrapper<IntListHolder> w = Wrapper<IntListHolder>(h);
+    // 31:     result = w.get_holder()
+    IntListHolder result = w.get_holder();
+    // 32:     print(len(result.items()))
+    std::cout << tpy::__len__(result.items()) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 34: main()
-  main();
+    __name__ = "__main__";
+    // 34: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,36 +7,36 @@ std::string_view __name__;
 
 // 23: def main() -> None:
 void main() {
-  // 24:     p1 = Point(1, 2)
-  Point p1 = Point(1, 2);
-  // 25:     p2 = Point(3, 4)
-  Point p2 = Point(3, 4);
-  // 26:     # Call through protocol-typed parameter
-  // 27:     add_points(p1, p2)
-  add_points(p1, p2);
-  // 29:     # Directly verify the addition works and print result
-  // 30:     p3 = p1 + p2
-  Point p3 = ((p1) + (p2));
-  // 31:     print(p3.x)
-  std::cout << p3.x << "\n";
-  // 32:     print(p3.y)
-  std::cout << p3.y << "\n";
+    // 24:     p1 = Point(1, 2)
+    Point p1 = Point(1, 2);
+    // 25:     p2 = Point(3, 4)
+    Point p2 = Point(3, 4);
+    // 26:     # Call through protocol-typed parameter
+    // 27:     add_points(p1, p2)
+    add_points(p1, p2);
+    // 29:     # Directly verify the addition works and print result
+    // 30:     p3 = p1 + p2
+    Point p3 = ((p1) + (p2));
+    // 31:     print(p3.x)
+    std::cout << p3.x << "\n";
+    // 32:     print(p3.y)
+    std::cout << p3.y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 34: main()
-  main();
+    __name__ = "__main__";
+    // 34: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

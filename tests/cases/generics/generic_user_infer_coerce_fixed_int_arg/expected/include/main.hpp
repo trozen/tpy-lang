@@ -14,8 +14,8 @@ tpy::return_val_or_ref_t<T> echo_with_delta(tpy::param_val_or_ref_t<T> x, int64_
 // 5: def echo_with_delta[T](x: T, delta: Int64) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> echo_with_delta(tpy::param_val_or_ref_t<T> x, int64_t delta) {
-  // 6:     return x
-  return x;
+    // 6:     return x
+    return x;
 }
 
 void __tpy_init();

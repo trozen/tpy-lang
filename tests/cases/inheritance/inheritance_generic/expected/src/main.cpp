@@ -8,26 +8,26 @@ std::string_view __name__;
 IntContainer* c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 21: c = IntContainer(42, 100)
-  static IntContainer __global_slot_1 = IntContainer(42, 100);
-  c = &__global_slot_1;
-  // 22: print(c.value)   # 42
-  std::cout << c->value << "\n";
-  // 23: print(c.get())   # 42
-  std::cout << c->get() << "\n";
-  // 24: print(c.extra)   # 100
-  std::cout << c->extra << "\n";
+    __name__ = "__main__";
+    // 21: c = IntContainer(42, 100)
+    static IntContainer __global_slot_1 = IntContainer(42, 100);
+    c = &__global_slot_1;
+    // 22: print(c.value)   # 42
+    std::cout << c->value << "\n";
+    // 23: print(c.get())   # 42
+    std::cout << c->get() << "\n";
+    // 24: print(c.extra)   # 100
+    std::cout << c->extra << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

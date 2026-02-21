@@ -7,45 +7,45 @@ std::string_view __name__;
 
 // 20: def describe(s: Shape) -> str:
 std::string_view describe(Shape& s) {
-  // 21:     if isinstance(s, Circle):
-  if (std::holds_alternative<Circle>(s)) {
-    auto& __s = std::get<Circle>(s);
-    // 22:         return "circle"
-    return "circle";
-  }
-  // 23:     assert isinstance(s, Rect)
-  if (!(std::holds_alternative<Rect>(s))) tpy::tpy_panic("assertion failed");
-  auto& __s = std::get<Rect>(s);
-  // 24:     return "rect"
-  return "rect";
+    // 21:     if isinstance(s, Circle):
+    if (std::holds_alternative<Circle>(s)) {
+        auto& __s = std::get<Circle>(s);
+        // 22:         return "circle"
+        return "circle";
+    }
+    // 23:     assert isinstance(s, Rect)
+    if (!(std::holds_alternative<Rect>(s))) tpy::tpy_panic("assertion failed");
+    auto& __s = std::get<Rect>(s);
+    // 24:     return "rect"
+    return "rect";
 }
 
 // 27: def main() -> None:
 void main() {
-  // 28:     c: Shape = Circle(Int32(10))
-  Shape c = Circle(10);
-  // 29:     r: Shape = Rect(Int32(3))
-  Shape r = Rect(3);
-  // 30:     print(describe(c))
-  std::cout << describe(c) << "\n";
-  // 31:     print(describe(r))
-  std::cout << describe(r) << "\n";
+    // 28:     c: Shape = Circle(Int32(10))
+    Shape c = Circle(10);
+    // 29:     r: Shape = Rect(Int32(3))
+    Shape r = Rect(3);
+    // 30:     print(describe(c))
+    std::cout << describe(c) << "\n";
+    // 31:     print(describe(r))
+    std::cout << describe(r) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 33: main()
-  main();
+    __name__ = "__main__";
+    // 33: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -14,19 +14,19 @@ int32_t ok(Box& b);
 
 // 6: class Box:
 struct Box {
-  // 7:     value: Int32
-  int32_t value;
+    // 7:     value: Int32
+    int32_t value;
 
-  // 9:     def __init__(self, v: Int32):
-  Box() = default;
-  explicit Box(int32_t v) : value(v) {}
+    // 9:     def __init__(self, v: Int32):
+    Box() = default;
+    explicit Box(int32_t v) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

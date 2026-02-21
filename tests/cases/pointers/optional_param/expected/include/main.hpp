@@ -16,29 +16,29 @@ Point* find(std::vector<Point>& points, int32_t target);
 
 // 4: class Point:
 struct Point {
-  // 5:     x: Int32
-  int32_t x;
-  // 6:     y: Int32
-  int32_t y;
+    // 5:     x: Int32
+    int32_t x;
+    // 6:     y: Int32
+    int32_t y;
 
-  // 8:     def __init__(self, x: Int32, y: Int32):
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 8:     def __init__(self, x: Int32, y: Int32):
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-  // 12:     def mag(self) -> Int32:
-  int32_t mag() {
-    // 13:         return self.x + self.y
-    return (tpy::add_check<int32_t>(this->x, this->y));
-  }
+    // 12:     def mag(self) -> Int32:
+    int32_t mag() {
+        // 13:         return self.x + self.y
+        return (tpy::add_check<int32_t>(this->x, this->y));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -7,38 +7,38 @@ std::string_view __name__;
 
 // 11: def close(h: Own[Handle]) -> Int32:
 int32_t close(Handle h) {
-  // 12:     return h.fd
-  return h.fd;
+    // 12:     return h.fd
+    return h.fd;
 }
 
 // 15: def main():
 void main() {
-  // 16:     h = Handle()
-  Handle h = Handle();
-  // 17:     h.fd = 42
-  h.fd = 42;
-  // 18:     alias = h
-  Handle& alias = h;
-  // 19:     print(alias.fd)
-  std::cout << alias.fd << "\n";
-  // 20:     print(close(h))  # tpyc: ok
-  std::cout << close(std::move(h)) << "\n";
+    // 16:     h = Handle()
+    Handle h = Handle();
+    // 17:     h.fd = 42
+    h.fd = 42;
+    // 18:     alias = h
+    Handle& alias = h;
+    // 19:     print(alias.fd)
+    std::cout << alias.fd << "\n";
+    // 20:     print(close(h))  # tpyc: ok
+    std::cout << close(std::move(h)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 23: main()
-  main();
+    __name__ = "__main__";
+    // 23: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

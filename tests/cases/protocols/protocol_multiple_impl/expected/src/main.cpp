@@ -9,31 +9,31 @@ std::string_view __name__;
 Box* b{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 39: # Test multiple protocol implementation
-  // 40: b = Box(5, 3)
-  static Box __global_slot_1 = Box(5, 3);
-  b = &__global_slot_1;
-  // 41: print(b.__str__())
-  std::cout << b->__str__() << "\n";
-  // 42: print(b.describe())
-  std::cout << b->describe() << "\n";
-  // 43: print(b.size())
-  std::cout << b->size() << "\n";
-  // 44: print(b.width)
-  std::cout << b->width << "\n";
-  // 45: print(b.height)
-  std::cout << b->height << "\n";
+    __name__ = "__main__";
+    // 39: # Test multiple protocol implementation
+    // 40: b = Box(5, 3)
+    static Box __global_slot_1 = Box(5, 3);
+    b = &__global_slot_1;
+    // 41: print(b.__str__())
+    std::cout << b->__str__() << "\n";
+    // 42: print(b.describe())
+    std::cout << b->describe() << "\n";
+    // 43: print(b.size())
+    std::cout << b->size() << "\n";
+    // 44: print(b.width)
+    std::cout << b->width << "\n";
+    // 45: print(b.height)
+    std::cout << b->height << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

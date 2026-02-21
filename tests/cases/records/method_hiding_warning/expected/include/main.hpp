@@ -14,43 +14,43 @@ extern Dog* d;
 // 1: class Animal:
 struct Animal {
 
-  Animal() = default;
+    Animal() = default;
 
-  // 2:     def speak(self) -> None:
-  void speak() {
-    // 3:         print("...")
-    std::cout << "..." << "\n";
-  }
+    // 2:     def speak(self) -> None:
+    void speak() {
+        // 3:         print("...")
+        std::cout << "..." << "\n";
+    }
 
-  // 5:     def make_noise(self) -> None:
-  void make_noise() {
-    // 6:         self.speak()
-    speak();
-  }
+    // 5:     def make_noise(self) -> None:
+    void make_noise() {
+        // 6:         self.speak()
+        speak();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
-  os << "Animal("
-     << ")";
-  return os;
+    os << "Animal("
+       << ")";
+    return os;
 }
 
 // 8: class Dog(Animal):
 struct Dog : Animal {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 9:     def speak(self) -> None:
-  void speak() {
-    // 10:         print("Woof!")
-    std::cout << "Woof!" << "\n";
-  }
+    // 9:     def speak(self) -> None:
+    void speak() {
+        // 10:         print("Woof!")
+        std::cout << "Woof!" << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

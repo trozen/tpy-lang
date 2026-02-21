@@ -9,39 +9,39 @@ Holder* h{};
 
 // 19: def describe(p: Point | None) -> None:
 void describe(Point* p) {
-  // 20:     if p is not None:
-  if ((p != nullptr)) {
-    // 21:         print(p.x)
-    std::cout << p->x << "\n";
-    // 22:         print(p.y)
-    std::cout << p->y << "\n";
-  } else {
-    // 24:         print("empty")
-    std::cout << "empty" << "\n";
-  }
+    // 20:     if p is not None:
+    if ((p != nullptr)) {
+        // 21:         print(p.x)
+        std::cout << p->x << "\n";
+        // 22:         print(p.y)
+        std::cout << p->y << "\n";
+    } else {
+        // 24:         print("empty")
+        std::cout << "empty" << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 27: h = Holder()
-  static Holder __global_slot_1 = Holder();
-  h = &__global_slot_1;
-  // 28: describe(h.value)
-  describe(tpy::optional_to_ptr(h->value));
-  // 30: h.value = Point(5, 6)
-  h->value = Point(5, 6);
-  // 31: describe(h.value)
-  describe(tpy::optional_to_ptr(h->value));
+    __name__ = "__main__";
+    // 27: h = Holder()
+    static Holder __global_slot_1 = Holder();
+    h = &__global_slot_1;
+    // 28: describe(h.value)
+    describe(tpy::optional_to_ptr(h->value));
+    // 30: h.value = Point(5, 6)
+    h->value = Point(5, 6);
+    // 31: describe(h.value)
+    describe(tpy::optional_to_ptr(h->value));
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,46 +7,46 @@ std::string_view __name__;
 
 // 10: def close(h: Own[Handle]) -> Int32:
 int32_t close(Handle h) {
-  // 11:     return h.fd
-  return h.fd;
+    // 11:     return h.fd
+    return h.fd;
 }
 
 // 14: def main():
 void main() {
-  // 15:     h = Handle()
-  Handle __slot_1 = Handle();
-  std::optional<Handle> __slot_2;
-  Handle* h = &__slot_1;
-  // 16:     h.fd = 42
-  h->fd = 42;
-  // 17:     alias = h
-  Handle& alias = (*h);
-  // 18:     print(alias.fd)
-  std::cout << alias.fd << "\n";
-  // 19:     h = Handle()       # reassign h -- alias detached, points to old slot
-  h = &*(__slot_2 = Handle());
-  // 20:     h.fd = 99
-  h->fd = 99;
-  // 21:     print(close(h))    # tpyc: ok (auto-move, alias doesn't constrain)
-  std::cout << close(std::move((*h))) << "\n";
-  // 22:     print(alias.fd)
-  std::cout << alias.fd << "\n";
+    // 15:     h = Handle()
+    Handle __slot_1 = Handle();
+    std::optional<Handle> __slot_2;
+    Handle* h = &__slot_1;
+    // 16:     h.fd = 42
+    h->fd = 42;
+    // 17:     alias = h
+    Handle& alias = (*h);
+    // 18:     print(alias.fd)
+    std::cout << alias.fd << "\n";
+    // 19:     h = Handle()       # reassign h -- alias detached, points to old slot
+    h = &*(__slot_2 = Handle());
+    // 20:     h.fd = 99
+    h->fd = 99;
+    // 21:     print(close(h))    # tpyc: ok (auto-move, alias doesn't constrain)
+    std::cout << close(std::move((*h))) << "\n";
+    // 22:     print(alias.fd)
+    std::cout << alias.fd << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 25: main()
-  main();
+    __name__ = "__main__";
+    // 25: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

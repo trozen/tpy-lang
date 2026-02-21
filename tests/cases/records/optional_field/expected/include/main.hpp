@@ -20,62 +20,62 @@ Point* find_point(std::vector<Point>& points, int32_t target);
 
 // 4: class Point:
 struct Point {
-  // 5:     x: Int32
-  int32_t x;
-  // 6:     y: Int32
-  int32_t y;
+    // 5:     x: Int32
+    int32_t x;
+    // 6:     y: Int32
+    int32_t y;
 
-  // 7:     def __init__(self, x: Int32, y: Int32):
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 7:     def __init__(self, x: Int32, y: Int32):
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 12: class Line:
 struct Line {
-  // 13:     start: Point
-  Point start;
-  // 14:     end: Point | None
-  std::optional<Point> end;
+    // 13:     start: Point
+    Point start;
+    // 14:     end: Point | None
+    std::optional<Point> end;
 
-  // 16:     def __init__(self, s: Point):
-  Line() = default;
-  explicit Line(const Point& s) : start(s), end(std::nullopt) {}
+    // 16:     def __init__(self, s: Point):
+    Line() = default;
+    explicit Line(const Point& s) : start(s), end(std::nullopt) {}
 
-  // 20:     def set_end(self, e: Point) -> None:
-  void set_end(Point& e) {
-    // 21:         self.end = copy(e)
-    this->end = e;
-  }
+    // 20:     def set_end(self, e: Point) -> None:
+    void set_end(Point& e) {
+        // 21:         self.end = copy(e)
+        this->end = e;
+    }
 
-  // 23:     def has_end(self) -> bool:
-  bool has_end() {
-    // 24:         return self.end is not None
-    return (this->end.has_value());
-  }
+    // 23:     def has_end(self) -> bool:
+    bool has_end() {
+        // 24:         return self.end is not None
+        return (this->end.has_value());
+    }
 
-  // 26:     def get_end(self) -> Point | None:
-  Point* get_end() {
-    // 27:         return self.end
-    return tpy::optional_to_ptr(this->end);
-  }
+    // 26:     def get_end(self) -> Point | None:
+    Point* get_end() {
+        // 27:         return self.end
+        return tpy::optional_to_ptr(this->end);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
-  os << "Line("
-     << "start=" << obj.start
-     << ", "
-     << "end=" << tpy::print_optional_val(obj.end)
-     << ")";
-  return os;
+    os << "Line("
+       << "start=" << obj.start
+       << ", "
+       << "end=" << tpy::print_optional_val(obj.end)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

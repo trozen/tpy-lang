@@ -11,42 +11,42 @@ Point* p{};
 // # Function with pointer-local `p` (branch-declared, creates rebind_slots entry)
 // 11: def foo(cond: bool) -> None:
 void foo(bool cond) {
-  // 12:     if cond:
-  std::optional<Point> __slot_1;
-  Point* p;
-  if (cond) {
-    // 13:         p = Point(1, 2)
-    p = &*(__slot_1 = Point(1, 2));
-  } else {
-    // 15:         p = Point(3, 4)
-    p = &*(__slot_1 = Point(3, 4));
-  }
-  // 16:     print(p.x, p.y)
-  std::cout << p->x << " " << p->y << "\n";
+    // 12:     if cond:
+    std::optional<Point> __slot_1;
+    Point* p;
+    if (cond) {
+        // 13:         p = Point(1, 2)
+        p = &*(__slot_1 = Point(1, 2));
+    } else {
+        // 15:         p = Point(3, 4)
+        p = &*(__slot_1 = Point(3, 4));
+    }
+    // 16:     print(p.x, p.y)
+    std::cout << p->x << " " << p->y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 30: # Global `p` — must get its own __global_slot, not reuse stale __slot from foo/pick
-  // 31: p = Point(10, 20)
-  static Point __global_slot_1 = Point(10, 20);
-  p = &__global_slot_1;
-  // 32: print(p.x, p.y)
-  std::cout << p->x << " " << p->y << "\n";
-  // 33: foo(True)
-  foo(true);
-  // 34: Picker(99).pick(True)
-  Picker(99).pick(true);
+    __name__ = "__main__";
+    // 30: # Global `p` — must get its own __global_slot, not reuse stale __slot from foo/pick
+    // 31: p = Point(10, 20)
+    static Point __global_slot_1 = Point(10, 20);
+    p = &__global_slot_1;
+    // 32: print(p.x, p.y)
+    std::cout << p->x << " " << p->y << "\n";
+    // 33: foo(True)
+    foo(true);
+    // 34: Picker(99).pick(True)
+    Picker(99).pick(true);
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

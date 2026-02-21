@@ -20,58 +20,58 @@ extern ConstPtrHolder<Point>* const_holder2;
 // 5: class PtrHolder[T]:
 template<typename T>
 struct PtrHolder {
-  // 6:     ptr: Ptr[T]
-  T* ptr;
+    // 6:     ptr: Ptr[T]
+    T* ptr;
 
-  // 8:     def __init__(self, ptr: Ptr[T]) -> None:
-  PtrHolder() = default;
-  explicit PtrHolder(T* ptr) : ptr(ptr) {}
+    // 8:     def __init__(self, ptr: Ptr[T]) -> None:
+    PtrHolder() = default;
+    explicit PtrHolder(T* ptr) : ptr(ptr) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const PtrHolder<T>& obj) {
-  os << "PtrHolder("
-     << "ptr=" << obj.ptr
-     << ")";
-  return os;
+    os << "PtrHolder("
+       << "ptr=" << obj.ptr
+       << ")";
+    return os;
 }
 
 // 12: class ConstPtrHolder[T]:
 template<typename T>
 struct ConstPtrHolder {
-  // 13:     ptr: ConstPtr[T]
-  const T* ptr;
+    // 13:     ptr: ConstPtr[T]
+    const T* ptr;
 
-  // 15:     def __init__(self, ptr: ConstPtr[T]) -> None:
-  ConstPtrHolder() = default;
-  explicit ConstPtrHolder(const T* ptr) : ptr(ptr) {}
+    // 15:     def __init__(self, ptr: ConstPtr[T]) -> None:
+    ConstPtrHolder() = default;
+    explicit ConstPtrHolder(const T* ptr) : ptr(ptr) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const ConstPtrHolder<T>& obj) {
-  os << "ConstPtrHolder("
-     << "ptr=" << obj.ptr
-     << ")";
-  return os;
+    os << "ConstPtrHolder("
+       << "ptr=" << obj.ptr
+       << ")";
+    return os;
 }
 
 // 19: class Point:
 struct Point {
-  // 20:     x: Int32
-  int32_t x;
-  // 21:     y: Int32
-  int32_t y;
+    // 20:     x: Int32
+    int32_t x;
+    // 21:     y: Int32
+    int32_t y;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 void __tpy_init();

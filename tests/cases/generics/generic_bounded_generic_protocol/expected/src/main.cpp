@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 28: def main() -> None:
 void main() {
-  // 29:     box = IntBox(42)
-  IntBox box = IntBox(42);
-  // 30:     # IntBox satisfies Container[Int32]
-  // 31:     h = Holder[IntBox](box)
-  Holder<IntBox> h = Holder<IntBox>(box);
-  // 32:     # Call get() on the concrete type after retrieval
-  // 33:     result = h.get_item()
-  IntBox result = h.get_item();
-  // 34:     print(result.get())
-  std::cout << result.get() << "\n";
+    // 29:     box = IntBox(42)
+    IntBox box = IntBox(42);
+    // 30:     # IntBox satisfies Container[Int32]
+    // 31:     h = Holder[IntBox](box)
+    Holder<IntBox> h = Holder<IntBox>(box);
+    // 32:     # Call get() on the concrete type after retrieval
+    // 33:     result = h.get_item()
+    IntBox result = h.get_item();
+    // 34:     print(result.get())
+    std::cout << result.get() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 36: main()
-  main();
+    __name__ = "__main__";
+    // 36: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

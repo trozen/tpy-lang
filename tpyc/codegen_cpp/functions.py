@@ -14,7 +14,7 @@ from ..typesys import (
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..namespace import Namespace
-from .context import module_to_cpp_namespace
+from .context import INDENT, module_to_cpp_namespace
 from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
@@ -345,9 +345,9 @@ class FunctionGenerator:
         # Also emit a __next__() panic stub so direct calls compile but fail at runtime
         if is_dunder_next:
             orig_ret = method.return_type.to_cpp_return()
-            out.write(f"\n  {orig_ret} __next__() {{\n")
-            out.write(f'    tpy::tpy_panic("__next__() is not directly callable; use a for-loop");\n')
-            out.write("  }\n")
+            out.write(f"\n{INDENT}{orig_ret} __next__() {{\n")
+            out.write(f'{INDENT}{INDENT}tpy::tpy_panic("__next__() is not directly callable; use a for-loop");\n')
+            out.write(f"{INDENT}}}\n")
 
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,
@@ -364,9 +364,9 @@ class FunctionGenerator:
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
         out.write("\n")
-        self.ctx.emit_preceding_comments(out, method.loc, indent="  ")
-        self.ctx.emit_source_comment(out, method.loc, indent="  ")
-        out.write(f"  {static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix} {{\n")
+        self.ctx.emit_preceding_comments(out, method.loc, indent=INDENT)
+        self.ctx.emit_source_comment(out, method.loc, indent=INDENT)
+        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:
@@ -376,7 +376,7 @@ class FunctionGenerator:
         self.statements.gen_body(out, method.body, method.params, method.return_type,
                                  method, local_ns, indent_level=2, is_method=True)
 
-        out.write("  }\n")
+        out.write(f"{INDENT}}}\n")
 
     def gen_body(self, *args, **kwargs) -> None:
         """Delegate to StatementGenerator.gen_body()."""
@@ -460,12 +460,12 @@ class FunctionGenerator:
         """
         out.write("void __tpy_init() {\n")
         # Guard against double initialization (handles diamond dependencies)
-        out.write("  static bool initialized = false;\n")
-        out.write("  if (initialized) return;\n")
-        out.write("  initialized = true;\n\n")
+        out.write(f"{INDENT}static bool initialized = false;\n")
+        out.write(f"{INDENT}if (initialized) return;\n")
+        out.write(f"{INDENT}initialized = true;\n\n")
         # Initialize synthetic __name__ if not user-defined
         if self.ctx._has_synthetic_name:
-            out.write(f'  __name__ = "{module_name}";\n')
+            out.write(f'{INDENT}__name__ = "{module_name}";\n')
 
         self.ctx.reset_scope()
         # Pre-seed with global names and types so re-declarations become assignments
@@ -494,7 +494,7 @@ class FunctionGenerator:
 
         self.ctx.current_ns = None
         if has_user_main:
-            out.write("  main();\n")
+            out.write(f"{INDENT}main();\n")
         out.write("}\n\n")
 
     def gen_namespace_close(self, out: TextIO) -> None:
@@ -511,9 +511,9 @@ class FunctionGenerator:
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"}} // namespace {ns}\n\n")
         out.write("int main(int argc, char* argv[]) {\n")
-        out.write("  tpy::init_sys_argv(argc, argv);\n")
-        out.write(f"  {ns}::__tpy_init();\n")
-        out.write("  return 0;\n")
+        out.write(f"{INDENT}tpy::init_sys_argv(argc, argv);\n")
+        out.write(f"{INDENT}{ns}::__tpy_init();\n")
+        out.write(f"{INDENT}return 0;\n")
         out.write("}\n")
 
     def gen_native_header_decl(self, out: TextIO, func: TpyFunction) -> None:
@@ -554,10 +554,10 @@ class FunctionGenerator:
         if ns:
             out.write(f"namespace {ns} {{\n")
             out.write(f"{ret_type} {bare_name}({params}) {{\n")
-            out.write(f"  using namespace {tpy_ns};\n")
+            out.write(f"{INDENT}using namespace {tpy_ns};\n")
         else:
             out.write(f"{ret_type} {bare_name}({params}) {{\n")
-            out.write(f"  using namespace {tpy_ns};\n")
+            out.write(f"{INDENT}using namespace {tpy_ns};\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:

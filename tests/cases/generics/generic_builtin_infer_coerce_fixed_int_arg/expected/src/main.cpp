@@ -14,29 +14,29 @@ int32_t delta{};
 int32_t* p1{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: from tpy.unsafe import unsafe_ptr, unsafe_ptr_add, unsafe_load
-  // 6: arr: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
-  static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
-  arr = &__global_slot_1;
-  // 7: base: Ptr[Int32] = unsafe_ptr(arr)
-  base = (*arr).data();
-  // 8: delta: Int32 = Int32(1)
-  delta = 1;
-  // 10: p1: Ptr[Int32] = unsafe_ptr_add(base, delta)  # tpyc: ok
-  p1 = (base + static_cast<int64_t>(delta));
-  // 11: print(unsafe_load(p1, 0))
-  std::cout << p1[0] << "\n";
+    __name__ = "__main__";
+    // 4: from tpy.unsafe import unsafe_ptr, unsafe_ptr_add, unsafe_load
+    // 6: arr: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+    static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
+    arr = &__global_slot_1;
+    // 7: base: Ptr[Int32] = unsafe_ptr(arr)
+    base = (*arr).data();
+    // 8: delta: Int32 = Int32(1)
+    delta = 1;
+    // 10: p1: Ptr[Int32] = unsafe_ptr_add(base, delta)  # tpyc: ok
+    p1 = (base + static_cast<int64_t>(delta));
+    // 11: print(unsafe_load(p1, 0))
+    std::cout << p1[0] << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -14,29 +14,29 @@ extern Config* c2;
 
 // 4: class Config:
 struct Config {
-  // 5:     name: str
-  std::string_view name;
-  // 6:     max_retries: Int32 | None
-  std::optional<int32_t> max_retries;
+    // 5:     name: str
+    std::string_view name;
+    // 6:     max_retries: Int32 | None
+    std::optional<int32_t> max_retries;
 
-  // 8:     def __init__(self, name: str):
-  Config() = default;
-  explicit Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
+    // 8:     def __init__(self, name: str):
+    Config() = default;
+    explicit Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
 
-  // 12:     def get_retries(self) -> Int32 | None:
-  std::optional<int32_t> get_retries() {
-    // 13:         return self.max_retries
-    return this->max_retries;
-  }
+    // 12:     def get_retries(self) -> Int32 | None:
+    std::optional<int32_t> get_retries() {
+        // 13:         return self.max_retries
+        return this->max_retries;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-  os << "Config("
-     << "name=" << "\"" << obj.name << "\""
-     << ", "
-     << "max_retries=" << tpy::print_optional_val(obj.max_retries)
-     << ")";
-  return os;
+    os << "Config("
+       << "name=" << "\"" << obj.name << "\""
+       << ", "
+       << "max_retries=" << tpy::print_optional_val(obj.max_retries)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

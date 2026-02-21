@@ -9,48 +9,48 @@ std::string_view __name__;
 int32_t x{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: # Overflow wraps (no panic)
-  // 5: x: Int32 = Int32(300)
-  x = 300;
-  // 6: print(UInt8.trunc(x))   # 300 % 256 = 44
-  std::cout << static_cast<int>(static_cast<uint8_t>(x)) << "\n";
-  // 8: # Negative to unsigned wraps
-  // 9: print(UInt8.trunc(Int8(-1)))   # 255
-  std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n";
-  // 10: print(UInt8.trunc(Int8(-3)))   # 253
-  std::cout << static_cast<int>(static_cast<uint8_t>(-3)) << "\n";
-  // 12: # Unsigned to smaller unsigned
-  // 13: print(UInt8.trunc(UInt16(1000)))  # 1000 % 256 = 232
-  std::cout << static_cast<int>(static_cast<uint8_t>(1000)) << "\n";
-  // 15: # Large to small signed
-  // 16: print(Int8.trunc(Int32(200)))  # -56 (wraps)
-  std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n";
-  // 18: # Unsigned to signed
-  // 19: print(Int8.trunc(UInt8(200)))  # -56
-  std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n";
-  // 21: # In-range values pass through unchanged
-  // 22: print(UInt8.trunc(Int32(42)))   # 42
-  std::cout << static_cast<int>(static_cast<uint8_t>(42)) << "\n";
-  // 23: print(Int8.trunc(Int16(-100)))  # -100
-  std::cout << static_cast<int>(static_cast<int8_t>(-100)) << "\n";
-  // 25: # BigInt truncation
-  // 26: print(UInt8.trunc(300))    # 44
-  std::cout << static_cast<int>(static_cast<uint8_t>(300)) << "\n";
-  // 27: print(UInt8.trunc(-1))     # 255
-  std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n";
-  // 28: print(Int8.trunc(-129))    # 127
-  std::cout << static_cast<int>(static_cast<int8_t>(-129)) << "\n";
+    __name__ = "__main__";
+    // 4: # Overflow wraps (no panic)
+    // 5: x: Int32 = Int32(300)
+    x = 300;
+    // 6: print(UInt8.trunc(x))   # 300 % 256 = 44
+    std::cout << static_cast<int>(static_cast<uint8_t>(x)) << "\n";
+    // 8: # Negative to unsigned wraps
+    // 9: print(UInt8.trunc(Int8(-1)))   # 255
+    std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n";
+    // 10: print(UInt8.trunc(Int8(-3)))   # 253
+    std::cout << static_cast<int>(static_cast<uint8_t>(-3)) << "\n";
+    // 12: # Unsigned to smaller unsigned
+    // 13: print(UInt8.trunc(UInt16(1000)))  # 1000 % 256 = 232
+    std::cout << static_cast<int>(static_cast<uint8_t>(1000)) << "\n";
+    // 15: # Large to small signed
+    // 16: print(Int8.trunc(Int32(200)))  # -56 (wraps)
+    std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n";
+    // 18: # Unsigned to signed
+    // 19: print(Int8.trunc(UInt8(200)))  # -56
+    std::cout << static_cast<int>(static_cast<int8_t>(200)) << "\n";
+    // 21: # In-range values pass through unchanged
+    // 22: print(UInt8.trunc(Int32(42)))   # 42
+    std::cout << static_cast<int>(static_cast<uint8_t>(42)) << "\n";
+    // 23: print(Int8.trunc(Int16(-100)))  # -100
+    std::cout << static_cast<int>(static_cast<int8_t>(-100)) << "\n";
+    // 25: # BigInt truncation
+    // 26: print(UInt8.trunc(300))    # 44
+    std::cout << static_cast<int>(static_cast<uint8_t>(300)) << "\n";
+    // 27: print(UInt8.trunc(-1))     # 255
+    std::cout << static_cast<int>(static_cast<uint8_t>(-1)) << "\n";
+    // 28: print(Int8.trunc(-129))    # 127
+    std::cout << static_cast<int>(static_cast<int8_t>(-129)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

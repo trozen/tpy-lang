@@ -18,44 +18,44 @@ tpy::BigInt z;
 std::vector<tpy::BigInt>* items{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # BigInt-default profile should keep unannotated integer arithmetic in BigInt.
-  // 2: x = 2 ** 64
-  x = ((tpy::BigInt(2)).pow(tpy::BigInt(64)));
-  // 3: print(x)
-  std::cout << x << "\n";
-  // 5: # Large shifts stay precise.
-  // 6: y = 1 << 100
-  y = ((tpy::BigInt(1)) << (tpy::BigInt(100)));
-  // 7: print(y)
-  std::cout << y << "\n";
-  // 9: # Mixed unannotated literals remain BigInt.
-  // 10: z = 5
-  z = tpy::BigInt(5);
-  // 11: print(z + 7)
-  std::cout << ((z) + (tpy::BigInt(7))) << "\n";
-  // 13: # range() should use BigInt loop variable.
-  // 14: for i in range(3):
-  for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
-    // 15:     print(i)
-    std::cout << i << "\n";
-  }
-  // 17: # List literal elements should be BigInt.
-  // 18: items = [10, 20, 30]
-  static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
-  items = &__global_slot_1;
-  // 19: print(items[0])
-  std::cout << tpy::get_item((*items), 0) << "\n";
+    __name__ = "__main__";
+    // 1: # BigInt-default profile should keep unannotated integer arithmetic in BigInt.
+    // 2: x = 2 ** 64
+    x = ((tpy::BigInt(2)).pow(tpy::BigInt(64)));
+    // 3: print(x)
+    std::cout << x << "\n";
+    // 5: # Large shifts stay precise.
+    // 6: y = 1 << 100
+    y = ((tpy::BigInt(1)) << (tpy::BigInt(100)));
+    // 7: print(y)
+    std::cout << y << "\n";
+    // 9: # Mixed unannotated literals remain BigInt.
+    // 10: z = 5
+    z = tpy::BigInt(5);
+    // 11: print(z + 7)
+    std::cout << ((z) + (tpy::BigInt(7))) << "\n";
+    // 13: # range() should use BigInt loop variable.
+    // 14: for i in range(3):
+    for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
+        // 15:     print(i)
+        std::cout << i << "\n";
+    }
+    // 17: # List literal elements should be BigInt.
+    // 18: items = [10, 20, 30]
+    static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
+    items = &__global_slot_1;
+    // 19: print(items[0])
+    std::cout << tpy::get_item((*items), 0) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,36 +7,36 @@ std::string_view __name__;
 
 // 10: def main() -> None:
 void main() {
-  // 11:     text: str = "hello"
-  std::string_view text = "hello";
-  // 13:     # str conforms to Sequence[Char]
-  // 14:     print(first_char(text))    # h
-  std::cout << first_char(text) << "\n";
-  // 15:     print(count_chars(text))   # 5
-  std::cout << count_chars(text) << "\n";
-  // 17:     # Direct indexing on str
-  // 18:     print(text[0])             # h
-  std::cout << tpy::get_char(text, 0) << "\n";
-  // 19:     print(text[-1])            # o
-  std::cout << tpy::get_char(text, static_cast<int32_t>(tpy::__len__(text) - 1)) << "\n";
-  // 20:     print(text[2])             # l
-  std::cout << tpy::get_char(text, 2) << "\n";
+    // 11:     text: str = "hello"
+    std::string_view text = "hello";
+    // 13:     # str conforms to Sequence[Char]
+    // 14:     print(first_char(text))    # h
+    std::cout << first_char(text) << "\n";
+    // 15:     print(count_chars(text))   # 5
+    std::cout << count_chars(text) << "\n";
+    // 17:     # Direct indexing on str
+    // 18:     print(text[0])             # h
+    std::cout << tpy::get_char(text, 0) << "\n";
+    // 19:     print(text[-1])            # o
+    std::cout << tpy::get_char(text, static_cast<int32_t>(tpy::__len__(text) - 1)) << "\n";
+    // 20:     print(text[2])             # l
+    std::cout << tpy::get_char(text, 2) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: main()
-  main();
+    __name__ = "__main__";
+    // 22: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,11 +7,11 @@ std::string_view __name__;
 
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "lib";
+    __name__ = "lib";
 }
 
 } // namespace tpy_user::lib

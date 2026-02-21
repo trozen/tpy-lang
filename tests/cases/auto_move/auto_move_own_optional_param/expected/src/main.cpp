@@ -7,48 +7,48 @@ std::string_view __name__;
 
 // 10: def consume_own(p: Own[Point]) -> Int32:
 int32_t consume_own(Point p) {
-  // 11:     return p.x + p.y
-  return (tpy::add_check<int32_t>(p.x, p.y));
+    // 11:     return p.x + p.y
+    return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 14: def forward_optional(p: Own[Point] | None) -> Int32:
 int32_t forward_optional(std::optional<Point> p) {
-  // 15:     if p is None:
-  if ((!p.has_value())) {
-    // 16:         return Int32(-1)
-    return -1;
-  }
-  // 17:     # p is at its last use; should be auto-moved (no copy warning)
-  // 18:     return consume_own(p)
-  return consume_own(std::move((*p)));
+    // 15:     if p is None:
+    if ((!p.has_value())) {
+        // 16:         return Int32(-1)
+        return -1;
+    }
+    // 17:     # p is at its last use; should be auto-moved (no copy warning)
+    // 18:     return consume_own(p)
+    return consume_own(std::move((*p)));
 }
 
 // 21: def main():
 void main() {
-  // 22:     p = Point()
-  Point p = Point();
-  // 23:     p.x = 5
-  p.x = 5;
-  // 24:     p.y = 7
-  p.y = 7;
-  // 25:     print(forward_optional(p))
-  std::cout << forward_optional(std::move(p)) << "\n";
+    // 22:     p = Point()
+    Point p = Point();
+    // 23:     p.x = 5
+    p.x = 5;
+    // 24:     p.y = 7
+    p.y = 7;
+    // 25:     print(forward_optional(p))
+    std::cout << forward_optional(std::move(p)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: main()
-  main();
+    __name__ = "__main__";
+    // 28: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,33 +7,33 @@ std::string_view __name__;
 
 // 4: def score(x: float | None) -> Int32:
 int32_t score(std::optional<double> x) {
-  // 5:     if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
-  if (tpy::is_truthy(x)) {
-    // 6:         return 1
-    return 1;
-  }
-  // 7:     return 0
-  return 0;
+    // 5:     if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
+    if (tpy::is_truthy(x)) {
+        // 6:         return 1
+        return 1;
+    }
+    // 7:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 10: print(score(1.5))
-  std::cout << score(1.5) << "\n";
-  // 11: print(score(0.0))
-  std::cout << score(0.0) << "\n";
-  // 12: print(score(None))
-  std::cout << score(std::nullopt) << "\n";
+    __name__ = "__main__";
+    // 10: print(score(1.5))
+    std::cout << score(1.5) << "\n";
+    // 11: print(score(0.0))
+    std::cout << score(0.0) << "\n";
+    // 12: print(score(None))
+    std::cout << score(std::nullopt) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

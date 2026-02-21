@@ -12,21 +12,21 @@ extern std::string_view __name__;
 // 4: class Ops:
 struct Ops {
 
-  Ops() = default;
+    Ops() = default;
 
-  //     @staticmethod
-  //     @readonly
-  // 7:     def plus_one(x: Int32) -> Int32:
-  static int32_t plus_one(int32_t x) {
-    // 8:         return x + 1
-    return (tpy::add_check<int32_t>(x, 1));
-  }
+    //     @staticmethod
+    //     @readonly
+    // 7:     def plus_one(x: Int32) -> Int32:
+    static int32_t plus_one(int32_t x) {
+        // 8:         return x + 1
+        return (tpy::add_check<int32_t>(x, 1));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Ops& obj) {
-  os << "Ops("
-     << ")";
-  return os;
+    os << "Ops("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -23,86 +23,86 @@ void test_literal_expr_to_int32();
 
 // 11: class Counter:
 struct Counter {
-  // 12:     value: int
-  tpy::BigInt value;
+    // 12:     value: int
+    tpy::BigInt value;
 
-  // 14:     def __init__(self, v: int) -> None:
-  Counter() = default;
-  explicit Counter(const tpy::BigInt& v) : value(v) {}
+    // 14:     def __init__(self, v: int) -> None:
+    Counter() = default;
+    explicit Counter(const tpy::BigInt& v) : value(v) {}
 
-  // 17:     def get(self) -> int:
-  tpy::BigInt get() {
-    // 18:         return self.value
-    return this->value;
-  }
+    // 17:     def get(self) -> int:
+    tpy::BigInt get() {
+        // 18:         return self.value
+        return this->value;
+    }
 
-  // 20:     def add(self, x: int) -> int:
-  tpy::BigInt add(const tpy::BigInt& x) {
-    // 21:         return self.value + x
-    return ((this->value) + (x));
-  }
+    // 20:     def add(self, x: int) -> int:
+    tpy::BigInt add(const tpy::BigInt& x) {
+        // 21:         return self.value + x
+        return ((this->value) + (x));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Counter("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 24: class Point:
 struct Point {
-  // 25:     x: Int32
-  int32_t x;
-  // 26:     y: Int32
-  int32_t y;
+    // 25:     x: Int32
+    int32_t x;
+    // 26:     y: Int32
+    int32_t y;
 
-  // 28:     def __init__(self, x: Int32, y: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 28:     def __init__(self, x: Int32, y: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 33: class Container:
 struct Container {
-  // 34:     pt: Point
-  Point pt;
+    // 34:     pt: Point
+    Point pt;
 
-  // 36:     def __init__(self, x: Int32, y: Int32) -> None:
-  Container() = default;
-  explicit Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
+    // 36:     def __init__(self, x: Int32, y: Int32) -> None:
+    Container() = default;
+    explicit Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-  os << "Container("
-     << "pt=" << obj.pt
-     << ")";
-  return os;
+    os << "Container("
+       << "pt=" << obj.pt
+       << ")";
+    return os;
 }
 
 // 40: class Outer:
 struct Outer {
-  // 41:     inner: Container
-  Container inner;
+    // 41:     inner: Container
+    Container inner;
 
-  // 43:     def __init__(self, x: Int32, y: Int32) -> None:
-  Outer() = default;
-  explicit Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
+    // 43:     def __init__(self, x: Int32, y: Int32) -> None:
+    Outer() = default;
+    explicit Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-  os << "Outer("
-     << "inner=" << obj.inner
-     << ")";
-  return os;
+    os << "Outer("
+       << "inner=" << obj.inner
+       << ")";
+    return os;
 }
 
 void __tpy_init();

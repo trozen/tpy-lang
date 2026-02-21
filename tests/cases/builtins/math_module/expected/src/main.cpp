@@ -7,82 +7,82 @@ std::string_view __name__;
 
 // 3: def main():
 void main() {
-  // 4:     # Test math.log (natural log)
-  // 5:     x = math.log(2.718281828)
-  double x = std::log(2.718281828);
-  // 6:     if x > 0.99 and x < 1.01:
-  if (((x > 0.99) && (x < 1.01))) {
-    // 7:         print("log(e) ok")
-    std::cout << "log(e) ok" << "\n";
-  } else {
-    // 9:         print("log(e) error")
-    std::cout << "log(e) error" << "\n";
-  }
-  // 11:     # Test math.log with base
-  // 12:     y = math.log(8.0, 2.0)
-  double y = (std::log(8.0) / std::log(2.0));
-  // 13:     if y > 2.99 and y < 3.01:
-  if (((y > 2.99) && (y < 3.01))) {
-    // 14:         print("log(8,2) ok")
-    std::cout << "log(8,2) ok" << "\n";
-  } else {
-    // 16:         print("log(8,2) error")
-    std::cout << "log(8,2) error" << "\n";
-  }
-  // 18:     # Test math.sqrt
-  // 19:     z = math.sqrt(4.0)
-  double z = std::sqrt(4.0);
-  // 20:     if z > 1.99 and z < 2.01:
-  if (((z > 1.99) && (z < 2.01))) {
-    // 21:         print("sqrt ok")
-    std::cout << "sqrt ok" << "\n";
-  } else {
-    // 23:         print("sqrt error")
-    std::cout << "sqrt error" << "\n";
-  }
-  // 25:     # Test math.sin/cos
-  // 26:     s = math.sin(0.0)
-  double s = std::sin(0.0);
-  // 27:     c = math.cos(0.0)
-  double c = std::cos(0.0);
-  // 28:     if s > -0.01 and s < 0.01 and c > 0.99 and c < 1.01:
-  if (((((s > -(0.01)) && (s < 0.01)) && (c > 0.99)) && (c < 1.01))) {
-    // 29:         print("sin/cos ok")
-    std::cout << "sin/cos ok" << "\n";
-  } else {
-    // 31:         print("sin/cos error")
-    std::cout << "sin/cos error" << "\n";
-  }
-  // 33:     # Test math.floor/ceil
-  // 34:     f = math.floor(3.7)
-  double f = std::floor(3.7);
-  // 35:     ce = math.ceil(3.2)
-  double ce = std::ceil(3.2);
-  // 36:     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
-  if (((((f > 2.99) && (f < 3.01)) && (ce > 3.99)) && (ce < 4.01))) {
-    // 37:         print("floor/ceil ok")
-    std::cout << "floor/ceil ok" << "\n";
-  } else {
-    // 39:         print("floor/ceil error")
-    std::cout << "floor/ceil error" << "\n";
-  }
+    // 4:     # Test math.log (natural log)
+    // 5:     x = math.log(2.718281828)
+    double x = std::log(2.718281828);
+    // 6:     if x > 0.99 and x < 1.01:
+    if (((x > 0.99) && (x < 1.01))) {
+        // 7:         print("log(e) ok")
+        std::cout << "log(e) ok" << "\n";
+    } else {
+        // 9:         print("log(e) error")
+        std::cout << "log(e) error" << "\n";
+    }
+    // 11:     # Test math.log with base
+    // 12:     y = math.log(8.0, 2.0)
+    double y = (std::log(8.0) / std::log(2.0));
+    // 13:     if y > 2.99 and y < 3.01:
+    if (((y > 2.99) && (y < 3.01))) {
+        // 14:         print("log(8,2) ok")
+        std::cout << "log(8,2) ok" << "\n";
+    } else {
+        // 16:         print("log(8,2) error")
+        std::cout << "log(8,2) error" << "\n";
+    }
+    // 18:     # Test math.sqrt
+    // 19:     z = math.sqrt(4.0)
+    double z = std::sqrt(4.0);
+    // 20:     if z > 1.99 and z < 2.01:
+    if (((z > 1.99) && (z < 2.01))) {
+        // 21:         print("sqrt ok")
+        std::cout << "sqrt ok" << "\n";
+    } else {
+        // 23:         print("sqrt error")
+        std::cout << "sqrt error" << "\n";
+    }
+    // 25:     # Test math.sin/cos
+    // 26:     s = math.sin(0.0)
+    double s = std::sin(0.0);
+    // 27:     c = math.cos(0.0)
+    double c = std::cos(0.0);
+    // 28:     if s > -0.01 and s < 0.01 and c > 0.99 and c < 1.01:
+    if (((((s > -(0.01)) && (s < 0.01)) && (c > 0.99)) && (c < 1.01))) {
+        // 29:         print("sin/cos ok")
+        std::cout << "sin/cos ok" << "\n";
+    } else {
+        // 31:         print("sin/cos error")
+        std::cout << "sin/cos error" << "\n";
+    }
+    // 33:     # Test math.floor/ceil
+    // 34:     f = math.floor(3.7)
+    double f = std::floor(3.7);
+    // 35:     ce = math.ceil(3.2)
+    double ce = std::ceil(3.2);
+    // 36:     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
+    if (((((f > 2.99) && (f < 3.01)) && (ce > 3.99)) && (ce < 4.01))) {
+        // 37:         print("floor/ceil ok")
+        std::cout << "floor/ceil ok" << "\n";
+    } else {
+        // 39:         print("floor/ceil error")
+        std::cout << "floor/ceil error" << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: import math
-  // 41: main()
-  main();
+    __name__ = "__main__";
+    // 1: import math
+    // 41: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

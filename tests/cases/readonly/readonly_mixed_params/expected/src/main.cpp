@@ -7,40 +7,40 @@ std::string_view __name__;
 
 // 12: def copy_into(src: readonly[Point], dest: Point) -> None:
 void copy_into(const Point& src, Point& dest) {
-  // 13:     dest.x = src.x
-  dest.x = src.x;
-  // 14:     dest.y = src.y
-  dest.y = src.y;
+    // 13:     dest.x = src.x
+    dest.x = src.x;
+    // 14:     dest.y = src.y
+    dest.y = src.y;
 }
 
 // 16: def main() -> None:
 void main() {
-  // 17:     a = Point(Int32(10), Int32(20))
-  Point a = Point(10, 20);
-  // 18:     b = Point(Int32(0), Int32(0))
-  Point b = Point(0, 0);
-  // 19:     copy_into(a, b)
-  copy_into(a, b);
-  // 20:     print(b.x)
-  std::cout << b.x << "\n";
-  // 21:     print(b.y)
-  std::cout << b.y << "\n";
+    // 17:     a = Point(Int32(10), Int32(20))
+    Point a = Point(10, 20);
+    // 18:     b = Point(Int32(0), Int32(0))
+    Point b = Point(0, 0);
+    // 19:     copy_into(a, b)
+    copy_into(a, b);
+    // 20:     print(b.x)
+    std::cout << b.x << "\n";
+    // 21:     print(b.y)
+    std::cout << b.y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 23: main()
-  main();
+    __name__ = "__main__";
+    // 23: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

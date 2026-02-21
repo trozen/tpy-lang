@@ -14,36 +14,36 @@ Same<int32_t>* same1{};
 Same<int32_t>* same2{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test that inference upgrades IntLiteralType to concrete int type."""
-  // 14: # Test order: literal first, Int32 second -> should infer Same[Int32]
-  // 15: x: Int32 = 10
-  x = 10;
-  // 16: same1 = Same(1, x)
-  static Same<int32_t> __global_slot_1 = Same<int32_t>(1, x);
-  same1 = &__global_slot_1;
-  // 17: print(same1.a)
-  std::cout << same1->a << "\n";
-  // 18: print(same1.b)
-  std::cout << same1->b << "\n";
-  // 20: # Test order: Int32 first, literal second -> should also infer Same[Int32]
-  // 21: same2 = Same(x, 2)
-  static Same<int32_t> __global_slot_2 = Same<int32_t>(x, 2);
-  same2 = &__global_slot_2;
-  // 22: print(same2.a)
-  std::cout << same2->a << "\n";
-  // 23: print(same2.b)
-  std::cout << same2->b << "\n";
+    __name__ = "__main__";
+    // 1: """Test that inference upgrades IntLiteralType to concrete int type."""
+    // 14: # Test order: literal first, Int32 second -> should infer Same[Int32]
+    // 15: x: Int32 = 10
+    x = 10;
+    // 16: same1 = Same(1, x)
+    static Same<int32_t> __global_slot_1 = Same<int32_t>(1, x);
+    same1 = &__global_slot_1;
+    // 17: print(same1.a)
+    std::cout << same1->a << "\n";
+    // 18: print(same1.b)
+    std::cout << same1->b << "\n";
+    // 20: # Test order: Int32 first, literal second -> should also infer Same[Int32]
+    // 21: same2 = Same(x, 2)
+    static Same<int32_t> __global_slot_2 = Same<int32_t>(x, 2);
+    same2 = &__global_slot_2;
+    // 22: print(same2.a)
+    std::cout << same2->a << "\n";
+    // 23: print(same2.b)
+    std::cout << same2->b << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

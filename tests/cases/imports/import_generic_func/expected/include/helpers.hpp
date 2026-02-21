@@ -15,14 +15,14 @@ int32_t length(std::vector<T>& items);
 // 4: def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
-  // 5:     return items[0]
-  return tpy::get_item(items, 0);
+    // 5:     return items[0]
+    return tpy::get_item(items, 0);
 }
 // 7: def length[T](items: list[T]) -> Int32:
 template<typename T>
 int32_t length(std::vector<T>& items) {
-  // 8:     return len(items)
-  return tpy::__len__(items);
+    // 8:     return len(items)
+    return tpy::__len__(items);
 }
 
 void __tpy_init();

@@ -15,36 +15,36 @@ void main();
 
 // 5: class Dog:
 struct Dog {
-  // 6:     age: Int32
-  int32_t age;
+    // 6:     age: Int32
+    int32_t age;
 
-  // 8:     def __init__(self, age: Int32) -> None:
-  Dog() = default;
-  explicit Dog(int32_t age) : age(age) {}
+    // 8:     def __init__(self, age: Int32) -> None:
+    Dog() = default;
+    explicit Dog(int32_t age) : age(age) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << "age=" << obj.age
-     << ")";
-  return os;
+    os << "Dog("
+       << "age=" << obj.age
+       << ")";
+    return os;
 }
 
 // 12: class Cat:
 struct Cat {
-  // 13:     age: Int32
-  int32_t age;
+    // 13:     age: Int32
+    int32_t age;
 
-  // 15:     def __init__(self, age: Int32) -> None:
-  Cat() = default;
-  explicit Cat(int32_t age) : age(age) {}
+    // 15:     def __init__(self, age: Int32) -> None:
+    Cat() = default;
+    explicit Cat(int32_t age) : age(age) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << "age=" << obj.age
-     << ")";
-  return os;
+    os << "Cat("
+       << "age=" << obj.age
+       << ")";
+    return os;
 }
 
 using Pet = std::variant<Cat, Dog>;

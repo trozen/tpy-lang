@@ -15,39 +15,39 @@ void main();
 // @nocopy
 // 6: class Handle:
 struct Handle {
-  // 7:     id: Int32
-  int32_t id;
-  bool __tpy_owned_ = true;
+    // 7:     id: Int32
+    int32_t id;
+    bool __tpy_owned_ = true;
 
-  // 8:     def __init__(self, id: Int32):
-  Handle() = default;
-  explicit Handle(int32_t id) : id(id) {}
-  Handle(const Handle&) = delete;
-  Handle& operator=(const Handle&) = delete;
-  Handle(Handle&& other) noexcept : id(std::move(other.id)) {
-    other.__tpy_owned_ = false;
-  }
-  Handle& operator=(Handle&& other) noexcept {
-    if (this != &other) {
-      this->~Handle();
-      new (this) Handle(std::move(other));
+    // 8:     def __init__(self, id: Int32):
+    Handle() = default;
+    explicit Handle(int32_t id) : id(id) {}
+    Handle(const Handle&) = delete;
+    Handle& operator=(const Handle&) = delete;
+    Handle(Handle&& other) noexcept : id(std::move(other.id)) {
+        other.__tpy_owned_ = false;
     }
-    return *this;
-  }
-  // 10:     def __del__(self):
+    Handle& operator=(Handle&& other) noexcept {
+        if (this != &other) {
+            this->~Handle();
+            new (this) Handle(std::move(other));
+        }
+        return *this;
+    }
+    // 10:     def __del__(self):
 
-  ~Handle() {
-    if (!__tpy_owned_) return;
-    // 11:         print("close", self.id)
-    std::cout << "close" << " " << this->id << "\n";
-  }
+    ~Handle() {
+        if (!__tpy_owned_) return;
+        // 11:         print("close", self.id)
+        std::cout << "close" << " " << this->id << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-  os << "Handle("
-     << "id=" << obj.id
-     << ")";
-  return os;
+    os << "Handle("
+       << "id=" << obj.id
+       << ")";
+    return os;
 }
 
 void __tpy_init();

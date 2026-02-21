@@ -13,25 +13,25 @@ void main();
 
 // 3: class Counter:
 struct Counter {
-  // 4:     value: Int32
-  int32_t value;
+    // 4:     value: Int32
+    int32_t value;
 
-  // 5:     def __init__(self, value: Int32) -> None:
-  Counter() = default;
-  explicit Counter(int32_t value) : value(value) {}
+    // 5:     def __init__(self, value: Int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t value) : value(value) {}
 
-  // 7:     def get_value(self) -> Int32:
-  int32_t get_value() {
-    // 8:         return self.value
-    return this->value;
-  }
+    // 7:     def get_value(self) -> Int32:
+    int32_t get_value() {
+        // 8:         return self.value
+        return this->value;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Counter("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

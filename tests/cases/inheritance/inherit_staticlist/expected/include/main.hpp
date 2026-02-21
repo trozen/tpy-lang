@@ -13,25 +13,25 @@ int32_t main();
 
 // 4: class IntStack(StaticList[Int32, 100]):
 struct IntStack : StaticList<int32_t, 100> {
-  // 5:     name: str
-  std::string_view name;
+    // 5:     name: str
+    std::string_view name;
 
-  // 7:     def __init__(self, name: str) -> None:
-  IntStack() = default;
-  explicit IntStack(std::string_view name) : name(name) {}
+    // 7:     def __init__(self, name: str) -> None:
+    IntStack() = default;
+    explicit IntStack(std::string_view name) : name(name) {}
 
-  // 10:     def push(self, value: Int32) -> None:
-  void push(int32_t value) {
-    // 11:         self.append(value)
-    (*this).push_back(value);
-  }
+    // 10:     def push(self, value: Int32) -> None:
+    void push(int32_t value) {
+        // 11:         self.append(value)
+        (*this).push_back(value);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntStack& obj) {
-  os << "IntStack("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "IntStack("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

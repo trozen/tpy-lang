@@ -9,25 +9,25 @@ std::string_view __name__;
 int32_t MAX{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from utils import MAX
-  ::tpy_user::utils::__tpy_init();
-  // 4: # Redefine the imported MAX - this should work and be used
-  // 5: MAX: Int32 = Int32(42)
-  MAX = 42;
-  // 7: # Top-level print uses the redefined MAX
-  // 8: print(MAX)  # Should print 42
-  std::cout << MAX << "\n";
+    __name__ = "__main__";
+    // 2: from utils import MAX
+    ::tpy_user::utils::__tpy_init();
+    // 4: # Redefine the imported MAX - this should work and be used
+    // 5: MAX: Int32 = Int32(42)
+    MAX = 42;
+    // 7: # Top-level print uses the redefined MAX
+    // 8: print(MAX)  # Should print 42
+    std::cout << MAX << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

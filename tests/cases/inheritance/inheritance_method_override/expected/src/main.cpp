@@ -14,40 +14,40 @@ Rectangle* r{};
 Shape* base{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 40: # Test method override
-  // 41: s = Square(5)
-  static Square __global_slot_1 = Square(5);
-  s = &__global_slot_1;
-  // 42: print(s.describe())
-  std::cout << s->describe() << "\n";
-  // 43: print(s.area())
-  std::cout << s->area() << "\n";
-  // 45: r = Rectangle(4, 6)
-  static Rectangle __global_slot_2 = Rectangle(4, 6);
-  r = &__global_slot_2;
-  // 46: print(r.describe())
-  std::cout << r->describe() << "\n";
-  // 47: print(r.area())
-  std::cout << r->area() << "\n";
-  // 49: # Test parent class still works
-  // 50: base = Shape("Base")
-  static Shape __global_slot_3 = Shape("Base");
-  base = &__global_slot_3;
-  // 51: print(base.describe())
-  std::cout << base->describe() << "\n";
-  // 52: print(base.area())
-  std::cout << base->area() << "\n";
+    __name__ = "__main__";
+    // 40: # Test method override
+    // 41: s = Square(5)
+    static Square __global_slot_1 = Square(5);
+    s = &__global_slot_1;
+    // 42: print(s.describe())
+    std::cout << s->describe() << "\n";
+    // 43: print(s.area())
+    std::cout << s->area() << "\n";
+    // 45: r = Rectangle(4, 6)
+    static Rectangle __global_slot_2 = Rectangle(4, 6);
+    r = &__global_slot_2;
+    // 46: print(r.describe())
+    std::cout << r->describe() << "\n";
+    // 47: print(r.area())
+    std::cout << r->area() << "\n";
+    // 49: # Test parent class still works
+    // 50: base = Shape("Base")
+    static Shape __global_slot_3 = Shape("Base");
+    base = &__global_slot_3;
+    // 51: print(base.describe())
+    std::cout << base->describe() << "\n";
+    // 52: print(base.area())
+    std::cout << base->area() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

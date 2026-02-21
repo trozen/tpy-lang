@@ -20,8 +20,8 @@ void main();
 // 7: def count(items: Measurable) -> Int32:
 template<Measurable T_items>
 int32_t count(T_items& items) {
-  // 8:     return len(items)
-  return tpy::__len__(items);
+    // 8:     return len(items)
+    return tpy::__len__(items);
 }
 
 void __tpy_init();

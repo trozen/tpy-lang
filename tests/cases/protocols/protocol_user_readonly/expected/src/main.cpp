@@ -8,22 +8,22 @@ std::string_view __name__;
 GoodReader* g{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: g = GoodReader(42)
-  static GoodReader __global_slot_1 = GoodReader(42);
-  g = &__global_slot_1;
-  // 29: print(use_readable(g))
-  std::cout << use_readable((*g)) << "\n";
+    __name__ = "__main__";
+    // 28: g = GoodReader(42)
+    static GoodReader __global_slot_1 = GoodReader(42);
+    g = &__global_slot_1;
+    // 29: print(use_readable(g))
+    std::cout << use_readable((*g)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

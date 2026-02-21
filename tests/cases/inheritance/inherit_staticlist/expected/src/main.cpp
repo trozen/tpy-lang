@@ -7,46 +7,46 @@ std::string_view __name__;
 
 // 14: def main() -> Int32:
 int32_t main() {
-  // 15:     stack = IntStack("my_stack")
-  IntStack stack = IntStack("my_stack");
-  // 17:     # Use inherited append (via push wrapper)
-  // 18:     stack.push(Int32(10))
-  stack.push(10);
-  // 19:     stack.push(Int32(20))
-  stack.push(20);
-  // 20:     stack.push(Int32(30))
-  stack.push(30);
-  // 22:     # Use inherited __len__
-  // 23:     print(len(stack))
-  std::cout << tpy::__len__(stack) << "\n";
-  // 25:     # Use inherited __getitem__
-  // 26:     print(stack[0])
-  std::cout << stack[0] << "\n";
-  // 27:     print(stack[1])
-  std::cout << stack[1] << "\n";
-  // 28:     print(stack[2])
-  std::cout << stack[2] << "\n";
-  // 30:     # Use own field
-  // 31:     print(stack.name)
-  std::cout << stack.name << "\n";
-  // 33:     return Int32(0)
-  return 0;
+    // 15:     stack = IntStack("my_stack")
+    IntStack stack = IntStack("my_stack");
+    // 17:     # Use inherited append (via push wrapper)
+    // 18:     stack.push(Int32(10))
+    stack.push(10);
+    // 19:     stack.push(Int32(20))
+    stack.push(20);
+    // 20:     stack.push(Int32(30))
+    stack.push(30);
+    // 22:     # Use inherited __len__
+    // 23:     print(len(stack))
+    std::cout << tpy::__len__(stack) << "\n";
+    // 25:     # Use inherited __getitem__
+    // 26:     print(stack[0])
+    std::cout << stack[0] << "\n";
+    // 27:     print(stack[1])
+    std::cout << stack[1] << "\n";
+    // 28:     print(stack[2])
+    std::cout << stack[2] << "\n";
+    // 30:     # Use own field
+    // 31:     print(stack.name)
+    std::cout << stack.name << "\n";
+    // 33:     return Int32(0)
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 36: main()
-  main();
+    __name__ = "__main__";
+    // 36: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

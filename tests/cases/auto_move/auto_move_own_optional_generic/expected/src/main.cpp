@@ -7,28 +7,28 @@ std::string_view __name__;
 
 // 13: def main():
 void main() {
-  // 14:     b = Box()
-  Box b = Box();
-  // 15:     b.value = Int32(42)
-  b.value = 42;
-  // 16:     print(take_optional[Box](b, Int32(99)))
-  std::cout << take_optional<Box>(std::move(b), 99) << "\n";
+    // 14:     b = Box()
+    Box b = Box();
+    // 15:     b.value = Int32(42)
+    b.value = 42;
+    // 16:     print(take_optional[Box](b, Int32(99)))
+    std::cout << take_optional<Box>(std::move(b), 99) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 19: main()
-  main();
+    __name__ = "__main__";
+    // 19: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

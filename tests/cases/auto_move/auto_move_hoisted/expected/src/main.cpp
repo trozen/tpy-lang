@@ -7,51 +7,51 @@ std::string_view __name__;
 
 // 9: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 10:     return p.x
-  return p.x;
+    // 10:     return p.x
+    return p.x;
 }
 
 // 13: def test(cond: bool) -> Int32:
 int32_t test(bool cond) {
-  // 14:     if cond:
-  std::optional<Point> __slot_1;
-  Point* p;
-  if (cond) {
-    // 15:         p = Point()
-    p = &*(__slot_1 = Point());
-    // 16:         p.x = 42
-    p->x = 42;
-  } else {
-    // 18:         p = Point()
-    p = &*(__slot_1 = Point());
-    // 19:         p.x = 99
-    p->x = 99;
-  }
-  // 20:     # p is reassigned (assigned in both branches) -> T* pointer-local
-  // 21:     return consume(p)  # last use -> std::move((*p))
-  return consume(std::move((*p)));
+    // 14:     if cond:
+    std::optional<Point> __slot_1;
+    Point* p;
+    if (cond) {
+        // 15:         p = Point()
+        p = &*(__slot_1 = Point());
+        // 16:         p.x = 42
+        p->x = 42;
+    } else {
+        // 18:         p = Point()
+        p = &*(__slot_1 = Point());
+        // 19:         p.x = 99
+        p->x = 99;
+    }
+    // 20:     # p is reassigned (assigned in both branches) -> T* pointer-local
+    // 21:     return consume(p)  # last use -> std::move((*p))
+    return consume(std::move((*p)));
 }
 
 // 24: def main():
 void main() {
-  // 25:     print(test(True))
-  std::cout << test(true) << "\n";
-  // 26:     print(test(False))
-  std::cout << test(false) << "\n";
+    // 25:     print(test(True))
+    std::cout << test(true) << "\n";
+    // 26:     print(test(False))
+    std::cout << test(false) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

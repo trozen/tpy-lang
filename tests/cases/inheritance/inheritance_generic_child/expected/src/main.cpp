@@ -12,33 +12,33 @@ Box<int32_t>* b{};
 Wrapper<std::string_view>* w{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 31: # Test Case 1: Generic child of non-generic parent
-  // 32: b = Box[Int32]("mybox", 42)
-  static Box<int32_t> __global_slot_1 = Box<int32_t>("mybox", 42);
-  b = &__global_slot_1;
-  // 33: print(b.name)   # inherited from Animal
-  std::cout << b->name << "\n";
-  // 34: print(b.get())  # own method returning T=Int32
-  std::cout << b->get() << "\n";
-  // 36: # Test Case 2: Generic child of concrete generic parent
-  // 37: w = Wrapper[str](100, "hello")
-  static Wrapper<std::string_view> __global_slot_2 = Wrapper<std::string_view>(100, "hello");
-  w = &__global_slot_2;
-  // 38: print(w.get())  # inherited, returns Int32 (not U)
-  std::cout << w->get() << "\n";
-  // 39: print(w.extra)  # own field of type U=str
-  std::cout << w->extra << "\n";
+    __name__ = "__main__";
+    // 31: # Test Case 1: Generic child of non-generic parent
+    // 32: b = Box[Int32]("mybox", 42)
+    static Box<int32_t> __global_slot_1 = Box<int32_t>("mybox", 42);
+    b = &__global_slot_1;
+    // 33: print(b.name)   # inherited from Animal
+    std::cout << b->name << "\n";
+    // 34: print(b.get())  # own method returning T=Int32
+    std::cout << b->get() << "\n";
+    // 36: # Test Case 2: Generic child of concrete generic parent
+    // 37: w = Wrapper[str](100, "hello")
+    static Wrapper<std::string_view> __global_slot_2 = Wrapper<std::string_view>(100, "hello");
+    w = &__global_slot_2;
+    // 38: print(w.get())  # inherited, returns Int32 (not U)
+    std::cout << w->get() << "\n";
+    // 39: print(w.extra)  # own field of type U=str
+    std::cout << w->extra << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

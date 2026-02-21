@@ -18,53 +18,53 @@ void main();
 // # Assignment narrowing in one function must not leak into another
 // 2: class A:
 struct A {
-  // 3:     x: float
-  double x;
+    // 3:     x: float
+    double x;
 
-  // 4:     def __init__(self, x: float) -> None:
-  A() = default;
-  explicit A(double x) : x(x) {}
+    // 4:     def __init__(self, x: float) -> None:
+    A() = default;
+    explicit A(double x) : x(x) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-  os << "A("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "A("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 // 7: class B:
 struct B {
-  // 8:     y: float
-  double y;
+    // 8:     y: float
+    double y;
 
-  // 9:     def __init__(self, y: float) -> None:
-  B() = default;
-  explicit B(double y) : y(y) {}
+    // 9:     def __init__(self, y: float) -> None:
+    B() = default;
+    explicit B(double y) : y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-  os << "B("
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "B("
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 12: class C:
 struct C {
-  // 13:     x: float
-  double x;
+    // 13:     x: float
+    double x;
 
-  // 14:     def __init__(self, x: float) -> None:
-  C() = default;
-  explicit C(double x) : x(x) {}
+    // 14:     def __init__(self, x: float) -> None:
+    C() = default;
+    explicit C(double x) : x(x) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-  os << "C("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "C("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -15,36 +15,36 @@ void main();
 
 // 7: class Rect:
 struct Rect {
-  // 8:     w: Int32
-  int32_t w;
-  // 9:     h: Int32
-  int32_t h;
+    // 8:     w: Int32
+    int32_t w;
+    // 9:     h: Int32
+    int32_t h;
 
-  Rect() = default;
+    Rect() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-  os << "Rect("
-     << "w=" << obj.w
-     << ", "
-     << "h=" << obj.h
-     << ")";
-  return os;
+    os << "Rect("
+       << "w=" << obj.w
+       << ", "
+       << "h=" << obj.h
+       << ")";
+    return os;
 }
 
 // 11: class Circle:
 struct Circle {
-  // 12:     r: Int32
-  int32_t r;
+    // 12:     r: Int32
+    int32_t r;
 
-  Circle() = default;
+    Circle() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "r=" << obj.r
-     << ")";
-  return os;
+    os << "Circle("
+       << "r=" << obj.r
+       << ")";
+    return os;
 }
 
 void __tpy_init();

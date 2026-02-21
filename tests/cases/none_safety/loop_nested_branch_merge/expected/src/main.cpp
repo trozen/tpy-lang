@@ -7,43 +7,43 @@ std::string_view __name__;
 
 // 4: def nested(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t nested(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
-  // 5:     while flag:
-  while (flag) {
-    // 6:         if a is not None:
-    if ((a.has_value())) {
-      // 7:             if b is None:
-      if ((!b.has_value())) {
-        // 8:                 break
+    // 5:     while flag:
+    while (flag) {
+        // 6:         if a is not None:
+        if ((a.has_value())) {
+            // 7:             if b is None:
+            if ((!b.has_value())) {
+                // 8:                 break
+                break;
+            }
+            // 9:             return a + b  # tpyc: ok
+            return (tpy::add_check<int32_t>((*a), (*b)));
+        }
+        // 10:         break
         break;
-      }
-      // 9:             return a + b  # tpyc: ok
-      return (tpy::add_check<int32_t>((*a), (*b)));
     }
-    // 10:         break
-    break;
-  }
-  // 11:     return 0
-  return 0;
+    // 11:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 14: print(nested(True, 1, 2))
-  std::cout << nested(true, 1, 2) << "\n";
-  // 15: print(nested(True, 1, None))
-  std::cout << nested(true, 1, std::nullopt) << "\n";
-  // 16: print(nested(True, None, 2))
-  std::cout << nested(true, std::nullopt, 2) << "\n";
+    __name__ = "__main__";
+    // 14: print(nested(True, 1, 2))
+    std::cout << nested(true, 1, 2) << "\n";
+    // 15: print(nested(True, 1, None))
+    std::cout << nested(true, 1, std::nullopt) << "\n";
+    // 16: print(nested(True, None, 2))
+    std::cout << nested(true, std::nullopt, 2) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

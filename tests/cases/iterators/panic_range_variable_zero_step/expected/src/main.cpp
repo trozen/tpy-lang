@@ -9,28 +9,28 @@ std::string_view __name__;
 int32_t step{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: # Variable zero-step should panic, same as literal zero-step
-  // 4: step: Int32 = 0
-  step = 0;
-  // 5: for i in range(1, 5, step):
-  int32_t __step_0 = step;
-  if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-  tpy::range_check_overflow<int32_t>(1, 5, __step_0);
-  for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
-    // 6:     print(i)
-    std::cout << i << "\n";
-  }
+    __name__ = "__main__";
+    // 3: # Variable zero-step should panic, same as literal zero-step
+    // 4: step: Int32 = 0
+    step = 0;
+    // 5: for i in range(1, 5, step):
+    int32_t __step_0 = step;
+    if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
+    tpy::range_check_overflow<int32_t>(1, 5, __step_0);
+    for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
+        // 6:     print(i)
+        std::cout << i << "\n";
+    }
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

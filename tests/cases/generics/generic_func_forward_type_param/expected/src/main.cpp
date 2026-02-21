@@ -7,38 +7,38 @@ std::string_view __name__;
 
 // 40: def main():
 void main() {
-  // 41:     b = Box()
-  Box b = Box();
-  // 42:     b.value = 42
-  b.value = 42;
-  // 43:     wrapper[Box](b)
-  wrapper<Box>(std::move(b));
-  // 45:     nums = [1, 2, 3]
-  std::vector<int32_t> nums = {1, 2, 3};
-  // 46:     result = wrap_list[Int32](nums)
-  std::vector<int32_t>& result = wrap_list<int32_t>(nums);
-  // 47:     print(result)
-  std::cout << tpy::ListPrinter(result) << "\n";
-  // 49:     print(multi[Int32, Int32](10, 20))
-  int32_t __tmp_1 = 10;
-  int32_t __tmp_2 = 20;
-  std::cout << multi<int32_t, int32_t>(__tmp_1, __tmp_2) << "\n";
-  // 51:     print("done")
-  std::cout << "done" << "\n";
+    // 41:     b = Box()
+    Box b = Box();
+    // 42:     b.value = 42
+    b.value = 42;
+    // 43:     wrapper[Box](b)
+    wrapper<Box>(std::move(b));
+    // 45:     nums = [1, 2, 3]
+    std::vector<int32_t> nums = {1, 2, 3};
+    // 46:     result = wrap_list[Int32](nums)
+    std::vector<int32_t>& result = wrap_list<int32_t>(nums);
+    // 47:     print(result)
+    std::cout << tpy::ListPrinter(result) << "\n";
+    // 49:     print(multi[Int32, Int32](10, 20))
+    int32_t __tmp_1 = 10;
+    int32_t __tmp_2 = 20;
+    std::cout << multi<int32_t, int32_t>(__tmp_1, __tmp_2) << "\n";
+    // 51:     print("done")
+    std::cout << "done" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

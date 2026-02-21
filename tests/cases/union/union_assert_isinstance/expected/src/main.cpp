@@ -7,35 +7,35 @@ std::string_view __name__;
 
 // 14: def get_radius(s: Circle | Rect) -> Int32:
 int32_t get_radius(std::variant<Circle, Rect>& s) {
-  // 15:     assert isinstance(s, Circle)
-  if (!(std::holds_alternative<Circle>(s))) tpy::tpy_panic("assertion failed");
-  auto& __s = std::get<Circle>(s);
-  // 16:     return s.radius
-  return __s.radius;
+    // 15:     assert isinstance(s, Circle)
+    if (!(std::holds_alternative<Circle>(s))) tpy::tpy_panic("assertion failed");
+    auto& __s = std::get<Circle>(s);
+    // 16:     return s.radius
+    return __s.radius;
 }
 
 // 18: def main() -> None:
 void main() {
-  // 19:     c: Circle | Rect = Circle(Int32(5))
-  std::variant<Circle, Rect> c = Circle(5);
-  // 20:     print(get_radius(c))
-  std::cout << get_radius(c) << "\n";
+    // 19:     c: Circle | Rect = Circle(Int32(5))
+    std::variant<Circle, Rect> c = Circle(5);
+    // 20:     print(get_radius(c))
+    std::cout << get_radius(c) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: main()
-  main();
+    __name__ = "__main__";
+    // 22: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

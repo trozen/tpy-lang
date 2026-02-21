@@ -9,18 +9,18 @@ int32_t MAGIC{};
 
 // 4: def custom_add(x: Int32, y: Int32) -> Int32:
 int32_t custom_add(int32_t x, int32_t y) {
-  // 5:     return x + y
-  return (tpy::add_check<int32_t>(x, y));
+    // 5:     return x + y
+    return (tpy::add_check<int32_t>(x, y));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "math";
-  // 7: MAGIC: Int32 = 42
-  MAGIC = 42;
+    __name__ = "math";
+    // 7: MAGIC: Int32 = 42
+    MAGIC = 42;
 }
 
 } // namespace tpy_user::math

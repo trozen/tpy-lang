@@ -11,32 +11,32 @@ double x{};
 double y{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Basic float operations
-  // 2: x = 3.5
-  x = 3.5;
-  // 3: y = 2.0
-  y = 2.0;
-  // 4: print(x + y)
-  std::cout << tpy::print_float(((x) + (y))) << "\n";
-  // 5: print(x - y)
-  std::cout << tpy::print_float(((x) - (y))) << "\n";
-  // 6: print(x * y)
-  std::cout << tpy::print_float(((x) * (y))) << "\n";
-  // 7: print(x / y)
-  std::cout << tpy::print_float(((x) / (y))) << "\n";
-  // 8: print(-x)
-  std::cout << tpy::print_float(-(x)) << "\n";
+    __name__ = "__main__";
+    // 1: # Basic float operations
+    // 2: x = 3.5
+    x = 3.5;
+    // 3: y = 2.0
+    y = 2.0;
+    // 4: print(x + y)
+    std::cout << tpy::print_float(((x) + (y))) << "\n";
+    // 5: print(x - y)
+    std::cout << tpy::print_float(((x) - (y))) << "\n";
+    // 6: print(x * y)
+    std::cout << tpy::print_float(((x) * (y))) << "\n";
+    // 7: print(x / y)
+    std::cout << tpy::print_float(((x) / (y))) << "\n";
+    // 8: print(-x)
+    std::cout << tpy::print_float(-(x)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

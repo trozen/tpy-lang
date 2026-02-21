@@ -15,23 +15,23 @@ void main();
 
 // 5: class Box:
 struct Box {
-  // 6:     value: Int32
-  int32_t value;
+    // 6:     value: Int32
+    int32_t value;
 
-  Box() = default;
+    Box() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 9: def mixed[T](x: Own[T], y: T) -> None:
 template<typename T>
 void mixed(T&& x, tpy::param_val_or_ref_t<T> y) {
-  // 10:     pass
+    // 10:     pass
 }
 
 void __tpy_init();

@@ -14,17 +14,17 @@ void main();
 
 // 5: class Point:
 struct Point {
-  // 6:     x: Int32
-  int32_t x;
+    // 6:     x: Int32
+    int32_t x;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 void __tpy_init();

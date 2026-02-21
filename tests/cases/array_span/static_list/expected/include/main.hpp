@@ -17,19 +17,19 @@ void print_list(StaticList<Item, 16>& items);
 
 // 3: class Item:
 struct Item {
-  // 4:     value: Int32
-  int32_t value;
+    // 4:     value: Int32
+    int32_t value;
 
-  // 6:     def __init__(self, v: Int32 = 0):
-  Item() = default;
-  explicit Item(int32_t v) : value(v) {}
+    // 6:     def __init__(self, v: Int32 = 0):
+    Item() = default;
+    explicit Item(int32_t v) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-  os << "Item("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Item("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

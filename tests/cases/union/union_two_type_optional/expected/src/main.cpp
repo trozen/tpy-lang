@@ -7,37 +7,37 @@ std::string_view __name__;
 
 // 4: def check(v: Int32 | None) -> str:
 std::string_view check(std::optional<int32_t> v) {
-  // 5:     if v is None:
-  if ((!v.has_value())) {
-    // 6:         return "none"
-    return "none";
-  }
-  // 7:     return "has value"
-  return "has value";
+    // 5:     if v is None:
+    if ((!v.has_value())) {
+        // 6:         return "none"
+        return "none";
+    }
+    // 7:     return "has value"
+    return "has value";
 }
 
 // 9: def main() -> None:
 void main() {
-  // 10:     print(check(Int32(42)))
-  std::cout << check(42) << "\n";
-  // 11:     print(check(None))
-  std::cout << check(std::nullopt) << "\n";
+    // 10:     print(check(Int32(42)))
+    std::cout << check(42) << "\n";
+    // 11:     print(check(None))
+    std::cout << check(std::nullopt) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: main()
-  main();
+    __name__ = "__main__";
+    // 13: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

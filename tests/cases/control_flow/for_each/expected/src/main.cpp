@@ -19,98 +19,98 @@ std::string_view text;
 // # Test for-each with local inferred array (no mutation -> std::array)
 // 16: def sum_array() -> Int32:
 int32_t sum_array() {
-  // 17:     nums = [100, 200, 300]
-  std::array<int32_t, 3> nums = {100, 200, 300};
-  // 18:     result: Int32 = 0
-  int32_t result = 0;
-  // 19:     for n in nums:
-  for (int32_t n : nums) {
-    // 20:         result += n
-    result = tpy::add_check<int32_t>(result, n);
-  }
-  // 21:     return result
-  return result;
+    // 17:     nums = [100, 200, 300]
+    std::array<int32_t, 3> nums = {100, 200, 300};
+    // 18:     result: Int32 = 0
+    int32_t result = 0;
+    // 19:     for n in nums:
+    for (int32_t n : nums) {
+        // 20:         result += n
+        result = tpy::add_check<int32_t>(result, n);
+    }
+    // 21:     return result
+    return result;
 }
 
 // # Test for-each over Span parameter
 // 26: def print_span(data: Span[Int32]) -> None:
 void print_span(std::span<const int32_t> data) {
-  // 27:     for x in data:
-  for (int32_t x : data) {
-    // 28:         print(x)
-    std::cout << x << "\n";
-  }
+    // 27:     for x in data:
+    for (int32_t x : data) {
+        // 28:         print(x)
+        std::cout << x << "\n";
+    }
 }
 
 // # Test nested for-each
 // 38: def nested_sum() -> Int32:
 int32_t nested_sum() {
-  // 39:     outer = [1, 2]
-  std::array<int32_t, 2> outer = {1, 2};
-  // 40:     inner = [10, 20]
-  std::array<int32_t, 2> inner = {10, 20};
-  // 41:     total: Int32 = 0
-  int32_t total = 0;
-  // 42:     for a in outer:
-  for (int32_t a : outer) {
-    // 43:         for b in inner:
-    for (int32_t b : inner) {
-      // 44:             total += a * b
-      total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(a, b)));
+    // 39:     outer = [1, 2]
+    std::array<int32_t, 2> outer = {1, 2};
+    // 40:     inner = [10, 20]
+    std::array<int32_t, 2> inner = {10, 20};
+    // 41:     total: Int32 = 0
+    int32_t total = 0;
+    // 42:     for a in outer:
+    for (int32_t a : outer) {
+        // 43:         for b in inner:
+        for (int32_t b : inner) {
+            // 44:             total += a * b
+            total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(a, b)));
+        }
     }
-  }
-  // 45:     return total
-  return total;
+    // 45:     return total
+    return total;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: # Test for-each over inferred list (no annotation needed)
-  // 4: items = [1, 2, 3, 4, 5]
-  static std::vector<int32_t> __global_slot_1 = {1, 2, 3, 4, 5};
-  items = &__global_slot_1;
-  // 5: total: Int32 = 0
-  total = 0;
-  // 6: for x in items:
-  for (int32_t x : (*items)) {
-    // 7:     total += x
-    total = tpy::add_check<int32_t>(total, x);
-  }
-  // 8: print(total)  # 15
-  std::cout << total << "\n";
-  // 10: # Test for-each over Array
-  // 11: arr: Array[Int32, 3] = [10, 20, 30]
-  static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
-  arr = &__global_slot_2;
-  // 12: for val in arr:
-  for (int32_t val : (*arr)) {
-    // 13:     print(val)
-    std::cout << val << "\n";
-  }
-  // 23: print(sum_array())  # 600
-  std::cout << sum_array() << "\n";
-  // 30: print_span([7, 8, 9])
-  print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
-  // 32: # Test for-each over string
-  // 33: text = "AB"
-  text = "AB";
-  // 34: for c in text:
-  for (char c : std::string_view(text)) {
-    // 35:     print(c)
-    std::cout << c << "\n";
-  }
-  // 47: print(nested_sum())  # 1*10 + 1*20 + 2*10 + 2*20 = 90
-  std::cout << nested_sum() << "\n";
+    __name__ = "__main__";
+    // 3: # Test for-each over inferred list (no annotation needed)
+    // 4: items = [1, 2, 3, 4, 5]
+    static std::vector<int32_t> __global_slot_1 = {1, 2, 3, 4, 5};
+    items = &__global_slot_1;
+    // 5: total: Int32 = 0
+    total = 0;
+    // 6: for x in items:
+    for (int32_t x : (*items)) {
+        // 7:     total += x
+        total = tpy::add_check<int32_t>(total, x);
+    }
+    // 8: print(total)  # 15
+    std::cout << total << "\n";
+    // 10: # Test for-each over Array
+    // 11: arr: Array[Int32, 3] = [10, 20, 30]
+    static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
+    arr = &__global_slot_2;
+    // 12: for val in arr:
+    for (int32_t val : (*arr)) {
+        // 13:     print(val)
+        std::cout << val << "\n";
+    }
+    // 23: print(sum_array())  # 600
+    std::cout << sum_array() << "\n";
+    // 30: print_span([7, 8, 9])
+    print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
+    // 32: # Test for-each over string
+    // 33: text = "AB"
+    text = "AB";
+    // 34: for c in text:
+    for (char c : std::string_view(text)) {
+        // 35:     print(c)
+        std::cout << c << "\n";
+    }
+    // 47: print(nested_sum())  # 1*10 + 1*20 + 2*10 + 2*20 = 90
+    std::cout << nested_sum() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

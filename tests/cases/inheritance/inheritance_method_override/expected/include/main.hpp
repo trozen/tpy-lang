@@ -16,87 +16,87 @@ extern Shape* base;
 
 // 3: class Shape:
 struct Shape {
-  // 4:     name: str
-  std::string_view name;
+    // 4:     name: str
+    std::string_view name;
 
-  // 6:     def __init__(self, name: str) -> None:
-  Shape() = default;
-  explicit Shape(std::string_view name) : name(name) {}
+    // 6:     def __init__(self, name: str) -> None:
+    Shape() = default;
+    explicit Shape(std::string_view name) : name(name) {}
 
-  // 9:     def area(self) -> Int32:
-  int32_t area() {
-    // 10:         return 0
-    return 0;
-  }
+    // 9:     def area(self) -> Int32:
+    int32_t area() {
+        // 10:         return 0
+        return 0;
+    }
 
-  // 12:     def describe(self) -> str:
-  std::string_view describe() {
-    // 13:         return self.name
-    return this->name;
-  }
+    // 12:     def describe(self) -> str:
+    std::string_view describe() {
+        // 13:         return self.name
+        return this->name;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
-  os << "Shape("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Shape("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 // 16: class Square(Shape):
 struct Square : Shape {
-  // 17:     side: Int32
-  int32_t side;
+    // 17:     side: Int32
+    int32_t side;
 
-  // 19:     def __init__(self, side: Int32) -> None:
-  Square() = default;
-  explicit Square(int32_t side) : side(side) {
-    // 20:         self.name = "Square"
-    this->name = "Square";
-  }
+    // 19:     def __init__(self, side: Int32) -> None:
+    Square() = default;
+    explicit Square(int32_t side) : side(side) {
+        // 20:         self.name = "Square"
+        this->name = "Square";
+    }
 
-  // 23:     def area(self) -> Int32:
-  int32_t area() {
-    // 24:         return self.side * self.side
-    return (tpy::mul_check<int32_t>(this->side, this->side));
-  }
+    // 23:     def area(self) -> Int32:
+    int32_t area() {
+        // 24:         return self.side * self.side
+        return (tpy::mul_check<int32_t>(this->side, this->side));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
-  os << "Square("
-     << "side=" << obj.side
-     << ")";
-  return os;
+    os << "Square("
+       << "side=" << obj.side
+       << ")";
+    return os;
 }
 
 // 27: class Rectangle(Shape):
 struct Rectangle : Shape {
-  // 28:     width: Int32
-  int32_t width;
-  // 29:     height: Int32
-  int32_t height;
+    // 28:     width: Int32
+    int32_t width;
+    // 29:     height: Int32
+    int32_t height;
 
-  // 31:     def __init__(self, width: Int32, height: Int32) -> None:
-  Rectangle() = default;
-  explicit Rectangle(int32_t width, int32_t height) : width(width), height(height) {
-    // 32:         self.name = "Rectangle"
-    this->name = "Rectangle";
-  }
+    // 31:     def __init__(self, width: Int32, height: Int32) -> None:
+    Rectangle() = default;
+    explicit Rectangle(int32_t width, int32_t height) : width(width), height(height) {
+        // 32:         self.name = "Rectangle"
+        this->name = "Rectangle";
+    }
 
-  // 36:     def area(self) -> Int32:
-  int32_t area() {
-    // 37:         return self.width * self.height
-    return (tpy::mul_check<int32_t>(this->width, this->height));
-  }
+    // 36:     def area(self) -> Int32:
+    int32_t area() {
+        // 37:         return self.width * self.height
+        return (tpy::mul_check<int32_t>(this->width, this->height));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rectangle& obj) {
-  os << "Rectangle("
-     << "width=" << obj.width
-     << ", "
-     << "height=" << obj.height
-     << ")";
-  return os;
+    os << "Rectangle("
+       << "width=" << obj.width
+       << ", "
+       << "height=" << obj.height
+       << ")";
+    return os;
 }
 
 void __tpy_init();

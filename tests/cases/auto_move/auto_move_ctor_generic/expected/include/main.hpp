@@ -14,36 +14,36 @@ void main();
 
 // 5: class Inner:
 struct Inner {
-  // 6:     value: Int32
-  int32_t value;
+    // 6:     value: Int32
+    int32_t value;
 
-  Inner() = default;
+    Inner() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-  os << "Inner("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Inner("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 9: class Box[T]:
 template<typename T>
 struct Box {
-  // 10:     item: T
-  T item;
+    // 10:     item: T
+    T item;
 
-  // 12:     def __init__(self, item: Own[T]):
-  Box() = default;
-  explicit Box(T item) : item(std::move(item)) {}
+    // 12:     def __init__(self, item: Own[T]):
+    Box() = default;
+    explicit Box(T item) : item(std::move(item)) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "item=" << tpy::ValuePrinter(obj.item)
-     << ")";
-  return os;
+    os << "Box("
+       << "item=" << tpy::ValuePrinter(obj.item)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

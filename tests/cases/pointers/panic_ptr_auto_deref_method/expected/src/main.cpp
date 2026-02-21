@@ -7,26 +7,26 @@ std::string_view __name__;
 
 // 10: def main() -> None:
 void main() {
-  // 11:     p: Ptr[Counter] = Ptr[Counter]()
-  Counter* p = static_cast<Counter*>(nullptr);
-  // 12:     print(p.get_value())
-  std::cout << tpy::deref_check(p).get_value() << "\n";
+    // 11:     p: Ptr[Counter] = Ptr[Counter]()
+    Counter* p = static_cast<Counter*>(nullptr);
+    // 12:     print(p.get_value())
+    std::cout << tpy::deref_check(p).get_value() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 14: main()
-  main();
+    __name__ = "__main__";
+    // 14: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -16,66 +16,66 @@ void main();
 // 4: class Base[T, N: int]:
 template<typename T, std::size_t N>
 struct Base {
-  // 5:     value: T
-  T value;
+    // 5:     value: T
+    T value;
 
-  // 7:     def __init__(self, v: T) -> None:
-  Base() = default;
-  explicit Base(const T& v) : value(v) {}
+    // 7:     def __init__(self, v: T) -> None:
+    Base() = default;
+    explicit Base(const T& v) : value(v) {}
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Base<T, N>& obj) {
-  os << "Base("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Base("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // 11: class Child[T, N: int](Base[T, N]):
 template<typename T, std::size_t N>
 struct Child : Base<T, N> {
-  // 12:     extra: Int32
-  int32_t extra;
+    // 12:     extra: Int32
+    int32_t extra;
 
-  // 14:     def __init__(self, v: T, e: Int32) -> None:
-  Child() = default;
-  explicit Child(const T& v, int32_t e) : extra(e) {
-    // 15:         self.value = v
-    this->value = v;
-  }
+    // 14:     def __init__(self, v: T, e: Int32) -> None:
+    Child() = default;
+    explicit Child(const T& v, int32_t e) : extra(e) {
+        // 15:         self.value = v
+        this->value = v;
+    }
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Child<T, N>& obj) {
-  os << "Child("
-     << "extra=" << obj.extra
-     << ")";
-  return os;
+    os << "Child("
+       << "extra=" << obj.extra
+       << ")";
+    return os;
 }
 
 // 19: class GrandChild[T, N: int](Child[T, N]):
 template<typename T, std::size_t N>
 struct GrandChild : Child<T, N> {
-  // 20:     name: str
-  std::string_view name;
+    // 20:     name: str
+    std::string_view name;
 
-  // 22:     def __init__(self, v: T, e: Int32, n: str) -> None:
-  GrandChild() = default;
-  explicit GrandChild(const T& v, int32_t e, std::string_view n) : name(n) {
-    // 23:         self.value = v
-    this->value = v;
-    // 24:         self.extra = e
-    this->extra = e;
-  }
+    // 22:     def __init__(self, v: T, e: Int32, n: str) -> None:
+    GrandChild() = default;
+    explicit GrandChild(const T& v, int32_t e, std::string_view n) : name(n) {
+        // 23:         self.value = v
+        this->value = v;
+        // 24:         self.extra = e
+        this->extra = e;
+    }
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const GrandChild<T, N>& obj) {
-  os << "GrandChild("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "GrandChild("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

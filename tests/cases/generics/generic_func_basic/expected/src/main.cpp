@@ -15,42 +15,42 @@ std::vector<std::string_view>* words{};
 std::vector<int32_t>* vals{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test basic generic functions with type inference."""
-  // 13: # Inference from list[int]
-  // 14: nums = [10, 20, 30]
-  static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
-  nums = &__global_slot_1;
-  // 15: print(first(nums))
-  std::cout << first<int32_t>((*nums)) << "\n";
-  // 16: print(last(nums))
-  std::cout << last<int32_t>((*nums)) << "\n";
-  // 18: # Inference from list[str]
-  // 19: words = ["hello", "world"]
-  static std::vector<std::string_view> __global_slot_2 = {"hello", "world"};
-  words = &__global_slot_2;
-  // 20: print(first(words))
-  std::cout << first<std::string_view>((*words)) << "\n";
-  // 21: print(last(words))
-  std::cout << last<std::string_view>((*words)) << "\n";
-  // 23: # Inference from list[Int32]
-  // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-  static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
-  vals = &__global_slot_3;
-  // 25: print(first(vals))
-  std::cout << first<int32_t>((*vals)) << "\n";
-  // 26: print(last(vals))
-  std::cout << last<int32_t>((*vals)) << "\n";
+    __name__ = "__main__";
+    // 1: """Test basic generic functions with type inference."""
+    // 13: # Inference from list[int]
+    // 14: nums = [10, 20, 30]
+    static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
+    nums = &__global_slot_1;
+    // 15: print(first(nums))
+    std::cout << first<int32_t>((*nums)) << "\n";
+    // 16: print(last(nums))
+    std::cout << last<int32_t>((*nums)) << "\n";
+    // 18: # Inference from list[str]
+    // 19: words = ["hello", "world"]
+    static std::vector<std::string_view> __global_slot_2 = {"hello", "world"};
+    words = &__global_slot_2;
+    // 20: print(first(words))
+    std::cout << first<std::string_view>((*words)) << "\n";
+    // 21: print(last(words))
+    std::cout << last<std::string_view>((*words)) << "\n";
+    // 23: # Inference from list[Int32]
+    // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
+    vals = &__global_slot_3;
+    // 25: print(first(vals))
+    std::cout << first<int32_t>((*vals)) << "\n";
+    // 26: print(last(vals))
+    std::cout << last<int32_t>((*vals)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

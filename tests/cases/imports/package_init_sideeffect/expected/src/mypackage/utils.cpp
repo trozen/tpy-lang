@@ -7,16 +7,16 @@ std::string_view __name__;
 
 // 1: def helper() -> None:
 void helper() {
-  // 2:     print("helper called")
-  std::cout << "helper called" << "\n";
+    // 2:     print("helper called")
+    std::cout << "helper called" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "mypackage.utils";
+    __name__ = "mypackage.utils";
 }
 
 } // namespace tpy_user::mypackage::utils

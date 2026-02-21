@@ -19,38 +19,38 @@ void main();
 // 5: class Dog(Pet):
 struct Dog : ::tpy_user::pet::__tpy_Base_Pet {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 6:     def speak(self) -> str:
-  std::string_view speak() override {
-    // 7:         return "Woof"
-    return "Woof";
-  }
+    // 6:     def speak(self) -> str:
+    std::string_view speak() override {
+        // 7:         return "Woof"
+        return "Woof";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 // # Structural conformance (no explicit inheritance)
 // 10: class Cat:
 struct Cat {
 
-  Cat() = default;
+    Cat() = default;
 
-  // 11:     def speak(self) -> str:
-  std::string_view speak() {
-    // 12:         return "Meow"
-    return "Meow";
-  }
+    // 11:     def speak(self) -> str:
+    std::string_view speak() {
+        // 12:         return "Meow"
+        return "Meow";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << ")";
-  return os;
+    os << "Cat("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

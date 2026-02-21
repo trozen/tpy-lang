@@ -7,20 +7,20 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  // 1: __name__ = "custom"
-  __name__ = "custom";
-  // 2: print(__name__)
-  std::cout << __name__ << "\n";
+    // 1: __name__ = "custom"
+    __name__ = "custom";
+    // 2: print(__name__)
+    std::cout << __name__ << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

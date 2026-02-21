@@ -10,34 +10,34 @@ Box* b{};
 Point* r{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 25: b = Box()
-  static Box __global_slot_1 = Box();
-  b = &__global_slot_1;
-  // 26: r = b.get_item()
-  r = b->get_item();
-  // 27: print(r is None)
-  std::cout << tpy::print_bool((r == nullptr)) << "\n";
-  // 29: b.item = copy(Point(3, 4))
-  b->item = Point(3, 4);
-  // 30: r = b.get_item()
-  r = b->get_item();
-  // 31: print(r is not None)
-  std::cout << tpy::print_bool((r != nullptr)) << "\n";
-  // 32: print(r.x)
-  std::cout << tpy::deref_check(r).x << "\n";
-  // 33: print(r.y)
-  std::cout << tpy::deref_check(r).y << "\n";
+    __name__ = "__main__";
+    // 25: b = Box()
+    static Box __global_slot_1 = Box();
+    b = &__global_slot_1;
+    // 26: r = b.get_item()
+    r = b->get_item();
+    // 27: print(r is None)
+    std::cout << tpy::print_bool((r == nullptr)) << "\n";
+    // 29: b.item = copy(Point(3, 4))
+    b->item = Point(3, 4);
+    // 30: r = b.get_item()
+    r = b->get_item();
+    // 31: print(r is not None)
+    std::cout << tpy::print_bool((r != nullptr)) << "\n";
+    // 32: print(r.x)
+    std::cout << tpy::deref_check(r).x << "\n";
+    // 33: print(r.y)
+    std::cout << tpy::deref_check(r).y << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

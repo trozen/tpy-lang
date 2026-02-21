@@ -17,61 +17,61 @@ void main();
 // # isinstance elif chain with three-member union
 // 2: class Circle:
 struct Circle {
-  // 3:     radius: float
-  double radius;
+    // 3:     radius: float
+    double radius;
 
-  // 4:     def __init__(self, radius: float) -> None:
-  Circle() = default;
-  explicit Circle(double radius) : radius(radius) {}
+    // 4:     def __init__(self, radius: float) -> None:
+    Circle() = default;
+    explicit Circle(double radius) : radius(radius) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "radius=" << obj.radius
-     << ")";
-  return os;
+    os << "Circle("
+       << "radius=" << obj.radius
+       << ")";
+    return os;
 }
 
 // 7: class Rect:
 struct Rect {
-  // 8:     width: float
-  double width;
-  // 9:     height: float
-  double height;
+    // 8:     width: float
+    double width;
+    // 9:     height: float
+    double height;
 
-  // 10:     def __init__(self, width: float, height: float) -> None:
-  Rect() = default;
-  explicit Rect(double width, double height) : width(width), height(height) {}
+    // 10:     def __init__(self, width: float, height: float) -> None:
+    Rect() = default;
+    explicit Rect(double width, double height) : width(width), height(height) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-  os << "Rect("
-     << "width=" << obj.width
-     << ", "
-     << "height=" << obj.height
-     << ")";
-  return os;
+    os << "Rect("
+       << "width=" << obj.width
+       << ", "
+       << "height=" << obj.height
+       << ")";
+    return os;
 }
 
 // 14: class Triangle:
 struct Triangle {
-  // 15:     base: float
-  double base;
-  // 16:     height: float
-  double height;
+    // 15:     base: float
+    double base;
+    // 16:     height: float
+    double height;
 
-  // 17:     def __init__(self, base: float, height: float) -> None:
-  Triangle() = default;
-  explicit Triangle(double base, double height) : base(base), height(height) {}
+    // 17:     def __init__(self, base: float, height: float) -> None:
+    Triangle() = default;
+    explicit Triangle(double base, double height) : base(base), height(height) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Triangle& obj) {
-  os << "Triangle("
-     << "base=" << obj.base
-     << ", "
-     << "height=" << obj.height
-     << ")";
-  return os;
+    os << "Triangle("
+       << "base=" << obj.base
+       << ", "
+       << "height=" << obj.height
+       << ")";
+    return os;
 }
 
 void __tpy_init();

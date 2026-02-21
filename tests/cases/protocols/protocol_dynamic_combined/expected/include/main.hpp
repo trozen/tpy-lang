@@ -71,49 +71,49 @@ void main();
 // 15: class Dog(Describable, Noise):
 struct Dog : __tpy_Base_Describable, __tpy_Base_Noise {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 16:     def describe(self) -> str:
-  std::string_view describe() override {
-    // 17:         return "a dog"
-    return "a dog";
-  }
+    // 16:     def describe(self) -> str:
+    std::string_view describe() override {
+        // 17:         return "a dog"
+        return "a dog";
+    }
 
-  // 18:     def make_noise(self) -> str:
-  std::string_view make_noise() override {
-    // 19:         return "Woof"
-    return "Woof";
-  }
+    // 18:     def make_noise(self) -> str:
+    std::string_view make_noise() override {
+        // 19:         return "Woof"
+        return "Woof";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 // 21: class Cat(Describable, Noise):
 struct Cat : __tpy_Base_Describable, __tpy_Base_Noise {
 
-  Cat() = default;
+    Cat() = default;
 
-  // 22:     def describe(self) -> str:
-  std::string_view describe() override {
-    // 23:         return "a cat"
-    return "a cat";
-  }
+    // 22:     def describe(self) -> str:
+    std::string_view describe() override {
+        // 23:         return "a cat"
+        return "a cat";
+    }
 
-  // 24:     def make_noise(self) -> str:
-  std::string_view make_noise() override {
-    // 25:         return "Meow"
-    return "Meow";
-  }
+    // 24:     def make_noise(self) -> str:
+    std::string_view make_noise() override {
+        // 25:         return "Meow"
+        return "Meow";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << ")";
-  return os;
+    os << "Cat("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

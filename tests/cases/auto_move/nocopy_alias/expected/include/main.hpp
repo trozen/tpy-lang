@@ -15,21 +15,21 @@ void main();
 // @nocopy
 // 7: class Handle:
 struct Handle {
-  // 8:     fd: Int32
-  int32_t fd;
+    // 8:     fd: Int32
+    int32_t fd;
 
-  Handle() = default;
-  Handle(const Handle&) = delete;
-  Handle& operator=(const Handle&) = delete;
-  Handle(Handle&&) = default;
-  Handle& operator=(Handle&&) = default;
+    Handle() = default;
+    Handle(const Handle&) = delete;
+    Handle& operator=(const Handle&) = delete;
+    Handle(Handle&&) = default;
+    Handle& operator=(Handle&&) = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
-  os << "Handle("
-     << "fd=" << obj.fd
-     << ")";
-  return os;
+    os << "Handle("
+       << "fd=" << obj.fd
+       << ")";
+    return os;
 }
 
 void __tpy_init();

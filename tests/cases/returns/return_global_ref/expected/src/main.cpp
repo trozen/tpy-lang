@@ -10,42 +10,42 @@ Point* ORIGIN{};
 
 // 10: def get_origin() -> Point:
 Point& get_origin() {
-  // 11:     return ORIGIN  # tpyc: ok (global lives forever)
-  return (*ORIGIN);
+    // 11:     return ORIGIN  # tpyc: ok (global lives forever)
+    return (*ORIGIN);
 }
 
 // 13: def main():
 void main() {
-  // 14:     ORIGIN.x = 100
-  ORIGIN->x = 100;
-  // 15:     ORIGIN.y = 200
-  ORIGIN->y = 200;
-  // 17:     ref: Point = get_origin()
-  Point& ref = get_origin();
-  // 18:     print(ref.x)
-  std::cout << ref.x << "\n";
-  // 19:     print(ref.y)
-  std::cout << ref.y << "\n";
+    // 14:     ORIGIN.x = 100
+    ORIGIN->x = 100;
+    // 15:     ORIGIN.y = 200
+    ORIGIN->y = 200;
+    // 17:     ref: Point = get_origin()
+    Point& ref = get_origin();
+    // 18:     print(ref.x)
+    std::cout << ref.x << "\n";
+    // 19:     print(ref.y)
+    std::cout << ref.y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 7: # Global variable - lives for the duration of the program
-  // 8: ORIGIN: Point = Point()
-  static Point __global_slot_1 = Point();
-  ORIGIN = &__global_slot_1;
-  // 21: main()
-  main();
+    __name__ = "__main__";
+    // 7: # Global variable - lives for the duration of the program
+    // 8: ORIGIN: Point = Point()
+    static Point __global_slot_1 = Point();
+    ORIGIN = &__global_slot_1;
+    // 21: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

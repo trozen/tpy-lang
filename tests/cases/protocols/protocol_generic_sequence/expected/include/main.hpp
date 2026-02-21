@@ -17,25 +17,25 @@ void main();
 // 4: def first(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>
 int32_t first(T_items& items) {
-  // 5:     return items[0]
-  return tpy::__getitem__(items, 0);
+    // 5:     return items[0]
+    return tpy::__getitem__(items, 0);
 }
 // 7: def sum_all(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>
 int32_t sum_all(T_items& items) {
-  // 8:     total: Int32 = 0
-  int32_t total = 0;
-  // 9:     i: Int32 = 0
-  int32_t i = 0;
-  // 10:     while i < len(items):
-  while ((i < tpy::__len__(items))) {
-    // 11:         total += items[i]
-    total = tpy::add_check<int32_t>(total, tpy::__getitem__(items, i));
-    // 12:         i += 1
-    i = tpy::add_check<int32_t>(i, 1);
-  }
-  // 13:     return total
-  return total;
+    // 8:     total: Int32 = 0
+    int32_t total = 0;
+    // 9:     i: Int32 = 0
+    int32_t i = 0;
+    // 10:     while i < len(items):
+    while ((i < tpy::__len__(items))) {
+        // 11:         total += items[i]
+        total = tpy::add_check<int32_t>(total, tpy::__getitem__(items, i));
+        // 12:         i += 1
+        i = tpy::add_check<int32_t>(i, 1);
+    }
+    // 13:     return total
+    return total;
 }
 
 void __tpy_init();

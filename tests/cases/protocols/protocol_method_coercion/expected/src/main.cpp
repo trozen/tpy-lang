@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 29: def main() -> None:
 void main() {
-  // 30:     calc = SimpleCalc(32)
-  SimpleCalc calc = SimpleCalc(32);
-  // 31:     use_calc(calc)
-  use_calc(calc);
-  // 33:     # Also test passing constructor as rvalue
-  // 34:     use_calc(SimpleCalc(0))
-  auto __tmp_1 = SimpleCalc(0);
-  use_calc(__tmp_1);
+    // 30:     calc = SimpleCalc(32)
+    SimpleCalc calc = SimpleCalc(32);
+    // 31:     use_calc(calc)
+    use_calc(calc);
+    // 33:     # Also test passing constructor as rvalue
+    // 34:     use_calc(SimpleCalc(0))
+    auto __tmp_1 = SimpleCalc(0);
+    use_calc(__tmp_1);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 36: main()
-  main();
+    __name__ = "__main__";
+    // 36: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

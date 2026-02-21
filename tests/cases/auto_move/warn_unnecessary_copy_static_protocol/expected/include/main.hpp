@@ -24,58 +24,58 @@ void main();
 
 // 5: class Point:
 struct Point {
-  // 6:     x: Int32
-  int32_t x;
-  // 7:     y: Int32
-  int32_t y;
+    // 6:     x: Int32
+    int32_t x;
+    // 7:     y: Int32
+    int32_t y;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 12: class MyHolder:
 struct MyHolder {
 
-  MyHolder() = default;
+    MyHolder() = default;
 
-  // 13:     def store(self, p: Own[Point]) -> None:
-  void store(Point p) {
-    // 14:         print(p.x)
-    std::cout << p.x << "\n";
-  }
+    // 13:     def store(self, p: Own[Point]) -> None:
+    void store(Point p) {
+        // 14:         print(p.x)
+        std::cout << p.x << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyHolder& obj) {
-  os << "MyHolder("
-     << ")";
-  return os;
+    os << "MyHolder("
+       << ")";
+    return os;
 }
 
 // 16: class Factory:
 struct Factory {
 
-  Factory() = default;
+    Factory() = default;
 
-  //     @staticmethod
-  // 18:     def consume(p: Own[Point]) -> Int32:
-  static int32_t consume(Point p) {
-    // 19:         return p.x
-    return p.x;
-  }
+    //     @staticmethod
+    // 18:     def consume(p: Own[Point]) -> Int32:
+    static int32_t consume(Point p) {
+        // 19:         return p.x
+        return p.x;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
-  os << "Factory("
-     << ")";
-  return os;
+    os << "Factory("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

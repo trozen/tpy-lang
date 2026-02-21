@@ -7,39 +7,39 @@ std::string_view __name__;
 
 // 1: def factorial(n: int) -> int:
 tpy::BigInt factorial(const tpy::BigInt& n) {
-  // 2:     if n <= 1:
-  if ((n <= 1)) {
-    // 3:         return 1
-    return tpy::BigInt(1);
-  }
-  // 4:     return n * factorial(n - 1)
-  return ((n) * (factorial(((n) - (tpy::BigInt(1))))));
+    // 2:     if n <= 1:
+    if ((n <= 1)) {
+        // 3:         return 1
+        return tpy::BigInt(1);
+    }
+    // 4:     return n * factorial(n - 1)
+    return ((n) * (factorial(((n) - (tpy::BigInt(1))))));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 7: # 20! fits in 63-bit small int
-  // 8: print(factorial(20))
-  std::cout << factorial(tpy::BigInt(20)) << "\n";
-  // 10: # 25! exceeds 63 bits - uses GMP
-  // 11: print(factorial(25))
-  std::cout << factorial(tpy::BigInt(25)) << "\n";
-  // 13: # 50! is huge - only GMP can handle
-  // 14: print(factorial(50))
-  std::cout << factorial(tpy::BigInt(50)) << "\n";
-  // 16: # 100! - truly arbitrary precision
-  // 17: print(factorial(100))
-  std::cout << factorial(tpy::BigInt(100)) << "\n";
+    __name__ = "__main__";
+    // 7: # 20! fits in 63-bit small int
+    // 8: print(factorial(20))
+    std::cout << factorial(tpy::BigInt(20)) << "\n";
+    // 10: # 25! exceeds 63 bits - uses GMP
+    // 11: print(factorial(25))
+    std::cout << factorial(tpy::BigInt(25)) << "\n";
+    // 13: # 50! is huge - only GMP can handle
+    // 14: print(factorial(50))
+    std::cout << factorial(tpy::BigInt(50)) << "\n";
+    // 16: # 100! - truly arbitrary precision
+    // 17: print(factorial(100))
+    std::cout << factorial(tpy::BigInt(100)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

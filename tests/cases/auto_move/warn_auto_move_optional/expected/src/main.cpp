@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 9: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 10:     return p.x
-  return p.x;
+    // 10:     return p.x
+    return p.x;
 }
 
 // 13: def test(a: Point | None) -> Int32:
 int32_t test(Point* a) {
-  // 14:     q: Point | None = a
-  Point* q = a;
-  // 15:     assert q is not None
-  if (!((q != nullptr))) tpy::tpy_panic("assertion failed");
-  // 16:     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
-  return consume((*q));
+    // 14:     q: Point | None = a
+    Point* q = a;
+    // 15:     assert q is not None
+    if (!((q != nullptr))) tpy::tpy_panic("assertion failed");
+    // 16:     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
+    return consume((*q));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

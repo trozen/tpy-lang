@@ -7,26 +7,26 @@ std::string_view __name__;
 
 // 17: def main() -> None:
 void main() {
-  // 18:     d = Dog()
-  Dog d = Dog();
-  // 19:     speak(d)
-  speak<Dog>(d);
+    // 18:     d = Dog()
+    Dog d = Dog();
+    // 19:     speak(d)
+    speak<Dog>(d);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 21: main()
-  main();
+    __name__ = "__main__";
+    // 21: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

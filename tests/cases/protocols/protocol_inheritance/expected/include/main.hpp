@@ -27,58 +27,58 @@ void main();
 
 // 13: class Message:
 struct Message {
-  // 14:     text: str
-  std::string_view text;
+    // 14:     text: str
+    std::string_view text;
 
-  // 16:     def __init__(self, text: str) -> None:
-  Message() = default;
-  explicit Message(std::string_view text) : text(text) {}
+    // 16:     def __init__(self, text: str) -> None:
+    Message() = default;
+    explicit Message(std::string_view text) : text(text) {}
 
-  // 19:     def to_str(self) -> str:
-  std::string_view to_str() {
-    // 20:         return self.text
-    return this->text;
-  }
+    // 19:     def to_str(self) -> str:
+    std::string_view to_str() {
+        // 20:         return self.text
+        return this->text;
+    }
 
-  // 22:     def __len__(self) -> Int32:
-  int32_t __len__() const {
-    // 23:         return Int32(5)
-    return 5;
-  }
+    // 22:     def __len__(self) -> Int32:
+    int32_t __len__() const {
+        // 23:         return Int32(5)
+        return 5;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
-  os << "Message("
-     << "text=" << "\"" << obj.text << "\""
-     << ")";
-  return os;
+    os << "Message("
+       << "text=" << "\"" << obj.text << "\""
+       << ")";
+    return os;
 }
 
 // 26: class Container[T: PrintableAndSized]:
 template<PrintableAndSized T>
 struct Container {
-  // 27:     value: T
-  T value;
+    // 27:     value: T
+    T value;
 
-  // 29:     def __init__(self, value: T) -> None:
-  Container() = default;
-  explicit Container(const T& value) : value(value) {}
+    // 29:     def __init__(self, value: T) -> None:
+    Container() = default;
+    explicit Container(const T& value) : value(value) {}
 
-  // 32:     def describe(self) -> None:
-  void describe() {
-    // 33:         print(self.value.to_str())
-    std::cout << this->value.to_str() << "\n";
-    // 34:         print(len(self.value))
-    std::cout << tpy::__len__(this->value) << "\n";
-  }
+    // 32:     def describe(self) -> None:
+    void describe() {
+        // 33:         print(self.value.to_str())
+        std::cout << this->value.to_str() << "\n";
+        // 34:         print(len(self.value))
+        std::cout << tpy::__len__(this->value) << "\n";
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Container("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

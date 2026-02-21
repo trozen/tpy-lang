@@ -49,37 +49,37 @@ void main();
 // 12: class Dog(DynNamed):
 struct Dog : __tpy_Base_DynNamed {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 13:     def name(self) -> str:
-  std::string_view name() override {
-    // 14:         return "Rex"
-    return "Rex";
-  }
+    // 13:     def name(self) -> str:
+    std::string_view name() override {
+        // 14:         return "Rex"
+        return "Rex";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 // 16: class Cat:
 struct Cat {
 
-  Cat() = default;
+    Cat() = default;
 
-  // 17:     def name(self) -> str:
-  std::string_view name() {
-    // 18:         return "Whiskers"
-    return "Whiskers";
-  }
+    // 17:     def name(self) -> str:
+    std::string_view name() {
+        // 18:         return "Whiskers"
+        return "Whiskers";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << ")";
-  return os;
+    os << "Cat("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

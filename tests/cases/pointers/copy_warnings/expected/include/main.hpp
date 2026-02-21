@@ -18,130 +18,130 @@ void main();
 
 // 3: class Point:
 struct Point {
-  // 4:     x: Int32
-  int32_t x;
-  // 5:     y: Int32
-  int32_t y;
+    // 4:     x: Int32
+    int32_t x;
+    // 5:     y: Int32
+    int32_t y;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 7: class Rect:
 struct Rect {
-  // 8:     corner: Point
-  Point corner;
-  // 9:     width: Int32
-  int32_t width;
+    // 8:     corner: Point
+    Point corner;
+    // 9:     width: Int32
+    int32_t width;
 
-  Rect() = default;
+    Rect() = default;
 
-  // 11:     def set_corner(self, p: Point) -> None:
-  void set_corner(Point& p) {
-    // 12:         self.corner = p           # tpyc: warning(/copies Point into field/)
-    this->corner = p;
-    // 13:         self.corner = copy(p)     # tpyc: ok
-    this->corner = p;
-    // 14:         self.corner = Point()     # tpyc: ok
-    this->corner = Point();
-  }
+    // 11:     def set_corner(self, p: Point) -> None:
+    void set_corner(Point& p) {
+        // 12:         self.corner = p           # tpyc: warning(/copies Point into field/)
+        this->corner = p;
+        // 13:         self.corner = copy(p)     # tpyc: ok
+        this->corner = p;
+        // 14:         self.corner = Point()     # tpyc: ok
+        this->corner = Point();
+    }
 
-  // 16:     def set_width(self, w: Int32) -> None:
-  void set_width(int32_t w) {
-    // 17:         self.width = w            # tpyc: ok
-    this->width = w;
-  }
+    // 16:     def set_width(self, w: Int32) -> None:
+    void set_width(int32_t w) {
+        // 17:         self.width = w            # tpyc: ok
+        this->width = w;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-  os << "Rect("
-     << "corner=" << obj.corner
-     << ", "
-     << "width=" << obj.width
-     << ")";
-  return os;
+    os << "Rect("
+       << "corner=" << obj.corner
+       << ", "
+       << "width=" << obj.width
+       << ")";
+    return os;
 }
 
 // 19: class Container:
 struct Container {
-  // 20:     items: list[Int32]
-  std::vector<int32_t> items;
+    // 20:     items: list[Int32]
+    std::vector<int32_t> items;
 
-  Container() = default;
+    Container() = default;
 
-  // 22:     def set_items(self, data: list[Int32]) -> None:
-  void set_items(std::vector<int32_t>& data) {
-    // 23:         self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
-    this->items = data;
-    // 24:         self.items = copy(data)   # tpyc: ok
-    this->items = data;
-    // 25:         self.items = [1, 2, 3]    # tpyc: ok
-    this->items = {1, 2, 3};
-  }
+    // 22:     def set_items(self, data: list[Int32]) -> None:
+    void set_items(std::vector<int32_t>& data) {
+        // 23:         self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
+        this->items = data;
+        // 24:         self.items = copy(data)   # tpyc: ok
+        this->items = data;
+        // 25:         self.items = [1, 2, 3]    # tpyc: ok
+        this->items = {1, 2, 3};
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-  os << "Container("
-     << "items=" << tpy::ListPrinter(obj.items)
-     << ")";
-  return os;
+    os << "Container("
+       << "items=" << tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
 }
 
 // 27: class Holder[T]:
 template<typename T>
 struct Holder {
-  // 28:     value: T
-  T value;
+    // 28:     value: T
+    T value;
 
-  Holder() = default;
+    Holder() = default;
 
-  // 30:     def set_value(self, v: T) -> None:
-  void set_value(tpy::param_val_or_ref_t<T> v) {
-    // 31:         self.value = v            # tpyc: warning(/may copy T into field/)
-    this->value = v;
-    // 32:         self.value = copy(v)      # tpyc: ok
-    this->value = v;
-  }
+    // 30:     def set_value(self, v: T) -> None:
+    void set_value(tpy::param_val_or_ref_t<T> v) {
+        // 31:         self.value = v            # tpyc: warning(/may copy T into field/)
+        this->value = v;
+        // 32:         self.value = copy(v)      # tpyc: ok
+        this->value = v;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-  os << "Holder("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Holder("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // 34: class OptHolder:
 struct OptHolder {
-  // 35:     value: Point | None
-  std::optional<Point> value;
+    // 35:     value: Point | None
+    std::optional<Point> value;
 
-  // 37:     def __init__(self) -> None:
-  OptHolder() : value(std::nullopt) {}
+    // 37:     def __init__(self) -> None:
+    OptHolder() : value(std::nullopt) {}
 
-  // 40:     def set_value(self, p: Point | None) -> None:
-  void set_value(Point* p) {
-    // 41:         self.value = p            # tpyc: warning(/copies Point | None into field/)
-    this->value = tpy::ptr_to_optional(p);
-    // 42:         self.value = copy(p)      # tpyc: ok
-    this->value = tpy::ptr_to_optional(p);
-  }
+    // 40:     def set_value(self, p: Point | None) -> None:
+    void set_value(Point* p) {
+        // 41:         self.value = p            # tpyc: warning(/copies Point | None into field/)
+        this->value = tpy::ptr_to_optional(p);
+        // 42:         self.value = copy(p)      # tpyc: ok
+        this->value = tpy::ptr_to_optional(p);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
-  os << "OptHolder("
-     << "value=" << tpy::print_optional_val(obj.value)
-     << ")";
-  return os;
+    os << "OptHolder("
+       << "value=" << tpy::print_optional_val(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

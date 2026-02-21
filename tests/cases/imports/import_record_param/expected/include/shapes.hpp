@@ -11,19 +11,19 @@ extern std::string_view __name__;
 
 // 5: class Circle:
 struct Circle {
-  // 6:     radius: Int32
-  int32_t radius;
+    // 6:     radius: Int32
+    int32_t radius;
 
-  // 8:     def __init__(self, radius: Int32) -> None:
-  Circle() = default;
-  explicit Circle(int32_t radius) : radius(radius) {}
+    // 8:     def __init__(self, radius: Int32) -> None:
+    Circle() = default;
+    explicit Circle(int32_t radius) : radius(radius) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "radius=" << obj.radius
-     << ")";
-  return os;
+    os << "Circle("
+       << "radius=" << obj.radius
+       << ")";
+    return os;
 }
 
 void __tpy_init();

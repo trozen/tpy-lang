@@ -16,19 +16,19 @@ extern std::vector<int32_t>* items;
 // # User class inheriting from StaticList
 // 9: class MyList(StaticList[Int32, 10]):
 struct MyList : StaticList<int32_t, 10> {
-  // 10:     name: str
-  std::string_view name;
+    // 10:     name: str
+    std::string_view name;
 
-  // 12:     def __init__(self, name: str) -> None:
-  MyList() = default;
-  explicit MyList(std::string_view name) : name(name) {}
+    // 12:     def __init__(self, name: str) -> None:
+    MyList() = default;
+    explicit MyList(std::string_view name) : name(name) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
-  os << "MyList("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "MyList("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

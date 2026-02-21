@@ -7,48 +7,48 @@ std::string_view __name__;
 
 // 13: def main() -> None:
 void main() {
-  // 14:     s1 = Stack(Int32(3))
-  Stack s1 = Stack(3);
-  // 15:     s2 = Stack(Int32(0))
-  Stack s2 = Stack(0);
-  // 17:     # bool() with __len__ fallback
-  // 18:     print(bool(s1))  # True
-  std::cout << tpy::print_bool((tpy::__len__(s1) != 0)) << "\n";
-  // 19:     print(bool(s2))  # False
-  std::cout << tpy::print_bool((tpy::__len__(s2) != 0)) << "\n";
-  // 21:     # if with __len__ fallback
-  // 22:     if s1:
-  if ((tpy::__len__(s1) != 0)) {
-    // 23:         print("s1 truthy")
-    std::cout << "s1 truthy" << "\n";
-  }
-  // 24:     if s2:
-  if ((tpy::__len__(s2) != 0)) {
-    // 25:         print("s2 truthy")
-    std::cout << "s2 truthy" << "\n";
-  }
-  // 27:     # not with __len__ fallback
-  // 28:     if not s2:
-  if ((!((tpy::__len__(s2) != 0)))) {
-    // 29:         print("s2 falsy")
-    std::cout << "s2 falsy" << "\n";
-  }
+    // 14:     s1 = Stack(Int32(3))
+    Stack s1 = Stack(3);
+    // 15:     s2 = Stack(Int32(0))
+    Stack s2 = Stack(0);
+    // 17:     # bool() with __len__ fallback
+    // 18:     print(bool(s1))  # True
+    std::cout << tpy::print_bool((tpy::__len__(s1) != 0)) << "\n";
+    // 19:     print(bool(s2))  # False
+    std::cout << tpy::print_bool((tpy::__len__(s2) != 0)) << "\n";
+    // 21:     # if with __len__ fallback
+    // 22:     if s1:
+    if ((tpy::__len__(s1) != 0)) {
+        // 23:         print("s1 truthy")
+        std::cout << "s1 truthy" << "\n";
+    }
+    // 24:     if s2:
+    if ((tpy::__len__(s2) != 0)) {
+        // 25:         print("s2 truthy")
+        std::cout << "s2 truthy" << "\n";
+    }
+    // 27:     # not with __len__ fallback
+    // 28:     if not s2:
+    if ((!((tpy::__len__(s2) != 0)))) {
+        // 29:         print("s2 falsy")
+        std::cout << "s2 falsy" << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 31: main()
-  main();
+    __name__ = "__main__";
+    // 31: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

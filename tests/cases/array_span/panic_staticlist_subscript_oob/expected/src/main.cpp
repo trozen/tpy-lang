@@ -9,35 +9,35 @@ std::string_view __name__;
 // # (uses get_value() internally)
 // 6: def test_subscript_oob() -> None:
 void test_subscript_oob() {
-  // 7:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
-  StaticList<int32_t, 5> items = StaticList<int32_t, 5>();
-  // 8:     items.append(10)
-  items.push_back(10);
-  // 9:     items.append(20)
-  items.push_back(20);
-  // 10:     items.append(30)
-  items.push_back(30);
-  // 12:     # Access index 10 via subscript - out of bounds (only 3 elements)
-  // 13:     x: Int32 = items[10]
-  int32_t x = tpy::get_item(items, 10);
-  // 14:     print(x)
-  std::cout << x << "\n";
+    // 7:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
+    StaticList<int32_t, 5> items = StaticList<int32_t, 5>();
+    // 8:     items.append(10)
+    items.push_back(10);
+    // 9:     items.append(20)
+    items.push_back(20);
+    // 10:     items.append(30)
+    items.push_back(30);
+    // 12:     # Access index 10 via subscript - out of bounds (only 3 elements)
+    // 13:     x: Int32 = items[10]
+    int32_t x = tpy::get_item(items, 10);
+    // 14:     print(x)
+    std::cout << x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 16: test_subscript_oob()
-  test_subscript_oob();
+    __name__ = "__main__";
+    // 16: test_subscript_oob()
+    test_subscript_oob();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

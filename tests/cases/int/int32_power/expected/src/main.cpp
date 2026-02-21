@@ -18,43 +18,43 @@ int32_t z{};
 int32_t n{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test Int32 power operator."""
-  // 4: # Basic power
-  // 5: x: Int32 = 2
-  x = 2;
-  // 6: print(x ** 10)  # 1024
-  std::cout << (tpy::pow_check<int32_t>(x, 10)) << "\n";
-  // 8: # Power with literal exponent
-  // 9: y: Int32 = 3
-  y = 3;
-  // 10: print(y ** 4)   # 81
-  std::cout << (tpy::pow_check<int32_t>(y, 4)) << "\n";
-  // 12: # Power of 0
-  // 13: z: Int32 = 5
-  z = 5;
-  // 14: print(z ** 0)   # 1
-  std::cout << (tpy::pow_check<int32_t>(z, 0)) << "\n";
-  // 16: # Power of 1
-  // 17: print(x ** 1)   # 2
-  std::cout << (tpy::pow_check<int32_t>(x, 1)) << "\n";
-  // 19: # Negative base
-  // 20: n: Int32 = -2
-  n = -2;
-  // 21: print(n ** 3)   # -8
-  std::cout << (tpy::pow_check<int32_t>(n, 3)) << "\n";
-  // 22: print(n ** 4)   # 16
-  std::cout << (tpy::pow_check<int32_t>(n, 4)) << "\n";
+    __name__ = "__main__";
+    // 1: """Test Int32 power operator."""
+    // 4: # Basic power
+    // 5: x: Int32 = 2
+    x = 2;
+    // 6: print(x ** 10)  # 1024
+    std::cout << (tpy::pow_check<int32_t>(x, 10)) << "\n";
+    // 8: # Power with literal exponent
+    // 9: y: Int32 = 3
+    y = 3;
+    // 10: print(y ** 4)   # 81
+    std::cout << (tpy::pow_check<int32_t>(y, 4)) << "\n";
+    // 12: # Power of 0
+    // 13: z: Int32 = 5
+    z = 5;
+    // 14: print(z ** 0)   # 1
+    std::cout << (tpy::pow_check<int32_t>(z, 0)) << "\n";
+    // 16: # Power of 1
+    // 17: print(x ** 1)   # 2
+    std::cout << (tpy::pow_check<int32_t>(x, 1)) << "\n";
+    // 19: # Negative base
+    // 20: n: Int32 = -2
+    n = -2;
+    // 21: print(n ** 3)   # -8
+    std::cout << (tpy::pow_check<int32_t>(n, 3)) << "\n";
+    // 22: print(n ** 4)   # 16
+    std::cout << (tpy::pow_check<int32_t>(n, 4)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

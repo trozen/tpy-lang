@@ -11,40 +11,40 @@ bool flag{};
 
 // 6: def bump() -> None:
 void bump() {
-  // 7:     global counter
-  // 8:     global flag
-  // 9:     counter = counter + Int32(1)
-  counter = (tpy::add_check<int32_t>(counter, 1));
-  // 10:     flag = True
-  flag = true;
+    // 7:     global counter
+    // 8:     global flag
+    // 9:     counter = counter + Int32(1)
+    counter = (tpy::add_check<int32_t>(counter, 1));
+    // 10:     flag = True
+    flag = true;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: counter: Int32 = 0
-  counter = 0;
-  // 4: flag: bool = False
-  flag = false;
-  // 12: bump()
-  bump();
-  // 13: bump()
-  bump();
-  // 14: bump()
-  bump();
-  // 15: print(counter)
-  std::cout << counter << "\n";
-  // 16: print(flag)
-  std::cout << tpy::print_bool(flag) << "\n";
+    __name__ = "__main__";
+    // 3: counter: Int32 = 0
+    counter = 0;
+    // 4: flag: bool = False
+    flag = false;
+    // 12: bump()
+    bump();
+    // 13: bump()
+    bump();
+    // 14: bump()
+    bump();
+    // 15: print(counter)
+    std::cout << counter << "\n";
+    // 16: print(flag)
+    std::cout << tpy::print_bool(flag) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -9,29 +9,29 @@ std::string_view __name__;
 // # (uses tpy::get_value() internally)
 // 6: def test_list_subscript_oob() -> None:
 void test_list_subscript_oob() {
-  // 7:     nums: list[Int32] = [1, 2, 3]
-  std::vector<int32_t> nums = {1, 2, 3};
-  // 9:     # Access index 10 via subscript - out of bounds (only 3 elements)
-  // 10:     x: Int32 = nums[10]
-  int32_t x = tpy::get_item(nums, 10);
-  // 11:     print(x)
-  std::cout << x << "\n";
+    // 7:     nums: list[Int32] = [1, 2, 3]
+    std::vector<int32_t> nums = {1, 2, 3};
+    // 9:     # Access index 10 via subscript - out of bounds (only 3 elements)
+    // 10:     x: Int32 = nums[10]
+    int32_t x = tpy::get_item(nums, 10);
+    // 11:     print(x)
+    std::cout << x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: test_list_subscript_oob()
-  test_list_subscript_oob();
+    __name__ = "__main__";
+    // 13: test_list_subscript_oob()
+    test_list_subscript_oob();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

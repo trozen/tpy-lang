@@ -14,25 +14,25 @@ void main();
 // # Test implicit truthiness via __bool__() in if/while/not/and/or
 // 3: class Container:
 struct Container {
-  // 4:     count: int
-  tpy::BigInt count;
+    // 4:     count: int
+    tpy::BigInt count;
 
-  // 6:     def __init__(self, count: int) -> None:
-  Container() = default;
-  explicit Container(const tpy::BigInt& count) : count(count) {}
+    // 6:     def __init__(self, count: int) -> None:
+    Container() = default;
+    explicit Container(const tpy::BigInt& count) : count(count) {}
 
-  // 9:     def __bool__(self) -> bool:
-  bool __bool__() const {
-    // 10:         return self.count != 0
-    return (this->count != 0);
-  }
+    // 9:     def __bool__(self) -> bool:
+    bool __bool__() const {
+        // 10:         return self.count != 0
+        return (this->count != 0);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-  os << "Container("
-     << "count=" << obj.count
-     << ")";
-  return os;
+    os << "Container("
+       << "count=" << obj.count
+       << ")";
+    return os;
 }
 
 void __tpy_init();

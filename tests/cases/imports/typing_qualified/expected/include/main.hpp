@@ -22,32 +22,32 @@ void main();
 
 // 13: class Wrapper:
 struct Wrapper {
-  // 14:     val: Int32
-  int32_t val;
+    // 14:     val: Int32
+    int32_t val;
 
-  // 15:     def __init__(self, v: Int32):
-  Wrapper() = default;
-  explicit Wrapper(int32_t v) : val(v) {}
+    // 15:     def __init__(self, v: Int32):
+    Wrapper() = default;
+    explicit Wrapper(int32_t v) : val(v) {}
 
-  // 17:     def get_val(self) -> Int32:
-  int32_t get_val() {
-    // 18:         return self.val
-    return this->val;
-  }
+    // 17:     def get_val(self) -> Int32:
+    int32_t get_val() {
+        // 18:         return self.val
+        return this->val;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-  os << "Wrapper("
-     << "val=" << obj.val
-     << ")";
-  return os;
+    os << "Wrapper("
+       << "val=" << obj.val
+       << ")";
+    return os;
 }
 
 // 20: def show(item: Printable) -> None:
 template<Printable T_item>
 void show(T_item& item) {
-  // 21:     print(item.get_val())
-  std::cout << item.get_val() << "\n";
+    // 21:     print(item.get_val())
+    std::cout << item.get_val() << "\n";
 }
 
 void __tpy_init();

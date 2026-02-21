@@ -7,43 +7,43 @@ std::string_view __name__;
 
 // 32: def main() -> None:
 void main() {
-  // 33:     # Test 1: Constructor call (rvalue)
-  // 34:     show(IntBox(42))
-  auto __tmp_1 = IntBox(42);
-  show(__tmp_1);
-  // 44:     # Test 4: Record subscript (rvalue - __getitem__ returns by value)
-  // 45:     container = BoxContainer()
-  BoxContainer container = BoxContainer();
-  // 46:     show(container[1])  # Should create temp for subscript result
-  auto __tmp_2 = container[1];
-  show(__tmp_2);
-  // 48:     # Test 5: Multiple temps in one call sequence
-  // 49:     show(IntBox(100))
-  auto __tmp_3 = IntBox(100);
-  show(__tmp_3);
-  // 50:     show(container[0])
-  auto __tmp_4 = container[0];
-  show(__tmp_4);
-  // 51:     show(container[2])
-  auto __tmp_5 = container[2];
-  show(__tmp_5);
+    // 33:     # Test 1: Constructor call (rvalue)
+    // 34:     show(IntBox(42))
+    auto __tmp_1 = IntBox(42);
+    show(__tmp_1);
+    // 44:     # Test 4: Record subscript (rvalue - __getitem__ returns by value)
+    // 45:     container = BoxContainer()
+    BoxContainer container = BoxContainer();
+    // 46:     show(container[1])  # Should create temp for subscript result
+    auto __tmp_2 = container[1];
+    show(__tmp_2);
+    // 48:     # Test 5: Multiple temps in one call sequence
+    // 49:     show(IntBox(100))
+    auto __tmp_3 = IntBox(100);
+    show(__tmp_3);
+    // 50:     show(container[0])
+    auto __tmp_4 = container[0];
+    show(__tmp_4);
+    // 51:     show(container[2])
+    auto __tmp_5 = container[2];
+    show(__tmp_5);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test rvalue expressions passed to protocol-typed parameters.
-  // 53: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Test rvalue expressions passed to protocol-typed parameters.
+    // 53: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

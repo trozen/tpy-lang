@@ -7,31 +7,31 @@ std::string_view __name__;
 
 // 20: def main() -> None:
 void main() {
-  // 21:     v = Value(21)
-  Value v = Value(21);
-  // 22:     double_it(v)
-  double_it(v);
-  // 24:     # Direct call to verify it works
-  // 25:     v2 = v.duplicate()
-  Value v2 = v.duplicate();
-  // 26:     print(v2.x)
-  std::cout << v2.x << "\n";
+    // 21:     v = Value(21)
+    Value v = Value(21);
+    // 22:     double_it(v)
+    double_it(v);
+    // 24:     # Direct call to verify it works
+    // 25:     v2 = v.duplicate()
+    Value v2 = v.duplicate();
+    // 26:     print(v2.x)
+    std::cout << v2.x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: main()
-  main();
+    __name__ = "__main__";
+    // 28: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

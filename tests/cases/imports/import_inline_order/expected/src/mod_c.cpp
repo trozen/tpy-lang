@@ -8,15 +8,15 @@ std::string_view __name__;
 int32_t shared_value{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "mod_c";
-  // 3: print("mod_c init")
-  std::cout << "mod_c init" << "\n";
-  // 5: shared_value: Int32 = Int32(42)
-  shared_value = 42;
+    __name__ = "mod_c";
+    // 3: print("mod_c init")
+    std::cout << "mod_c init" << "\n";
+    // 5: shared_value: Int32 = Int32(42)
+    shared_value = 42;
 }
 
 } // namespace tpy_user::mod_c

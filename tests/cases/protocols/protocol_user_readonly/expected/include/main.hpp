@@ -21,33 +21,33 @@ int32_t use_readable(T_r& r);
 
 // 13: class GoodReader:
 struct GoodReader {
-  // 14:     value: Int32
-  int32_t value;
+    // 14:     value: Int32
+    int32_t value;
 
-  // 16:     def __init__(self, value: Int32) -> None:
-  GoodReader() = default;
-  explicit GoodReader(int32_t value) : value(value) {}
+    // 16:     def __init__(self, value: Int32) -> None:
+    GoodReader() = default;
+    explicit GoodReader(int32_t value) : value(value) {}
 
-  //     @readonly
-  // 20:     def read(self) -> Int32:
-  int32_t read() const {
-    // 21:         return self.value
-    return this->value;
-  }
+    //     @readonly
+    // 20:     def read(self) -> Int32:
+    int32_t read() const {
+        // 21:         return self.value
+        return this->value;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
-  os << "GoodReader("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "GoodReader("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 24: def use_readable(r: Readable) -> Int32:
 template<Readable T_r>
 int32_t use_readable(T_r& r) {
-  // 25:     return r.read()
-  return r.read();
+    // 25:     return r.read()
+    return r.read();
 }
 
 void __tpy_init();

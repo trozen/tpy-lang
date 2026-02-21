@@ -7,37 +7,37 @@ std::string_view __name__;
 
 // 53: def main() -> None:
 void main() {
-  // 54:     # Test with IntBox
-  // 55:     box = IntBox(42)
-  IntBox box = IntBox(42);
-  // 56:     print(extract(box))
-  std::cout << extract<IntBox>(box) << "\n";
-  // 58:     update(box, 100)
-  update<IntBox>(box, 100);
-  // 59:     print(extract(box))
-  std::cout << extract<IntBox>(box) << "\n";
-  // 61:     # Test with StrBox
-  // 62:     sbox = StrBox("hello")
-  StrBox sbox = StrBox("hello");
-  // 63:     print(extract_str(sbox))
-  std::cout << extract_str<StrBox>(sbox) << "\n";
+    // 54:     # Test with IntBox
+    // 55:     box = IntBox(42)
+    IntBox box = IntBox(42);
+    // 56:     print(extract(box))
+    std::cout << extract<IntBox>(box) << "\n";
+    // 58:     update(box, 100)
+    update<IntBox>(box, 100);
+    // 59:     print(extract(box))
+    std::cout << extract<IntBox>(box) << "\n";
+    // 61:     # Test with StrBox
+    // 62:     sbox = StrBox("hello")
+    StrBox sbox = StrBox("hello");
+    // 63:     print(extract_str(sbox))
+    std::cout << extract_str<StrBox>(sbox) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test generic user-defined protocol as type parameter bound.
-  // 66: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Test generic user-defined protocol as type parameter bound.
+    // 66: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

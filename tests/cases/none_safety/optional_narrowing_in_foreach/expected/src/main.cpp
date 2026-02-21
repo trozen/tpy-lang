@@ -7,64 +7,64 @@ std::string_view __name__;
 
 // 4: def sum_items(items: list[Int32], bonus: Int32 | None) -> Int32:
 int32_t sum_items(std::vector<int32_t>& items, std::optional<int32_t> bonus) {
-  // 5:     total: Int32 = 0
-  int32_t total = 0;
-  // 6:     if bonus is not None:
-  if ((bonus.has_value())) {
-    // 7:         # bonus narrowed to Int32 here
-    // 8:         for item in items:
-    for (int32_t item : items) {
-      // 9:             total = total + item + bonus
-      total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*bonus)));
+    // 5:     total: Int32 = 0
+    int32_t total = 0;
+    // 6:     if bonus is not None:
+    if ((bonus.has_value())) {
+        // 7:         # bonus narrowed to Int32 here
+        // 8:         for item in items:
+        for (int32_t item : items) {
+            // 9:             total = total + item + bonus
+            total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*bonus)));
+        }
+        // 10:         return total
+        return total;
     }
-    // 10:         return total
+    // 11:     for item in items:
+    for (int32_t item : items) {
+        // 12:         total = total + item
+        total = (tpy::add_check<int32_t>(total, item));
+    }
+    // 13:     return total
     return total;
-  }
-  // 11:     for item in items:
-  for (int32_t item : items) {
-    // 12:         total = total + item
-    total = (tpy::add_check<int32_t>(total, item));
-  }
-  // 13:     return total
-  return total;
 }
 
 // 18: def assert_then_loop(x: Int32 | None, items: list[Int32]) -> Int32:
 int32_t assert_then_loop(std::optional<int32_t> x, std::vector<int32_t>& items) {
-  // 19:     assert x is not None
-  if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-  // 20:     total: Int32 = 0
-  int32_t total = 0;
-  // 21:     for item in items:
-  for (int32_t item : items) {
-    // 22:         total = total + item + x
-    total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*x)));
-  }
-  // 23:     return total
-  return total;
+    // 19:     assert x is not None
+    if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
+    // 20:     total: Int32 = 0
+    int32_t total = 0;
+    // 21:     for item in items:
+    for (int32_t item : items) {
+        // 22:         total = total + item + x
+        total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*x)));
+    }
+    // 23:     return total
+    return total;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 15: print(sum_items([1, 2, 3], 10))
-  std::vector<int32_t> __tmp_1 = {1, 2, 3};
-  std::cout << sum_items(__tmp_1, 10) << "\n";
-  // 16: print(sum_items([1, 2, 3], None))
-  std::vector<int32_t> __tmp_2 = {1, 2, 3};
-  std::cout << sum_items(__tmp_2, std::nullopt) << "\n";
-  // 25: print(assert_then_loop(5, [1, 2, 3]))
-  std::vector<int32_t> __tmp_3 = {1, 2, 3};
-  std::cout << assert_then_loop(5, __tmp_3) << "\n";
+    __name__ = "__main__";
+    // 15: print(sum_items([1, 2, 3], 10))
+    std::vector<int32_t> __tmp_1 = {1, 2, 3};
+    std::cout << sum_items(__tmp_1, 10) << "\n";
+    // 16: print(sum_items([1, 2, 3], None))
+    std::vector<int32_t> __tmp_2 = {1, 2, 3};
+    std::cout << sum_items(__tmp_2, std::nullopt) << "\n";
+    // 25: print(assert_then_loop(5, [1, 2, 3]))
+    std::vector<int32_t> __tmp_3 = {1, 2, 3};
+    std::cout << assert_then_loop(5, __tmp_3) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

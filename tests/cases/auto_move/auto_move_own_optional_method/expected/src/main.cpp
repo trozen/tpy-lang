@@ -7,36 +7,36 @@ std::string_view __name__;
 
 // 20: def main():
 void main() {
-  // 21:     c = Container()
-  Container c = Container();
-  // 22:     c.val = Int32(-1)
-  c.val = -1;
-  // 23:     p = Point()
-  Point p = Point();
-  // 24:     p.x = Int32(3)
-  p.x = 3;
-  // 25:     p.y = Int32(4)
-  p.y = 4;
-  // 26:     c.take(p)
-  c.take(std::move(p));
-  // 27:     print(c.val)
-  std::cout << c.val << "\n";
+    // 21:     c = Container()
+    Container c = Container();
+    // 22:     c.val = Int32(-1)
+    c.val = -1;
+    // 23:     p = Point()
+    Point p = Point();
+    // 24:     p.x = Int32(3)
+    p.x = 3;
+    // 25:     p.y = Int32(4)
+    p.y = 4;
+    // 26:     c.take(p)
+    c.take(std::move(p));
+    // 27:     print(c.val)
+    std::cout << c.val << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 30: main()
-  main();
+    __name__ = "__main__";
+    // 30: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

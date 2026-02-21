@@ -15,24 +15,24 @@ extern Same<int32_t>* same2;
 // 5: class Same[T]:
 template<typename T>
 struct Same {
-  // 6:     a: T
-  T a;
-  // 7:     b: T
-  T b;
+    // 6:     a: T
+    T a;
+    // 7:     b: T
+    T b;
 
-  // 9:     def __init__(self, a: T, b: T) -> None:
-  Same() = default;
-  explicit Same(const T& a, const T& b) : a(a), b(b) {}
+    // 9:     def __init__(self, a: T, b: T) -> None:
+    Same() = default;
+    explicit Same(const T& a, const T& b) : a(a), b(b) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Same<T>& obj) {
-  os << "Same("
-     << "a=" << tpy::ValuePrinter(obj.a)
-     << ", "
-     << "b=" << tpy::ValuePrinter(obj.b)
-     << ")";
-  return os;
+    os << "Same("
+       << "a=" << tpy::ValuePrinter(obj.a)
+       << ", "
+       << "b=" << tpy::ValuePrinter(obj.b)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

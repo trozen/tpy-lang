@@ -13,8 +13,8 @@ tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
 // 3: def identity[T](x: T) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
-  // 4:     return x
-  return x;
+    // 4:     return x
+    return x;
 }
 
 void __tpy_init();

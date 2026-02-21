@@ -7,38 +7,38 @@ std::string_view __name__;
 
 // 23: def main() -> None:
 void main() {
-  // 24:     p1: Point = Point(10, 20)
-  Point p1 = Point(10, 20);
-  // 25:     p2: Point = Point(30, 40)
-  Point p2 = Point(30, 40);
-  // 26:     pts: list[Point] = [p1, p2]
-  std::vector<Point> pts = {p1, p2};
-  // 28:     plist: PointList = PointList(pts)
-  PointList plist = PointList(pts);
-  // 30:     # Access via __getitem__ (returns const Point& in C++)
-  // 31:     print(plist[0].x)   # 10
-  std::cout << plist[0].x << "\n";
-  // 32:     print(plist[1].y)   # 40
-  std::cout << plist[1].y << "\n";
-  // 34:     # Access via operator[] (also returns const Point&)
-  // 35:     print(plist[-1].x)  # 30
-  std::cout << plist[static_cast<int32_t>(tpy::__len__(plist) - 1)].x << "\n";
+    // 24:     p1: Point = Point(10, 20)
+    Point p1 = Point(10, 20);
+    // 25:     p2: Point = Point(30, 40)
+    Point p2 = Point(30, 40);
+    // 26:     pts: list[Point] = [p1, p2]
+    std::vector<Point> pts = {p1, p2};
+    // 28:     plist: PointList = PointList(pts)
+    PointList plist = PointList(pts);
+    // 30:     # Access via __getitem__ (returns const Point& in C++)
+    // 31:     print(plist[0].x)   # 10
+    std::cout << plist[0].x << "\n";
+    // 32:     print(plist[1].y)   # 40
+    std::cout << plist[1].y << "\n";
+    // 34:     # Access via operator[] (also returns const Point&)
+    // 35:     print(plist[-1].x)  # 30
+    std::cout << plist[static_cast<int32_t>(tpy::__len__(plist) - 1)].x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 37: main()
-  main();
+    __name__ = "__main__";
+    // 37: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

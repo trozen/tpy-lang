@@ -43,26 +43,26 @@ void main();
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 11:     def make_noise(self) -> str:
-  std::string_view make_noise() override {
-    // 12:         return "Woof"
-    return "Woof";
-  }
+    // 11:     def make_noise(self) -> str:
+    std::string_view make_noise() override {
+        // 12:         return "Woof"
+        return "Woof";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 // 14: def speak[T: Pet](animal: T) -> None:
 template<Pet T>
 void speak(tpy::param_val_or_ref_t<T> animal) {
-  // 15:     print(animal.make_noise())
-  std::cout << animal.make_noise() << "\n";
+    // 15:     print(animal.make_noise())
+    std::cout << animal.make_noise() << "\n";
 }
 
 void __tpy_init();

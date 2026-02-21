@@ -12,55 +12,55 @@ int32_t x{};
 const int32_t* cp{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 5: p: Ptr[Int32] = None  # tpyc: ok
-  p = nullptr;
-  // 6: print(p is None)
-  std::cout << tpy::print_bool((p == nullptr)) << "\n";
-  // 8: x: Int32 = Int32(7)
-  x = 7;
-  // 9: p = Ptr(x)
-  p = &x;
-  // 10: print(p is None)
-  std::cout << tpy::print_bool((p == nullptr)) << "\n";
-  // 11: print(p is not None)
-  std::cout << tpy::print_bool((p != nullptr)) << "\n";
-  // 13: p = None  # tpyc: ok
-  p = nullptr;
-  // 14: print(p is None)
-  std::cout << tpy::print_bool((p == nullptr)) << "\n";
-  // 16: cp: ConstPtr[Int32] = None  # tpyc: ok
-  cp = nullptr;
-  // 17: print(cp is None)
-  std::cout << tpy::print_bool((cp == nullptr)) << "\n";
-  // 18: cp = ConstPtr(x)
-  cp = &x;
-  // 19: print(cp is None)
-  std::cout << tpy::print_bool((cp == nullptr)) << "\n";
-  // 20: print(cp is not None)
-  std::cout << tpy::print_bool((cp != nullptr)) << "\n";
-  // 21: cp = None  # tpyc: ok
-  cp = nullptr;
-  // 22: print(cp is None)
-  std::cout << tpy::print_bool((cp == nullptr)) << "\n";
-  // 24: if p is not None:
-  if ((p != nullptr)) {
-    // 25:     print(p.__deref__())
-    std::cout << tpy::deref_check(p) << "\n";
-  } else {
-    // 27:     print(Int32(0))
-    std::cout << 0 << "\n";
-  }
+    __name__ = "__main__";
+    // 5: p: Ptr[Int32] = None  # tpyc: ok
+    p = nullptr;
+    // 6: print(p is None)
+    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    // 8: x: Int32 = Int32(7)
+    x = 7;
+    // 9: p = Ptr(x)
+    p = &x;
+    // 10: print(p is None)
+    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    // 11: print(p is not None)
+    std::cout << tpy::print_bool((p != nullptr)) << "\n";
+    // 13: p = None  # tpyc: ok
+    p = nullptr;
+    // 14: print(p is None)
+    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    // 16: cp: ConstPtr[Int32] = None  # tpyc: ok
+    cp = nullptr;
+    // 17: print(cp is None)
+    std::cout << tpy::print_bool((cp == nullptr)) << "\n";
+    // 18: cp = ConstPtr(x)
+    cp = &x;
+    // 19: print(cp is None)
+    std::cout << tpy::print_bool((cp == nullptr)) << "\n";
+    // 20: print(cp is not None)
+    std::cout << tpy::print_bool((cp != nullptr)) << "\n";
+    // 21: cp = None  # tpyc: ok
+    cp = nullptr;
+    // 22: print(cp is None)
+    std::cout << tpy::print_bool((cp == nullptr)) << "\n";
+    // 24: if p is not None:
+    if ((p != nullptr)) {
+        // 25:     print(p.__deref__())
+        std::cout << tpy::deref_check(p) << "\n";
+    } else {
+        // 27:     print(Int32(0))
+        std::cout << 0 << "\n";
+    }
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

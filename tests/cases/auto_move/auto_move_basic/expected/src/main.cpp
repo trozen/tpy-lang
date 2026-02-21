@@ -7,39 +7,39 @@ std::string_view __name__;
 
 // 11: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 12:     return p.x + p.y
-  return (tpy::add_check<int32_t>(p.x, p.y));
+    // 12:     return p.x + p.y
+    return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 15: def main():
 void main() {
-  // 16:     p = Point()
-  Point p = Point();
-  // 17:     p.x = 10
-  p.x = 10;
-  // 18:     p.y = 32
-  p.y = 32;
-  // 19:     # p is at last use here -- auto-move, no copy() needed
-  // 20:     result = consume(p)
-  int32_t result = consume(std::move(p));
-  // 21:     print(result)
-  std::cout << result << "\n";
+    // 16:     p = Point()
+    Point p = Point();
+    // 17:     p.x = 10
+    p.x = 10;
+    // 18:     p.y = 32
+    p.y = 32;
+    // 19:     # p is at last use here -- auto-move, no copy() needed
+    // 20:     result = consume(p)
+    int32_t result = consume(std::move(p));
+    // 21:     print(result)
+    std::cout << result << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 24: main()
-  main();
+    __name__ = "__main__";
+    // 24: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

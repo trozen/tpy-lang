@@ -9,42 +9,42 @@ std::string_view __name__;
 Counter* c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: # First loop consumes the iterator
-  // 23: c = Counter(3)
-  static Counter __global_slot_1 = Counter(3);
-  c = &__global_slot_1;
-  // 24: print("first:")
-  std::cout << "first:" << "\n";
-  // 25: for x in c:
-  auto& __iter_0 = (*c);
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 26:     print(x)
-    std::cout << x << "\n";
-  }
-  // 28: # Second loop over same iterator should produce nothing
-  // 29: print("second:")
-  std::cout << "second:" << "\n";
-  // 30: for x in c:
-  auto& __iter_1 = (*c);
-  while (auto __opt_1 = __iter_1.__next_opt__()) {
-    int32_t x = *__opt_1;
-    // 31:     print(x)
-    std::cout << x << "\n";
-  }
-  // 33: print("done")
-  std::cout << "done" << "\n";
+    __name__ = "__main__";
+    // 22: # First loop consumes the iterator
+    // 23: c = Counter(3)
+    static Counter __global_slot_1 = Counter(3);
+    c = &__global_slot_1;
+    // 24: print("first:")
+    std::cout << "first:" << "\n";
+    // 25: for x in c:
+    auto& __iter_0 = (*c);
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 26:     print(x)
+        std::cout << x << "\n";
+    }
+    // 28: # Second loop over same iterator should produce nothing
+    // 29: print("second:")
+    std::cout << "second:" << "\n";
+    // 30: for x in c:
+    auto& __iter_1 = (*c);
+    while (auto __opt_1 = __iter_1.__next_opt__()) {
+        int32_t x = *__opt_1;
+        // 31:     print(x)
+        std::cout << x << "\n";
+    }
+    // 33: print("done")
+    std::cout << "done" << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

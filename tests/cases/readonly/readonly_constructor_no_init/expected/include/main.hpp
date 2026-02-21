@@ -14,17 +14,17 @@ tpy::BigInt ok();
 // 4: class Logger:
 struct Logger {
 
-  //     @readonly(False)
-  // 6:     def __init__(self) -> None:
-  Logger() {
-    // 7:         pass
-  }
+    //     @readonly(False)
+    // 6:     def __init__(self) -> None:
+    Logger() {
+        // 7:         pass
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Logger& obj) {
-  os << "Logger("
-     << ")";
-  return os;
+    os << "Logger("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

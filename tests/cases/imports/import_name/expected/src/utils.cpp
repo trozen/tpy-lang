@@ -7,16 +7,16 @@ std::string_view __name__;
 
 // 1: def get_name() -> str:
 std::string_view get_name() {
-  // 2:     return __name__
-  return __name__;
+    // 2:     return __name__
+    return __name__;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "utils";
+    __name__ = "utils";
 }
 
 } // namespace tpy_user::utils

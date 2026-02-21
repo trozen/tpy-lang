@@ -7,36 +7,36 @@ std::string_view __name__;
 
 // 4: def body_renarrow(flag: bool, x: Int32 | None) -> Int32:
 int32_t body_renarrow(bool flag, std::optional<int32_t> x) {
-  // 5:     while flag:
-  while (flag) {
-    // 6:         if x is not None:
-    if ((x.has_value())) {
-      // 7:             return x + 1  # tpyc: ok
-      return (tpy::add_check<int32_t>((*x), 1));
+    // 5:     while flag:
+    while (flag) {
+        // 6:         if x is not None:
+        if ((x.has_value())) {
+            // 7:             return x + 1  # tpyc: ok
+            return (tpy::add_check<int32_t>((*x), 1));
+        }
+        // 8:         flag = False
+        flag = false;
     }
-    // 8:         flag = False
-    flag = false;
-  }
-  // 9:     return 0
-  return 0;
+    // 9:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 12: print(body_renarrow(True, 8))
-  std::cout << body_renarrow(true, 8) << "\n";
-  // 13: print(body_renarrow(True, None))
-  std::cout << body_renarrow(true, std::nullopt) << "\n";
+    __name__ = "__main__";
+    // 12: print(body_renarrow(True, 8))
+    std::cout << body_renarrow(true, 8) << "\n";
+    // 13: print(body_renarrow(True, None))
+    std::cout << body_renarrow(true, std::nullopt) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

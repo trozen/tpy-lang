@@ -26,62 +26,62 @@ void main();
 // 5: class SortedPair[T: Comparable]:
 template<tpy::Comparable T>
 struct SortedPair {
-  // 6:     first: T
-  T first;
-  // 7:     second: T
-  T second;
+    // 6:     first: T
+    T first;
+    // 7:     second: T
+    T second;
 
-  // 9:     def __init__(self, a: T, b: T) -> None:
-  SortedPair() = default;
-  explicit SortedPair(const T& a, const T& b) {
-    // 10:         if a < b:
-    if ((a < b)) {
-      // 11:             self.first = a
-      this->first = a;
-      // 12:             self.second = b
-      this->second = b;
-    } else {
-      // 14:             self.first = b
-      this->first = b;
-      // 15:             self.second = a
-      this->second = a;
+    // 9:     def __init__(self, a: T, b: T) -> None:
+    SortedPair() = default;
+    explicit SortedPair(const T& a, const T& b) {
+        // 10:         if a < b:
+        if ((a < b)) {
+            // 11:             self.first = a
+            this->first = a;
+            // 12:             self.second = b
+            this->second = b;
+        } else {
+            // 14:             self.first = b
+            this->first = b;
+            // 15:             self.second = a
+            this->second = a;
+        }
     }
-  }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const SortedPair<T>& obj) {
-  os << "SortedPair("
-     << "first=" << tpy::ValuePrinter(obj.first)
-     << ", "
-     << "second=" << tpy::ValuePrinter(obj.second)
-     << ")";
-  return os;
+    os << "SortedPair("
+       << "first=" << tpy::ValuePrinter(obj.first)
+       << ", "
+       << "second=" << tpy::ValuePrinter(obj.second)
+       << ")";
+    return os;
 }
 
 // 21: class DefaultPairFactory:
 struct DefaultPairFactory {
 
-  DefaultPairFactory() = default;
+    DefaultPairFactory() = default;
 
-  // 22:     def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
-  SortedPair<int32_t> make_pair(int32_t a, int32_t b) {
-    // 23:         return SortedPair[Int32](a, b)
-    return SortedPair<int32_t>(a, b);
-  }
+    // 22:     def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
+    SortedPair<int32_t> make_pair(int32_t a, int32_t b) {
+        // 23:         return SortedPair[Int32](a, b)
+        return SortedPair<int32_t>(a, b);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultPairFactory& obj) {
-  os << "DefaultPairFactory("
-     << ")";
-  return os;
+    os << "DefaultPairFactory("
+       << ")";
+    return os;
 }
 
 // 25: def create_pair[T: PairFactory](factory: T, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
 template<PairFactory T>
 SortedPair<int32_t> create_pair(tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b) {
-  // 26:     return factory.make_pair(a, b)
-  return factory.make_pair(a, b);
+    // 26:     return factory.make_pair(a, b)
+    return factory.make_pair(a, b);
 }
 
 void __tpy_init();

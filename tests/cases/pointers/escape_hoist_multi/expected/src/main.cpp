@@ -11,43 +11,43 @@ std::string_view __name__;
 void multi_hoist() {
   std::optional<Point> __slot_3;
   std::optional<Point> __slot_4;
-  // 13:     saved_a: Point = Point(0, 0)
-  Point __slot_1 = Point(0, 0);
-  Point* saved_a = &__slot_1;
-  // 14:     saved_b: Point = Point(0, 0)
-  Point __slot_2 = Point(0, 0);
-  Point* saved_b = &__slot_2;
-  // 15:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
-    // 16:         a: Point = Point(i, 10)
-    Point* a = &*(__slot_3 = Point(i, 10));
-    // 17:         b: Point = Point(20, i)
-    Point* b = &*(__slot_4 = Point(20, i));
-    // 18:         saved_a = a  # tpyc: warning(/hoisted to function scope/)
-    saved_a = a;
-    // 19:         saved_b = b  # tpyc: warning(/hoisted to function scope/)
-    saved_b = b;
-  }
-  // 20:     print(saved_a.x, saved_a.y)
-  std::cout << saved_a->x << " " << saved_a->y << "\n";
-  // 21:     print(saved_b.x, saved_b.y)
-  std::cout << saved_b->x << " " << saved_b->y << "\n";
+    // 13:     saved_a: Point = Point(0, 0)
+    Point __slot_1 = Point(0, 0);
+    Point* saved_a = &__slot_1;
+    // 14:     saved_b: Point = Point(0, 0)
+    Point __slot_2 = Point(0, 0);
+    Point* saved_b = &__slot_2;
+    // 15:     for i in range(3):
+    for (int32_t i = 0; i < 3; ++i) {
+        // 16:         a: Point = Point(i, 10)
+        Point* a = &*(__slot_3 = Point(i, 10));
+        // 17:         b: Point = Point(20, i)
+        Point* b = &*(__slot_4 = Point(20, i));
+        // 18:         saved_a = a  # tpyc: warning(/hoisted to function scope/)
+        saved_a = a;
+        // 19:         saved_b = b  # tpyc: warning(/hoisted to function scope/)
+        saved_b = b;
+    }
+    // 20:     print(saved_a.x, saved_a.y)
+    std::cout << saved_a->x << " " << saved_a->y << "\n";
+    // 21:     print(saved_b.x, saved_b.y)
+    std::cout << saved_b->x << " " << saved_b->y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 23: multi_hoist()
-  multi_hoist();
+    __name__ = "__main__";
+    // 23: multi_hoist()
+    multi_hoist();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -24,6 +24,8 @@ if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
 
 
+INDENT = "    "
+
 _TEMPLATE_PLACEHOLDER = re.compile(r"\{(self|\d+)\}")
 
 
@@ -263,7 +265,7 @@ class CodeGenContext:
 
     def indent(self) -> str:
         """Get current indentation string."""
-        return "  " * self.indent_level
+        return INDENT * self.indent_level
 
     def emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
         """Emit the original Python source line as a comment if enabled."""

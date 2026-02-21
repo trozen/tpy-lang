@@ -7,53 +7,53 @@ std::string_view __name__;
 
 // 27: def main():
 void main() {
-  // 28:     # @nocopy via record method at last use
-  // 29:     holder = Holder()
-  Holder holder = Holder();
-  // 30:     holder.h = Handle()
-  holder.h = Handle();
-  // 31:     h1 = Handle()
-  Handle h1 = Handle();
-  // 32:     h1.fd = 10
-  h1.fd = 10;
-  // 33:     holder.take(h1)  # tpyc: ok
-  holder.take(std::move(h1));
-  // 34:     print(holder.h.fd)
-  std::cout << holder.h.fd << "\n";
-  // 36:     # @nocopy via generic ctor at last use
-  // 37:     h2 = Handle()
-  Handle h2 = Handle();
-  // 38:     h2.fd = 20
-  h2.fd = 20;
-  // 39:     gh = GenericHolder[Handle](h2)  # tpyc: ok
-  GenericHolder<Handle> gh = GenericHolder<Handle>(std::move(h2));
-  // 40:     print(gh.item.fd)
-  std::cout << gh.item.fd << "\n";
-  // 42:     # @nocopy via generic method at last use
-  // 43:     h3 = Handle()
-  Handle h3 = Handle();
-  // 44:     h3.fd = 30
-  h3.fd = 30;
-  // 45:     gh.replace(h3)  # tpyc: ok
-  gh.replace(std::move(h3));
-  // 46:     print(gh.item.fd)
-  std::cout << gh.item.fd << "\n";
+    // 28:     # @nocopy via record method at last use
+    // 29:     holder = Holder()
+    Holder holder = Holder();
+    // 30:     holder.h = Handle()
+    holder.h = Handle();
+    // 31:     h1 = Handle()
+    Handle h1 = Handle();
+    // 32:     h1.fd = 10
+    h1.fd = 10;
+    // 33:     holder.take(h1)  # tpyc: ok
+    holder.take(std::move(h1));
+    // 34:     print(holder.h.fd)
+    std::cout << holder.h.fd << "\n";
+    // 36:     # @nocopy via generic ctor at last use
+    // 37:     h2 = Handle()
+    Handle h2 = Handle();
+    // 38:     h2.fd = 20
+    h2.fd = 20;
+    // 39:     gh = GenericHolder[Handle](h2)  # tpyc: ok
+    GenericHolder<Handle> gh = GenericHolder<Handle>(std::move(h2));
+    // 40:     print(gh.item.fd)
+    std::cout << gh.item.fd << "\n";
+    // 42:     # @nocopy via generic method at last use
+    // 43:     h3 = Handle()
+    Handle h3 = Handle();
+    // 44:     h3.fd = 30
+    h3.fd = 30;
+    // 45:     gh.replace(h3)  # tpyc: ok
+    gh.replace(std::move(h3));
+    // 46:     print(gh.item.fd)
+    std::cout << gh.item.fd << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 49: main()
-  main();
+    __name__ = "__main__";
+    // 49: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

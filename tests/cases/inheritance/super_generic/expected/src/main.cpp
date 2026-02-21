@@ -9,27 +9,27 @@ std::string_view __name__;
 LabeledContainer* lc{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 24: # Test with generic parent
-  // 25: lc = LabeledContainer("count", 42)
-  static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);
-  lc = &__global_slot_1;
-  // 26: print(lc.label)
-  std::cout << lc->label << "\n";
-  // 27: print(lc.get())
-  std::cout << lc->get() << "\n";
-  // 28: print(lc.describe())
-  std::cout << lc->describe() << "\n";
+    __name__ = "__main__";
+    // 24: # Test with generic parent
+    // 25: lc = LabeledContainer("count", 42)
+    static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);
+    lc = &__global_slot_1;
+    // 26: print(lc.label)
+    std::cout << lc->label << "\n";
+    // 27: print(lc.get())
+    std::cout << lc->get() << "\n";
+    // 28: print(lc.describe())
+    std::cout << lc->describe() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

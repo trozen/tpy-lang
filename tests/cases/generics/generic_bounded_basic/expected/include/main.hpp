@@ -14,26 +14,26 @@ void main();
 // 5: class Container[T: Sized]:
 template<tpy::Sized T>
 struct Container {
-  // 6:     item: T
-  T item;
+    // 6:     item: T
+    T item;
 
-  // 8:     def __init__(self, item: T):
-  Container() = default;
-  explicit Container(const T& item) : item(item) {}
+    // 8:     def __init__(self, item: T):
+    Container() = default;
+    explicit Container(const T& item) : item(item) {}
 
-  // 11:     def get_item(self) -> T:
-  tpy::return_val_or_ref_t<T> get_item() {
-    // 12:         return self.item
-    return this->item;
-  }
+    // 11:     def get_item(self) -> T:
+    tpy::return_val_or_ref_t<T> get_item() {
+        // 12:         return self.item
+        return this->item;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "item=" << tpy::ValuePrinter(obj.item)
-     << ")";
-  return os;
+    os << "Container("
+       << "item=" << tpy::ValuePrinter(obj.item)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

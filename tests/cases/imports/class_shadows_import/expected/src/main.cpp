@@ -7,25 +7,25 @@ std::string_view __name__;
 
 // 9: def main():
 void main() {
-  // 10:     t = time(42)
-  time t = time(tpy::BigInt(42));
-  // 11:     print(t.value)
-  std::cout << t.value << "\n";
+    // 10:     t = time(42)
+    time t = time(tpy::BigInt(42));
+    // 11:     print(t.value)
+    std::cout << t.value << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: from time import time
+    __name__ = "__main__";
+    // 1: from time import time
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

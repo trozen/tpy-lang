@@ -9,18 +9,18 @@ int32_t MAX_VALUE{};
 
 // 13: def add(a: Int32, b: Int32) -> Int32:
 int32_t add(int32_t a, int32_t b) {
-  // 14:     return a + b
-  return (tpy::add_check<int32_t>(a, b));
+    // 14:     return a + b
+    return (tpy::add_check<int32_t>(a, b));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "utils";
-  // 11: MAX_VALUE: Int32 = Int32(100)
-  MAX_VALUE = 100;
+    __name__ = "utils";
+    // 11: MAX_VALUE: Int32 = Int32(100)
+    MAX_VALUE = 100;
 }
 
 } // namespace tpy_user::utils

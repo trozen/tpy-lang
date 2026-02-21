@@ -10,29 +10,29 @@ int32_t x{};
 // @readonly
 // 9: def ok() -> Int32:
 int32_t ok() {
-  // 10:     global x
-  // 11:     x = 1  # tpyc: ok
-  x = 1;
-  // 12:     return x
-  return x;
+    // 10:     global x
+    // 11:     x = 1  # tpyc: ok
+    x = 1;
+    // 12:     return x
+    return x;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 5: x: Int32 = 0
-  x = 0;
-  // 15: print(ok())
-  std::cout << ok() << "\n";
+    __name__ = "__main__";
+    // 5: x: Int32 = 0
+    x = 0;
+    // 15: print(ok())
+    std::cout << ok() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

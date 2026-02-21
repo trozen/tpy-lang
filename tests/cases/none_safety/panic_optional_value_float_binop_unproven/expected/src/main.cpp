@@ -7,26 +7,26 @@ std::string_view __name__;
 
 // 1: def add_offset(x: float | None) -> float:
 double add_offset(std::optional<double> x) {
-  // 2:     return x + 1.0  # tpyc: warning(/Potential None access/)
-  return ((tpy::deref_optional_check(x)) + (1.0));
+    // 2:     return x + 1.0  # tpyc: warning(/Potential None access/)
+    return ((tpy::deref_optional_check(x)) + (1.0));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 5: print(add_offset(1.5))
-  std::cout << tpy::print_float(add_offset(1.5)) << "\n";
-  // 6: print(add_offset(None))
-  std::cout << tpy::print_float(add_offset(std::nullopt)) << "\n";
+    __name__ = "__main__";
+    // 5: print(add_offset(1.5))
+    std::cout << tpy::print_float(add_offset(1.5)) << "\n";
+    // 6: print(add_offset(None))
+    std::cout << tpy::print_float(add_offset(std::nullopt)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

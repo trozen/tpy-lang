@@ -13,25 +13,25 @@ void main();
 
 // 4: class Stack:
 struct Stack {
-  // 5:     size: Int32
-  int32_t size;
+    // 5:     size: Int32
+    int32_t size;
 
-  // 7:     def __init__(self, size: Int32) -> None:
-  Stack() = default;
-  explicit Stack(int32_t size) : size(size) {}
+    // 7:     def __init__(self, size: Int32) -> None:
+    Stack() = default;
+    explicit Stack(int32_t size) : size(size) {}
 
-  // 10:     def __len__(self) -> Int32:
-  int32_t __len__() const {
-    // 11:         return self.size
-    return this->size;
-  }
+    // 10:     def __len__(self) -> Int32:
+    int32_t __len__() const {
+        // 11:         return self.size
+        return this->size;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
-  os << "Stack("
-     << "size=" << obj.size
-     << ")";
-  return os;
+    os << "Stack("
+       << "size=" << obj.size
+       << ")";
+    return os;
 }
 
 void __tpy_init();

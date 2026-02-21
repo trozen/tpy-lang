@@ -9,18 +9,18 @@ int32_t CONST{};
 
 // 5: def func() -> None:
 void func() {
-  // 6:     print("from init")
-  std::cout << "from init" << "\n";
+    // 6:     print("from init")
+    std::cout << "from init" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "mypackage";
-  // 3: CONST: Int32 = Int32(42)
-  CONST = 42;
+    __name__ = "mypackage";
+    // 3: CONST: Int32 = Int32(42)
+    CONST = 42;
 }
 
 } // namespace tpy_user::mypackage

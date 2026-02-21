@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 7: def main() -> None:
 void main() {
-  // 8:     r = Rect(Int32(10), Int32(20), Int32(100), Int32(50))
-  c_rect r = c_rect{10, 20, 100, 50};
-  // 9:     print(r.w)
-  std::cout << r.w << "\n";
-  // 10:     print(rect_area(Ptr(r)))
-  std::cout << rect_area(&r) << "\n";
+    // 8:     r = Rect(Int32(10), Int32(20), Int32(100), Int32(50))
+    c_rect r = c_rect{10, 20, 100, 50};
+    // 9:     print(r.w)
+    std::cout << r.w << "\n";
+    // 10:     print(rect_area(Ptr(r)))
+    std::cout << rect_area(&r) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Test: both `import lib` and `from lib import ...` coexist
-  // 2: # The named imports must not be dropped when bare import also exists.
-  // 3: import lib
-  ::tpy_user::lib::__tpy_init();
-  // 12: main()
-  main();
+    __name__ = "__main__";
+    // 1: # Test: both `import lib` and `from lib import ...` coexist
+    // 2: # The named imports must not be dropped when bare import also exists.
+    // 3: import lib
+    ::tpy_user::lib::__tpy_init();
+    // 12: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

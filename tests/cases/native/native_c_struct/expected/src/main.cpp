@@ -9,40 +9,40 @@ std::string_view __name__;
 
 // 26: def main() -> None:
 void main() {
-  // 27:     p = Point(Int32(10), Int32(20))
-  Point p = Point{10, 20};
-  // 28:     print(p.x)
-  std::cout << p.x << "\n";
-  // 29:     print(p.y)
-  std::cout << p.y << "\n";
-  // 30:     print(point_sum(Ptr(p)))
-  std::cout << point_sum(&p) << "\n";
-  // 31:     print(p.manhattan())
-  std::cout << p.manhattan() << "\n";
-  // 33:     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
-  Rect r = Rect{0, 0, 800, 600};
-  // 34:     print(r.w)
-  std::cout << r.w << "\n";
-  // 35:     print(rect_area(Ptr(r)))
-  std::cout << rect_area(&r) << "\n";
-  // 36:     print(r.area())
-  std::cout << r.area() << "\n";
+    // 27:     p = Point(Int32(10), Int32(20))
+    Point p = Point{10, 20};
+    // 28:     print(p.x)
+    std::cout << p.x << "\n";
+    // 29:     print(p.y)
+    std::cout << p.y << "\n";
+    // 30:     print(point_sum(Ptr(p)))
+    std::cout << point_sum(&p) << "\n";
+    // 31:     print(p.manhattan())
+    std::cout << p.manhattan() << "\n";
+    // 33:     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
+    Rect r = Rect{0, 0, 800, 600};
+    // 34:     print(r.w)
+    std::cout << r.w << "\n";
+    // 35:     print(rect_area(Ptr(r)))
+    std::cout << rect_area(&r) << "\n";
+    // 36:     print(r.area())
+    std::cout << r.area() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 38: main()
-  main();
+    __name__ = "__main__";
+    // 38: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

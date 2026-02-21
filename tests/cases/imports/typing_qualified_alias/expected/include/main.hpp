@@ -22,32 +22,32 @@ void main();
 
 // 13: class Person:
 struct Person {
-  // 14:     name: str
-  std::string_view name;
+    // 14:     name: str
+    std::string_view name;
 
-  // 15:     def __init__(self, n: str):
-  Person() = default;
-  explicit Person(std::string_view n) : name(n) {}
+    // 15:     def __init__(self, n: str):
+    Person() = default;
+    explicit Person(std::string_view n) : name(n) {}
 
-  // 17:     def greet(self) -> str:
-  std::string_view greet() {
-    // 18:         return self.name
-    return this->name;
-  }
+    // 17:     def greet(self) -> str:
+    std::string_view greet() {
+        // 18:         return self.name
+        return this->name;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
-  os << "Person("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Person("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 // 20: def hello(g: Greetable) -> None:
 template<Greetable T_g>
 void hello(T_g& g) {
-  // 21:     print(g.greet())
-  std::cout << g.greet() << "\n";
+    // 21:     print(g.greet())
+    std::cout << g.greet() << "\n";
 }
 
 void __tpy_init();

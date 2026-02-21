@@ -7,49 +7,49 @@ std::string_view __name__;
 
 // 4: def test_store_and_load() -> None:
 void test_store_and_load() {
-  // 5:     x: Int32 = Int32(5)
-  int32_t x = 5;
-  // 6:     p: Ptr[Int32] = Ptr(x)
-  int32_t* p = &x;
-  // 7:     unsafe_store(p, UInt32(0), Int32(99))
-  p[0] = 99;
-  // 8:     val: Int32 = unsafe_load(p, UInt32(0))
-  int32_t val = p[0];
-  // 9:     print(val)
-  std::cout << val << "\n";
-  // 10:     print(x)
-  std::cout << x << "\n";
+    // 5:     x: Int32 = Int32(5)
+    int32_t x = 5;
+    // 6:     p: Ptr[Int32] = Ptr(x)
+    int32_t* p = &x;
+    // 7:     unsafe_store(p, UInt32(0), Int32(99))
+    p[0] = 99;
+    // 8:     val: Int32 = unsafe_load(p, UInt32(0))
+    int32_t val = p[0];
+    // 9:     print(val)
+    std::cout << val << "\n";
+    // 10:     print(x)
+    std::cout << x << "\n";
 }
 
 // 12: def test_constptr_load() -> None:
 void test_constptr_load() {
-  // 13:     x: Int32 = Int32(42)
-  int32_t x = 42;
-  // 14:     cp: ConstPtr[Int32] = ConstPtr(x)
-  const int32_t* cp = &x;
-  // 15:     val: Int32 = unsafe_load(cp, UInt32(0))
-  int32_t val = cp[0];
-  // 16:     print(val)
-  std::cout << val << "\n";
+    // 13:     x: Int32 = Int32(42)
+    int32_t x = 42;
+    // 14:     cp: ConstPtr[Int32] = ConstPtr(x)
+    const int32_t* cp = &x;
+    // 15:     val: Int32 = unsafe_load(cp, UInt32(0))
+    int32_t val = cp[0];
+    // 16:     print(val)
+    std::cout << val << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from tpy.unsafe import unsafe_load, unsafe_store
-  // 18: test_store_and_load()
-  test_store_and_load();
-  // 19: test_constptr_load()
-  test_constptr_load();
+    __name__ = "__main__";
+    // 2: from tpy.unsafe import unsafe_load, unsafe_store
+    // 18: test_store_and_load()
+    test_store_and_load();
+    // 19: test_constptr_load()
+    test_constptr_load();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

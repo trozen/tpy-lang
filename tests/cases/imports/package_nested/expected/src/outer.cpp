@@ -6,11 +6,11 @@ namespace tpy_user::outer {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "outer";
+    __name__ = "outer";
 }
 
 } // namespace tpy_user::outer

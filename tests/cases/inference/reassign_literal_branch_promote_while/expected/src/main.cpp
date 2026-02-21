@@ -9,83 +9,83 @@ std::string_view __name__;
 // # a while loop should keep BigInt for subsequent operations in the loop body.
 // 4: def get_big() -> int:
 tpy::BigInt get_big() {
-  // 5:     return 42
-  return tpy::BigInt(42);
+    // 5:     return 42
+    return tpy::BigInt(42);
 }
 
 // 7: def test_augassign_in_while() -> None:
 void test_augassign_in_while() {
-  // 8:     ip = 0
-  tpy::BigInt ip = tpy::BigInt(0);
-  // 9:     while ip < 10:
-  while ((ip < 10)) {
-    // 10:         c = '>'
-    std::string_view c = ">";
-    // 11:         if c == '>':
-    if ((c == ">")) {
-      // 12:             pass
-    } else {
-      // 13:         elif c == '[':
-      if ((c == "[")) {
-        // 14:             if True:
-        if (true) {
-          // 15:                 ip = get_big()
-          ip = get_big();
+    // 8:     ip = 0
+    tpy::BigInt ip = tpy::BigInt(0);
+    // 9:     while ip < 10:
+    while ((ip < 10)) {
+        // 10:         c = '>'
+        std::string_view c = ">";
+        // 11:         if c == '>':
+        if ((c == ">")) {
+            // 12:             pass
+        } else {
+            // 13:         elif c == '[':
+            if ((c == "[")) {
+                // 14:             if True:
+                if (true) {
+                    // 15:                 ip = get_big()
+                    ip = get_big();
+                }
+            } else {
+                // 16:         elif c == ']':
+                if ((c == "]")) {
+                    // 17:             if True:
+                    if (true) {
+                        // 18:                 ip = get_big()
+                        ip = get_big();
+                    }
+                }
+            }
         }
-      } else {
-        // 16:         elif c == ']':
-        if ((c == "]")) {
-          // 17:             if True:
-          if (true) {
-            // 18:                 ip = get_big()
-            ip = get_big();
-          }
-        }
-      }
+        // 19:         ip += 1
+        ip = (ip) + (tpy::BigInt(1));
     }
-    // 19:         ip += 1
-    ip = (ip) + (tpy::BigInt(1));
-  }
-  // 20:     print(ip)
-  std::cout << ip << "\n";
+    // 20:     print(ip)
+    std::cout << ip << "\n";
 }
 
 // 22: def test_binop_in_while() -> None:
 void test_binop_in_while() {
-  // 23:     x = 0
-  tpy::BigInt x = tpy::BigInt(0);
-  // 24:     while x < 5:
-  while ((x < 5)) {
-    // 25:         if True:
-    if (true) {
-      // 26:             x = get_big()
-      x = get_big();
+    // 23:     x = 0
+    tpy::BigInt x = tpy::BigInt(0);
+    // 24:     while x < 5:
+    while ((x < 5)) {
+        // 25:         if True:
+        if (true) {
+            // 26:             x = get_big()
+            x = get_big();
+        }
+        // 27:         y: int = x + 1
+        tpy::BigInt y = ((x) + (tpy::BigInt(1)));
+        // 28:         x = y
+        x = y;
     }
-    // 27:         y: int = x + 1
-    tpy::BigInt y = ((x) + (tpy::BigInt(1)));
-    // 28:         x = y
-    x = y;
-  }
-  // 29:     print(x)
-  std::cout << x << "\n";
+    // 29:     print(x)
+    std::cout << x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 31: test_augassign_in_while()
-  test_augassign_in_while();
-  // 32: test_binop_in_while()
-  test_binop_in_while();
+    __name__ = "__main__";
+    // 31: test_augassign_in_while()
+    test_augassign_in_while();
+    // 32: test_binop_in_while()
+    test_binop_in_while();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

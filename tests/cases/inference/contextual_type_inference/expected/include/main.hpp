@@ -20,54 +20,54 @@ void main();
 // 4: class Container[T]:
 template<typename T>
 struct Container {
-  // 5:     val: T
-  T val;
+    // 5:     val: T
+    T val;
 
-  Container() = default;
+    Container() = default;
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "val=" << tpy::ValuePrinter(obj.val)
-     << ")";
-  return os;
+    os << "Container("
+       << "val=" << tpy::ValuePrinter(obj.val)
+       << ")";
+    return os;
 }
 
 // 7: class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-  // 8:     first: A
-  A first;
-  // 9:     second: B
-  B second;
+    // 8:     first: A
+    A first;
+    // 9:     second: B
+    B second;
 
-  // 11:     def __init__(self, a: A) -> None:
-  Pair() = default;
-  explicit Pair(const A& a) : first(a) {}
+    // 11:     def __init__(self, a: A) -> None:
+    Pair() = default;
+    explicit Pair(const A& a) : first(a) {}
 };
 
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
-  os << "Pair("
-     << "first=" << tpy::ValuePrinter(obj.first)
-     << ", "
-     << "second=" << tpy::ValuePrinter(obj.second)
-     << ")";
-  return os;
+    os << "Pair("
+       << "first=" << tpy::ValuePrinter(obj.first)
+       << ", "
+       << "second=" << tpy::ValuePrinter(obj.second)
+       << ")";
+    return os;
 }
 
 // 14: def make_box[T]() -> Own[Container[T]]:
 template<typename T>
 Container<T> make_box() {
-  // 15:     return Container[T]()
-  return Container<T>();
+    // 15:     return Container[T]()
+    return Container<T>();
 }
 // 17: def identity[T](x: T) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
-  // 18:     return x
-  return x;
+    // 18:     return x
+    return x;
 }
 
 void __tpy_init();

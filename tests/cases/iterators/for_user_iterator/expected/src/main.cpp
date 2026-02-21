@@ -6,38 +6,38 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 18: # 1. Direct use in for-loop (structural detection)
-  // 19: for x in Counter(5):
-  auto __iter_0 = Counter(5);
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 20:     print(x)
-    std::cout << x << "\n";
-  }
-  // 29: print(sum_iter(Counter(5)))
-  auto __tmp_1 = Counter(5);
-  std::cout << sum_iter(__tmp_1) << "\n";
-  // 31: # 3. Empty iterator
-  // 32: for x in Counter(0):
-  auto __iter_1 = Counter(0);
-  while (auto __opt_1 = __iter_1.__next_opt__()) {
-    int32_t x = *__opt_1;
-    // 33:     print(x)
-    std::cout << x << "\n";
-  }
-  // 34: print("done")
-  std::cout << "done" << "\n";
+    __name__ = "__main__";
+    // 18: # 1. Direct use in for-loop (structural detection)
+    // 19: for x in Counter(5):
+    auto __iter_0 = Counter(5);
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 20:     print(x)
+        std::cout << x << "\n";
+    }
+    // 29: print(sum_iter(Counter(5)))
+    auto __tmp_1 = Counter(5);
+    std::cout << sum_iter(__tmp_1) << "\n";
+    // 31: # 3. Empty iterator
+    // 32: for x in Counter(0):
+    auto __iter_1 = Counter(0);
+    while (auto __opt_1 = __iter_1.__next_opt__()) {
+        int32_t x = *__opt_1;
+        // 33:     print(x)
+        std::cout << x << "\n";
+    }
+    // 34: print("done")
+    std::cout << "done" << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

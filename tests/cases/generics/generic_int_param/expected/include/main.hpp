@@ -14,20 +14,20 @@ void main();
 // 4: class Container[T, N: int]:
 template<typename T, std::size_t N>
 struct Container {
-  // 5:     value: T
-  T value;
+    // 5:     value: T
+    T value;
 
-  // 7:     def __init__(self, v: T) -> None:
-  Container() = default;
-  explicit Container(const T& v) : value(v) {}
+    // 7:     def __init__(self, v: T) -> None:
+    Container() = default;
+    explicit Container(const T& v) : value(v) {}
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
-  os << "Container("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Container("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

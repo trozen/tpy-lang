@@ -19,19 +19,19 @@ bool get_flag();
 
 // 4: class Point:
 struct Point {
-  // 5:     x: Int32
-  int32_t x;
+    // 5:     x: Int32
+    int32_t x;
 
-  // 7:     def __init__(self, x: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x) : x(x) {}
+    // 7:     def __init__(self, x: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x) : x(x) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -14,32 +14,32 @@ int32_t use_helper(Helper& Helper);
 
 // 4: class Helper:
 struct Helper {
-  // 5:     value: Int32
-  int32_t value;
+    // 5:     value: Int32
+    int32_t value;
 
-  // 7:     def __init__(self, v: Int32):
-  Helper() = default;
-  explicit Helper(int32_t v) : value(v) {}
+    // 7:     def __init__(self, v: Int32):
+    Helper() = default;
+    explicit Helper(int32_t v) : value(v) {}
 
-  //     @staticmethod
-  // 11:     def add(a: Int32, b: Int32) -> Int32:
-  static int32_t add(int32_t a, int32_t b) {
-    // 12:         return a + b
-    return (tpy::add_check<int32_t>(a, b));
-  }
+    //     @staticmethod
+    // 11:     def add(a: Int32, b: Int32) -> Int32:
+    static int32_t add(int32_t a, int32_t b) {
+        // 12:         return a + b
+        return (tpy::add_check<int32_t>(a, b));
+    }
 
-  // 14:     def get(self) -> Int32:
-  int32_t get() {
-    // 15:         return self.value
-    return this->value;
-  }
+    // 14:     def get(self) -> Int32:
+    int32_t get() {
+        // 15:         return self.value
+        return this->value;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
-  os << "Helper("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Helper("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

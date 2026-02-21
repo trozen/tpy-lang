@@ -11,50 +11,50 @@ int32_t x{};
 int32_t y{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: # Basic powers
-  // 4: print(2 ** 0)   # 1
-  std::cout << 1 << "\n";
-  // 5: print(2 ** 1)   # 2
-  std::cout << 2 << "\n";
-  // 6: print(2 ** 10)  # 1024
-  std::cout << 1024 << "\n";
-  // 7: print(3 ** 3)   # 27
-  std::cout << 27 << "\n";
-  // 9: # Large exponents (arbitrary precision)
-  // 10: print(2 ** 32)   # 4294967296
-  std::cout << tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
-  // 11: print(2 ** 64)   # 18446744073709551616
-  std::cout << tpy::BigInt::from_str("18446744073709551616") << "\n";
-  // 12: print(10 ** 20)  # 100000000000000000000
-  std::cout << tpy::BigInt::from_str("100000000000000000000") << "\n";
-  // 14: # Negative base with even/odd exponents
-  // 15: print((-2) ** 3)  # -8
-  std::cout << -8 << "\n";
-  // 16: print((-2) ** 4)  # 16
-  std::cout << 16 << "\n";
-  // 18: # Zero base
-  // 19: print(0 ** 5)  # 0
-  std::cout << 0 << "\n";
-  // 20: print(0 ** 0)  # 1 (by convention)
-  std::cout << 1 << "\n";
-  // 22: # Power with variables
-  // 23: x = 5
-  x = 5;
-  // 24: y = 3
-  y = 3;
-  // 25: print(x ** y)  # 125
-  std::cout << (tpy::pow_check<int32_t>(x, y)) << "\n";
+    __name__ = "__main__";
+    // 3: # Basic powers
+    // 4: print(2 ** 0)   # 1
+    std::cout << 1 << "\n";
+    // 5: print(2 ** 1)   # 2
+    std::cout << 2 << "\n";
+    // 6: print(2 ** 10)  # 1024
+    std::cout << 1024 << "\n";
+    // 7: print(3 ** 3)   # 27
+    std::cout << 27 << "\n";
+    // 9: # Large exponents (arbitrary precision)
+    // 10: print(2 ** 32)   # 4294967296
+    std::cout << tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
+    // 11: print(2 ** 64)   # 18446744073709551616
+    std::cout << tpy::BigInt::from_str("18446744073709551616") << "\n";
+    // 12: print(10 ** 20)  # 100000000000000000000
+    std::cout << tpy::BigInt::from_str("100000000000000000000") << "\n";
+    // 14: # Negative base with even/odd exponents
+    // 15: print((-2) ** 3)  # -8
+    std::cout << -8 << "\n";
+    // 16: print((-2) ** 4)  # 16
+    std::cout << 16 << "\n";
+    // 18: # Zero base
+    // 19: print(0 ** 5)  # 0
+    std::cout << 0 << "\n";
+    // 20: print(0 ** 0)  # 1 (by convention)
+    std::cout << 1 << "\n";
+    // 22: # Power with variables
+    // 23: x = 5
+    x = 5;
+    // 24: y = 3
+    y = 3;
+    // 25: print(x ** y)  # 125
+    std::cout << (tpy::pow_check<int32_t>(x, y)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

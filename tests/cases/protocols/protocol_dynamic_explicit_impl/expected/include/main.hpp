@@ -44,35 +44,35 @@ void main();
 
 // 12: class Item(Describable):
 struct Item : __tpy_Base_Describable {
-  // 13:     _name: str
-  std::string_view _name;
-  // 14:     _id: Int32
-  int32_t _id;
+    // 13:     _name: str
+    std::string_view _name;
+    // 14:     _id: Int32
+    int32_t _id;
 
-  // 16:     def __init__(self, name: str, id: Int32) -> None:
-  Item() = default;
-  explicit Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
+    // 16:     def __init__(self, name: str, id: Int32) -> None:
+    Item() = default;
+    explicit Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
-  // 20:     def describe(self) -> str:
-  std::string_view describe() override {
-    // 21:         return self._name
-    return this->_name;
-  }
+    // 20:     def describe(self) -> str:
+    std::string_view describe() override {
+        // 21:         return self._name
+        return this->_name;
+    }
 
-  // 23:     def id(self) -> Int32:
-  int32_t id() override {
-    // 24:         return self._id
-    return this->_id;
-  }
+    // 23:     def id(self) -> Int32:
+    int32_t id() override {
+        // 24:         return self._id
+        return this->_id;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-  os << "Item("
-     << "_name=" << "\"" << obj._name << "\""
-     << ", "
-     << "_id=" << obj._id
-     << ")";
-  return os;
+    os << "Item("
+       << "_name=" << "\"" << obj._name << "\""
+       << ", "
+       << "_id=" << obj._id
+       << ")";
+    return os;
 }
 
 void __tpy_init();

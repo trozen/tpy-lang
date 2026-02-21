@@ -15,44 +15,44 @@ std::optional<int32_t> r;
 Config* c2{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 16: # Basic: init to None, set, read
-  // 17: c = Config("test")
-  static Config __global_slot_1 = Config("test");
-  c = &__global_slot_1;
-  // 18: print(c.max_retries is None)
-  std::cout << tpy::print_bool((!c->max_retries.has_value())) << "\n";
-  // 19: c.max_retries = 5
-  c->max_retries = 5;
-  // 20: print(c.max_retries)
-  std::cout << tpy::print_optional_val(c->max_retries) << "\n";
-  // 21: print(c.name)
-  std::cout << c->name << "\n";
-  // 23: # Return optional value-type field from method
-  // 24: r = c.get_retries()
-  r = c->get_retries();
-  // 25: print(r)
-  std::cout << tpy::print_optional_val(r) << "\n";
-  // 26: print(r is not None)
-  std::cout << tpy::print_bool((r.has_value())) << "\n";
-  // 28: # Field-to-field value-type optional
-  // 29: c2 = Config("other")
-  static Config __global_slot_2 = Config("other");
-  c2 = &__global_slot_2;
-  // 30: c2.max_retries = c.max_retries
-  c2->max_retries = c->max_retries;
-  // 31: print(c2.max_retries)
-  std::cout << tpy::print_optional_val(c2->max_retries) << "\n";
+    __name__ = "__main__";
+    // 16: # Basic: init to None, set, read
+    // 17: c = Config("test")
+    static Config __global_slot_1 = Config("test");
+    c = &__global_slot_1;
+    // 18: print(c.max_retries is None)
+    std::cout << tpy::print_bool((!c->max_retries.has_value())) << "\n";
+    // 19: c.max_retries = 5
+    c->max_retries = 5;
+    // 20: print(c.max_retries)
+    std::cout << tpy::print_optional_val(c->max_retries) << "\n";
+    // 21: print(c.name)
+    std::cout << c->name << "\n";
+    // 23: # Return optional value-type field from method
+    // 24: r = c.get_retries()
+    r = c->get_retries();
+    // 25: print(r)
+    std::cout << tpy::print_optional_val(r) << "\n";
+    // 26: print(r is not None)
+    std::cout << tpy::print_bool((r.has_value())) << "\n";
+    // 28: # Field-to-field value-type optional
+    // 29: c2 = Config("other")
+    static Config __global_slot_2 = Config("other");
+    c2 = &__global_slot_2;
+    // 30: c2.max_retries = c.max_retries
+    c2->max_retries = c->max_retries;
+    // 31: print(c2.max_retries)
+    std::cout << tpy::print_optional_val(c2->max_retries) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

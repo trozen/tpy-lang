@@ -9,40 +9,40 @@ Point* g{};
 
 // 13: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 14:     return p.x
-  return p.x;
+    // 14:     return p.x
+    return p.x;
 }
 
 // 17: def test() -> Int32:
 int32_t test() {
-  // 18:     p = Point()
-  Point __slot_1 = Point();
-  Point* p = &__slot_1;
-  // 19:     p.x = 10
-  p->x = 10;
-  // 20:     p = g  # rebind to global alias -> lvalue reassignment
-  p = g;
-  // 21:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
-  return consume((*p));
+    // 18:     p = Point()
+    Point __slot_1 = Point();
+    Point* p = &__slot_1;
+    // 19:     p.x = 10
+    p->x = 10;
+    // 20:     p = g  # rebind to global alias -> lvalue reassignment
+    p = g;
+    // 21:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
+    return consume((*p));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: g = Point()
-  static Point __global_slot_1 = Point();
-  g = &__global_slot_1;
-  // 10: g.x = 99
-  g->x = 99;
+    __name__ = "__main__";
+    // 9: g = Point()
+    static Point __global_slot_1 = Point();
+    g = &__global_slot_1;
+    // 10: g.x = 99
+    g->x = 99;
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

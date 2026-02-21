@@ -8,21 +8,21 @@ std::string_view __name__;
 int32_t value{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 8: value: Int32 = Int32(7)
-  value = 7;
-  // 9: print(echo_with_delta(value, Int32(5)))  # tpyc: ok
-  std::cout << echo_with_delta<int32_t>(value, static_cast<int64_t>(5)) << "\n";
+    __name__ = "__main__";
+    // 8: value: Int32 = Int32(7)
+    value = 7;
+    // 9: print(echo_with_delta(value, Int32(5)))  # tpyc: ok
+    std::cout << echo_with_delta<int32_t>(value, static_cast<int64_t>(5)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

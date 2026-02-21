@@ -17,14 +17,14 @@ void main();
 // 6: def make_empty[T]() -> Own[list[T]]:
 template<typename T>
 std::vector<T> make_empty() {
-  // 7:     return []
-  return std::vector<T>{};
+    // 7:     return []
+    return std::vector<T>{};
 }
 // 10: def make_single[T](x: T) -> Own[list[T]]:
 template<typename T>
 std::vector<T> make_single(tpy::param_val_or_ref_t<T> x) {
-  // 11:     return [x]
-  return {x};
+    // 11:     return [x]
+    return {x};
 }
 
 void __tpy_init();

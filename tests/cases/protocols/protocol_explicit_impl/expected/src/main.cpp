@@ -9,27 +9,27 @@ std::string_view __name__;
 Person* p{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 23: # Test explicit protocol implementation
-  // 24: p = Person("Alice", 30)
-  static Person __global_slot_1 = Person("Alice", 30);
-  p = &__global_slot_1;
-  // 25: print(p.__str__())
-  std::cout << p->__str__() << "\n";
-  // 26: print(p.name)
-  std::cout << p->name << "\n";
-  // 27: print(p.age)
-  std::cout << p->age << "\n";
+    __name__ = "__main__";
+    // 23: # Test explicit protocol implementation
+    // 24: p = Person("Alice", 30)
+    static Person __global_slot_1 = Person("Alice", 30);
+    p = &__global_slot_1;
+    // 25: print(p.__str__())
+    std::cout << p->__str__() << "\n";
+    // 26: print(p.name)
+    std::cout << p->name << "\n";
+    // 27: print(p.age)
+    std::cout << p->age << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

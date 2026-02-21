@@ -7,47 +7,47 @@ std::string_view __name__;
 
 // 37: def main():
 void main() {
-  // 38:     a = WithArray[Int32, 3]()
-  WithArray<int32_t, 3> a = WithArray<int32_t, 3>();
-  // 39:     a.data[0] = Int32(10)
-  a.data[0] = 10;
-  // 40:     print("array:", a.data[0])
-  std::cout << "array:" << " " << a.data[0] << "\n";
-  // 42:     l = WithList[Int32]()
-  WithList<int32_t> l = WithList<int32_t>();
-  // 43:     l.items.append(Int32(42))
-  l.items.push_back(42);
-  // 44:     print("list:", l.items)
-  std::cout << "list:" << " " << tpy::ListPrinter(l.items) << "\n";
-  // 46:     s = WithStaticList[Int32]()
-  WithStaticList<int32_t> s = WithStaticList<int32_t>();
-  // 47:     s.buf.append(Int32(99))
-  s.buf.push_back(99);
-  // 48:     print("static_list:", s.buf)
-  std::cout << "static_list:" << " " << tpy::ListPrinter(s.buf) << "\n";
-  // 50:     h = WithHeapStorage[Int32](Int32(7))
-  WithHeapStorage<int32_t> h = WithHeapStorage<int32_t>(7);
-  // 51:     print("heap:", h.get())
-  std::cout << "heap:" << " " << h.get() << "\n";
-  // 53:     print("done")
-  std::cout << "done" << "\n";
+    // 38:     a = WithArray[Int32, 3]()
+    WithArray<int32_t, 3> a = WithArray<int32_t, 3>();
+    // 39:     a.data[0] = Int32(10)
+    a.data[0] = 10;
+    // 40:     print("array:", a.data[0])
+    std::cout << "array:" << " " << a.data[0] << "\n";
+    // 42:     l = WithList[Int32]()
+    WithList<int32_t> l = WithList<int32_t>();
+    // 43:     l.items.append(Int32(42))
+    l.items.push_back(42);
+    // 44:     print("list:", l.items)
+    std::cout << "list:" << " " << tpy::ListPrinter(l.items) << "\n";
+    // 46:     s = WithStaticList[Int32]()
+    WithStaticList<int32_t> s = WithStaticList<int32_t>();
+    // 47:     s.buf.append(Int32(99))
+    s.buf.push_back(99);
+    // 48:     print("static_list:", s.buf)
+    std::cout << "static_list:" << " " << tpy::ListPrinter(s.buf) << "\n";
+    // 50:     h = WithHeapStorage[Int32](Int32(7))
+    WithHeapStorage<int32_t> h = WithHeapStorage<int32_t>(7);
+    // 51:     print("heap:", h.get())
+    std::cout << "heap:" << " " << h.get() << "\n";
+    // 53:     print("done")
+    std::cout << "done" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: from tpy.mem import UninitHeapStorage
-  // 55: main()
-  main();
+    __name__ = "__main__";
+    // 4: from tpy.mem import UninitHeapStorage
+    // 55: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

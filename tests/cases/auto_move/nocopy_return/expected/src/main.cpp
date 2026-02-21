@@ -7,36 +7,36 @@ std::string_view __name__;
 
 // 10: def make(val: Int32) -> Own[Handle]:
 Handle make(int32_t val) {
-  // 11:     h = Handle()
-  Handle h = Handle();
-  // 12:     h.fd = val
-  h.fd = val;
-  // 13:     return h
-  return h;
+    // 11:     h = Handle()
+    Handle h = Handle();
+    // 12:     h.fd = val
+    h.fd = val;
+    // 13:     return h
+    return h;
 }
 
 // 16: def main():
 void main() {
-  // 17:     h = make(99)
-  Handle h = make(99);
-  // 18:     print(h.fd)
-  std::cout << h.fd << "\n";
+    // 17:     h = make(99)
+    Handle h = make(99);
+    // 18:     print(h.fd)
+    std::cout << h.fd << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 21: main()
-  main();
+    __name__ = "__main__";
+    // 21: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

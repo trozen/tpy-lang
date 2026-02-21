@@ -7,45 +7,45 @@ std::string_view __name__;
 
 // 16: def main() -> None:
 void main() {
-  // 17:     # Test with Int32
-  // 18:     box_int: Box[Int32] = Box[Int32](42)
-  Box<int32_t> box_int = Box<int32_t>(42);
-  // 19:     print(box_int.get())
-  std::cout << box_int.get() << "\n";
-  // 20:     box_int.set(100)
-  box_int.set(100);
-  // 21:     print(box_int.get())
-  std::cout << box_int.get() << "\n";
-  // 23:     # Test with str
-  // 24:     box_str: Box[str] = Box[str]("hello")
-  Box<std::string_view> box_str = Box<std::string_view>("hello");
-  // 25:     print(box_str.get())
-  std::cout << box_str.get() << "\n";
-  // 26:     box_str.set("world")
-  box_str.set("world");
-  // 27:     print(box_str.get())
-  std::cout << box_str.get() << "\n";
-  // 29:     # Test type deduction (no explicit annotation)
-  // 30:     box_deduced = Box[Int32](999)
-  Box<int32_t> box_deduced = Box<int32_t>(999);
-  // 31:     print(box_deduced.get())
-  std::cout << box_deduced.get() << "\n";
+    // 17:     # Test with Int32
+    // 18:     box_int: Box[Int32] = Box[Int32](42)
+    Box<int32_t> box_int = Box<int32_t>(42);
+    // 19:     print(box_int.get())
+    std::cout << box_int.get() << "\n";
+    // 20:     box_int.set(100)
+    box_int.set(100);
+    // 21:     print(box_int.get())
+    std::cout << box_int.get() << "\n";
+    // 23:     # Test with str
+    // 24:     box_str: Box[str] = Box[str]("hello")
+    Box<std::string_view> box_str = Box<std::string_view>("hello");
+    // 25:     print(box_str.get())
+    std::cout << box_str.get() << "\n";
+    // 26:     box_str.set("world")
+    box_str.set("world");
+    // 27:     print(box_str.get())
+    std::cout << box_str.get() << "\n";
+    // 29:     # Test type deduction (no explicit annotation)
+    // 30:     box_deduced = Box[Int32](999)
+    Box<int32_t> box_deduced = Box<int32_t>(999);
+    // 31:     print(box_deduced.get())
+    std::cout << box_deduced.get() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 34: main()
-  main();
+    __name__ = "__main__";
+    // 34: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

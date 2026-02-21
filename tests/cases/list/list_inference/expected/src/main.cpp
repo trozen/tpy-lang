@@ -14,91 +14,91 @@ std::vector<int32_t>* global_inferred{};
 // # Local no mutation -> array (ArrayType)
 // 10: def test_no_mutation() -> Int32:
 int32_t test_no_mutation() {
-  // 11:     local = [1, 2, 3]
-  std::array<int32_t, 3> local = {1, 2, 3};
-  // 12:     return local[0]
-  return local[0];
+    // 11:     local = [1, 2, 3]
+    std::array<int32_t, 3> local = {1, 2, 3};
+    // 12:     return local[0]
+    return local[0];
 }
 
 // # Local with mutation -> vector (ListType)
 // 15: def test_mutation() -> Int32:
 int32_t test_mutation() {
-  // 16:     items = [1, 2, 3]
-  std::vector<int32_t> items = {1, 2, 3};
-  // 17:     items.append(4)
-  items.push_back(4);
-  // 18:     return len(items)
-  return tpy::__len__(items);
+    // 16:     items = [1, 2, 3]
+    std::vector<int32_t> items = {1, 2, 3};
+    // 17:     items.append(4)
+    items.push_back(4);
+    // 18:     return len(items)
+    return tpy::__len__(items);
 }
 
 // # Passed to list param -> vector (ListType)
 // 21: def takes_list(x: list[Int32]) -> None:
 void takes_list(std::vector<int32_t>& x) {
-  // 22:     x.append(42)
-  x.push_back(42);
+    // 22:     x.append(42)
+    x.push_back(42);
 }
 
 // 24: def test_list_param() -> None:
 void test_list_param() {
-  // 25:     data = [1, 2, 3]
-  std::vector<int32_t> data = {1, 2, 3};
-  // 26:     takes_list(data)
-  takes_list(data);
+    // 25:     data = [1, 2, 3]
+    std::vector<int32_t> data = {1, 2, 3};
+    // 26:     takes_list(data)
+    takes_list(data);
 }
 
 // # Passed to Span param -> array (ArrayType)
 // 29: def takes_span(x: Span[Int32]) -> Int32:
 int32_t takes_span(std::span<const int32_t> x) {
-  // 30:     return x[0]
-  return x[0];
+    // 30:     return x[0]
+    return x[0];
 }
 
 // 32: def test_span_param() -> Int32:
 int32_t test_span_param() {
-  // 33:     data = [10, 20, 30]
-  std::array<int32_t, 3> data = {10, 20, 30};
-  // 34:     return takes_span(data)
-  return takes_span(tpy::as_span(data));
+    // 33:     data = [10, 20, 30]
+    std::array<int32_t, 3> data = {10, 20, 30};
+    // 34:     return takes_span(data)
+    return takes_span(tpy::as_span(data));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: # Global with annotation -> vector (ListType)
-  // 4: global_list: list[Int32] = [1, 2, 3]
-  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
-  global_list = &__global_slot_1;
-  // 6: # Global without annotation -> also vector (ListType)
-  // 7: global_inferred = [10, 20, 30]
-  static std::vector<int32_t> __global_slot_2 = {10, 20, 30};
-  global_inferred = &__global_slot_2;
-  // 36: # Test global list with annotation
-  // 37: print(global_list[0])  # 1
-  std::cout << tpy::get_item((*global_list), 0) << "\n";
-  // 39: # Test global list without annotation
-  // 40: print(global_inferred[1])  # 20
-  std::cout << tpy::get_item((*global_inferred), 1) << "\n";
-  // 42: # Test no mutation (uses array)
-  // 43: print(test_no_mutation())  # 1
-  std::cout << test_no_mutation() << "\n";
-  // 45: # Test mutation (uses vector)
-  // 46: print(test_mutation())  # 4
-  std::cout << test_mutation() << "\n";
-  // 48: # Test list param
-  // 49: test_list_param()
-  test_list_param();
-  // 51: # Test span param
-  // 52: print(test_span_param())  # 10
-  std::cout << test_span_param() << "\n";
+    __name__ = "__main__";
+    // 3: # Global with annotation -> vector (ListType)
+    // 4: global_list: list[Int32] = [1, 2, 3]
+    static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
+    global_list = &__global_slot_1;
+    // 6: # Global without annotation -> also vector (ListType)
+    // 7: global_inferred = [10, 20, 30]
+    static std::vector<int32_t> __global_slot_2 = {10, 20, 30};
+    global_inferred = &__global_slot_2;
+    // 36: # Test global list with annotation
+    // 37: print(global_list[0])  # 1
+    std::cout << tpy::get_item((*global_list), 0) << "\n";
+    // 39: # Test global list without annotation
+    // 40: print(global_inferred[1])  # 20
+    std::cout << tpy::get_item((*global_inferred), 1) << "\n";
+    // 42: # Test no mutation (uses array)
+    // 43: print(test_no_mutation())  # 1
+    std::cout << test_no_mutation() << "\n";
+    // 45: # Test mutation (uses vector)
+    // 46: print(test_mutation())  # 4
+    std::cout << test_mutation() << "\n";
+    // 48: # Test list param
+    // 49: test_list_param()
+    test_list_param();
+    // 51: # Test span param
+    // 52: print(test_span_param())  # 10
+    std::cout << test_span_param() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

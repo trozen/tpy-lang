@@ -7,38 +7,38 @@ std::string_view __name__;
 
 // 13: def main() -> None:
 void main() {
-  // 14:     # Box containing a list (object type)
-  // 15:     items: list[Int32] = [1, 2, 3]
-  std::vector<int32_t> items = {1, 2, 3};
-  // 16:     box: Box[list[Int32]] = Box[list[Int32]](items)
-  Box<std::vector<int32_t>> box = Box<std::vector<int32_t>>(items);
-  // 18:     # This should work: get() returns T& for object types, allowing mutation
-  // 19:     box.get().append(4)
-  box.get().push_back(4);
-  // 20:     box.get().append(5)
-  box.get().push_back(5);
-  // 22:     # Verify the mutations persisted
-  // 23:     for x in box.get():
-  for (int32_t x : box.get()) {
-    // 24:         print(x)
-    std::cout << x << "\n";
-  }
+    // 14:     # Box containing a list (object type)
+    // 15:     items: list[Int32] = [1, 2, 3]
+    std::vector<int32_t> items = {1, 2, 3};
+    // 16:     box: Box[list[Int32]] = Box[list[Int32]](items)
+    Box<std::vector<int32_t>> box = Box<std::vector<int32_t>>(items);
+    // 18:     # This should work: get() returns T& for object types, allowing mutation
+    // 19:     box.get().append(4)
+    box.get().push_back(4);
+    // 20:     box.get().append(5)
+    box.get().push_back(5);
+    // 22:     # Verify the mutations persisted
+    // 23:     for x in box.get():
+    for (int32_t x : box.get()) {
+        // 24:         print(x)
+        std::cout << x << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 27: main()
-  main();
+    __name__ = "__main__";
+    // 27: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

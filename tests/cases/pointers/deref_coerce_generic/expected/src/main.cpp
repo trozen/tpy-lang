@@ -7,39 +7,39 @@ std::string_view __name__;
 
 // 17: def print_point(p: Point) -> None:
 void print_point(Point& p) {
-  // 18:     print(p.x, p.y)
-  std::cout << p.x << " " << p.y << "\n";
+    // 18:     print(p.x, p.y)
+    std::cout << p.x << " " << p.y << "\n";
 }
 
 // 20: def test() -> None:
 void test() {
-  // 21:     b: Box[Point] = Box(Point(5, 15))
-  Box<Point> b = Box<Point>(Point(5, 15));
-  // 22:     # Field access through generic deref: Box[Point].__deref__() -> Point
-  // 23:     print(b.x)
-  std::cout << b.__deref__().x << "\n";
-  // 24:     print(b.y)
-  std::cout << b.__deref__().y << "\n";
-  // 25:     # Coercion: Box[Point] passed where Point expected
-  // 26:     print_point(b)
-  Point __tmp_1 = b.__deref__();
-  print_point(__tmp_1);
+    // 21:     b: Box[Point] = Box(Point(5, 15))
+    Box<Point> b = Box<Point>(Point(5, 15));
+    // 22:     # Field access through generic deref: Box[Point].__deref__() -> Point
+    // 23:     print(b.x)
+    std::cout << b.__deref__().x << "\n";
+    // 24:     print(b.y)
+    std::cout << b.__deref__().y << "\n";
+    // 25:     # Coercion: Box[Point] passed where Point expected
+    // 26:     print_point(b)
+    Point __tmp_1 = b.__deref__();
+    print_point(__tmp_1);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: test()
-  test();
+    __name__ = "__main__";
+    // 28: test()
+    test();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

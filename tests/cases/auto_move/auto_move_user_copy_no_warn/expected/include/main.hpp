@@ -15,17 +15,17 @@ void main();
 
 // 6: class Box:
 struct Box {
-  // 7:     value: Int32
-  int32_t value;
+    // 7:     value: Int32
+    int32_t value;
 
-  Box() = default;
+    Box() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

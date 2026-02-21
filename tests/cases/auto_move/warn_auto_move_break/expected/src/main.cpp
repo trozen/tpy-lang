@@ -7,44 +7,44 @@ std::string_view __name__;
 
 // 11: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 12:     return p.x
-  return p.x;
+    // 12:     return p.x
+    return p.x;
 }
 
 // 15: def test() -> Int32:
 int32_t test() {
-  // 16:     p = Point()
-  Point p = Point();
-  // 17:     p.x = 42
-  p.x = 42;
-  // 18:     result = Int32(0)
-  int32_t result = 0;
-  // 19:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
-    // 20:         if i == 1:
-    if ((i == 1)) {
-      // 21:             result = consume(p)  # tpyc: warning(/copies.*into owned storage/)
-      result = consume(p);
-      // 22:             break
-      break;
+    // 16:     p = Point()
+    Point p = Point();
+    // 17:     p.x = 42
+    p.x = 42;
+    // 18:     result = Int32(0)
+    int32_t result = 0;
+    // 19:     for i in range(3):
+    for (int32_t i = 0; i < 3; ++i) {
+        // 20:         if i == 1:
+        if ((i == 1)) {
+            // 21:             result = consume(p)  # tpyc: warning(/copies.*into owned storage/)
+            result = consume(p);
+            // 22:             break
+            break;
+        }
     }
-  }
-  // 23:     return result
-  return result;
+    // 23:     return result
+    return result;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -17,103 +17,103 @@ void main();
 // 6: class WithArray[T, N: int]:
 template<typename T, std::size_t N>
 struct WithArray {
-  // 7:     data: Array[T, N]
-  std::array<T, N> data;
+    // 7:     data: Array[T, N]
+    std::array<T, N> data;
 
-  // 9:     def __init__(self):
-  WithArray() : data(std::array<T, N>()) {}
+    // 9:     def __init__(self):
+    WithArray() : data(std::array<T, N>()) {}
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const WithArray<T, N>& obj) {
-  os << "WithArray("
-     << "data=" << tpy::ListPrinter(obj.data)
-     << ")";
-  return os;
+    os << "WithArray("
+       << "data=" << tpy::ListPrinter(obj.data)
+       << ")";
+    return os;
 }
 
 // 12: class WithList[T]:
 template<typename T>
 struct WithList {
-  // 13:     items: list[T]
-  std::vector<T> items;
+    // 13:     items: list[T]
+    std::vector<T> items;
 
-  // 15:     def __init__(self):
-  WithList() : items(std::vector<T>()) {}
+    // 15:     def __init__(self):
+    WithList() : items(std::vector<T>()) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
-  os << "WithList("
-     << "items=" << tpy::ListPrinter(obj.items)
-     << ")";
-  return os;
+    os << "WithList("
+       << "items=" << tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
 }
 
 // 18: class WithStaticList[T]:
 template<typename T>
 struct WithStaticList {
-  // 19:     buf: StaticList[T, 4]
-  StaticList<T, 4> buf;
+    // 19:     buf: StaticList[T, 4]
+    StaticList<T, 4> buf;
 
-  // 21:     def __init__(self):
-  WithStaticList() : buf(StaticList<T, 4>()) {}
+    // 21:     def __init__(self):
+    WithStaticList() : buf(StaticList<T, 4>()) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithStaticList<T>& obj) {
-  os << "WithStaticList("
-     << "buf=" << "<StaticList[T, 4]>"
-     << ")";
-  return os;
+    os << "WithStaticList("
+       << "buf=" << "<StaticList[T, 4]>"
+       << ")";
+    return os;
 }
 
 // 24: class WithHeapStorage[T]:
 template<typename T>
 struct WithHeapStorage {
-  // 25:     _storage: UninitHeapStorage[T]
-  UninitHeapStorage<T> _storage;
-  bool __tpy_owned_ = true;
+    // 25:     _storage: UninitHeapStorage[T]
+    UninitHeapStorage<T> _storage;
+    bool __tpy_owned_ = true;
 
-  // 27:     def __init__(self, val: Own[T]):
-  WithHeapStorage() = default;
-  explicit WithHeapStorage(T val) : _storage(1) {
-    // 29:         self._storage.init0(val)
-    this->_storage.init0(std::move(val));
-  }
-  WithHeapStorage(const WithHeapStorage&) = delete;
-  WithHeapStorage& operator=(const WithHeapStorage&) = delete;
-  WithHeapStorage(WithHeapStorage&& other) noexcept : _storage(std::move(other._storage)) {
-    other.__tpy_owned_ = false;
-  }
-  WithHeapStorage& operator=(WithHeapStorage&& other) noexcept {
-    if (this != &other) {
-      this->~WithHeapStorage();
-      new (this) WithHeapStorage(std::move(other));
+    // 27:     def __init__(self, val: Own[T]):
+    WithHeapStorage() = default;
+    explicit WithHeapStorage(T val) : _storage(1) {
+        // 29:         self._storage.init0(val)
+        this->_storage.init0(std::move(val));
     }
-    return *this;
-  }
-  // 31:     def __del__(self):
+    WithHeapStorage(const WithHeapStorage&) = delete;
+    WithHeapStorage& operator=(const WithHeapStorage&) = delete;
+    WithHeapStorage(WithHeapStorage&& other) noexcept : _storage(std::move(other._storage)) {
+        other.__tpy_owned_ = false;
+    }
+    WithHeapStorage& operator=(WithHeapStorage&& other) noexcept {
+        if (this != &other) {
+            this->~WithHeapStorage();
+            new (this) WithHeapStorage(std::move(other));
+        }
+        return *this;
+    }
+    // 31:     def __del__(self):
 
-  ~WithHeapStorage() {
-    if (!__tpy_owned_) return;
-    // 32:         self._storage.drop0()
-    this->_storage.drop0();
-  }
+    ~WithHeapStorage() {
+        if (!__tpy_owned_) return;
+        // 32:         self._storage.drop0()
+        this->_storage.drop0();
+    }
 
-  // 34:     def get(self) -> T:
-  tpy::return_val_or_ref_t<T> get() {
-    // 35:         return self._storage.load0()
-    return this->_storage.load0();
-  }
+    // 34:     def get(self) -> T:
+    tpy::return_val_or_ref_t<T> get() {
+        // 35:         return self._storage.load0()
+        return this->_storage.load0();
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithHeapStorage<T>& obj) {
-  os << "WithHeapStorage("
-     << "_storage=" << "<UninitHeapStorage[T]>"
-     << ")";
-  return os;
+    os << "WithHeapStorage("
+       << "_storage=" << "<UninitHeapStorage[T]>"
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -9,26 +9,26 @@ std::string_view __name__;
 Same<int32_t>* same{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test type inference with same type param used twice."""
-  // 13: # Both args are int -> Same[int]
-  // 14: same = Same(1, 2)
-  static Same<int32_t> __global_slot_1 = Same<int32_t>(1, 2);
-  same = &__global_slot_1;
-  // 15: print(same.a)
-  std::cout << same->a << "\n";
-  // 16: print(same.b)
-  std::cout << same->b << "\n";
+    __name__ = "__main__";
+    // 1: """Test type inference with same type param used twice."""
+    // 13: # Both args are int -> Same[int]
+    // 14: same = Same(1, 2)
+    static Same<int32_t> __global_slot_1 = Same<int32_t>(1, 2);
+    same = &__global_slot_1;
+    // 15: print(same.a)
+    std::cout << same->a << "\n";
+    // 16: print(same.b)
+    std::cout << same->b << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

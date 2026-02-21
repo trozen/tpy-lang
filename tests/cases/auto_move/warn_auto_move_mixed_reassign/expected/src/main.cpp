@@ -7,44 +7,44 @@ std::string_view __name__;
 
 // 10: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 11:     return p.x
-  return p.x;
+    // 11:     return p.x
+    return p.x;
 }
 
 // 14: def test(a: Point, cond: bool) -> Int32:
 int32_t test(Point& a, bool cond) {
-  // 15:     p = Point()
-  Point __slot_1 = Point();
-  std::optional<Point> __slot_2;
-  Point* p = &__slot_1;
-  // 16:     p.x = 10
-  p->x = 10;
-  // 17:     if cond:
-  if (cond) {
-    // 18:         p = Point()  # rvalue reassignment
-    p = &*(__slot_2 = Point());
-    // 19:         p.x = 20
-    p->x = 20;
-  } else {
-    // 21:         p = a  # lvalue reassignment -> borrowed
-    p = &(a);
-  }
-  // 22:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
-  return consume((*p));
+    // 15:     p = Point()
+    Point __slot_1 = Point();
+    std::optional<Point> __slot_2;
+    Point* p = &__slot_1;
+    // 16:     p.x = 10
+    p->x = 10;
+    // 17:     if cond:
+    if (cond) {
+        // 18:         p = Point()  # rvalue reassignment
+        p = &*(__slot_2 = Point());
+        // 19:         p.x = 20
+        p->x = 20;
+    } else {
+        // 21:         p = a  # lvalue reassignment -> borrowed
+        p = &(a);
+    }
+    // 22:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
+    return consume((*p));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

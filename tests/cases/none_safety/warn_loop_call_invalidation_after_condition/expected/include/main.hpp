@@ -14,19 +14,19 @@ int32_t use_after_call(Box& b);
 
 // 4: class Box:
 struct Box {
-  // 5:     value: Int32 | None
-  std::optional<int32_t> value;
+    // 5:     value: Int32 | None
+    std::optional<int32_t> value;
 
-  // 7:     def __init__(self, v: Int32):
-  Box() = default;
-  explicit Box(int32_t v) : value(v) {}
+    // 7:     def __init__(self, v: Int32):
+    Box() = default;
+    explicit Box(int32_t v) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << tpy::print_optional_val(obj.value)
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << tpy::print_optional_val(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -22,23 +22,23 @@ void test_local_list();
 
 // 11: class Point:
 struct Point {
-  // 12:     x: Int32
-  int32_t x;
-  // 13:     y: Int32
-  int32_t y;
+    // 12:     x: Int32
+    int32_t x;
+    // 13:     y: Int32
+    int32_t y;
 
-  // 14:     def __init__(self, x: Int32 = 0, y: Int32 = 0):
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 14:     def __init__(self, x: Int32 = 0, y: Int32 = 0):
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 void __tpy_init();

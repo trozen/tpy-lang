@@ -8,35 +8,35 @@ std::string_view __name__;
 // # Test that out-of-bounds access on StaticList panics at runtime
 // 5: def test_out_of_bounds() -> None:
 void test_out_of_bounds() {
-  // 6:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
-  StaticList<int32_t, 5> items = StaticList<int32_t, 5>();
-  // 7:     items.append(10)
-  items.push_back(10);
-  // 8:     items.append(20)
-  items.push_back(20);
-  // 9:     items.append(30)
-  items.push_back(30);
-  // 11:     # Access index 10 which is out of bounds (only 3 elements)
-  // 12:     x: Int32 = items[10]
-  int32_t x = tpy::get_item(items, 10);
-  // 13:     print(x)
-  std::cout << x << "\n";
+    // 6:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
+    StaticList<int32_t, 5> items = StaticList<int32_t, 5>();
+    // 7:     items.append(10)
+    items.push_back(10);
+    // 8:     items.append(20)
+    items.push_back(20);
+    // 9:     items.append(30)
+    items.push_back(30);
+    // 11:     # Access index 10 which is out of bounds (only 3 elements)
+    // 12:     x: Int32 = items[10]
+    int32_t x = tpy::get_item(items, 10);
+    // 13:     print(x)
+    std::cout << x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 15: test_out_of_bounds()
-  test_out_of_bounds();
+    __name__ = "__main__";
+    // 15: test_out_of_bounds()
+    test_out_of_bounds();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

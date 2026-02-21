@@ -9,39 +9,39 @@ Point* q{};
 
 // 14: def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
-  // 15:     assert p is not None
-  if (!((p != nullptr))) tpy::tpy_panic("assertion failed");
-  // 16:     return p.x
-  return p->x;
+    // 15:     assert p is not None
+    if (!((p != nullptr))) tpy::tpy_panic("assertion failed");
+    // 16:     return p.x
+    return p->x;
 }
 
 // 19: def get_mag(p: Point | None) -> Int32:
 int32_t get_mag(Point* p) {
-  // 20:     assert p is not None, "point required"
-  if (!((p != nullptr))) tpy::tpy_panic("point required");
-  // 21:     return p.mag()
-  return p->mag();
+    // 20:     assert p is not None, "point required"
+    if (!((p != nullptr))) tpy::tpy_panic("point required");
+    // 21:     return p.mag()
+    return p->mag();
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 24: q: Point | None = Point(7)
-  static Point __global_slot_1 = Point(7);
-  q = &__global_slot_1;
-  // 25: print(get_x(q))
-  std::cout << get_x(q) << "\n";
-  // 26: print(get_mag(q))
-  std::cout << get_mag(q) << "\n";
+    __name__ = "__main__";
+    // 24: q: Point | None = Point(7)
+    static Point __global_slot_1 = Point(7);
+    q = &__global_slot_1;
+    // 25: print(get_x(q))
+    std::cout << get_x(q) << "\n";
+    // 26: print(get_mag(q))
+    std::cout << get_mag(q) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

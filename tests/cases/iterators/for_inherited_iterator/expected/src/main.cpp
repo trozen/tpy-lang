@@ -6,39 +6,39 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 27: # 1. for-loop over child inheriting next() from parent
-  // 28: for x in DoubleCounter(3):
-  auto __iter_0 = DoubleCounter(3);
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 29:     print(x)
-    std::cout << x << "\n";
-  }
-  // 38: print(sum_iter(DoubleCounter(3)))
-  auto __tmp_1 = DoubleCounter(3);
-  std::cout << sum_iter(__tmp_1) << "\n";
-  // 40: # 3. Multi-level: for-loop + protocol param
-  // 41: for x in GrandChild(2):
-  auto __iter_1 = GrandChild(2);
-  while (auto __opt_1 = __iter_1.__next_opt__()) {
-    int32_t x = *__opt_1;
-    // 42:     print(x)
-    std::cout << x << "\n";
-  }
-  // 43: print(sum_iter(GrandChild(2)))
-  auto __tmp_2 = GrandChild(2);
-  std::cout << sum_iter(__tmp_2) << "\n";
+    __name__ = "__main__";
+    // 27: # 1. for-loop over child inheriting next() from parent
+    // 28: for x in DoubleCounter(3):
+    auto __iter_0 = DoubleCounter(3);
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 29:     print(x)
+        std::cout << x << "\n";
+    }
+    // 38: print(sum_iter(DoubleCounter(3)))
+    auto __tmp_1 = DoubleCounter(3);
+    std::cout << sum_iter(__tmp_1) << "\n";
+    // 40: # 3. Multi-level: for-loop + protocol param
+    // 41: for x in GrandChild(2):
+    auto __iter_1 = GrandChild(2);
+    while (auto __opt_1 = __iter_1.__next_opt__()) {
+        int32_t x = *__opt_1;
+        // 42:     print(x)
+        std::cout << x << "\n";
+    }
+    // 43: print(sum_iter(GrandChild(2)))
+    auto __tmp_2 = GrandChild(2);
+    std::cout << sum_iter(__tmp_2) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

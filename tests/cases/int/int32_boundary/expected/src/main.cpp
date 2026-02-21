@@ -12,36 +12,36 @@ int32_t x{};
 int32_t y{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test valid Int32 operations at boundary values."""
-  // 4: # INT32_MAX operations that don't overflow
-  // 5: x: Int32 = 2147483647
-  x = 2147483647;
-  // 6: print(x)
-  std::cout << x << "\n";
-  // 7: print(x - 1)
-  std::cout << (tpy::sub_check<int32_t>(x, 1)) << "\n";
-  // 8: print(x // 2)
-  std::cout << (tpy::div_check<int32_t>(x, 2)) << "\n";
-  // 10: # INT32_MIN operations that don't overflow
-  // 11: y: Int32 = -2147483648
-  y = -2147483648;
-  // 12: print(y)
-  std::cout << y << "\n";
-  // 13: print(y + 1)
-  std::cout << (tpy::add_check<int32_t>(y, 1)) << "\n";
-  // 14: print(y // 2)
-  std::cout << (tpy::div_check<int32_t>(y, 2)) << "\n";
+    __name__ = "__main__";
+    // 1: """Test valid Int32 operations at boundary values."""
+    // 4: # INT32_MAX operations that don't overflow
+    // 5: x: Int32 = 2147483647
+    x = 2147483647;
+    // 6: print(x)
+    std::cout << x << "\n";
+    // 7: print(x - 1)
+    std::cout << (tpy::sub_check<int32_t>(x, 1)) << "\n";
+    // 8: print(x // 2)
+    std::cout << (tpy::div_check<int32_t>(x, 2)) << "\n";
+    // 10: # INT32_MIN operations that don't overflow
+    // 11: y: Int32 = -2147483648
+    y = -2147483648;
+    // 12: print(y)
+    std::cout << y << "\n";
+    // 13: print(y + 1)
+    std::cout << (tpy::add_check<int32_t>(y, 1)) << "\n";
+    // 14: print(y // 2)
+    std::cout << (tpy::div_check<int32_t>(y, 2)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

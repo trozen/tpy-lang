@@ -19,38 +19,38 @@ void main();
 
 // 5: class Point:
 struct Point {
-  // 6:     x: Int32
-  int32_t x;
-  // 7:     y: Int32
-  int32_t y;
+    // 6:     x: Int32
+    int32_t x;
+    // 7:     y: Int32
+    int32_t y;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 10: def first_val[T](items: Own[list[T]]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> first_val(std::vector<T> items) {
-  // 11:     return items[0]
-  return items[0];
+    // 11:     return items[0]
+    return items[0];
 }
 // 14: def consume_list[T](items: Own[list[T]]) -> None:
 template<typename T>
 void consume_list(std::vector<T> items) {
-  // 15:     pass
+    // 15:     pass
 }
 // 18: def consume_both[T](a: Own[T], b: Own[T]) -> None:
 template<typename T>
 void consume_both(T&& a, T&& b) {
-  // 19:     pass
+    // 19:     pass
 }
 
 void __tpy_init();

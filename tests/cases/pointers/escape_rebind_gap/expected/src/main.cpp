@@ -11,38 +11,38 @@ std::string_view __name__;
 // # the function-scoped slot instead of creating loop-scoped storage.
 // 14: def rebind_gap() -> None:
 void rebind_gap() {
-  // 15:     p: Point = Point(0, 0)
-  Point __slot_1 = Point(0, 0);
-  std::optional<Point> __slot_2;
-  Point* p = &__slot_1;
-  // 16:     saved: Point = Point(0, 0)
-  Point __slot_3 = Point(0, 0);
-  Point* saved = &__slot_3;
-  // 17:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
-    // 18:         p = Point(i, i)
-    p = &*(__slot_2 = Point(i, i));
-    // 19:         saved = p
-    saved = p;
-  }
-  // 20:     print(saved.x, saved.y)
-  std::cout << saved->x << " " << saved->y << "\n";
+    // 15:     p: Point = Point(0, 0)
+    Point __slot_1 = Point(0, 0);
+    std::optional<Point> __slot_2;
+    Point* p = &__slot_1;
+    // 16:     saved: Point = Point(0, 0)
+    Point __slot_3 = Point(0, 0);
+    Point* saved = &__slot_3;
+    // 17:     for i in range(3):
+    for (int32_t i = 0; i < 3; ++i) {
+        // 18:         p = Point(i, i)
+        p = &*(__slot_2 = Point(i, i));
+        // 19:         saved = p
+        saved = p;
+    }
+    // 20:     print(saved.x, saved.y)
+    std::cout << saved->x << " " << saved->y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: rebind_gap()
-  rebind_gap();
+    __name__ = "__main__";
+    // 22: rebind_gap()
+    rebind_gap();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -15,40 +15,40 @@ void main();
 // # Assignment narrowing: union var initialized with concrete type narrows without isinstance
 // 2: class Circle:
 struct Circle {
-  // 3:     radius: float
-  double radius;
+    // 3:     radius: float
+    double radius;
 
-  // 5:     def __init__(self, radius: float) -> None:
-  Circle() = default;
-  explicit Circle(double radius) : radius(radius) {}
+    // 5:     def __init__(self, radius: float) -> None:
+    Circle() = default;
+    explicit Circle(double radius) : radius(radius) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
-  os << "Circle("
-     << "radius=" << obj.radius
-     << ")";
-  return os;
+    os << "Circle("
+       << "radius=" << obj.radius
+       << ")";
+    return os;
 }
 
 // 8: class Rect:
 struct Rect {
-  // 9:     width: float
-  double width;
-  // 10:     height: float
-  double height;
+    // 9:     width: float
+    double width;
+    // 10:     height: float
+    double height;
 
-  // 12:     def __init__(self, width: float, height: float) -> None:
-  Rect() = default;
-  explicit Rect(double width, double height) : width(width), height(height) {}
+    // 12:     def __init__(self, width: float, height: float) -> None:
+    Rect() = default;
+    explicit Rect(double width, double height) : width(width), height(height) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-  os << "Rect("
-     << "width=" << obj.width
-     << ", "
-     << "height=" << obj.height
-     << ")";
-  return os;
+    os << "Rect("
+       << "width=" << obj.width
+       << ", "
+       << "height=" << obj.height
+       << ")";
+    return os;
 }
 
 void __tpy_init();

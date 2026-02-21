@@ -7,37 +7,37 @@ std::string_view __name__;
 
 // 5: def accept(x: Int32 | str | None) -> None:
 void accept(const std::variant<std::monostate, int32_t, std::string_view>& x) {
-  // 6:     pass
+    // 6:     pass
 }
 
 // 9: def test() -> None:
 void test() {
-  // 10:     a: Int32 | str | None = Int32(42)
-  std::variant<std::monostate, int32_t, std::string_view> a = 42;
-  // 11:     b: Int32 | str | None = "hello"
-  std::variant<std::monostate, int32_t, std::string_view> b = "hello";
-  // 12:     accept(a)
-  accept(a);
-  // 13:     accept(b)
-  accept(b);
-  // 14:     print("ok")
-  std::cout << "ok" << "\n";
+    // 10:     a: Int32 | str | None = Int32(42)
+    std::variant<std::monostate, int32_t, std::string_view> a = 42;
+    // 11:     b: Int32 | str | None = "hello"
+    std::variant<std::monostate, int32_t, std::string_view> b = "hello";
+    // 12:     accept(a)
+    accept(a);
+    // 13:     accept(b)
+    accept(b);
+    // 14:     print("ok")
+    std::cout << "ok" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 16: test()
-  test();
+    __name__ = "__main__";
+    // 16: test()
+    test();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

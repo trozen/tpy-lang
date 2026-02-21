@@ -15,60 +15,60 @@ std::vector<int32_t>* chars{};
 
 // 3: def sum_list(nums: list[Int32]) -> Int32:
 int32_t sum_list(std::vector<int32_t>& nums) {
-  // 4:     total: Int32 = 0
-  int32_t total = 0;
-  // 5:     i: Int32 = 0
-  int32_t i = 0;
-  // 6:     while i < len(nums):
-  while ((i < tpy::__len__(nums))) {
-    // 7:         total += nums[i]
-    total = tpy::add_check<int32_t>(total, tpy::get_item(nums, i));
-    // 8:         i += 1
-    i = tpy::add_check<int32_t>(i, 1);
-  }
-  // 9:     return total
-  return total;
+    // 4:     total: Int32 = 0
+    int32_t total = 0;
+    // 5:     i: Int32 = 0
+    int32_t i = 0;
+    // 6:     while i < len(nums):
+    while ((i < tpy::__len__(nums))) {
+        // 7:         total += nums[i]
+        total = tpy::add_check<int32_t>(total, tpy::get_item(nums, i));
+        // 8:         i += 1
+        i = tpy::add_check<int32_t>(i, 1);
+    }
+    // 9:     return total
+    return total;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 11: mem: list[Int32] = [0] * 10
-  static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(10, {0}));
-  mem = &__global_slot_1;
-  // 12: mem[0] = 42
-  tpy::set_item((*mem), 0, 42);
-  // 13: mem[1] = 8
-  tpy::set_item((*mem), 1, 8);
-  // 14: print(sum_list(mem))
-  std::cout << sum_list((*mem)) << "\n";
-  // 15: print(len(mem))
-  std::cout << tpy::__len__((*mem)) << "\n";
-  // 17: # Unannotated list repetition (infers default int)
-  // 18: data = [0] * 5
-  static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(5, {0}));
-  data = &__global_slot_2;
-  // 19: data[0] = 100
-  tpy::set_item((*data), 0, 100);
-  // 20: print(data[0])
-  std::cout << tpy::get_item((*data), 0) << "\n";
-  // 22: # chr() with BigInt element from list
-  // 23: chars = [72, 73]  # 'H', 'I'
-  static std::vector<int32_t> __global_slot_3 = {72, 73};
-  chars = &__global_slot_3;
-  // 24: print(chr(chars[0]), end='')
-  std::cout << static_cast<char>(tpy::get_item((*chars), 0));
-  // 25: print(chr(chars[1]))
-  std::cout << static_cast<char>(tpy::get_item((*chars), 1)) << "\n";
+    __name__ = "__main__";
+    // 11: mem: list[Int32] = [0] * 10
+    static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(10, {0}));
+    mem = &__global_slot_1;
+    // 12: mem[0] = 42
+    tpy::set_item((*mem), 0, 42);
+    // 13: mem[1] = 8
+    tpy::set_item((*mem), 1, 8);
+    // 14: print(sum_list(mem))
+    std::cout << sum_list((*mem)) << "\n";
+    // 15: print(len(mem))
+    std::cout << tpy::__len__((*mem)) << "\n";
+    // 17: # Unannotated list repetition (infers default int)
+    // 18: data = [0] * 5
+    static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(5, {0}));
+    data = &__global_slot_2;
+    // 19: data[0] = 100
+    tpy::set_item((*data), 0, 100);
+    // 20: print(data[0])
+    std::cout << tpy::get_item((*data), 0) << "\n";
+    // 22: # chr() with BigInt element from list
+    // 23: chars = [72, 73]  # 'H', 'I'
+    static std::vector<int32_t> __global_slot_3 = {72, 73};
+    chars = &__global_slot_3;
+    // 24: print(chr(chars[0]), end='')
+    std::cout << static_cast<char>(tpy::get_item((*chars), 0));
+    // 25: print(chr(chars[1]))
+    std::cout << static_cast<char>(tpy::get_item((*chars), 1)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,36 +7,36 @@ std::string_view __name__;
 
 // 13: def mutate(b: Box) -> None:
 void mutate(Box& b) {
-  // 14:     b.value = b.value + 1
-  b.value = (tpy::add_check<int32_t>(b.value, 1));
+    // 14:     b.value = b.value + 1
+    b.value = (tpy::add_check<int32_t>(b.value, 1));
 }
 
 // @readonly
 // 18: def ok(b: Box) -> Int32:
 int32_t ok(Box& b) {
-  // 19:     local = Box(b.value)
-  Box local = Box(b.value);
-  // 20:     mutate(local)  # tpyc: ok
-  mutate(local);
-  // 21:     return local.value
-  return local.value;
+    // 19:     local = Box(b.value)
+    Box local = Box(b.value);
+    // 20:     mutate(local)  # tpyc: ok
+    mutate(local);
+    // 21:     return local.value
+    return local.value;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 24: print(ok(Box(5)))
-  Box __tmp_1 = Box(5);
-  std::cout << ok(__tmp_1) << "\n";
+    __name__ = "__main__";
+    // 24: print(ok(Box(5)))
+    Box __tmp_1 = Box(5);
+    std::cout << ok(__tmp_1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

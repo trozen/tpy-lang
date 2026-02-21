@@ -19,72 +19,72 @@ Point* pt{};
 Point* pt2{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: from tpy.unsafe import unsafe_load
-  // 4: from tpy.mem import UninitArrayStorage
-  // 14: # Value type: Int32
-  // 15: storage = UninitArrayStorage[Int32, 4]()
-  static UninitArrayStorage<int32_t, 4> __global_slot_1 = UninitArrayStorage<int32_t, 4>();
-  storage = &__global_slot_1;
-  // 16: storage.init(0, 10)
-  (*storage).init(0, 10);
-  // 17: storage.init(1, 20)
-  (*storage).init(1, 20);
-  // 18: storage.init(2, 30)
-  (*storage).init(2, 30);
-  // 20: print(storage.load(0))
-  std::cout << (*storage).load(0) << "\n";
-  // 21: print(storage.load(1))
-  std::cout << (*storage).load(1) << "\n";
-  // 22: print(storage.load(2))
-  std::cout << (*storage).load(2) << "\n";
-  // 24: # ptr() returns a raw pointer
-  // 25: p: Ptr[Int32] = storage.ptr()
-  p = (*storage).ptr();
-  // 26: print(unsafe_load(p, 0))
-  std::cout << p[0] << "\n";
-  // 28: storage.drop(0)
-  (*storage).drop(0);
-  // 29: storage.drop(1)
-  (*storage).drop(1);
-  // 30: storage.drop(2)
-  (*storage).drop(2);
-  // 32: # Record type: Point
-  // 33: points = UninitArrayStorage[Point, 3]()
-  static UninitArrayStorage<Point, 3> __global_slot_2 = UninitArrayStorage<Point, 3>();
-  points = &__global_slot_2;
-  // 34: points.init(0, Point(1, 2))
-  (*points).init(0, Point(1, 2));
-  // 35: points.init(1, Point(3, 4))
-  (*points).init(1, Point(3, 4));
-  // 37: pt: Point = points.load(0)
-  static Point __global_slot_3 = (*points).load(0);
-  pt = &__global_slot_3;
-  // 38: print(pt.x)
-  std::cout << pt->x << "\n";
-  // 39: print(pt.y)
-  std::cout << pt->y << "\n";
-  // 41: pt2: Point = points.load(1)
-  static Point __global_slot_4 = (*points).load(1);
-  pt2 = &__global_slot_4;
-  // 42: print(pt2.x)
-  std::cout << pt2->x << "\n";
-  // 43: print(pt2.y)
-  std::cout << pt2->y << "\n";
-  // 45: points.drop(0)
-  (*points).drop(0);
-  // 46: points.drop(1)
-  (*points).drop(1);
+    __name__ = "__main__";
+    // 3: from tpy.unsafe import unsafe_load
+    // 4: from tpy.mem import UninitArrayStorage
+    // 14: # Value type: Int32
+    // 15: storage = UninitArrayStorage[Int32, 4]()
+    static UninitArrayStorage<int32_t, 4> __global_slot_1 = UninitArrayStorage<int32_t, 4>();
+    storage = &__global_slot_1;
+    // 16: storage.init(0, 10)
+    (*storage).init(0, 10);
+    // 17: storage.init(1, 20)
+    (*storage).init(1, 20);
+    // 18: storage.init(2, 30)
+    (*storage).init(2, 30);
+    // 20: print(storage.load(0))
+    std::cout << (*storage).load(0) << "\n";
+    // 21: print(storage.load(1))
+    std::cout << (*storage).load(1) << "\n";
+    // 22: print(storage.load(2))
+    std::cout << (*storage).load(2) << "\n";
+    // 24: # ptr() returns a raw pointer
+    // 25: p: Ptr[Int32] = storage.ptr()
+    p = (*storage).ptr();
+    // 26: print(unsafe_load(p, 0))
+    std::cout << p[0] << "\n";
+    // 28: storage.drop(0)
+    (*storage).drop(0);
+    // 29: storage.drop(1)
+    (*storage).drop(1);
+    // 30: storage.drop(2)
+    (*storage).drop(2);
+    // 32: # Record type: Point
+    // 33: points = UninitArrayStorage[Point, 3]()
+    static UninitArrayStorage<Point, 3> __global_slot_2 = UninitArrayStorage<Point, 3>();
+    points = &__global_slot_2;
+    // 34: points.init(0, Point(1, 2))
+    (*points).init(0, Point(1, 2));
+    // 35: points.init(1, Point(3, 4))
+    (*points).init(1, Point(3, 4));
+    // 37: pt: Point = points.load(0)
+    static Point __global_slot_3 = (*points).load(0);
+    pt = &__global_slot_3;
+    // 38: print(pt.x)
+    std::cout << pt->x << "\n";
+    // 39: print(pt.y)
+    std::cout << pt->y << "\n";
+    // 41: pt2: Point = points.load(1)
+    static Point __global_slot_4 = (*points).load(1);
+    pt2 = &__global_slot_4;
+    // 42: print(pt2.x)
+    std::cout << pt2->x << "\n";
+    // 43: print(pt2.y)
+    std::cout << pt2->y << "\n";
+    // 45: points.drop(0)
+    (*points).drop(0);
+    // 46: points.drop(1)
+    (*points).drop(1);
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

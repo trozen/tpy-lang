@@ -9,41 +9,41 @@ std::string_view __name__;
 Box* b{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: # Iterating via field access should preserve consumption semantics
-  // 29: b = Box()
-  static Box __global_slot_1 = Box();
-  b = &__global_slot_1;
-  // 30: print("first:")
-  std::cout << "first:" << "\n";
-  // 31: for x in b.it:
-  auto& __iter_0 = b->it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 32:     print(x)
-    std::cout << x << "\n";
-  }
-  // 34: print("second:")
-  std::cout << "second:" << "\n";
-  // 35: for x in b.it:
-  auto& __iter_1 = b->it;
-  while (auto __opt_1 = __iter_1.__next_opt__()) {
-    int32_t x = *__opt_1;
-    // 36:     print(x)
-    std::cout << x << "\n";
-  }
-  // 38: print("done")
-  std::cout << "done" << "\n";
+    __name__ = "__main__";
+    // 28: # Iterating via field access should preserve consumption semantics
+    // 29: b = Box()
+    static Box __global_slot_1 = Box();
+    b = &__global_slot_1;
+    // 30: print("first:")
+    std::cout << "first:" << "\n";
+    // 31: for x in b.it:
+    auto& __iter_0 = b->it;
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 32:     print(x)
+        std::cout << x << "\n";
+    }
+    // 34: print("second:")
+    std::cout << "second:" << "\n";
+    // 35: for x in b.it:
+    auto& __iter_1 = b->it;
+    while (auto __opt_1 = __iter_1.__next_opt__()) {
+        int32_t x = *__opt_1;
+        // 36:     print(x)
+        std::cout << x << "\n";
+    }
+    // 38: print("done")
+    std::cout << "done" << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

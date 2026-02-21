@@ -7,37 +7,37 @@ std::string_view __name__;
 
 // 12: def main() -> None:
 void main() {
-  // 13:     arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
-  std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
-  // 14:     p: Ptr[Point] = unsafe_ptr(arr)
-  Point* p = arr.data();
-  // 15:     pt: Point = Point(10, 20)
-  Point pt = Point(10, 20);
-  // 16:     unsafe_store(p, 0, pt)
-  p[0] = pt;
-  // 17:     loaded: Point = unsafe_load(p, 0)
-  Point loaded = p[0];
-  // 18:     print(loaded.x)
-  std::cout << loaded.x << "\n";
-  // 19:     print(loaded.y)
-  std::cout << loaded.y << "\n";
+    // 13:     arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
+    std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
+    // 14:     p: Ptr[Point] = unsafe_ptr(arr)
+    Point* p = arr.data();
+    // 15:     pt: Point = Point(10, 20)
+    Point pt = Point(10, 20);
+    // 16:     unsafe_store(p, 0, pt)
+    p[0] = pt;
+    // 17:     loaded: Point = unsafe_load(p, 0)
+    Point loaded = p[0];
+    // 18:     print(loaded.x)
+    std::cout << loaded.x << "\n";
+    // 19:     print(loaded.y)
+    std::cout << loaded.y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
-  // 21: main()
-  main();
+    __name__ = "__main__";
+    // 3: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
+    // 21: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

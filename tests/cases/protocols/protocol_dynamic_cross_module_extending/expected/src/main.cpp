@@ -7,57 +7,57 @@ std::string_view __name__;
 
 // 23: def greet_pet(pet: Pet) -> None:
 void greet_pet(::tpy_user::pet::__tpy_Base_Pet& pet) {
-  // 24:     print(pet.speak())
-  std::cout << pet.speak() << "\n";
+    // 24:     print(pet.speak())
+    std::cout << pet.speak() << "\n";
 }
 
 // 26: def greet_named(pet: NamedPet) -> None:
 void greet_named(__tpy_Base_NamedPet& pet) {
-  // 27:     print(pet.name())
-  std::cout << pet.name() << "\n";
+    // 27:     print(pet.name())
+    std::cout << pet.name() << "\n";
 }
 
 // 29: def main() -> None:
 void main() {
-  // 30:     dog = Dog()
-  Dog dog = Dog();
-  // 31:     greet_pet(dog)           # Dog -> Base_NamedPet -> Base_Pet (transitive cross-module upcast)
-  greet_pet(dog);
-  // 32:     greet_named(dog)         # Dog -> Base_NamedPet (direct)
-  greet_named(dog);
-  // 33:     np: NamedPet = Dog()
-  Dog __slot_1{Dog()};
-  __tpy_Base_NamedPet* np = &__slot_1;
-  // 34:     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent, cross-module)
-  greet_pet((*np));
-  // 35:     greet_named(Parrot())    # Structural -> Adapter_NamedPet
-  __tpy_Adapter_NamedPet<Parrot> __tmp_1{Parrot()};
-  greet_named(__tmp_1);
-  // 36:     parrot_np: NamedPet = Parrot()
-  __tpy_Adapter_NamedPet<Parrot> __slot_2{Parrot()};
-  __tpy_Base_NamedPet* parrot_np = &__slot_2;
-  // 37:     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, cross-module upcast)
-  greet_pet((*parrot_np));
+    // 30:     dog = Dog()
+    Dog dog = Dog();
+    // 31:     greet_pet(dog)           # Dog -> Base_NamedPet -> Base_Pet (transitive cross-module upcast)
+    greet_pet(dog);
+    // 32:     greet_named(dog)         # Dog -> Base_NamedPet (direct)
+    greet_named(dog);
+    // 33:     np: NamedPet = Dog()
+    Dog __slot_1{Dog()};
+    __tpy_Base_NamedPet* np = &__slot_1;
+    // 34:     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent, cross-module)
+    greet_pet((*np));
+    // 35:     greet_named(Parrot())    # Structural -> Adapter_NamedPet
+    __tpy_Adapter_NamedPet<Parrot> __tmp_1{Parrot()};
+    greet_named(__tmp_1);
+    // 36:     parrot_np: NamedPet = Parrot()
+    __tpy_Adapter_NamedPet<Parrot> __slot_2{Parrot()};
+    __tpy_Base_NamedPet* parrot_np = &__slot_2;
+    // 37:     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, cross-module upcast)
+    greet_pet((*parrot_np));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
-  // 2: # Tests that __tpy_Base_NamedPet inherits from the qualified ::tpy_user::pet::__tpy_Base_Pet.
-  // 3: from pet import Pet
-  ::tpy_user::pet::__tpy_init();
-  // 39: main()
-  main();
+    __name__ = "__main__";
+    // 1: # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
+    // 2: # Tests that __tpy_Base_NamedPet inherits from the qualified ::tpy_user::pet::__tpy_Base_Pet.
+    // 3: from pet import Pet
+    ::tpy_user::pet::__tpy_init();
+    // 39: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

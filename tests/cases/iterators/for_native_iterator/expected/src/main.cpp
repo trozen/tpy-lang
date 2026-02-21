@@ -6,36 +6,36 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 35: # Pass Counter objects (which extend OptIterator[Int32])
-  // 36: print(sum_iter(Counter(0, 5)))          # 0+1+2+3+4 = 10
-  auto __tmp_1 = Counter(0, 5);
-  std::cout << sum_iter(__tmp_1) << "\n";
-  // 37: print(sum_iter(Counter(1, 6)))          # 1+2+3+4+5 = 15
-  auto __tmp_2 = Counter(1, 6);
-  std::cout << sum_iter(__tmp_2) << "\n";
-  // 39: print(count_iter(Counter(0, 7)))        # 7
-  auto __tmp_3 = Counter(0, 7);
-  std::cout << count_iter(__tmp_3) << "\n";
-  // 40: print(count_iter(Counter(0, 0)))        # 0 (empty iterator)
-  auto __tmp_4 = Counter(0, 0);
-  std::cout << count_iter(__tmp_4) << "\n";
-  // 42: print(first_or_fallback(Counter(0, 3), -1))   # 0
-  auto __tmp_5 = Counter(0, 3);
-  std::cout << first_or_fallback(__tmp_5, -1) << "\n";
-  // 43: print(first_or_fallback(Counter(0, 0), -1))   # -1 (empty, returns fallback)
-  auto __tmp_6 = Counter(0, 0);
-  std::cout << first_or_fallback(__tmp_6, -1) << "\n";
+    __name__ = "__main__";
+    // 35: # Pass Counter objects (which extend OptIterator[Int32])
+    // 36: print(sum_iter(Counter(0, 5)))          # 0+1+2+3+4 = 10
+    auto __tmp_1 = Counter(0, 5);
+    std::cout << sum_iter(__tmp_1) << "\n";
+    // 37: print(sum_iter(Counter(1, 6)))          # 1+2+3+4+5 = 15
+    auto __tmp_2 = Counter(1, 6);
+    std::cout << sum_iter(__tmp_2) << "\n";
+    // 39: print(count_iter(Counter(0, 7)))        # 7
+    auto __tmp_3 = Counter(0, 7);
+    std::cout << count_iter(__tmp_3) << "\n";
+    // 40: print(count_iter(Counter(0, 0)))        # 0 (empty iterator)
+    auto __tmp_4 = Counter(0, 0);
+    std::cout << count_iter(__tmp_4) << "\n";
+    // 42: print(first_or_fallback(Counter(0, 3), -1))   # 0
+    auto __tmp_5 = Counter(0, 3);
+    std::cout << first_or_fallback(__tmp_5, -1) << "\n";
+    // 43: print(first_or_fallback(Counter(0, 0), -1))   # -1 (empty, returns fallback)
+    auto __tmp_6 = Counter(0, 0);
+    std::cout << first_or_fallback(__tmp_6, -1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

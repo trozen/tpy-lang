@@ -25,7 +25,7 @@ from ..parse import (
     TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce,
 )
 from ..namespace import Namespace
-from .context import CodeGenError, qualified_cpp_name, expand_cpp_template
+from .context import INDENT, CodeGenError, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
 
 if TYPE_CHECKING:
@@ -67,8 +67,7 @@ class StatementGenerator:
             self.gen_stmt(body_buf, stmt)
         if track_stmt_line:
             self.ctx.current_stmt_line = 0
-        # Hoist decls have base indent "  "; add extra for nested scopes (methods)
-        hoist_prefix = "  " * (self.ctx.indent_level - 1)
+        hoist_prefix = INDENT * (self.ctx.indent_level - 1)
         for decl in self.ctx.pending_hoist_decls:
             out.write(f"{hoist_prefix}{decl}")
         out.write(body_buf.getvalue())
@@ -891,7 +890,7 @@ class StatementGenerator:
         saved: dict[str, str | None] = {}
         if not type_facts:
             return saved
-        inner_indent = "  " * (self.ctx.indent_level + indent_extra)
+        inner_indent = INDENT * (self.ctx.indent_level + indent_extra)
         for var_name, narrowed_type in type_facts.items():
             if isinstance(narrowed_type, (UnionType, NoneType)):
                 continue
@@ -1099,7 +1098,7 @@ class StatementGenerator:
         out.write(f"{indent}while (auto {opt_name} = {iter_name}.__next_opt__()) {{\n")
 
         # Declare loop variable inside the while body
-        inner_indent = indent + "  "
+        inner_indent = indent + INDENT
         if elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
             out.write(f"{inner_indent}{cpp_elem} {stmt.var} = *{opt_name};\n")
@@ -1134,7 +1133,7 @@ class StatementGenerator:
         out.write(f"{indent}auto {iter_name} = {obj_name}.__iter__();\n")
         out.write(f"{indent}while (auto {opt_name} = {iter_name}.__next_opt__()) {{\n")
 
-        inner_indent = indent + "  "
+        inner_indent = indent + INDENT
         if elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
             out.write(f"{inner_indent}{cpp_elem} {stmt.var} = *{opt_name};\n")

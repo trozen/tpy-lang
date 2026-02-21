@@ -6,19 +6,19 @@ namespace tpy_user::pkg::consumer {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "pkg.consumer";
-  // 1: from . import amod; from . import bmod
-  ::tpy_user::pkg::__tpy_init();
-  ::tpy_user::pkg::amod::__tpy_init();
-  // 1: from . import amod; from . import bmod
-  ::tpy_user::pkg::__tpy_init();
-  ::tpy_user::pkg::bmod::__tpy_init();
-  // 2: print("consumer done")
-  std::cout << "consumer done" << "\n";
+    __name__ = "pkg.consumer";
+    // 1: from . import amod; from . import bmod
+    ::tpy_user::pkg::__tpy_init();
+    ::tpy_user::pkg::amod::__tpy_init();
+    // 1: from . import amod; from . import bmod
+    ::tpy_user::pkg::__tpy_init();
+    ::tpy_user::pkg::bmod::__tpy_init();
+    // 2: print("consumer done")
+    std::cout << "consumer done" << "\n";
 }
 
 } // namespace tpy_user::pkg::consumer

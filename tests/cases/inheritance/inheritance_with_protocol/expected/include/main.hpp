@@ -21,58 +21,58 @@ extern Person* p;
 // # Base class
 // 5: class Entity:
 struct Entity {
-  // 6:     name: str
-  std::string_view name;
-  // 7:     id: Int32
-  int32_t id;
+    // 6:     name: str
+    std::string_view name;
+    // 7:     id: Int32
+    int32_t id;
 
-  // 9:     def __init__(self, name: str, id: Int32) -> None:
-  Entity() = default;
-  explicit Entity(std::string_view name, int32_t id) : name(name), id(id) {}
+    // 9:     def __init__(self, name: str, id: Int32) -> None:
+    Entity() = default;
+    explicit Entity(std::string_view name, int32_t id) : name(name), id(id) {}
 
-  // 13:     def get_name(self) -> str:
-  std::string_view get_name() {
-    // 14:         return self.name
-    return this->name;
-  }
+    // 13:     def get_name(self) -> str:
+    std::string_view get_name() {
+        // 14:         return self.name
+        return this->name;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Entity& obj) {
-  os << "Entity("
-     << "name=" << "\"" << obj.name << "\""
-     << ", "
-     << "id=" << obj.id
-     << ")";
-  return os;
+    os << "Entity("
+       << "name=" << "\"" << obj.name << "\""
+       << ", "
+       << "id=" << obj.id
+       << ")";
+    return os;
 }
 
 // # Inherit from class AND implement protocol
 // 24: class Person(Entity, Printable):
 struct Person : Entity {
-  // 25:     age: Int32
-  int32_t age;
+    // 25:     age: Int32
+    int32_t age;
 
-  // 27:     def __init__(self, name: str, id: Int32, age: Int32) -> None:
-  Person() = default;
-  explicit Person(std::string_view name, int32_t id, int32_t age) : age(age) {
-    // 28:         self.name = name
-    this->name = name;
-    // 29:         self.id = id
-    this->id = id;
-  }
+    // 27:     def __init__(self, name: str, id: Int32, age: Int32) -> None:
+    Person() = default;
+    explicit Person(std::string_view name, int32_t id, int32_t age) : age(age) {
+        // 28:         self.name = name
+        this->name = name;
+        // 29:         self.id = id
+        this->id = id;
+    }
 
-  // 32:     def __str__(self) -> str:
-  std::string_view __str__() const {
-    // 33:         return self.name
-    return this->name;
-  }
+    // 32:     def __str__(self) -> str:
+    std::string_view __str__() const {
+        // 33:         return self.name
+        return this->name;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
-  os << "Person("
-     << "age=" << obj.age
-     << ")";
-  return os;
+    os << "Person("
+       << "age=" << obj.age
+       << ")";
+    return os;
 }
 
 void __tpy_init();

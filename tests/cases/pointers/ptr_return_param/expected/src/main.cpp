@@ -9,49 +9,49 @@ Point* global_pt{};
 
 // 13: def addr_param(p: Point) -> Ptr[Point]:
 Point* addr_param(Point& p) {
-  // 14:     # Returning pointer to parameter should be allowed (safe lifetime)
-  // 15:     return p
-  return &p;
+    // 14:     # Returning pointer to parameter should be allowed (safe lifetime)
+    // 15:     return p
+    return &p;
 }
 
 // 17: def addr_global() -> Ptr[Point]:
 Point* addr_global() {
-  // 18:     # Returning pointer to global should be allowed
-  // 19:     return global_pt
-  return &(*global_pt);
+    // 18:     # Returning pointer to global should be allowed
+    // 19:     return global_pt
+    return &(*global_pt);
 }
 
 // 21: def main() -> None:
 void main() {
-  // 22:     local: Point = Point(10, 20)
-  Point local = Point(10, 20);
-  // 23:     p1: Ptr[Point] = addr_param(local)
-  Point* p1 = addr_param(local);
-  // 24:     print(p1.x)
-  std::cout << tpy::deref_check(p1).x << "\n";
-  // 25:     p2: Ptr[Point] = addr_global()
-  Point* p2 = addr_global();
-  // 26:     print(p2.y)
-  std::cout << tpy::deref_check(p2).y << "\n";
+    // 22:     local: Point = Point(10, 20)
+    Point local = Point(10, 20);
+    // 23:     p1: Ptr[Point] = addr_param(local)
+    Point* p1 = addr_param(local);
+    // 24:     print(p1.x)
+    std::cout << tpy::deref_check(p1).x << "\n";
+    // 25:     p2: Ptr[Point] = addr_global()
+    Point* p2 = addr_global();
+    // 26:     print(p2.y)
+    std::cout << tpy::deref_check(p2).y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 11: global_pt: Point = Point(1, 2)
-  static Point __global_slot_1 = Point(1, 2);
-  global_pt = &__global_slot_1;
-  // 28: main()
-  main();
+    __name__ = "__main__";
+    // 11: global_pt: Point = Point(1, 2)
+    static Point __global_slot_1 = Point(1, 2);
+    global_pt = &__global_slot_1;
+    // 28: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

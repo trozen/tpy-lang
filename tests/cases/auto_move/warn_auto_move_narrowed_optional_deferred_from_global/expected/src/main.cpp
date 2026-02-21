@@ -9,39 +9,39 @@ Point* g{};
 
 // 13: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 14:     return p.x
-  return p.x;
+    // 14:     return p.x
+    return p.x;
 }
 
 // 17: def test() -> Int32:
 int32_t test() {
-  // 18:     q: Point | None
-  Point* q = nullptr;
-  // 19:     q = g
-  q = g;
-  // 20:     assert q is not None
-  if (!((q != nullptr))) tpy::tpy_panic("assertion failed");
-  // 21:     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
-  return consume((*q));
+    // 18:     q: Point | None
+    Point* q = nullptr;
+    // 19:     q = g
+    q = g;
+    // 20:     assert q is not None
+    if (!((q != nullptr))) tpy::tpy_panic("assertion failed");
+    // 21:     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
+    return consume((*q));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: g: Point | None = Point()
-  static Point __global_slot_1 = Point();
-  g = &__global_slot_1;
-  // 10: g.x = Int32(99)
-  g->x = 99;
+    __name__ = "__main__";
+    // 9: g: Point | None = Point()
+    static Point __global_slot_1 = Point();
+    g = &__global_slot_1;
+    // 10: g.x = Int32(99)
+    g->x = 99;
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 4: def add(a: tpy.Int32, b: tpy.Int32) -> tpy.Int32:
 int32_t add(int32_t a, int32_t b) {
-  // 5:     return a + b
-  return (tpy::add_check<int32_t>(a, b));
+    // 5:     return a + b
+    return (tpy::add_check<int32_t>(a, b));
 }
 
 // 7: def main():
 void main() {
-  // 8:     x: tpy.Int32 = tpy.Int32(10)
-  int32_t x = 10;
-  // 9:     y: tpy.Int32 = tpy.Int32(20)
-  int32_t y = 20;
-  // 10:     print(add(x, y))
-  std::cout << add(x, y) << "\n";
+    // 8:     x: tpy.Int32 = tpy.Int32(10)
+    int32_t x = 10;
+    // 9:     y: tpy.Int32 = tpy.Int32(20)
+    int32_t y = 20;
+    // 10:     print(add(x, y))
+    std::cout << add(x, y) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 12: main()
-  main();
+    __name__ = "__main__";
+    // 12: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

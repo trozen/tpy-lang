@@ -10,27 +10,27 @@ int32_t x{};
 int32_t y{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: x = t.Int32(42)
-  x = 42;
-  // 4: y = t.Int32(123)
-  y = 123;
-  // 6: print(x)
-  std::cout << x << "\n";
-  // 7: print(y)
-  std::cout << y << "\n";
-  // 8: print(x + y)
-  std::cout << (tpy::add_check<int32_t>(x, y)) << "\n";
+    __name__ = "__main__";
+    // 3: x = t.Int32(42)
+    x = 42;
+    // 4: y = t.Int32(123)
+    y = 123;
+    // 6: print(x)
+    std::cout << x << "\n";
+    // 7: print(y)
+    std::cout << y << "\n";
+    // 8: print(x + y)
+    std::cout << (tpy::add_check<int32_t>(x, y)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

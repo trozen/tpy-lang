@@ -7,39 +7,39 @@ std::string_view __name__;
 
 // 5: def main() -> None:
 void main() {
-  // 6:     arr: Array[Int32, 2] = [Int32(1), Int32(2)]
-  std::array<int32_t, 2> arr = {1, 2};
-  // 7:     p: Ptr[Int32] = m.unsafe_ptr(arr)
-  int32_t* p = arr.data();
-  // 9:     # Context-only: T=UInt32 inferred from assignment target
-  // 10:     q1: Ptr[UInt32] = m.unsafe_cast(p)
-  uint32_t* q1 = reinterpret_cast<uint32_t*>(p);
-  // 11:     print(m.unsafe_load(q1, UInt32(0)))
-  std::cout << q1[0] << "\n";
-  // 13:     # Explicit type arg: T=UInt32, U=Int32 inferred from arg
-  // 14:     q2: Ptr[UInt32] = m.unsafe_cast[UInt32](p)
-  uint32_t* q2 = reinterpret_cast<uint32_t*>(p);
-  // 15:     print(m.unsafe_load(q2, UInt32(0)))
-  std::cout << q2[0] << "\n";
-  // 17:     print("done")
-  std::cout << "done" << "\n";
+    // 6:     arr: Array[Int32, 2] = [Int32(1), Int32(2)]
+    std::array<int32_t, 2> arr = {1, 2};
+    // 7:     p: Ptr[Int32] = m.unsafe_ptr(arr)
+    int32_t* p = arr.data();
+    // 9:     # Context-only: T=UInt32 inferred from assignment target
+    // 10:     q1: Ptr[UInt32] = m.unsafe_cast(p)
+    uint32_t* q1 = reinterpret_cast<uint32_t*>(p);
+    // 11:     print(m.unsafe_load(q1, UInt32(0)))
+    std::cout << q1[0] << "\n";
+    // 13:     # Explicit type arg: T=UInt32, U=Int32 inferred from arg
+    // 14:     q2: Ptr[UInt32] = m.unsafe_cast[UInt32](p)
+    uint32_t* q2 = reinterpret_cast<uint32_t*>(p);
+    // 15:     print(m.unsafe_load(q2, UInt32(0)))
+    std::cout << q2[0] << "\n";
+    // 17:     print("done")
+    std::cout << "done" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: import tpy.unsafe as m
-  // 19: main()
-  main();
+    __name__ = "__main__";
+    // 3: import tpy.unsafe as m
+    // 19: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

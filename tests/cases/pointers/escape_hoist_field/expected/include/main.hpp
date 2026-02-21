@@ -14,36 +14,36 @@ void field_access_escape();
 
 // 3: class Inner:
 struct Inner {
-  // 4:     value: Int32
-  int32_t value;
+    // 4:     value: Int32
+    int32_t value;
 
-  // 5:     def __init__(self, value: Int32):
-  Inner() = default;
-  explicit Inner(int32_t value) : value(value) {}
+    // 5:     def __init__(self, value: Int32):
+    Inner() = default;
+    explicit Inner(int32_t value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-  os << "Inner("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Inner("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 8: class Outer:
 struct Outer {
-  // 9:     inner: Inner
-  Inner inner;
+    // 9:     inner: Inner
+    Inner inner;
 
-  // 10:     def __init__(self, inner: Inner):
-  Outer() = default;
-  explicit Outer(const Inner& inner) : inner(inner) {}
+    // 10:     def __init__(self, inner: Inner):
+    Outer() = default;
+    explicit Outer(const Inner& inner) : inner(inner) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-  os << "Outer("
-     << "inner=" << obj.inner
-     << ")";
-  return os;
+    os << "Outer("
+       << "inner=" << obj.inner
+       << ")";
+    return os;
 }
 
 void __tpy_init();

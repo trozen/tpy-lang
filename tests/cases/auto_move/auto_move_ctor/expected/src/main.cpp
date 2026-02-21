@@ -7,31 +7,31 @@ std::string_view __name__;
 
 // 19: def main():
 void main() {
-  // 20:     inner = Inner()
-  Inner inner = Inner();
-  // 21:     inner.value = 99
-  inner.value = 99;
-  // 22:     # inner is at last use -- auto-moved into Outer constructor
-  // 23:     outer = Outer(inner)
-  Outer outer = Outer(std::move(inner));
-  // 24:     print(outer.get_value())
-  std::cout << outer.get_value() << "\n";
+    // 20:     inner = Inner()
+    Inner inner = Inner();
+    // 21:     inner.value = 99
+    inner.value = 99;
+    // 22:     # inner is at last use -- auto-moved into Outer constructor
+    // 23:     outer = Outer(inner)
+    Outer outer = Outer(std::move(inner));
+    // 24:     print(outer.get_value())
+    std::cout << outer.get_value() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 27: main()
-  main();
+    __name__ = "__main__";
+    // 27: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

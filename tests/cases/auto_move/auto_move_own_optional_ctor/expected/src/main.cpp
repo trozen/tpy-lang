@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 20: def main():
 void main() {
-  // 21:     p = Point()
-  Point p = Point();
-  // 22:     p.x = Int32(1)
-  p.x = 1;
-  // 23:     p.y = Int32(2)
-  p.y = 2;
-  // 24:     w = Wrapper(p, Int32(42))
-  Wrapper w = Wrapper(std::move(p), 42);
-  // 25:     print(w.tag)
-  std::cout << w.tag << "\n";
+    // 21:     p = Point()
+    Point p = Point();
+    // 22:     p.x = Int32(1)
+    p.x = 1;
+    // 23:     p.y = Int32(2)
+    p.y = 2;
+    // 24:     w = Wrapper(p, Int32(42))
+    Wrapper w = Wrapper(std::move(p), 42);
+    // 25:     print(w.tag)
+    std::cout << w.tag << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: main()
-  main();
+    __name__ = "__main__";
+    // 28: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

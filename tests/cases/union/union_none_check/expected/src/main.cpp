@@ -7,82 +7,82 @@ std::string_view __name__;
 
 // 9: def describe(v: Int32 | Dog | None) -> str:
 std::string_view describe(std::variant<std::monostate, Dog, int32_t>& v) {
-  // 10:     if v is None:
-  if ((std::holds_alternative<std::monostate>(v))) {
-    // 11:         return "nothing"
-    return "nothing";
-  }
-  // 12:     if isinstance(v, Int32):
-  if (std::holds_alternative<int32_t>(v)) {
-    auto& __v = std::get<int32_t>(v);
-    // 13:         return "int"
-    return "int";
-  } else {
-    auto& __v = std::get<Dog>(v);
-    // 15:         return "dog"
-    return "dog";
-  }
+    // 10:     if v is None:
+    if ((std::holds_alternative<std::monostate>(v))) {
+        // 11:         return "nothing"
+        return "nothing";
+    }
+    // 12:     if isinstance(v, Int32):
+    if (std::holds_alternative<int32_t>(v)) {
+        auto& __v = std::get<int32_t>(v);
+        // 13:         return "int"
+        return "int";
+    } else {
+        auto& __v = std::get<Dog>(v);
+        // 15:         return "dog"
+        return "dog";
+    }
 }
 
 // 17: def process(v: Int32 | Dog | None) -> None:
 void process(std::variant<std::monostate, Dog, int32_t>& v) {
-  // 18:     if v is not None:
-  if ((!std::holds_alternative<std::monostate>(v))) {
-    // 19:         if isinstance(v, Int32):
-    if (std::holds_alternative<int32_t>(v)) {
-      auto& __v = std::get<int32_t>(v);
-      // 20:             print("got int")
-      std::cout << "got int" << "\n";
+    // 18:     if v is not None:
+    if ((!std::holds_alternative<std::monostate>(v))) {
+        // 19:         if isinstance(v, Int32):
+        if (std::holds_alternative<int32_t>(v)) {
+            auto& __v = std::get<int32_t>(v);
+            // 20:             print("got int")
+            std::cout << "got int" << "\n";
+        } else {
+            auto& __v = std::get<Dog>(v);
+            // 22:             print("got dog")
+            std::cout << "got dog" << "\n";
+        }
     } else {
-      auto& __v = std::get<Dog>(v);
-      // 22:             print("got dog")
-      std::cout << "got dog" << "\n";
+        // 24:         print("got none")
+        std::cout << "got none" << "\n";
     }
-  } else {
-    // 24:         print("got none")
-    std::cout << "got none" << "\n";
-  }
 }
 
 // 26: def main() -> None:
 void main() {
-  // 27:     a: Int32 | Dog | None = Int32(42)
-  std::variant<std::monostate, Dog, int32_t> a = 42;
-  // 28:     b: Int32 | Dog | None = Dog("Rex")
-  std::variant<std::monostate, Dog, int32_t> b = Dog("Rex");
-  // 29:     c: Int32 | Dog | None = None
-  std::variant<std::monostate, Dog, int32_t> c = std::monostate{};
-  // 30:     print(describe(a))
-  std::cout << describe(a) << "\n";
-  // 31:     print(describe(b))
-  std::cout << describe(b) << "\n";
-  // 32:     print(describe(c))
-  std::cout << describe(c) << "\n";
-  // 33:     process(Int32(1))
-  std::variant<std::monostate, Dog, int32_t> __tmp_1 = 1;
-  process(__tmp_1);
-  // 34:     process(Dog("Buddy"))
-  std::variant<std::monostate, Dog, int32_t> __tmp_2 = Dog("Buddy");
-  process(__tmp_2);
-  // 35:     process(None)
-  std::variant<std::monostate, Dog, int32_t> __tmp_3 = std::monostate{};
-  process(__tmp_3);
+    // 27:     a: Int32 | Dog | None = Int32(42)
+    std::variant<std::monostate, Dog, int32_t> a = 42;
+    // 28:     b: Int32 | Dog | None = Dog("Rex")
+    std::variant<std::monostate, Dog, int32_t> b = Dog("Rex");
+    // 29:     c: Int32 | Dog | None = None
+    std::variant<std::monostate, Dog, int32_t> c = std::monostate{};
+    // 30:     print(describe(a))
+    std::cout << describe(a) << "\n";
+    // 31:     print(describe(b))
+    std::cout << describe(b) << "\n";
+    // 32:     print(describe(c))
+    std::cout << describe(c) << "\n";
+    // 33:     process(Int32(1))
+    std::variant<std::monostate, Dog, int32_t> __tmp_1 = 1;
+    process(__tmp_1);
+    // 34:     process(Dog("Buddy"))
+    std::variant<std::monostate, Dog, int32_t> __tmp_2 = Dog("Buddy");
+    process(__tmp_2);
+    // 35:     process(None)
+    std::variant<std::monostate, Dog, int32_t> __tmp_3 = std::monostate{};
+    process(__tmp_3);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 37: main()
-  main();
+    __name__ = "__main__";
+    // 37: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

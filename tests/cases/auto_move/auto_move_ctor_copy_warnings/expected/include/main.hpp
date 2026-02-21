@@ -23,151 +23,151 @@ void main();
 
 // 6: class Inner:
 struct Inner {
-  // 7:     value: Int32
-  int32_t value;
+    // 7:     value: Int32
+    int32_t value;
 
-  Inner() = default;
+    Inner() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-  os << "Inner("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Inner("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 10: class Holder:
 struct Holder {
-  // 11:     inner: Inner
-  Inner inner;
+    // 11:     inner: Inner
+    Inner inner;
 
-  // 13:     def __init__(self, inner: Own[Inner]):
-  Holder() = default;
-  explicit Holder(Inner inner) : inner(std::move(inner)) {}
+    // 13:     def __init__(self, inner: Own[Inner]):
+    Holder() = default;
+    explicit Holder(Inner inner) : inner(std::move(inner)) {}
 
-  // 16:     def set_inner(self, inner: Own[Inner]) -> None:
-  void set_inner(Inner inner) {
-    // 17:         self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
-    this->inner = std::move(inner);
-  }
+    // 16:     def set_inner(self, inner: Own[Inner]) -> None:
+    void set_inner(Inner inner) {
+        // 17:         self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
+        this->inner = std::move(inner);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-  os << "Holder("
-     << "inner=" << obj.inner
-     << ")";
-  return os;
+    os << "Holder("
+       << "inner=" << obj.inner
+       << ")";
+    return os;
 }
 
 // 20: class NotLastUse:
 struct NotLastUse {
-  // 21:     inner: Inner
-  Inner inner;
+    // 21:     inner: Inner
+    Inner inner;
 
-  // 23:     def __init__(self, inner: Own[Inner]):
-  NotLastUse() = default;
-  explicit NotLastUse(Inner inner) : inner(inner) {
-    // 25:         print(inner.value)
-    std::cout << inner.value << "\n";
-  }
+    // 23:     def __init__(self, inner: Own[Inner]):
+    NotLastUse() = default;
+    explicit NotLastUse(Inner inner) : inner(inner) {
+        // 25:         print(inner.value)
+        std::cout << inner.value << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const NotLastUse& obj) {
-  os << "NotLastUse("
-     << "inner=" << obj.inner
-     << ")";
-  return os;
+    os << "NotLastUse("
+       << "inner=" << obj.inner
+       << ")";
+    return os;
 }
 
 // 28: class GenericHolder[T]:
 template<typename T>
 struct GenericHolder {
-  // 29:     item: T
-  T item;
+    // 29:     item: T
+    T item;
 
-  // 31:     def __init__(self, item: Own[T]):
-  GenericHolder() = default;
-  explicit GenericHolder(T item) : item(std::move(item)) {}
+    // 31:     def __init__(self, item: Own[T]):
+    GenericHolder() = default;
+    explicit GenericHolder(T item) : item(std::move(item)) {}
 
-  // 34:     def set_item(self, item: Own[T]) -> None:
-  void set_item(T item) {
-    // 35:         self.item = item  # tpyc: ok (generic method, last use -- std::move)
-    this->item = std::move(item);
-  }
+    // 34:     def set_item(self, item: Own[T]) -> None:
+    void set_item(T item) {
+        // 35:         self.item = item  # tpyc: ok (generic method, last use -- std::move)
+        this->item = std::move(item);
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
-  os << "GenericHolder("
-     << "item=" << tpy::ValuePrinter(obj.item)
-     << ")";
-  return os;
+    os << "GenericHolder("
+       << "item=" << tpy::ValuePrinter(obj.item)
+       << ")";
+    return os;
 }
 
 // 38: class GenericNotLastUse[T]:
 template<typename T>
 struct GenericNotLastUse {
-  // 39:     item: T
-  T item;
+    // 39:     item: T
+    T item;
 
-  // 41:     def __init__(self, item: Own[T]):
-  GenericNotLastUse() = default;
-  explicit GenericNotLastUse(T item) : item(item) {
-    // 43:         print(item)
-    std::cout << item << "\n";
-  }
+    // 41:     def __init__(self, item: Own[T]):
+    GenericNotLastUse() = default;
+    explicit GenericNotLastUse(T item) : item(item) {
+        // 43:         print(item)
+        std::cout << item << "\n";
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericNotLastUse<T>& obj) {
-  os << "GenericNotLastUse("
-     << "item=" << tpy::ValuePrinter(obj.item)
-     << ")";
-  return os;
+    os << "GenericNotLastUse("
+       << "item=" << tpy::ValuePrinter(obj.item)
+       << ")";
+    return os;
 }
 
 // 46: class OptHolder:
 struct OptHolder {
-  // 47:     inner: Inner | None
-  std::optional<Inner> inner;
+    // 47:     inner: Inner | None
+    std::optional<Inner> inner;
 
-  OptHolder() = default;
+    OptHolder() = default;
 
-  // 49:     def set(self, inner: Own[Inner]) -> None:
-  void set(Inner inner) {
-    // 50:         self.inner = inner  # tpyc: ok (optional field assign, last use -- auto-moved)
-    this->inner = std::move(inner);
-  }
+    // 49:     def set(self, inner: Own[Inner]) -> None:
+    void set(Inner inner) {
+        // 50:         self.inner = inner  # tpyc: ok (optional field assign, last use -- auto-moved)
+        this->inner = std::move(inner);
+    }
 
-  // 52:     def set_not_last(self, inner: Own[Inner]) -> None:
-  void set_not_last(Inner inner) {
-    // 53:         self.inner = inner  # tpyc: warning(/copies.*field/)
-    this->inner = inner;
-    // 54:         print(inner.value)
-    std::cout << inner.value << "\n";
-  }
+    // 52:     def set_not_last(self, inner: Own[Inner]) -> None:
+    void set_not_last(Inner inner) {
+        // 53:         self.inner = inner  # tpyc: warning(/copies.*field/)
+        this->inner = inner;
+        // 54:         print(inner.value)
+        std::cout << inner.value << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
-  os << "OptHolder("
-     << "inner=" << tpy::print_optional_val(obj.inner)
-     << ")";
-  return os;
+    os << "OptHolder("
+       << "inner=" << tpy::print_optional_val(obj.inner)
+       << ")";
+    return os;
 }
 
 // 57: class Outer:
 struct Outer {
-  // 58:     inner: Inner
-  Inner inner;
+    // 58:     inner: Inner
+    Inner inner;
 
-  Outer() = default;
+    Outer() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-  os << "Outer("
-     << "inner=" << obj.inner
-     << ")";
-  return os;
+    os << "Outer("
+       << "inner=" << obj.inner
+       << ")";
+    return os;
 }
 
 void __tpy_init();

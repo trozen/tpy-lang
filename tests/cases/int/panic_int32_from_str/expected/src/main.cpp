@@ -9,22 +9,22 @@ std::string_view __name__;
 int32_t x{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: # Invalid string for Int32 parsing
-  // 3: x: Int32 = Int32("abc")
-  x = tpy::from_str_check<int32_t>("abc");
-  // 4: print(x)
-  std::cout << x << "\n";
+    __name__ = "__main__";
+    // 2: # Invalid string for Int32 parsing
+    // 3: x: Int32 = Int32("abc")
+    x = tpy::from_str_check<int32_t>("abc");
+    // 4: print(x)
+    std::cout << x << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

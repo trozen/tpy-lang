@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 47: def main() -> None:
 void main() {
-  // 48:     factory = DefaultWrapperMaker()
-  DefaultWrapperMaker factory = DefaultWrapperMaker();
-  // 49:     container = Container(factory)
-  Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
-  // 50:     wrapper = container.create_wrapper("Hello from wrapper")
-  Wrapper<Message> wrapper = container.create_wrapper("Hello from wrapper");
-  // 51:     wrapper.print_wrapped()
-  wrapper.print_wrapped();
+    // 48:     factory = DefaultWrapperMaker()
+    DefaultWrapperMaker factory = DefaultWrapperMaker();
+    // 49:     container = Container(factory)
+    Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
+    // 50:     wrapper = container.create_wrapper("Hello from wrapper")
+    Wrapper<Message> wrapper = container.create_wrapper("Hello from wrapper");
+    // 51:     wrapper.print_wrapped()
+    wrapper.print_wrapped();
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 53: main()
-  main();
+    __name__ = "__main__";
+    // 53: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

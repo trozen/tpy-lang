@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 12: def main() -> None:
 void main() {
-  // 13:     a: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
-  std::array<int32_t, 3> a = {10, 20, 30};
-  // 14:     print(seq_at(a, Int32(-1)))
-  std::cout << seq_at(a, -1) << "\n";
-  // 15:     print(seq_at(a, Int32(0)))
-  std::cout << seq_at(a, 0) << "\n";
-  // 17:     sp: Span[Int32] = a
-  std::span<const int32_t> sp = tpy::as_span(a);
-  // 18:     print(seq_at(sp, Int32(-1)))
-  std::cout << seq_at(sp, -1) << "\n";
-  // 19:     print(seq_at(sp, Int32(-2)))
-  std::cout << seq_at(sp, -2) << "\n";
+    // 13:     a: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+    std::array<int32_t, 3> a = {10, 20, 30};
+    // 14:     print(seq_at(a, Int32(-1)))
+    std::cout << seq_at(a, -1) << "\n";
+    // 15:     print(seq_at(a, Int32(0)))
+    std::cout << seq_at(a, 0) << "\n";
+    // 17:     sp: Span[Int32] = a
+    std::span<const int32_t> sp = tpy::as_span(a);
+    // 18:     print(seq_at(sp, Int32(-1)))
+    std::cout << seq_at(sp, -1) << "\n";
+    // 19:     print(seq_at(sp, Int32(-2)))
+    std::cout << seq_at(sp, -2) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 21: main()
-  main();
+    __name__ = "__main__";
+    // 21: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 3: def main() -> None:
 void main() {
-  // 4:     items: list[Int32] = [1]
-  std::vector<int32_t> items = {1};
-  // 5:     items.pop()  # Remove the only element
-  tpy::pop_back(items);
-  // 6:     x: Int32 = items.pop()  # Should panic: pop from empty list
-  int32_t x = tpy::pop_back(items);
-  // 7:     print(x)
-  std::cout << x << "\n";
+    // 4:     items: list[Int32] = [1]
+    std::vector<int32_t> items = {1};
+    // 5:     items.pop()  # Remove the only element
+    tpy::pop_back(items);
+    // 6:     x: Int32 = items.pop()  # Should panic: pop from empty list
+    int32_t x = tpy::pop_back(items);
+    // 7:     print(x)
+    std::cout << x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: main()
-  main();
+    __name__ = "__main__";
+    // 9: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

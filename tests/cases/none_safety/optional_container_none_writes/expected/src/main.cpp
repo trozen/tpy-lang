@@ -9,40 +9,40 @@ std::vector<std::optional<int32_t>>* vals{};
 
 // 4: def write_none(items: list[Int32 | None]) -> Int32:
 int32_t write_none(std::vector<std::optional<int32_t>>& items) {
-  // 5:     items[0] = None
-  tpy::set_item(items, 0, std::nullopt);
-  // 6:     items.append(None)
-  items.push_back(std::nullopt);
-  // 7:     items.insert(0, None)
-  tpy::list_insert(items, 0, std::nullopt);
-  // 8:     if items[1] is not None:
-  if ((tpy::get_item(items, 1).has_value())) {
-    // 9:         return items[1] + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::get_item(items, 1)), 1));
-  }
-  // 10:     return 0
-  return 0;
+    // 5:     items[0] = None
+    tpy::set_item(items, 0, std::nullopt);
+    // 6:     items.append(None)
+    items.push_back(std::nullopt);
+    // 7:     items.insert(0, None)
+    tpy::list_insert(items, 0, std::nullopt);
+    // 8:     if items[1] is not None:
+    if ((tpy::get_item(items, 1).has_value())) {
+        // 9:         return items[1] + 1  # tpyc: warning(/Potential None access/)
+        return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::get_item(items, 1)), 1));
+    }
+    // 10:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: vals: list[Int32 | None] = list()
-  static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
-  vals = &__global_slot_1;
-  // 14: vals.append(7)
-  (*vals).push_back(7);
-  // 15: print(write_none(vals))
-  std::cout << write_none((*vals)) << "\n";
+    __name__ = "__main__";
+    // 13: vals: list[Int32 | None] = list()
+    static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
+    vals = &__global_slot_1;
+    // 14: vals.append(7)
+    (*vals).push_back(7);
+    // 15: print(write_none(vals))
+    std::cout << write_none((*vals)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

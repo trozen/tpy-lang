@@ -7,28 +7,28 @@ std::string_view __name__;
 
 // 4: def main() -> None:
 void main() {
-  // 5:     x = 0
-  int32_t x = 0;
-  // 6:     x += Int32(5)
-  x = tpy::add_check<int32_t>(x, 5);
-  // 7:     print(x)
-  std::cout << x << "\n";
+    // 5:     x = 0
+    int32_t x = 0;
+    // 6:     x += Int32(5)
+    x = tpy::add_check<int32_t>(x, 5);
+    // 7:     print(x)
+    std::cout << x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 10: main()
-  main();
+    __name__ = "__main__";
+    // 10: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

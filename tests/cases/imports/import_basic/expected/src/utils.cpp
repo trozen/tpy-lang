@@ -7,16 +7,16 @@ std::string_view __name__;
 
 // 11: def add(a: Int32, b: Int32) -> Int32:
 int32_t add(int32_t a, int32_t b) {
-  // 12:     return a + b
-  return (tpy::add_check<int32_t>(a, b));
+    // 12:     return a + b
+    return (tpy::add_check<int32_t>(a, b));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "utils";
+    __name__ = "utils";
 }
 
 } // namespace tpy_user::utils

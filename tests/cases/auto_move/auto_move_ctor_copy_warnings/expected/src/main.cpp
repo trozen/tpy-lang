@@ -7,87 +7,87 @@ std::string_view __name__;
 
 // 61: def test_nested_field_move(o: Outer, inner: Own[Inner]) -> None:
 void test_nested_field_move(Outer& o, Inner inner) {
-  // 62:     o.inner = inner  # tpyc: ok (nested field assign, last use -- auto-moved)
-  o.inner = std::move(inner);
+    // 62:     o.inner = inner  # tpyc: ok (nested field assign, last use -- auto-moved)
+    o.inner = std::move(inner);
 }
 
 // 65: def test_nested_field_copy(o: Outer, inner: Own[Inner]) -> None:
 void test_nested_field_copy(Outer& o, Inner inner) {
-  // 66:     o.inner = inner  # tpyc: warning(/copies.*field/)
-  o.inner = inner;
-  // 67:     print(inner.value)
-  std::cout << inner.value << "\n";
+    // 66:     o.inner = inner  # tpyc: warning(/copies.*field/)
+    o.inner = inner;
+    // 67:     print(inner.value)
+    std::cout << inner.value << "\n";
 }
 
 // 70: def test_subscript_move(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_move(std::vector<Inner>& xs, Inner inner) {
-  // 71:     xs[0] = inner  # tpyc: ok (subscript assign, last use -- auto-moved)
-  tpy::set_item(xs, 0, std::move(inner));
+    // 71:     xs[0] = inner  # tpyc: ok (subscript assign, last use -- auto-moved)
+    tpy::set_item(xs, 0, std::move(inner));
 }
 
 // 74: def test_subscript_copy(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_copy(std::vector<Inner>& xs, Inner inner) {
-  // 75:     xs[0] = inner  # tpyc: warning(/copies.*container/)
-  tpy::set_item(xs, 0, inner);
-  // 76:     print(inner.value)
-  std::cout << inner.value << "\n";
+    // 75:     xs[0] = inner  # tpyc: warning(/copies.*container/)
+    tpy::set_item(xs, 0, inner);
+    // 76:     print(inner.value)
+    std::cout << inner.value << "\n";
 }
 
 // 79: def main():
 void main() {
-  // 80:     # Ctor with rvalue
-  // 81:     h = Holder(Inner())
-  Holder h = Holder(Inner());
-  // 82:     print(h.inner.value)
-  std::cout << h.inner.value << "\n";
-  // 84:     # Method with lvalue
-  // 85:     i = Inner()
-  Inner i = Inner();
-  // 86:     i.value = 10
-  i.value = 10;
-  // 87:     h.set_inner(i)
-  h.set_inner(std::move(i));
-  // 88:     print(h.inner.value)
-  std::cout << h.inner.value << "\n";
-  // 90:     # Generic ctor with lvalue
-  // 91:     i2 = Inner()
-  Inner i2 = Inner();
-  // 92:     i2.value = 20
-  i2.value = 20;
-  // 93:     gh = GenericHolder[Inner](i2)
-  GenericHolder<Inner> gh = GenericHolder<Inner>(std::move(i2));
-  // 94:     print(gh.item.value)
-  std::cout << gh.item.value << "\n";
-  // 96:     # Generic set_item with lvalue
-  // 97:     i3 = Inner()
-  Inner i3 = Inner();
-  // 98:     i3.value = 30
-  i3.value = 30;
-  // 99:     gh.set_item(i3)
-  gh.set_item(std::move(i3));
-  // 100:     print(gh.item.value)
-  std::cout << gh.item.value << "\n";
-  // 102:     # Generic set_item with rvalue
-  // 103:     gh.set_item(Inner())
-  gh.set_item(Inner());
-  // 104:     print(gh.item.value)
-  std::cout << gh.item.value << "\n";
+    // 80:     # Ctor with rvalue
+    // 81:     h = Holder(Inner())
+    Holder h = Holder(Inner());
+    // 82:     print(h.inner.value)
+    std::cout << h.inner.value << "\n";
+    // 84:     # Method with lvalue
+    // 85:     i = Inner()
+    Inner i = Inner();
+    // 86:     i.value = 10
+    i.value = 10;
+    // 87:     h.set_inner(i)
+    h.set_inner(std::move(i));
+    // 88:     print(h.inner.value)
+    std::cout << h.inner.value << "\n";
+    // 90:     # Generic ctor with lvalue
+    // 91:     i2 = Inner()
+    Inner i2 = Inner();
+    // 92:     i2.value = 20
+    i2.value = 20;
+    // 93:     gh = GenericHolder[Inner](i2)
+    GenericHolder<Inner> gh = GenericHolder<Inner>(std::move(i2));
+    // 94:     print(gh.item.value)
+    std::cout << gh.item.value << "\n";
+    // 96:     # Generic set_item with lvalue
+    // 97:     i3 = Inner()
+    Inner i3 = Inner();
+    // 98:     i3.value = 30
+    i3.value = 30;
+    // 99:     gh.set_item(i3)
+    gh.set_item(std::move(i3));
+    // 100:     print(gh.item.value)
+    std::cout << gh.item.value << "\n";
+    // 102:     # Generic set_item with rvalue
+    // 103:     gh.set_item(Inner())
+    gh.set_item(Inner());
+    // 104:     print(gh.item.value)
+    std::cout << gh.item.value << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 107: main()
-  main();
+    __name__ = "__main__";
+    // 107: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

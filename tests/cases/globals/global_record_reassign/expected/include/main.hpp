@@ -12,19 +12,19 @@ extern Container* c;
 
 // 4: class Container:
 struct Container {
-  // 5:     value: Int32
-  int32_t value;
+    // 5:     value: Int32
+    int32_t value;
 
-  // 6:     def __init__(self, value: Int32):
-  Container() = default;
-  explicit Container(int32_t value) : value(value) {}
+    // 6:     def __init__(self, value: Int32):
+    Container() = default;
+    explicit Container(int32_t value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-  os << "Container("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Container("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

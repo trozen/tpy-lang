@@ -15,64 +15,64 @@ void main();
 // # Tests __del__ whose body is only super().__del__() -- effective body is empty
 // 3: class Base:
 struct Base {
-  bool __tpy_owned_ = true;
+    bool __tpy_owned_ = true;
 
-  Base() = default;
-  Base(const Base&) = delete;
-  Base& operator=(const Base&) = delete;
-  Base(Base&& other) noexcept {
-    other.__tpy_owned_ = false;
-  }
-  Base& operator=(Base&& other) noexcept {
-    if (this != &other) {
-      this->~Base();
-      new (this) Base(std::move(other));
+    Base() = default;
+    Base(const Base&) = delete;
+    Base& operator=(const Base&) = delete;
+    Base(Base&& other) noexcept {
+        other.__tpy_owned_ = false;
     }
-    return *this;
-  }
-  // 4:     def __del__(self):
+    Base& operator=(Base&& other) noexcept {
+        if (this != &other) {
+            this->~Base();
+            new (this) Base(std::move(other));
+        }
+        return *this;
+    }
+    // 4:     def __del__(self):
 
-  ~Base() {
-    if (!__tpy_owned_) return;
-    // 5:         print("Base destroyed")
-    std::cout << "Base destroyed" << "\n";
-  }
+    ~Base() {
+        if (!__tpy_owned_) return;
+        // 5:         print("Base destroyed")
+        std::cout << "Base destroyed" << "\n";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-  os << "Base("
-     << ")";
-  return os;
+    os << "Base("
+       << ")";
+    return os;
 }
 
 // 7: class Child(Base):
 struct Child : Base {
-  bool __tpy_owned_ = true;
+    bool __tpy_owned_ = true;
 
-  Child() = default;
-  Child(const Child&) = delete;
-  Child& operator=(const Child&) = delete;
-  Child(Child&& other) noexcept : Base(std::move(other)) {
-    other.__tpy_owned_ = false;
-  }
-  Child& operator=(Child&& other) noexcept {
-    if (this != &other) {
-      this->~Child();
-      new (this) Child(std::move(other));
+    Child() = default;
+    Child(const Child&) = delete;
+    Child& operator=(const Child&) = delete;
+    Child(Child&& other) noexcept : Base(std::move(other)) {
+        other.__tpy_owned_ = false;
     }
-    return *this;
-  }
-  // 8:     def __del__(self):
+    Child& operator=(Child&& other) noexcept {
+        if (this != &other) {
+            this->~Child();
+            new (this) Child(std::move(other));
+        }
+        return *this;
+    }
+    // 8:     def __del__(self):
 
-  ~Child() {
-    if (!__tpy_owned_) return;
-  }
+    ~Child() {
+        if (!__tpy_owned_) return;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-  os << "Child("
-     << ")";
-  return os;
+    os << "Child("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

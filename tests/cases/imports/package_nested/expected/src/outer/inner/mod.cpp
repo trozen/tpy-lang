@@ -7,16 +7,16 @@ std::string_view __name__;
 
 // 1: def func() -> None:
 void func() {
-  // 2:     print("nested module")
-  std::cout << "nested module" << "\n";
+    // 2:     print("nested module")
+    std::cout << "nested module" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "outer.inner.mod";
+    __name__ = "outer.inner.mod";
 }
 
 } // namespace tpy_user::outer::inner::mod

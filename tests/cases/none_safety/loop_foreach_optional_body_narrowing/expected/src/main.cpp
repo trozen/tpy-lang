@@ -9,43 +9,43 @@ std::vector<std::optional<int32_t>>* vals{};
 
 // 4: def sum_non_none(items: list[Int32 | None]) -> Int32:
 int32_t sum_non_none(std::vector<std::optional<int32_t>>& items) {
-  // 5:     total: Int32 = 0
-  int32_t total = 0;
-  // 6:     for item in items:
-  for (std::optional<int32_t> item : items) {
-    // 7:         if item is None:
-    if ((!item.has_value())) {
-      // 8:             continue
-      continue;
+    // 5:     total: Int32 = 0
+    int32_t total = 0;
+    // 6:     for item in items:
+    for (std::optional<int32_t> item : items) {
+        // 7:         if item is None:
+        if ((!item.has_value())) {
+            // 8:             continue
+            continue;
+        }
+        // 9:         total = total + item  # tpyc: ok
+        total = (tpy::add_check<int32_t>(total, (*item)));
     }
-    // 9:         total = total + item  # tpyc: ok
-    total = (tpy::add_check<int32_t>(total, (*item)));
-  }
-  // 10:     return total
-  return total;
+    // 10:     return total
+    return total;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: vals: list[Int32 | None] = list()
-  static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
-  vals = &__global_slot_1;
-  // 14: vals.append(3)
-  (*vals).push_back(3);
-  // 15: vals.append(4)
-  (*vals).push_back(4);
-  // 16: print(sum_non_none(vals))
-  std::cout << sum_non_none((*vals)) << "\n";
+    __name__ = "__main__";
+    // 13: vals: list[Int32 | None] = list()
+    static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
+    vals = &__global_slot_1;
+    // 14: vals.append(3)
+    (*vals).push_back(3);
+    // 15: vals.append(4)
+    (*vals).push_back(4);
+    // 16: print(sum_non_none(vals))
+    std::cout << sum_non_none((*vals)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

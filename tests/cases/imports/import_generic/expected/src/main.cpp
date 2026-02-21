@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
-  // 5:     b: Box[Int32] = Box(Int32(42))
-  ::tpy_user::container::Box<int32_t> b = ::tpy_user::container::Box<int32_t>(42);
-  // 6:     print(b.value)
-  std::cout << b.value << "\n";
-  // 7:     return Int32(0)
-  return 0;
+    // 5:     b: Box[Int32] = Box(Int32(42))
+    ::tpy_user::container::Box<int32_t> b = ::tpy_user::container::Box<int32_t>(42);
+    // 6:     print(b.value)
+    std::cout << b.value << "\n";
+    // 7:     return Int32(0)
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from container import Box
-  ::tpy_user::container::__tpy_init();
-  // 9: main()
-  main();
+    __name__ = "__main__";
+    // 2: from container import Box
+    ::tpy_user::container::__tpy_init();
+    // 9: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

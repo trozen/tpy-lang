@@ -7,43 +7,43 @@ std::string_view __name__;
 
 // 11: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 12:     return p.x + p.y
-  return (tpy::add_check<int32_t>(p.x, p.y));
+    // 12:     return p.x + p.y
+    return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 15: def forward(p: Own[Point]) -> Int32:
 int32_t forward(Point p) {
-  // 16:     # p is an Own param; forwarding to another Own param at last use
-  // 17:     return consume(p)
-  return consume(std::move(p));
+    // 16:     # p is an Own param; forwarding to another Own param at last use
+    // 17:     return consume(p)
+    return consume(std::move(p));
 }
 
 // 20: def main():
 void main() {
-  // 21:     p = Point()
-  Point p = Point();
-  // 22:     p.x = 5
-  p.x = 5;
-  // 23:     p.y = 7
-  p.y = 7;
-  // 24:     print(forward(p))
-  std::cout << forward(std::move(p)) << "\n";
+    // 21:     p = Point()
+    Point p = Point();
+    // 22:     p.x = 5
+    p.x = 5;
+    // 23:     p.y = 7
+    p.y = 7;
+    // 24:     print(forward(p))
+    std::cout << forward(std::move(p)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 27: main()
-  main();
+    __name__ = "__main__";
+    // 27: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

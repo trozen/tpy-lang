@@ -7,16 +7,16 @@ std::string_view __name__;
 
 // 3: def get_value() -> Int32:
 int32_t get_value() {
-  // 4:     return Int32(77)
-  return 77;
+    // 4:     return Int32(77)
+    return 77;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "helper";
+    __name__ = "helper";
 }
 
 } // namespace tpy_user::helper

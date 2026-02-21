@@ -7,41 +7,41 @@ std::string_view __name__;
 
 // 9: def extract() -> Own[Handle]:
 Handle extract() {
-  // 10:     h: Handle | None
-  Handle* h = nullptr;
-  // 11:     h = Handle()
-  Handle __slot_1 = Handle();
-  h = &__slot_1;
-  // 12:     h.value = Int32(88)
-  h->value = 88;
-  // 13:     assert h is not None
-  if (!((h != nullptr))) tpy::tpy_panic("assertion failed");
-  // 14:     return h  # tpyc: ok
-  return std::move((*h));
+    // 10:     h: Handle | None
+    Handle* h = nullptr;
+    // 11:     h = Handle()
+    Handle __slot_1 = Handle();
+    h = &__slot_1;
+    // 12:     h.value = Int32(88)
+    h->value = 88;
+    // 13:     assert h is not None
+    if (!((h != nullptr))) tpy::tpy_panic("assertion failed");
+    // 14:     return h  # tpyc: ok
+    return std::move((*h));
 }
 
 // 17: def main():
 void main() {
-  // 18:     result = extract()
-  Handle result = extract();
-  // 19:     print(result.value)
-  std::cout << result.value << "\n";
+    // 18:     result = extract()
+    Handle result = extract();
+    // 19:     print(result.value)
+    std::cout << result.value << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: main()
-  main();
+    __name__ = "__main__";
+    // 22: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

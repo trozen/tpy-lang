@@ -7,31 +7,31 @@ std::string_view __name__;
 
 // 4: def safe_add(x: Int32 | None) -> Int32:
 int32_t safe_add(std::optional<int32_t> x) {
-  // 5:     if x is None:
-  if ((!x.has_value())) {
-    // 6:         return 0
-    return 0;
-  }
-  // 7:     return x + 1
-  return (tpy::add_check<int32_t>((*x), 1));
+    // 5:     if x is None:
+    if ((!x.has_value())) {
+        // 6:         return 0
+        return 0;
+    }
+    // 7:     return x + 1
+    return (tpy::add_check<int32_t>((*x), 1));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 10: print(safe_add(5))
-  std::cout << safe_add(5) << "\n";
-  // 11: print(safe_add(None))
-  std::cout << safe_add(std::nullopt) << "\n";
+    __name__ = "__main__";
+    // 10: print(safe_add(5))
+    std::cout << safe_add(5) << "\n";
+    // 11: print(safe_add(None))
+    std::cout << safe_add(std::nullopt) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

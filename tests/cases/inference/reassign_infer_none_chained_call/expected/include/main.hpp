@@ -15,37 +15,37 @@ Factory get_factory();
 
 // 4: class Product:
 struct Product {
-  // 5:     value: Int32
-  int32_t value;
+    // 5:     value: Int32
+    int32_t value;
 
-  // 7:     def __init__(self, value: Int32) -> None:
-  Product() = default;
-  explicit Product(int32_t value) : value(value) {}
+    // 7:     def __init__(self, value: Int32) -> None:
+    Product() = default;
+    explicit Product(int32_t value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Product& obj) {
-  os << "Product("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Product("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 11: class Factory:
 struct Factory {
 
-  Factory() = default;
+    Factory() = default;
 
-  // 12:     def create(self) -> Own[Product]:
-  Product create() {
-    // 13:         return Product(Int32(9))
-    return Product(9);
-  }
+    // 12:     def create(self) -> Own[Product]:
+    Product create() {
+        // 13:         return Product(Int32(9))
+        return Product(9);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Factory& obj) {
-  os << "Factory("
-     << ")";
-  return os;
+    os << "Factory("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

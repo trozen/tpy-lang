@@ -14,40 +14,40 @@ void main();
 
 // 5: class Inner:
 struct Inner {
-  // 6:     value: Int32
-  int32_t value;
+    // 6:     value: Int32
+    int32_t value;
 
-  Inner() = default;
+    Inner() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
-  os << "Inner("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Inner("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 9: class Outer:
 struct Outer {
-  // 10:     inner: Inner
-  Inner inner;
+    // 10:     inner: Inner
+    Inner inner;
 
-  // 12:     def __init__(self, inner: Own[Inner]):
-  Outer() = default;
-  explicit Outer(Inner inner) : inner(std::move(inner)) {}
+    // 12:     def __init__(self, inner: Own[Inner]):
+    Outer() = default;
+    explicit Outer(Inner inner) : inner(std::move(inner)) {}
 
-  // 15:     def get_value(self) -> Int32:
-  int32_t get_value() {
-    // 16:         return self.inner.value
-    return this->inner.value;
-  }
+    // 15:     def get_value(self) -> Int32:
+    int32_t get_value() {
+        // 16:         return self.inner.value
+        return this->inner.value;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
-  os << "Outer("
-     << "inner=" << obj.inner
-     << ")";
-  return os;
+    os << "Outer("
+       << "inner=" << obj.inner
+       << ")";
+    return os;
 }
 
 void __tpy_init();

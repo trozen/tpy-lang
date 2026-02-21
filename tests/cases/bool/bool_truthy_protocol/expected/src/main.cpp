@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 16: def main() -> None:
 void main() {
-  // 17:     b1 = Box(42)
-  Box b1 = Box(tpy::BigInt(42));
-  // 18:     b2 = Box(0)
-  Box b2 = Box(tpy::BigInt(0));
-  // 19:     print(check(b1))  # True
-  std::cout << tpy::print_bool(check<Box>(b1)) << "\n";
-  // 20:     print(check(b2))  # False
-  std::cout << tpy::print_bool(check<Box>(b2)) << "\n";
+    // 17:     b1 = Box(42)
+    Box b1 = Box(tpy::BigInt(42));
+    // 18:     b2 = Box(0)
+    Box b2 = Box(tpy::BigInt(0));
+    // 19:     print(check(b1))  # True
+    std::cout << tpy::print_bool(check<Box>(b1)) << "\n";
+    // 20:     print(check(b2))  # False
+    std::cout << tpy::print_bool(check<Box>(b2)) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: main()
-  main();
+    __name__ = "__main__";
+    // 22: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

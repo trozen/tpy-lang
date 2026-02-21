@@ -9,22 +9,22 @@ std::string_view __name__;
 double x{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: # Invalid string for float parsing
-  // 2: x: float = float("not_a_number")
-  x = tpy::float_from_str("not_a_number");
-  // 3: print(x)
-  std::cout << tpy::print_float(x) << "\n";
+    __name__ = "__main__";
+    // 1: # Invalid string for float parsing
+    // 2: x: float = float("not_a_number")
+    x = tpy::float_from_str("not_a_number");
+    // 3: print(x)
+    std::cout << tpy::print_float(x) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

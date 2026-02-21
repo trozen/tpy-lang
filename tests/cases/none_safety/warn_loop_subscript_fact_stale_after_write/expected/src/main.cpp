@@ -9,41 +9,41 @@ std::vector<std::optional<int32_t>>* vals{};
 
 // 4: def stale_after_write(items: list[Int32 | None], i: Int32) -> Int32:
 int32_t stale_after_write(std::vector<std::optional<int32_t>>& items, int32_t i) {
-  // 5:     while items[i] is not None:
-  while ((tpy::get_item(items, i).has_value())) {
-    // 6:         items[i] = items[i]
-    tpy::set_item(items, i, tpy::get_item(items, i));
-    // 7:         if i < 0:
-    if ((i < 0)) {
-      // 8:             return items[i] + 1  # tpyc: warning(/Potential None access/)
-      return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::get_item(items, i)), 1));
+    // 5:     while items[i] is not None:
+    while ((tpy::get_item(items, i).has_value())) {
+        // 6:         items[i] = items[i]
+        tpy::set_item(items, i, tpy::get_item(items, i));
+        // 7:         if i < 0:
+        if ((i < 0)) {
+            // 8:             return items[i] + 1  # tpyc: warning(/Potential None access/)
+            return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::get_item(items, i)), 1));
+        }
+        // 9:         break
+        break;
     }
-    // 9:         break
-    break;
-  }
-  // 10:     return 0
-  return 0;
+    // 10:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: vals: list[Int32 | None] = list()
-  static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
-  vals = &__global_slot_1;
-  // 14: vals.append(8)
-  (*vals).push_back(8);
-  // 15: print(stale_after_write(vals, 0))
-  std::cout << stale_after_write((*vals), 0) << "\n";
+    __name__ = "__main__";
+    // 13: vals: list[Int32 | None] = list()
+    static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
+    vals = &__global_slot_1;
+    // 14: vals.append(8)
+    (*vals).push_back(8);
+    // 15: print(stale_after_write(vals, 0))
+    std::cout << stale_after_write((*vals), 0) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

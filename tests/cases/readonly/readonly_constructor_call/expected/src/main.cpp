@@ -8,26 +8,26 @@ std::string_view __name__;
 // @readonly
 // 9: def build_flag() -> int:
 tpy::BigInt build_flag() {
-  // 10:     Token()  # tpyc: ok
-  Token();
-  // 11:     return 0
-  return tpy::BigInt(0);
+    // 10:     Token()  # tpyc: ok
+    Token();
+    // 11:     return 0
+    return tpy::BigInt(0);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 14: print(build_flag())
-  std::cout << build_flag() << "\n";
+    __name__ = "__main__";
+    // 14: print(build_flag())
+    std::cout << build_flag() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

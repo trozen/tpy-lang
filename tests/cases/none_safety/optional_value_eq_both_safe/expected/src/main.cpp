@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 4: def eq_both(a: Int32 | None, b: Int32 | None) -> bool:
 bool eq_both(std::optional<int32_t> a, std::optional<int32_t> b) {
-  // 5:     return a == b  # tpyc: ok
-  return (a == b);
+    // 5:     return a == b  # tpyc: ok
+    return (a == b);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 8: print(eq_both(5, 5))
-  std::cout << tpy::print_bool(eq_both(5, 5)) << "\n";
-  // 9: print(eq_both(5, 3))
-  std::cout << tpy::print_bool(eq_both(5, 3)) << "\n";
-  // 10: print(eq_both(None, 5))
-  std::cout << tpy::print_bool(eq_both(std::nullopt, 5)) << "\n";
-  // 11: print(eq_both(5, None))
-  std::cout << tpy::print_bool(eq_both(5, std::nullopt)) << "\n";
-  // 12: print(eq_both(None, None))
-  std::cout << tpy::print_bool(eq_both(std::nullopt, std::nullopt)) << "\n";
+    __name__ = "__main__";
+    // 8: print(eq_both(5, 5))
+    std::cout << tpy::print_bool(eq_both(5, 5)) << "\n";
+    // 9: print(eq_both(5, 3))
+    std::cout << tpy::print_bool(eq_both(5, 3)) << "\n";
+    // 10: print(eq_both(None, 5))
+    std::cout << tpy::print_bool(eq_both(std::nullopt, 5)) << "\n";
+    // 11: print(eq_both(5, None))
+    std::cout << tpy::print_bool(eq_both(5, std::nullopt)) << "\n";
+    // 12: print(eq_both(None, None))
+    std::cout << tpy::print_bool(eq_both(std::nullopt, std::nullopt)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -11,61 +11,61 @@ Point* result{};
 
 // 16: def describe(p: Point | None) -> Int32:
 int32_t describe(Point* p) {
-  // 17:     if p is not None:
-  if ((p != nullptr)) {
-    // 18:         return p.mag()
-    return p->mag();
-  }
-  // 19:     return -1
-  return -1;
+    // 17:     if p is not None:
+    if ((p != nullptr)) {
+        // 18:         return p.mag()
+        return p->mag();
+    }
+    // 19:     return -1
+    return -1;
 }
 
 // 22: def find(points: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
-  // 23:     for p in points:
-  for (auto& p : points) {
-    // 24:         if p.x == target:
-    if ((p.x == target)) {
-      // 25:             return p
-      return &(p);
+    // 23:     for p in points:
+    for (auto& p : points) {
+        // 24:         if p.x == target:
+        if ((p.x == target)) {
+            // 25:             return p
+            return &(p);
+        }
     }
-  }
-  // 26:     return None
-  return nullptr;
+    // 26:     return None
+    return nullptr;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 29: points: list[Point] = list()
-  static std::vector<Point> __global_slot_1 = std::vector<Point>();
-  points = &__global_slot_1;
-  // 30: points.append(Point(3, 4))
-  (*points).push_back(Point(3, 4));
-  // 31: points.append(Point(5, 6))
-  (*points).push_back(Point(5, 6));
-  // 33: result = find(points, 3)
-  result = find((*points), 3);
-  // 34: print(describe(result))
-  std::cout << describe(result) << "\n";
-  // 35: print(describe(None))
-  std::cout << describe(nullptr) << "\n";
-  // 36: print(describe(find(points, 99)))
-  std::cout << describe(find((*points), 99)) << "\n";
-  // 38: # Inline field/method access on Optional-returning expression
-  // 39: print(find(points, 5).x)      # tpyc: warning(/Potential None access on optional value/)
-  std::cout << tpy::deref_check(find((*points), 5)).x << "\n";
-  // 40: print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
-  std::cout << tpy::deref_check(find((*points), 5)).mag() << "\n";
+    __name__ = "__main__";
+    // 29: points: list[Point] = list()
+    static std::vector<Point> __global_slot_1 = std::vector<Point>();
+    points = &__global_slot_1;
+    // 30: points.append(Point(3, 4))
+    (*points).push_back(Point(3, 4));
+    // 31: points.append(Point(5, 6))
+    (*points).push_back(Point(5, 6));
+    // 33: result = find(points, 3)
+    result = find((*points), 3);
+    // 34: print(describe(result))
+    std::cout << describe(result) << "\n";
+    // 35: print(describe(None))
+    std::cout << describe(nullptr) << "\n";
+    // 36: print(describe(find(points, 99)))
+    std::cout << describe(find((*points), 99)) << "\n";
+    // 38: # Inline field/method access on Optional-returning expression
+    // 39: print(find(points, 5).x)      # tpyc: warning(/Potential None access on optional value/)
+    std::cout << tpy::deref_check(find((*points), 5)).x << "\n";
+    // 40: print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
+    std::cout << tpy::deref_check(find((*points), 5)).mag() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

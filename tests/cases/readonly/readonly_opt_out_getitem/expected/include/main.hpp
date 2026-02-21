@@ -12,35 +12,35 @@ extern CachedList* c;
 
 // 5: class CachedList:
 struct CachedList {
-  // 6:     _data: list[Int32]
-  std::vector<int32_t> _data;
-  // 7:     _hits: Int32
-  int32_t _hits;
+    // 6:     _data: list[Int32]
+    std::vector<int32_t> _data;
+    // 7:     _hits: Int32
+    int32_t _hits;
 
-  // 9:     def __init__(self) -> None:
-  CachedList() : _data({10, 20, 30}), _hits(0) {}
+    // 9:     def __init__(self) -> None:
+    CachedList() : _data({10, 20, 30}), _hits(0) {}
 
-  //     @readonly(False)
-  // 14:     def __getitem__(self, idx: Int32) -> Int32:
-  int32_t __getitem__(int32_t idx) {
-    // 15:         self._hits = self._hits + 1
-    this->_hits = (tpy::add_check<int32_t>(this->_hits, 1));
-    // 16:         return self._data[idx]
-    return tpy::get_item(this->_data, idx);
-  }
+    //     @readonly(False)
+    // 14:     def __getitem__(self, idx: Int32) -> Int32:
+    int32_t __getitem__(int32_t idx) {
+        // 15:         self._hits = self._hits + 1
+        this->_hits = (tpy::add_check<int32_t>(this->_hits, 1));
+        // 16:         return self._data[idx]
+        return tpy::get_item(this->_data, idx);
+    }
 
-  int32_t operator[](int32_t idx) {
-    return __getitem__(idx);
-  }
+    int32_t operator[](int32_t idx) {
+        return __getitem__(idx);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
-  os << "CachedList("
-     << "_data=" << tpy::ListPrinter(obj._data)
-     << ", "
-     << "_hits=" << obj._hits
-     << ")";
-  return os;
+    os << "CachedList("
+       << "_data=" << tpy::ListPrinter(obj._data)
+       << ", "
+       << "_hits=" << obj._hits
+       << ")";
+    return os;
 }
 
 void __tpy_init();

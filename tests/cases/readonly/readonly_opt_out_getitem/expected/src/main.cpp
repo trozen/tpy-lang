@@ -8,24 +8,24 @@ std::string_view __name__;
 CachedList* c{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 18: c = CachedList()
-  static CachedList __global_slot_1 = CachedList();
-  c = &__global_slot_1;
-  // 19: print(c[0])
-  std::cout << (*c)[0] << "\n";
-  // 20: print(c[1])
-  std::cout << (*c)[1] << "\n";
+    __name__ = "__main__";
+    // 18: c = CachedList()
+    static CachedList __global_slot_1 = CachedList();
+    c = &__global_slot_1;
+    // 19: print(c[0])
+    std::cout << (*c)[0] << "\n";
+    // 20: print(c[1])
+    std::cout << (*c)[1] << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

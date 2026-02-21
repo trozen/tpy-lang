@@ -7,31 +7,31 @@ std::string_view __name__;
 
 // 4: def f(x: Int32 | None) -> Int32:
 int32_t f(std::optional<int32_t> x) {
-  // 5:     if not (x is None):
-  if ((!((!x.has_value())))) {
-    // 6:         return x + 1
-    return (tpy::add_check<int32_t>((*x), 1));
-  }
-  // 7:     return 0
-  return 0;
+    // 5:     if not (x is None):
+    if ((!((!x.has_value())))) {
+        // 6:         return x + 1
+        return (tpy::add_check<int32_t>((*x), 1));
+    }
+    // 7:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 10: print(f(3))
-  std::cout << f(3) << "\n";
-  // 11: print(f(None))
-  std::cout << f(std::nullopt) << "\n";
+    __name__ = "__main__";
+    // 10: print(f(3))
+    std::cout << f(3) << "\n";
+    // 11: print(f(None))
+    std::cout << f(std::nullopt) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

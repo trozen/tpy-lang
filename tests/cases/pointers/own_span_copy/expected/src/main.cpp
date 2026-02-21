@@ -7,44 +7,44 @@ std::string_view __name__;
 
 // 3: def get_span(data: list[Int32]) -> Span[Int32]:
 std::span<const int32_t> get_span(std::vector<int32_t>& data) {
-  // 4:     return data
-  return tpy::as_span(data);
+    // 4:     return data
+    return tpy::as_span(data);
 }
 
 // 6: def main() -> None:
 void main() {
-  // 7:     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-  std::vector<int32_t> nums = {1, 2, 3};
-  // 8:     span: Span[Int32] = get_span(nums)
-  std::span<const int32_t> span = get_span(nums);
-  // 10:     # copy() on a Span should work (creates a view)
-  // 11:     span_copy: Span[Int32] = copy(span)
-  std::span<const int32_t> span_copy = span;
-  // 13:     # Both spans can access the same data
-  // 14:     print(span[0])
-  std::cout << span[0] << "\n";
-  // 15:     print(span_copy[0])
-  std::cout << span_copy[0] << "\n";
-  // 16:     print(len(span))
-  std::cout << tpy::__len__(span) << "\n";
-  // 17:     print(len(span_copy))
-  std::cout << tpy::__len__(span_copy) << "\n";
+    // 7:     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    std::vector<int32_t> nums = {1, 2, 3};
+    // 8:     span: Span[Int32] = get_span(nums)
+    std::span<const int32_t> span = get_span(nums);
+    // 10:     # copy() on a Span should work (creates a view)
+    // 11:     span_copy: Span[Int32] = copy(span)
+    std::span<const int32_t> span_copy = span;
+    // 13:     # Both spans can access the same data
+    // 14:     print(span[0])
+    std::cout << span[0] << "\n";
+    // 15:     print(span_copy[0])
+    std::cout << span_copy[0] << "\n";
+    // 16:     print(len(span))
+    std::cout << tpy::__len__(span) << "\n";
+    // 17:     print(len(span_copy))
+    std::cout << tpy::__len__(span_copy) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 19: main()
-  main();
+    __name__ = "__main__";
+    // 19: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

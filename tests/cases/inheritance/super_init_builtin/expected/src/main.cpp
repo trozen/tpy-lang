@@ -10,31 +10,31 @@ std::vector<int32_t>* nums{};
 MyList* m{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 10: nums: list[Int32] = [1, 2, 3]
-  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
-  nums = &__global_slot_1;
-  // 11: m = MyList("test", nums)
-  static MyList __global_slot_2 = MyList("test", tpy::as_span((*nums)));
-  m = &__global_slot_2;
-  // 12: print(m[0])
-  std::cout << (*m)[0] << "\n";
-  // 13: print(m[1])
-  std::cout << (*m)[1] << "\n";
-  // 14: print(m[2])
-  std::cout << (*m)[2] << "\n";
-  // 15: print(m.label)
-  std::cout << m->label << "\n";
+    __name__ = "__main__";
+    // 10: nums: list[Int32] = [1, 2, 3]
+    static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
+    nums = &__global_slot_1;
+    // 11: m = MyList("test", nums)
+    static MyList __global_slot_2 = MyList("test", tpy::as_span((*nums)));
+    m = &__global_slot_2;
+    // 12: print(m[0])
+    std::cout << (*m)[0] << "\n";
+    // 13: print(m[1])
+    std::cout << (*m)[1] << "\n";
+    // 14: print(m[2])
+    std::cout << (*m)[2] << "\n";
+    // 15: print(m.label)
+    std::cout << m->label << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

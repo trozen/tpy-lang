@@ -12,20 +12,20 @@ extern std::string_view __name__;
 // 1: class Box[T]:
 template<typename T>
 struct Box {
-  // 2:     value: T
-  T value;
+    // 2:     value: T
+    T value;
 
-  // 4:     def __init__(self, value: T):
-  Box() = default;
-  explicit Box(const T& value) : value(value) {}
+    // 4:     def __init__(self, value: T):
+    Box() = default;
+    explicit Box(const T& value) : value(value) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

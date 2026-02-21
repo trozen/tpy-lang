@@ -32,19 +32,19 @@ void test_staticlist_get_mut();
 
 // 229: class Item:
 struct Item {
-  // 230:     value: Int32
-  int32_t value;
+    // 230:     value: Int32
+    int32_t value;
 
-  // 232:     def __init__(self, v: Int32):
-  Item() = default;
-  explicit Item(int32_t v) : value(v) {}
+    // 232:     def __init__(self, v: Int32):
+    Item() = default;
+    explicit Item(int32_t v) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-  os << "Item("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Item("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

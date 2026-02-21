@@ -8,21 +8,21 @@ std::string_view __name__;
 tpy::BigInt x;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: x: int = int("abc")
-  x = tpy::BigInt::from_str("abc");
-  // 5: print(x)  # Should not reach here
-  std::cout << x << "\n";
+    __name__ = "__main__";
+    // 4: x: int = int("abc")
+    x = tpy::BigInt::from_str("abc");
+    // 5: print(x)  # Should not reach here
+    std::cout << x << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

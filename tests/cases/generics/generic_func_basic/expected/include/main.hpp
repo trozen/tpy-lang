@@ -18,14 +18,14 @@ tpy::return_val_or_ref_t<T> last(std::vector<T>& items);
 // 5: def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
-  // 6:     return items[0]
-  return tpy::get_item(items, 0);
+    // 6:     return items[0]
+    return tpy::get_item(items, 0);
 }
 // 9: def last[T](items: list[T]) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> last(std::vector<T>& items) {
-  // 10:     return items[len(items) - 1]
-  return tpy::get_item(items, (tpy::sub_check<int32_t>(tpy::__len__(items), 1)));
+    // 10:     return items[len(items) - 1]
+    return tpy::get_item(items, (tpy::sub_check<int32_t>(tpy::__len__(items), 1)));
 }
 
 void __tpy_init();

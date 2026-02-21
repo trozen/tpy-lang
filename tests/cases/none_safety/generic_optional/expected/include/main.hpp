@@ -15,32 +15,32 @@ void main();
 // 6: class Container[T]:
 template<typename T>
 struct Container {
-  // 7:     _val: T | None
-  std::optional<T> _val;
+    // 7:     _val: T | None
+    std::optional<T> _val;
 
-  // 9:     def __init__(self, val: T | None):
-  Container() = default;
-  explicit Container(std::optional<T> val) : _val(val) {}
+    // 9:     def __init__(self, val: T | None):
+    Container() = default;
+    explicit Container(std::optional<T> val) : _val(val) {}
 
-  // 12:     def get(self) -> T | None:
-  std::optional<T> get() {
-    // 13:         return self._val
-    return this->_val;
-  }
+    // 12:     def get(self) -> T | None:
+    std::optional<T> get() {
+        // 13:         return self._val
+        return this->_val;
+    }
 
-  // 15:     def set(self, val: T | None) -> None:
-  void set(std::optional<T> val) {
-    // 16:         self._val = val
-    this->_val = val;
-  }
+    // 15:     def set(self, val: T | None) -> None:
+    void set(std::optional<T> val) {
+        // 16:         self._val = val
+        this->_val = val;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "_val=" << tpy::print_optional_val(obj._val)
-     << ")";
-  return os;
+    os << "Container("
+       << "_val=" << tpy::print_optional_val(obj._val)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

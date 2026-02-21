@@ -12,19 +12,19 @@ extern Point* x;
 
 // 5: class Point:
 struct Point {
-  // 6:     x: Int32
-  int32_t x;
+    // 6:     x: Int32
+    int32_t x;
 
-  // 8:     def __init__(self, x: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x) : x(x) {}
+    // 8:     def __init__(self, x: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x) : x(x) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 void __tpy_init();

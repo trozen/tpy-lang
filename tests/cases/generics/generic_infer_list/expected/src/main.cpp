@@ -9,26 +9,26 @@ std::string_view __name__;
 Box<std::vector<int32_t>>* box{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test type inference with list argument."""
-  // 11: # Inference from list literal -> Box[list[int]]
-  // 12: box = Box([1, 2, 3])
-  static Box<std::vector<int32_t>> __global_slot_1 = Box<std::vector<int32_t>>({1, 2, 3});
-  box = &__global_slot_1;
-  // 13: print(box.value[0])
-  std::cout << tpy::get_item(box->value, 0) << "\n";
-  // 14: print(len(box.value))
-  std::cout << tpy::__len__(box->value) << "\n";
+    __name__ = "__main__";
+    // 1: """Test type inference with list argument."""
+    // 11: # Inference from list literal -> Box[list[int]]
+    // 12: box = Box([1, 2, 3])
+    static Box<std::vector<int32_t>> __global_slot_1 = Box<std::vector<int32_t>>({1, 2, 3});
+    box = &__global_slot_1;
+    // 13: print(box.value[0])
+    std::cout << tpy::get_item(box->value, 0) << "\n";
+    // 14: print(len(box.value))
+    std::cout << tpy::__len__(box->value) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

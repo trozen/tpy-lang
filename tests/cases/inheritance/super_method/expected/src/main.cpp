@@ -8,26 +8,26 @@ std::string_view __name__;
 Dog* d{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 32: d = Dog("Rex", "Labrador")
-  static Dog __global_slot_1 = Dog("Rex", "Labrador");
-  d = &__global_slot_1;
-  // 33: print(d.speak())
-  std::cout << d->speak() << "\n";
-  // 34: print(d.full_speak())
-  std::cout << d->full_speak() << "\n";
-  // 35: print(d.describe())
-  std::cout << d->describe() << "\n";
+    __name__ = "__main__";
+    // 32: d = Dog("Rex", "Labrador")
+    static Dog __global_slot_1 = Dog("Rex", "Labrador");
+    d = &__global_slot_1;
+    // 33: print(d.speak())
+    std::cout << d->speak() << "\n";
+    // 34: print(d.full_speak())
+    std::cout << d->full_speak() << "\n";
+    // 35: print(d.describe())
+    std::cout << d->describe() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

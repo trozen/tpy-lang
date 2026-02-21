@@ -18,82 +18,82 @@ int32_t first_or_fallback(T_it& it, int32_t fallback);
 
 // 3: class Counter:
 struct Counter {
-  // 4:     current: Int32
-  int32_t current;
-  // 5:     limit: Int32
-  int32_t limit;
+    // 4:     current: Int32
+    int32_t current;
+    // 5:     limit: Int32
+    int32_t limit;
 
-  // 7:     def __init__(self, start: Int32, limit: Int32) -> None:
-  Counter() = default;
-  explicit Counter(int32_t start, int32_t limit) : current(start), limit(limit) {}
+    // 7:     def __init__(self, start: Int32, limit: Int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
-  // 11:     def __next_opt__(self) -> Int32 | None:
-  std::optional<int32_t> __next_opt__() {
-    // 12:         if self.current < self.limit:
-    if ((this->current < this->limit)) {
-      // 13:             val = self.current
-      int32_t val = this->current;
-      // 14:             self.current += 1
-      this->current = tpy::add_check<int32_t>(this->current, 1);
-      // 15:             return val
-      return val;
+    // 11:     def __next_opt__(self) -> Int32 | None:
+    std::optional<int32_t> __next_opt__() {
+        // 12:         if self.current < self.limit:
+        if ((this->current < this->limit)) {
+            // 13:             val = self.current
+            int32_t val = this->current;
+            // 14:             self.current += 1
+            this->current = tpy::add_check<int32_t>(this->current, 1);
+            // 15:             return val
+            return val;
+        }
+        // 16:         return None
+        return std::nullopt;
     }
-    // 16:         return None
-    return std::nullopt;
-  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "current=" << obj.current
-     << ", "
-     << "limit=" << obj.limit
-     << ")";
-  return os;
+    os << "Counter("
+       << "current=" << obj.current
+       << ", "
+       << "limit=" << obj.limit
+       << ")";
+    return os;
 }
 
 // 18: def sum_iter(it: OptIterator[Int32]) -> Int32:
 template<tpy::OptIterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
-  // 19:     total: Int32 = 0
-  int32_t total = 0;
-  // 20:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 21:         total += x
-    total = tpy::add_check<int32_t>(total, x);
-  }
-  // 22:     return total
-  return total;
+    // 19:     total: Int32 = 0
+    int32_t total = 0;
+    // 20:     for x in it:
+    auto& __iter_0 = it;
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 21:         total += x
+        total = tpy::add_check<int32_t>(total, x);
+    }
+    // 22:     return total
+    return total;
 }
 // 24: def count_iter(it: OptIterator[Int32]) -> Int32:
 template<tpy::OptIterator<int32_t> T_it>
 int32_t count_iter(T_it& it) {
-  // 25:     n: Int32 = 0
-  int32_t n = 0;
-  // 26:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 27:         n += 1
-    n = tpy::add_check<int32_t>(n, 1);
-  }
-  // 28:     return n
-  return n;
+    // 25:     n: Int32 = 0
+    int32_t n = 0;
+    // 26:     for x in it:
+    auto& __iter_0 = it;
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 27:         n += 1
+        n = tpy::add_check<int32_t>(n, 1);
+    }
+    // 28:     return n
+    return n;
 }
 // 30: def first_or_fallback(it: OptIterator[Int32], fallback: Int32) -> Int32:
 template<tpy::OptIterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback) {
-  // 31:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 32:         return x
-    return x;
-  }
-  // 33:     return fallback
-  return fallback;
+    // 31:     for x in it:
+    auto& __iter_0 = it;
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 32:         return x
+        return x;
+    }
+    // 33:     return fallback
+    return fallback;
 }
 
 void __tpy_init();

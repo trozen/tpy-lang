@@ -7,48 +7,48 @@ std::string_view __name__;
 
 // 4: def test_basic() -> None:
 void test_basic() {
-  // 5:     buf: Array[Int16, 5] = [0] * 5
-  std::array<int16_t, 5> buf = tpy::from_range<std::array<int16_t, 5>>(tpy::repeat_range<int16_t>(5, {0}));
-  // 6:     print(len(buf))
-  std::cout << tpy::__len__(buf) << "\n";
-  // 7:     print(buf[0], buf[4])
-  std::cout << buf[0] << " " << buf[4] << "\n";
+    // 5:     buf: Array[Int16, 5] = [0] * 5
+    std::array<int16_t, 5> buf = tpy::from_range<std::array<int16_t, 5>>(tpy::repeat_range<int16_t>(5, {0}));
+    // 6:     print(len(buf))
+    std::cout << tpy::__len__(buf) << "\n";
+    // 7:     print(buf[0], buf[4])
+    std::cout << buf[0] << " " << buf[4] << "\n";
 }
 
 // 9: def test_nonzero() -> None:
 void test_nonzero() {
-  // 10:     arr: Array[Int32, 4] = [42] * 4
-  std::array<int32_t, 4> arr = tpy::from_range<std::array<int32_t, 4>>(tpy::repeat_range<int32_t>(4, {42}));
-  // 11:     print(arr[0], arr[1], arr[2], arr[3])
-  std::cout << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << "\n";
+    // 10:     arr: Array[Int32, 4] = [42] * 4
+    std::array<int32_t, 4> arr = tpy::from_range<std::array<int32_t, 4>>(tpy::repeat_range<int32_t>(4, {42}));
+    // 11:     print(arr[0], arr[1], arr[2], arr[3])
+    std::cout << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << "\n";
 }
 
 // 13: def test_multi_element() -> None:
 void test_multi_element() {
-  // 14:     arr: Array[Int32, 6] = [1, 2, 3] * 2
-  std::array<int32_t, 6> arr = tpy::from_range<std::array<int32_t, 6>>(tpy::repeat_range<int32_t>(2, {1, 2, 3}));
-  // 15:     print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
-  std::cout << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << " " << arr[4] << " " << arr[5] << "\n";
+    // 14:     arr: Array[Int32, 6] = [1, 2, 3] * 2
+    std::array<int32_t, 6> arr = tpy::from_range<std::array<int32_t, 6>>(tpy::repeat_range<int32_t>(2, {1, 2, 3}));
+    // 15:     print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
+    std::cout << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << " " << arr[4] << " " << arr[5] << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 17: test_basic()
-  test_basic();
-  // 18: test_nonzero()
-  test_nonzero();
-  // 19: test_multi_element()
-  test_multi_element();
+    __name__ = "__main__";
+    // 17: test_basic()
+    test_basic();
+    // 18: test_nonzero()
+    test_nonzero();
+    // 19: test_multi_element()
+    test_multi_element();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

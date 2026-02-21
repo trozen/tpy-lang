@@ -7,57 +7,57 @@ std::string_view __name__;
 
 // 17: def modify_list(items: list[Int32]) -> None:
 void modify_list(std::vector<int32_t>& items) {
-  // 18:     items.append(100)
-  items.push_back(100);
+    // 18:     items.append(100)
+    items.push_back(100);
 }
 
 // 21: def main() -> None:
 void main() {
-  // 22:     # Test 1: Box with value type (Int32) - param is const T&
-  // 23:     box_int: Box[Int32] = Box[Int32](42)
-  Box<int32_t> box_int = Box<int32_t>(42);
-  // 24:     box_int.set(99)
-  box_int.set(99);
-  // 25:     print(box_int.get())
-  std::cout << box_int.get() << "\n";
-  // 27:     # Test 2: Box with object type (list) - param is T&
-  // 28:     # Pass a literal - should create a temporary
-  // 29:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
-  Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-  // 30:     box_list.set([4, 5, 6])
-  std::vector<int32_t> __tmp_1 = {4, 5, 6};
-  box_list.set(__tmp_1);
-  // 31:     for x in box_list.get():
-  for (int32_t x : box_list.get()) {
-    // 32:         print(x)
-    std::cout << x << "\n";
-  }
-  // 34:     # Test 3: Direct list mutation through non-generic function
-  // 35:     nums: list[Int32] = [10, 20]
-  std::vector<int32_t> nums = {10, 20};
-  // 36:     modify_list(nums)
-  modify_list(nums);
-  // 37:     for x in nums:
-  for (int32_t x : nums) {
-    // 38:         print(x)
-    std::cout << x << "\n";
-  }
+    // 22:     # Test 1: Box with value type (Int32) - param is const T&
+    // 23:     box_int: Box[Int32] = Box[Int32](42)
+    Box<int32_t> box_int = Box<int32_t>(42);
+    // 24:     box_int.set(99)
+    box_int.set(99);
+    // 25:     print(box_int.get())
+    std::cout << box_int.get() << "\n";
+    // 27:     # Test 2: Box with object type (list) - param is T&
+    // 28:     # Pass a literal - should create a temporary
+    // 29:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
+    // 30:     box_list.set([4, 5, 6])
+    std::vector<int32_t> __tmp_1 = {4, 5, 6};
+    box_list.set(__tmp_1);
+    // 31:     for x in box_list.get():
+    for (int32_t x : box_list.get()) {
+        // 32:         print(x)
+        std::cout << x << "\n";
+    }
+    // 34:     # Test 3: Direct list mutation through non-generic function
+    // 35:     nums: list[Int32] = [10, 20]
+    std::vector<int32_t> nums = {10, 20};
+    // 36:     modify_list(nums)
+    modify_list(nums);
+    // 37:     for x in nums:
+    for (int32_t x : nums) {
+        // 38:         print(x)
+        std::cout << x << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 41: main()
-  main();
+    __name__ = "__main__";
+    // 41: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

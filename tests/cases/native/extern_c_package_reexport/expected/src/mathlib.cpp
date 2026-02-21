@@ -6,13 +6,13 @@ namespace tpy_user::mathlib {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "mathlib";
-  // 1: from .funcs import abs, get_clock
-  ::tpy_user::mathlib::funcs::__tpy_init();
+    __name__ = "mathlib";
+    // 1: from .funcs import abs, get_clock
+    ::tpy_user::mathlib::funcs::__tpy_init();
 }
 
 } // namespace tpy_user::mathlib

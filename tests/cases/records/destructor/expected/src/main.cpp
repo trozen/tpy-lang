@@ -9,29 +9,29 @@ Resource* g{};
 
 // 13: def main():
 void main() {
-  // 14:     r = Resource("local")
-  Resource r = Resource("local");
-  // 15:     print("alive")
-  std::cout << "alive" << "\n";
+    // 14:     r = Resource("local")
+    Resource r = Resource("local");
+    // 15:     print("alive")
+    std::cout << "alive" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 11: g = Resource("global")
-  static Resource __global_slot_1 = Resource("global");
-  g = &__global_slot_1;
-  // 17: main()
-  main();
+    __name__ = "__main__";
+    // 11: g = Resource("global")
+    static Resource __global_slot_1 = Resource("global");
+    g = &__global_slot_1;
+    // 17: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

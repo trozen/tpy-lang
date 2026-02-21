@@ -7,37 +7,37 @@ std::string_view __name__;
 
 // 26: def main() -> None:
 void main() {
-  // 27:     # Test Container[Int32] which internally uses Box[Int32]
-  // 28:     c: Container[Int32] = Container[Int32](42)
-  Container<int32_t> c = Container<int32_t>(42);
-  // 29:     print(c.get_value())
-  std::cout << c.get_value() << "\n";
-  // 31:     # Get the inner box
-  // 32:     box: Box[Int32] = c.get_inner()
-  Box<int32_t> box = c.get_inner();
-  // 33:     print(box.get())
-  std::cout << box.get() << "\n";
-  // 35:     # Local variable with type parameter (tests the second fix)
-  // 36:     c2: Container[str] = Container[str]("hello")
-  Container<std::string_view> c2 = Container<std::string_view>("hello");
-  // 37:     print(c2.get_value())
-  std::cout << c2.get_value() << "\n";
+    // 27:     # Test Container[Int32] which internally uses Box[Int32]
+    // 28:     c: Container[Int32] = Container[Int32](42)
+    Container<int32_t> c = Container<int32_t>(42);
+    // 29:     print(c.get_value())
+    std::cout << c.get_value() << "\n";
+    // 31:     # Get the inner box
+    // 32:     box: Box[Int32] = c.get_inner()
+    Box<int32_t> box = c.get_inner();
+    // 33:     print(box.get())
+    std::cout << box.get() << "\n";
+    // 35:     # Local variable with type parameter (tests the second fix)
+    // 36:     c2: Container[str] = Container[str]("hello")
+    Container<std::string_view> c2 = Container<std::string_view>("hello");
+    // 37:     print(c2.get_value())
+    std::cout << c2.get_value() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 40: main()
-  main();
+    __name__ = "__main__";
+    // 40: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

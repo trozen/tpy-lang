@@ -30,46 +30,46 @@ int32_t read_via_bound(const T& x);
 
 // 19: class Impl:
 struct Impl {
-  // 20:     value: Int32
-  int32_t value;
+    // 20:     value: Int32
+    int32_t value;
 
-  // 22:     def __init__(self, value: Int32) -> None:
-  Impl() = default;
-  explicit Impl(int32_t value) : value(value) {}
+    // 22:     def __init__(self, value: Int32) -> None:
+    Impl() = default;
+    explicit Impl(int32_t value) : value(value) {}
 
-  //     @readonly
-  // 26:     def read(self) -> Int32:
-  int32_t read() const {
-    // 27:         return self.value
-    return this->value;
-  }
+    //     @readonly
+    // 26:     def read(self) -> Int32:
+    int32_t read() const {
+        // 27:         return self.value
+        return this->value;
+    }
 
-  // 29:     def write(self, v: Int32) -> None:
-  void write(int32_t v) {
-    // 30:         self.value = v
-    this->value = v;
-  }
+    // 29:     def write(self, v: Int32) -> None:
+    void write(int32_t v) {
+        // 30:         self.value = v
+        this->value = v;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
-  os << "Impl("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Impl("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // @readonly
 // 34: def read_via_child(x: Child) -> Int32:
 template<Child T_x>
 int32_t read_via_child(T_x& x) {
-  // 35:     return x.read()
-  return x.read();
+    // 35:     return x.read()
+    return x.read();
 }
 // 38: def read_via_bound[T: Child](x: readonly[T]) -> Int32:
 template<Child T>
 int32_t read_via_bound(const T& x) {
-  // 39:     return x.read()
-  return x.read();
+    // 39:     return x.read()
+    return x.read();
 }
 
 void __tpy_init();

@@ -32,41 +32,41 @@ extern Box* b;
 // # Class that implements multiple protocols
 // 21: class Box(Printable, Describable, Measurable):
 struct Box {
-  // 22:     width: Int32
-  int32_t width;
-  // 23:     height: Int32
-  int32_t height;
+    // 22:     width: Int32
+    int32_t width;
+    // 23:     height: Int32
+    int32_t height;
 
-  // 25:     def __init__(self, width: Int32, height: Int32) -> None:
-  Box() = default;
-  explicit Box(int32_t width, int32_t height) : width(width), height(height) {}
+    // 25:     def __init__(self, width: Int32, height: Int32) -> None:
+    Box() = default;
+    explicit Box(int32_t width, int32_t height) : width(width), height(height) {}
 
-  // 29:     def __str__(self) -> str:
-  std::string_view __str__() const {
-    // 30:         return "Box"
-    return "Box";
-  }
+    // 29:     def __str__(self) -> str:
+    std::string_view __str__() const {
+        // 30:         return "Box"
+        return "Box";
+    }
 
-  // 32:     def describe(self) -> str:
-  std::string_view describe() {
-    // 33:         return "A rectangular box"
-    return "A rectangular box";
-  }
+    // 32:     def describe(self) -> str:
+    std::string_view describe() {
+        // 33:         return "A rectangular box"
+        return "A rectangular box";
+    }
 
-  // 35:     def size(self) -> Int32:
-  int32_t size() {
-    // 36:         return self.width * self.height
-    return (tpy::mul_check<int32_t>(this->width, this->height));
-  }
+    // 35:     def size(self) -> Int32:
+    int32_t size() {
+        // 36:         return self.width * self.height
+        return (tpy::mul_check<int32_t>(this->width, this->height));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "width=" << obj.width
-     << ", "
-     << "height=" << obj.height
-     << ")";
-  return os;
+    os << "Box("
+       << "width=" << obj.width
+       << ", "
+       << "height=" << obj.height
+       << ")";
+    return os;
 }
 
 void __tpy_init();

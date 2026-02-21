@@ -15,30 +15,30 @@ extern Child* c;
 // 3: class Base:
 struct Base {
 
-  Base() = default;
+    Base() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-  os << "Base("
-     << ")";
-  return os;
+    os << "Base("
+       << ")";
+    return os;
 }
 
 // 7: class Child(Base):
 struct Child : Base {
-  // 8:     value: int
-  tpy::BigInt value;
+    // 8:     value: int
+    tpy::BigInt value;
 
-  // 10:     def __init__(self, value: int) -> None:
-  Child() = default;
-  explicit Child(const tpy::BigInt& value) : Base(), value(value) {}
+    // 10:     def __init__(self, value: int) -> None:
+    Child() = default;
+    explicit Child(const tpy::BigInt& value) : Base(), value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-  os << "Child("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Child("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

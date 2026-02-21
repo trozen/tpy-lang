@@ -21,32 +21,32 @@ void main();
 
 // 8: class Value:
 struct Value {
-  // 9:     x: Int32
-  int32_t x;
+    // 9:     x: Int32
+    int32_t x;
 
-  // 11:     def __init__(self, x: Int32) -> None:
-  Value() = default;
-  explicit Value(int32_t x) : x(x) {}
+    // 11:     def __init__(self, x: Int32) -> None:
+    Value() = default;
+    explicit Value(int32_t x) : x(x) {}
 
-  // 14:     def duplicate(self) -> Own[Value]:
-  Value duplicate() {
-    // 15:         return Value(self.x * 2)
-    return Value((tpy::mul_check<int32_t>(this->x, 2)));
-  }
+    // 14:     def duplicate(self) -> Own[Value]:
+    Value duplicate() {
+        // 15:         return Value(self.x * 2)
+        return Value((tpy::mul_check<int32_t>(this->x, 2)));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
-  os << "Value("
-     << "x=" << obj.x
-     << ")";
-  return os;
+    os << "Value("
+       << "x=" << obj.x
+       << ")";
+    return os;
 }
 
 // 17: def double_it(d: Duplicable) -> None:
 template<Duplicable T_d>
 void double_it(T_d& d) {
-  // 18:     result = d.duplicate()
-  auto result = d.duplicate();
+    // 18:     result = d.duplicate()
+    auto result = d.duplicate();
 }
 
 void __tpy_init();

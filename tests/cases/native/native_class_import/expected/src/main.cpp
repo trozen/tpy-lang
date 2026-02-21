@@ -8,40 +8,40 @@ std::string_view __name__;
 
 // 8: def main() -> None:
 void main() {
-  // 9:     v = Vec2(Int32(3), Int32(7))
-  ns::Vec2 v = ns::Vec2(3, 7);
-  // 10:     print(v.x)
-  std::cout << v.x << "\n";
-  // 11:     print(vec2_sum(Ptr(v)))
-  std::cout << vec2_sum(&v) << "\n";
-  // 12:     print(v.sum())
-  std::cout << v.sum() << "\n";
-  // 14:     r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
-  Rect r = Rect{0, 0, 40, 30};
-  // 15:     print(r.w)
-  std::cout << r.w << "\n";
-  // 16:     print(rect_area(Ptr(r)))
-  std::cout << rect_area(&r) << "\n";
-  // 17:     print(r.area())
-  std::cout << r.area() << "\n";
+    // 9:     v = Vec2(Int32(3), Int32(7))
+    ns::Vec2 v = ns::Vec2(3, 7);
+    // 10:     print(v.x)
+    std::cout << v.x << "\n";
+    // 11:     print(vec2_sum(Ptr(v)))
+    std::cout << vec2_sum(&v) << "\n";
+    // 12:     print(v.sum())
+    std::cout << v.sum() << "\n";
+    // 14:     r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
+    Rect r = Rect{0, 0, 40, 30};
+    // 15:     print(r.w)
+    std::cout << r.w << "\n";
+    // 16:     print(rect_area(Ptr(r)))
+    std::cout << rect_area(&r) << "\n";
+    // 17:     print(r.area())
+    std::cout << r.area() << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from lib import Vec2, MyRect, rect_area
-  ::tpy_user::lib::__tpy_init();
-  // 19: main()
-  main();
+    __name__ = "__main__";
+    // 2: from lib import Vec2, MyRect, rect_area
+    ::tpy_user::lib::__tpy_init();
+    // 19: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

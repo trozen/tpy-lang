@@ -8,22 +8,22 @@ std::string_view __name__;
 Dog* d{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 12: d = Dog()
-  static Dog __global_slot_1 = Dog();
-  d = &__global_slot_1;
-  // 13: d.make_noise()
-  d->make_noise();
+    __name__ = "__main__";
+    // 12: d = Dog()
+    static Dog __global_slot_1 = Dog();
+    d = &__global_slot_1;
+    // 13: d.make_noise()
+    d->make_noise();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

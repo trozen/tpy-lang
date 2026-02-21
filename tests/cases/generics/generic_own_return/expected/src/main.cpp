@@ -7,52 +7,52 @@ std::string_view __name__;
 
 // 17: def main() -> None:
 void main() {
-  // 18:     # Test 1: Own[T] with value type (Int32) - same behavior as T
-  // 19:     box_int: Box[Int32] = Box[Int32](42)
-  Box<int32_t> box_int = Box<int32_t>(42);
-  // 20:     val: Int32 = box_int.take()
-  int32_t val = box_int.take();
-  // 21:     print(val)
-  std::cout << val << "\n";
-  // 23:     # Test 2: Own[T] with object type returns by value
-  // 24:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
-  Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-  // 25:     taken: list[Int32] = box_list.take()
-  std::vector<int32_t> taken = box_list.take();
-  // 26:     for x in taken:
-  for (int32_t x : taken) {
-    // 27:         print(x)
-    std::cout << x << "\n";
-  }
-  // 29:     # Test 3: Verify get() still works (uses trait-based return)
-  // 30:     print(box_int.get())
-  std::cout << box_int.get() << "\n";
-  // 32:     # Test 4: Variable inference from Own[T] unwraps to T
-  // 33:     c = box_list.take()
-  std::vector<int32_t> c = box_list.take();
-  // 34:     c.append(4)
-  c.push_back(4);
-  // 35:     for x in c:
-  for (int32_t x : c) {
-    // 36:         print(x)
-    std::cout << x << "\n";
-  }
+    // 18:     # Test 1: Own[T] with value type (Int32) - same behavior as T
+    // 19:     box_int: Box[Int32] = Box[Int32](42)
+    Box<int32_t> box_int = Box<int32_t>(42);
+    // 20:     val: Int32 = box_int.take()
+    int32_t val = box_int.take();
+    // 21:     print(val)
+    std::cout << val << "\n";
+    // 23:     # Test 2: Own[T] with object type returns by value
+    // 24:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
+    // 25:     taken: list[Int32] = box_list.take()
+    std::vector<int32_t> taken = box_list.take();
+    // 26:     for x in taken:
+    for (int32_t x : taken) {
+        // 27:         print(x)
+        std::cout << x << "\n";
+    }
+    // 29:     # Test 3: Verify get() still works (uses trait-based return)
+    // 30:     print(box_int.get())
+    std::cout << box_int.get() << "\n";
+    // 32:     # Test 4: Variable inference from Own[T] unwraps to T
+    // 33:     c = box_list.take()
+    std::vector<int32_t> c = box_list.take();
+    // 34:     c.append(4)
+    c.push_back(4);
+    // 35:     for x in c:
+    for (int32_t x : c) {
+        // 36:         print(x)
+        std::cout << x << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 39: main()
-  main();
+    __name__ = "__main__";
+    // 39: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

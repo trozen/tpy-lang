@@ -45,37 +45,37 @@ void main();
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 11:     def name(self) -> str:
-  std::string_view name() override {
-    // 12:         return "Rex"
-    return "Rex";
-  }
+    // 11:     def name(self) -> str:
+    std::string_view name() override {
+        // 12:         return "Rex"
+        return "Rex";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 // 14: class Cat(Pet):
 struct Cat : __tpy_Base_Pet {
 
-  Cat() = default;
+    Cat() = default;
 
-  // 15:     def name(self) -> str:
-  std::string_view name() override {
-    // 16:         return "Whiskers"
-    return "Whiskers";
-  }
+    // 15:     def name(self) -> str:
+    std::string_view name() override {
+        // 16:         return "Whiskers"
+        return "Whiskers";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << ")";
-  return os;
+    os << "Cat("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

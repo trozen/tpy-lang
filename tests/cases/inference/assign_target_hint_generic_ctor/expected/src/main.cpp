@@ -7,39 +7,39 @@ std::string_view __name__;
 
 // 20: def main():
 void main() {
-  // 21:     # Annotated var_decl: T inferred from annotation
-  // 22:     s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # tpyc: ok
-  UninitHeapStorage<int32_t> s = 1;
-  // 23:     s.init0(Int32(42))
-  s.init0(42);
-  // 24:     print("var_decl:", s.load0())
-  std::cout << "var_decl:" << " " << s.load0() << "\n";
-  // 25:     s.drop0()
-  s.drop0();
-  // 27:     # Field assignment via generic class
-  // 28:     w = Wrapper[Int32](Int32(99))
-  Wrapper<int32_t> w = Wrapper<int32_t>(99);
-  // 29:     print("field:", w.get())
-  std::cout << "field:" << " " << w.get() << "\n";
-  // 31:     print("done")
-  std::cout << "done" << "\n";
+    // 21:     # Annotated var_decl: T inferred from annotation
+    // 22:     s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # tpyc: ok
+    UninitHeapStorage<int32_t> s = 1;
+    // 23:     s.init0(Int32(42))
+    s.init0(42);
+    // 24:     print("var_decl:", s.load0())
+    std::cout << "var_decl:" << " " << s.load0() << "\n";
+    // 25:     s.drop0()
+    s.drop0();
+    // 27:     # Field assignment via generic class
+    // 28:     w = Wrapper[Int32](Int32(99))
+    Wrapper<int32_t> w = Wrapper<int32_t>(99);
+    // 29:     print("field:", w.get())
+    std::cout << "field:" << " " << w.get() << "\n";
+    // 31:     print("done")
+    std::cout << "done" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: from tpy.mem import UninitHeapStorage
-  // 33: main()
-  main();
+    __name__ = "__main__";
+    // 4: from tpy.mem import UninitHeapStorage
+    // 33: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

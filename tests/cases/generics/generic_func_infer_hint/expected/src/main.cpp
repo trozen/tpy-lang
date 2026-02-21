@@ -16,34 +16,34 @@ std::vector<tpy::BigInt>* nums{};
 tpy::BigInt result2;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test generic functions with type annotation hints."""
-  // 9: # Type inferred from list[Int32]
-  // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
-  static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
-  nums32 = &__global_slot_1;
-  // 11: result: Int32 = first(nums32)
-  result = first<int32_t>((*nums32));
-  // 12: print(result)
-  std::cout << result << "\n";
-  // 14: # Type inferred from list[int]
-  // 15: nums: list[int] = [10, 20, 30]
-  static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
-  nums = &__global_slot_2;
-  // 16: result2: int = first(nums)
-  result2 = first<tpy::BigInt>((*nums));
-  // 17: print(result2)
-  std::cout << result2 << "\n";
+    __name__ = "__main__";
+    // 1: """Test generic functions with type annotation hints."""
+    // 9: # Type inferred from list[Int32]
+    // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
+    nums32 = &__global_slot_1;
+    // 11: result: Int32 = first(nums32)
+    result = first<int32_t>((*nums32));
+    // 12: print(result)
+    std::cout << result << "\n";
+    // 14: # Type inferred from list[int]
+    // 15: nums: list[int] = [10, 20, 30]
+    static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
+    nums = &__global_slot_2;
+    // 16: result2: int = first(nums)
+    result2 = first<tpy::BigInt>((*nums));
+    // 17: print(result2)
+    std::cout << result2 << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

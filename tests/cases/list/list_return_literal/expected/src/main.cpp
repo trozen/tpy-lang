@@ -7,58 +7,58 @@ std::string_view __name__;
 
 // 14: def make_list(x: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> make_list(int32_t x) {
-  // 15:     return [x, x + 1, x + 2]
-  return {x, (tpy::add_check<int32_t>(x, 1)), (tpy::add_check<int32_t>(x, 2))};
+    // 15:     return [x, x + 1, x + 2]
+    return {x, (tpy::add_check<int32_t>(x, 1)), (tpy::add_check<int32_t>(x, 2))};
 }
 
 // 18: def main():
 void main() {
-  // 19:     # Empty list from generic function
-  // 20:     a: list[Int32] = make_empty[Int32]()
-  std::vector<int32_t> a = make_empty<int32_t>();
-  // 21:     a.append(99)
-  a.push_back(99);
-  // 22:     print(len(a))
-  std::cout << tpy::__len__(a) << "\n";
-  // 23:     print(a[0])
-  std::cout << tpy::get_item(a, 0) << "\n";
-  // 25:     # Single-element list from generic function (T inferred from arg)
-  // 26:     b: list[Int32] = make_single(42)
-  int32_t __tmp_1 = 42;
-  std::vector<int32_t> b = make_single<int32_t>(__tmp_1);
-  // 27:     b.append(100)
-  b.push_back(100);
-  // 28:     for x in b:
-  for (int32_t x : b) {
-    // 29:         print(x)
-    std::cout << x << "\n";
-  }
-  // 31:     # Multi-element list from non-generic function
-  // 32:     c: list[Int32] = make_list(10)
-  std::vector<int32_t> c = make_list(10);
-  // 33:     c.append(100)
-  c.push_back(100);
-  // 34:     for x in c:
-  for (int32_t x : c) {
-    // 35:         print(x)
-    std::cout << x << "\n";
-  }
+    // 19:     # Empty list from generic function
+    // 20:     a: list[Int32] = make_empty[Int32]()
+    std::vector<int32_t> a = make_empty<int32_t>();
+    // 21:     a.append(99)
+    a.push_back(99);
+    // 22:     print(len(a))
+    std::cout << tpy::__len__(a) << "\n";
+    // 23:     print(a[0])
+    std::cout << tpy::get_item(a, 0) << "\n";
+    // 25:     # Single-element list from generic function (T inferred from arg)
+    // 26:     b: list[Int32] = make_single(42)
+    int32_t __tmp_1 = 42;
+    std::vector<int32_t> b = make_single<int32_t>(__tmp_1);
+    // 27:     b.append(100)
+    b.push_back(100);
+    // 28:     for x in b:
+    for (int32_t x : b) {
+        // 29:         print(x)
+        std::cout << x << "\n";
+    }
+    // 31:     # Multi-element list from non-generic function
+    // 32:     c: list[Int32] = make_list(10)
+    std::vector<int32_t> c = make_list(10);
+    // 33:     c.append(100)
+    c.push_back(100);
+    // 34:     for x in c:
+    for (int32_t x : c) {
+        // 35:         print(x)
+        std::cout << x << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 38: main()
-  main();
+    __name__ = "__main__";
+    // 38: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

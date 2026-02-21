@@ -8,26 +8,26 @@ std::string_view __name__;
 // @readonly
 // 12: def build() -> Int32:
 int32_t build() {
-  // 13:     b = Box(3)
-  Box b = Box(3);
-  // 14:     return b.x  # tpyc: ok
-  return b.x;
+    // 13:     b = Box(3)
+    Box b = Box(3);
+    // 14:     return b.x  # tpyc: ok
+    return b.x;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 17: print(build())
-  std::cout << build() << "\n";
+    __name__ = "__main__";
+    // 17: print(build())
+    std::cout << build() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

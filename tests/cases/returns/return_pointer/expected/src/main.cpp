@@ -7,52 +7,52 @@ std::string_view __name__;
 
 // 7: def identity_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* identity_ptr(Point* p) {
-  // 8:     return p  # tpyc: ok (pointer value is copied)
-  return p;
+    // 8:     return p  # tpyc: ok (pointer value is copied)
+    return p;
 }
 
 // 10: def get_ptr_copy(p: Ptr[Point]) -> Ptr[Point]:
 Point* get_ptr_copy(Point* p) {
-  // 11:     local_ptr: Ptr[Point] = p
-  Point* local_ptr = p;
-  // 12:     return local_ptr  # tpyc: ok (pointer value is copied)
-  return local_ptr;
+    // 11:     local_ptr: Ptr[Point] = p
+    Point* local_ptr = p;
+    // 12:     return local_ptr  # tpyc: ok (pointer value is copied)
+    return local_ptr;
 }
 
 // 14: def main():
 void main() {
-  // 15:     pt: Point = Point()
-  Point pt = Point();
-  // 16:     pt.x = 10
-  pt.x = 10;
-  // 17:     pt.y = 20
-  pt.y = 20;
-  // 19:     ptr: Ptr[Point] = pt
-  Point* ptr = &pt;
-  // 20:     ptr1: Ptr[Point] = identity_ptr(ptr)
-  Point* ptr1 = identity_ptr(ptr);
-  // 21:     ptr2: Ptr[Point] = get_ptr_copy(ptr)
-  Point* ptr2 = get_ptr_copy(ptr);
-  // 23:     print(ptr1.x)
-  std::cout << tpy::deref_check(ptr1).x << "\n";
-  // 24:     print(ptr2.y)
-  std::cout << tpy::deref_check(ptr2).y << "\n";
+    // 15:     pt: Point = Point()
+    Point pt = Point();
+    // 16:     pt.x = 10
+    pt.x = 10;
+    // 17:     pt.y = 20
+    pt.y = 20;
+    // 19:     ptr: Ptr[Point] = pt
+    Point* ptr = &pt;
+    // 20:     ptr1: Ptr[Point] = identity_ptr(ptr)
+    Point* ptr1 = identity_ptr(ptr);
+    // 21:     ptr2: Ptr[Point] = get_ptr_copy(ptr)
+    Point* ptr2 = get_ptr_copy(ptr);
+    // 23:     print(ptr1.x)
+    std::cout << tpy::deref_check(ptr1).x << "\n";
+    // 24:     print(ptr2.y)
+    std::cout << tpy::deref_check(ptr2).y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 26: main()
-  main();
+    __name__ = "__main__";
+    // 26: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

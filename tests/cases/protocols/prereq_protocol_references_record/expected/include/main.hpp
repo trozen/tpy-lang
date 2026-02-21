@@ -17,43 +17,43 @@ concept Convertible = requires(T& t) {
 // # A record that will be referenced by a prereq protocol
 // 5: class Result:
 struct Result {
-  // 6:     value: Int32
-  int32_t value;
+    // 6:     value: Int32
+    int32_t value;
 
-  // 8:     def __init__(self, value: Int32) -> None:
-  Result() = default;
-  explicit Result(int32_t value) : value(value) {}
+    // 8:     def __init__(self, value: Int32) -> None:
+    Result() = default;
+    explicit Result(int32_t value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Result& obj) {
-  os << "Result("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Result("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // # Record that implements Convertible
 // 16: class Message:
 struct Message {
-  // 17:     text: str
-  std::string_view text;
+    // 17:     text: str
+    std::string_view text;
 
-  // 19:     def __init__(self, text: str) -> None:
-  Message() = default;
-  explicit Message(std::string_view text) : text(text) {}
+    // 19:     def __init__(self, text: str) -> None:
+    Message() = default;
+    explicit Message(std::string_view text) : text(text) {}
 
-  // 22:     def to_result(self) -> Own[Result]:
-  Result to_result() {
-    // 23:         return Result(Int32(42))
-    return Result(42);
-  }
+    // 22:     def to_result(self) -> Own[Result]:
+    Result to_result() {
+        // 23:         return Result(Int32(42))
+        return Result(42);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
-  os << "Message("
-     << "text=" << "\"" << obj.text << "\""
-     << ")";
-  return os;
+    os << "Message("
+       << "text=" << "\"" << obj.text << "\""
+       << ")";
+    return os;
 }
 
 template<Convertible T> struct Wrapper;
@@ -76,71 +76,71 @@ void main();
 // 26: class Wrapper[T: Convertible]:
 template<Convertible T>
 struct Wrapper {
-  // 27:     value: T
-  T value;
+    // 27:     value: T
+    T value;
 
-  // 29:     def __init__(self, value: T) -> None:
-  Wrapper() = default;
-  explicit Wrapper(const T& value) : value(value) {}
+    // 29:     def __init__(self, value: T) -> None:
+    Wrapper() = default;
+    explicit Wrapper(const T& value) : value(value) {}
 
-  // 32:     def get_result(self) -> Own[Result]:
-  Result get_result() {
-    // 33:         return self.value.to_result()
-    return this->value.to_result();
-  }
+    // 32:     def get_result(self) -> Own[Result]:
+    Result get_result() {
+        // 33:         return self.value.to_result()
+        return this->value.to_result();
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
-  os << "Wrapper("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Wrapper("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 // # Implementation of WrapperMaker
 // 40: class DefaultWrapperMaker:
 struct DefaultWrapperMaker {
 
-  DefaultWrapperMaker() = default;
+    DefaultWrapperMaker() = default;
 
-  // 41:     def make(self, text: str) -> Own[Wrapper[Message]]:
-  Wrapper<Message> make(std::string_view text) {
-    // 42:         return Wrapper(Message(text))
-    return Wrapper<Message>(Message(text));
-  }
+    // 41:     def make(self, text: str) -> Own[Wrapper[Message]]:
+    Wrapper<Message> make(std::string_view text) {
+        // 42:         return Wrapper(Message(text))
+        return Wrapper<Message>(Message(text));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj) {
-  os << "DefaultWrapperMaker("
-     << ")";
-  return os;
+    os << "DefaultWrapperMaker("
+       << ")";
+    return os;
 }
 
 // # Record that uses WrapperMaker as a bound
 // 45: class Container[T: WrapperMaker]:
 template<WrapperMaker T>
 struct Container {
-  // 46:     factory: T
-  T factory;
+    // 46:     factory: T
+    T factory;
 
-  // 48:     def __init__(self, factory: T) -> None:
-  Container() = default;
-  explicit Container(const T& factory) : factory(factory) {}
+    // 48:     def __init__(self, factory: T) -> None:
+    Container() = default;
+    explicit Container(const T& factory) : factory(factory) {}
 
-  // 51:     def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
-  Wrapper<Message> create_wrapper(std::string_view text) {
-    // 52:         return self.factory.make(text)
-    return this->factory.make(text);
-  }
+    // 51:     def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
+    Wrapper<Message> create_wrapper(std::string_view text) {
+        // 52:         return self.factory.make(text)
+        return this->factory.make(text);
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
-  os << "Container("
-     << "factory=" << tpy::ValuePrinter(obj.factory)
-     << ")";
-  return os;
+    os << "Container("
+       << "factory=" << tpy::ValuePrinter(obj.factory)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

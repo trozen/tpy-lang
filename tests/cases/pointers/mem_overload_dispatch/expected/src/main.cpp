@@ -7,71 +7,71 @@ std::string_view __name__;
 
 // 4: def test_array_overload() -> None:
 void test_array_overload() {
-  // 5:     arr: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
-  std::array<int32_t, 3> arr = {10, 20, 30};
-  // 6:     p: Ptr[Int32] = unsafe_ptr(arr)
-  int32_t* p = arr.data();
-  // 7:     print(unsafe_load(p, UInt32(1)))
-  std::cout << p[1] << "\n";
+    // 5:     arr: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
+    std::array<int32_t, 3> arr = {10, 20, 30};
+    // 6:     p: Ptr[Int32] = unsafe_ptr(arr)
+    int32_t* p = arr.data();
+    // 7:     print(unsafe_load(p, UInt32(1)))
+    std::cout << p[1] << "\n";
 }
 
 // 9: def test_list_overload() -> None:
 void test_list_overload() {
-  // 10:     lst: list[Int32] = [Int32(40), Int32(50), Int32(60)]
-  std::vector<int32_t> lst = {40, 50, 60};
-  // 11:     p: Ptr[Int32] = unsafe_ptr(lst)
-  int32_t* p = lst.data();
-  // 12:     print(unsafe_load(p, UInt32(2)))
-  std::cout << p[2] << "\n";
+    // 10:     lst: list[Int32] = [Int32(40), Int32(50), Int32(60)]
+    std::vector<int32_t> lst = {40, 50, 60};
+    // 11:     p: Ptr[Int32] = unsafe_ptr(lst)
+    int32_t* p = lst.data();
+    // 12:     print(unsafe_load(p, UInt32(2)))
+    std::cout << p[2] << "\n";
 }
 
 // 14: def test_str_overload() -> None:
 void test_str_overload() {
-  // 15:     s: str = "abc"
-  std::string_view s = "abc";
-  // 16:     cp: ConstPtr[Char] = unsafe_ptr(s)
-  const char* cp = s.data();
-  // 17:     print(unsafe_load(cp, UInt32(0)))
-  std::cout << cp[0] << "\n";
+    // 15:     s: str = "abc"
+    std::string_view s = "abc";
+    // 16:     cp: ConstPtr[Char] = unsafe_ptr(s)
+    const char* cp = s.data();
+    // 17:     print(unsafe_load(cp, UInt32(0)))
+    std::cout << cp[0] << "\n";
 }
 
 // 19: def test_store_and_load() -> None:
 void test_store_and_load() {
-  // 20:     arr: Array[Int32, 2] = [Int32(0), Int32(0)]
-  std::array<int32_t, 2> arr = {0, 0};
-  // 21:     p: Ptr[Int32] = unsafe_ptr(arr)
-  int32_t* p = arr.data();
-  // 22:     unsafe_store(p, UInt32(0), Int32(77))
-  p[0] = 77;
-  // 23:     unsafe_store(p, UInt32(1), Int32(88))
-  p[1] = 88;
-  // 24:     print(unsafe_load(p, UInt32(0)))
-  std::cout << p[0] << "\n";
-  // 25:     print(unsafe_load(p, UInt32(1)))
-  std::cout << p[1] << "\n";
+    // 20:     arr: Array[Int32, 2] = [Int32(0), Int32(0)]
+    std::array<int32_t, 2> arr = {0, 0};
+    // 21:     p: Ptr[Int32] = unsafe_ptr(arr)
+    int32_t* p = arr.data();
+    // 22:     unsafe_store(p, UInt32(0), Int32(77))
+    p[0] = 77;
+    // 23:     unsafe_store(p, UInt32(1), Int32(88))
+    p[1] = 88;
+    // 24:     print(unsafe_load(p, UInt32(0)))
+    std::cout << p[0] << "\n";
+    // 25:     print(unsafe_load(p, UInt32(1)))
+    std::cout << p[1] << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
-  // 27: test_array_overload()
-  test_array_overload();
-  // 28: test_list_overload()
-  test_list_overload();
-  // 29: test_str_overload()
-  test_str_overload();
-  // 30: test_store_and_load()
-  test_store_and_load();
+    __name__ = "__main__";
+    // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
+    // 27: test_array_overload()
+    test_array_overload();
+    // 28: test_list_overload()
+    test_list_overload();
+    // 29: test_str_overload()
+    test_str_overload();
+    // 30: test_store_and_load()
+    test_store_and_load();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

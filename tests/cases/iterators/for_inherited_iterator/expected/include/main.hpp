@@ -16,84 +16,84 @@ int32_t sum_iter(T_it& it);
 
 // 3: class Counter:
 struct Counter {
-  // 4:     current: Int32
-  int32_t current;
-  // 5:     limit: Int32
-  int32_t limit;
+    // 4:     current: Int32
+    int32_t current;
+    // 5:     limit: Int32
+    int32_t limit;
 
-  // 7:     def __init__(self, limit: Int32) -> None:
-  Counter() = default;
-  explicit Counter(int32_t limit) : current(0), limit(limit) {}
+    // 7:     def __init__(self, limit: Int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-  // 11:     def __next_opt__(self) -> Int32 | None:
-  std::optional<int32_t> __next_opt__() {
-    // 12:         if self.current < self.limit:
-    if ((this->current < this->limit)) {
-      // 13:             result = self.current
-      int32_t result = this->current;
-      // 14:             self.current += 1
-      this->current = tpy::add_check<int32_t>(this->current, 1);
-      // 15:             return result
-      return result;
+    // 11:     def __next_opt__(self) -> Int32 | None:
+    std::optional<int32_t> __next_opt__() {
+        // 12:         if self.current < self.limit:
+        if ((this->current < this->limit)) {
+            // 13:             result = self.current
+            int32_t result = this->current;
+            // 14:             self.current += 1
+            this->current = tpy::add_check<int32_t>(this->current, 1);
+            // 15:             return result
+            return result;
+        }
+        // 16:         return None
+        return std::nullopt;
     }
-    // 16:         return None
-    return std::nullopt;
-  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-  os << "Counter("
-     << "current=" << obj.current
-     << ", "
-     << "limit=" << obj.limit
-     << ")";
-  return os;
+    os << "Counter("
+       << "current=" << obj.current
+       << ", "
+       << "limit=" << obj.limit
+       << ")";
+    return os;
 }
 
 // 18: class DoubleCounter(Counter):
 struct DoubleCounter : Counter {
 
-  // 19:     def __init__(self, limit: Int32) -> None:
-  DoubleCounter() = default;
-  explicit DoubleCounter(int32_t limit) : Counter((tpy::mul_check<int32_t>(limit, 2))) {}
+    // 19:     def __init__(self, limit: Int32) -> None:
+    DoubleCounter() = default;
+    explicit DoubleCounter(int32_t limit) : Counter((tpy::mul_check<int32_t>(limit, 2))) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const DoubleCounter& obj) {
-  os << "DoubleCounter("
-     << ")";
-  return os;
+    os << "DoubleCounter("
+       << ")";
+    return os;
 }
 
 // # Multi-level: GrandChild -> DoubleCounter -> Counter
 // 23: class GrandChild(DoubleCounter):
 struct GrandChild : DoubleCounter {
 
-  // 24:     def __init__(self, limit: Int32) -> None:
-  GrandChild() = default;
-  explicit GrandChild(int32_t limit) : DoubleCounter(limit) {}
+    // 24:     def __init__(self, limit: Int32) -> None:
+    GrandChild() = default;
+    explicit GrandChild(int32_t limit) : DoubleCounter(limit) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {
-  os << "GrandChild("
-     << ")";
-  return os;
+    os << "GrandChild("
+       << ")";
+    return os;
 }
 
 // # 2. Pass inherited iterator to OptIterator[Int32] param
 // 32: def sum_iter(it: OptIterator[Int32]) -> Int32:
 template<tpy::OptIterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
-  // 33:     total: Int32 = 0
-  int32_t total = 0;
-  // 34:     for x in it:
-  auto& __iter_0 = it;
-  while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
-    // 35:         total += x
-    total = tpy::add_check<int32_t>(total, x);
-  }
-  // 36:     return total
-  return total;
+    // 33:     total: Int32 = 0
+    int32_t total = 0;
+    // 34:     for x in it:
+    auto& __iter_0 = it;
+    while (auto __opt_0 = __iter_0.__next_opt__()) {
+        int32_t x = *__opt_0;
+        // 35:         total += x
+        total = tpy::add_check<int32_t>(total, x);
+    }
+    // 36:     return total
+    return total;
 }
 
 void __tpy_init();

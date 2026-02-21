@@ -8,24 +8,24 @@ std::string_view __name__;
 std::optional<int32_t> x;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 8: x = None
-  x = std::nullopt;
-  // 9: x = first([Int32(41), Int32(42)])
-  std::vector<int32_t> __tmp_1 = {41, 42};
-  x = first<int32_t>(__tmp_1);
-  // 10: print(x)
-  std::cout << tpy::print_optional_val(x) << "\n";
+    __name__ = "__main__";
+    // 8: x = None
+    x = std::nullopt;
+    // 9: x = first([Int32(41), Int32(42)])
+    std::vector<int32_t> __tmp_1 = {41, 42};
+    x = first<int32_t>(__tmp_1);
+    // 10: print(x)
+    std::cout << tpy::print_optional_val(x) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

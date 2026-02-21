@@ -9,18 +9,18 @@ int32_t MAX{};
 
 // 5: def get_max() -> Int32:
 int32_t get_max() {
-  // 6:     return MAX
-  return MAX;
+    // 6:     return MAX
+    return MAX;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "utils";
-  // 3: MAX: Int32 = Int32(100)
-  MAX = 100;
+    __name__ = "utils";
+    // 3: MAX: Int32 = Int32(100)
+    MAX = 100;
 }
 
 } // namespace tpy_user::utils

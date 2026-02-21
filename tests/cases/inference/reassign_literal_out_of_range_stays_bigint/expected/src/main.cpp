@@ -8,23 +8,23 @@ std::string_view __name__;
 tpy::BigInt x;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
-  x = tpy::BigInt(static_cast<int64_t>(2147483648LL));
-  // 4: x = Int32(1)
-  x = tpy::BigInt(1);
-  // 5: print(x)
-  std::cout << x << "\n";
+    __name__ = "__main__";
+    // 3: x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
+    x = tpy::BigInt(static_cast<int64_t>(2147483648LL));
+    // 4: x = Int32(1)
+    x = tpy::BigInt(1);
+    // 5: print(x)
+    std::cout << x << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

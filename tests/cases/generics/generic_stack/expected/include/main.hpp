@@ -14,37 +14,37 @@ void main();
 // 3: class Stack[T]:
 template<typename T>
 struct Stack {
-  // 4:     items: list[T]
-  std::vector<T> items;
+    // 4:     items: list[T]
+    std::vector<T> items;
 
-  // 6:     def __init__(self) -> None:
-  Stack() : items(std::vector<T>()) {}
+    // 6:     def __init__(self) -> None:
+    Stack() : items(std::vector<T>()) {}
 
-  // 9:     def push(self, value: T) -> None:
-  void push(tpy::param_val_or_ref_t<T> value) {
-    // 10:         self.items.append(value)
-    this->items.push_back(value);
-  }
+    // 9:     def push(self, value: T) -> None:
+    void push(tpy::param_val_or_ref_t<T> value) {
+        // 10:         self.items.append(value)
+        this->items.push_back(value);
+    }
 
-  // 12:     def pop(self) -> T:
-  tpy::return_val_or_ref_t<T> pop() {
-    // 13:         return self.items.pop()
-    return tpy::pop_back(this->items);
-  }
+    // 12:     def pop(self) -> T:
+    tpy::return_val_or_ref_t<T> pop() {
+        // 13:         return self.items.pop()
+        return tpy::pop_back(this->items);
+    }
 
-  // 15:     def is_empty(self) -> bool:
-  bool is_empty() {
-    // 16:         return len(self.items) == 0
-    return (tpy::__len__(this->items) == 0);
-  }
+    // 15:     def is_empty(self) -> bool:
+    bool is_empty() {
+        // 16:         return len(self.items) == 0
+        return (tpy::__len__(this->items) == 0);
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
-  os << "Stack("
-     << "items=" << tpy::ListPrinter(obj.items)
-     << ")";
-  return os;
+    os << "Stack("
+       << "items=" << tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

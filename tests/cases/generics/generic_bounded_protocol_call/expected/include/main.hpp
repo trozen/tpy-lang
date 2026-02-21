@@ -58,195 +58,195 @@ void main();
 template<Stringable T>
 struct Printer {
 
-  Printer() = default;
+    Printer() = default;
 
-  // 20:     def get_str(self, item: T) -> str:
-  std::string_view get_str(tpy::param_val_or_ref_t<T> item) {
-    // 21:         # Call protocol method on bounded type parameter inside generic class method
-    // 22:         return item.to_str()
-    return item.to_str();
-  }
+    // 20:     def get_str(self, item: T) -> str:
+    std::string_view get_str(tpy::param_val_or_ref_t<T> item) {
+        // 21:         # Call protocol method on bounded type parameter inside generic class method
+        // 22:         return item.to_str()
+        return item.to_str();
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Printer<T>& obj) {
-  os << "Printer("
-     << ")";
-  return os;
+    os << "Printer("
+       << ")";
+    return os;
 }
 
 // # Test 5: Type satisfying multiple protocols (Stringable and Sized)
 // 25: class MyValue:
 struct MyValue {
-  // 26:     val: Int32
-  int32_t val;
+    // 26:     val: Int32
+    int32_t val;
 
-  // 28:     def __init__(self, v: Int32) -> None:
-  MyValue() = default;
-  explicit MyValue(int32_t v) : val(v) {}
+    // 28:     def __init__(self, v: Int32) -> None:
+    MyValue() = default;
+    explicit MyValue(int32_t v) : val(v) {}
 
-  // 31:     def to_str(self) -> str:
-  std::string_view to_str() {
-    // 32:         return "value"
-    return "value";
-  }
+    // 31:     def to_str(self) -> str:
+    std::string_view to_str() {
+        // 32:         return "value"
+        return "value";
+    }
 
-  // 34:     def __len__(self) -> Int32:
-  int32_t __len__() const {
-    // 35:         return self.val
-    return this->val;
-  }
+    // 34:     def __len__(self) -> Int32:
+    int32_t __len__() const {
+        // 35:         return self.val
+        return this->val;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyValue& obj) {
-  os << "MyValue("
-     << "val=" << obj.val
-     << ")";
-  return os;
+    os << "MyValue("
+       << "val=" << obj.val
+       << ")";
+    return os;
 }
 
 // # Another type satisfying Stringable
 // 70: class Point:
 struct Point {
-  // 71:     x: Int32
-  int32_t x;
-  // 72:     y: Int32
-  int32_t y;
+    // 71:     x: Int32
+    int32_t x;
+    // 72:     y: Int32
+    int32_t y;
 
-  // 74:     def __init__(self, x: Int32, y: Int32) -> None:
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+    // 74:     def __init__(self, x: Int32, y: Int32) -> None:
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-  // 78:     def to_str(self) -> str:
-  std::string_view to_str() {
-    // 79:         return "Point"
-    return "Point";
-  }
+    // 78:     def to_str(self) -> str:
+    std::string_view to_str() {
+        // 79:         return "Point"
+        return "Point";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // # Type satisfying MultiMethod protocol
 // 82: class Widget:
 struct Widget {
-  // 83:     name: str
-  std::string_view name;
-  // 84:     val: Int32
-  int32_t val;
+    // 83:     name: str
+    std::string_view name;
+    // 84:     val: Int32
+    int32_t val;
 
-  // 86:     def __init__(self, name: str, val: Int32) -> None:
-  Widget() = default;
-  explicit Widget(std::string_view name, int32_t val) : name(name), val(val) {}
+    // 86:     def __init__(self, name: str, val: Int32) -> None:
+    Widget() = default;
+    explicit Widget(std::string_view name, int32_t val) : name(name), val(val) {}
 
-  // 90:     def get_name(self) -> str:
-  std::string_view get_name() {
-    // 91:         return self.name
-    return this->name;
-  }
+    // 90:     def get_name(self) -> str:
+    std::string_view get_name() {
+        // 91:         return self.name
+        return this->name;
+    }
 
-  // 93:     def get_value(self) -> Int32:
-  int32_t get_value() {
-    // 94:         return self.val
-    return this->val;
-  }
+    // 93:     def get_value(self) -> Int32:
+    int32_t get_value() {
+        // 94:         return self.val
+        return this->val;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
-  os << "Widget("
-     << "name=" << "\"" << obj.name << "\""
-     << ", "
-     << "val=" << obj.val
-     << ")";
-  return os;
+    os << "Widget("
+       << "name=" << "\"" << obj.name << "\""
+       << ", "
+       << "val=" << obj.val
+       << ")";
+    return os;
 }
 
 // # Type satisfying Clonable protocol
 // 97: class Box:
 struct Box {
-  // 98:     value: Int32
-  int32_t value;
+    // 98:     value: Int32
+    int32_t value;
 
-  // 100:     def __init__(self, v: Int32) -> None:
-  Box() = default;
-  explicit Box(int32_t v) : value(v) {}
+    // 100:     def __init__(self, v: Int32) -> None:
+    Box() = default;
+    explicit Box(int32_t v) : value(v) {}
 
-  // 103:     def clone(self) -> Own[Box]:
-  Box clone() {
-    // 104:         return Box(self.value)
-    return Box(this->value);
-  }
+    // 103:     def clone(self) -> Own[Box]:
+    Box clone() {
+        // 104:         return Box(self.value)
+        return Box(this->value);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // # Test 1: Builtin protocol (Sized) method call inside generic function
 // 7: def get_length[T: Sized](item: T) -> Int32:
 template<tpy::Sized T>
 int32_t get_length(tpy::param_val_or_ref_t<T> item) {
-  // 8:     return len(item)
-  return tpy::__len__(item);
+    // 8:     return len(item)
+    return tpy::__len__(item);
 }
 // # Test 3: Generic function with user protocol bound
 // 15: def stringify[T: Stringable](item: T) -> str:
 template<Stringable T>
 std::string_view stringify(tpy::param_val_or_ref_t<T> item) {
-  // 16:     return item.to_str()
-  return item.to_str();
+    // 16:     return item.to_str()
+    return item.to_str();
 }
 // # Test 6: Multiple type params with different bounds
 // 38: def process_both[T: Sized, U: Stringable](a: T, b: U) -> Int32:
 template<tpy::Sized T, Stringable U>
 int32_t process_both(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b) {
-  // 39:     print(b.to_str())
-  std::cout << b.to_str() << "\n";
-  // 40:     return len(a)
-  return tpy::__len__(a);
+    // 39:     print(b.to_str())
+    std::cout << b.to_str() << "\n";
+    // 40:     return len(a)
+    return tpy::__len__(a);
 }
 // 47: def use_multi[T: MultiMethod](item: T) -> None:
 template<MultiMethod T>
 void use_multi(tpy::param_val_or_ref_t<T> item) {
-  // 48:     print(item.get_name())
-  std::cout << item.get_name() << "\n";
-  // 49:     print(item.get_value())
-  std::cout << item.get_value() << "\n";
+    // 48:     print(item.get_name())
+    std::cout << item.get_name() << "\n";
+    // 49:     print(item.get_value())
+    std::cout << item.get_value() << "\n";
 }
 // # Test 8: Nested bounded calls (passing bounded param to another bounded function)
 // 52: def inner_len[T: Sized](x: T) -> Int32:
 template<tpy::Sized T>
 int32_t inner_len(tpy::param_val_or_ref_t<T> x) {
-  // 53:     return len(x)
-  return tpy::__len__(x);
+    // 53:     return len(x)
+    return tpy::__len__(x);
 }
 // 55: def outer_len[T: Sized](x: T) -> Int32:
 template<tpy::Sized T>
 int32_t outer_len(tpy::param_val_or_ref_t<T> x) {
-  // 56:     return inner_len(x)
-  return inner_len<T>(x);
+    // 56:     return inner_len(x)
+    return inner_len<T>(x);
 }
 // 62: def clone_it[T: Clonable](item: T) -> Own[T]:
 template<Clonable T>
 T clone_it(tpy::param_val_or_ref_t<T> item) {
-  // 63:     return item.clone()  # Return type should be Own[T], not Own[Clonable]
-  return item.clone();
+    // 63:     return item.clone()  # Return type should be Own[T], not Own[Clonable]
+    return item.clone();
 }
 // # Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> bool)
 // 66: def is_less[T: Comparable](a: T, b: T) -> bool:
 template<tpy::Comparable T>
 bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
-  // 67:     return a < b  # Uses __lt__ which takes Self parameter
-  return (a < b);
+    // 67:     return a < b  # Uses __lt__ which takes Self parameter
+    return (a < b);
 }
 
 void __tpy_init();

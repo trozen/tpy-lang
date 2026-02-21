@@ -7,26 +7,26 @@ std::string_view __name__;
 
 // 4: def bad(x: Int32 | None) -> Int32:
 int32_t bad(std::optional<int32_t> x) {
-  // 5:     assert x is not None
-  if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-  // 6:     x = None
-  x = std::nullopt;
-  // 7:     return x + 1  # tpyc: warning(/Potential None access/)
-  return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
+    // 5:     assert x is not None
+    if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
+    // 6:     x = None
+    x = std::nullopt;
+    // 7:     return x + 1  # tpyc: warning(/Potential None access/)
+    return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

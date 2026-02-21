@@ -7,41 +7,41 @@ std::string_view __name__;
 
 // 14: def main() -> None:
 void main() {
-  // 18:     # Test 1: Chained method call compiles and runs
-  // 19:     b1: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
-  Box<std::vector<int32_t>> b1 = Box<std::vector<int32_t>>({1, 2, 3});
-  // 20:     b1.take().append(4)
-  b1.take().push_back(4);
-  // 21:     print("chained call ok")
-  std::cout << "chained call ok" << "\n";
-  // 23:     # Test 2: Assign to variable, then call method
-  // 24:     b2: Box[list[Int32]] = Box[list[Int32]]([10, 20, 30])
-  Box<std::vector<int32_t>> b2 = Box<std::vector<int32_t>>({10, 20, 30});
-  // 25:     c: list[Int32] = b2.take()
-  std::vector<int32_t> c = b2.take();
-  // 26:     c.append(40)
-  c.push_back(40);
-  // 27:     for x in c:
-  for (int32_t x : c) {
-    // 28:         print(x)
-    std::cout << x << "\n";
-  }
+    // 18:     # Test 1: Chained method call compiles and runs
+    // 19:     b1: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    Box<std::vector<int32_t>> b1 = Box<std::vector<int32_t>>({1, 2, 3});
+    // 20:     b1.take().append(4)
+    b1.take().push_back(4);
+    // 21:     print("chained call ok")
+    std::cout << "chained call ok" << "\n";
+    // 23:     # Test 2: Assign to variable, then call method
+    // 24:     b2: Box[list[Int32]] = Box[list[Int32]]([10, 20, 30])
+    Box<std::vector<int32_t>> b2 = Box<std::vector<int32_t>>({10, 20, 30});
+    // 25:     c: list[Int32] = b2.take()
+    std::vector<int32_t> c = b2.take();
+    // 26:     c.append(40)
+    c.push_back(40);
+    // 27:     for x in c:
+    for (int32_t x : c) {
+        // 28:         print(x)
+        std::cout << x << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 31: main()
-  main();
+    __name__ = "__main__";
+    // 31: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

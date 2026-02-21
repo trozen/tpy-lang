@@ -11,44 +11,44 @@ std::vector<Point>* points{};
 // # Compiles with warning and inserts a runtime null check.
 // 18: def use_without_check(p: Point | None) -> Int32:
 int32_t use_without_check(Point* p) {
-  // 19:     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
-  return tpy::deref_check(p).mag();
+    // 19:     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
+    return tpy::deref_check(p).mag();
 }
 
 // 25: def find(pts: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& pts, int32_t target) {
-  // 26:     for pt in pts:
-  for (auto& pt : pts) {
-    // 27:         if pt.x == target:
-    if ((pt.x == target)) {
-      // 28:             return pt
-      return &(pt);
+    // 26:     for pt in pts:
+    for (auto& pt : pts) {
+        // 27:         if pt.x == target:
+        if ((pt.x == target)) {
+            // 28:             return pt
+            return &(pt);
+        }
     }
-  }
-  // 29:     return None
-  return nullptr;
+    // 29:     return None
+    return nullptr;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: points: list[Point] = list()
-  static std::vector<Point> __global_slot_1 = std::vector<Point>();
-  points = &__global_slot_1;
-  // 23: points.append(Point(3, 4))
-  (*points).push_back(Point(3, 4));
-  // 31: # Safe at runtime because we know the value exists
-  // 32: print(use_without_check(find(points, 3)))
-  std::cout << use_without_check(find((*points), 3)) << "\n";
+    __name__ = "__main__";
+    // 22: points: list[Point] = list()
+    static std::vector<Point> __global_slot_1 = std::vector<Point>();
+    points = &__global_slot_1;
+    // 23: points.append(Point(3, 4))
+    (*points).push_back(Point(3, 4));
+    // 31: # Safe at runtime because we know the value exists
+    // 32: print(use_without_check(find(points, 3)))
+    std::cout << use_without_check(find((*points), 3)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

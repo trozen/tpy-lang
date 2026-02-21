@@ -43,55 +43,55 @@ extern int32_t i;
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 11:     def name(self) -> str:
-  std::string_view name() override {
-    // 12:         return "Rex"
-    return "Rex";
-  }
+    // 11:     def name(self) -> str:
+    std::string_view name() override {
+        // 12:         return "Rex"
+        return "Rex";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 // 14: class Cat:
 struct Cat {
 
-  Cat() = default;
+    Cat() = default;
 
-  // 15:     def name(self) -> str:
-  std::string_view name() {
-    // 16:         return "Whiskers"
-    return "Whiskers";
-  }
+    // 15:     def name(self) -> str:
+    std::string_view name() {
+        // 16:         return "Whiskers"
+        return "Whiskers";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << ")";
-  return os;
+    os << "Cat("
+       << ")";
+    return os;
 }
 
 // 18: class Parrot:
 struct Parrot {
 
-  Parrot() = default;
+    Parrot() = default;
 
-  // 19:     def name(self) -> str:
-  std::string_view name() {
-    // 20:         return "Polly"
-    return "Polly";
-  }
+    // 19:     def name(self) -> str:
+    std::string_view name() {
+        // 20:         return "Polly"
+        return "Polly";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
-  os << "Parrot("
-     << ")";
-  return os;
+    os << "Parrot("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

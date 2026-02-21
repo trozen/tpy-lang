@@ -13,32 +13,32 @@ void main();
 
 // 4: class Point:
 struct Point {
-  // 6:     x: Int32
-  int32_t x;
-  // 7:     y: Int32
-  int32_t y;
+    // 6:     x: Int32
+    int32_t x;
+    // 7:     y: Int32
+    int32_t y;
 
-  // 9:     def __init__(self, x: Int32, y: Int32):
-  Point() = default;
-  explicit Point(int32_t x, int32_t y) : x(x), y(y) {
-    // 10:         """Create a new Point."""
-  }
+    // 9:     def __init__(self, x: Int32, y: Int32):
+    Point() = default;
+    explicit Point(int32_t x, int32_t y) : x(x), y(y) {
+        // 10:         """Create a new Point."""
+    }
 
-  // 14:     def magnitude_sq(self) -> Int32:
-  int32_t magnitude_sq() {
-    // 15:         """Return the squared magnitude."""
-    // 16:         return self.x * self.x + self.y * self.y
-    return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, this->x)), (tpy::mul_check<int32_t>(this->y, this->y))));
-  }
+    // 14:     def magnitude_sq(self) -> Int32:
+    int32_t magnitude_sq() {
+        // 15:         """Return the squared magnitude."""
+        // 16:         return self.x * self.x + self.y * self.y
+        return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, this->x)), (tpy::mul_check<int32_t>(this->y, this->y))));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 void __tpy_init();

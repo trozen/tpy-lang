@@ -7,52 +7,52 @@ std::string_view __name__;
 
 // 11: def mutate_and_get(b: Box) -> Int32:
 int32_t mutate_and_get(Box& b) {
-  // 12:     if b.value is not None:
-  if ((b.value.has_value())) {
-    // 13:         b.value = b.value + 1
-    b.value = (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
-    // 14:         return b.value + 0
-    return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 0));
-  }
-  // 15:     return 0
-  return 0;
+    // 12:     if b.value is not None:
+    if ((b.value.has_value())) {
+        // 13:         b.value = b.value + 1
+        b.value = (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
+        // 14:         return b.value + 0
+        return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 0));
+    }
+    // 15:     return 0
+    return 0;
 }
 
 // @readonly
 // 19: def observe(_: Int32) -> None:
 void observe(int32_t _) {
-  // 20:     return
-  return;
+    // 20:     return
+    return;
 }
 
 // 23: def use(b: Box) -> Int32:
 int32_t use(Box& b) {
-  // 24:     if b.value is not None:
-  if ((b.value.has_value())) {
-    // 25:         observe(mutate_and_get(b))
-    observe(mutate_and_get(b));
-    // 26:         return b.value + 1  # tpyc: warning(/Potential None access/)
-    return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
-  }
-  // 27:     return 0
-  return 0;
+    // 24:     if b.value is not None:
+    if ((b.value.has_value())) {
+        // 25:         observe(mutate_and_get(b))
+        observe(mutate_and_get(b));
+        // 26:         return b.value + 1  # tpyc: warning(/Potential None access/)
+        return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
+    }
+    // 27:     return 0
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 30: print(use(Box(4)))
-  Box __tmp_1 = Box(4);
-  std::cout << use(__tmp_1) << "\n";
+    __name__ = "__main__";
+    // 30: print(use(Box(4)))
+    Box __tmp_1 = Box(4);
+    std::cout << use(__tmp_1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

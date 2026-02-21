@@ -15,19 +15,19 @@ void main();
 
 // 4: class Cat:
 struct Cat {
-  // 5:     name: str
-  std::string_view name;
+    // 5:     name: str
+    std::string_view name;
 
-  // 6:     def __init__(self, name: str) -> None:
-  Cat() = default;
-  explicit Cat(std::string_view name) : name(name) {}
+    // 6:     def __init__(self, name: str) -> None:
+    Cat() = default;
+    explicit Cat(std::string_view name) : name(name) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Cat("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

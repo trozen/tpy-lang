@@ -12,19 +12,19 @@ extern C* x;
 
 // 4: class C:
 struct C {
-  // 5:     v: Int32
-  int32_t v;
+    // 5:     v: Int32
+    int32_t v;
 
-  // 7:     def __init__(self, v: Int32):
-  C() = default;
-  explicit C(int32_t v) : v(v) {}
+    // 7:     def __init__(self, v: Int32):
+    C() = default;
+    explicit C(int32_t v) : v(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-  os << "C("
-     << "v=" << obj.v
-     << ")";
-  return os;
+    os << "C("
+       << "v=" << obj.v
+       << ")";
+    return os;
 }
 
 void __tpy_init();

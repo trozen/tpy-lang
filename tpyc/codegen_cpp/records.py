@@ -17,7 +17,7 @@ from ..parse import (
 )
 from ..namespace import Namespace
 
-from .context import DUNDER_TO_BINARY_OP, CodeGenError
+from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -133,13 +133,13 @@ class RecordGenerator:
 
         # Fields
         for fld in record.fields:
-            self.ctx.emit_preceding_comments(out, fld.loc, indent="  ")
-            self.ctx.emit_source_comment(out, fld.loc, indent="  ")
+            self.ctx.emit_preceding_comments(out, fld.loc, indent=INDENT)
+            self.ctx.emit_source_comment(out, fld.loc, indent=INDENT)
             cpp_type = fld.type.to_cpp()
             default = ""
             if fld.default_value is not None:
                 default = f" = {fld.default_value}"
-            out.write(f"  {cpp_type} {fld.name}{default};\n")
+            out.write(f"{INDENT}{cpp_type} {fld.name}{default};\n")
 
         # Drop flag for classes with __del__ -- prevents double-drop after move.
         # NOTE: in inheritance chains where both parent and child have __del__, each
@@ -147,7 +147,7 @@ class RecordGenerator:
         # because each destructor reads its own class's flag, but it's fragile --
         # ideally only the root __del__ class should emit the flag.
         if record.del_method is not None:
-            out.write(f"  bool __tpy_owned_ = true;\n")
+            out.write(f"{INDENT}bool __tpy_owned_ = true;\n")
 
         out.write("\n")
 
@@ -158,11 +158,11 @@ class RecordGenerator:
             inits = self._extract_field_inits(record.init_method, record)
             non_init_stmts = self._get_non_init_stmts(record.init_method, record)
 
-            self.ctx.emit_preceding_comments(out, record.init_method.loc, indent="  ")
-            self.ctx.emit_source_comment(out, record.init_method.loc, indent="  ")
+            self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
+            self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
             if has_params:
                 # Generate default constructor for C++ compatibility
-                out.write(f"  {record.name}() = default;\n")
+                out.write(f"{INDENT}{record.name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
                 cpp_params = self.functions.gen_params(
@@ -170,10 +170,10 @@ class RecordGenerator:
                     record.init_method.type_params,
                     const_params=True,
                 )
-                out.write(f"  explicit {record.name}({cpp_params})")
+                out.write(f"{INDENT}explicit {record.name}({cpp_params})")
             else:
                 # No params: generate default constructor with body
-                out.write(f"  {record.name}()")
+                out.write(f"{INDENT}{record.name}()")
 
             # Build member init list: base init (if any) + field inits
             all_inits = []
@@ -192,22 +192,22 @@ class RecordGenerator:
                 self.functions.gen_body(out, non_init_stmts, record.init_method.params,
                                          record.init_method.return_type, record.init_method,
                                          local_ns, indent_level=2, is_method=True)
-                out.write("  }\n")
+                out.write(f"{INDENT}}}\n")
             else:
                 out.write(" {}\n")
         else:
             # No __init__, use default constructor
-            out.write(f"  {record.name}() = default;\n")
+            out.write(f"{INDENT}{record.name}() = default;\n")
 
         # Delete copy ops for @nocopy or __del__ classes.
         # __del__ implies non-copyable: copying would create two owned objects that
         # both run cleanup (double-drop). Move ops come from _gen_move_and_destructor.
         if record_info and (record_info.is_nocopy or record_info.has_del):
-            out.write(f"  {record.name}(const {record.name}&) = delete;\n")
-            out.write(f"  {record.name}& operator=(const {record.name}&) = delete;\n")
+            out.write(f"{INDENT}{record.name}(const {record.name}&) = delete;\n")
+            out.write(f"{INDENT}{record.name}& operator=(const {record.name}&) = delete;\n")
             if record_info.is_nocopy and not record_info.has_del:
-                out.write(f"  {record.name}({record.name}&&) = default;\n")
-                out.write(f"  {record.name}& operator=({record.name}&&) = default;\n")
+                out.write(f"{INDENT}{record.name}({record.name}&&) = default;\n")
+                out.write(f"{INDENT}{record.name}& operator=({record.name}&&) = default;\n")
 
         # Generate destructor if __del__ is defined
         self._gen_move_and_destructor(out, record)
@@ -250,12 +250,12 @@ class RecordGenerator:
             out.write(f"inline std::ostream& operator<<(std::ostream& os, const {name}<{type_args}>& obj) {{\n")
         else:
             out.write(f"\ninline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
-        out.write(f'  os << "{name}("')
+        out.write(f'{INDENT}os << "{name}("')
 
         for i, fld in enumerate(record.fields):
             if i > 0:
-                out.write('\n     << ", "')
-            out.write(f'\n     << "{fld.name}="')
+                out.write(f'\n{INDENT}   << ", "')
+            out.write(f'\n{INDENT}   << "{fld.name}="')
             # Handle strings - quote them
             if isinstance(fld.type, StrType):
                 out.write(f' << "\\"" << obj.{fld.name} << "\\""')
@@ -284,8 +284,8 @@ class RecordGenerator:
             else:
                 out.write(f' << obj.{fld.name}')
 
-        out.write('\n     << ")";\n')
-        out.write("  return os;\n")
+        out.write(f'\n{INDENT}   << ")";\n')
+        out.write(f"{INDENT}return os;\n")
         out.write("}\n")
 
     def _is_super_init_call(self, stmt: TpyStmt) -> bool:
@@ -331,30 +331,30 @@ class RecordGenerator:
         if init_parts:
             init_list = " : " + ", ".join(init_parts)
 
-        out.write(f"  {name}({name}&& other) noexcept{init_list} {{\n")
-        out.write(f"    other.__tpy_owned_ = false;\n")
-        out.write(f"  }}\n")
+        out.write(f"{INDENT}{name}({name}&& other) noexcept{init_list} {{\n")
+        out.write(f"{INDENT}{INDENT}other.__tpy_owned_ = false;\n")
+        out.write(f"{INDENT}}}\n")
 
         # --- Custom move assignment (destroy-and-reconstruct) ---
-        out.write(f"  {name}& operator=({name}&& other) noexcept {{\n")
-        out.write(f"    if (this != &other) {{\n")
-        out.write(f"      this->~{name}();\n")
-        out.write(f"      new (this) {name}(std::move(other));\n")
-        out.write(f"    }}\n")
-        out.write(f"    return *this;\n")
-        out.write(f"  }}\n")
+        out.write(f"{INDENT}{name}& operator=({name}&& other) noexcept {{\n")
+        out.write(f"{INDENT}{INDENT}if (this != &other) {{\n")
+        out.write(f"{INDENT}{INDENT}{INDENT}this->~{name}();\n")
+        out.write(f"{INDENT}{INDENT}{INDENT}new (this) {name}(std::move(other));\n")
+        out.write(f"{INDENT}{INDENT}}}\n")
+        out.write(f"{INDENT}{INDENT}return *this;\n")
+        out.write(f"{INDENT}}}\n")
 
         # --- Destructor with drop-flag guard ---
-        self.ctx.emit_preceding_comments(out, del_method.loc, indent="  ")
-        self.ctx.emit_source_comment(out, del_method.loc, indent="  ")
-        out.write(f"\n  ~{name}() {{\n")
-        out.write(f"    if (!__tpy_owned_) return;\n")
+        self.ctx.emit_preceding_comments(out, del_method.loc, indent=INDENT)
+        self.ctx.emit_source_comment(out, del_method.loc, indent=INDENT)
+        out.write(f"\n{INDENT}~{name}() {{\n")
+        out.write(f"{INDENT}{INDENT}if (!__tpy_owned_) return;\n")
         if body_stmts:
             local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
             local_ns.bind_variable("self", NamedType(name))
             self.functions.gen_body(out, body_stmts, [], del_method.return_type,
                                     del_method, local_ns, indent_level=2, is_method=True)
-        out.write("  }\n")
+        out.write(f"{INDENT}}}\n")
 
     def _extract_base_init(self, init_method: TpyFunction, record: TpyRecord) -> str | None:
         """Extract super().__init__() call and return base class initializer string.
@@ -475,21 +475,21 @@ class RecordGenerator:
 
         if getitem.is_readonly:
             ret_const = getitem.return_type.to_cpp_return_const()
-            out.write(f"\n  {ret_const} operator[]({index_cpp} {index_param_name}) const {{\n")
-            out.write(f"    return __getitem__({index_param_name});\n")
-            out.write("  }\n")
+            out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp} {index_param_name}) const {{\n")
+            out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
+            out.write(f"{INDENT}}}\n")
             # Non-const overload only when return could be a reference
             needs_dual = not getitem.return_type.is_value_type() or isinstance(getitem.return_type, TypeParamRef)
             if needs_dual:
                 ret_mut = getitem.return_type.to_cpp_return()
-                out.write(f"\n  {ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
-                out.write(f"    return __getitem__({index_param_name});\n")
-                out.write("  }\n")
+                out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
+                out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
+                out.write(f"{INDENT}}}\n")
         else:
             ret_mut = getitem.return_type.to_cpp_return()
-            out.write(f"\n  {ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
-            out.write(f"    return __getitem__({index_param_name});\n")
-            out.write("  }\n")
+            out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
+            out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
+            out.write(f"{INDENT}}}\n")
 
     def _gen_binary_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate C++ operators from dunder methods (arithmetic and comparison).
@@ -512,9 +512,9 @@ class RecordGenerator:
 
             # Generate friend operator that delegates to the dunder method
             # Using friend function allows symmetric operand handling
-            out.write(f"\n  friend {ret_cpp} operator{cpp_op}(const {record.name}& lhs, {param_cpp}) {{\n")
-            out.write(f"    return lhs.{method.name}({param_name});\n")
-            out.write("  }\n")
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {record.name}& lhs, {param_cpp}) {{\n")
+            out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
+            out.write(f"{INDENT}}}\n")
 
     def _gen_deref_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator*() for types with __deref__().
@@ -531,6 +531,6 @@ class RecordGenerator:
         if deref_method is None:
             return
 
-        out.write("\n  auto operator*() -> decltype(__deref__()) {\n")
-        out.write("    return __deref__();\n")
-        out.write("  }\n")
+        out.write(f"\n{INDENT}auto operator*() -> decltype(__deref__()) {{\n")
+        out.write(f"{INDENT}{INDENT}return __deref__();\n")
+        out.write(f"{INDENT}}}\n")

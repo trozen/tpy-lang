@@ -13,63 +13,63 @@ extern Dog* d;
 
 // 3: class Animal:
 struct Animal {
-  // 4:     name: str
-  std::string_view name;
+    // 4:     name: str
+    std::string_view name;
 
-  // 6:     def __init__(self, name: str) -> None:
-  Animal() = default;
-  explicit Animal(std::string_view name) : name(name) {}
+    // 6:     def __init__(self, name: str) -> None:
+    Animal() = default;
+    explicit Animal(std::string_view name) : name(name) {}
 
-  // 9:     def speak(self) -> str:
-  std::string_view speak() {
-    // 10:         return "Animal says: ..."
-    return "Animal says: ...";
-  }
+    // 9:     def speak(self) -> str:
+    std::string_view speak() {
+        // 10:         return "Animal says: ..."
+        return "Animal says: ...";
+    }
 
-  // 12:     def describe(self) -> str:
-  std::string_view describe() {
-    // 13:         return self.name
-    return this->name;
-  }
+    // 12:     def describe(self) -> str:
+    std::string_view describe() {
+        // 13:         return self.name
+        return this->name;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
-  os << "Animal("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Animal("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 // 16: class Dog(Animal):
 struct Dog : Animal {
-  // 17:     breed: str
-  std::string_view breed;
+    // 17:     breed: str
+    std::string_view breed;
 
-  // 19:     def __init__(self, name: str, breed: str) -> None:
-  Dog() = default;
-  explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
+    // 19:     def __init__(self, name: str, breed: str) -> None:
+    Dog() = default;
+    explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
-  // 23:     def speak(self) -> str:
-  std::string_view speak() {
-    // 24:         return "Woof!"
-    return "Woof!";
-  }
+    // 23:     def speak(self) -> str:
+    std::string_view speak() {
+        // 24:         return "Woof!"
+        return "Woof!";
+    }
 
-  // 26:     def full_speak(self) -> str:
-  std::string_view full_speak() {
-    // 27:         # Call overridden parent method via super()
-    // 28:         parent_speak = super().speak()
-    std::string_view parent_speak = Animal::speak();
-    // 29:         return parent_speak
-    return parent_speak;
-  }
+    // 26:     def full_speak(self) -> str:
+    std::string_view full_speak() {
+        // 27:         # Call overridden parent method via super()
+        // 28:         parent_speak = super().speak()
+        std::string_view parent_speak = Animal::speak();
+        // 29:         return parent_speak
+        return parent_speak;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << "breed=" << "\"" << obj.breed << "\""
-     << ")";
-  return os;
+    os << "Dog("
+       << "breed=" << "\"" << obj.breed << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -10,34 +10,34 @@ std::string_view __name__;
 // 15: def field_access_escape() -> None:
 void field_access_escape() {
   std::optional<Outer> __slot_2;
-  // 16:     saved: Inner = Inner(0)
-  Inner __slot_1 = Inner(0);
-  Inner* saved = &__slot_1;
-  // 17:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
-    // 18:         o: Outer = Outer(Inner(i))
-    Outer* o = &*(__slot_2 = Outer(Inner(i)));
-    // 19:         saved = o.inner  # tpyc: warning(/hoisted to function scope/)
-    saved = &(o->inner);
-  }
-  // 20:     print(saved.value)
-  std::cout << saved->value << "\n";
+    // 16:     saved: Inner = Inner(0)
+    Inner __slot_1 = Inner(0);
+    Inner* saved = &__slot_1;
+    // 17:     for i in range(3):
+    for (int32_t i = 0; i < 3; ++i) {
+        // 18:         o: Outer = Outer(Inner(i))
+        Outer* o = &*(__slot_2 = Outer(Inner(i)));
+        // 19:         saved = o.inner  # tpyc: warning(/hoisted to function scope/)
+        saved = &(o->inner);
+    }
+    // 20:     print(saved.value)
+    std::cout << saved->value << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 22: field_access_escape()
-  field_access_escape();
+    __name__ = "__main__";
+    // 22: field_access_escape()
+    field_access_escape();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

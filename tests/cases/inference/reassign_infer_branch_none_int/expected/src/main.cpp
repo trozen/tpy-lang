@@ -7,41 +7,41 @@ std::string_view __name__;
 
 // 1: def pick(cond: bool) -> None:
 void pick(bool cond) {
-  // 2:     if cond:
-  std::optional<int32_t> x;
-  if (cond) {
-    // 3:         x = None
-    x = std::nullopt;
-  } else {
-    // 5:         x = 5
-    x = 5;
-  }
-  // 7:     if x is None:
-  if ((!x.has_value())) {
-    // 8:         print(0)
-    std::cout << 0 << "\n";
-  } else {
-    // 10:         print(x)
-    std::cout << tpy::print_optional_val(x) << "\n";
-  }
+    // 2:     if cond:
+    std::optional<int32_t> x;
+    if (cond) {
+        // 3:         x = None
+        x = std::nullopt;
+    } else {
+        // 5:         x = 5
+        x = 5;
+    }
+    // 7:     if x is None:
+    if ((!x.has_value())) {
+        // 8:         print(0)
+        std::cout << 0 << "\n";
+    } else {
+        // 10:         print(x)
+        std::cout << tpy::print_optional_val(x) << "\n";
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: pick(True)
-  pick(true);
-  // 14: pick(False)
-  pick(false);
+    __name__ = "__main__";
+    // 13: pick(True)
+    pick(true);
+    // 14: pick(False)
+    pick(false);
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

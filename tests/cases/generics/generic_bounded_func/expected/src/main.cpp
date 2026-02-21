@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 8: def main() -> None:
 void main() {
-  // 9:     # list[int] satisfies Sized, so inference should work
-  // 10:     items = identity([1, 2, 3])
-  std::vector<int32_t> __tmp_1 = {1, 2, 3};
-  std::vector<int32_t>& items = identity<std::vector<int32_t>>(__tmp_1);
-  // 11:     print(len(items))  # Should print 3
-  std::cout << tpy::__len__(items) << "\n";
-  // 13:     # str satisfies Sized too
-  // 14:     s = identity("hello")
-  std::string_view __tmp_2 = "hello";
-  std::string_view s = identity<std::string_view>(__tmp_2);
-  // 15:     print(len(s))  # Should print 5
-  std::cout << tpy::__len__(s) << "\n";
+    // 9:     # list[int] satisfies Sized, so inference should work
+    // 10:     items = identity([1, 2, 3])
+    std::vector<int32_t> __tmp_1 = {1, 2, 3};
+    std::vector<int32_t>& items = identity<std::vector<int32_t>>(__tmp_1);
+    // 11:     print(len(items))  # Should print 3
+    std::cout << tpy::__len__(items) << "\n";
+    // 13:     # str satisfies Sized too
+    // 14:     s = identity("hello")
+    std::string_view __tmp_2 = "hello";
+    std::string_view s = identity<std::string_view>(__tmp_2);
+    // 15:     print(len(s))  # Should print 5
+    std::cout << tpy::__len__(s) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

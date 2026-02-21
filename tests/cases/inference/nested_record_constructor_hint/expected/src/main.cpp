@@ -7,54 +7,54 @@ std::string_view __name__;
 
 // 17: def main() -> None:
 void main() {
-  // 18:     # Non-generic record constructor: hint from __init__ param flows to inner call
-  // 19:     h = Holder(wrap(Int32(42)))
-  int32_t __tmp_1 = 42;
-  Holder h = Holder(wrap<int32_t>(__tmp_1));
-  // 20:     print(h.box.val)
-  std::cout << h.box.val << "\n";
-  // 22:     # Same with bare literal: hint chain infers Int32, coerces literal
-  // 23:     h2 = Holder(wrap(99))
-  int32_t __tmp_2 = 99;
-  Holder h2 = Holder(wrap<int32_t>(__tmp_2));
-  // 24:     print(h2.box.val)
-  std::cout << h2.box.val << "\n";
-  // 26:     # Generic record with explicit type args: hint flows to inner call
-  // 27:     outer = Box[Box[Int32]](wrap(Int32(10)))
-  int32_t __tmp_3 = 10;
-  Box<Box<int32_t>> outer = Box<Box<int32_t>>(wrap<int32_t>(__tmp_3));
-  // 28:     print(outer.val.val)
-  std::cout << outer.val.val << "\n";
-  // 30:     # Same with bare literal
-  // 31:     outer2 = Box[Box[Int32]](wrap(20))
-  int32_t __tmp_4 = 20;
-  Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_4));
-  // 32:     print(outer2.val.val)
-  std::cout << outer2.val.val << "\n";
-  // 34:     # Annotation-driven: no explicit type args on Box(), inferred from LHS
-  // 35:     outer3: Box[Box[Int32]] = Box(wrap(30))
-  int32_t __tmp_5 = 30;
-  Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_5));
-  // 36:     print(outer3.val.val)
-  std::cout << outer3.val.val << "\n";
-  // 37:     print("done")
-  std::cout << "done" << "\n";
+    // 18:     # Non-generic record constructor: hint from __init__ param flows to inner call
+    // 19:     h = Holder(wrap(Int32(42)))
+    int32_t __tmp_1 = 42;
+    Holder h = Holder(wrap<int32_t>(__tmp_1));
+    // 20:     print(h.box.val)
+    std::cout << h.box.val << "\n";
+    // 22:     # Same with bare literal: hint chain infers Int32, coerces literal
+    // 23:     h2 = Holder(wrap(99))
+    int32_t __tmp_2 = 99;
+    Holder h2 = Holder(wrap<int32_t>(__tmp_2));
+    // 24:     print(h2.box.val)
+    std::cout << h2.box.val << "\n";
+    // 26:     # Generic record with explicit type args: hint flows to inner call
+    // 27:     outer = Box[Box[Int32]](wrap(Int32(10)))
+    int32_t __tmp_3 = 10;
+    Box<Box<int32_t>> outer = Box<Box<int32_t>>(wrap<int32_t>(__tmp_3));
+    // 28:     print(outer.val.val)
+    std::cout << outer.val.val << "\n";
+    // 30:     # Same with bare literal
+    // 31:     outer2 = Box[Box[Int32]](wrap(20))
+    int32_t __tmp_4 = 20;
+    Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_4));
+    // 32:     print(outer2.val.val)
+    std::cout << outer2.val.val << "\n";
+    // 34:     # Annotation-driven: no explicit type args on Box(), inferred from LHS
+    // 35:     outer3: Box[Box[Int32]] = Box(wrap(30))
+    int32_t __tmp_5 = 30;
+    Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_5));
+    // 36:     print(outer3.val.val)
+    std::cout << outer3.val.val << "\n";
+    // 37:     print("done")
+    std::cout << "done" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 39: main()
-  main();
+    __name__ = "__main__";
+    // 39: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

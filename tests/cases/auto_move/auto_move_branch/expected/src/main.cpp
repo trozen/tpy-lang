@@ -7,47 +7,47 @@ std::string_view __name__;
 
 // 10: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
-  // 11:     return p.x + p.y
-  return (tpy::add_check<int32_t>(p.x, p.y));
+    // 11:     return p.x + p.y
+    return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // 14: def main():
 void main() {
-  // 15:     p = Point()
-  Point p = Point();
-  // 16:     p.x = 10
-  p.x = 10;
-  // 17:     p.y = 20
-  p.y = 20;
-  // 18:     cond = True
-  bool cond = true;
-  // 19:     if cond:
-  if (cond) {
+    // 15:     p = Point()
+    Point p = Point();
+    // 16:     p.x = 10
+    p.x = 10;
+    // 17:     p.y = 20
+    p.y = 20;
+    // 18:     cond = True
+    bool cond = true;
+    // 19:     if cond:
+    if (cond) {
+        // 20:         # last use on this path
+        // 21:         print(consume(p))
+        std::cout << consume(std::move(p)) << "\n";
+    } else {
+        // 23:         # last use on this path
+        // 24:         print(consume(p))
+        std::cout << consume(std::move(p)) << "\n";
+    }
     // 20:         # last use on this path
-    // 21:         print(consume(p))
-    std::cout << consume(std::move(p)) << "\n";
-  } else {
-    // 23:         # last use on this path
-    // 24:         print(consume(p))
-    std::cout << consume(std::move(p)) << "\n";
-  }
-  // 20:         # last use on this path
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 27: main()
-  main();
+    __name__ = "__main__";
+    // 27: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

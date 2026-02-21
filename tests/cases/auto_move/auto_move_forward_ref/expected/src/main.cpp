@@ -7,49 +7,49 @@ std::string_view __name__;
 
 // 9: def consume(x: Own[Box]) -> Int32:
 int32_t consume(Box x) {
-  // 10:     return x.value
-  return x.value;
+    // 10:     return x.value
+    return x.value;
 }
 
 // 21: def main():
 void main() {
-  // 22:     b1 = Box()
-  Box b1 = Box();
-  // 23:     b1.value = 10
-  b1.value = 10;
-  // 24:     # Concrete Own: std::move at last use
-  // 25:     print(consume(b1))
-  std::cout << consume(std::move(b1)) << "\n";
-  // 27:     b2 = Box()
-  Box b2 = Box();
-  // 28:     b2.value = 20
-  b2.value = 20;
-  // 29:     # Generic forwarding chain: wrapper -> sink, both T&&
-  // 30:     wrapper[Box](b2)
-  wrapper<Box>(std::move(b2));
-  // 32:     b3 = Box()
-  Box b3 = Box();
-  // 33:     b3.value = 30
-  b3.value = 30;
-  // 34:     # Same but with inferred type argument
-  // 35:     wrapper(b3)
-  wrapper<Box>(std::move(b3));
-  // 37:     print("done")
-  std::cout << "done" << "\n";
+    // 22:     b1 = Box()
+    Box b1 = Box();
+    // 23:     b1.value = 10
+    b1.value = 10;
+    // 24:     # Concrete Own: std::move at last use
+    // 25:     print(consume(b1))
+    std::cout << consume(std::move(b1)) << "\n";
+    // 27:     b2 = Box()
+    Box b2 = Box();
+    // 28:     b2.value = 20
+    b2.value = 20;
+    // 29:     # Generic forwarding chain: wrapper -> sink, both T&&
+    // 30:     wrapper[Box](b2)
+    wrapper<Box>(std::move(b2));
+    // 32:     b3 = Box()
+    Box b3 = Box();
+    // 33:     b3.value = 30
+    b3.value = 30;
+    // 34:     # Same but with inferred type argument
+    // 35:     wrapper(b3)
+    wrapper<Box>(std::move(b3));
+    // 37:     print("done")
+    std::cout << "done" << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
+    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -20,50 +20,50 @@ void main();
 
 // 9: class MyNumber:
 struct MyNumber {
-  // 10:     value: Int32
-  int32_t value;
+    // 10:     value: Int32
+    int32_t value;
 
-  // 12:     def __init__(self, v: Int32) -> None:
-  MyNumber() = default;
-  explicit MyNumber(int32_t v) : value(v) {}
+    // 12:     def __init__(self, v: Int32) -> None:
+    MyNumber() = default;
+    explicit MyNumber(int32_t v) : value(v) {}
 
-  // 15:     def add(self, x: Int32) -> Int32:
-  int32_t add(int32_t x) {
-    // 16:         return self.value + x
-    return (tpy::add_check<int32_t>(this->value, x));
-  }
+    // 15:     def add(self, x: Int32) -> Int32:
+    int32_t add(int32_t x) {
+        // 16:         return self.value + x
+        return (tpy::add_check<int32_t>(this->value, x));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyNumber& obj) {
-  os << "MyNumber("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "MyNumber("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 18: class Holder[T: Addable]:
 template<Addable T>
 struct Holder {
-  // 19:     item: T
-  T item;
+    // 19:     item: T
+    T item;
 
-  // 21:     def __init__(self, item: T):
-  Holder() = default;
-  explicit Holder(const T& item) : item(item) {}
+    // 21:     def __init__(self, item: T):
+    Holder() = default;
+    explicit Holder(const T& item) : item(item) {}
 
-  // 24:     def get_item(self) -> T:
-  tpy::return_val_or_ref_t<T> get_item() {
-    // 25:         return self.item
-    return this->item;
-  }
+    // 24:     def get_item(self) -> T:
+    tpy::return_val_or_ref_t<T> get_item() {
+        // 25:         return self.item
+        return this->item;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
-  os << "Holder("
-     << "item=" << tpy::ValuePrinter(obj.item)
-     << ")";
-  return os;
+    os << "Holder("
+       << "item=" << tpy::ValuePrinter(obj.item)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

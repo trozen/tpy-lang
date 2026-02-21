@@ -8,38 +8,38 @@ std::string_view __name__;
 Settings* s{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 17: s = Settings()
-  static Settings __global_slot_1 = Settings();
-  s = &__global_slot_1;
-  // 18: print(s)
-  std::cout << (*s) << "\n";
-  // 20: s.count = 42
-  s->count = 42;
-  // 21: s.flag = True
-  s->flag = true;
-  // 22: s.ratio = 3.14
-  s->ratio = 3.14;
-  // 23: s.label = "hello"
-  s->label = "hello";
-  // 24: print(s)
-  std::cout << (*s) << "\n";
-  // 26: s.flag = False
-  s->flag = false;
-  // 27: s.ratio = 0.0
-  s->ratio = 0.0;
-  // 28: print(s)
-  std::cout << (*s) << "\n";
+    __name__ = "__main__";
+    // 17: s = Settings()
+    static Settings __global_slot_1 = Settings();
+    s = &__global_slot_1;
+    // 18: print(s)
+    std::cout << (*s) << "\n";
+    // 20: s.count = 42
+    s->count = 42;
+    // 21: s.flag = True
+    s->flag = true;
+    // 22: s.ratio = 3.14
+    s->ratio = 3.14;
+    // 23: s.label = "hello"
+    s->label = "hello";
+    // 24: print(s)
+    std::cout << (*s) << "\n";
+    // 26: s.flag = False
+    s->flag = false;
+    // 27: s.ratio = 0.0
+    s->ratio = 0.0;
+    // 28: print(s)
+    std::cout << (*s) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

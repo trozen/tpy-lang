@@ -6,32 +6,32 @@ namespace tpy_user::main {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 4: from tpy.unsafe import unsafe_load, unsafe_store
-  // 6: scores: Ptr[Int16] = native_c_global_array("g_scores")
-  // 7: ids: Ptr[Int32] = native_c_global_array("g_ids")
-  // 9: # Read array elements
-  // 10: print(unsafe_load(scores, UInt32(0)))
-  std::cout << g_scores[0] << "\n";
-  // 11: print(unsafe_load(scores, UInt32(2)))
-  std::cout << g_scores[2] << "\n";
-  // 12: print(unsafe_load(ids, UInt32(1)))
-  std::cout << g_ids[1] << "\n";
-  // 14: # Write and read back
-  // 15: unsafe_store(scores, UInt32(0), Int16(99))
-  g_scores[0] = 99;
-  // 16: print(unsafe_load(scores, UInt32(0)))
-  std::cout << g_scores[0] << "\n";
+    __name__ = "__main__";
+    // 4: from tpy.unsafe import unsafe_load, unsafe_store
+    // 6: scores: Ptr[Int16] = native_c_global_array("g_scores")
+    // 7: ids: Ptr[Int32] = native_c_global_array("g_ids")
+    // 9: # Read array elements
+    // 10: print(unsafe_load(scores, UInt32(0)))
+    std::cout << g_scores[0] << "\n";
+    // 11: print(unsafe_load(scores, UInt32(2)))
+    std::cout << g_scores[2] << "\n";
+    // 12: print(unsafe_load(ids, UInt32(1)))
+    std::cout << g_ids[1] << "\n";
+    // 14: # Write and read back
+    // 15: unsafe_store(scores, UInt32(0), Int16(99))
+    g_scores[0] = 99;
+    // 16: print(unsafe_load(scores, UInt32(0)))
+    std::cout << g_scores[0] << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

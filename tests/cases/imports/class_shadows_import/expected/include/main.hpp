@@ -13,19 +13,19 @@ void main();
 
 // 3: class time:
 struct time {
-  // 4:     value: int
-  tpy::BigInt value;
+    // 4:     value: int
+    tpy::BigInt value;
 
-  // 6:     def __init__(self, v: int):
-  time() = default;
-  explicit time(const tpy::BigInt& v) : value(v) {}
+    // 6:     def __init__(self, v: int):
+    time() = default;
+    explicit time(const tpy::BigInt& v) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const time& obj) {
-  os << "time("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "time("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 void __tpy_init();

@@ -13,39 +13,39 @@ extern std::string_view __name__;
 // 4: class Base:
 struct Base {
 
-  Base() = default;
+    Base() = default;
 
-  //     @readonly
-  // 6:     def value(self) -> Int32:
-  int32_t value() const {
-    // 7:         return 7
-    return 7;
-  }
+    //     @readonly
+    // 6:     def value(self) -> Int32:
+    int32_t value() const {
+        // 7:         return 7
+        return 7;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-  os << "Base("
-     << ")";
-  return os;
+    os << "Base("
+       << ")";
+    return os;
 }
 
 // 10: class Child(Base):
 struct Child : Base {
 
-  Child() = default;
+    Child() = default;
 
-  //     @readonly
-  // 12:     def value_plus_one(self) -> Int32:
-  int32_t value_plus_one() const {
-    // 13:         return super().value() + 1  # tpyc: ok
-    return (tpy::add_check<int32_t>(Base::value(), 1));
-  }
+    //     @readonly
+    // 12:     def value_plus_one(self) -> Int32:
+    int32_t value_plus_one() const {
+        // 13:         return super().value() + 1  # tpyc: ok
+        return (tpy::add_check<int32_t>(Base::value(), 1));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-  os << "Child("
-     << ")";
-  return os;
+    os << "Child("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

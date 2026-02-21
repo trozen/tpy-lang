@@ -17,44 +17,44 @@ void main();
 // 4: class Box[T]:
 template<typename T>
 struct Box {
-  // 5:     val: T
-  T val;
+    // 5:     val: T
+    T val;
 
-  // 6:     def __init__(self, val: Own[T]) -> None:
-  Box() = default;
-  explicit Box(T val) : val(std::move(val)) {}
+    // 6:     def __init__(self, val: Own[T]) -> None:
+    Box() = default;
+    explicit Box(T val) : val(std::move(val)) {}
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "val=" << tpy::ValuePrinter(obj.val)
-     << ")";
-  return os;
+    os << "Box("
+       << "val=" << tpy::ValuePrinter(obj.val)
+       << ")";
+    return os;
 }
 
 // 9: class Holder:
 struct Holder {
-  // 10:     box: Box[Int32]
-  Box<int32_t> box;
+    // 10:     box: Box[Int32]
+    Box<int32_t> box;
 
-  // 11:     def __init__(self, box: Own[Box[Int32]]) -> None:
-  Holder() = default;
-  explicit Holder(Box<int32_t> box) : box(std::move(box)) {}
+    // 11:     def __init__(self, box: Own[Box[Int32]]) -> None:
+    Holder() = default;
+    explicit Holder(Box<int32_t> box) : box(std::move(box)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-  os << "Holder("
-     << "box=" << obj.box
-     << ")";
-  return os;
+    os << "Holder("
+       << "box=" << obj.box
+       << ")";
+    return os;
 }
 
 // 14: def wrap[T](v: T) -> Own[Box[T]]:
 template<typename T>
 Box<T> wrap(tpy::param_val_or_ref_t<T> v) {
-  // 15:     return Box[T](v)
-  return Box<T>(v);
+    // 15:     return Box[T](v)
+    return Box<T>(v);
 }
 
 void __tpy_init();

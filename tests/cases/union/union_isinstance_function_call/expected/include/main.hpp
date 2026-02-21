@@ -17,36 +17,36 @@ void main();
 // # Pass narrowed union var to function expecting the member type
 // 2: class Dog:
 struct Dog {
-  // 3:     name: str
-  std::string_view name;
+    // 3:     name: str
+    std::string_view name;
 
-  // 4:     def __init__(self, name: str) -> None:
-  Dog() = default;
-  explicit Dog(std::string_view name) : name(name) {}
+    // 4:     def __init__(self, name: str) -> None:
+    Dog() = default;
+    explicit Dog(std::string_view name) : name(name) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Dog("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 // 7: class Cat:
 struct Cat {
-  // 8:     name: str
-  std::string_view name;
+    // 8:     name: str
+    std::string_view name;
 
-  // 9:     def __init__(self, name: str) -> None:
-  Cat() = default;
-  explicit Cat(std::string_view name) : name(name) {}
+    // 9:     def __init__(self, name: str) -> None:
+    Cat() = default;
+    explicit Cat(std::string_view name) : name(name) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
-  os << "Cat("
-     << "name=" << "\"" << obj.name << "\""
-     << ")";
-  return os;
+    os << "Cat("
+       << "name=" << "\"" << obj.name << "\""
+       << ")";
+    return os;
 }
 
 void __tpy_init();

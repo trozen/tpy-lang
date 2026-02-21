@@ -16,32 +16,32 @@ int32_t main();
 
 // 4: class Message:
 struct Message {
-  // 5:     text: str
-  std::string_view text;
+    // 5:     text: str
+    std::string_view text;
 
-  // 7:     def __init__(self, text: str):
-  Message() = default;
-  explicit Message(std::string_view text) : text(text) {}
+    // 7:     def __init__(self, text: str):
+    Message() = default;
+    explicit Message(std::string_view text) : text(text) {}
 
-  // 10:     def to_string(self) -> str:
-  std::string_view to_string() {
-    // 11:         return self.text
-    return this->text;
-  }
+    // 10:     def to_string(self) -> str:
+    std::string_view to_string() {
+        // 11:         return self.text
+        return this->text;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
-  os << "Message("
-     << "text=" << "\"" << obj.text << "\""
-     << ")";
-  return os;
+    os << "Message("
+       << "text=" << "\"" << obj.text << "\""
+       << ")";
+    return os;
 }
 
 // 13: def show(p: Printable) -> None:
 template<::tpy_user::traits::Printable T_p>
 void show(T_p& p) {
-  // 14:     print(p.to_string())
-  std::cout << p.to_string() << "\n";
+    // 14:     print(p.to_string())
+    std::cout << p.to_string() << "\n";
 }
 
 void __tpy_init();

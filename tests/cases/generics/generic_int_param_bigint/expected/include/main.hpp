@@ -15,20 +15,20 @@ void main();
 template<typename T, std::size_t N>
 struct Container {
 
-  Container() = default;
+    Container() = default;
 
-  // 5:     def get_size_as_bigint(self) -> int:
-  tpy::BigInt get_size_as_bigint() {
-    // 6:         return N  # N coerces to BigInt
-    return tpy::BigInt(static_cast<int64_t>(N));
-  }
+    // 5:     def get_size_as_bigint(self) -> int:
+    tpy::BigInt get_size_as_bigint() {
+        // 6:         return N  # N coerces to BigInt
+        return tpy::BigInt(static_cast<int64_t>(N));
+    }
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
-  os << "Container("
-     << ")";
-  return os;
+    os << "Container("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

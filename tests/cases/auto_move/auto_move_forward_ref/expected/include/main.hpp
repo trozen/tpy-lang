@@ -18,29 +18,29 @@ void main();
 
 // 5: class Box:
 struct Box {
-  // 6:     value: Int32
-  int32_t value;
+    // 6:     value: Int32
+    int32_t value;
 
-  Box() = default;
+    Box() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-  os << "Box("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // 13: def sink[T](x: Own[T]) -> None:
 template<typename T>
 void sink(T&& x) {
-  // 14:     pass
+    // 14:     pass
 }
 // 17: def wrapper[T](x: Own[T]) -> None:
 template<typename T>
 void wrapper(T&& x) {
-  // 18:     sink[T](x)  # std::forward<T>(x) at last use
-  sink<T>(std::forward<T>(x));
+    // 18:     sink[T](x)  # std::forward<T>(x) at last use
+    sink<T>(std::forward<T>(x));
 }
 
 void __tpy_init();

@@ -12,43 +12,43 @@ Dog* d{};
 Animal* a{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 30: # Test creating a Dog (child class)
-  // 31: d = Dog("Buddy", 3, "Golden Retriever")
-  static Dog __global_slot_1 = Dog("Buddy", 3, "Golden Retriever");
-  d = &__global_slot_1;
-  // 33: # Access child field
-  // 34: print(d.breed)
-  std::cout << d->breed << "\n";
-  // 36: # Access inherited fields
-  // 37: print(d.name)
-  std::cout << d->name << "\n";
-  // 38: print(d.age)
-  std::cout << d->age << "\n";
-  // 40: # Call overridden method
-  // 41: print(d.speak())
-  std::cout << d->speak() << "\n";
-  // 43: # Call inherited method
-  // 44: print(d.describe())
-  std::cout << d->describe() << "\n";
-  // 46: # Test creating an Animal (parent class)
-  // 47: a = Animal("Generic", 5)
-  static Animal __global_slot_2 = Animal("Generic", 5);
-  a = &__global_slot_2;
-  // 48: print(a.speak())
-  std::cout << a->speak() << "\n";
-  // 49: print(a.describe())
-  std::cout << a->describe() << "\n";
+    __name__ = "__main__";
+    // 30: # Test creating a Dog (child class)
+    // 31: d = Dog("Buddy", 3, "Golden Retriever")
+    static Dog __global_slot_1 = Dog("Buddy", 3, "Golden Retriever");
+    d = &__global_slot_1;
+    // 33: # Access child field
+    // 34: print(d.breed)
+    std::cout << d->breed << "\n";
+    // 36: # Access inherited fields
+    // 37: print(d.name)
+    std::cout << d->name << "\n";
+    // 38: print(d.age)
+    std::cout << d->age << "\n";
+    // 40: # Call overridden method
+    // 41: print(d.speak())
+    std::cout << d->speak() << "\n";
+    // 43: # Call inherited method
+    // 44: print(d.describe())
+    std::cout << d->describe() << "\n";
+    // 46: # Test creating an Animal (parent class)
+    // 47: a = Animal("Generic", 5)
+    static Animal __global_slot_2 = Animal("Generic", 5);
+    a = &__global_slot_2;
+    // 48: print(a.speak())
+    std::cout << a->speak() << "\n";
+    // 49: print(a.describe())
+    std::cout << a->describe() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

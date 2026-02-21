@@ -10,26 +10,26 @@ Box* b{};
 std::optional<int32_t> x;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 14: b = Box(Int32(123))
-  static Box __global_slot_1 = Box(123);
-  b = &__global_slot_1;
-  // 15: x = None
-  x = std::nullopt;
-  // 16: x = b.get()
-  x = b->get();
-  // 17: print(x)
-  std::cout << tpy::print_optional_val(x) << "\n";
+    __name__ = "__main__";
+    // 14: b = Box(Int32(123))
+    static Box __global_slot_1 = Box(123);
+    b = &__global_slot_1;
+    // 15: x = None
+    x = std::nullopt;
+    // 16: x = b.get()
+    x = b->get();
+    // 17: print(x)
+    std::cout << tpy::print_optional_val(x) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

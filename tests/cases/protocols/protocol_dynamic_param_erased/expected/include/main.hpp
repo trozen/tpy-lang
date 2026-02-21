@@ -42,19 +42,19 @@ void main();
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
-  Dog() = default;
+    Dog() = default;
 
-  // 11:     def make_noise(self) -> str:
-  std::string_view make_noise() override {
-    // 12:         return "Woof"
-    return "Woof";
-  }
+    // 11:     def make_noise(self) -> str:
+    std::string_view make_noise() override {
+        // 12:         return "Woof"
+        return "Woof";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
-  os << "Dog("
-     << ")";
-  return os;
+    os << "Dog("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

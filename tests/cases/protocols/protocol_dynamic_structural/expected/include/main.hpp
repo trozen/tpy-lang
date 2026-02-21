@@ -43,19 +43,19 @@ void main();
 // 12: class Parrot:
 struct Parrot {
 
-  Parrot() = default;
+    Parrot() = default;
 
-  // 13:     def make_noise(self) -> str:
-  std::string_view make_noise() {
-    // 14:         return "Squawk"
-    return "Squawk";
-  }
+    // 13:     def make_noise(self) -> str:
+    std::string_view make_noise() {
+        // 14:         return "Squawk"
+        return "Squawk";
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
-  os << "Parrot("
-     << ")";
-  return os;
+    os << "Parrot("
+       << ")";
+    return os;
 }
 
 void __tpy_init();

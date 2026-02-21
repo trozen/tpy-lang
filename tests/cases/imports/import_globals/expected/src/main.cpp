@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
-  // 5:     print(MAX_VALUE)
-  std::cout << ::tpy_user::config::MAX_VALUE << "\n";
-  // 6:     print(get_max())
-  std::cout << ::tpy_user::config::get_max() << "\n";
-  // 7:     return Int32(0)
-  return 0;
+    // 5:     print(MAX_VALUE)
+    std::cout << ::tpy_user::config::MAX_VALUE << "\n";
+    // 6:     print(get_max())
+    std::cout << ::tpy_user::config::get_max() << "\n";
+    // 7:     return Int32(0)
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from config import MAX_VALUE, get_max
-  ::tpy_user::config::__tpy_init();
-  // 9: main()
-  main();
+    __name__ = "__main__";
+    // 2: from config import MAX_VALUE, get_max
+    ::tpy_user::config::__tpy_init();
+    // 9: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

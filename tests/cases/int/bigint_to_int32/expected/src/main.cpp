@@ -40,139 +40,139 @@ int32_t result6{};
 // # 1. Function parameter: BigInt passed to Int32 param
 // 6: def takes_int32(x: Int32) -> Int32:
 int32_t takes_int32(int32_t x) {
-  // 7:     return x
-  return x;
+    // 7:     return x
+    return x;
 }
 
 // # 2. Return statement: BigInt returned as Int32
 // 11: def return_as_int32(x: int) -> Int32:
 int32_t return_as_int32(const tpy::BigInt& x) {
-  // 12:     return x
-  return (x).to_fixed_check<int32_t>();
+    // 12:     return x
+    return (x).to_fixed_check<int32_t>();
 }
 
 // # 3. Variable declaration: BigInt assigned to Int32 var
 // 16: def var_decl_test(x: int) -> Int32:
 int32_t var_decl_test(const tpy::BigInt& x) {
-  // 17:     result: Int32 = x
-  int32_t result = (x).to_fixed_check<int32_t>();
-  // 18:     return result
-  return result;
+    // 17:     result: Int32 = x
+    int32_t result = (x).to_fixed_check<int32_t>();
+    // 18:     return result
+    return result;
 }
 
 // # 4. Assignment: BigInt assigned to Int32 var
 // 22: def assign_test(x: int) -> Int32:
 int32_t assign_test(const tpy::BigInt& x) {
-  // 23:     result: Int32 = 0
-  int32_t result = 0;
-  // 24:     result = x
-  result = (x).to_fixed_check<int32_t>();
-  // 25:     return result
-  return result;
+    // 23:     result: Int32 = 0
+    int32_t result = 0;
+    // 24:     result = x
+    result = (x).to_fixed_check<int32_t>();
+    // 25:     return result
+    return result;
 }
 
 // # 5. For loop with BigInt bound
 // 29: def loop_test(n: int) -> Int32:
 int32_t loop_test(const tpy::BigInt& n) {
-  // 30:     total: Int32 = 0
-  int32_t total = 0;
-  // 31:     for i in range(n):
-  tpy::BigInt __stop_0 = n;
-  for (tpy::BigInt i = 0; i < __stop_0; ++i) {
-    // 32:         total += 1
-    total = tpy::add_check<int32_t>(total, 1);
-  }
-  // 33:     return total
-  return total;
+    // 30:     total: Int32 = 0
+    int32_t total = 0;
+    // 31:     for i in range(n):
+    tpy::BigInt __stop_0 = n;
+    for (tpy::BigInt i = 0; i < __stop_0; ++i) {
+        // 32:         total += 1
+        total = tpy::add_check<int32_t>(total, 1);
+    }
+    // 33:     return total
+    return total;
 }
 
 // # 6. Int32() constructor from BigInt
 // 37: def constructor_test(x: int) -> Int32:
 int32_t constructor_test(const tpy::BigInt& x) {
-  // 38:     return Int32(x)
-  return (x).to_fixed_check<int32_t>();
+    // 38:     return Int32(x)
+    return (x).to_fixed_check<int32_t>();
 }
 
 // 49: def literal_ops_local() -> Int32:
 int32_t literal_ops_local() {
-  // 50:     """Local variable with literal arithmetic."""
-  // 51:     x: Int32 = 100 + 200
-  int32_t x = tpy::add_check<int32_t>(100, 200);
-  // 52:     return x
-  return x;
+    // 50:     """Local variable with literal arithmetic."""
+    // 51:     x: Int32 = 100 + 200
+    int32_t x = tpy::add_check<int32_t>(100, 200);
+    // 52:     return x
+    return x;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test BigInt -> Int32 conversions with range checks."""
-  // 41: # 7. Literal arithmetic: BigInt result assigned to Int32
-  // 42: a: Int32 = 1 + 2           # addition
-  a = tpy::add_check<int32_t>(1, 2);
-  // 43: b: Int32 = 10 - 3          # subtraction
-  b = tpy::sub_check<int32_t>(10, 3);
-  // 44: c: Int32 = 4 * 5           # multiplication
-  c = tpy::mul_check<int32_t>(4, 5);
-  // 45: d: Int32 = 17 // 3         # division
-  d = tpy::div_check<int32_t>(17, 3);
-  // 46: e: Int32 = 2 ** 10         # power
-  e = tpy::pow_check<int32_t>(2, 10);
-  // 55: # Test all conversions
-  // 56: n = 5
-  n = 5;
-  // 58: # Function param
-  // 59: result1 = takes_int32(n)
-  result1 = takes_int32(n);
-  // 60: print(result1)
-  std::cout << result1 << "\n";
-  // 62: # Return as Int32
-  // 63: result2 = return_as_int32(10)
-  result2 = return_as_int32(tpy::BigInt(10));
-  // 64: print(result2)
-  std::cout << result2 << "\n";
-  // 66: # Variable declaration
-  // 67: result3 = var_decl_test(15)
-  result3 = var_decl_test(tpy::BigInt(15));
-  // 68: print(result3)
-  std::cout << result3 << "\n";
-  // 70: # Assignment
-  // 71: result4 = assign_test(20)
-  result4 = assign_test(tpy::BigInt(20));
-  // 72: print(result4)
-  std::cout << result4 << "\n";
-  // 74: # For loop
-  // 75: result5 = loop_test(3)
-  result5 = loop_test(tpy::BigInt(3));
-  // 76: print(result5)
-  std::cout << result5 << "\n";
-  // 78: # Int32() constructor
-  // 79: result6 = constructor_test(25)
-  result6 = constructor_test(tpy::BigInt(25));
-  // 80: print(result6)
-  std::cout << result6 << "\n";
-  // 82: # Literal arithmetic (global)
-  // 83: print(a)  # 3
-  std::cout << a << "\n";
-  // 84: print(b)  # 7
-  std::cout << b << "\n";
-  // 85: print(c)  # 20
-  std::cout << c << "\n";
-  // 86: print(d)  # 5
-  std::cout << d << "\n";
-  // 87: print(e)  # 1024
-  std::cout << e << "\n";
-  // 89: # Literal arithmetic (local)
-  // 90: print(literal_ops_local())  # 300
-  std::cout << literal_ops_local() << "\n";
+    __name__ = "__main__";
+    // 1: """Test BigInt -> Int32 conversions with range checks."""
+    // 41: # 7. Literal arithmetic: BigInt result assigned to Int32
+    // 42: a: Int32 = 1 + 2           # addition
+    a = tpy::add_check<int32_t>(1, 2);
+    // 43: b: Int32 = 10 - 3          # subtraction
+    b = tpy::sub_check<int32_t>(10, 3);
+    // 44: c: Int32 = 4 * 5           # multiplication
+    c = tpy::mul_check<int32_t>(4, 5);
+    // 45: d: Int32 = 17 // 3         # division
+    d = tpy::div_check<int32_t>(17, 3);
+    // 46: e: Int32 = 2 ** 10         # power
+    e = tpy::pow_check<int32_t>(2, 10);
+    // 55: # Test all conversions
+    // 56: n = 5
+    n = 5;
+    // 58: # Function param
+    // 59: result1 = takes_int32(n)
+    result1 = takes_int32(n);
+    // 60: print(result1)
+    std::cout << result1 << "\n";
+    // 62: # Return as Int32
+    // 63: result2 = return_as_int32(10)
+    result2 = return_as_int32(tpy::BigInt(10));
+    // 64: print(result2)
+    std::cout << result2 << "\n";
+    // 66: # Variable declaration
+    // 67: result3 = var_decl_test(15)
+    result3 = var_decl_test(tpy::BigInt(15));
+    // 68: print(result3)
+    std::cout << result3 << "\n";
+    // 70: # Assignment
+    // 71: result4 = assign_test(20)
+    result4 = assign_test(tpy::BigInt(20));
+    // 72: print(result4)
+    std::cout << result4 << "\n";
+    // 74: # For loop
+    // 75: result5 = loop_test(3)
+    result5 = loop_test(tpy::BigInt(3));
+    // 76: print(result5)
+    std::cout << result5 << "\n";
+    // 78: # Int32() constructor
+    // 79: result6 = constructor_test(25)
+    result6 = constructor_test(tpy::BigInt(25));
+    // 80: print(result6)
+    std::cout << result6 << "\n";
+    // 82: # Literal arithmetic (global)
+    // 83: print(a)  # 3
+    std::cout << a << "\n";
+    // 84: print(b)  # 7
+    std::cout << b << "\n";
+    // 85: print(c)  # 20
+    std::cout << c << "\n";
+    // 86: print(d)  # 5
+    std::cout << d << "\n";
+    // 87: print(e)  # 1024
+    std::cout << e << "\n";
+    // 89: # Literal arithmetic (local)
+    // 90: print(literal_ops_local())  # 300
+    std::cout << literal_ops_local() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

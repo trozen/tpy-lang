@@ -8,34 +8,34 @@ std::string_view __name__;
 // 10: def loop_escape() -> None:
 void loop_escape() {
   std::optional<Point> __slot_2;
-  // 11:     saved: Point = Point(0, 0)
-  Point __slot_1 = Point(0, 0);
-  Point* saved = &__slot_1;
-  // 12:     for i in range(3):
-  for (int32_t i = 0; i < 3; ++i) {
-    // 13:         p: Point = Point(i, i)
-    Point* p = &*(__slot_2 = Point(i, i));
-    // 14:         saved = p  # tpyc: warning(/hoisted to function scope/)
-    saved = p;
-  }
-  // 15:     print(saved.x, saved.y)
-  std::cout << saved->x << " " << saved->y << "\n";
+    // 11:     saved: Point = Point(0, 0)
+    Point __slot_1 = Point(0, 0);
+    Point* saved = &__slot_1;
+    // 12:     for i in range(3):
+    for (int32_t i = 0; i < 3; ++i) {
+        // 13:         p: Point = Point(i, i)
+        Point* p = &*(__slot_2 = Point(i, i));
+        // 14:         saved = p  # tpyc: warning(/hoisted to function scope/)
+        saved = p;
+    }
+    // 15:     print(saved.x, saved.y)
+    std::cout << saved->x << " " << saved->y << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 17: loop_escape()
-  loop_escape();
+    __name__ = "__main__";
+    // 17: loop_escape()
+    loop_escape();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,92 +7,92 @@ std::string_view __name__;
 
 // 9: def test_and_flag(v: Int32 | Dog | None, flag: bool) -> str:
 std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag) {
-  // 10:     if v is not None and flag:
-  if (((!std::holds_alternative<std::monostate>(v)) && flag)) {
-    // 11:         if isinstance(v, Int32):
-    if (std::holds_alternative<int32_t>(v)) {
-      auto& __v = std::get<int32_t>(v);
-      // 12:             return "int+flag"
-      return "int+flag";
+    // 10:     if v is not None and flag:
+    if (((!std::holds_alternative<std::monostate>(v)) && flag)) {
+        // 11:         if isinstance(v, Int32):
+        if (std::holds_alternative<int32_t>(v)) {
+            auto& __v = std::get<int32_t>(v);
+            // 12:             return "int+flag"
+            return "int+flag";
+        }
+        // 13:         return "dog+flag"
+        return "dog+flag";
     }
-    // 13:         return "dog+flag"
-    return "dog+flag";
-  }
-  // 14:     return "skip"
-  return "skip";
+    // 14:     return "skip"
+    return "skip";
 }
 
 // 16: def test_and_isinstance(v: Int32 | Dog | None) -> str:
 std::string_view test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v) {
-  // 17:     if v is not None and isinstance(v, Int32):
-  if (((!std::holds_alternative<std::monostate>(v)) && std::holds_alternative<int32_t>(v))) {
-    auto& __v = std::get<int32_t>(v);
-    // 18:         return "int"
-    return "int";
-  }
-  // 19:     return "other"
-  return "other";
+    // 17:     if v is not None and isinstance(v, Int32):
+    if (((!std::holds_alternative<std::monostate>(v)) && std::holds_alternative<int32_t>(v))) {
+        auto& __v = std::get<int32_t>(v);
+        // 18:         return "int"
+        return "int";
+    }
+    // 19:     return "other"
+    return "other";
 }
 
 // 21: def test_or(v: Int32 | Dog | None, w: Int32 | Dog | None) -> str:
 std::string_view test_or(std::variant<std::monostate, Dog, int32_t>& v, std::variant<std::monostate, Dog, int32_t>& w) {
-  // 22:     if v is None or w is None:
-  if (((std::holds_alternative<std::monostate>(v)) || (std::holds_alternative<std::monostate>(w)))) {
-    // 23:         return "has none"
-    return "has none";
-  }
-  // 24:     return "both present"
-  return "both present";
+    // 22:     if v is None or w is None:
+    if (((std::holds_alternative<std::monostate>(v)) || (std::holds_alternative<std::monostate>(w)))) {
+        // 23:         return "has none"
+        return "has none";
+    }
+    // 24:     return "both present"
+    return "both present";
 }
 
 // 26: def main() -> None:
 void main() {
-  // 27:     print(test_and_flag(Int32(1), True))
-  std::variant<std::monostate, Dog, int32_t> __tmp_1 = 1;
-  std::cout << test_and_flag(__tmp_1, true) << "\n";
-  // 28:     print(test_and_flag(Int32(1), False))
-  std::variant<std::monostate, Dog, int32_t> __tmp_2 = 1;
-  std::cout << test_and_flag(__tmp_2, false) << "\n";
-  // 29:     print(test_and_flag(None, True))
-  std::variant<std::monostate, Dog, int32_t> __tmp_3 = std::monostate{};
-  std::cout << test_and_flag(__tmp_3, true) << "\n";
-  // 30:     print(test_and_isinstance(Int32(5)))
-  std::variant<std::monostate, Dog, int32_t> __tmp_4 = 5;
-  std::cout << test_and_isinstance(__tmp_4) << "\n";
-  // 31:     print(test_and_isinstance(Dog("Rex")))
-  std::variant<std::monostate, Dog, int32_t> __tmp_5 = Dog("Rex");
-  std::cout << test_and_isinstance(__tmp_5) << "\n";
-  // 32:     print(test_and_isinstance(None))
-  std::variant<std::monostate, Dog, int32_t> __tmp_6 = std::monostate{};
-  std::cout << test_and_isinstance(__tmp_6) << "\n";
-  // 33:     print(test_or(Int32(1), Dog("Rex")))
-  std::variant<std::monostate, Dog, int32_t> __tmp_7 = 1;
-  std::variant<std::monostate, Dog, int32_t> __tmp_8 = Dog("Rex");
-  std::cout << test_or(__tmp_7, __tmp_8) << "\n";
-  // 34:     print(test_or(None, Dog("Rex")))
-  std::variant<std::monostate, Dog, int32_t> __tmp_9 = std::monostate{};
-  std::variant<std::monostate, Dog, int32_t> __tmp_10 = Dog("Rex");
-  std::cout << test_or(__tmp_9, __tmp_10) << "\n";
-  // 35:     print(test_or(Int32(1), None))
-  std::variant<std::monostate, Dog, int32_t> __tmp_11 = 1;
-  std::variant<std::monostate, Dog, int32_t> __tmp_12 = std::monostate{};
-  std::cout << test_or(__tmp_11, __tmp_12) << "\n";
+    // 27:     print(test_and_flag(Int32(1), True))
+    std::variant<std::monostate, Dog, int32_t> __tmp_1 = 1;
+    std::cout << test_and_flag(__tmp_1, true) << "\n";
+    // 28:     print(test_and_flag(Int32(1), False))
+    std::variant<std::monostate, Dog, int32_t> __tmp_2 = 1;
+    std::cout << test_and_flag(__tmp_2, false) << "\n";
+    // 29:     print(test_and_flag(None, True))
+    std::variant<std::monostate, Dog, int32_t> __tmp_3 = std::monostate{};
+    std::cout << test_and_flag(__tmp_3, true) << "\n";
+    // 30:     print(test_and_isinstance(Int32(5)))
+    std::variant<std::monostate, Dog, int32_t> __tmp_4 = 5;
+    std::cout << test_and_isinstance(__tmp_4) << "\n";
+    // 31:     print(test_and_isinstance(Dog("Rex")))
+    std::variant<std::monostate, Dog, int32_t> __tmp_5 = Dog("Rex");
+    std::cout << test_and_isinstance(__tmp_5) << "\n";
+    // 32:     print(test_and_isinstance(None))
+    std::variant<std::monostate, Dog, int32_t> __tmp_6 = std::monostate{};
+    std::cout << test_and_isinstance(__tmp_6) << "\n";
+    // 33:     print(test_or(Int32(1), Dog("Rex")))
+    std::variant<std::monostate, Dog, int32_t> __tmp_7 = 1;
+    std::variant<std::monostate, Dog, int32_t> __tmp_8 = Dog("Rex");
+    std::cout << test_or(__tmp_7, __tmp_8) << "\n";
+    // 34:     print(test_or(None, Dog("Rex")))
+    std::variant<std::monostate, Dog, int32_t> __tmp_9 = std::monostate{};
+    std::variant<std::monostate, Dog, int32_t> __tmp_10 = Dog("Rex");
+    std::cout << test_or(__tmp_9, __tmp_10) << "\n";
+    // 35:     print(test_or(Int32(1), None))
+    std::variant<std::monostate, Dog, int32_t> __tmp_11 = 1;
+    std::variant<std::monostate, Dog, int32_t> __tmp_12 = std::monostate{};
+    std::cout << test_or(__tmp_11, __tmp_12) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 37: main()
-  main();
+    __name__ = "__main__";
+    // 37: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

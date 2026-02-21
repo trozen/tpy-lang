@@ -7,52 +7,52 @@ std::string_view __name__;
 
 // 6: def ret_i32() -> Int32:
 int32_t ret_i32() {
-  // 7:     return Int32(7)
-  return 7;
+    // 7:     return Int32(7)
+    return 7;
 }
 
 // 10: def main() -> None:
 void main() {
-  // 11:     x = 0
-  int32_t x = 0;
-  // 12:     x += Int32(5)  # tpyc: ok
-  x = tpy::add_check<int32_t>(x, 5);
-  // 13:     print(x)
-  std::cout << x << "\n";
-  // 15:     y = 0
-  int32_t y = 0;
-  // 16:     y += ret_i32()  # tpyc: ok
-  y = tpy::add_check<int32_t>(y, ret_i32());
-  // 17:     print(y)
-  std::cout << y << "\n";
-  // 19:     z: int = 0
-  tpy::BigInt z = tpy::BigInt(0);
-  // 20:     z += Int32(5)  # tpyc: ok
-  z = (z) + (tpy::BigInt(5));
-  // 21:     print(z)
-  std::cout << z << "\n";
-  // 23:     w = int(0)
-  tpy::BigInt w = tpy::BigInt(static_cast<int64_t>(0));
-  // 24:     w += Int32(5)  # tpyc: ok
-  w = (w) + (tpy::BigInt(5));
-  // 25:     print(w)
-  std::cout << w << "\n";
+    // 11:     x = 0
+    int32_t x = 0;
+    // 12:     x += Int32(5)  # tpyc: ok
+    x = tpy::add_check<int32_t>(x, 5);
+    // 13:     print(x)
+    std::cout << x << "\n";
+    // 15:     y = 0
+    int32_t y = 0;
+    // 16:     y += ret_i32()  # tpyc: ok
+    y = tpy::add_check<int32_t>(y, ret_i32());
+    // 17:     print(y)
+    std::cout << y << "\n";
+    // 19:     z: int = 0
+    tpy::BigInt z = tpy::BigInt(0);
+    // 20:     z += Int32(5)  # tpyc: ok
+    z = (z) + (tpy::BigInt(5));
+    // 21:     print(z)
+    std::cout << z << "\n";
+    // 23:     w = int(0)
+    tpy::BigInt w = tpy::BigInt(static_cast<int64_t>(0));
+    // 24:     w += Int32(5)  # tpyc: ok
+    w = (w) + (tpy::BigInt(5));
+    // 25:     print(w)
+    std::cout << w << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: main()
-  main();
+    __name__ = "__main__";
+    // 28: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

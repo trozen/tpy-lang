@@ -9,26 +9,26 @@ std::string_view __name__;
 Pair<int32_t, std::string_view>* pair{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test type inference with multiple type parameters."""
-  // 13: # Inference from int, str -> Pair[int, str]
-  // 14: pair = Pair(1, "hello")
-  static Pair<int32_t, std::string_view> __global_slot_1 = Pair<int32_t, std::string_view>(1, "hello");
-  pair = &__global_slot_1;
-  // 15: print(pair.first)
-  std::cout << pair->first << "\n";
-  // 16: print(pair.second)
-  std::cout << pair->second << "\n";
+    __name__ = "__main__";
+    // 1: """Test type inference with multiple type parameters."""
+    // 13: # Inference from int, str -> Pair[int, str]
+    // 14: pair = Pair(1, "hello")
+    static Pair<int32_t, std::string_view> __global_slot_1 = Pair<int32_t, std::string_view>(1, "hello");
+    pair = &__global_slot_1;
+    // 15: print(pair.first)
+    std::cout << pair->first << "\n";
+    // 16: print(pair.second)
+    std::cout << pair->second << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

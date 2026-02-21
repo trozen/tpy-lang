@@ -14,47 +14,47 @@ void main();
 
 // 5: class Point:
 struct Point {
-  // 6:     x: Int32
-  int32_t x;
-  // 7:     y: Int32
-  int32_t y;
+    // 6:     x: Int32
+    int32_t x;
+    // 7:     y: Int32
+    int32_t y;
 
-  Point() = default;
+    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-  os << "Point("
-     << "x=" << obj.x
-     << ", "
-     << "y=" << obj.y
-     << ")";
-  return os;
+    os << "Point("
+       << "x=" << obj.x
+       << ", "
+       << "y=" << obj.y
+       << ")";
+    return os;
 }
 
 // 10: class Wrapper:
 struct Wrapper {
-  // 11:     tag: Int32
-  int32_t tag;
+    // 11:     tag: Int32
+    int32_t tag;
 
-  // 13:     def __init__(self, p: Own[Point] | None, tag: Int32):
-  Wrapper() = default;
-  explicit Wrapper(std::optional<Point> p, int32_t tag) {
-    // 14:         if p is not None:
-    if ((p.has_value())) {
-      // 15:             self.tag = tag
-      this->tag = tag;
-    } else {
-      // 17:             self.tag = Int32(-1)
-      this->tag = -1;
+    // 13:     def __init__(self, p: Own[Point] | None, tag: Int32):
+    Wrapper() = default;
+    explicit Wrapper(std::optional<Point> p, int32_t tag) {
+        // 14:         if p is not None:
+        if ((p.has_value())) {
+            // 15:             self.tag = tag
+            this->tag = tag;
+        } else {
+            // 17:             self.tag = Int32(-1)
+            this->tag = -1;
+        }
     }
-  }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-  os << "Wrapper("
-     << "tag=" << obj.tag
-     << ")";
-  return os;
+    os << "Wrapper("
+       << "tag=" << obj.tag
+       << ")";
+    return os;
 }
 
 void __tpy_init();

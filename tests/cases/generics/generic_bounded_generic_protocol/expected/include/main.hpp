@@ -20,51 +20,51 @@ void main();
 
 // 9: class IntBox:
 struct IntBox {
-  // 10:     value: Int32
-  int32_t value;
+    // 10:     value: Int32
+    int32_t value;
 
-  // 12:     def __init__(self, v: Int32) -> None:
-  IntBox() = default;
-  explicit IntBox(int32_t v) : value(v) {}
+    // 12:     def __init__(self, v: Int32) -> None:
+    IntBox() = default;
+    explicit IntBox(int32_t v) : value(v) {}
 
-  // 15:     def get(self) -> Int32:
-  int32_t get() {
-    // 16:         return self.value
-    return this->value;
-  }
+    // 15:     def get(self) -> Int32:
+    int32_t get() {
+        // 16:         return self.value
+        return this->value;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-  os << "IntBox("
-     << "value=" << obj.value
-     << ")";
-  return os;
+    os << "IntBox("
+       << "value=" << obj.value
+       << ")";
+    return os;
 }
 
 // # Bound is a parameterized user-defined protocol: Container[Int32]
 // 19: class Holder[V: Container[Int32]]:
 template<Container<int32_t> V>
 struct Holder {
-  // 20:     item: V
-  V item;
+    // 20:     item: V
+    V item;
 
-  // 22:     def __init__(self, item: V) -> None:
-  Holder() = default;
-  explicit Holder(const V& item) : item(item) {}
+    // 22:     def __init__(self, item: V) -> None:
+    Holder() = default;
+    explicit Holder(const V& item) : item(item) {}
 
-  // 25:     def get_item(self) -> V:
-  tpy::return_val_or_ref_t<V> get_item() {
-    // 26:         return self.item
-    return this->item;
-  }
+    // 25:     def get_item(self) -> V:
+    tpy::return_val_or_ref_t<V> get_item() {
+        // 26:         return self.item
+        return this->item;
+    }
 };
 
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const Holder<V>& obj) {
-  os << "Holder("
-     << "item=" << tpy::ValuePrinter(obj.item)
-     << ")";
-  return os;
+    os << "Holder("
+       << "item=" << tpy::ValuePrinter(obj.item)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

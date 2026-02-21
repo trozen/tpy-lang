@@ -11,52 +11,52 @@ Holder* h{};
 
 // 19: def find(items: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& items, int32_t target) {
-  // 20:     for p in items:
-  for (auto& p : items) {
-    // 21:         if p.x == target:
-    if ((p.x == target)) {
-      // 22:             return p
-      return &(p);
+    // 20:     for p in items:
+    for (auto& p : items) {
+        // 21:         if p.x == target:
+        if ((p.x == target)) {
+            // 22:             return p
+            return &(p);
+        }
     }
-  }
-  // 23:     return None
-  return nullptr;
+    // 23:     return None
+    return nullptr;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 26: pts: list[Point] = list()
-  static std::vector<Point> __global_slot_1 = std::vector<Point>();
-  pts = &__global_slot_1;
-  // 27: pts.append(Point(1, 10))
-  (*pts).push_back(Point(1, 10));
-  // 28: pts.append(Point(2, 20))
-  (*pts).push_back(Point(2, 20));
-  // 30: h = Holder()
-  static Holder __global_slot_2 = Holder();
-  h = &__global_slot_2;
-  // 31: h.value = copy(find(pts, 2))
-  h->value = tpy::ptr_to_optional(find((*pts), 2));
-  // 32: print(h.value is None)
-  std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-  // 33: print(h.value.x)
-  std::cout << tpy::deref_optional_check(h->value).x << "\n";
-  // 34: print(h.value.y)
-  std::cout << tpy::deref_optional_check(h->value).y << "\n";
-  // 36: h.value = copy(find(pts, 99))
-  h->value = tpy::ptr_to_optional(find((*pts), 99));
-  // 37: print(h.value is None)
-  std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    __name__ = "__main__";
+    // 26: pts: list[Point] = list()
+    static std::vector<Point> __global_slot_1 = std::vector<Point>();
+    pts = &__global_slot_1;
+    // 27: pts.append(Point(1, 10))
+    (*pts).push_back(Point(1, 10));
+    // 28: pts.append(Point(2, 20))
+    (*pts).push_back(Point(2, 20));
+    // 30: h = Holder()
+    static Holder __global_slot_2 = Holder();
+    h = &__global_slot_2;
+    // 31: h.value = copy(find(pts, 2))
+    h->value = tpy::ptr_to_optional(find((*pts), 2));
+    // 32: print(h.value is None)
+    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    // 33: print(h.value.x)
+    std::cout << tpy::deref_optional_check(h->value).x << "\n";
+    // 34: print(h.value.y)
+    std::cout << tpy::deref_optional_check(h->value).y << "\n";
+    // 36: h.value = copy(find(pts, 99))
+    h->value = tpy::ptr_to_optional(find((*pts), 99));
+    // 37: print(h.value is None)
+    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

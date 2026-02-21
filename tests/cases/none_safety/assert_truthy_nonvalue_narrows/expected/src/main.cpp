@@ -9,29 +9,29 @@ Point* pt{};
 
 // 11: def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
-  // 12:     assert p  # tpyc: ok
-  if (!(p)) tpy::tpy_panic("assertion failed");
-  // 13:     return p.x  # tpyc: ok
-  return p->x;
+    // 12:     assert p  # tpyc: ok
+    if (!(p)) tpy::tpy_panic("assertion failed");
+    // 13:     return p.x  # tpyc: ok
+    return p->x;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 16: pt: Point = Point(7)
-  static Point __global_slot_1 = Point(7);
-  pt = &__global_slot_1;
-  // 17: print(get_x(pt))
-  std::cout << get_x(pt) << "\n";
+    __name__ = "__main__";
+    // 16: pt: Point = Point(7)
+    static Point __global_slot_1 = Point(7);
+    pt = &__global_slot_1;
+    // 17: print(get_x(pt))
+    std::cout << get_x(pt) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

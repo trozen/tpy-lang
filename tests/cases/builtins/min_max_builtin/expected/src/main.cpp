@@ -26,58 +26,58 @@ double f1{};
 double f2{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test min() and max() builtin functions."""
-  // 4: # Test min/max with Int32
-  // 5: a: Int32 = 10
-  a = 10;
-  // 6: b: Int32 = 20
-  b = 20;
-  // 7: print(min(a, b))
-  std::cout << std::min(a, b) << "\n";
-  // 8: print(max(a, b))
-  std::cout << std::max(a, b) << "\n";
-  // 9: print(min(b, a))
-  std::cout << std::min(b, a) << "\n";
-  // 10: print(max(b, a))
-  std::cout << std::max(b, a) << "\n";
-  // 12: # Test min/max with BigInt (default int)
-  // 13: x = 100
-  x = 100;
-  // 14: y = -50
-  y = -50;
-  // 15: print(min(x, y))
-  std::cout << std::min(x, y) << "\n";
-  // 16: print(max(x, y))
-  std::cout << std::max(x, y) << "\n";
-  // 17: # Use int() for large values to avoid literal issues
-  // 18: big1 = int(-1000000)
-  big1 = tpy::BigInt(static_cast<int64_t>(-1000000));
-  // 19: big2 = int(1000000)
-  big2 = tpy::BigInt(static_cast<int64_t>(1000000));
-  // 20: print(min(big1, big2))
-  std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
-  // 21: print(max(big1, big2))
-  std::cout << ((big1) > (big2) ? (big1) : (big2)) << "\n";
-  // 23: # Test min/max with float
-  // 24: f1: float = 3.14
-  f1 = 3.14;
-  // 25: f2: float = 2.71
-  f2 = 2.71;
-  // 26: print(min(f1, f2))
-  std::cout << tpy::print_float(std::fmin(f1, f2)) << "\n";
-  // 27: print(max(f1, f2))
-  std::cout << tpy::print_float(std::fmax(f1, f2)) << "\n";
+    __name__ = "__main__";
+    // 1: """Test min() and max() builtin functions."""
+    // 4: # Test min/max with Int32
+    // 5: a: Int32 = 10
+    a = 10;
+    // 6: b: Int32 = 20
+    b = 20;
+    // 7: print(min(a, b))
+    std::cout << std::min(a, b) << "\n";
+    // 8: print(max(a, b))
+    std::cout << std::max(a, b) << "\n";
+    // 9: print(min(b, a))
+    std::cout << std::min(b, a) << "\n";
+    // 10: print(max(b, a))
+    std::cout << std::max(b, a) << "\n";
+    // 12: # Test min/max with BigInt (default int)
+    // 13: x = 100
+    x = 100;
+    // 14: y = -50
+    y = -50;
+    // 15: print(min(x, y))
+    std::cout << std::min(x, y) << "\n";
+    // 16: print(max(x, y))
+    std::cout << std::max(x, y) << "\n";
+    // 17: # Use int() for large values to avoid literal issues
+    // 18: big1 = int(-1000000)
+    big1 = tpy::BigInt(static_cast<int64_t>(-1000000));
+    // 19: big2 = int(1000000)
+    big2 = tpy::BigInt(static_cast<int64_t>(1000000));
+    // 20: print(min(big1, big2))
+    std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
+    // 21: print(max(big1, big2))
+    std::cout << ((big1) > (big2) ? (big1) : (big2)) << "\n";
+    // 23: # Test min/max with float
+    // 24: f1: float = 3.14
+    f1 = 3.14;
+    // 25: f2: float = 2.71
+    f2 = 2.71;
+    // 26: print(min(f1, f2))
+    std::cout << tpy::print_float(std::fmin(f1, f2)) << "\n";
+    // 27: print(max(f1, f2))
+    std::cout << tpy::print_float(std::fmax(f1, f2)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

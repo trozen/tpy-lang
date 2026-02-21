@@ -7,42 +7,42 @@ std::string_view __name__;
 
 // 24: def main() -> None:
 void main() {
-  // 25:     # str variable passed to NativeIterable[Char] param
-  // 26:     s: str = "hello"
-  std::string_view s = "hello";
-  // 27:     print(count_chars(s))  # 5
-  std::cout << count_chars(s) << "\n";
-  // 28:     print(first_char(s))   # h
-  std::cout << first_char(s) << "\n";
-  // 30:     # Another str variable
-  // 31:     abc: str = "abc"
-  std::string_view abc = "abc";
-  // 32:     print(count_chars(abc))  # 3
-  std::cout << count_chars(abc) << "\n";
-  // 34:     # Span with NativeIterable (via extends)
-  // 35:     nums: list[Int32] = [10, 20, 30]
-  std::vector<int32_t> nums = {10, 20, 30};
-  // 36:     sp: Span[Int32] = nums
-  std::span<const int32_t> sp = tpy::as_span(nums);
-  // 37:     print(sum_span(sp))  # 60
-  std::cout << sum_span(sp) << "\n";
+    // 25:     # str variable passed to NativeIterable[Char] param
+    // 26:     s: str = "hello"
+    std::string_view s = "hello";
+    // 27:     print(count_chars(s))  # 5
+    std::cout << count_chars(s) << "\n";
+    // 28:     print(first_char(s))   # h
+    std::cout << first_char(s) << "\n";
+    // 30:     # Another str variable
+    // 31:     abc: str = "abc"
+    std::string_view abc = "abc";
+    // 32:     print(count_chars(abc))  # 3
+    std::cout << count_chars(abc) << "\n";
+    // 34:     # Span with NativeIterable (via extends)
+    // 35:     nums: list[Int32] = [10, 20, 30]
+    std::vector<int32_t> nums = {10, 20, 30};
+    // 36:     sp: Span[Int32] = nums
+    std::span<const int32_t> sp = tpy::as_span(nums);
+    // 37:     print(sum_span(sp))  # 60
+    std::cout << sum_span(sp) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Tests that str conforms to NativeIterable[Char] via extends declaration."""
-  // 39: main()
-  main();
+    __name__ = "__main__";
+    // 1: """Tests that str conforms to NativeIterable[Char] via extends declaration."""
+    // 39: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

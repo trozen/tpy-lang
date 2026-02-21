@@ -23,69 +23,69 @@ void main();
 
 // 14: class IntBox:
 struct IntBox {
-  // 15:     v: Int32
-  int32_t v;
+    // 15:     v: Int32
+    int32_t v;
 
-  // 16:     def __init__(self, v: Int32) -> None:
-  IntBox() = default;
-  explicit IntBox(int32_t v) : v(v) {}
+    // 16:     def __init__(self, v: Int32) -> None:
+    IntBox() = default;
+    explicit IntBox(int32_t v) : v(v) {}
 
-  // 18:     def get(self) -> Int32:
-  int32_t get() {
-    // 19:         return self.v
-    return this->v;
-  }
+    // 18:     def get(self) -> Int32:
+    int32_t get() {
+        // 19:         return self.v
+        return this->v;
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
-  os << "IntBox("
-     << "v=" << obj.v
-     << ")";
-  return os;
+    os << "IntBox("
+       << "v=" << obj.v
+       << ")";
+    return os;
 }
 
 // # Container of boxes for subscript test
 // 22: class BoxContainer:
 struct BoxContainer {
-  // 23:     items: list[IntBox]
-  std::vector<IntBox> items;
+    // 23:     items: list[IntBox]
+    std::vector<IntBox> items;
 
-  // 24:     def __init__(self) -> None:
-  BoxContainer() : items({IntBox(10), IntBox(20), IntBox(30)}) {}
+    // 24:     def __init__(self) -> None:
+    BoxContainer() : items({IntBox(10), IntBox(20), IntBox(30)}) {}
 
-  // 26:     def __getitem__(self, i: Int32) -> IntBox:
-  const IntBox& __getitem__(int32_t i) const {
-    // 27:         return self.items[i]
-    return tpy::get_item(this->items, i);
-  }
+    // 26:     def __getitem__(self, i: Int32) -> IntBox:
+    const IntBox& __getitem__(int32_t i) const {
+        // 27:         return self.items[i]
+        return tpy::get_item(this->items, i);
+    }
 
-  // 26:     def __getitem__(self, i: Int32) -> IntBox:
-  IntBox& __getitem__(int32_t i) {
-    // 27:         return self.items[i]
-    return tpy::get_item(this->items, i);
-  }
+    // 26:     def __getitem__(self, i: Int32) -> IntBox:
+    IntBox& __getitem__(int32_t i) {
+        // 27:         return self.items[i]
+        return tpy::get_item(this->items, i);
+    }
 
-  const IntBox& operator[](int32_t i) const {
-    return __getitem__(i);
-  }
+    const IntBox& operator[](int32_t i) const {
+        return __getitem__(i);
+    }
 
-  IntBox& operator[](int32_t i) {
-    return __getitem__(i);
-  }
+    IntBox& operator[](int32_t i) {
+        return __getitem__(i);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
-  os << "BoxContainer("
-     << "items=" << tpy::ListPrinter(obj.items)
-     << ")";
-  return os;
+    os << "BoxContainer("
+       << "items=" << tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
 }
 
 // 29: def show(h: HasValue) -> None:
 template<HasValue T_h>
 void show(T_h& h) {
-  // 30:     print(h.get())
-  std::cout << h.get() << "\n";
+    // 30:     print(h.get())
+    std::cout << h.get() << "\n";
 }
 
 void __tpy_init();

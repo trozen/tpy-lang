@@ -6,13 +6,13 @@ namespace tpy_user::pkg::first {
 std::string_view __name__;
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "pkg.first";
-  // 1: print("init: first")
-  std::cout << "init: first" << "\n";
+    __name__ = "pkg.first";
+    // 1: print("init: first")
+    std::cout << "init: first" << "\n";
 }
 
 } // namespace tpy_user::pkg::first

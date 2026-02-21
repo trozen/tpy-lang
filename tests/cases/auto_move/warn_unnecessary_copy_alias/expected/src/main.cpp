@@ -7,34 +7,34 @@ std::string_view __name__;
 
 // 10: def consume(b: Own[Box]) -> Int32:
 int32_t consume(Box b) {
-  // 11:     return b.value
-  return b.value;
+    // 11:     return b.value
+    return b.value;
 }
 
 // 14: def main():
 void main() {
-  // 15:     b = Box()
-  Box b = Box();
-  // 16:     b.value = 42
-  b.value = 42;
-  // 17:     print(consume(c(b)))  # tpyc: warning(/unnecessary copy/)
-  std::cout << consume(b) << "\n";
+    // 15:     b = Box()
+    Box b = Box();
+    // 16:     b.value = 42
+    b.value = 42;
+    // 17:     print(consume(c(b)))  # tpyc: warning(/unnecessary copy/)
+    std::cout << consume(b) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 20: main()
-  main();
+    __name__ = "__main__";
+    // 20: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

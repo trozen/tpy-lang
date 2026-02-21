@@ -7,32 +7,32 @@ std::string_view __name__;
 
 // 4: def main() -> Int32:
 int32_t main() {
-  // 5:     result: Int32 = compute()
-  int32_t result = ::tpy_user::outer::inner::consumer::compute();
-  // 6:     print(result)
-  std::cout << result << "\n";
-  // 7:     return Int32(0)
-  return 0;
+    // 5:     result: Int32 = compute()
+    int32_t result = ::tpy_user::outer::inner::consumer::compute();
+    // 6:     print(result)
+    std::cout << result << "\n";
+    // 7:     return Int32(0)
+    return 0;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 2: from outer.inner.consumer import compute
-  ::tpy_user::outer::__tpy_init();
-  ::tpy_user::outer::inner::__tpy_init();
-  ::tpy_user::outer::inner::consumer::__tpy_init();
-  // 9: main()
-  main();
+    __name__ = "__main__";
+    // 2: from outer.inner.consumer import compute
+    ::tpy_user::outer::__tpy_init();
+    ::tpy_user::outer::inner::__tpy_init();
+    ::tpy_user::outer::inner::consumer::__tpy_init();
+    // 9: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

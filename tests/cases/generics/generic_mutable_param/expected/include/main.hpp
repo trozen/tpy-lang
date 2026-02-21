@@ -15,32 +15,32 @@ void main();
 // 4: class Box[T]:
 template<typename T>
 struct Box {
-  // 5:     value: T
-  T value;
+    // 5:     value: T
+    T value;
 
-  // 7:     def __init__(self, value: T) -> None:
-  Box() = default;
-  explicit Box(const T& value) : value(value) {}
+    // 7:     def __init__(self, value: T) -> None:
+    Box() = default;
+    explicit Box(const T& value) : value(value) {}
 
-  // 10:     def get(self) -> T:
-  tpy::return_val_or_ref_t<T> get() {
-    // 11:         return self.value
-    return this->value;
-  }
+    // 10:     def get(self) -> T:
+    tpy::return_val_or_ref_t<T> get() {
+        // 11:         return self.value
+        return this->value;
+    }
 
-  // 13:     def set(self, value: T) -> None:
-  void set(tpy::param_val_or_ref_t<T> value) {
-    // 14:         self.value = value
-    this->value = value;
-  }
+    // 13:     def set(self, value: T) -> None:
+    void set(tpy::param_val_or_ref_t<T> value) {
+        // 14:         self.value = value
+        this->value = value;
+    }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
-  os << "Box("
-     << "value=" << tpy::ValuePrinter(obj.value)
-     << ")";
-  return os;
+    os << "Box("
+       << "value=" << tpy::ValuePrinter(obj.value)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

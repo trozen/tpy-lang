@@ -7,41 +7,41 @@ std::string_view __name__;
 
 // 11: def describe(x: Int32) -> None:
 void describe(int32_t x) {
-  // 12:     print("int:", x)
-  std::cout << "int:" << " " << x << "\n";
+    // 12:     print("int:", x)
+    std::cout << "int:" << " " << x << "\n";
 }
 
 // 14: def describe(p: Point) -> None:
 void describe(Point& p) {
-  // 15:     print("point:", p.x, p.y)
-  std::cout << "point:" << " " << p.x << " " << p.y << "\n";
+    // 15:     print("point:", p.x, p.y)
+    std::cout << "point:" << " " << p.x << " " << p.y << "\n";
 }
 
 // 17: def test() -> None:
 void test() {
-  // 18:     pt: Point = Point(3, 7)
-  Point pt = Point(3, 7);
-  // 19:     p: Ptr[Point] = pt
-  Point* p = &pt;
-  // 20:     # Overload resolution should pick describe(Point) via Ptr[T] -> T deref coercion
-  // 21:     describe(p)
-  describe(tpy::deref_check(p));
+    // 18:     pt: Point = Point(3, 7)
+    Point pt = Point(3, 7);
+    // 19:     p: Ptr[Point] = pt
+    Point* p = &pt;
+    // 20:     # Overload resolution should pick describe(Point) via Ptr[T] -> T deref coercion
+    // 21:     describe(p)
+    describe(tpy::deref_check(p));
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 23: test()
-  test();
+    __name__ = "__main__";
+    // 23: test()
+    test();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 4: def invert(x: Int32 | None) -> bool:
 bool invert(std::optional<int32_t> x) {
-  // 5:     result: bool = not x  # tpyc: ok
-  bool result = (!(tpy::is_truthy(x)));
-  // 6:     return result
-  return result;
+    // 5:     result: bool = not x  # tpyc: ok
+    bool result = (!(tpy::is_truthy(x)));
+    // 6:     return result
+    return result;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 9: print(invert(2))
-  std::cout << tpy::print_bool(invert(2)) << "\n";
-  // 10: print(invert(0))
-  std::cout << tpy::print_bool(invert(0)) << "\n";
-  // 11: print(invert(None))
-  std::cout << tpy::print_bool(invert(std::nullopt)) << "\n";
+    __name__ = "__main__";
+    // 9: print(invert(2))
+    std::cout << tpy::print_bool(invert(2)) << "\n";
+    // 10: print(invert(0))
+    std::cout << tpy::print_bool(invert(0)) << "\n";
+    // 11: print(invert(None))
+    std::cout << tpy::print_bool(invert(std::nullopt)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

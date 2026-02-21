@@ -7,45 +7,45 @@ std::string_view __name__;
 
 // 22: def describe(p: Pet) -> str:
 std::string_view describe(Pet& p) {
-  // 23:     if isinstance(p, Dog):
-  if (std::holds_alternative<Dog>(p)) {
-    auto& __p = std::get<Dog>(p);
-    // 24:         return "dog"
-    return "dog";
-  }
-  // 25:     assert isinstance(p, Cat)
-  if (!(std::holds_alternative<Cat>(p))) tpy::tpy_panic("assertion failed");
-  auto& __p = std::get<Cat>(p);
-  // 26:     return "cat"
-  return "cat";
+    // 23:     if isinstance(p, Dog):
+    if (std::holds_alternative<Dog>(p)) {
+        auto& __p = std::get<Dog>(p);
+        // 24:         return "dog"
+        return "dog";
+    }
+    // 25:     assert isinstance(p, Cat)
+    if (!(std::holds_alternative<Cat>(p))) tpy::tpy_panic("assertion failed");
+    auto& __p = std::get<Cat>(p);
+    // 26:     return "cat"
+    return "cat";
 }
 
 // 29: def main() -> None:
 void main() {
-  // 30:     d: Pet = Dog(Int32(3))
-  Pet d = Dog(3);
-  // 31:     c: Pet = Cat(Int32(5))
-  Pet c = Cat(5);
-  // 32:     print(describe(d))
-  std::cout << describe(d) << "\n";
-  // 33:     print(describe(c))
-  std::cout << describe(c) << "\n";
+    // 30:     d: Pet = Dog(Int32(3))
+    Pet d = Dog(3);
+    // 31:     c: Pet = Cat(Int32(5))
+    Pet c = Cat(5);
+    // 32:     print(describe(d))
+    std::cout << describe(d) << "\n";
+    // 33:     print(describe(c))
+    std::cout << describe(c) << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 35: main()
-  main();
+    __name__ = "__main__";
+    // 35: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

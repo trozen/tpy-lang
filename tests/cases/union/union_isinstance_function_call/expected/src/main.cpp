@@ -7,60 +7,60 @@ std::string_view __name__;
 
 // 12: def greet_dog(d: Dog) -> None:
 void greet_dog(Dog& d) {
-  // 13:     print("Woof!", d.name)
-  std::cout << "Woof!" << " " << d.name << "\n";
+    // 13:     print("Woof!", d.name)
+    std::cout << "Woof!" << " " << d.name << "\n";
 }
 
 // 15: def greet_cat(c: Cat) -> None:
 void greet_cat(Cat& c) {
-  // 16:     print("Meow!", c.name)
-  std::cout << "Meow!" << " " << c.name << "\n";
+    // 16:     print("Meow!", c.name)
+    std::cout << "Meow!" << " " << c.name << "\n";
 }
 
 // 18: def main() -> None:
 void main() {
-  // 19:     pet: Dog | Cat = Dog("Rex")
-  std::variant<Cat, Dog> __slot_1 = Dog("Rex");
-  std::optional<std::variant<Cat, Dog>> __slot_2;
-  std::variant<Cat, Dog>* pet = &__slot_1;
-  // 20:     if isinstance(pet, Dog):
-  if (std::holds_alternative<Dog>((*pet))) {
-    auto& __pet = std::get<Dog>((*pet));
-    // 21:         greet_dog(pet)
-    greet_dog(__pet);
-  } else {
-    auto& __pet = std::get<Cat>((*pet));
-    // 23:         greet_cat(pet)
-    greet_cat(__pet);
-  }
-  // 24:     pet = Cat("Whiskers")
-  pet = &*(__slot_2 = Cat("Whiskers"));
-  // 25:     if isinstance(pet, Cat):
-  if (std::holds_alternative<Cat>((*pet))) {
-    auto& __pet = std::get<Cat>((*pet));
-    // 26:         greet_cat(pet)
-    greet_cat(__pet);
-  } else {
-    auto& __pet = std::get<Dog>((*pet));
-    // 28:         greet_dog(pet)
-    greet_dog(__pet);
-  }
+    // 19:     pet: Dog | Cat = Dog("Rex")
+    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
+    std::optional<std::variant<Cat, Dog>> __slot_2;
+    std::variant<Cat, Dog>* pet = &__slot_1;
+    // 20:     if isinstance(pet, Dog):
+    if (std::holds_alternative<Dog>((*pet))) {
+        auto& __pet = std::get<Dog>((*pet));
+        // 21:         greet_dog(pet)
+        greet_dog(__pet);
+    } else {
+        auto& __pet = std::get<Cat>((*pet));
+        // 23:         greet_cat(pet)
+        greet_cat(__pet);
+    }
+    // 24:     pet = Cat("Whiskers")
+    pet = &*(__slot_2 = Cat("Whiskers"));
+    // 25:     if isinstance(pet, Cat):
+    if (std::holds_alternative<Cat>((*pet))) {
+        auto& __pet = std::get<Cat>((*pet));
+        // 26:         greet_cat(pet)
+        greet_cat(__pet);
+    } else {
+        auto& __pet = std::get<Dog>((*pet));
+        // 28:         greet_dog(pet)
+        greet_dog(__pet);
+    }
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 30: main()
-  main();
+    __name__ = "__main__";
+    // 30: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

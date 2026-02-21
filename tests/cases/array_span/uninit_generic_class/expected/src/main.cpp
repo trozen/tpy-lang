@@ -12,38 +12,38 @@ Holder<int32_t>* h{};
 Holder<std::string_view>* s{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: from tpy.mem import UninitHeapStorage
-  // 22: # Value type
-  // 23: h = Holder[Int32](42)
-  static Holder<int32_t> __global_slot_1 = Holder<int32_t>(42);
-  h = &__global_slot_1;
-  // 24: print(h.get())
-  std::cout << h->get() << "\n";
-  // 25: h.set(100)
-  h->set(100);
-  // 26: print(h.take())
-  std::cout << h->take() << "\n";
-  // 28: # str
-  // 29: s = Holder[str]("hello")
-  static Holder<std::string_view> __global_slot_2 = Holder<std::string_view>("hello");
-  s = &__global_slot_2;
-  // 30: print(s.get())
-  std::cout << s->get() << "\n";
-  // 31: s.set("world")
-  s->set("world");
-  // 32: print(s.take())
-  std::cout << s->take() << "\n";
+    __name__ = "__main__";
+    // 3: from tpy.mem import UninitHeapStorage
+    // 22: # Value type
+    // 23: h = Holder[Int32](42)
+    static Holder<int32_t> __global_slot_1 = Holder<int32_t>(42);
+    h = &__global_slot_1;
+    // 24: print(h.get())
+    std::cout << h->get() << "\n";
+    // 25: h.set(100)
+    h->set(100);
+    // 26: print(h.take())
+    std::cout << h->take() << "\n";
+    // 28: # str
+    // 29: s = Holder[str]("hello")
+    static Holder<std::string_view> __global_slot_2 = Holder<std::string_view>("hello");
+    s = &__global_slot_2;
+    // 30: print(s.get())
+    std::cout << s->get() << "\n";
+    // 31: s.set("world")
+    s->set("world");
+    // 32: print(s.take())
+    std::cout << s->take() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

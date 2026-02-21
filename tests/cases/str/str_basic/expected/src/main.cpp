@@ -7,43 +7,43 @@ std::string_view __name__;
 
 // 3: def count_char(text: str, target: Char) -> Int32:
 int32_t count_char(std::string_view text, char target) {
-  // 4:     """Count occurrences of target character in text."""
-  // 5:     count: Int32 = 0
-  int32_t count = 0;
-  // 6:     i: Int32 = 0
-  int32_t i = 0;
-  // 7:     while i < len(text):
-  while ((i < tpy::__len__(text))) {
-    // 8:         if text[i] == target:
-    if ((tpy::get_char(text, i) == target)) {
-      // 9:             count += 1
-      count = tpy::add_check<int32_t>(count, 1);
+    // 4:     """Count occurrences of target character in text."""
+    // 5:     count: Int32 = 0
+    int32_t count = 0;
+    // 6:     i: Int32 = 0
+    int32_t i = 0;
+    // 7:     while i < len(text):
+    while ((i < tpy::__len__(text))) {
+        // 8:         if text[i] == target:
+        if ((tpy::get_char(text, i) == target)) {
+            // 9:             count += 1
+            count = tpy::add_check<int32_t>(count, 1);
+        }
+        // 10:         i += 1
+        i = tpy::add_check<int32_t>(i, 1);
     }
-    // 10:         i += 1
-    i = tpy::add_check<int32_t>(i, 1);
-  }
-  // 11:     return count
-  return count;
+    // 11:     return count
+    return count;
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 13: print(count_char("xoxox", "x"))
-  std::cout << count_char("xoxox", 'x') << "\n";
-  // 14: print(len("hello"))
-  std::cout << tpy::__len__("hello") << "\n";
-  // 15: print(chr(65))
-  std::cout << static_cast<char>(65) << "\n";
+    __name__ = "__main__";
+    // 13: print(count_char("xoxox", "x"))
+    std::cout << count_char("xoxox", 'x') << "\n";
+    // 14: print(len("hello"))
+    std::cout << tpy::__len__("hello") << "\n";
+    // 15: print(chr(65))
+    std::cout << static_cast<char>(65) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

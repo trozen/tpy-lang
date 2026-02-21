@@ -7,110 +7,110 @@ std::string_view __name__;
 
 // 10: def read_via_ptr(p: Ptr[Point]) -> None:
 void read_via_ptr(Point* p) {
-  // 11:     print(p.x)
-  std::cout << tpy::deref_check(p).x << "\n";
-  // 12:     print(p.y)
-  std::cout << tpy::deref_check(p).y << "\n";
+    // 11:     print(p.x)
+    std::cout << tpy::deref_check(p).x << "\n";
+    // 12:     print(p.y)
+    std::cout << tpy::deref_check(p).y << "\n";
 }
 
 // 14: def read_via_constptr(p: ConstPtr[Point]) -> None:
 void read_via_constptr(const Point* p) {
-  // 15:     print(p.x)
-  std::cout << tpy::deref_check(p).x << "\n";
-  // 16:     print(p.y)
-  std::cout << tpy::deref_check(p).y << "\n";
+    // 15:     print(p.x)
+    std::cout << tpy::deref_check(p).x << "\n";
+    // 16:     print(p.y)
+    std::cout << tpy::deref_check(p).y << "\n";
 }
 
 // 18: def test_null_constructors() -> None:
 void test_null_constructors() {
-  // 19:     p1: Ptr[None] = Ptr[None]()
-  void* p1 = static_cast<void*>(nullptr);
-  // 20:     p2: ConstPtr[None] = ConstPtr[None]()
-  const void* p2 = static_cast<const void*>(nullptr);
-  // 21:     p3: Ptr[Int32] = Ptr[Int32]()
-  int32_t* p3 = static_cast<int32_t*>(nullptr);
-  // 22:     p4: ConstPtr[Int32] = ConstPtr[Int32]()
-  const int32_t* p4 = static_cast<const int32_t*>(nullptr);
-  // 23:     print("null ok")
-  std::cout << "null ok" << "\n";
+    // 19:     p1: Ptr[None] = Ptr[None]()
+    void* p1 = static_cast<void*>(nullptr);
+    // 20:     p2: ConstPtr[None] = ConstPtr[None]()
+    const void* p2 = static_cast<const void*>(nullptr);
+    // 21:     p3: Ptr[Int32] = Ptr[Int32]()
+    int32_t* p3 = static_cast<int32_t*>(nullptr);
+    // 22:     p4: ConstPtr[Int32] = ConstPtr[Int32]()
+    const int32_t* p4 = static_cast<const int32_t*>(nullptr);
+    // 23:     print("null ok")
+    std::cout << "null ok" << "\n";
 }
 
 // 25: def test_ptr_explicit() -> None:
 void test_ptr_explicit() {
-  // 26:     pt: Point = Point(10, 20)
-  Point pt = Point(10, 20);
-  // 27:     pp: Ptr[Point] = Ptr[Point](pt)
-  Point* pp = &pt;
-  // 28:     read_via_ptr(pp)
-  read_via_ptr(pp);
+    // 26:     pt: Point = Point(10, 20)
+    Point pt = Point(10, 20);
+    // 27:     pp: Ptr[Point] = Ptr[Point](pt)
+    Point* pp = &pt;
+    // 28:     read_via_ptr(pp)
+    read_via_ptr(pp);
 }
 
 // 30: def test_ptr_inferred() -> None:
 void test_ptr_inferred() {
-  // 31:     pt: Point = Point(30, 40)
-  Point pt = Point(30, 40);
-  // 32:     pp: Ptr[Point] = Ptr(pt)
-  Point* pp = &pt;
-  // 33:     read_via_ptr(pp)
-  read_via_ptr(pp);
+    // 31:     pt: Point = Point(30, 40)
+    Point pt = Point(30, 40);
+    // 32:     pp: Ptr[Point] = Ptr(pt)
+    Point* pp = &pt;
+    // 33:     read_via_ptr(pp)
+    read_via_ptr(pp);
 }
 
 // 35: def test_constptr_explicit() -> None:
 void test_constptr_explicit() {
-  // 36:     pt: Point = Point(50, 60)
-  Point pt = Point(50, 60);
-  // 37:     cp: ConstPtr[Point] = ConstPtr[Point](pt)
-  const Point* cp = &pt;
-  // 38:     read_via_constptr(cp)
-  read_via_constptr(cp);
+    // 36:     pt: Point = Point(50, 60)
+    Point pt = Point(50, 60);
+    // 37:     cp: ConstPtr[Point] = ConstPtr[Point](pt)
+    const Point* cp = &pt;
+    // 38:     read_via_constptr(cp)
+    read_via_constptr(cp);
 }
 
 // 40: def test_constptr_inferred() -> None:
 void test_constptr_inferred() {
-  // 41:     pt: Point = Point(70, 80)
-  Point pt = Point(70, 80);
-  // 42:     cp: ConstPtr[Point] = ConstPtr(pt)
-  const Point* cp = &pt;
-  // 43:     read_via_constptr(cp)
-  read_via_constptr(cp);
+    // 41:     pt: Point = Point(70, 80)
+    Point pt = Point(70, 80);
+    // 42:     cp: ConstPtr[Point] = ConstPtr(pt)
+    const Point* cp = &pt;
+    // 43:     read_via_constptr(cp)
+    read_via_constptr(cp);
 }
 
 // 45: def test_ptr_write() -> None:
 void test_ptr_write() {
-  // 46:     pt: Point = Point(1, 2)
-  Point pt = Point(1, 2);
-  // 47:     pp: Ptr[Point] = Ptr(pt)
-  Point* pp = &pt;
-  // 48:     pp.x = Int32(99)
-  pp->x = 99;
-  // 49:     print(pt.x)
-  std::cout << pt.x << "\n";
+    // 46:     pt: Point = Point(1, 2)
+    Point pt = Point(1, 2);
+    // 47:     pp: Ptr[Point] = Ptr(pt)
+    Point* pp = &pt;
+    // 48:     pp.x = Int32(99)
+    pp->x = 99;
+    // 49:     print(pt.x)
+    std::cout << pt.x << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 51: test_null_constructors()
-  test_null_constructors();
-  // 52: test_ptr_explicit()
-  test_ptr_explicit();
-  // 53: test_ptr_inferred()
-  test_ptr_inferred();
-  // 54: test_constptr_explicit()
-  test_constptr_explicit();
-  // 55: test_constptr_inferred()
-  test_constptr_inferred();
-  // 56: test_ptr_write()
-  test_ptr_write();
+    __name__ = "__main__";
+    // 51: test_null_constructors()
+    test_null_constructors();
+    // 52: test_ptr_explicit()
+    test_ptr_explicit();
+    // 53: test_ptr_inferred()
+    test_ptr_inferred();
+    // 54: test_constptr_explicit()
+    test_constptr_explicit();
+    // 55: test_constptr_inferred()
+    test_constptr_inferred();
+    // 56: test_ptr_write()
+    test_ptr_write();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -13,24 +13,24 @@ extern Pair<int32_t, std::string_view>* pair;
 // 4: class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-  // 5:     first: A
-  A first;
-  // 6:     second: B
-  B second;
+    // 5:     first: A
+    A first;
+    // 6:     second: B
+    B second;
 
-  // 8:     def __init__(self, first: A, second: B) -> None:
-  Pair() = default;
-  explicit Pair(const A& first, const B& second) : first(first), second(second) {}
+    // 8:     def __init__(self, first: A, second: B) -> None:
+    Pair() = default;
+    explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 };
 
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
-  os << "Pair("
-     << "first=" << tpy::ValuePrinter(obj.first)
-     << ", "
-     << "second=" << tpy::ValuePrinter(obj.second)
-     << ")";
-  return os;
+    os << "Pair("
+       << "first=" << tpy::ValuePrinter(obj.first)
+       << ", "
+       << "second=" << tpy::ValuePrinter(obj.second)
+       << ")";
+    return os;
 }
 
 void __tpy_init();

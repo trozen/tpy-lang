@@ -7,30 +7,30 @@ std::string_view __name__;
 
 // 9: def main() -> None:
 void main() {
-  // 10:     print(score)
-  std::cout << engine::score << "\n";
-  // 11:     print(lives)
-  std::cout << lives << "\n";
+    // 10:     print(score)
+    std::cout << engine::score << "\n";
+    // 11:     print(lives)
+    std::cout << lives << "\n";
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 3: # C++ global import with namespace-qualified name
-  // 4: score: Int32 = native_global("engine::score")
-  // 6: # C++ global import without rename
-  // 7: lives: Int32 = native_global()
-  // 13: main()
-  main();
+    __name__ = "__main__";
+    // 3: # C++ global import with namespace-qualified name
+    // 4: score: Int32 = native_global("engine::score")
+    // 6: # C++ global import without rename
+    // 7: lives: Int32 = native_global()
+    // 13: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

@@ -14,33 +14,33 @@ Outer<Inner<tpy::BigInt>>* outer{};
 Outer<Inner<int32_t>>* outer2{};
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 1: """Test type inference with nested generic classes."""
-  // 18: # Separate lines: Inner[int] explicit, then Outer inferred
-  // 19: inner = Inner[int](42)
-  static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(42);
-  inner = &__global_slot_1;
-  // 20: outer = Outer(inner)
-  static Outer<Inner<tpy::BigInt>> __global_slot_2 = Outer<Inner<tpy::BigInt>>((*inner));
-  outer = &__global_slot_2;
-  // 21: print(outer.inner.value)
-  std::cout << outer->inner.value << "\n";
-  // 23: # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
-  // 24: outer2 = Outer(Inner(42))
-  static Outer<Inner<int32_t>> __global_slot_3 = Outer<Inner<int32_t>>(Inner<int32_t>(42));
-  outer2 = &__global_slot_3;
-  // 25: print(outer2.inner.value)
-  std::cout << outer2->inner.value << "\n";
+    __name__ = "__main__";
+    // 1: """Test type inference with nested generic classes."""
+    // 18: # Separate lines: Inner[int] explicit, then Outer inferred
+    // 19: inner = Inner[int](42)
+    static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(42);
+    inner = &__global_slot_1;
+    // 20: outer = Outer(inner)
+    static Outer<Inner<tpy::BigInt>> __global_slot_2 = Outer<Inner<tpy::BigInt>>((*inner));
+    outer = &__global_slot_2;
+    // 21: print(outer.inner.value)
+    std::cout << outer->inner.value << "\n";
+    // 23: # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
+    // 24: outer2 = Outer(Inner(42))
+    static Outer<Inner<int32_t>> __global_slot_3 = Outer<Inner<int32_t>>(Inner<int32_t>(42));
+    outer2 = &__global_slot_3;
+    // 25: print(outer2.inner.value)
+    std::cout << outer2->inner.value << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }

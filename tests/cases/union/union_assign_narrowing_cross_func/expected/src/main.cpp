@@ -7,41 +7,41 @@ std::string_view __name__;
 
 // 17: def f() -> None:
 void f() {
-  // 18:     a: A | B = A(1.0)
-  std::variant<A, B> a = A(1.0);
-  // 19:     print(a.x)
-  std::cout << tpy::print_float(std::get<A>(a).x) << "\n";
+    // 18:     a: A | B = A(1.0)
+    std::variant<A, B> a = A(1.0);
+    // 19:     print(a.x)
+    std::cout << tpy::print_float(std::get<A>(a).x) << "\n";
 }
 
 // 21: def g(a: C) -> None:
 void g(C& a) {
-  // 22:     print(a.x)
-  std::cout << tpy::print_float(a.x) << "\n";
+    // 22:     print(a.x)
+    std::cout << tpy::print_float(a.x) << "\n";
 }
 
 // 24: def main() -> None:
 void main() {
-  // 25:     f()
-  f();
-  // 26:     g(C(2.0))
-  C __tmp_1 = C(2.0);
-  g(__tmp_1);
+    // 25:     f()
+    f();
+    // 26:     g(C(2.0))
+    C __tmp_1 = C(2.0);
+    g(__tmp_1);
 }
 
 void __tpy_init() {
-  static bool initialized = false;
-  if (initialized) return;
-  initialized = true;
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-  __name__ = "__main__";
-  // 28: main()
-  main();
+    __name__ = "__main__";
+    // 28: main()
+    main();
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-  tpy::init_sys_argv(argc, argv);
-  tpy_user::main::__tpy_init();
-  return 0;
+    tpy::init_sys_argv(argc, argv);
+    tpy_user::main::__tpy_init();
+    return 0;
 }
