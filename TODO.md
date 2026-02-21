@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- `return []` in generic functions can't infer element type from return type (e.g. `-> Own[list[T]]`); also `[x]` produces `std::array<T,1>` instead of `std::vector<T>` when return type is `list[T]` -- needs return-type-aware list literal inference
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - stubs for tpy modules for CPython, so that we can run (some) TPy code in CPython, but also for use in IDEs etc. (we have already something for tests, so maybe it can be extracted)
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
@@ -17,7 +16,6 @@
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
-- list literal contextual typing: when LHS has explicit annotation like `list[Int32 | None]`, allow compatible literals (`[]`, `[Int32(1)]`, `[None]`) via contextual element-type widening instead of strict inferred-list mismatch
 - ~~`tpy::__len__()`~~ PARTIAL: `__len__`, `__getitem__`, `__setitem__` are now free functions in `dunder.hpp`. Consider also generating `__len__()` as `size()` member function for STL compatibility.
 - copy/nocopy propagation: classes containing nocopy fields (e.g. `UninitHeapStorage`) should automatically become nocopy; extend to module-defined types (currently `@nocopy` only works on user-defined records)
 - `DeRef` protocol?
@@ -34,7 +32,6 @@
 ## Bugs
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
 - Constructor codegen uses body assignments instead of initializer lists: when `__init__` has control flow (if/else, loops), fields are default-constructed then assigned (`this->tag = tag;`) instead of using C++ initializer lists (`: tag(tag)`). Works for trivial types but breaks for non-default-constructible types, `@nocopy` types, and eventually `const` fields. Needs either: (a) analyze which fields can still use initializer list even with control flow, (b) use `std::optional` wrappers for deferred init, or (c) restructure to always emit initializer lists with conditional logic factored differently.
-- examples/brainfuck.py fails
 - Protocol `@readonly` conformance too strict: if a protocol method is `@readonly`, the implementing class method must also be `@readonly`. But a mutable method trivially satisfies a readonly contract -- it just does more. Should allow non-readonly implementations to satisfy readonly protocol methods.
 
 ## Examples
@@ -74,7 +71,6 @@
 - list(str)
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
-- add `__bool__()` and a proper protocol (bool() function should have overload consuming that protocol)
 - `Self` type
 
 ## Random items
@@ -93,7 +89,7 @@ Random items that may or may not be implemented in the future, but putting them 
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- support more dunder methods: `__bool__`, `__hash__`, etc.
+- support more dunder methods: `__hash__`, etc.
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - ability to define `__str__` method (currently works as explicit call `obj.__str__()`, but `str(obj)` doesn't dispatch to it)
@@ -106,7 +102,6 @@ Random items that may or may not be implemented in the future, but putting them 
 - implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
 - hoisted variable slots: keep them at the lowest scope that satisfies lifetime, instead of always hoisting to function scope
-- eliminate trivial temps for value-type constructor args: `wrap(Int32(10))` generates `int32_t __tmp = 10; wrap(__tmp)` instead of `wrap(10)`
 - runtime `using` declarations in global namespace (`tpy.hpp`): generated code should use `tpy::` prefix instead of relying on `using tpy::BigInt` etc.
 - refactor: consider merging `gen_module_init()` body generation into `gen_body()` helper (functions and methods already use it, but module init has too many special cases currently)
 - investigate other backends than c++

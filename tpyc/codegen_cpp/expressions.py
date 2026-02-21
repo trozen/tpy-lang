@@ -255,6 +255,16 @@ class ExpressionGenerator:
         rendered = self.gen_expr(expr)
         if isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr():
             return f"tpy::is_truthy({rendered})"
+        # User-defined types with __bool__() or __len__() fallback
+        if isinstance(expr_type, NamedType):
+            record = self.ctx.analyzer.registry.get_record(expr_type.name)
+            if record:
+                if self.ctx.is_indirect_name(expr):
+                    rendered = f"(*{rendered})"
+                if record.get_method_overloads("__bool__"):
+                    return f"tpy::__bool__({rendered})"
+                if record.get_method_overloads("__len__"):
+                    return f"(tpy::__len__({rendered}) != 0)"
         return rendered
 
     def _gen_binop(self, expr: TpyBinOp, target_type: TpyType | None) -> str:
@@ -1075,6 +1085,12 @@ class ExpressionGenerator:
         elem_target = None
         if target_type and target_type.needs_explicit_element_target():
             elem_target = target_type.get_element_type()
+        # For list literals with Optional/Union element types, pass element target
+        # so None generates std::nullopt instead of nullptr
+        if elem_target is None and target_type:
+            et = target_type.get_element_type()
+            if isinstance(et, (OptionalType, UnionType)):
+                elem_target = et
         elements = ", ".join(self.gen_expr_deref(e, elem_target) for e in expr.elements)
         literal = f"{{{elements}}}"
         # std::array of std::array needs an extra brace level

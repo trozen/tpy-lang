@@ -663,6 +663,30 @@ class CallAnalyzer:
                 expr.resolved_function_info = ctor
                 return ctor.return_type
 
+        # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
+        matched = resolve_overload(
+            record_info.constructors, arg_types,
+            protocol_checker=self.protocols.type_conforms_to_protocol,
+        )
+        if matched:
+            expr.resolved_function_info = matched
+            return matched.return_type
+
+        # bool(obj) __len__ fallback: types with __len__ but no __bool__
+        if record_info.name == "bool" and len(arg_types) == 1:
+            arg_type = arg_types[0]
+            if isinstance(arg_type, NamedType):
+                arg_record = self.ctx.registry.get_record(arg_type.name)
+                if arg_record and arg_record.get_method_overloads("__len__"):
+                    expr.resolved_function_info = FunctionInfo(
+                        name="__len__",
+                        params=[ParamInfo("x", arg_type)],
+                        return_type=BOOL,
+                        cpp_template="(tpy::__len__({0}) != 0)",
+                        is_readonly=True,
+                    )
+                    return BOOL
+
         # No matching overload found
         if not record_info.constructors:
             raise self.ctx.error(f"{type_name}() is not callable", expr)

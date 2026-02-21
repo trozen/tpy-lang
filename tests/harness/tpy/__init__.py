@@ -545,6 +545,12 @@ class Comparable(_Protocol):
     def __lt__(self, other: "Comparable") -> bool: ...
 
 
+@_runtime_checkable
+class Truthy(_Protocol):
+    """Protocol for types supporting bool() conversion via __bool__."""
+    def __bool__(self) -> bool: ...
+
+
 # Import hook to find .tp.py files (with .py fallback)
 import sys
 import os

@@ -5,7 +5,7 @@ Provides Protocol types matching Python's typing module.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import INT32, VOID, TypeParamRef
+from tpyc.typesys import BOOL, INT32, VOID, TypeParamRef
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")

@@ -200,12 +200,21 @@ class TypeCompatibility:
 
         # Allow PendingListType compatibility during first phase (before resolution)
         if isinstance(actual, PendingListType):
-            # Compatible with list[T] if element types match
+            # Compatible with list[T] if element types are compatible
             if isinstance(expected, ListType):
                 if actual.element_type == expected.element_type:
                     return None
                 if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                     return None
+                # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64)
+                try:
+                    self.check_type_compatible(
+                        actual.element_type, expected.element_type,
+                        context, loc, source_expr, is_return, coercion_ctx
+                    )
+                    return None
+                except SemanticError:
+                    pass
             # Compatible with Array[T, N] if element types and sizes match
             if isinstance(expected, ArrayType):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):

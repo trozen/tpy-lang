@@ -122,8 +122,10 @@ class ExpressionAnalyzer:
         is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements
 
         if is_generic_constructor or is_empty_literal:
-            # Unwrap ReadonlyType so readonly[list[T]] hint works for list() inference
+            # Unwrap ReadonlyType/OwnType so hints like Own[list[T]] work
             inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
             # Check if type_hint matches the constructor's generic type
             hint_matches = False
             if is_generic_constructor:
@@ -167,6 +169,24 @@ class ExpressionAnalyzer:
                         expr.call_type = inner_hint  # type: ignore
                     self.ctx.set_expr_type(expr, inner_hint)
                     return inner_hint
+
+        # Non-empty array literal with list type hint
+        # (e.g. return [x, y] with -> Own[list[T]], or x: list[Int32|None] = [1, None])
+        if isinstance(expr, TpyArrayLiteral) and expr.elements:
+            inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
+            if isinstance(inner_hint, ListType):
+                result = self._analyze_array_literal(expr, inner_hint.element_type)
+                if isinstance(result, PendingListType):
+                    info = self.ctx.list_literals.get(result.literal_id)
+                    if info:
+                        info.has_explicit_annotation = True
+                        info.explicit_type = inner_hint
+                        if info.coerced_element_type is None:
+                            info.coerced_element_type = inner_hint.element_type
+                self.ctx.set_expr_type(expr, result)
+                return result
 
         # Fall back to regular analysis, propagating hint through context
         # for functions that need it (e.g. unsafe_cast)
@@ -465,10 +485,15 @@ class ExpressionAnalyzer:
             effective_type = operand_type.inner
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
 
-        # Logical not: validate operand type (Bool or numeric types only)
+        # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
         if expr.op == "!":
             if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType, OptionalType)):
                 return BOOL
+            if isinstance(effective_type, NamedType):
+                record = self.ctx.registry.get_record(effective_type.name)
+                if record and (record.get_method_overloads("__bool__")
+                               or record.get_method_overloads("__len__")):
+                    return BOOL
             raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected Bool or numeric type)", expr)
 
         # FloatType supports unary negation
@@ -595,12 +620,20 @@ class ExpressionAnalyzer:
             raise self.ctx.error(f"Record '{actual_type.name}' has no field '{expr.field}'", expr)
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
 
-    def _analyze_array_literal(self, expr: TpyArrayLiteral) -> TpyType:
+    def _analyze_array_literal(
+        self, expr: TpyArrayLiteral, expected_elem: TpyType | None = None
+    ) -> TpyType:
         """Analyze an array literal [expr, expr, ...]
 
         In function-local contexts, returns a PendingListType that will be
         resolved to Array or list based on usage (mutation, parameter passing).
         In global/module context, returns ListType directly.
+
+        Args:
+            expected_elem: When provided (from a type annotation or return type hint),
+                each element is checked against this type instead of against the first
+                element. Enables mixed-type literals like [Int32(1), None] when the
+                annotation is list[Int32 | None].
         """
         if not expr.elements:
             raise self.ctx.error("Empty array literal requires explicit type annotation", expr)
@@ -608,40 +641,59 @@ class ExpressionAnalyzer:
         # Analyze all elements first
         elem_types = [self.analyze_expr(e) for e in expr.elements]
 
-        # Determine element type from first element
-        first_type = elem_types[0]
-        # Keep IntLiteralType so array can coerce to either Int32 or BigInt based on context
+        if expected_elem is not None:
+            # Contextual mode: check each element against expected element type
+            first_type = expected_elem
+            for i, elem_type in enumerate(elem_types, 1):
+                if elem_type == expected_elem:
+                    continue
+                try:
+                    self.compat.check_type_compatible(
+                        elem_type, expected_elem,
+                        f"array literal element {i}",
+                        expr.loc
+                    )
+                except SemanticError:
+                    raise self.ctx.error(
+                        f"List literal element {i} has type {elem_type}, "
+                        f"incompatible with annotated element type {expected_elem}", expr
+                    )
+        else:
+            # Inferred mode: check all elements against first element's type
+            first_type = elem_types[0]
+            # Keep IntLiteralType so array can coerce to either Int32 or BigInt based on context
 
-        # Check all elements are compatible
-        for i, elem_type in enumerate(elem_types[1:], 2):
-            # IntLiteralType elements are compatible with each other
-            if isinstance(first_type, IntLiteralType) and isinstance(elem_type, IntLiteralType):
-                continue
-            # IntLiteral coerces to concrete integer types
-            if isinstance(elem_type, IntLiteralType) and isinstance(first_type, (Int32Type, BigIntType)):
-                continue
-            if isinstance(first_type, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
-                # First was literal, but later element is concrete - update first_type
-                first_type = elem_type
-                continue
-            # Nested lists with IntLiteralType elements are compatible
-            if (isinstance(first_type, ListType) and isinstance(elem_type, ListType) and
-                isinstance(first_type.element_type, IntLiteralType) and
-                isinstance(elem_type.element_type, IntLiteralType)):
-                continue
-            # PendingListTypes with compatible element types are compatible
-            if (isinstance(first_type, PendingListType) and isinstance(elem_type, PendingListType) and
-                first_type.size == elem_type.size):
-                # IntLiteralType elements are compatible regardless of value
-                if (isinstance(first_type.element_type, IntLiteralType) and
+            for i, elem_type in enumerate(elem_types[1:], 2):
+                # IntLiteralType elements are compatible with each other
+                if isinstance(first_type, IntLiteralType) and isinstance(elem_type, IntLiteralType):
+                    continue
+                # IntLiteral coerces to concrete integer types
+                if isinstance(elem_type, IntLiteralType) and isinstance(first_type, (Int32Type, BigIntType)):
+                    continue
+                if isinstance(first_type, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                    # First was literal, but later element is concrete - update first_type
+                    first_type = elem_type
+                    continue
+                # Nested lists with IntLiteralType elements are compatible
+                if (isinstance(first_type, ListType) and isinstance(elem_type, ListType) and
+                    isinstance(first_type.element_type, IntLiteralType) and
                     isinstance(elem_type.element_type, IntLiteralType)):
                     continue
-                if first_type.element_type == elem_type.element_type:
-                    continue
-            if elem_type != first_type:
-                raise self.ctx.error(
-                    f"Array literal element {i} has type {elem_type}, expected {first_type}", expr
-                )
+                # PendingListTypes with compatible element types are compatible
+                if (isinstance(first_type, PendingListType) and isinstance(elem_type, PendingListType) and
+                    first_type.size == elem_type.size):
+                    # IntLiteralType elements are compatible regardless of value
+                    if (isinstance(first_type.element_type, IntLiteralType) and
+                        isinstance(elem_type.element_type, IntLiteralType)):
+                        continue
+                    if first_type.element_type == elem_type.element_type:
+                        continue
+                if elem_type != first_type:
+                    raise self.ctx.error(
+                        f"List literal has mixed types: element {i} is {elem_type}, "
+                        f"but earlier elements are {first_type}. "
+                        f"Use a type annotation like list[{first_type} | {elem_type}]", expr
+                    )
 
         size = len(expr.elements)
 

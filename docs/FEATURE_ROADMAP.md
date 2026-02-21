@@ -52,7 +52,7 @@ existing compiler model stays the same for existing code.
 | A5 | Enums | M | Not started | [I](#enums) |
 | A6 | Keyword args + default values | M | Not started | [VII](#keyword-arguments-and-default-values) |
 | A7 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
-| A8 | `__bool__` protocol | S | Not started | [VII](#__bool__-protocol) |
+| A8 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A9 | Constructor initializer list codegen | M | Known bug | [II](#constructor-initializer-list-codegen) |
 
 ### Phase B: Polymorphism Foundation
@@ -1161,7 +1161,8 @@ if c:            # calls c.__bool__()
 
 Also needed: `bool()` builtin dispatching to `__bool__`, and a `Truthy` protocol bound.
 
-**Current state**: Not started.
+**Current state**: Done. `__bool__()` structural detection, `bool()` dispatch, implicit truthiness
+(`if`/`while`/`not`/`and`/`or`), `__len__() != 0` fallback, and `Truthy` protocol bound all working.
 
 **Dependencies**: Protocol system (done).
 

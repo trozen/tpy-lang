@@ -367,6 +367,7 @@ Context-dependent inference for Python-first semantics:
 | Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is read-only view, no mutation possible |
 | Explicit annotation `x: Array[T, N]` | `Array` | `std::array` | User opted into fixed size |
 | Explicit annotation `x: list[T]` | `list` | `std::vector` | User opted into dynamic list |
+| Return type `-> Own[list[T]]` | `list` | `std::vector` | Return type context propagates to literal |
 
 This gives the best of both worlds:
 - **Python semantics by default**: Globals behave like Python module variables (mutable, shareable)
@@ -401,12 +402,25 @@ def caller_direct():
     use_list(list())       # → temp empty std::vector
     use_list([])           # → temp empty std::vector
 
+def make_items() -> Own[list[int]]:
+    return [1, 2, 3]       # → std::vector (return type context)
+
+def make_empty[T]() -> Own[list[T]]:
+    return []              # → std::vector<T> (generic return type context)
+
 def reader(items: Span[int]) -> int:
     return items[0]
 
 def caller2():
     data = [1, 2, 3]       # → std::array<BigInt, 3> (Span is read-only)
     return reader(data)
+```
+
+**Contextual element-type widening**: When the annotation's element type is wider than the literal's inferred element type, the literal adopts the annotation's type. This enables mixed-type literals:
+```python
+# Union element types: literal elements are checked against the annotation
+items: list[Int32 | None] = [Int32(1), None, Int32(3)]
+empty: list[Int32 | None] = []
 ```
 
 Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to functions expecting mutable reference parameters works - the compiler generates temporary variables automatically.
@@ -1079,6 +1093,26 @@ int32_t count(const T_items& items) {
 
 The `tpy::Sized` concept uses the `tpy::__len__()` free function, which has overloads for `std::vector`, `std::array`, `std::span`, `std::string_view`, and `StaticList`, plus a default template for user types with `__len__()` method.
 
+#### Working: Built-in `Truthy` Protocol
+
+The built-in `Truthy` protocol is available from the `tpy` module. Types that implement `__bool__()` conform to `Truthy`, and `bool()` dispatches to `__bool__()` for user-defined types:
+
+```python
+from tpy import Truthy
+
+class Container:
+    count: int
+    def __bool__(self) -> bool:
+        return self.count != 0
+
+def is_truthy(x: Truthy) -> bool:
+    return bool(x)
+```
+
+Generated C++ uses `tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The `tpy::Truthy` concept constrains generic parameters.
+
+Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it.
+
 #### Working: User-Defined Protocols
 
 You can define your own protocols, but **prefer using existing CPython protocols** (like `Sized` from `typing`) when possible. This ensures compatibility with both CPython and TurboPython, and avoids duplicating standard definitions.
@@ -1145,7 +1179,7 @@ use(GoodReader(1))  # OK
 use(BadReader(1))   # ERROR: BadReader does not conform to Readable
 ```
 
-Dunders in the implicit readonly set (`__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.) are automatically treated as readonly in protocol signatures, matching the behavior for record methods. Use `@readonly(False)` to opt out.
+Dunders in the implicit readonly set (`__bool__`, `__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.) are automatically treated as readonly in protocol signatures, matching the behavior for record methods. Use `@readonly(False)` to opt out.
 
 #### Working: Protocol Inheritance
 
@@ -2755,6 +2789,15 @@ b = bool(0)       # → False
 b = bool(42)      # → True (non-zero)
 b = bool(Int32(0))  # → False
 b = bool(Int32(1))  # → True
+
+# User-defined __bool__() dispatch
+class Container:
+    count: int
+    def __bool__(self) -> bool:
+        return self.count != 0
+
+c = Container(3)
+b = bool(c)       # → True (calls c.__bool__())
 ```
 
 **`copy()` (Working)**:
