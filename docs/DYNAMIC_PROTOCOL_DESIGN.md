@@ -12,7 +12,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 4 | Protocol-typed function params (`Base&`, call-site dispatch) | Done |
 | 5 | Direct C++ inheritance (`class Dog(Pet)` -> `struct Dog : __tpy_Base_Pet`) | Done |
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
-| 6 | Return types (provably long-lived values only) | Planned |
+| 6 | Return types (provably long-lived values only) | Done |
 | 7 | `@dynamic` protocol params in record methods | Deferred |
 | 8 | `Optional[Pet]` sema rejection | Gap |
 | 9 | Protocol field access through erased type | Gap |

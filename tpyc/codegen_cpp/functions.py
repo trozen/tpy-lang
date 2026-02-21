@@ -117,6 +117,20 @@ class FunctionGenerator:
                     result.append(ptype.to_cpp_param(pname))
         return ", ".join(result)
 
+    def _resolve_return_type(self, return_type: TpyType, *, const: bool = False) -> str:
+        """Map a return type to C++, using __tpy_Base_{Name}& for @dynamic protocols."""
+        unwrapped = unwrap_readonly(return_type)
+        if is_protocol_type(unwrapped) and isinstance(unwrapped, NamedType):
+            pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
+            if pi and pi.is_dynamic:
+                base = f"__tpy_Base_{unwrapped.name}"
+                if const or isinstance(return_type, ReadonlyType):
+                    return f"const {base}&"
+                return f"{base}&"
+        if const:
+            return return_type.to_cpp_return_const()
+        return return_type.to_cpp_return()
+
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
         """Check if any params are @dynamic protocol types (need Base& codegen)."""
         for _, ptype in params:
@@ -155,12 +169,12 @@ class FunctionGenerator:
             out.write(self.protocols.gen_combined_template_header(
                 func.type_params, protocol_params, func.type_param_bounds
             ))
-            ret_type = func.return_type.to_cpp_return()
+            ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)
                       if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
             out.write(f"{ret_type} {func.name}({params});\n")
         else:
-            ret_type = func.return_type.to_cpp_return()
+            ret_type = self._resolve_return_type(func.return_type)
             params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params});\n")
         return True
@@ -194,7 +208,7 @@ class FunctionGenerator:
                 out.write(self.protocols.gen_combined_template_header(
                     func.type_params, protocol_params, func.type_param_bounds
                 ))
-                ret_type = func.return_type.to_cpp_return()
+                ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params)
                           if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
                 out.write(f"{ret_type} {func.name}({params});\n")
@@ -205,7 +219,7 @@ class FunctionGenerator:
         # Non-template non-stub: already forward-declared
         if not func.is_stub:
             return False
-        ret_type = func.return_type.to_cpp_return()
+        ret_type = self._resolve_return_type(func.return_type)
         params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
         out.write(f"{ret_type} {func.name}({params});\n")
         return True
@@ -259,12 +273,12 @@ class FunctionGenerator:
             out.write(self.protocols.gen_combined_template_header(
                 func.type_params, protocol_params, func.type_param_bounds
             ))
-            ret_type = func.return_type.to_cpp_return()
+            ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)
                       if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
             out.write(f"{ret_type} {func.name}({params}) {{\n")
         else:
-            ret_type = func.return_type.to_cpp_return()
+            ret_type = self._resolve_return_type(func.return_type)
             params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params}) {{\n")
 
@@ -341,7 +355,7 @@ class FunctionGenerator:
         override: bool = False,
     ) -> None:
         """Emit a single method overload (const or non-const)."""
-        ret_type = cpp_return_type.to_cpp_return_const() if const else cpp_return_type.to_cpp_return()
+        ret_type = self._resolve_return_type(cpp_return_type, const=const)
         if const:
             params = self.gen_params(method.params, method.type_params, const_params=True)
         else:

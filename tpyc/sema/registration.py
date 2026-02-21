@@ -636,13 +636,16 @@ class TypeRegistrar:
                 func.loc
             )
 
-        # Protocol types cannot be used as return types (but TypeParamRef is OK)
+        # Protocol types cannot be used as return types (but TypeParamRef is OK).
+        # Exception: @dynamic protocols can be returned (lifetime-checked in sema).
         if is_protocol_type(resolved_return):
-            raise SemanticError(
-                f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
-                f"Protocols are only valid for function parameters",
-                func.loc
-            )
+            pi = self.ctx.registry.get_protocol(resolved_return.name)
+            if not (pi and pi.is_dynamic):
+                raise SemanticError(
+                    f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
+                    f"Protocols are only valid for function parameters",
+                    func.loc
+                )
 
         # Convert parsed bounds to NamedType (validate they are protocols)
         type_param_bounds: dict[str, NamedType] = {}

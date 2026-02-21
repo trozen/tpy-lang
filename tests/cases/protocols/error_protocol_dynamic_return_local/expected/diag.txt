@@ -1,0 +1,1 @@
+main.tp.py:15: error: Cannot return local or temporary as 'Pet'. Dynamic protocol return requires a value that outlives the caller (parameter or global).

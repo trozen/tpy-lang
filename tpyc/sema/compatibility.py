@@ -563,6 +563,13 @@ class TypeCompatibility:
 
         # Check if the expression is safe to return as a reference
         if self.is_dangling_return(expr):
+            if is_protocol_type(return_type):
+                raise self.ctx.error(
+                    f"Cannot return local or temporary as '{return_type}'. "
+                    f"Dynamic protocol return requires a value that outlives the caller "
+                    f"(parameter or global).",
+                    expr
+                )
             raise self.ctx.error(
                 f"Cannot return local or temporary as reference. "
                 f"Object type '{return_type}' is returned by reference. "
