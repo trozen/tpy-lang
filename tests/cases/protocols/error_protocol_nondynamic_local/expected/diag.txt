@@ -1,0 +1,1 @@
+main.tp.py:13: error: Protocol type 'Greetable' cannot be used as a variable type. Only @dynamic protocols can be used as variable types

@@ -116,13 +116,23 @@ class TempState:
         temp_name = f"__tmp_{self._counter}"
         is_protocol = is_protocol_type(param_type)
         type_cpp = "auto" if is_protocol or isinstance(param_type, TypeParamRef) else param_type.to_cpp()
-        self._pending.append((temp_name, type_cpp, init_expr))
+        self._pending.append((temp_name, type_cpp, init_expr, False))
+        return temp_name
+
+    def create_typed(self, cpp_type: str, init_expr: str, *, brace_init: bool = False) -> str:
+        """Create a temp variable with an explicit C++ type."""
+        self._counter += 1
+        temp_name = f"__tmp_{self._counter}"
+        self._pending.append((temp_name, cpp_type, init_expr, brace_init))
         return temp_name
 
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
-        for temp_name, type_cpp, init_expr in self._pending:
-            out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
+        for temp_name, type_cpp, init_expr, brace_init in self._pending:
+            if brace_init:
+                out.write(f"{indent}{type_cpp} {temp_name}{{{init_expr}}};\n")
+            else:
+                out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
         self._pending.clear()
 
 

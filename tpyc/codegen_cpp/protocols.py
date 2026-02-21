@@ -38,12 +38,19 @@ class ProtocolGenerator:
         return typ
 
     def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType]]:
-        """Get list of protocol-typed parameters (unwraps readonly[protocol])."""
+        """Get list of static protocol-typed parameters (unwraps readonly[protocol]).
+
+        Excludes @dynamic protocols -- those use concrete __tpy_Base& params
+        instead of template parameters.
+        """
         result = []
         for pname, ptype in params:
             unwrapped = unwrap_readonly(ptype)
             resolved = self.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved):
+                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                if protocol_info and protocol_info.is_dynamic:
+                    continue
                 result.append((pname, resolved))
         return result
 

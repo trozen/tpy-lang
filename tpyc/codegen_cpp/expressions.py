@@ -639,6 +639,24 @@ class ExpressionGenerator:
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
+                # @dynamic protocol params: wrap concrete args in temp adapter
+                unwrapped_ptype = unwrap_readonly(resolved_ptype)
+                if is_protocol_type(unwrapped_ptype):
+                    protocol_info = self.ctx.analyzer.registry.get_protocol(unwrapped_ptype.name)
+                    if protocol_info and protocol_info.is_dynamic:
+                        arg_type = self.ctx.get_expr_type(arg)
+                        if is_protocol_type(arg_type):
+                            # Already erased (dynamic protocol var) -- dereference pointer-local
+                            gen_args.append(self.gen_expr_deref(arg, resolved_ptype))
+                        else:
+                            # Concrete type -- wrap in temporary adapter
+                            concrete_cpp = self.types.type_to_cpp(arg_type)
+                            adapter_type = f"__tpy_{unwrapped_ptype.name}_Adapter<{concrete_cpp}>"
+                            arg_expr = self.gen_expr_deref(arg, arg_type)
+                            temp_name = self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
+                            gen_args.append(temp_name)
+                        continue
+
                 # Optional non-value params are T* / const T* -- pass raw pointer
                 actual_ptype = unwrap_readonly(resolved_ptype)
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():

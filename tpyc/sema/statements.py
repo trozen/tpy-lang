@@ -423,12 +423,15 @@ class StatementAnalyzer:
             )
 
         # Protocol types can only be used for function parameters, not variables
+        # Exception: @dynamic protocols can be used as variable types
         if stmt.type and is_protocol_type(stmt.type):
-            raise self.ctx.error(
-                f"Protocol type '{stmt.type.name}' cannot be used as a variable type. "
-                f"Protocols are only valid for function parameters",
-                stmt
-            )
+            protocol_info = self.ctx.registry.get_protocol(stmt.type.name)
+            if not protocol_info or not protocol_info.is_dynamic:
+                raise self.ctx.error(
+                    f"Protocol type '{stmt.type.name}' cannot be used as a variable type. "
+                    f"Only @dynamic protocols can be used as variable types",
+                    stmt
+                )
 
         # Detect native global import: x: T = native_c_global("name") / native_global("name")
         if isinstance(stmt.init, TpyCall) and self.ctx.current_ns:

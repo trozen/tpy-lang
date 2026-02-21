@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
     PendingListType, ListType, ArrayType, TypeParamRef, NamedType, UnionType,
     NoneType, VoidType,
-    unwrap_readonly,
+    unwrap_readonly, is_protocol_type,
     INT32, BIGINT, FLOAT,
     _union_alias_names
 )
@@ -198,7 +198,12 @@ class TypeResolver:
         For imported record types from user modules, generates fully qualified names
         like tpy_user::utils::Point or tpy_user::pkg::mod::Point for packages.
         Native records use their native C++ name directly (no namespace qualification).
+        @dynamic protocol types map to __tpy_{Name}_Base.
         """
+        if is_protocol_type(typ):
+            protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
+            if protocol_info and protocol_info.is_dynamic:
+                return f"__tpy_{typ.name}_Base"
         if isinstance(typ, NamedType) and typ.is_record:
             # Native records use their native C++ name directly (globally visible)
             record_info = self.ctx.analyzer.registry.get_record(typ.name)

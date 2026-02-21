@@ -86,7 +86,11 @@ class FunctionGenerator:
 
     def gen_params_with_protocols(self, params: list[tuple[str, TpyType]],
                                    func_type_params: list[str] | None = None) -> str:
-        """Generate function parameter list, using template types for protocol params."""
+        """Generate function parameter list, using template types for protocol params.
+
+        Static protocols use template types (T_paramname).
+        @dynamic protocols use concrete __tpy_Base& reference params.
+        """
         result = []
         for pname, ptype in params:
             # Resolve type in case it's a NamedType that's actually a protocol
@@ -97,13 +101,32 @@ class FunctionGenerator:
             else:
                 resolved = self.protocols.resolve_type_for_codegen(unwrapped)
                 if is_protocol_type(resolved):
-                    if isinstance(ptype, ReadonlyType):
-                        result.append(f"const T_{pname}& {pname}")
+                    protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                    if protocol_info and protocol_info.is_dynamic:
+                        base_type = f"__tpy_{resolved.name}_Base"
+                        if isinstance(ptype, ReadonlyType):
+                            result.append(f"const {base_type}& {pname}")
+                        else:
+                            result.append(f"{base_type}& {pname}")
                     else:
-                        result.append(f"T_{pname}& {pname}")
+                        if isinstance(ptype, ReadonlyType):
+                            result.append(f"const T_{pname}& {pname}")
+                        else:
+                            result.append(f"T_{pname}& {pname}")
                 else:
                     result.append(ptype.to_cpp_param(pname))
         return ", ".join(result)
+
+    def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
+        """Check if any params are @dynamic protocol types (need Base& codegen)."""
+        for _, ptype in params:
+            unwrapped = unwrap_readonly(ptype)
+            resolved = self.protocols.resolve_type_for_codegen(unwrapped)
+            if is_protocol_type(resolved):
+                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                if protocol_info and protocol_info.is_dynamic:
+                    return True
+        return False
 
     def is_template_function(self, func: TpyFunction) -> bool:
         """Check if a function needs a C++ template (generic type params or protocol params)."""
@@ -125,6 +148,7 @@ class FunctionGenerator:
             return False
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
 
         if is_generic or protocol_params:
@@ -133,11 +157,11 @@ class FunctionGenerator:
             ))
             ret_type = func.return_type.to_cpp_return()
             params = (self.gen_params_with_protocols(func.params, func.type_params)
-                      if protocol_params else self.gen_params(func.params, func.type_params))
+                      if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
             out.write(f"{ret_type} {func.name}({params});\n")
         else:
             ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params(func.params, func.type_params)
+            params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params});\n")
         return True
 
@@ -160,6 +184,7 @@ class FunctionGenerator:
             return True
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
 
         if is_generic or protocol_params:
@@ -171,7 +196,7 @@ class FunctionGenerator:
                 ))
                 ret_type = func.return_type.to_cpp_return()
                 params = (self.gen_params_with_protocols(func.params, func.type_params)
-                          if protocol_params else self.gen_params(func.params, func.type_params))
+                          if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
                 out.write(f"{ret_type} {func.name}({params});\n")
             else:
                 self.gen_function_def(out, func)
@@ -181,7 +206,7 @@ class FunctionGenerator:
         if not func.is_stub:
             return False
         ret_type = func.return_type.to_cpp_return()
-        params = self.gen_params(func.params, func.type_params)
+        params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
         out.write(f"{ret_type} {func.name}({params});\n")
         return True
 
@@ -226,6 +251,7 @@ class FunctionGenerator:
             return
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
 
         if is_generic or protocol_params:
@@ -235,11 +261,11 @@ class FunctionGenerator:
             ))
             ret_type = func.return_type.to_cpp_return()
             params = (self.gen_params_with_protocols(func.params, func.type_params)
-                      if protocol_params else self.gen_params(func.params, func.type_params))
+                      if protocol_params or has_dynamic else self.gen_params(func.params, func.type_params))
             out.write(f"{ret_type} {func.name}({params}) {{\n")
         else:
             ret_type = func.return_type.to_cpp_return()
-            params = self.gen_params(func.params, func.type_params)
+            params = self.gen_params_with_protocols(func.params) if has_dynamic else self.gen_params(func.params, func.type_params)
             out.write(f"{ret_type} {func.name}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)

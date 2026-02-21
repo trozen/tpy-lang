@@ -1484,7 +1484,33 @@ def speak[T: Pet](animal: T) -> None:
     print(animal.make_noise())  # static dispatch via template
 ```
 
-**Current status**: Foundation only (parsing, validation, codegen of base/adapter). Protocol-typed locals, function parameters, and return types are planned in future phases. See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) section 12 for the full design.
+**Dynamic dispatch** -- protocol-typed variables and function parameters use runtime polymorphism:
+
+```python
+@dynamic
+class Pet(Protocol):
+    def make_noise(self) -> str: ...
+
+class Dog(Pet):
+    def make_noise(self) -> str: return "Woof"
+class Cat(Pet):
+    def make_noise(self) -> str: return "Meow"
+
+# Protocol-typed local variable (stack-allocated adapter, pointer-local)
+pet: Pet = Dog()
+pet.make_noise()    # virtual dispatch -> "Woof"
+pet = Cat()         # rebind to different concrete type
+pet.make_noise()    # virtual dispatch -> "Meow"
+
+# Function parameter (concrete args wrapped in temporary adapter)
+def greet(pet: Pet) -> None:
+    print(pet.make_noise())
+
+greet(Dog())        # call-site adapter wrapping
+greet(pet)          # already-erased value passed directly
+```
+
+**Current status**: Foundation + dynamic dispatch for locals and function parameters. Return types are not yet supported (needs lifetime analysis). See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) section 12 for the full design.
 
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 

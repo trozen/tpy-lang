@@ -12,7 +12,7 @@
 | **Phase 6** | Compiler trait protocols (`NativeContiguous`, `MutableSequence`, `NativeRangeConstructible`) | Done |
 | **Phase 7** | User-defined protocols (moved to Phase 1) | Done |
 | **Phase 8** | Python-compatible `Iterable[T]`/`Iterator[T]` with `__iter__`/`__next__` | Planned |
-| **Phase 9** | Dynamic protocol dispatch (`@dynamic`, vtables, zero-allocation stack dispatch) | Partial (steps 1-2) |
+| **Phase 9** | Dynamic protocol dispatch (`@dynamic`, vtables, zero-allocation stack dispatch) | Partial (steps 1-4) |
 
 ## Overview
 
