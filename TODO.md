@@ -9,7 +9,11 @@
 files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
-- constant global variables (see `Final` in Language Features Roadmap)
+- ~~constant global variables~~ DONE: `Final[T]` for primitive types (constexpr/const at namespace scope)
+- bare `Final` (infer type from initializer, e.g. `x: Final = 1`; could generalize to `GenType[T]: x: GenType = 1` inducing `T = Int32`)
+- `Final[T]` arithmetic initializers (requires constexpr checked arithmetic or plain-op codegen for const contexts)
+- `Final[T]` for class-level constants, local constants
+- `Final[T]` for non-primitive types (e.g. `Final[list[Int32]]` -- needs deep immutability enforcement)
 - "@native_c, @native, @extern_c, @readonly, @noalloc are all hard-coded parser keywords" -- should be handled like normal functions eventually (maybe in tpy.extern package?)
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)

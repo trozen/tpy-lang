@@ -214,6 +214,7 @@ class TpyVarDecl(TpyStmt):
     init: Optional[TpyExpr]
     linkage: VarLinkage = VarLinkage.DEFAULT
     native_name: str | None = None
+    is_final: bool = False  # Set by sema for Final[T] constant globals
     # Set by sema: union assignment narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
 

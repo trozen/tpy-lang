@@ -1,0 +1,1 @@
+main.py:5: error: Final[list[Int32]] is not supported; only primitive types (int, float, bool, str, Char, IntN) are allowed

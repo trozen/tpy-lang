@@ -1,0 +1,1 @@
+main.py:5: error: Final variable 'X' must have an initializer

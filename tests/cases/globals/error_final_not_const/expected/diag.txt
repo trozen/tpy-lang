@@ -1,0 +1,1 @@
+main.py:8: error: Final variable 'X' requires a compile-time constant initializer

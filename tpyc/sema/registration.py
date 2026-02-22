@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS,
+    IMPLICIT_READONLY_METHODS, FinalType,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
 from .diagnostics import SemanticError
@@ -704,8 +704,14 @@ class TypeRegistrar:
         """
         for stmt in stmts:
             if isinstance(stmt, TpyVarDecl) and stmt.type:
-                self.ctx.global_scope.define(stmt.name, stmt.type)
-                self.ctx.global_ns.bind_variable(stmt.name, stmt.type)
+                actual_type = stmt.type
+                # Detect Final[T]: unwrap, record finality, register inner type
+                if isinstance(actual_type, FinalType):
+                    actual_type = actual_type.wrapped
+                    stmt.is_final = True
+                    self.ctx.final_globals.add(stmt.name)
+                self.ctx.global_scope.define(stmt.name, actual_type)
+                self.ctx.global_ns.bind_variable(stmt.name, actual_type)
                 # Track with line number for order-aware codegen (earliest line wins)
                 decl_line = stmt.loc.line if stmt.loc else 0
                 if stmt.name not in self.ctx.top_level_decls:

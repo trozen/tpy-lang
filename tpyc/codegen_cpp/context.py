@@ -188,6 +188,7 @@ class CodeGenContext:
     # --- Pointer-local tracking ---
     pointer_locals: set[str] = field(default_factory=set)
     pointer_globals: set[str] = field(default_factory=set)
+    final_globals: set[str] = field(default_factory=set)
     slots: SlotState = field(default_factory=SlotState)
     rebind_slots: dict[str, str] = field(default_factory=dict)
     plain_rebind_slots: set[str] = field(default_factory=set)

@@ -45,7 +45,7 @@ existing compiler model stays the same for existing code.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| A1 | Final constants | S | Not started | [I](#final--constant-globals) |
+| A1 | Final constants | S | Done | [I](#final--constant-globals) |
 | A2 | Type aliases | S | Done | [I](#type-aliases) |
 | A3 | Generic Optional codegen fix | M | Done | [I](#generic-optional-codegen-fix) |
 | A4 | DynStr (owned strings) | M | Designed | [I](#string-ownership-dynstr) |
@@ -315,18 +315,24 @@ Variadic type params for argument types is a design question.
 ### Final / Constant Globals
 
 ```python
-MAX_SIZE: Final = Int32(1024)     # -> constexpr int32_t MAX_SIZE = 1024;
-PI: Final = 3.14159               # -> constexpr double PI = 3.14159;
+MAX_SIZE: Final[Int32] = 100      # -> inline constexpr int32_t MAX_SIZE = 100;
+PI: Final[float] = 3.14159        # -> inline constexpr double PI = 3.14159;
+BIG: Final[int] = 1000000         # -> const tpy::BigInt BIG = ...;
 ```
 
-`Final` in declaration context means full immutability (compile-time constant).
-Semantically equivalent to `readonly` but for declarations rather than type positions.
+`Final[T]` marks a module-level binding as a compile-time constant. Stricter than
+Python's `Final`: frozen binding + immutable value. Initializer must be a literal,
+unary op on literal, or reference to a previously declared Final (no forward references).
+Local shadowing in functions is allowed.
 
-**Current state**: Not started. Infrastructure exists (`@readonly`).
+Supported types: fixed-width integers, float, bool, str, Char, BigInt. Constexpr-eligible
+types emit `inline constexpr` in header; BigInt uses `extern const` / `const` split.
+
+**Current state**: Done. Bare `Final` (type inference) not yet supported.
 
 **Dependencies**: Stepping stone to compile-time evaluation.
 
-**Effort**: S (extends existing readonly infrastructure)
+**Effort**: S
 
 ---
 
@@ -781,9 +787,9 @@ Two approaches: embedded interpreter (like Zig comptime) or compile-and-exec dur
 compilation. The embedded interpreter is simpler but limited; compile-and-exec is more
 powerful but requires a working TPy-to-native pipeline during compilation.
 
-**Current state**: Not started. `Final` not yet implemented.
+**Current state**: Not started. `Final[T]` constants done (primitive literals only).
 
-**Dependencies**: `Final` constants (stepping stone). `@pure` effect (determines eligibility).
+**Dependencies**: `Final` constants (done). `@pure` effect (determines eligibility).
 
 **Effort**: XL (interpreter or compile-during-compile infrastructure)
 

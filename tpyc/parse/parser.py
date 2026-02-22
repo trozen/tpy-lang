@@ -10,8 +10,8 @@ import ast
 from typing import Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, TypeParamRef,
-    OptionalType, VoidType, make_union,
+    TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, FinalType,
+    TypeParamRef, OptionalType, VoidType, make_union,
     INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
@@ -930,6 +930,9 @@ class Parser:
                     if original == "Optional":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return OptionalType(inner)
+                    elif original == "Final":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return FinalType(inner)
             else:
                 if raw_name:
                     self._raise_unresolved_import_error(raw_name, node)

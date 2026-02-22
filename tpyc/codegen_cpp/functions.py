@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
-    BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly,
+    BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -442,6 +442,38 @@ class FunctionGenerator:
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:
             out.write(f"extern {cpp_type}* {stmt.name};\n")
+
+    def _gen_final_init_expr(self, stmt: TpyVarDecl, var_type: TpyType) -> str:
+        """Generate the initializer expression for a Final global."""
+        return self.statements.expressions.gen_expr(stmt.init, var_type)
+
+    def gen_final_global_header(self, out: TextIO, stmt: TpyVarDecl) -> None:
+        """Generate a Final global declaration in header file.
+
+        Constexpr-eligible types: inline constexpr T NAME = VALUE;
+        BigInt: extern const tpy::BigInt NAME;
+        """
+        var_type = self._resolve_global_type(stmt)
+        cpp_type = var_type.to_cpp()
+        if is_constexpr_eligible(var_type):
+            init_expr = self._gen_final_init_expr(stmt, var_type)
+            out.write(f"inline constexpr {cpp_type} {stmt.name} = {init_expr};\n")
+        else:
+            # BigInt and other non-constexpr types: extern const in header
+            out.write(f"extern const {cpp_type} {stmt.name};\n")
+
+    def gen_final_global_source(self, out: TextIO, stmt: TpyVarDecl) -> None:
+        """Generate a Final global definition in source file.
+
+        Only needed for non-constexpr types (BigInt). Constexpr types are
+        fully defined in the header via inline constexpr.
+        """
+        var_type = self._resolve_global_type(stmt)
+        if is_constexpr_eligible(var_type):
+            return  # Defined in header via inline constexpr
+        cpp_type = var_type.to_cpp()
+        init_expr = self._gen_final_init_expr(stmt, var_type)
+        out.write(f"const {cpp_type} {stmt.name} = {init_expr};\n")
 
     def gen_module_init_decl(self, out: TextIO) -> None:
         """Generate module init function declaration in header."""

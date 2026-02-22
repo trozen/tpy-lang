@@ -1,0 +1,1 @@
+main.py:6: error: Final can only be used at module level

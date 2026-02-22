@@ -3245,6 +3245,40 @@ Generated C++:
 - Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
 - `@native("cpp_name")` on methods allows renaming individual methods
 
+### Final Constants (Working)
+
+Compile-time constant globals using `Final[T]` from Python's `typing` module:
+
+```python
+from typing import Final
+from tpy import Int32, Char
+
+MAX_SIZE: Final[Int32] = 100
+PI: Final[float] = 3.14159
+DEBUG: Final[bool] = True
+NAME: Final[str] = "hello"
+LETTER: Final[Char] = "A"
+BASE: Final[Int32] = 10
+ALIAS: Final[Int32] = BASE  # cross-reference to another Final
+BIG: Final[int] = 1000000   # BigInt
+```
+
+**Semantics** (stricter than Python's `Final`):
+- Frozen binding: cannot be reassigned at module level, cannot use `global X` in functions
+- Immutable value: treated as readonly (no mutation through the binding)
+- Local shadowing allowed: functions can declare local variables with the same name
+- Initializer must be a compile-time constant: literal or reference to a previously declared Final (no forward references)
+
+**C++ mapping:**
+- Constexpr-eligible types (fixed-width integers, float, bool, char, str): `inline constexpr T NAME = VALUE;` in header
+- BigInt (`int`): `const tpy::BigInt NAME = VALUE;` in source, `extern const` in header
+
+**Restrictions (v1):**
+- Module-level only (not in functions or classes)
+- Primitive types only (no `Final[list[T]]`, `Final[SomeRecord]`)
+- No arithmetic in initializers (`Final[Int32] = A + 1` not supported yet)
+- Must use explicit type: `Final[T]` (bare `Final` not yet supported)
+
 ### Native Global Variables (Working)
 
 Import extern C/C++ global variables:
