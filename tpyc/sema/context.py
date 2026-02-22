@@ -86,6 +86,10 @@ class SemanticContext:
     user_imported_type_aliases: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
 
+    # --- Final globals ---
+    final_globals: set[str] = field(default_factory=set)
+    analyzed_finals: set[str] = field(default_factory=set)
+
     # --- Builtins ---
     builtin_names: dict[str, TpyType] = field(default_factory=dict)
 

@@ -637,6 +637,9 @@ class StatementGenerator:
         from ..parse.nodes import VarLinkage
         if stmt.linkage != VarLinkage.DEFAULT:
             return None
+        # Final globals are defined at namespace scope, skip in __tpy_init
+        if stmt.is_final:
+            return None
         # Global-declared vars: emit assignment to the existing global, not a local decl
         if stmt.name in self.ctx.global_declared_vars:
             if not stmt.init:

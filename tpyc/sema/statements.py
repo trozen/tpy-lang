@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
+    FinalType, FixedIntType, BoolType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
     unwrap_readonly,
@@ -21,6 +22,7 @@ from ..parse import (
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName,
+    TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyFieldAccess, TpyFunction,
 )
 from ..coercions import CoercionContext
@@ -381,6 +383,10 @@ class StatementAnalyzer:
         if self.ctx.is_top_level or isinstance(self.ctx.current_function, type(MODULE_INIT_CONTEXT)):
             raise self.ctx.error("'global' declaration is only allowed inside a function", stmt)
         for name in stmt.names:
+            # Cannot use 'global' with Final variables
+            if name in self.ctx.final_globals:
+                raise self.ctx.error(
+                    f"Cannot use 'global' with Final variable '{name}'", stmt)
             # Name must exist in global scope
             global_type = self.ctx.global_scope.lookup(name)
             if global_type is None:
@@ -393,6 +399,21 @@ class StatementAnalyzer:
                         raise self.ctx.error(
                             f"name '{name}' is a parameter and cannot be declared global", stmt)
             self.ctx.global_declarations.add(name)
+
+    def _is_constant_expr(self, expr: TpyExpr) -> bool:
+        """Check if an expression is a compile-time constant for Final globals.
+
+        Accepts: literals, unary ops on literals (e.g. -42, not True),
+        references to other Final globals.
+        Does not accept arithmetic (checked ops aren't constexpr).
+        """
+        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral)):
+            return True
+        if isinstance(expr, TpyUnaryOp):
+            return self._is_constant_expr(expr.operand)
+        if isinstance(expr, TpyName) and expr.name in self.ctx.analyzed_finals:
+            return True
+        return False
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
         """Error if reassigning a non-value-type param, loop variable, or global."""
@@ -467,6 +488,36 @@ class StatementAnalyzer:
                 f"Readonly on locals is deduced from initialization",
                 stmt
             )
+
+        # Final[T] validation
+        # Detect FinalType from annotation (covers function-level where register_globals didn't run)
+        if stmt.type and isinstance(stmt.type, FinalType):
+            stmt.type = stmt.type.wrapped
+            stmt.is_final = True
+        if stmt.is_final:
+            if not self.ctx.is_top_level:
+                raise self.ctx.error(
+                    f"Final can only be used at module level",
+                    stmt
+                )
+            if not stmt.init:
+                raise self.ctx.error(
+                    f"Final variable '{stmt.name}' must have an initializer",
+                    stmt
+                )
+            inner = stmt.type
+            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, BoolType, StrType, CharType)):
+                raise self.ctx.error(
+                    f"Final[{inner}] is not supported; "
+                    f"only primitive types (int, float, bool, str, Char, IntN) are allowed",
+                    stmt
+                )
+            if not self._is_constant_expr(stmt.init):
+                raise self.ctx.error(
+                    f"Final variable '{stmt.name}' requires a compile-time constant initializer",
+                    stmt
+                )
+            self.ctx.analyzed_finals.add(stmt.name)
 
         # Protocol types can only be used for function parameters, not variables
         # Exception: @dynamic protocols can be used as variable types
@@ -545,6 +596,14 @@ class StatementAnalyzer:
             )
             if is_preregistered_global_write:
                 existing_type = None
+
+        # Block reassignment of Final globals at module level
+        # (inside functions, local shadowing is allowed)
+        if self.ctx.is_top_level and not stmt.is_final and stmt.name in self.ctx.final_globals:
+            raise self.ctx.error(
+                f"Cannot reassign Final variable '{stmt.name}'",
+                stmt
+            )
 
         # Disallow reassignment of non-value-type params and loop vars
         if existing_type is not None:
@@ -796,6 +855,12 @@ class StatementAnalyzer:
             if declared_target_type is not None:
                 target_type = declared_target_type
         if isinstance(stmt.target, TpyName):
+            # Block reassignment of Final globals at module level
+            if self.ctx.is_top_level and stmt.target.name in self.ctx.final_globals:
+                raise self.ctx.error(
+                    f"Cannot reassign Final variable '{stmt.target.name}'",
+                    stmt
+                )
             # Match var-decl flow: reject forbidden rebinding before any type mutation.
             self._check_nonvalue_rebinding(stmt.target.name, stmt)
             declared_target_type = self.ctx.current_scope.lookup(stmt.target.name)
@@ -891,6 +956,12 @@ class StatementAnalyzer:
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
+        # Block augmented assignment of Final globals at module level
+        if isinstance(stmt.target, TpyName) and self.ctx.is_top_level and stmt.target.name in self.ctx.final_globals:
+            raise self.ctx.error(
+                f"Cannot reassign Final variable '{stmt.target.name}'",
+                stmt
+            )
         from .operators import OperatorResolver
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)

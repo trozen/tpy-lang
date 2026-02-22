@@ -134,6 +134,7 @@ class CodeGenerator:
         # (needed for extern declarations in header)
         # Track seen names and types to handle re-declarations (z = 0; z = 5; -> one global, one assignment)
         global_decls = []
+        final_decls: list[TpyVarDecl] = []
         native_globals: list[TpyVarDecl] = []
         seen_globals: dict[str, TpyType | None] = {}
         for stmt in module.top_level_stmts:
@@ -151,6 +152,8 @@ class CodeGenerator:
                     seen_globals[stmt.name] = var_type
                     if stmt.linkage != VarLinkage.DEFAULT:
                         native_globals.append(stmt)
+                    elif stmt.is_final:
+                        final_decls.append(stmt)
                     else:
                         global_decls.append(stmt)
 
@@ -165,12 +168,15 @@ class CodeGenerator:
 
         # Store global names for use in expression generation (method/field access)
         self.ctx.global_names = set(seen_globals.keys())
+        # Track Final globals (constexpr/const at namespace scope)
+        self.ctx.final_globals = {stmt.name for stmt in final_decls}
         # Classify globals: non-value-type -> pointer globals (T*)
-        # Exclude native globals -- they're external externs, not our managed T* slots
+        # Exclude native globals and final globals
         self.ctx.pointer_globals = {
             name for name, typ in seen_globals.items()
             if typ and not typ.is_value_type()
             and name not in self.ctx.native_global_names
+            and name not in self.ctx.final_globals
         }
         # Also include imported non-value-type globals
         for name in self.ctx.user_imported_variables:
@@ -183,7 +189,7 @@ class CodeGenerator:
             self.ctx.global_names.add("__name__")
 
         # Generate protocol ordering and forward declarations
-        self._generate_protocol_ordering(hpp, module, global_decls, seen_globals)
+        self._generate_protocol_ordering(hpp, module, global_decls, final_decls, seen_globals)
 
         # Generate global definitions in source (before functions)
         # __name__ is always present (synthetic if not user-defined)
@@ -191,6 +197,9 @@ class CodeGenerator:
             cpp.write('std::string_view __name__;\n')
         for stmt in global_decls:
             self.functions.gen_global_decl(cpp, stmt)
+        # Final globals: constexpr in header, const in source (BigInt only)
+        for stmt in final_decls:
+            self.functions.gen_final_global_source(cpp, stmt)
         cpp.write("\n")
 
         # Generate function definitions (skip template functions -- defined in header)
@@ -210,7 +219,9 @@ class CodeGenerator:
         tpy_module_name = self.analyzer.ctx.module_name
         # Imports are now included in top_level_stmts as TpyImport nodes
         # They get emitted as __tpy_init() calls in statement order (Python semantics)
-        self.functions.gen_module_init(cpp, module.top_level_stmts, seen_globals,
+        # Exclude Final globals from init pre-seeding (they live at namespace scope)
+        init_globals = {k: v for k, v in seen_globals.items() if k not in self.ctx.final_globals}
+        self.functions.gen_module_init(cpp, module.top_level_stmts, init_globals,
                                        has_user_main=False, module_name=tpy_module_name)
         # Only generate C++ main() for entry point module
         if is_entry_point:
@@ -233,7 +244,8 @@ class CodeGenerator:
         return hpp.getvalue(), cpp.getvalue()
 
     def _generate_protocol_ordering(self, hpp: TextIO, module: TpyModule,
-                                    global_decls: list, seen_globals: dict) -> None:
+                                    global_decls: list, final_decls: list,
+                                    seen_globals: dict) -> None:
         """Generate protocols, forward declarations, and records in proper order.
 
         C++ requires forward declarations and concepts to be defined before use.
@@ -241,7 +253,7 @@ class CodeGenerator:
         """
         deps = self._collect_protocol_deps(module)
         self._generate_forward_decls_and_concepts(hpp, module, deps)
-        self._generate_definitions_and_reexports(hpp, module, global_decls, seen_globals, deps)
+        self._generate_definitions_and_reexports(hpp, module, global_decls, final_decls, seen_globals, deps)
 
     def _is_native_record(self, record_name: str) -> bool:
         """Check if a record is a native import."""
@@ -424,7 +436,7 @@ class CodeGenerator:
 
     def _generate_definitions_and_reexports(
         self, hpp: TextIO, module: TpyModule,
-        global_decls: list, seen_globals: dict, deps: _ProtocolDeps
+        global_decls: list, final_decls: list, seen_globals: dict, deps: _ProtocolDeps
     ) -> None:
         """Generate remaining forward decls, global externs, record definitions, functions, and re-exports."""
         # Forward declare remaining records (excluding native records)
@@ -458,6 +470,9 @@ class CodeGenerator:
             hpp.write("extern std::string_view __name__;\n")
         for stmt in global_decls:
             self.functions.gen_global_extern(hpp, stmt)
+        # Final global declarations (inline constexpr or extern const)
+        for stmt in final_decls:
+            self.functions.gen_final_global_header(hpp, stmt)
         hpp.write("\n")
 
         # Imported type alias using-declarations (before function forward

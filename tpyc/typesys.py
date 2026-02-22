@@ -698,6 +698,48 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+@dataclass(frozen=True)
+class FinalType(TpyType):
+    """Final type modifier -- marks a binding as immutable constant (Final[T]).
+
+    Thin wrapper stripped during semantic analysis. The inner type is
+    registered in the scope; finality is tracked via is_final on the
+    VarDecl node and the final_globals set in SemanticContext.
+    """
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        return self.wrapped.to_cpp()
+
+    def is_value_type(self) -> bool:
+        return self.wrapped.is_value_type()
+
+    def __str__(self) -> str:
+        return f"Final[{self.wrapped}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return FinalType(types[0])
+
+
+def unwrap_final(typ: 'TpyType') -> 'TpyType':
+    """Strip FinalType wrapper if present, returning the inner type."""
+    if isinstance(typ, FinalType):
+        return typ.wrapped
+    return typ
+
+
+def is_constexpr_eligible(typ: 'TpyType') -> bool:
+    """Check if a type can use C++ constexpr (vs runtime const).
+
+    Constexpr-eligible: fixed-width integers, float, bool, char, str.
+    Non-constexpr (needs const): BigInt (non-trivial constructor).
+    """
+    return isinstance(typ, (FixedIntType, FloatType, BoolType, CharType, StrType))
+
+
 def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
     """Extract OwnType from Own[T] or Own[T] | None."""
     if isinstance(t, OwnType):
