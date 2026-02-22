@@ -148,4 +148,51 @@ def init_module() -> BuiltinModule:
         ),
     ])
 
+    # unsafe_alloc: allocate raw memory for a single element of type T
+    # T inferred from assignment target (Ptr[T]) or explicit type arg
+    module.function("unsafe_alloc", type_params=["T"], overloads=[
+        MethodDef(
+            params=[],
+            returns=PtrType(T),
+            cpp="static_cast<{T}*>(::operator new(sizeof({T}), std::align_val_t(alignof({T}))))",
+        ),
+    ])
+
+    # unsafe_alloc_n: allocate raw memory for N elements of type T
+    module.function("unsafe_alloc_n", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("count", UINT32)],
+            returns=PtrType(T),
+            cpp="static_cast<{T}*>(::operator new(sizeof({T}) * {0}, std::align_val_t(alignof({T}))))",
+        ),
+    ])
+
+    # unsafe_free: free raw memory allocated by unsafe_alloc/unsafe_alloc_n
+    module.function("unsafe_free", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(T))],
+            returns=VOID,
+            cpp="::operator delete({0}, std::align_val_t(alignof({T})))",
+        ),
+    ])
+
+    # unsafe_init: placement-new construct an object at a pointer location
+    module.function("unsafe_init", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(T)), ParamDef("value", OwnType(T))],
+            returns=VOID,
+            cpp="::new(static_cast<void*>({0})) {T}(std::move({1}))",
+        ),
+    ])
+
+    # unsafe_drop: call destructor on an object at a pointer location
+    # Uses tpy::destroy_at which is a no-op for trivially destructible types
+    module.function("unsafe_drop", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(T))],
+            returns=VOID,
+            cpp="tpy::destroy_at({0})",
+        ),
+    ])
+
     return module

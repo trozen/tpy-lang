@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
+#include <type_traits>
 #include <variant>
 
 namespace tpy {
@@ -67,6 +68,17 @@ const T& deref_optional_check(const std::optional<T>& opt) {
 template <typename T>
 inline bool is_truthy(const std::optional<T>& opt) {
     return opt.has_value() && static_cast<bool>(*opt);
+}
+
+/**
+ * Destroy an object at a pointer location.
+ * No-op for trivially destructible types (scalars, PODs).
+ */
+template <typename T>
+void destroy_at(T* p) {
+    if constexpr (!std::is_trivially_destructible_v<T>) {
+        p->~T();
+    }
 }
 
 } // namespace tpy

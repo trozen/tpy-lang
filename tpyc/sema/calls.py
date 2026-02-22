@@ -50,8 +50,15 @@ def _has_type_param_ref(t: TpyType) -> bool:
 
 
 def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
-    """Check if any parameter type in a FunctionInfo contains TypeParamRef."""
-    return any(_has_type_param_ref(p.type) for p in func.params)
+    """Check if a FunctionInfo needs generic type inference.
+
+    True if any parameter type or the return type contains TypeParamRef.
+    This covers zero-arg generic functions like unsafe_alloc[T]() -> Ptr[T]
+    that infer T from return type context.
+    """
+    if any(_has_type_param_ref(p.type) for p in func.params):
+        return True
+    return _has_type_param_ref(func.return_type)
 
 
 class CallAnalyzer:

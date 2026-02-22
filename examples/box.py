@@ -4,28 +4,30 @@
 # Simplified version of Rust's Box<T>, using UninitHeapStorage as backing.
 from __future__ import annotations
 from tpy import *
-from tpy.mem import UninitHeapStorage
+from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
-# TODO: for production should use a Ptr[T] inside, with an annotation @nevernone, so compiler can optimize Box|None to a single pointer
 class Box[T](Deref[T]):
-    _storage: UninitHeapStorage[T]
+    # TODO: add an annotation @nevernone, so compiler can optimize Box|None to a single pointer
+    # TODO: also, compiler should use this to know if the object it owned
+    _ptr: Ptr[T]
 
     def __init__(self, value: Own[T]):
-        self._storage = UninitHeapStorage(1)
-        self._storage.init0(value)
+        self._ptr = unsafe_alloc()
+        unsafe_init(self._ptr, value)
 
     def __del__(self):
-        self._storage.drop0()
+        unsafe_drop(self._ptr)
+        unsafe_free(self._ptr)
 
     def __deref__(self) -> T:
         return self.get()
 
     def get(self) -> T:
-        return self._storage.load0()
+        return self._ptr
 
     def set(self, value: Own[T]) -> None:
-        self._storage.drop0()
-        self._storage.init0(value)
+        unsafe_drop(self._ptr)
+        unsafe_init(self._ptr, value)
 
     # TODO: def take() -> Own[T]
     #   Safety after take() or drop() (use-after-move):
