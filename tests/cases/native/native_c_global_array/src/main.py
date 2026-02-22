@@ -1,6 +1,7 @@
 # native_c_global_array for C array globals (extern T name[])
 # Generates incomplete array extern, which decays to pointer when used.
-from tpy import native_c_global_array, Ptr, Int16, Int32, UInt32
+from tpy.extern import native_c_global_array
+from tpy import Ptr, Int16, Int32, UInt32
 from tpy.unsafe import unsafe_load, unsafe_store
 
 scores: Ptr[Int16] = native_c_global_array("g_scores")

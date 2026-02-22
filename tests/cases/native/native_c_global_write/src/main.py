@@ -1,4 +1,5 @@
-from tpy import native_c_global, Int32
+from tpy.extern import native_c_global
+from tpy import Int32
 
 # Write to native_c_global at function scope.
 # Renamed globals must use the C name in the assignment target.

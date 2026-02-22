@@ -1,4 +1,5 @@
-from tpy import native_c_global, Int32
+from tpy.extern import native_c_global
+from tpy import Int32
 
 # C global import with rename
 frame_count: Int32 = native_c_global("g_frame_count")

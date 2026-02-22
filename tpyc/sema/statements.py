@@ -484,7 +484,7 @@ class StatementAnalyzer:
             binding = self.ctx.current_ns.lookup(stmt.init.func)
             if (binding and binding.kind == BindingKind.IMPORTED_NAME
                     and binding.import_source
-                    and binding.import_source[0] == "tpy"
+                    and binding.import_source[0] == "tpy.extern"
                     and binding.import_source[1] in ("native_c_global", "native_global", "native_c_global_array")):
                 func_name = binding.import_source[1]
                 if not self.ctx.is_top_level:

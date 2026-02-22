@@ -1,4 +1,5 @@
-from tpy import native_global, Int32
+from tpy.extern import native_global
+from tpy import Int32
 
 # C++ global import with namespace-qualified name
 score: Int32 = native_global("engine::score")

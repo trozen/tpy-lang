@@ -265,6 +265,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `tpy.py` | TurboPython-specific types and decorators |
 | `unsafe.py` | `tpy.unsafe` module -- unsafe pointer operations |
 | `mem.py` | `tpy.mem` module -- uninitialized storage primitives |
+| `extern.py` | `tpy.extern` module -- native global variable declarations |
 | `math.py` | `math` module |
 | `sys.py` | `sys` module |
 | `time.py` | `time` module |

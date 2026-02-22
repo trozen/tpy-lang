@@ -187,6 +187,7 @@ from tpyc.modules import sys as _sys_mod
 from tpyc.modules import typing as _typing_mod
 from tpyc.modules import unsafe as _unsafe_mod
 from tpyc.modules import mem as _mem_mod
+from tpyc.modules import extern as _extern_mod
 
 # Map module name -> factory function
 _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
@@ -198,6 +199,7 @@ _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
     _sys_mod.NAME: _sys_mod.init_module,
     _typing_mod.NAME: _typing_mod.init_module,
     _mem_mod.NAME: _mem_mod.init_module,
+    _extern_mod.NAME: _extern_mod.init_module,
 }
 
 # Cache for loaded modules

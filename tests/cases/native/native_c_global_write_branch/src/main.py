@@ -1,4 +1,5 @@
-from tpy import native_c_global, Int32
+from tpy.extern import native_c_global
+from tpy import Int32
 
 # Write to native_c_global inside if/else branches (no prior function-scope assignment).
 # Must NOT emit a local declaration that shadows the extern global.

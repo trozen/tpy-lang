@@ -5,28 +5,28 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 9: def update_same_name(a: Int32, b: Int32) -> None:
+// 10: def update_same_name(a: Int32, b: Int32) -> None:
 void update_same_name(int32_t a, int32_t b) {
-    // 10:     global opentop
-    // 11:     if a < b:
+    // 11:     global opentop
+    // 12:     if a < b:
     if ((a < b)) {
-        // 12:         opentop = a
+        // 13:         opentop = a
         opentop = a;
     } else {
-        // 14:         opentop = b
+        // 15:         opentop = b
         opentop = b;
     }
 }
 
-// 16: def update_renamed(a: Int32, b: Int32) -> None:
+// 17: def update_renamed(a: Int32, b: Int32) -> None:
 void update_renamed(int32_t a, int32_t b) {
-    // 17:     global counter
-    // 18:     if a < b:
+    // 18:     global counter
+    // 19:     if a < b:
     if ((a < b)) {
-        // 19:         counter = a
+        // 20:         counter = a
         g_counter = a;
     } else {
-        // 21:         counter = b
+        // 22:         counter = b
         g_counter = b;
     }
 }
@@ -37,13 +37,14 @@ void __tpy_init() {
     initialized = true;
 
     __name__ = "__main__";
-    // 3: # Write to native_c_global inside if/else branches (no prior function-scope assignment).
-    // 4: # Must NOT emit a local declaration that shadows the extern global.
-    // 6: opentop: Int32 = native_c_global("opentop")
-    // 7: counter: Int32 = native_c_global("g_counter")
-    // 23: update_same_name(Int32(10), Int32(20))
+    // 1: from tpy.extern import native_c_global
+    // 4: # Write to native_c_global inside if/else branches (no prior function-scope assignment).
+    // 5: # Must NOT emit a local declaration that shadows the extern global.
+    // 7: opentop: Int32 = native_c_global("opentop")
+    // 8: counter: Int32 = native_c_global("g_counter")
+    // 24: update_same_name(Int32(10), Int32(20))
     update_same_name(10, 20);
-    // 24: update_renamed(Int32(30), Int32(40))
+    // 25: update_renamed(Int32(30), Int32(40))
     update_renamed(30, 40);
 }
 

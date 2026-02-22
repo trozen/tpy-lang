@@ -5,11 +5,11 @@ namespace tpy_user::main {
 
 std::string_view __name__;
 
-// 9: def main() -> None:
+// 10: def main() -> None:
 void main() {
-    // 10:     print(score)
+    // 11:     print(score)
     std::cout << engine::score << "\n";
-    // 11:     print(lives)
+    // 12:     print(lives)
     std::cout << lives << "\n";
 }
 
@@ -19,11 +19,12 @@ void __tpy_init() {
     initialized = true;
 
     __name__ = "__main__";
-    // 3: # C++ global import with namespace-qualified name
-    // 4: score: Int32 = native_global("engine::score")
-    // 6: # C++ global import without rename
-    // 7: lives: Int32 = native_global()
-    // 13: main()
+    // 1: from tpy.extern import native_global
+    // 4: # C++ global import with namespace-qualified name
+    // 5: score: Int32 = native_global("engine::score")
+    // 7: # C++ global import without rename
+    // 8: lives: Int32 = native_global()
+    // 14: main()
     main();
 }
 

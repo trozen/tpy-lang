@@ -3250,7 +3250,8 @@ Generated C++:
 Import extern C/C++ global variables:
 
 ```python
-from tpy import native_c_global, native_c_global_array, native_global, Int32, Ptr, Int16
+from tpy.extern import native_c_global, native_c_global_array, native_global
+from tpy import Int32, Ptr, Int16
 
 # C global (extern "C")
 frame_count: Int32 = native_c_global("DG_FrameCount")

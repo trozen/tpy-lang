@@ -11,7 +11,6 @@ files are for TurboPython dialect, may or may not run with regular CPython, or s
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
 - constant global variables (see `Final` in Language Features Roadmap)
 - "@native_c, @native, @extern_c, @readonly, @noalloc are all hard-coded parser keywords" -- should be handled like normal functions eventually (maybe in tpy.extern package?)
-- move native_c_global and native_global to tpy.extern package? (or tpy.native?)
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?

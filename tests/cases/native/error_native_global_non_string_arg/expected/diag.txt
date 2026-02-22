@@ -1,1 +1,1 @@
-main.py:3: error: native_c_global() argument must be a string literal
+main.py:4: error: native_c_global() argument must be a string literal

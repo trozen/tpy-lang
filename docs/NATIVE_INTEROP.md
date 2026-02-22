@@ -490,10 +490,11 @@ Design considerations:
 
 ### Native global variables
 
-Import extern C/C++ global variables. Two functions, imported from `tpy`:
+Import extern C/C++ global variables. Three functions, imported from `tpy.extern`:
 
 ```python
-from tpy import native_c_global, native_global, Int32
+from tpy.extern import native_c_global, native_global
+from tpy import Int32
 
 # C global (extern "C" linkage)
 frame_count: Int32 = native_c_global("DG_FrameCount")
