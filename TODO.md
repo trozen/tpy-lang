@@ -4,9 +4,7 @@
 - argument default values
 - `@nocopy` propagation: types containing non-copyable fields (e.g. `UninitHeapStorage`, `Box[T]`) should automatically become non-copyable; compiler should enforce move-only semantics
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
-- dynamic protocols: steps 1-8, 10-11 done (parsing, validation, base/adapter/ref-adapter codegen, locals, params, direct C++ inheritance, hoisted slots, return types, Optional rejection, cross-module, @dynamic extending @dynamic). Remaining: step 7 (protocol params in record methods), step 9 (protocol field access), steps 12-15 (generics, Box[P], record fields, heterogeneous containers). See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for full progress.
 - bi-directional contextual type inference (Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
-files are for TurboPython dialect, may or may not run with regular CPython, or some behaviour may be different. TurboPython should make effort to run any .py file, but should warn/error if some features are not supported or behave differently)
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
 - constant global variables (see `Final` in Language Features Roadmap)
@@ -15,17 +13,15 @@ files are for TurboPython dialect, may or may not run with regular CPython, or s
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - ~~`tpy::__len__()`~~ PARTIAL: `__len__`, `__getitem__`, `__setitem__` are now free functions in `dunder.hpp`. Consider also generating `__len__()` as `size()` member function for STL compatibility.
-- copy/nocopy propagation: classes containing nocopy fields (e.g. `UninitHeapStorage`) should automatically become nocopy; extend to module-defined types (currently `@nocopy` only works on user-defined records)
-- `DeRef` protocol?
 - `ValueType` protocol bound — `T: ValueType` would suppress copy warnings for generic fields, since value types copy silently
 - proper string handling (STRING_HANDLING.md)
 - keyword arguments
-- REPL: arr=[1,2,3]; arr[-4]
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
 - coerce int32 -> uint32?
 - remove the need for __tpy_owned_ in destructor (moved out, when there is a single pointer in class and the pointer may not be null; can it also work for |None case?)
 
 ## Bugs
+- REPL: arr=[1,2,3]; arr[-4]
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
 - Constructor codegen uses body assignments instead of initializer lists: when `__init__` has control flow (if/else, loops), fields are default-constructed then assigned (`this->tag = tag;`) instead of using C++ initializer lists (`: tag(tag)`). Works for trivial types but breaks for non-default-constructible types, `@nocopy` types, and eventually `const` fields. Needs either: (a) analyze which fields can still use initializer list even with control flow, (b) use `std::optional` wrappers for deferred init, or (c) restructure to always emit initializer lists with conditional logic factored differently.
 - Protocol `@readonly` conformance too strict: if a protocol method is `@readonly`, the implementing class method must also be `@readonly`. But a mutable method trivially satisfies a readonly contract -- it just does more. Should allow non-readonly implementations to satisfy readonly protocol methods.
@@ -70,12 +66,12 @@ files are for TurboPython dialect, may or may not run with regular CPython, or s
 - `Self` type
 - properties with getter/setter
 
+## Documentation
+- language restriction documentation
+
 ## Random items
-Random items that may or may not be implemented in the future, but putting them here so that they don't get lost:
 - Large value-type copy warning: estimate record sizes from fields and warn when Own[T] passes a large type by value (e.g. >128 bytes). For inline data there's no cheap move -- the bits are the object. Suggest Own[Box[T]] for cheap ownership transfer (moves a pointer) or Ptr[T]/ConstPtr[T] for borrowing. Stricter threshold in @noalloc contexts.
 - Box[T] with only Ptr[T] inside, unsafe_alloc/free/init/drop; compiler optimizie Box|None to just pointer, None as nullptr
-- handling user object copy via __copy__ (e.g. heap allocated)
-- language restriction documentation
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
 - Char type location: currently in `builtins` module but feels like a tpy type. Python doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.
 - ultimate goal: make tpyc compile with tpyc
