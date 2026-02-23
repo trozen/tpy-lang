@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test combined inheritance
 // 37: p = Person("Alice", 42, 30)
 Person* p{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 36: # Test combined inheritance
     // 37: p = Person("Alice", 42, 30)
     static Person __global_slot_1 = Person("Alice", 42, 30);

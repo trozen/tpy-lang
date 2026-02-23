@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Loop-body var that is both hoisted (escapes to outer scope) and
 // # reassigned within the loop. Tests the intersection of hoisted_vars
@@ -33,7 +32,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 21: hoist_and_reassign()
     hoist_and_reassign();
 }

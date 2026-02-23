@@ -5,7 +5,7 @@
 
 namespace tpy_user::outer::inner::mod {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "outer.inner.mod";
 
 void func();
 

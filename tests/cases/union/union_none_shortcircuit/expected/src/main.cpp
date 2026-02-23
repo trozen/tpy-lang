@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 9: def test_and_flag(v: Int32 | Dog | None, flag: bool) -> str:
 std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag) {
@@ -84,7 +83,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 37: main()
     main();
 }

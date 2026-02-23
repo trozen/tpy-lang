@@ -3,12 +3,10 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test the 'not' logical operator
 // 5: def test_not_with_bool_literals() -> None:
 void test_not_with_bool_literals() {
-    // 6:     """Test 'not' with bool literals."""
     // 7:     a: bool = True
     bool a = true;
     // 8:     b: bool = False
@@ -34,7 +32,6 @@ void test_not_with_bool_literals() {
 
 // 21: def test_not_with_comparisons() -> None:
 void test_not_with_comparisons() {
-    // 22:     """Test 'not' with comparison expressions."""
     // 23:     x: Int32 = 5
     int32_t x = 5;
     // 24:     y: Int32 = 10
@@ -59,7 +56,6 @@ void test_not_with_comparisons() {
 
 // 36: def test_not_in_conditions() -> None:
 void test_not_in_conditions() {
-    // 37:     """Test 'not' combined with other logical operators."""
     // 38:     a: bool = True
     bool a = true;
     // 39:     b: bool = False
@@ -97,7 +93,6 @@ void test_not_in_conditions() {
 
 // 60: def test_double_negation() -> None:
 void test_double_negation() {
-    // 61:     """Test double negation."""
     // 62:     flag: bool = True
     bool flag = true;
     // 64:     if not not flag:
@@ -117,14 +112,12 @@ void test_double_negation() {
 
 // 72: def is_valid(x: Int32) -> bool:
 bool is_valid(int32_t x) {
-    // 73:     """Helper function returning bool."""
     // 74:     return x > 0
     return (x > 0);
 }
 
 // 76: def test_not_with_function_call() -> None:
 void test_not_with_function_call() {
-    // 77:     """Test 'not' with function return value."""
     // 78:     if not is_valid(-5):
     if ((!(is_valid(-5)))) {
         // 79:         print("not is_valid(-5): yes")
@@ -142,7 +135,6 @@ void test_not_with_function_call() {
 
 // 86: def test_not_in_while() -> None:
 void test_not_in_while() {
-    // 87:     """Test 'not' in while condition."""
     // 88:     done: bool = False
     bool done = false;
     // 89:     count: Int32 = 0
@@ -166,7 +158,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 98: # Run all tests
     // 99: test_not_with_bool_literals()
     test_not_with_bool_literals();

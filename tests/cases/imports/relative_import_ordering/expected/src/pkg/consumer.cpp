@@ -3,14 +3,12 @@
 
 namespace tpy_user::pkg::consumer {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "pkg.consumer";
     // 1: print("before first import")
     std::cout << "before first import" << "\n";
     // 2: from . import first

@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void print_i16(int16_t x);
 void print_i32(int32_t x);

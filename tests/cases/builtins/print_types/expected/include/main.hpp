@@ -5,7 +5,6 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::string_view s;
 extern char c;
 extern std::vector<tpy::BigInt>* items;
@@ -14,6 +13,7 @@ extern StaticList<int32_t, 4>* sl;
 extern std::optional<int32_t> x;
 extern std::optional<bool> y;
 extern std::optional<double> z;
+inline constexpr std::string_view __name__ = "__main__";
 
 void print_range();
 

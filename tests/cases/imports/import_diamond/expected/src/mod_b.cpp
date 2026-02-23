@@ -3,7 +3,6 @@
 
 namespace tpy_user::mod_b {
 
-std::string_view __name__;
 
 // 4: def b_value() -> Int32:
 int32_t b_value() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mod_b";
     // 2: from mod_d import d_value
     ::tpy_user::mod_d::__tpy_init();
 }

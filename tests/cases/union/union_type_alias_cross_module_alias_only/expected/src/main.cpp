@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 7: def describe(s: Shape) -> str:
 std::string_view describe(Shape& s) {
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: from shapes import Shape
     ::tpy_user::shapes::__tpy_init();
     // 14: main()

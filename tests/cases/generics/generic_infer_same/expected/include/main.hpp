@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 template<typename T> struct Same;
 
-extern std::string_view __name__;
 extern Same<int32_t>* same;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 4: class Same[T]:
 template<typename T>

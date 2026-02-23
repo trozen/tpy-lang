@@ -14,8 +14,8 @@ concept Mixed = requires(T& t) {
 
 struct Impl;
 
-extern std::string_view __name__;
 extern Impl* obj;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Mixed T_m>
 int32_t safe_read(T_m& m);

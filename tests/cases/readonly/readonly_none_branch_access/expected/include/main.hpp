@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void observe_field(bool flag, Box& p);
 void observe_method(bool flag, Box& p);

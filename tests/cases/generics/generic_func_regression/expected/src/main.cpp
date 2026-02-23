@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test 1: Uppercase generic function (inferred) - critical for routing test
 // 20: nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
@@ -35,8 +34,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Regression tests for generic functions with various edge cases."""
     // 19: # Test 1: Uppercase generic function (inferred) - critical for routing test
     // 20: nums = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};

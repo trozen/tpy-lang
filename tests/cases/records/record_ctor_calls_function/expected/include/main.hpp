@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Pair;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t twice(int32_t x);
 void main();

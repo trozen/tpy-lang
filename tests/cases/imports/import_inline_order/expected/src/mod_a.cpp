@@ -3,7 +3,6 @@
 
 namespace tpy_user::mod_a {
 
-std::string_view __name__;
 
 // 6: def func_a() -> None:
 void func_a() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mod_a";
     // 2: from mod_c import shared_value
     ::tpy_user::mod_c::__tpy_init();
     // 4: print("mod_a init")

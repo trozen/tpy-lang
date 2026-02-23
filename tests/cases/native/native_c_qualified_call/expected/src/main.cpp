@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 4: x: Int32 = lib.abs(Int32(-5))
 int32_t x{};
 // 6: y: Int32 = lib.get_clock()
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: import lib
     ::tpy_user::lib::__tpy_init();
     // 4: x: Int32 = lib.abs(Int32(-5))

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Exactly Int32 min -- should stay Int32
 // 5: a = -2147483648
 int32_t a{};
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # Exactly Int32 min -- should stay Int32
     // 5: a = -2147483648
     a = -2147483648;

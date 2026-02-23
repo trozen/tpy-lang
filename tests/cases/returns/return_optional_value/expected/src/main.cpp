@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 11: result: Int32 | None = maybe_int(True)
 std::optional<int32_t> result;
 
@@ -29,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: print(maybe_int(True))
     std::cout << tpy::print_optional_val(maybe_int(true)) << "\n";
     // 9: print(maybe_int(False))

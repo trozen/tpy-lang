@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: from pkg.consumer import compute
     ::tpy_user::pkg::__tpy_init();
     ::tpy_user::pkg::consumer::__tpy_init();

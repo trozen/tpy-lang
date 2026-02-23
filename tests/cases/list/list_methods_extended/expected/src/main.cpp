@@ -3,13 +3,11 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test extended list methods: pop(index), index(), count(), reverse(), copy(), __setitem__
 // # Also test StaticList methods: extend, insert, remove, pop, clear, index, count, reverse, get_mut
 // 6: def print_list(nums: list[Int32]) -> None:
 void print_list(std::vector<int32_t>& nums) {
-    // 7:     """Helper to print list contents."""
     // 8:     i: Int32 = 0
     int32_t i = 0;
     // 9:     while i < len(nums):
@@ -25,7 +23,6 @@ void print_list(std::vector<int32_t>& nums) {
 
 // 14: def print_staticlist(nums: StaticList[Int32, 16]) -> None:
 void print_staticlist(StaticList<int32_t, 16>& nums) {
-    // 15:     """Helper to print StaticList contents."""
     // 16:     i: Int32 = 0
     int32_t i = 0;
     // 17:     while i < len(nums):
@@ -42,7 +39,6 @@ void print_staticlist(StaticList<int32_t, 16>& nums) {
 // # === list[T] methods ===
 // 24: def test_pop_at_index() -> None:
 void test_pop_at_index() {
-    // 25:     """Test pop(index) - remove and return element at index."""
     // 26:     nums: list[Int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     // 28:     # Pop from middle
@@ -70,7 +66,6 @@ void test_pop_at_index() {
 
 // 43: def test_index() -> None:
 void test_index() {
-    // 44:     """Test index(value) - find index of first occurrence."""
     // 45:     nums: list[Int32] = [10, 20, 30, 20, 40]
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
     // 47:     print(nums.index(10))  # 0
@@ -85,7 +80,6 @@ void test_index() {
 
 // 52: def test_count() -> None:
 void test_count() {
-    // 53:     """Test count(value) - count occurrences."""
     // 54:     nums: list[Int32] = [1, 2, 2, 3, 2, 4, 2]
     std::vector<int32_t> nums = {1, 2, 2, 3, 2, 4, 2};
     // 56:     print(nums.count(1))  # 1
@@ -100,7 +94,6 @@ void test_count() {
 
 // 61: def test_reverse() -> None:
 void test_reverse() {
-    // 62:     """Test reverse() - reverse in place."""
     // 63:     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // 64:     nums.reverse()
@@ -116,7 +109,6 @@ void test_reverse() {
 
 // 71: def test_copy() -> None:
 void test_copy() {
-    // 72:     """Test copy() - shallow copy."""
     // 73:     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // 74:     copy: list[Int32] = nums.copy()
@@ -135,7 +127,6 @@ void test_copy() {
 
 // 84: def test_setitem() -> None:
 void test_setitem() {
-    // 85:     """Test __setitem__ - set element at index."""
     // 86:     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // 88:     nums[0] = 100
@@ -154,7 +145,6 @@ void test_setitem() {
 // # === StaticList[T, N] methods ===
 // 98: def test_staticlist_extend() -> None:
 void test_staticlist_extend() {
-    // 99:     """Test StaticList.extend()."""
     // 100:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 101:     sl.append(1)
@@ -176,7 +166,6 @@ void test_staticlist_extend() {
 
 // 112: def test_staticlist_insert() -> None:
 void test_staticlist_insert() {
-    // 113:     """Test StaticList.insert()."""
     // 114:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 115:     sl.append(10)
@@ -197,7 +186,6 @@ void test_staticlist_insert() {
 
 // 126: def test_staticlist_insert_no_default_ctor() -> None:
 void test_staticlist_insert_no_default_ctor() {
-    // 127:     """Test StaticList.insert() with record that has no default constructor."""
     // 128:     items: StaticList[Item, 16] = StaticList[Item, 16]()
     StaticList<Item, 16> items = StaticList<Item, 16>();
     // 129:     items.append(Item(10))
@@ -218,7 +206,6 @@ void test_staticlist_insert_no_default_ctor() {
 
 // 140: def test_staticlist_remove() -> None:
 void test_staticlist_remove() {
-    // 141:     """Test StaticList.remove()."""
     // 142:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 143:     sl.append(10)
@@ -237,7 +224,6 @@ void test_staticlist_remove() {
 
 // 151: def test_staticlist_pop_at() -> None:
 void test_staticlist_pop_at() {
-    // 152:     """Test StaticList.pop(index)."""
     // 153:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 154:     sl.append(10)
@@ -258,7 +244,6 @@ void test_staticlist_pop_at() {
 
 // 163: def test_staticlist_index() -> None:
 void test_staticlist_index() {
-    // 164:     """Test StaticList.index()."""
     // 165:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 166:     sl.append(10)
@@ -277,7 +262,6 @@ void test_staticlist_index() {
 
 // 174: def test_staticlist_count() -> None:
 void test_staticlist_count() {
-    // 175:     """Test StaticList.count()."""
     // 176:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 177:     sl.append(1)
@@ -300,7 +284,6 @@ void test_staticlist_count() {
 
 // 187: def test_staticlist_reverse() -> None:
 void test_staticlist_reverse() {
-    // 188:     """Test StaticList.reverse()."""
     // 189:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 190:     sl.append(1)
@@ -319,7 +302,6 @@ void test_staticlist_reverse() {
 
 // 198: def test_staticlist_pop() -> None:
 void test_staticlist_pop() {
-    // 199:     """Test StaticList.pop() - remove and return last element."""
     // 200:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 201:     sl.append(10)
@@ -344,7 +326,6 @@ void test_staticlist_pop() {
 
 // 213: def test_staticlist_clear() -> None:
 void test_staticlist_clear() {
-    // 214:     """Test StaticList.clear() - remove all elements."""
     // 215:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
     StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
     // 216:     sl.append(1)
@@ -370,7 +351,6 @@ void test_staticlist_clear() {
 
 // 235: def print_item_list(items: StaticList[Item, 16]) -> None:
 void print_item_list(StaticList<Item, 16>& items) {
-    // 236:     """Helper to print StaticList[Item] contents."""
     // 237:     i: Int32 = 0
     int32_t i = 0;
     // 238:     while i < len(items):
@@ -386,7 +366,6 @@ void print_item_list(StaticList<Item, 16>& items) {
 
 // 243: def test_staticlist_get_mut() -> None:
 void test_staticlist_get_mut() {
-    // 244:     """Test StaticList.get_mut() - get mutable pointer to element."""
     // 245:     items: StaticList[Item, 16] = StaticList[Item, 16]()
     StaticList<Item, 16> items = StaticList<Item, 16>();
     // 246:     items.append(Item(10))
@@ -409,7 +388,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 256: # Run all tests
     // 257: print("=== list pop(index) ===")
     std::cout << "=== list pop(index) ===" << "\n";

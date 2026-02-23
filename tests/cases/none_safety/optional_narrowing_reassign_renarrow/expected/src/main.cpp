@@ -3,11 +3,9 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def test_reassign_renarrows(x: Int32 | None) -> Int32:
 int32_t test_reassign_renarrows(std::optional<int32_t> x) {
-    // 5:     """Assigning a non-None value re-narrows the variable."""
     // 6:     x = 10
     x = 10;
     // 7:     return x + 1
@@ -16,7 +14,6 @@ int32_t test_reassign_renarrows(std::optional<int32_t> x) {
 
 // 9: def test_truthiness_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 10:     """Truthiness narrowing flows through && short-circuit."""
     // 11:     if a and b:
     if ((tpy::is_truthy(a) && tpy::is_truthy(b))) {
         // 12:         return a + b
@@ -28,7 +25,6 @@ int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<in
 
 // 15: def test_is_not_none_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t test_is_not_none_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 16:     """is-not-None narrowing flows through && short-circuit."""
     // 17:     if a is not None and b is not None:
     if (((a.has_value()) && (b.has_value()))) {
         // 18:         return a + b
@@ -43,7 +39,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 21: print(test_reassign_renarrows(None))
     std::cout << test_reassign_renarrows(std::nullopt) << "\n";
     // 22: print(test_truthiness_short_circuit(3, 4))

@@ -7,11 +7,11 @@ namespace tpy_user::main {
 
 struct MyList;
 
-extern std::string_view __name__;
 extern MyList* ml;
 extern int32_t last;
 extern int32_t first;
 extern std::vector<int32_t>* items;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # User class inheriting from StaticList
 // 9: class MyList(StaticList[Int32, 10]):

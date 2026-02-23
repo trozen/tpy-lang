@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # copy() suppresses escape error
 // 11: def loop_escape_copy_ok() -> None:
@@ -273,7 +272,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 137: loop_escape_copy_ok()
     loop_escape_copy_ok();
     // 138: loop_rvalue_ok()

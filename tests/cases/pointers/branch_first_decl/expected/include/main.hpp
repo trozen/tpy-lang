@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
 extern std::vector<Point>* pts;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t value_type_branches(bool cond);
 int32_t else_returns(bool cond);

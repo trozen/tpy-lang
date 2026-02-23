@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 8: def show_num(x: Num) -> None:
 void show_num(const Num& x) {
@@ -36,7 +35,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 21: main()
     main();
 }

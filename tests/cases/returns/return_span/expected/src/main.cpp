@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Returning Span should return by value (std::span is a view type)
 // 4: def get_span(arr: Array[Int32, 4]) -> Span[Int32]:
@@ -29,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 13: main()
     main();
 }

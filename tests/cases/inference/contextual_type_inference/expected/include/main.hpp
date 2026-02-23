@@ -8,7 +8,7 @@ namespace tpy_user::main {
 template<typename T> struct Container;
 template<typename A, typename B> struct Pair;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
 Container<T> make_box();

@@ -8,9 +8,9 @@ namespace tpy_user::main {
 struct Point;
 struct Counter;
 
-extern std::string_view __name__;
 extern Point* g;
 extern Point* pt;
+inline constexpr std::string_view __name__ = "__main__";
 
 void test_local_sharing();
 void test_copy_independence();

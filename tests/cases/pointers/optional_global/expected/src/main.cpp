@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 16: g: Point | None = None
 Point* g{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 16: g: Point | None = None
     g = nullptr;
     // 17: print(g is None)

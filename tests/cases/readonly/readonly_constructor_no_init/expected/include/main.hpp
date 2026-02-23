@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Logger;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 tpy::BigInt ok();
 

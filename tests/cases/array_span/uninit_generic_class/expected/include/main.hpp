@@ -7,9 +7,9 @@ namespace tpy_user::main {
 
 template<typename T> struct Holder;
 
-extern std::string_view __name__;
 extern Holder<int32_t>* h;
 extern Holder<std::string_view>* s;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 5: class Holder[T]:
 template<typename T>

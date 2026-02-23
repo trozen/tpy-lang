@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 26: def greet_pet(pet: Pet) -> None:
 void greet_pet(__tpy_Base_Pet& pet) {
@@ -45,7 +44,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 42: main()
     main();
 }

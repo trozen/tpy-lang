@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 20: x = None
 Product* x{};
 
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 20: x = None
     x = nullptr;
     // 21: x = get_factory().create()

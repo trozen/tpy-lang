@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 12: def copy_into(src: readonly[Point], dest: Point) -> None:
 void copy_into(const Point& src, Point& dest) {
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 23: main()
     main();
 }

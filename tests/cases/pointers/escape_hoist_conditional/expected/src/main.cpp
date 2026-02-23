@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Escape only happens in one branch of an if-statement inside a loop.
 // # The hoisted slot must still be at function scope.
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 20: conditional_hoist()
     conditional_hoist();
 }

@@ -5,7 +5,6 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern int32_t a;
 extern int32_t b;
 extern int32_t c;
@@ -18,6 +17,7 @@ extern int32_t result3;
 extern int32_t result4;
 extern int32_t result5;
 extern int32_t result6;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t takes_int32(int32_t x);
 int32_t return_as_int32(const tpy::BigInt& x);

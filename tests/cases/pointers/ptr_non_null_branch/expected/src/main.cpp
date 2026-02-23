@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def get_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* get_ptr(Point* p) {
@@ -79,7 +78,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 51: main()
     main();
 }

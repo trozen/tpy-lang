@@ -6,7 +6,7 @@
 
 namespace tpy_user::mod_c {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "mod_c";
 
 int32_t c_value();
 

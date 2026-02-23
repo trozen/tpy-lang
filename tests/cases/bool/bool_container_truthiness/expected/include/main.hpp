@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void check_list(std::vector<tpy::BigInt>& items, std::vector<tpy::BigInt>& empty);
 void check_str(std::string_view s, std::string_view e);

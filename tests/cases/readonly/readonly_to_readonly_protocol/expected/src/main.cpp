@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 11: def observe(items: readonly[list[Int32]]) -> None:
 void observe(const std::vector<int32_t>& items) {
@@ -26,7 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 19: main()
     main();
 }

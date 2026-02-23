@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 33: def bump(c: Counter) -> None:
 void bump(__tpy_Base_Counter& c) {
@@ -53,7 +52,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 58: main()
     main();
 }

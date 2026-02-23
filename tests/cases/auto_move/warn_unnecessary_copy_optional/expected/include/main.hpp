@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t consume_own(Box b);
 int32_t consume_optional(std::optional<Box> b);

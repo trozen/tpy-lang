@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // @extern_c
 // 4: def app_init() -> None:
@@ -24,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main

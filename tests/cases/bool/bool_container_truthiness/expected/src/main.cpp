@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test truthiness for built-in container types (list, str) in if/not/and/or
 // 3: def check_list(items: list[int], empty: list[int]) -> None:
@@ -62,7 +61,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 24: main()
     main();
 }

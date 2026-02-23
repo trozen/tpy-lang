@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 26: pts: list[Point] = list()
 std::vector<Point>* pts{};
 // 30: e1 = Edge(None)
@@ -36,7 +35,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 26: pts: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     pts = &__global_slot_1;

@@ -3,7 +3,6 @@
 
 namespace tpy_user::mypackage::consumer {
 
-std::string_view __name__;
 
 // 4: def compute() -> Int32:
 int32_t compute() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mypackage.consumer";
     // 2: from . import utils
     ::tpy_user::mypackage::__tpy_init();
     ::tpy_user::mypackage::utils::__tpy_init();

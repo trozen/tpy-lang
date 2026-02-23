@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Global variable - lives for the duration of the program
 // 8: ORIGIN: Point = Point()
 Point* ORIGIN{};
@@ -33,7 +32,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 7: # Global variable - lives for the duration of the program
     // 8: ORIGIN: Point = Point()
     static Point __global_slot_1 = Point();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Basic parsing
 // 5: a: int = int("42")
 tpy::BigInt a;
@@ -30,7 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # Basic parsing
     // 5: a: int = int("42")
     a = tpy::BigInt::from_str("42");

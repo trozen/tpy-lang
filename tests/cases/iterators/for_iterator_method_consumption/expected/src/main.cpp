@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Method call returns by reference — consumption must be preserved
 // 32: b = Box()
 Box* b{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 31: # Method call returns by reference — consumption must be preserved
     // 32: b = Box()
     static Box __global_slot_1 = Box();

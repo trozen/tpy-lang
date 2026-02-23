@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 8: x: Char = "x"
 char x{};
 // 9: y: Char = "y"
@@ -26,7 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: x: Char = "x"
     x = 'x';
     // 9: y: Char = "y"

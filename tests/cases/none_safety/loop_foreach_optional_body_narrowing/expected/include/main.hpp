@@ -5,8 +5,8 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::vector<std::optional<int32_t>>* vals;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t sum_non_none(std::vector<std::optional<int32_t>>& items);
 

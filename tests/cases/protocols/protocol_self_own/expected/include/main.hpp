@@ -13,7 +13,7 @@ concept Addable = requires(const T& t) {
 
 struct Point;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Addable T_a, Addable T_b>
 void add_points(T_a& a, T_b& b);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Inference from int, str -> Pair[int, str]
 // 14: pair = Pair(1, "hello")
 Pair<int32_t, std::string_view>* pair{};
@@ -13,8 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test type inference with multiple type parameters."""
     // 13: # Inference from int, str -> Pair[int, str]
     // 14: pair = Pair(1, "hello")
     static Pair<int32_t, std::string_view> __global_slot_1 = Pair<int32_t, std::string_view>(1, "hello");

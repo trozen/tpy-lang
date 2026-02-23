@@ -16,7 +16,7 @@ concept PairFactory = requires(T& t) {
 
 struct DefaultPairFactory;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<PairFactory T>
 SortedPair<int32_t> create_pair(tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b);

@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Timer;
 
-extern std::string_view __name__;
 extern Timer* time;
+inline constexpr std::string_view __name__ = "__main__";
 
 void f();
 

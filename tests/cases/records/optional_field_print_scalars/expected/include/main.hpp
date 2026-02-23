@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Settings;
 
-extern std::string_view __name__;
 extern Settings* s;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 4: class Settings:
 struct Settings {

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test multiple protocol implementation
 // 40: b = Box(5, 3)
 Box* b{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 39: # Test multiple protocol implementation
     // 40: b = Box(5, 3)
     static Box __global_slot_1 = Box(5, 3);

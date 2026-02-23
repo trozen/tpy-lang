@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Literal-seeded variable promoted to BigInt inside a loop should
 // # keep BigInt for operations after the loop exits.
@@ -56,7 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 24: test_after_while()
     test_after_while();
     // 25: test_after_for()

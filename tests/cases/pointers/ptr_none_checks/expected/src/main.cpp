@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 5: p: Ptr[Int32] = None  # tpyc: ok
 int32_t* p{};
 // 8: x: Int32 = Int32(7)
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 5: p: Ptr[Int32] = None  # tpyc: ok
     p = nullptr;
     // 6: print(p is None)

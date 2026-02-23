@@ -3,14 +3,12 @@
 
 namespace tpy_user::mypackage {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mypackage";
 }
 
 } // namespace tpy_user::mypackage

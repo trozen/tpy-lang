@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 13: def sum_array(arr: Array[Int32, 3]) -> Int32:
 int32_t sum_array(std::array<int32_t, 3>& arr) {
@@ -56,8 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests that list literals can be coerced to Array types.
     // 42: main()
     main();
 }

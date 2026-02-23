@@ -5,7 +5,7 @@
 
 namespace tpy_user::utils {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "utils";
 
 int32_t root_func();
 

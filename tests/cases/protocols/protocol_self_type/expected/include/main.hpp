@@ -11,7 +11,7 @@ concept Addable = requires(const T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
 };
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Addable T_x, Addable T_y>
 void add_values(T_x& x, T_y& y);

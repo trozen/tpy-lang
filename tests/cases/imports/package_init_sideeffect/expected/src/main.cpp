@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 5: def main() -> Int32:
 int32_t main() {
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: # Import submodule - should execute parent __init__ first
     // 3: from mypackage.utils import helper
     ::tpy_user::mypackage::__tpy_init();

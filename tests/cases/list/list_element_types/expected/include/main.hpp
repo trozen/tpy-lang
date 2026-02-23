@@ -5,7 +5,6 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* pure_literals;
 extern std::vector<int32_t>* mixed_int32;
 extern std::vector<int32_t>* mixed_int32_rev;
@@ -13,6 +12,7 @@ extern std::vector<int32_t>* annotated_int32;
 extern std::vector<tpy::BigInt>* annotated_bigint;
 extern std::vector<int32_t>* global_for_span;
 extern std::vector<tpy::BigInt>* bigint_list;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t local_mixed();
 int32_t sum_span(std::span<const int32_t> nums);

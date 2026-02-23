@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 template<typename T> struct Box;
 
-extern std::string_view __name__;
 extern Box<std::vector<int32_t>>* box;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 4: class Box[T]:
 template<typename T>

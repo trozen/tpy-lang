@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # True division (/) always returns float
     // 2: print(10 / 4)
     std::cout << tpy::print_float((static_cast<double>(tpy::BigInt(10)) / static_cast<double>(tpy::BigInt(4)))) << "\n";

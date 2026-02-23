@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 12: def test_and_rhs(v: A | B) -> int:
 tpy::BigInt test_and_rhs(std::variant<A, B>& v) {
@@ -113,7 +112,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 51: main()
     main();
 }

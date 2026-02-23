@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 32: def main() -> None:
 void main() {
@@ -34,8 +33,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test rvalue expressions passed to protocol-typed parameters.
     // 53: main()
     main();
 }

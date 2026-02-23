@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sequence<int32_t> T_s>
 int32_t seq_at(T_s& s, int32_t i);

@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Counter;
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* result;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class Counter:
 struct Counter {

@@ -11,7 +11,7 @@ concept Printable = requires(T& t) {
     { t.to_string() } -> std::convertible_to<std::string_view>;
 };
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "traits";
 
 void __tpy_init();
 } // namespace tpy_user::traits

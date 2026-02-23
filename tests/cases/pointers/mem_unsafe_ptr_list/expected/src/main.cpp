@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def test_list_ptr() -> None:
 void test_list_ptr() {
@@ -24,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from tpy.unsafe import unsafe_ptr, unsafe_load
     // 11: test_list_ptr()
     test_list_ptr();

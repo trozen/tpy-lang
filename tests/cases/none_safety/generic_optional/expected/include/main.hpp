@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 template<typename T> struct Container;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::optional<int32_t> maybe_val(std::optional<int32_t> x);
 void main();

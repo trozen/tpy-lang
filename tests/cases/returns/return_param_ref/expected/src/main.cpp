@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 9: def find_max(points: list[Point]) -> Point:
 Point& find_max(std::vector<Point>& points) {
@@ -104,7 +103,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 67: main()
     main();
 }

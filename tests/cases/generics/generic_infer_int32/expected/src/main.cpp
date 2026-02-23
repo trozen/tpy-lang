@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test order: literal first, Int32 second -> should infer Same[Int32]
 // 15: x: Int32 = 10
 int32_t x{};
@@ -18,8 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test that inference upgrades IntLiteralType to concrete int type."""
     // 14: # Test order: literal first, Int32 second -> should infer Same[Int32]
     // 15: x: Int32 = 10
     x = 10;

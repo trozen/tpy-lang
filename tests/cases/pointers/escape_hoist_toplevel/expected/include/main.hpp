@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
 extern Point* saved;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class Point:
 struct Point {

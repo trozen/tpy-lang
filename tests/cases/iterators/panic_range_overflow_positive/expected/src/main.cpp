@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Exit value would be 2147483648 (INT32_MAX + 1) — must panic
     // 4: for i in range(Int32(2147483646), Int32(2147483647), Int32(2)):
     tpy::range_check_overflow<int32_t>(2147483646, 2147483647, 2);

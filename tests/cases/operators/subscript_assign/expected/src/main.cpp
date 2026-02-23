@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Array subscript assignment
 // 4: arr: Array[Int32, 3] = [1, 2, 3]
 std::array<int32_t, 3>* arr{};
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Array subscript assignment
     // 4: arr: Array[Int32, 3] = [1, 2, 3]
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};

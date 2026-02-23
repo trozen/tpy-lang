@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 20: points: list[Point] = list()
 std::vector<Point>* points{};
 // 24: result = find(points, 2)
@@ -28,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 20: points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;

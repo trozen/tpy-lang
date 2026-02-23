@@ -5,12 +5,12 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::optional<int32_t> x;
 extern std::optional<int32_t> y;
 extern std::optional<bool> b;
 extern std::optional<double> f;
 extern std::optional<int32_t> z;
+inline constexpr std::string_view __name__ = "__main__";
 
 void use_global();
 

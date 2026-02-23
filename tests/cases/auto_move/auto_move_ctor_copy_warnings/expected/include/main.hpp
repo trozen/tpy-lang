@@ -13,7 +13,7 @@ template<typename T> struct GenericNotLastUse;
 struct OptHolder;
 struct Outer;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void test_nested_field_move(Outer& o, Inner inner);
 void test_nested_field_copy(Outer& o, Inner inner);

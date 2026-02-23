@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 8: x = None
 std::optional<int32_t> x;
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: x = None
     x = std::nullopt;
     // 9: x = first([Int32(41), Int32(42)])

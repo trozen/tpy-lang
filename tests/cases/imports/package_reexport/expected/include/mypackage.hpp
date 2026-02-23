@@ -6,8 +6,8 @@
 
 namespace tpy_user::mypackage {
 
-extern std::string_view __name__;
 extern int32_t VERSION;
+inline constexpr std::string_view __name__ = "mypackage";
 
 using ::tpy_user::mypackage::utils::add;
 

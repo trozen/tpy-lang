@@ -3,13 +3,11 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test negative indexing for various container types
 // # Note: StaticList negative indexing is not yet implemented
 // 6: def test_list_negative_indexing() -> None:
 void test_list_negative_indexing() {
-    // 7:     """Test negative indexing on list."""
     // 8:     nums: list[Int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     // 10:     # Last element
@@ -28,7 +26,6 @@ void test_list_negative_indexing() {
 
 // 22: def test_array_negative_indexing() -> None:
 void test_array_negative_indexing() {
-    // 23:     """Test negative indexing on Array."""
     // 24:     arr: Array[Int32, 4] = [100, 200, 300, 400]
     std::array<int32_t, 4> arr = {100, 200, 300, 400};
     // 26:     print(arr[-1])
@@ -41,7 +38,6 @@ void test_array_negative_indexing() {
 
 // 30: def test_string_negative_indexing() -> None:
 void test_string_negative_indexing() {
-    // 31:     """Test negative indexing on string."""
     // 32:     text: str = "hello"
     std::string_view text = "hello";
     // 34:     # Last character
@@ -57,7 +53,6 @@ void test_string_negative_indexing() {
 
 // 43: def test_negative_index_assignment() -> None:
 void test_negative_index_assignment() {
-    // 44:     """Test assignment using negative index."""
     // 45:     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // 47:     # Modify last element
@@ -79,7 +74,6 @@ void test_negative_index_assignment() {
 
 // 59: def test_negative_index_in_expression() -> None:
 void test_negative_index_in_expression() {
-    // 60:     """Test negative index used in expressions."""
     // 61:     nums: list[Int32] = [5, 10, 15, 20]
     std::vector<int32_t> nums = {5, 10, 15, 20};
     // 63:     # Arithmetic with negative indexed values
@@ -100,7 +94,6 @@ void test_negative_index_in_expression() {
 
 // 73: def test_array_negative_assignment() -> None:
 void test_array_negative_assignment() {
-    // 74:     """Test assignment using negative index on Array."""
     // 75:     arr: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
     // 77:     arr[-1] = 30
@@ -122,7 +115,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 85: # Run all tests
     // 86: print("=== list ===")
     std::cout << "=== list ===" << "\n";

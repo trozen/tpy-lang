@@ -11,7 +11,7 @@ concept Measurable = requires(const T& t) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Measurable T_items>
 int32_t count(T_items& items);

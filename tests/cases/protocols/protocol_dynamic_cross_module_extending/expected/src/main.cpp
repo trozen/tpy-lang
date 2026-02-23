@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 23: def greet_pet(pet: Pet) -> None:
 void greet_pet(::tpy_user::pet::__tpy_Base_Pet& pet) {
@@ -45,7 +44,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
     // 2: # Tests that __tpy_Base_NamedPet inherits from the qualified ::tpy_user::pet::__tpy_Base_Pet.
     // 3: from pet import Pet

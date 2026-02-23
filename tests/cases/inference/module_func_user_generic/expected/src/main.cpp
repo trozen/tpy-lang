@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 5: def main() -> None:
 void main() {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: import helpers
     ::tpy_user::helpers::__tpy_init();
     // 11: main()

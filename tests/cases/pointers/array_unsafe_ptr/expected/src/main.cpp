@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def test_array_to_ptr() -> None:
 void test_array_to_ptr() {
@@ -38,7 +37,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
     // 18: test_array_to_ptr()
     test_array_to_ptr();

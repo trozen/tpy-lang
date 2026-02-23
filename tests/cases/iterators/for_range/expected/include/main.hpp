@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void print_range(int32_t start, int32_t end);
 int32_t sum_range(int32_t n);

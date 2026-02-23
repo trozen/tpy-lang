@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 30: count: Int32 = 0
 int32_t count{};
 // # 4. BigInt stop mutated — .to_int32() captured once
@@ -76,7 +75,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 30: count: Int32 = 0
     count = 0;
     // 31: for i in range(get_stop(3)):

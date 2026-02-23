@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 struct Message;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<::tpy_user::traits::Printable T_p>
 void show(T_p& p);

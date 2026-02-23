@@ -3,7 +3,6 @@
 
 namespace tpy_user::helpers {
 
-std::string_view __name__;
 
 // 1: def mutate() -> None:
 void mutate() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "helpers";
 }
 
 } // namespace tpy_user::helpers

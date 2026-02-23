@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Call static method via instance (also valid)
 // 26: c = Counter(100)
 Counter* c{};
@@ -13,8 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test @staticmethod decorator on class methods."""
     // 21: # Call static method via class name
     // 22: print(Counter.zero())
     std::cout << Counter::zero() << "\n";

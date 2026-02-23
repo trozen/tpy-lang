@@ -3,11 +3,9 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<const int32_t> values) {
-    // 5:     """Function accepting Span - any NativeContiguous[Int32] should work."""
     // 6:     total: Int32 = 0
     int32_t total = 0;
     // 7:     for v in values:
@@ -21,7 +19,6 @@ int32_t sum_span(std::span<const int32_t> values) {
 
 // 11: def sum_span_bigint(values: Span[int]) -> int:
 tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> values) {
-    // 12:     """Function accepting Span[int] (BigInt) - tests IntLiteral coercion."""
     // 13:     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
     // 14:     for v in values:
@@ -75,8 +72,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests that NativeContiguous[T] types can coerce to Span[T]."""
     // 45: main()
     main();
 }

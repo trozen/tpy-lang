@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Default value
 // 5: b0: bool = bool()
 bool b0{};
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # Default value
     // 5: b0: bool = bool()
     b0 = false;

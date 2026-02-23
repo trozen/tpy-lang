@@ -3,11 +3,9 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 5: def test_binary_ops():
 void test_binary_ops() {
-    // 6:     """Test binary arithmetic operations."""
     // 7:     a: Int32 = 20
     int32_t a = 20;
     // 8:     b: Int32 = 7
@@ -31,7 +29,6 @@ void test_binary_ops() {
 
 // 26: def test_unary_neg():
 void test_unary_neg() {
-    // 27:     """Test unary negation."""
     // 28:     x: Int32 = 42
     int32_t x = 42;
     // 29:     print(-x)  # -42
@@ -44,7 +41,6 @@ void test_unary_neg() {
 
 // 35: def test_mixed_literals():
 void test_mixed_literals() {
-    // 36:     """Test Int32 with literal operands."""
     // 37:     x: Int32 = 10
     int32_t x = 10;
     // 39:     # Int32 + literal
@@ -60,7 +56,6 @@ void test_mixed_literals() {
 
 // 49: def test_negative_division():
 void test_negative_division() {
-    // 50:     """Test division with negative numbers (Python floor semantics)."""
     // 51:     a: Int32 = -17
     int32_t a = -17;
     // 52:     b: Int32 = 5
@@ -78,8 +73,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test Int32 arithmetic operations with overflow checks."""
     // 61: test_binary_ops()
     test_binary_ops();
     // 62: test_unary_neg()

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 3: x: Int32 = 1
 int32_t x{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: x: Int32 = 1
     x = 1;
     // 4: print(x << 100)  # Should panic: shift count too large

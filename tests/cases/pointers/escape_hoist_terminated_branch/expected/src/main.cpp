@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # The lvalue branch terminates (continue), so only the rvalue path
 // # reaches the escape point. Hoisting is safe.
@@ -38,7 +37,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 23: terminated_branch()
     terminated_branch();
 }

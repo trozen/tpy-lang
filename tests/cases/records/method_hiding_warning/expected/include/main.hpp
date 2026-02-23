@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct Animal;
 struct Dog;
 
-extern std::string_view __name__;
 extern Dog* d;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 1: class Animal:
 struct Animal {

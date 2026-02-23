@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 8: value: Int32 = Int32(7)
 int32_t value{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: value: Int32 = Int32(7)
     value = 7;
     // 9: print(echo_with_delta(value, Int32(5)))  # tpyc: ok

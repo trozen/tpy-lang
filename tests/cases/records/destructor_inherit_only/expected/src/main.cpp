@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 19: def consume(c: Own[Child]) -> None:
 void consume(Child c) {
@@ -30,7 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 30: main()
     main();
 }

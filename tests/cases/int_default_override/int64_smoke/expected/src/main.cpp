@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Int64 default: in-range literals should stay fixed-int.
 // 2: a = 2 ** 40
 int64_t a{};
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Int64 default: in-range literals should stay fixed-int.
     // 2: a = 2 ** 40
     a = tpy::pow_check<int64_t>(2, 40);

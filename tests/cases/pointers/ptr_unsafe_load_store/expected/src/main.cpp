@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def test_store_and_load() -> None:
 void test_store_and_load() {
@@ -38,7 +37,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from tpy.unsafe import unsafe_load, unsafe_store
     // 18: test_store_and_load()
     test_store_and_load();

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct IntWrapper;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sequence<int32_t> T_s>
 int32_t sum_seq(T_s& s);

@@ -9,7 +9,7 @@ struct Point;
 struct Ref;
 struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

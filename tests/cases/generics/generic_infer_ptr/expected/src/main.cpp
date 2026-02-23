@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 24: pt: Point = Point()
 Point* pt{};
 // # Create explicitly-typed pointer variables
@@ -26,8 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test type inference with Ptr[T] and ConstPtr[T] parameters."""
     // 24: pt: Point = Point()
     static Point __global_slot_1 = Point();
     pt = &__global_slot_1;

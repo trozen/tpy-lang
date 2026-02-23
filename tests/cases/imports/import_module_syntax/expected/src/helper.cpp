@@ -3,7 +3,6 @@
 
 namespace tpy_user::helper {
 
-std::string_view __name__;
 
 // 3: def get_value() -> Int32:
 int32_t get_value() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "helper";
 }
 
 } // namespace tpy_user::helper

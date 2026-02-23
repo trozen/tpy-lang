@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 3: def main():
 void main() {
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: from math import custom_add, MAGIC  # tpyc: warning(/shadows builtin module/)
     ::tpy_user::math::__tpy_init();
     // 7: main()

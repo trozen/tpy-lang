@@ -5,9 +5,9 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::string_view s;
 extern std::string_view u;
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpy_user::main

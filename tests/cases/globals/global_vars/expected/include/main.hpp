@@ -8,7 +8,6 @@ namespace tpy_user::main {
 struct Point;
 struct Counter;
 
-extern std::string_view __name__;
 extern int32_t start;
 extern int32_t end;
 extern std::vector<int32_t>* items;
@@ -30,6 +29,7 @@ extern int32_t val;
 extern Counter* c;
 extern std::vector<int32_t>* arr;
 extern int32_t delta;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # Test 8: Global pointer field access
 // 50: class Point:

@@ -47,7 +47,7 @@ concept ContainerFactory = requires(T& t) {
 
 struct DefaultFactory;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<ContainerFactory F>
 Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text);

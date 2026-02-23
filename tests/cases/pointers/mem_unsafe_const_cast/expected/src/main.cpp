@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 4: s: str = "hello"
 std::string_view s;
 // 5: cp: ConstPtr[Char] = unsafe_ptr(s)
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
     // 4: s: str = "hello"
     s = "hello";

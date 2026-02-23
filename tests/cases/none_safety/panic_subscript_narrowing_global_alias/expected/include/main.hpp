@@ -5,8 +5,8 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::vector<std::optional<int32_t>>* l;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::vector<std::optional<int32_t>> make_list();
 void mut();

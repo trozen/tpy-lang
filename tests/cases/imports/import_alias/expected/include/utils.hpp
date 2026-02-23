@@ -7,8 +7,8 @@ namespace tpy_user::utils {
 
 struct Point;
 
-extern std::string_view __name__;
 extern int32_t MAX_VALUE;
+inline constexpr std::string_view __name__ = "utils";
 
 int32_t add(int32_t a, int32_t b);
 

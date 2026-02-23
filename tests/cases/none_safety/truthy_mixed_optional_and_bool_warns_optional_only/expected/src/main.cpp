@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def pick(x: Int32 | None, flag: bool) -> Int32:
 int32_t pick(std::optional<int32_t> x, bool flag) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 10: print(pick(3, True))
     std::cout << pick(3, true) << "\n";
     // 11: print(pick(0, True))

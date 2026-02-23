@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Widening: signed -> larger signed
 // 5: a: Int8 = Int8(42)
 int8_t a{};
@@ -25,7 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # Widening: signed -> larger signed
     // 5: a: Int8 = Int8(42)
     a = 42;

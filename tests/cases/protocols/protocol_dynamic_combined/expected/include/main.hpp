@@ -62,7 +62,7 @@ struct __tpy_RefAdapter_Noise : __tpy_Base_Noise {
 struct Dog;
 struct Cat;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void show_desc(__tpy_Base_Describable& d);
 void show_noise(__tpy_Base_Noise& n);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test combined inheritance with multiple protocols
 // 55: c = Car("Toyota", 2023, "Camry", 1500)
 Car* c{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 54: # Test combined inheritance with multiple protocols
     // 55: c = Car("Toyota", 2023, "Camry", 1500)
     static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);

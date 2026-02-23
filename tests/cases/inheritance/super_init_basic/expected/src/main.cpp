@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test creating a Dog (child class)
 // 30: d = Dog("Buddy", 3, "Golden Retriever")
 Dog* d{};
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 29: # Test creating a Dog (child class)
     // 30: d = Dog("Buddy", 3, "Golden Retriever")
     static Dog __global_slot_1 = Dog("Buddy", 3, "Golden Retriever");

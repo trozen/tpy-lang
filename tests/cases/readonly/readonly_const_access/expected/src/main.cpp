@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 19: def read_items(c: readonly[Container]) -> None:
 void read_items(const Container& c) {
@@ -30,7 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 29: main()
     main();
 }

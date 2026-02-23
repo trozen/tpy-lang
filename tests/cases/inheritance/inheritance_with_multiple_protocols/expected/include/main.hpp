@@ -27,8 +27,8 @@ concept Describable = requires(T& t) {
 struct Vehicle;
 struct Car;
 
-extern std::string_view __name__;
 extern Car* c;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # Base class
 // 5: class Vehicle:

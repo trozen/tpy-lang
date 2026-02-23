@@ -3,18 +3,23 @@
 
 namespace tpy_user::main {
 
-// 1: __name__ = "custom"
-std::string_view __name__;
+
+// 4: def main() -> None:
+void main() {
+    // 5:     print(BIG_VALUE)
+    std::cout << ::tpy_user::constants::BIG_VALUE << "\n";
+}
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // 1: __name__ = "custom"
-    __name__ = "custom";
-    // 2: print(__name__)
-    std::cout << __name__ << "\n";
+    // 1: # Cross-module import of a Final[int] (BigInt) constant
+    // 2: from constants import BIG_VALUE
+    ::tpy_user::constants::__tpy_init();
+    // 7: main()
+    main();
 }
 
 } // namespace tpy_user::main

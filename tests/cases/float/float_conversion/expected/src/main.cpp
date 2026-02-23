@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Type conversions
 // 2: a = float(5)
 double a{};
@@ -17,7 +16,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Type conversions
     // 2: a = float(5)
     a = static_cast<double>(5);

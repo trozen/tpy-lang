@@ -2948,9 +2948,10 @@ print(MAX)  # 100
 - Looks for `mod.py` in the project directory
 - Supports package directories with `__init__.py`
 
-**`__name__` variable:**
+**`__name__` constant:**
 - Entry point module: `__name__ == "__main__"`
 - Imported modules: `__name__ == "module_name"`
+- Immutable: `__name__` is a `Final[str]` compile-time constant; reassignment is a compile error
 
 **Import execution order:** Imports execute at their source location, matching Python semantics. Top-level code in imported modules runs when the import statement is reached, not hoisted to the beginning:
 

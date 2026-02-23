@@ -137,21 +137,25 @@ class StatementGenerator:
             self.ctx.current_stmt_line = stmt.loc.line
 
         self.ctx.emit_inline_comments(out, stmt.loc, indent)
-        self.ctx.emit_source_comment(out, stmt.loc, indent)
 
         # Compound statements - delegate to handlers (they flush before their header)
         if isinstance(stmt, TpyIf):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._gen_if(out, stmt, indent)
         elif isinstance(stmt, TpyWhile):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._gen_while(out, stmt, indent)
         elif isinstance(stmt, TpyForEach):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._gen_for_each(out, stmt, indent)
         elif isinstance(stmt, TpyAssert):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._gen_assert(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
             if code is not None:
+                self.ctx.emit_source_comment(out, stmt.loc, indent)
                 self.ctx.temps.flush(out, indent)
                 out.write(code)
             # Assignment narrowing for union VarDecl

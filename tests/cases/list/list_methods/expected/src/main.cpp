@@ -3,12 +3,10 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test all list methods: pop(), insert(), remove(), clear(), extend()
 // 5: def print_list(nums: list[Int32]) -> None:
 void print_list(std::vector<int32_t>& nums) {
-    // 6:     """Helper to print list contents."""
     // 7:     i: Int32 = 0
     int32_t i = 0;
     // 8:     while i < len(nums):
@@ -24,7 +22,6 @@ void print_list(std::vector<int32_t>& nums) {
 
 // 13: def test_pop() -> None:
 void test_pop() {
-    // 14:     """Test pop() - remove and return last element."""
     // 15:     nums: list[Int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
     // 17:     # Pop last element
@@ -47,7 +44,6 @@ void test_pop() {
 
 // 29: def test_insert() -> None:
 void test_insert() {
-    // 30:     """Test insert(index, value) - insert at specific position."""
     // 31:     nums: list[Int32] = [10, 30, 40]
     std::vector<int32_t> nums = {10, 30, 40};
     // 33:     # Insert at beginning
@@ -69,7 +65,6 @@ void test_insert() {
 
 // 45: def test_remove() -> None:
 void test_remove() {
-    // 46:     """Test remove(value) - remove first occurrence of value."""
     // 47:     nums: list[Int32] = [10, 20, 30, 20, 40]
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
     // 49:     # Remove first occurrence of 20
@@ -91,7 +86,6 @@ void test_remove() {
 
 // 61: def test_clear() -> None:
 void test_clear() {
-    // 62:     """Test clear() - remove all elements."""
     // 63:     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // 64:     print(len(nums))
@@ -111,7 +105,6 @@ void test_clear() {
 
 // 74: def test_extend() -> None:
 void test_extend() {
-    // 75:     """Test extend(iterable) - add all elements from another collection."""
     // 76:     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // 78:     # Extend with array literal
@@ -148,7 +141,6 @@ void test_extend() {
 
 // 99: def test_combined_operations() -> None:
 void test_combined_operations() {
-    // 100:     """Test combining multiple list methods."""
     // 101:     nums: list[Int32] = [5]
     std::vector<int32_t> nums = {5};
     // 103:     nums.append(10)
@@ -180,7 +172,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 118: # Run all tests
     // 119: print("=== pop ===")
     std::cout << "=== pop ===" << "\n";

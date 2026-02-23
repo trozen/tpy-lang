@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Counter;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void empty_function();
 int32_t function_with_pass_branch(int32_t x);

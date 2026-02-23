@@ -3,7 +3,6 @@
 
 namespace tpy_user::mypackage::utils {
 
-std::string_view __name__;
 
 // 3: def add(a: Int32, b: Int32) -> Int32:
 int32_t add(int32_t a, int32_t b) {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mypackage.utils";
 }
 
 } // namespace tpy_user::mypackage::utils

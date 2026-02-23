@@ -15,7 +15,7 @@ concept HasValue = requires(T& t) {
 struct IntBox;
 struct BoxContainer;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<HasValue T_h>
 void show(T_h& h);

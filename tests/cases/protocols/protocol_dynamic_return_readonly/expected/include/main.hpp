@@ -35,8 +35,8 @@ struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
 struct Dog;
 struct Cat;
 
-extern std::string_view __name__;
 extern __tpy_Base_Pet* global_pet;
+inline constexpr std::string_view __name__ = "__main__";
 
 const __tpy_Base_Pet& echo_readonly(const __tpy_Base_Pet& pet);
 const __tpy_Base_Pet& get_global_readonly();

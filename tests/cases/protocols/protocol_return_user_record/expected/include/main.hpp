@@ -15,7 +15,7 @@ concept PointFactory = requires(T& t) {
 
 struct DefaultFactory;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<PointFactory T>
 Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Inference from list literal -> Box[list[int]]
 // 12: box = Box([1, 2, 3])
 Box<std::vector<int32_t>>* box{};
@@ -13,8 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test type inference with list argument."""
     // 11: # Inference from list literal -> Box[list[int]]
     // 12: box = Box([1, 2, 3])
     static Box<std::vector<int32_t>> __global_slot_1 = Box<std::vector<int32_t>>({1, 2, 3});

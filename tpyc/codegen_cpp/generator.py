@@ -183,18 +183,10 @@ class CodeGenerator:
             binding = self.ctx.analyzer.global_ns.lookup_local(name)
             if binding and binding.type and not binding.type.is_value_type():
                 self.ctx.pointer_globals.add(name)
-        # Track if we need synthetic __name__ (add to global_names for proper deref)
-        self.ctx._has_synthetic_name = "__name__" not in seen_globals
-        if self.ctx._has_synthetic_name:
-            self.ctx.global_names.add("__name__")
-
         # Generate protocol ordering and forward declarations
         self._generate_protocol_ordering(hpp, module, global_decls, final_decls, seen_globals)
 
         # Generate global definitions in source (before functions)
-        # __name__ is always present (synthetic if not user-defined)
-        if "__name__" not in seen_globals:
-            cpp.write('std::string_view __name__;\n')
         for stmt in global_decls:
             self.functions.gen_global_decl(cpp, stmt)
         # Final globals: constexpr in header, const in source (BigInt only)
@@ -466,8 +458,6 @@ class CodeGenerator:
             hpp.write("\n")
 
         # Global extern declarations
-        if "__name__" not in seen_globals:
-            hpp.write("extern std::string_view __name__;\n")
         for stmt in global_decls:
             self.functions.gen_global_extern(hpp, stmt)
         # Final global declarations (inline constexpr or extern const)

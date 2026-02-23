@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 12: def test_value_types():
 void test_value_types() {
@@ -63,7 +62,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 49: test_value_types()
     test_value_types();
     // 50: test_object_types()

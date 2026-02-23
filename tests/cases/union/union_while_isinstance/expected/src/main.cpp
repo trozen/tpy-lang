@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 18: def drain_circles(s: Circle | Rect) -> None:
 void drain_circles(std::variant<Circle, Rect>& s) {
@@ -41,7 +40,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 32: main()
     main();
 }

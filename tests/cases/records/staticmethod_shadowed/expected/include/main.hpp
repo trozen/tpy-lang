@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Helper;
 
-extern std::string_view __name__;
 extern Helper* h;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t use_helper(Helper& Helper);
 

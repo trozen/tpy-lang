@@ -13,7 +13,7 @@ concept Duplicable = requires(T& t) {
 
 struct Value;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Duplicable T_d>
 void double_it(T_d& d);

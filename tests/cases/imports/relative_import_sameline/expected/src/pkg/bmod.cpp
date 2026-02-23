@@ -3,14 +3,12 @@
 
 namespace tpy_user::pkg::bmod {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "pkg.bmod";
     // 1: print("init: bmod")
     std::cout << "init: bmod" << "\n";
 }

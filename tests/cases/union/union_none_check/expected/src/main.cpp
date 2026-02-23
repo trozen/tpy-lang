@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 9: def describe(v: Int32 | Dog | None) -> str:
 std::string_view describe(std::variant<std::monostate, Dog, int32_t>& v) {
@@ -74,7 +73,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 37: main()
     main();
 }

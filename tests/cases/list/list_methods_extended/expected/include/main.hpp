@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Item;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void print_list(std::vector<int32_t>& nums);
 void print_staticlist(StaticList<int32_t, 16>& nums);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 29: def main() -> None:
 void main() {
@@ -35,8 +34,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test user-defined record with __lt__ satisfies Comparable bound."""
     // 47: main()
     main();
 }

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def after_break(x: Int32 | None, flag: bool) -> Int32:
 int32_t after_break(std::optional<int32_t> x, bool flag) {
@@ -26,7 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 12: print(after_break(2, False))
     std::cout << after_break(2, false) << "\n";
 }

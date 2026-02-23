@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // @extern_c
 // 5: def app_init() -> None:
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from mathlib import abs, get_clock
     ::tpy_user::mathlib::__tpy_init();
 }

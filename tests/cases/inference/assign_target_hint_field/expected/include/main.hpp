@@ -10,7 +10,7 @@ template<typename T> struct WithList;
 template<typename T> struct WithStaticList;
 template<typename T> struct WithHeapStorage;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

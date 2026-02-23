@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 53: def main() -> None:
 void main() {
@@ -28,8 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test generic user-defined protocol as type parameter bound.
     // 66: main()
     main();
 }

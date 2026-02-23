@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Comparisons
 // 2: x = 3.14
 double x{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Comparisons
     // 2: x = 3.14
     x = 3.14;

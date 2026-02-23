@@ -7,9 +7,9 @@ namespace tpy_user::main {
 
 template<typename A, typename B> struct Pair;
 
-extern std::string_view __name__;
 extern Pair<int32_t, std::string_view>* p1;
 extern Pair<std::string_view, int32_t>* p2;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename A, typename B>
 Pair<B, A> swap_pair(Pair<A, B>& p);

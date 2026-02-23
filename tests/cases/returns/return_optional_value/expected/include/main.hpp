@@ -5,8 +5,8 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::optional<int32_t> result;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::optional<int32_t> maybe_int(bool flag);
 std::optional<int32_t> pass_through(std::optional<int32_t> val);

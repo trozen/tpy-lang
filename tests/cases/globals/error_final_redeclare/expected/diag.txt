@@ -1,0 +1,1 @@
+main.py:6: error: Cannot re-declare Final variable 'X'

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def test_copy_mutable() -> None:
 void test_copy_mutable() {
@@ -44,7 +43,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_copy_n
     // 21: test_copy_mutable()
     test_copy_mutable();

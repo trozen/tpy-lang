@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* items;
 extern StaticList<int32_t, 10>* sl;
 extern std::array<int32_t, 3>* arr;
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpy_user::main

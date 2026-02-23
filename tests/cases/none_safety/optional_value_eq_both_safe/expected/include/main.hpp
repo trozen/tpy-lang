@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 bool eq_both(std::optional<int32_t> a, std::optional<int32_t> b);
 

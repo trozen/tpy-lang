@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def is_large(x: Int32 | None) -> Int32:
 int32_t is_large(std::optional<int32_t> x) {
@@ -23,7 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 11: print(is_large(20))
     std::cout << is_large(20) << "\n";
     // 12: print(is_large(5))

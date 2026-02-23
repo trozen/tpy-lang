@@ -14,7 +14,7 @@ concept ItemsProvider = requires(T& t) {
 struct IntListHolder;
 template<ItemsProvider<int32_t> V> struct Wrapper;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

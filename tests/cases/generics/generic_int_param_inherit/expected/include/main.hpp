@@ -9,7 +9,7 @@ template<typename T, std::size_t N> struct Base;
 template<typename T, std::size_t N> struct Child;
 template<typename T, std::size_t N> struct GrandChild;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

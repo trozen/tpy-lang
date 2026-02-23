@@ -495,9 +495,6 @@ class FunctionGenerator:
         out.write(f"{INDENT}static bool initialized = false;\n")
         out.write(f"{INDENT}if (initialized) return;\n")
         out.write(f"{INDENT}initialized = true;\n\n")
-        # Initialize synthetic __name__ if not user-defined
-        if self.ctx._has_synthetic_name:
-            out.write(f'{INDENT}__name__ = "{module_name}";\n')
 
         self.ctx.reset_scope()
         # Pre-seed with global names and types so re-declarations become assignments

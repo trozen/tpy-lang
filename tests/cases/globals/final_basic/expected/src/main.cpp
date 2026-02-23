@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 13: def twice(x: Int32) -> Int32:
 int32_t twice(int32_t x) {
@@ -41,14 +40,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 5: MAX_SIZE: Final[Int32] = 100
-    // 6: NEG_VAL: Final[Int32] = -42
-    // 7: PI: Final[float] = 3.14159
-    // 8: DEBUG: Final[bool] = True
-    // 9: DISABLED: Final[bool] = False
-    // 10: NAME: Final[str] = "hello"
-    // 11: LETTER: Final[Char] = "A"
     // 29: main()
     main();
 }

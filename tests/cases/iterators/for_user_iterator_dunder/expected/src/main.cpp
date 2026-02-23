@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: # 1. Direct use in for-loop
     // 23: for x in Counter(5):
     auto __iter_0 = Counter(5);

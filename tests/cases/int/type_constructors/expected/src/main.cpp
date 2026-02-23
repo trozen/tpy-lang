@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # --- Int32 constructors ---
     // 5: # Int32(float): truncate toward zero
     // 6: print(Int32(3.7))    # 3

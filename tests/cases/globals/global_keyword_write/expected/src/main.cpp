@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 1: x: int = 0
 tpy::BigInt x;
 
@@ -19,7 +18,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: x: int = 0
     x = tpy::BigInt(0);
     // 7: increment()

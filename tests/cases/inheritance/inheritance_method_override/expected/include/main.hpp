@@ -9,10 +9,10 @@ struct Shape;
 struct Square;
 struct Rectangle;
 
-extern std::string_view __name__;
 extern Square* s;
 extern Rectangle* r;
 extern Shape* base;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class Shape:
 struct Shape {

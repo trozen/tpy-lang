@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Invalid string for Int32 parsing
 // 3: x: Int32 = Int32("abc")
 int32_t x{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: # Invalid string for Int32 parsing
     // 3: x: Int32 = Int32("abc")
     x = tpy::from_str_check<int32_t>("abc");

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Case 1: Pure literals (BigInt by default)
 // 4: pure_literals = [1, 2, 3]
 std::vector<int32_t>* pure_literals{};
@@ -76,7 +75,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Case 1: Pure literals (BigInt by default)
     // 4: pure_literals = [1, 2, 3]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};

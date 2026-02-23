@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 template<tpy::Sized T> struct Container;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

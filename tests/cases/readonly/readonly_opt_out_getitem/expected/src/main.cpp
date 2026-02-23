@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 18: c = CachedList()
 CachedList* c{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 18: c = CachedList()
     static CachedList __global_slot_1 = CachedList();
     c = &__global_slot_1;

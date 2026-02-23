@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 29: items = StaticList[Item, 16]()
 StaticList<Item, 16>* items{};
 // # Test initializer list constructor
@@ -51,7 +50,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 29: items = StaticList[Item, 16]()
     static StaticList<Item, 16> __global_slot_1 = StaticList<Item, 16>();
     items = &__global_slot_1;

@@ -3,7 +3,6 @@
 
 namespace tpy_user::utils {
 
-std::string_view __name__;
 
 // 3: def root_func() -> Int32:
 int32_t root_func() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "utils";
 }
 
 } // namespace tpy_user::utils

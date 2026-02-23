@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def make(i: Int32) -> Own[Box]:
 Box make(int32_t i) {
@@ -37,7 +36,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: test_while()
     test_while();
 }

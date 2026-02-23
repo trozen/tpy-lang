@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct Dog;
 struct Cat;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void greet_dog(Dog& d);
 void greet_cat(Cat& c);

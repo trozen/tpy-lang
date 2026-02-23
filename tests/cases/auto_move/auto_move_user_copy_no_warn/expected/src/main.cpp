@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def copy(b: Own[Box]) -> Own[Box]:
 Box copy(Box b) {
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 24: main()
     main();
 }

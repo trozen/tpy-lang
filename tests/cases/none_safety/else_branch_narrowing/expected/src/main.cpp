@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def describe(x: Int32 | None) -> Int32:
 int32_t describe(std::optional<int32_t> x) {
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 11: print(describe(10))
     std::cout << describe(10) << "\n";
     // 12: print(describe(None))

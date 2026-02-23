@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def add_pair(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: print(add_pair(1, 2))
     std::cout << add_pair(1, 2) << "\n";
     // 9: print(add_pair(None, 2))

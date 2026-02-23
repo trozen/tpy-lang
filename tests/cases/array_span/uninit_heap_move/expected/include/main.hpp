@@ -5,8 +5,8 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern UninitHeapStorage<int32_t>* storage;
+inline constexpr std::string_view __name__ = "__main__";
 
 UninitHeapStorage<int32_t> make_storage();
 int32_t consume(UninitHeapStorage<int32_t> s);

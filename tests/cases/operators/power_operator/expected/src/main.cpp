@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Power with variables
 // 23: x = 5
 int32_t x{};
@@ -15,7 +14,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Basic powers
     // 4: print(2 ** 0)   # 1
     std::cout << 1 << "\n";

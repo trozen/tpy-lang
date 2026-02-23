@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 5: nums: list[Int32] = [Int32(10), Int32(20), Int32(30)]
 std::vector<int32_t>* nums{};
 // 9: words: list[str] = ["hello", "world"]
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from helpers import first, length
     ::tpy_user::helpers::__tpy_init();
     // 5: nums: list[Int32] = [Int32(10), Int32(20), Int32(30)]

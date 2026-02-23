@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct Point;
 template<typename T> struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void print_point(Point& p);
 void test();

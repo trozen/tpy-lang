@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Overflow wraps (no panic)
 // 5: x: Int32 = Int32(300)
 int32_t x{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # Overflow wraps (no panic)
     // 5: x: Int32 = Int32(300)
     x = 300;

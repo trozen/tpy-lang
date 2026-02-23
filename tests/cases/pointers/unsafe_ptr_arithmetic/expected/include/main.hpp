@@ -5,13 +5,13 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::array<int32_t, 4>* arr;
 extern int32_t* base;
 extern int32_t* p2;
 extern int32_t* p0;
 extern int64_t diff;
 extern int64_t diff2;
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpy_user::main

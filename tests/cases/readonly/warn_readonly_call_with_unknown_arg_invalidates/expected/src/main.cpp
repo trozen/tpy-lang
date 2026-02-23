@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 11: def mutate_and_get(b: Box) -> Int32:
 int32_t mutate_and_get(Box& b) {
@@ -43,7 +42,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 30: print(use(Box(4)))
     Box __tmp_1 = Box(4);
     std::cout << use(__tmp_1) << "\n";

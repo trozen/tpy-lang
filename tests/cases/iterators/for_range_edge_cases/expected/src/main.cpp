@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Empty ranges -- body should never execute
     // 4: for i in range(0):
     for (int32_t i = 0; i < 0; ++i) {

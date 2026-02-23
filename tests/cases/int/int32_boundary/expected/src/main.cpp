@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # INT32_MAX operations that don't overflow
 // 5: x: Int32 = 2147483647
 int32_t x{};
@@ -16,8 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test valid Int32 operations at boundary values."""
     // 4: # INT32_MAX operations that don't overflow
     // 5: x: Int32 = 2147483647
     x = 2147483647;

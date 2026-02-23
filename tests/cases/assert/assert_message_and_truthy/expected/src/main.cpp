@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def bump_positive(n: Int32) -> Int32:
 int32_t bump_positive(int32_t n) {
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 9: print(bump_positive(4))
     std::cout << bump_positive(4) << "\n";
 }

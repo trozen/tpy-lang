@@ -3,7 +3,6 @@
 
 namespace tpy_user::mypackage {
 
-std::string_view __name__;
 // 3: CONST: Int32 = Int32(42)
 int32_t CONST{};
 
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mypackage";
     // 3: CONST: Int32 = Int32(42)
     CONST = 42;
 }

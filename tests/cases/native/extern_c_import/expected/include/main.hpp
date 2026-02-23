@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 extern "C" int32_t abs(int32_t x);
 extern "C" void tpy_srand(int32_t seed);

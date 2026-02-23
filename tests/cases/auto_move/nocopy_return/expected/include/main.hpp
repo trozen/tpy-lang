@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Handle;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 Handle make(int32_t val);
 void main();

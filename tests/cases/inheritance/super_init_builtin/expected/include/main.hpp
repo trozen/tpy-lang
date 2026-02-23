@@ -7,9 +7,9 @@ namespace tpy_user::main {
 
 struct MyList;
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* nums;
 extern MyList* m;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class MyList(StaticList[Int32, 10]):
 struct MyList : StaticList<int32_t, 10> {

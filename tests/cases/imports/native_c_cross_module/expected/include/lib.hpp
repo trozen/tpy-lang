@@ -5,7 +5,7 @@
 
 namespace tpy_user::lib {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "lib";
 
 extern "C" int32_t rect_area(c_rect* r);
 

@@ -1,0 +1,1 @@
+main.py:2: error: Cannot reassign Final variable '__name__'

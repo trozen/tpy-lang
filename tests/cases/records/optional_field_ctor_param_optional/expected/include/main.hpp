@@ -8,13 +8,13 @@ namespace tpy_user::main {
 struct Point;
 struct Edge;
 
-extern std::string_view __name__;
 extern std::vector<Point>* pts;
 extern Edge* e1;
 extern Point* p;
 extern Edge* e2;
 extern Edge* e3;
 extern Edge* e4;
+inline constexpr std::string_view __name__ = "__main__";
 
 Point* find(std::vector<Point>& items, int32_t target);
 

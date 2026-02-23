@@ -1,0 +1,1 @@
+utils.py:11: warning: ALL_CAPS variable 'MAX_VALUE' without Final annotation; use Final[Int32] if this is a constant

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # BigInt-default profile should keep unannotated integer arithmetic in BigInt.
 // 2: x = 2 ** 64
 tpy::BigInt x;
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # BigInt-default profile should keep unannotated integer arithmetic in BigInt.
     // 2: x = 2 ** 64
     x = ((tpy::BigInt(2)).pow(tpy::BigInt(64)));

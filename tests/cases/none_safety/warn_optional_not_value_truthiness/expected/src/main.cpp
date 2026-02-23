@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 1: def invert(x: bool | None) -> bool:
 bool invert(std::optional<bool> x) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 7: print(invert(True))
     std::cout << tpy::print_bool(invert(true)) << "\n";
     // 8: print(invert(False))

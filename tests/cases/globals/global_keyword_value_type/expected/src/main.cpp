@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 3: counter: Int32 = 0
 int32_t counter{};
 // 4: flag: bool = False
@@ -24,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: counter: Int32 = 0
     counter = 0;
     // 4: flag: bool = False

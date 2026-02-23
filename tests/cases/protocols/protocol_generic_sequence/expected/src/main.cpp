@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 15: def use_span(s: Span[Int32]) -> Int32:
 int32_t use_span(std::span<const int32_t> s) {
@@ -53,7 +52,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 42: main()
     main();
 }

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 
 // 8: def main() -> None:
@@ -31,7 +30,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from lib import Vec2, MyRect, rect_area
     ::tpy_user::lib::__tpy_init();
     // 19: main()

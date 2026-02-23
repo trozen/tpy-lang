@@ -8,7 +8,7 @@ extern "C" int32_t g_counter;
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void set_same_name(int32_t val);
 void set_renamed(int32_t val);

@@ -9,13 +9,13 @@ template<typename T> struct PtrHolder;
 template<typename T> struct ConstPtrHolder;
 struct Point;
 
-extern std::string_view __name__;
 extern Point* pt;
 extern Point* ptr;
 extern const Point* cptr;
 extern PtrHolder<Point>* holder;
 extern ConstPtrHolder<Point>* const_holder;
 extern ConstPtrHolder<Point>* const_holder2;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 5: class PtrHolder[T]:
 template<typename T>

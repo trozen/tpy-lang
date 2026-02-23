@@ -9,8 +9,8 @@ template<typename T, typename U> struct Base;
 template<typename T> struct Middle;
 template<typename T> struct Leaf;
 
-extern std::string_view __name__;
 extern Leaf<std::string_view>* leaf;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 12: class Base[T, U]:
 template<typename T, typename U>

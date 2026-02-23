@@ -14,7 +14,7 @@ concept Addable = requires(T& t) {
 struct MyNumber;
 template<Addable T> struct Holder;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

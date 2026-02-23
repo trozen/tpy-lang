@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 15: def make_optional_list() -> Own[list[Int32 | None]]:
 std::vector<std::optional<int32_t>> make_optional_list() {
@@ -80,7 +79,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 66: main()
     main();
 }

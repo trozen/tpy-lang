@@ -5,12 +5,12 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern char x;
 extern char y;
 extern std::optional<char> sx;
 extern std::optional<char> sy;
 extern std::optional<char> n;
+inline constexpr std::string_view __name__ = "__main__";
 
 bool ne_both(std::optional<char> a, std::optional<char> b);
 

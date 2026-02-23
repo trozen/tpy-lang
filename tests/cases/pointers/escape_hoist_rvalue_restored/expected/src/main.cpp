@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Variable goes rvalue → lvalue → rvalue. The final rvalue assignment
 // # re-enables hoisting because p now owns its storage again.
@@ -36,7 +35,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: rvalue_restored()
     rvalue_restored();
 }

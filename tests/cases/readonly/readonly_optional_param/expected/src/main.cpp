@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Form 1: readonly[T | None]
 // 11: def f1(p: readonly[Point | None]) -> Int32:
@@ -48,7 +47,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 29: main()
     main();
 }

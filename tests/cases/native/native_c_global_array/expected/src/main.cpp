@@ -3,20 +3,16 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # native_c_global_array for C array globals (extern T name[])
     // 2: # Generates incomplete array extern, which decays to pointer when used.
     // 3: from tpy.extern import native_c_global_array
     // 5: from tpy.unsafe import unsafe_load, unsafe_store
-    // 7: scores: Ptr[Int16] = native_c_global_array("g_scores")
-    // 8: ids: Ptr[Int32] = native_c_global_array("g_ids")
     // 10: # Read array elements
     // 11: print(unsafe_load(scores, UInt32(0)))
     std::cout << g_scores[0] << "\n";

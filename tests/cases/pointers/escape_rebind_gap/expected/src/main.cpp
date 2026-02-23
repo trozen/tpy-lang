@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Outer-scoped variable rebound to rvalue inside a loop.
 // # The escape detection doesn't flag this (variable depth stays at function
@@ -34,7 +33,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: rebind_gap()
     rebind_gap();
 }

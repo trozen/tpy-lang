@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # From Char (static lookup - safe)
 // 15: c: Char = "A"
 char c{};
@@ -17,7 +16,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # Empty string
     // 5: print(str())  # empty
     std::cout << "" << "\n";

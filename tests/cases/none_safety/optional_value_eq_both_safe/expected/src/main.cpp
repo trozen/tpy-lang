@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def eq_both(a: Int32 | None, b: Int32 | None) -> bool:
 bool eq_both(std::optional<int32_t> a, std::optional<int32_t> b) {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: print(eq_both(5, 5))
     std::cout << tpy::print_bool(eq_both(5, 5)) << "\n";
     // 9: print(eq_both(5, 3))

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def bad(x: Int32 | None) -> Int32:
 int32_t bad(std::optional<int32_t> x) {
@@ -20,7 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main

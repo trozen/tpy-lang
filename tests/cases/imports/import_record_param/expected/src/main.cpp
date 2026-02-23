@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 6: def get_radius(c: Circle) -> Int32:
 int32_t get_radius(::tpy_user::shapes::Circle& c) {
@@ -24,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from shapes import Circle
     ::tpy_user::shapes::__tpy_init();
     // 14: main()

@@ -15,7 +15,7 @@ concept Container = requires(T& t) {
 struct IntBox;
 struct StrBox;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Container<int32_t> C>
 int32_t extract(tpy::param_val_or_ref_t<C> c);

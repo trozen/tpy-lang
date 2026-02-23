@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Cat;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::string_view check(std::variant<std::monostate, Cat, int32_t>& v);
 std::string_view check_not(std::variant<std::monostate, Cat, int32_t>& v);

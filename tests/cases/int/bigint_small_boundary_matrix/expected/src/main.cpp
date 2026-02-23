@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 14: B: int = 1 << 62
 tpy::BigInt B;
 // 15: SMALL_MAX: int = B - 1
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 14: B: int = 1 << 62
     B = ((tpy::BigInt(1)) << (tpy::BigInt(62)));
     // 15: SMALL_MAX: int = B - 1

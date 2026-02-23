@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 15: def main() -> None:
 void main() {
@@ -34,7 +33,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
     // 27: main()
     main();

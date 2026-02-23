@@ -3,12 +3,10 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test 'in' and 'not in' operators for different container types
 // 5: def test_list_membership() -> None:
 void test_list_membership() {
-    // 6:     """Test membership for list[Int32]."""
     // 7:     nums: list[Int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     // 9:     # 'in' operator
@@ -43,7 +41,6 @@ void test_list_membership() {
 
 // 25: def test_array_membership() -> None:
 void test_array_membership() {
-    // 26:     """Test membership for Array[Int32, N]."""
     // 27:     arr: Array[Int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
     // 29:     if 3 in arr:
@@ -68,14 +65,12 @@ void test_array_membership() {
 
 // 39: def check_span_contains(data: Span[Int32], value: Int32) -> bool:
 bool check_span_contains(std::span<const int32_t> data, int32_t value) {
-    // 40:     """Test membership for Span[Int32]."""
     // 41:     return value in data
     return (std::find(data.begin(), data.end(), value) != data.end());
 }
 
 // 43: def test_span_membership() -> None:
 void test_span_membership() {
-    // 44:     """Test membership via Span parameter."""
     // 45:     nums: Array[Int32, 5] = [100, 200, 300, 400, 500]
     std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
     // 47:     if check_span_contains(nums, 300):
@@ -95,7 +90,6 @@ void test_span_membership() {
 
 // 54: def test_string_membership() -> None:
 void test_string_membership() {
-    // 55:     """Test membership for str (character in string)."""
     // 56:     text: str = "hello world"
     std::string_view text = "hello world";
     // 58:     # Single character 'in' string
@@ -130,7 +124,6 @@ void test_string_membership() {
 
 // 74: def test_membership_in_conditions() -> None:
 void test_membership_in_conditions() {
-    // 75:     """Test membership operators in complex conditions."""
     // 76:     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     // 78:     # Combined with 'and'
@@ -155,7 +148,6 @@ void test_membership_in_conditions() {
 
 // 90: def test_membership_with_variables() -> None:
 void test_membership_with_variables() {
-    // 91:     """Test membership with variable lookups."""
     // 92:     nums: list[Int32] = [5, 10, 15, 20]
     std::vector<int32_t> nums = {5, 10, 15, 20};
     // 93:     target: Int32 = 10
@@ -179,7 +171,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 101: # Run all tests
     // 102: test_list_membership()
     test_list_membership();

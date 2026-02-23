@@ -14,8 +14,8 @@ concept Printable = requires(const T& t) {
 
 struct Person;
 
-extern std::string_view __name__;
 extern Person* p;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # Class that explicitly implements Printable
 // 11: class Person(Printable):

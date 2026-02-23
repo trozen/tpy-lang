@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def ne_check(x: Int32 | None, y: Int32) -> bool:
 bool ne_check(std::optional<int32_t> x, int32_t y) {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: print(ne_check(5, 5))
     std::cout << tpy::print_bool(ne_check(5, 5)) << "\n";
     // 9: print(ne_check(3, 5))

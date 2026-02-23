@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def make_box() -> Own[Box]:
 Box make_box() {
@@ -57,7 +56,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 30: test_if_branch()
     test_if_branch();
     // 31: test_elif_branch()

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 14: b = Box(Int32(123))
 Box* b{};
 // 15: x = None
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 14: b = Box(Int32(123))
     static Box __global_slot_1 = Box(123);
     b = &__global_slot_1;

@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from mod_a import func_a
     ::tpy_user::mod_a::__tpy_init();
     // 3: from mod_b import func_b

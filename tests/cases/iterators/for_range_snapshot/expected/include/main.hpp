@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern int32_t count;
 extern int32_t n;
 extern int32_t count2;
+inline constexpr std::string_view __name__ = "__main__";
 
 void test_stop_snapshot();
 void test_all_args_snapshot();

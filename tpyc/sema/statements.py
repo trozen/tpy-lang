@@ -500,6 +500,11 @@ class StatementAnalyzer:
                     f"Final can only be used at module level",
                     stmt
                 )
+            if stmt.name in self.ctx.analyzed_finals:
+                raise self.ctx.error(
+                    f"Cannot re-declare Final variable '{stmt.name}'",
+                    stmt
+                )
             if not stmt.init:
                 raise self.ctx.error(
                     f"Final variable '{stmt.name}' must have an initializer",
@@ -513,11 +518,35 @@ class StatementAnalyzer:
                     stmt
                 )
             if not self._is_constant_expr(stmt.init):
+                # Give a specific hint for imported names
+                if (isinstance(stmt.init, TpyName)
+                        and stmt.init.name in self.ctx.user_imported_variables):
+                    src_mod, _ = self.ctx.user_imported_variables[stmt.init.name]
+                    raise self.ctx.error(
+                        f"Final variable '{stmt.name}' requires a compile-time constant initializer; "
+                        f"cross-module Final references are not yet supported "
+                        f"('{stmt.init.name}' is imported from '{src_mod}')",
+                        stmt
+                    )
                 raise self.ctx.error(
                     f"Final variable '{stmt.name}' requires a compile-time constant initializer",
                     stmt
                 )
             self.ctx.analyzed_finals.add(stmt.name)
+
+        # Warn on ALL_CAPS module-level variables without Final
+        if (self.ctx.is_top_level
+                and not stmt.is_final
+                and not stmt.name.startswith("_")
+                and stmt.name.replace("_", "").isalpha()
+                and stmt.name == stmt.name.upper()
+                and len(stmt.name) >= 2):
+            type_hint = str(stmt.type) if stmt.type else "<type>"
+            self.ctx.warning(
+                f"ALL_CAPS variable '{stmt.name}' without Final annotation; "
+                f"use Final[{type_hint}] if this is a constant",
+                stmt
+            )
 
         # Protocol types can only be used for function parameters, not variables
         # Exception: @dynamic protocols can be used as variable types

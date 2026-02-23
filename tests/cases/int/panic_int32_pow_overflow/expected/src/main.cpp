@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 4: x: Int32 = 2
 int32_t x{};
 // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
@@ -14,8 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test Int32 power overflow panic at runtime."""
     // 4: x: Int32 = 2
     x = 2;
     // 5: y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32

@@ -7,10 +7,10 @@ namespace tpy_user::main {
 
 struct Item;
 
-extern std::string_view __name__;
 extern StaticList<Item, 16>* items;
 extern StaticList<int32_t, 8>* nums;
 extern StaticList<int32_t, 8>* filled;
+inline constexpr std::string_view __name__ = "__main__";
 
 void process_list(StaticList<Item, 16>& items);
 void print_list(StaticList<Item, 16>& items);

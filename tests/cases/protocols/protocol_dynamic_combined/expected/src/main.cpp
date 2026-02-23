@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 27: def show_desc(d: Describable) -> None:
 void show_desc(__tpy_Base_Describable& d) {
@@ -54,7 +53,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 47: main()
     main();
 }

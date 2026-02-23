@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern double a;
 extern double b;
 extern double c;
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -5,8 +5,8 @@
 
 namespace tpy_user::mod_c {
 
-extern std::string_view __name__;
 extern int32_t shared_value;
+inline constexpr std::string_view __name__ = "mod_c";
 
 void __tpy_init();
 } // namespace tpy_user::mod_c

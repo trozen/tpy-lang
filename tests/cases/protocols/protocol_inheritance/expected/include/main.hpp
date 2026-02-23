@@ -21,7 +21,7 @@ concept PrintableAndSized = requires(T& t) {
 struct Message;
 template<PrintableAndSized T> struct Container;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

@@ -7,11 +7,11 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
 extern UninitHeapStorage<int32_t>* h;
 extern UninitArrayStorage<int32_t, 1>* a;
 extern UninitHeapStorage<Point>* pts;
 extern Point* pt;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 5: class Point:
 struct Point {

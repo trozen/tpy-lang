@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def make(val: Int32) -> Own[Handle]:
 Handle make(int32_t val) {
@@ -28,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 21: main()
     main();
 }

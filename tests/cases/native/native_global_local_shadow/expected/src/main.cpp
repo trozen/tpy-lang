@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 6: def main() -> None:
 void main() {
@@ -19,9 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: from tpy.extern import native_global
-    // 4: score: Int32 = native_global("engine::score")
     // 11: main()
     main();
 }

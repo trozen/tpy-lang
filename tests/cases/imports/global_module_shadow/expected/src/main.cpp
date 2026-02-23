@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 7: time: Timer = Timer()
 Timer* time{};
 
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: import time
     // 7: time: Timer = Timer()
     static Timer __global_slot_1 = Timer();

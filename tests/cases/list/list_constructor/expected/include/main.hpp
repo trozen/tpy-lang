@@ -7,7 +7,6 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* nums;
 extern std::vector<int32_t>* other;
 extern std::vector<Point>* points;
@@ -17,6 +16,7 @@ extern std::vector<int32_t>* src;
 extern std::vector<int32_t>* copy;
 extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* from_arr;
+inline constexpr std::string_view __name__ = "__main__";
 
 void test_local_list();
 

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def update_same_name(a: Int32, b: Int32) -> None:
 void update_same_name(int32_t a, int32_t b) {
@@ -36,12 +35,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: from tpy.extern import native_c_global
     // 4: # Write to native_c_global inside if/else branches (no prior function-scope assignment).
     // 5: # Must NOT emit a local declaration that shadows the extern global.
-    // 7: opentop: Int32 = native_c_global("opentop")
-    // 8: counter: Int32 = native_c_global("g_counter")
     // 24: update_same_name(Int32(10), Int32(20))
     update_same_name(10, 20);
     // 25: update_renamed(Int32(30), Int32(40))

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 19: p = None
 Point* p{};
 // 23: n = None
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 19: p = None
     p = nullptr;
     // 20: p = make_point()

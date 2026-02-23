@@ -3,12 +3,10 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test Char type comprehensively
 // 5: def test_char_literals() -> None:
 void test_char_literals() {
-    // 6:     """Test single-character string literals as Char."""
     // 7:     a: Char = "A"
     char a = 'A';
     // 8:     b: Char = "B"
@@ -29,7 +27,6 @@ void test_char_literals() {
 
 // 17: def test_char_from_string_index() -> None:
 void test_char_from_string_index() {
-    // 18:     """Test getting Char from string indexing."""
     // 19:     text: str = "Hello"
     std::string_view text = "Hello";
     // 21:     c0: Char = text[0]
@@ -48,7 +45,6 @@ void test_char_from_string_index() {
 
 // 29: def test_char_comparison() -> None:
 void test_char_comparison() {
-    // 30:     """Test Char comparison operators."""
     // 31:     a: Char = "a"
     char a = 'a';
     // 32:     b: Char = "b"
@@ -100,7 +96,6 @@ void test_char_comparison() {
 
 // 61: def test_char_in_string() -> None:
 void test_char_in_string() {
-    // 62:     """Test Char used with 'in' operator on string."""
     // 63:     text: str = "hello world"
     std::string_view text = "hello world";
     // 64:     target: Char = "o"
@@ -124,7 +119,6 @@ void test_char_in_string() {
 
 // 75: def is_vowel(c: Char) -> bool:
 bool is_vowel(char c) {
-    // 76:     """Check if character is a vowel."""
     // 77:     if c == "a":
     if ((c == 'a')) {
         // 78:         return True
@@ -156,7 +150,6 @@ bool is_vowel(char c) {
 
 // 89: def count_vowels(text: str) -> Int32:
 int32_t count_vowels(std::string_view text) {
-    // 90:     """Count vowels in a string."""
     // 91:     count: Int32 = 0
     int32_t count = 0;
     // 92:     i: Int32 = 0
@@ -177,7 +170,6 @@ int32_t count_vowels(std::string_view text) {
 
 // 99: def test_char_function_param() -> None:
 void test_char_function_param() {
-    // 100:     """Test Char as function parameter."""
     // 101:     if is_vowel("a"):
     if (is_vowel('a')) {
         // 102:         print("a is vowel")
@@ -208,7 +200,6 @@ void test_char_function_param() {
 
 // 114: def test_char_iteration() -> None:
 void test_char_iteration() {
-    // 115:     """Test Char from for-each iteration."""
     // 116:     text: str = "abc"
     std::string_view text = "abc";
     // 117:     for c in text:
@@ -220,7 +211,6 @@ void test_char_iteration() {
 
 // 120: def test_vowel_counting() -> None:
 void test_vowel_counting() {
-    // 121:     """Test counting vowels in string."""
     // 122:     print(count_vowels("hello"))
     std::cout << count_vowels("hello") << "\n";
     // 123:     print(count_vowels("world"))
@@ -233,7 +223,6 @@ void test_vowel_counting() {
 
 // 127: def test_chr_function() -> None:
 void test_chr_function() {
-    // 128:     """Test chr() returning Char."""
     // 129:     c65: Char = chr(65)
     char c65 = static_cast<char>(65);
     // 130:     c97: Char = chr(97)
@@ -257,14 +246,12 @@ void test_chr_function() {
 
 // 160: def accepts_str(s: str) -> None:
 void accepts_str(std::string_view s) {
-    // 161:     """Function that takes str parameter."""
     // 162:     print(s)
     std::cout << s << "\n";
 }
 
 // 164: def test_char_to_str_coercion() -> None:
 void test_char_to_str_coercion() {
-    // 165:     """Test single-char literal -> str coercion (works for literals only)."""
     // 166:     # Assign single-char literal to str variable
     // 167:     s1: str = "x"
     std::string_view s1 = "x";
@@ -290,7 +277,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 142: # Run all tests
     // 143: print("=== literals ===")
     std::cout << "=== literals ===" << "\n";

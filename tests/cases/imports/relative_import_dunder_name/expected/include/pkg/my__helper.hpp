@@ -5,7 +5,7 @@
 
 namespace tpy_user::pkg::my__helper {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "pkg.my__helper";
 
 int32_t get_value();
 

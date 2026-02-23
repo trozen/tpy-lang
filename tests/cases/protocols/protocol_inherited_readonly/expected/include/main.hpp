@@ -20,8 +20,8 @@ concept Child = requires(T& t) {
 
 struct Impl;
 
-extern std::string_view __name__;
 extern Impl* obj;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Child T_x>
 int32_t read_via_child(T_x& x);

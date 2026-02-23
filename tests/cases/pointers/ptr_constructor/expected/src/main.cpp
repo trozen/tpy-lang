@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def read_via_ptr(p: Ptr[Point]) -> None:
 void read_via_ptr(Point* p) {
@@ -92,7 +91,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 51: test_null_constructors()
     test_null_constructors();
     // 52: test_ptr_explicit()

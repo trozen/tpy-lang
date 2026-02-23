@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 16: def describe(s: Circle | Rect) -> str:
 std::string_view describe(std::variant<Circle, Rect>& s) {
@@ -44,7 +43,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 31: main()
     main();
 }

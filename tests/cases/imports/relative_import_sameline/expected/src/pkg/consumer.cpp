@@ -3,14 +3,12 @@
 
 namespace tpy_user::pkg::consumer {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "pkg.consumer";
     // 1: from . import amod; from . import bmod
     ::tpy_user::pkg::__tpy_init();
     ::tpy_user::pkg::amod::__tpy_init();

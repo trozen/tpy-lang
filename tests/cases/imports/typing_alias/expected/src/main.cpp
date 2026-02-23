@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 5: def maybe_double(x: Opt[Int32]) -> Int32:
 int32_t maybe_double(std::optional<int32_t> x) {
@@ -29,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 14: main()
     main();
 }

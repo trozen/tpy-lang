@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def reduce_to_zero(x: Int32 | None) -> Int32:
 int32_t reduce_to_zero(std::optional<int32_t> x) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 10: print(reduce_to_zero(2))
     std::cout << reduce_to_zero(2) << "\n";
     // 11: print(reduce_to_zero(0))

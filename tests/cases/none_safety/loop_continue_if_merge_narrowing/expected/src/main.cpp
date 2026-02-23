@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def use_after_continue_merge(flag: bool, x: Int32 | None) -> Int32:
 int32_t use_after_continue_merge(bool flag, std::optional<int32_t> x) {
@@ -30,7 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 14: print(use_after_continue_merge(True, 2))
     std::cout << use_after_continue_merge(true, 2) << "\n";
     // 15: print(use_after_continue_merge(True, None))

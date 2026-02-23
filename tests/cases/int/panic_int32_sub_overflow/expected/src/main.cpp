@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 4: x: Int32 = -2147483648  # INT32_MIN
 int32_t x{};
 // 5: y: Int32 = x - 1        # Should panic
@@ -14,8 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test Int32 subtraction overflow panic at runtime."""
     // 4: x: Int32 = -2147483648  # INT32_MIN
     x = -2147483648;
     // 5: y: Int32 = x - 1        # Should panic

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Unannotated literals default to Int32 -- adding two values that
 // # individually fit but overflow together should panic at runtime.
 // 3: x = 2000000000
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Unannotated literals default to Int32 -- adding two values that
     // 2: # individually fit but overflow together should panic at runtime.
     // 3: x = 2000000000

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 19: def make_holder(p: Point) -> Own[Holder]:
 Holder make_holder(Point& p) {
@@ -74,7 +73,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 55: test_init_from_temp()
     test_init_from_temp();
     // 56: test_rebind_from_temp()

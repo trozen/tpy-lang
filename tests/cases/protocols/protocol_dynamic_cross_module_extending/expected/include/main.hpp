@@ -39,7 +39,7 @@ struct __tpy_RefAdapter_NamedPet : __tpy_Base_NamedPet {
 struct Dog;
 struct Parrot;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void greet_pet(::tpy_user::pet::__tpy_Base_Pet& pet);
 void greet_named(__tpy_Base_NamedPet& pet);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 24: items: list[str] = ["hello", "world"]
 std::vector<std::string_view>* items{};
 // 25: c: Child[str] = Child[str](items, Int32(42))
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 24: items: list[str] = ["hello", "world"]
     static std::vector<std::string_view> __global_slot_1 = {"hello", "world"};
     items = &__global_slot_1;

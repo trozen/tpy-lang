@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Global-scope field assignment from Own[T] | None
 // 23: h = Holder()
 Holder* h{};
@@ -42,7 +41,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: # Global-scope field assignment from Own[T] | None
     // 23: h = Holder()
     static Holder __global_slot_1 = Holder();

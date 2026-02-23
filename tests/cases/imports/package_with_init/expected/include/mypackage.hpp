@@ -5,8 +5,8 @@
 
 namespace tpy_user::mypackage {
 
-extern std::string_view __name__;
 extern int32_t CONST;
+inline constexpr std::string_view __name__ = "mypackage";
 
 void func();
 

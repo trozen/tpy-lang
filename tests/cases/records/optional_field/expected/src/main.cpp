@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Basic: init to None, check, set, access
 // 31: line = Line(Point(1, 2))
 Line* line{};
@@ -40,7 +39,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 30: # Basic: init to None, check, set, access
     // 31: line = Line(Point(1, 2))
     static Line __global_slot_1 = Line(Point(1, 2));

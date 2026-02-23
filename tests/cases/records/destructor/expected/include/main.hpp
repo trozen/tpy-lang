@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Resource;
 
-extern std::string_view __name__;
 extern Resource* g;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

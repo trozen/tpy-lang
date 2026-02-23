@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # range with unannotated default-int args
 // 29: n = 5
 int32_t n{};
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # range(stop) - basic
     // 4: for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {

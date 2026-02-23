@@ -42,7 +42,7 @@ struct __tpy_RefAdapter_Shape : __tpy_Base_Shape {
 
 struct Circle;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Type inferred from list[Int32]
 // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
 std::vector<int32_t>* nums32{};
@@ -20,8 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test generic functions with type annotation hints."""
     // 9: # Type inferred from list[Int32]
     // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};

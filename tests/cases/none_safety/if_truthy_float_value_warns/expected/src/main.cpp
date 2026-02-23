@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def score(x: float | None) -> Int32:
 int32_t score(std::optional<double> x) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 10: print(score(1.5))
     std::cout << score(1.5) << "\n";
     // 11: print(score(0.0))

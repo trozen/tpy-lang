@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct Product;
 struct Factory;
 
-extern std::string_view __name__;
 extern Product* x;
+inline constexpr std::string_view __name__ = "__main__";
 
 Factory get_factory();
 

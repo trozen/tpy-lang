@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def negate(x: Int32 | None) -> Int32:
 int32_t negate(std::optional<int32_t> x) {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: print(negate(3))
     std::cout << negate(3) << "\n";
     // 9: print(negate(None))

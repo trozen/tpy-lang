@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 3: def takes_list(x: list[int]) -> None:
 void takes_list(std::vector<tpy::BigInt>& x) {
@@ -40,7 +39,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 18: # Empty list literals
     // 19: takes_list([])
     std::vector<tpy::BigInt> __tmp_1 = std::vector<tpy::BigInt>{};

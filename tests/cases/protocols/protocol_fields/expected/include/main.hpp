@@ -41,7 +41,7 @@ struct Box;
 struct IntHolder;
 template<HasValue T> struct Wrapper;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<HasValue T>
 int32_t get_value(tpy::param_val_or_ref_t<T> item);

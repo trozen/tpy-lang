@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // @readonly
 // 15: def observe_field(flag: bool, p: Box) -> None:
@@ -44,7 +43,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 30: observe_field(True, Box(Int32(42)))
     Box __tmp_1 = Box(42);
     observe_field(true, __tmp_1);

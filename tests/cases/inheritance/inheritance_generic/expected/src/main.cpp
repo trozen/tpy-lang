@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 21: c = IntContainer(42, 100)
 IntContainer* c{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 21: c = IntContainer(42, 100)
     static IntContainer __global_slot_1 = IntContainer(42, 100);
     c = &__global_slot_1;

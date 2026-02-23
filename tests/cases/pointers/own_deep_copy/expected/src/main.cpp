@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 17: def take_items(c: Container) -> Own[list[Point]]:
 std::vector<Point> take_items(Container& c) {
@@ -37,8 +36,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests that copy() has deep copy semantics for containers.
     // 37: main()
     main();
 }

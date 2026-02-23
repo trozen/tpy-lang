@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Inference from arguments
 // 23: p1 = create_pair(10, "hello")
 Pair<int32_t, std::string_view>* p1{};
@@ -16,8 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test generic functions with multiple type parameters."""
     // 22: # Inference from arguments
     // 23: p1 = create_pair(10, "hello")
     int32_t __tmp_1 = 10;

@@ -10,9 +10,9 @@ template<typename T> struct Box;
 template<typename T> struct Container;
 template<typename U> struct Wrapper;
 
-extern std::string_view __name__;
 extern Box<int32_t>* b;
 extern Wrapper<std::string_view>* w;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # Case 1: Generic class inheriting from non-generic class
 // 4: class Animal:

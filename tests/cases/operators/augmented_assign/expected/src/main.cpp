@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 3: def test_aug_assign():
 void test_aug_assign() {
@@ -76,7 +75,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 51: test_aug_assign()
     test_aug_assign();
 }

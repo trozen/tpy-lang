@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 4: arr: Array[Int32, 2] = [Int32(1), Int32(2)]
 std::array<int32_t, 2>* arr{};
 // 5: p: Ptr[Int32] = unsafe_ptr(arr)
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_cast
     // 4: arr: Array[Int32, 2] = [Int32(1), Int32(2)]
     static std::array<int32_t, 2> __global_slot_1 = {1, 2};

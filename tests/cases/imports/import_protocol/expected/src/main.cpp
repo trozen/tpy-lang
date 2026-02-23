@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 16: def main() -> Int32:
 int32_t main() {
@@ -20,7 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from traits import Printable
     ::tpy_user::traits::__tpy_init();
     // 21: main()

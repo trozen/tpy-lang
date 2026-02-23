@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def check(v: Int32 | None) -> str:
 std::string_view check(std::optional<int32_t> v) {
@@ -29,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 13: main()
     main();
 }

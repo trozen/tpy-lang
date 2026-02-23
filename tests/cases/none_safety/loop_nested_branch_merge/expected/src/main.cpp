@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def nested(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t nested(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
@@ -31,7 +30,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 14: print(nested(True, 1, 2))
     std::cout << nested(true, 1, 2) << "\n";
     // 15: print(nested(True, 1, None))

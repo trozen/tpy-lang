@@ -5,7 +5,7 @@
 
 namespace tpy_user::mod_d {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "mod_d";
 
 int32_t d_value();
 

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def add_after_guard(x: Int32 | None) -> Int32:
 int32_t add_after_guard(std::optional<int32_t> x) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 10: print(add_after_guard(2))
     std::cout << add_after_guard(2) << "\n";
     // 11: print(add_after_guard(None))

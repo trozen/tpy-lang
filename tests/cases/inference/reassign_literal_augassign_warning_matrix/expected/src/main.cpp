@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 6: def ret_i32() -> Int32:
 int32_t ret_i32() {
@@ -44,7 +43,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 28: main()
     main();
 }

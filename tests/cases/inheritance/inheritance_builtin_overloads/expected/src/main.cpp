@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 15: ml: MyList = MyList("test")
 MyList* ml{};
 // # Test pop() with no args - should remove and return last element
@@ -22,8 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test inherited builtin methods with multiple overloads.
     // 15: ml: MyList = MyList("test")
     static MyList __global_slot_1 = MyList("test");
     ml = &__global_slot_1;

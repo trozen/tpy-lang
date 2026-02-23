@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct A;
 struct B;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 tpy::BigInt test_and_rhs(std::variant<A, B>& v);
 tpy::BigInt test_and_true(std::variant<A, B>& v);

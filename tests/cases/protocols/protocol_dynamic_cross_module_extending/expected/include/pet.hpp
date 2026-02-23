@@ -32,7 +32,7 @@ struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
     std::string_view speak() override { return inner.speak(); }
 };
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "pet";
 
 void __tpy_init();
 } // namespace tpy_user::pet

@@ -1,0 +1,1 @@
+config.py:17: warning: ALL_CAPS variable 'DEFAULT' without Final annotation; use Final[Settings] if this is a constant

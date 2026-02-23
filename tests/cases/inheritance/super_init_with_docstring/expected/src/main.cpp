@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 19: c = Child(10, 20)
 Child* c{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 19: c = Child(10, 20)
     static Child __global_slot_1 = Child(tpy::BigInt(10), tpy::BigInt(20));
     c = &__global_slot_1;

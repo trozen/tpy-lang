@@ -5,8 +5,8 @@
 
 namespace tpy_user::utils {
 
-extern std::string_view __name__;
 extern int32_t MAX;
+inline constexpr std::string_view __name__ = "utils";
 
 int32_t get_max();
 

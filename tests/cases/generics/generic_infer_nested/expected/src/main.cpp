@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Separate lines: Inner[int] explicit, then Outer inferred
 // 19: inner = Inner[int](42)
 Inner<tpy::BigInt>* inner{};
@@ -18,8 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test type inference with nested generic classes."""
     // 18: # Separate lines: Inner[int] explicit, then Outer inferred
     // 19: inner = Inner[int](42)
     static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(42);

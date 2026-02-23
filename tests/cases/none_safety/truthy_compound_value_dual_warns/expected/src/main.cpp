@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def add_if_both(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_if_both(std::optional<int32_t> a, std::optional<int32_t> b) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 10: print(add_if_both(1, 2))
     std::cout << add_if_both(1, 2) << "\n";
     // 11: print(add_if_both(0, 2))

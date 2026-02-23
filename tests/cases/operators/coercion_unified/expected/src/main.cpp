@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # --- Helper functions that take specific types ---
 // 24: def take_int32(n: Int32) -> Int32:
@@ -287,8 +286,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests all type coercions through the unified _apply_coercion path.
     // 229: # --- Run all tests ---
     // 231: test_bigint_to_int32()
     test_bigint_to_int32();

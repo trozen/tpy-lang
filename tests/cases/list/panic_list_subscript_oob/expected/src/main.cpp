@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test that subscript out-of-bounds access on list panics at runtime
 // # (uses tpy::get_value() internally)
@@ -23,7 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 13: test_list_subscript_oob()
     test_list_subscript_oob();
 }

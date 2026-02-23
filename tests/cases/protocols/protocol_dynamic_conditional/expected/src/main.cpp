@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 22: def branch_init(cond: bool) -> None:
 void branch_init(bool cond) {
@@ -145,7 +144,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 77: main()
     main();
 }

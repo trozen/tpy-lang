@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def use(x: Int32 | None) -> Int32:
 int32_t use(std::optional<int32_t> x) {
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 9: print(use(41))
     std::cout << use(41) << "\n";
 }

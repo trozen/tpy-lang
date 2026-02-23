@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def cmp_score(x: Int32 | None) -> Int32:
 int32_t cmp_score(std::optional<int32_t> x) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 10: print(cmp_score(1))
     std::cout << cmp_score(1) << "\n";
     // 11: print(cmp_score(None))

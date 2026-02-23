@@ -213,9 +213,6 @@ class CodeGenContext:
     # --- Iterator loop counter ---
     iter_counter: int = 0
 
-    # --- Module-level flags ---
-    _has_synthetic_name: bool = False
-
     # --- Cross-module import tracking ---
     user_module_imports: set[str] = field(default_factory=set)
     all_user_modules: set[str] = field(default_factory=set)

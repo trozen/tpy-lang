@@ -5,7 +5,7 @@
 
 namespace tpy_user::mathlib::funcs {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "mathlib.funcs";
 
 extern "C" int32_t abs(int32_t x);
 extern "C" int32_t tpy_clock();

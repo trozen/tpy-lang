@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Basic power
 // 5: x: Int32 = 2
 int32_t x{};
@@ -22,8 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test Int32 power operator."""
     // 4: # Basic power
     // 5: x: Int32 = 2
     x = 2;

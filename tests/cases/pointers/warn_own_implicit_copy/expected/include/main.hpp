@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take_point(Point p);
 void use_point(Point& p);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test explicit protocol implementation
 // 24: p = Person("Alice", 30)
 Person* p{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 23: # Test explicit protocol implementation
     // 24: p = Person("Alice", 30)
     static Person __global_slot_1 = Person("Alice", 30);

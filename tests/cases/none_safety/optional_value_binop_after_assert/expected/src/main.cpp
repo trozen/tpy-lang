@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def add_one(x: Int32 | None) -> Int32:
 int32_t add_one(std::optional<int32_t> x) {
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 9: print(add_one(41))
     std::cout << add_one(41) << "\n";
 }

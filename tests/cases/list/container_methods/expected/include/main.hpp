@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern StaticList<int32_t, 8>* sl;
 extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* nums;
+inline constexpr std::string_view __name__ = "__main__";
 
 void span_ops(std::span<const int32_t> sp);
 

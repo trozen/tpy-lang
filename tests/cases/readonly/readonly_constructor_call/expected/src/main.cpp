@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // @readonly
 // 9: def build_flag() -> int:
@@ -19,7 +18,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 14: print(build_flag())
     std::cout << build_flag() << "\n";
 }

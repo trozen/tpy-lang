@@ -5,11 +5,11 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern char a;
 extern char b;
 extern std::optional<char> none_char;
 extern std::optional<char> some_a;
+inline constexpr std::string_view __name__ = "__main__";
 
 bool eq_left(std::optional<char> o, char c);
 bool eq_right(char c, std::optional<char> o);

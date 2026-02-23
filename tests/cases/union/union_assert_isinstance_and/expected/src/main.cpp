@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 14: def get_positive_radius(s: Circle | Rect) -> Int32:
 int32_t get_positive_radius(std::variant<Circle, Rect>& s) {
@@ -27,7 +26,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: main()
     main();
 }

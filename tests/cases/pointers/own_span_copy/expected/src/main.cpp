@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 3: def get_span(data: list[Int32]) -> Span[Int32]:
 std::span<const int32_t> get_span(std::vector<int32_t>& data) {
@@ -36,7 +35,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 19: main()
     main();
 }

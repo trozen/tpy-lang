@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
 void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val);

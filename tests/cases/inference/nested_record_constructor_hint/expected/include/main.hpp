@@ -8,7 +8,7 @@ namespace tpy_user::main {
 template<typename T> struct Box;
 struct Holder;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
 Box<T> wrap(tpy::param_val_or_ref_t<T> v);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::config {
 
-std::string_view __name__;
 // 3: MAX_VALUE: Int32 = Int32(100)
 int32_t MAX_VALUE{};
 
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "config";
     // 3: MAX_VALUE: Int32 = Int32(100)
     MAX_VALUE = 100;
 }

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Reassigning an Int32-default variable with an out-of-range literal
 // # promotes it to BigInt and emits a warning.
 // 3: x = 0
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Reassigning an Int32-default variable with an out-of-range literal
     // 2: # promotes it to BigInt and emits a warning.
     // 3: x = 0

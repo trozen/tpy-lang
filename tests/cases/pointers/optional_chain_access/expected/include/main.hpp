@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
 extern std::vector<Point>* points;
+inline constexpr std::string_view __name__ = "__main__";
 
 Point* find(std::vector<Point>& points, int32_t target);
 

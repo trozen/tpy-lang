@@ -5,7 +5,7 @@
 
 namespace tpy_user::mypackage::utils {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "mypackage.utils";
 
 void helper();
 

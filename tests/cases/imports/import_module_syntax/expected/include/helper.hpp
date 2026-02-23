@@ -5,7 +5,7 @@
 
 namespace tpy_user::helper {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "helper";
 
 int32_t get_value();
 

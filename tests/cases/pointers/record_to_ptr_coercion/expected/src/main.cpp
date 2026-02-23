@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 11: def modify_point(p: Ptr[Point]) -> None:
 void modify_point(Point* p) {
@@ -45,7 +44,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 33: # Run test
     // 34: test_coercion()
     test_coercion();

@@ -39,7 +39,7 @@ struct __tpy_RefAdapter_Counter : __tpy_Base_Counter {
 struct MyCounter;
 struct Tally;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void bump(__tpy_Base_Counter& c);
 void main();

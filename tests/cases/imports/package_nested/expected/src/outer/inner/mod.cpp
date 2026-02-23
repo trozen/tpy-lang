@@ -3,7 +3,6 @@
 
 namespace tpy_user::outer::inner::mod {
 
-std::string_view __name__;
 
 // 1: def func() -> None:
 void func() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "outer.inner.mod";
 }
 
 } // namespace tpy_user::outer::inner::mod

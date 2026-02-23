@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct Circle;
 struct Rect;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t get_radius(std::variant<Circle, Rect>& s);
 void main();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 13: def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {
@@ -55,7 +54,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 37: # Run tests
     // 38: print("=== field to ptr ===")
     std::cout << "=== field to ptr ===" << "\n";

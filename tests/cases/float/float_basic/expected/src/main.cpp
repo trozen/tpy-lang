@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Basic float operations
 // 2: x = 3.5
 double x{};
@@ -15,7 +14,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Basic float operations
     // 2: x = 3.5
     x = 3.5;

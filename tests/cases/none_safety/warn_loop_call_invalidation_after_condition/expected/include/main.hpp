@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void opaque(Box& b);
 int32_t use_after_call(Box& b);

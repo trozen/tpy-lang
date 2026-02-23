@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Global empty list
 // 33: global_list: list[int] = []
 std::vector<tpy::BigInt>* global_list{};
@@ -64,7 +63,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 32: # Global empty list
     // 33: global_list: list[int] = []
     static std::vector<tpy::BigInt> __global_slot_1 = std::vector<tpy::BigInt>{};

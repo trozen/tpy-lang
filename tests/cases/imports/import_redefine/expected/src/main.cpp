@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Redefine the imported MAX - this should work and be used
 // 5: MAX: Int32 = Int32(42)
 int32_t MAX{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from utils import MAX
     ::tpy_user::utils::__tpy_init();
     // 4: # Redefine the imported MAX - this should work and be used

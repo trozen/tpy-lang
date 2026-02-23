@@ -8,7 +8,7 @@ namespace tpy_user::shapes {
 struct Circle;
 struct Rect;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "shapes";
 
 // 5: class Circle:
 struct Circle {

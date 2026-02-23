@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 8: def take_span_nested(s: Span[Array[Int32, 2]]) -> Int32:
 int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s) {
@@ -25,8 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests nested array constructor with proper brace generation.
     // 16: main()
     main();
 }

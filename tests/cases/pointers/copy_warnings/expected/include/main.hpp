@@ -11,7 +11,7 @@ struct Container;
 template<typename T> struct Holder;
 struct OptHolder;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 Point* find_point(std::vector<Point>& pts, int32_t x);
 void main();

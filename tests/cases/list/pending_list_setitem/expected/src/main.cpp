@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 8: def test_setitem_mutation():
 void test_setitem_mutation() {
@@ -25,8 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test that __setitem__ marks a pending list as mutated.
     // 16: test_setitem_mutation()
     test_setitem_mutation();
 }

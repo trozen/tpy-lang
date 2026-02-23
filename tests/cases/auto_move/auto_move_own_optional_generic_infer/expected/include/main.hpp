@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
 int32_t take_optional(std::optional<T> item, int32_t fallback);

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 Point& find_max(std::vector<Point>& points);
 Point& get_first(std::vector<Point>& points);

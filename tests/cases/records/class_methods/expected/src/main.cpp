@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test __init__ with parameter
 // 22: c = Counter(100)
 Counter* c{};
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 21: # Test __init__ with parameter
     // 22: c = Counter(100)
     static Counter __global_slot_1 = Counter(100);

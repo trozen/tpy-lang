@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 struct CachedList;
 
-extern std::string_view __name__;
 extern CachedList* c;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 5: class CachedList:
 struct CachedList {

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 12: def use_optional(p: Own[Point] | None) -> Int32:
 int32_t use_optional(std::optional<Point> p) {
@@ -33,7 +32,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 25: main()
     main();
 }

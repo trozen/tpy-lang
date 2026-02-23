@@ -6,7 +6,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 thing_t* get_thing(sector_t* sec);
 void main();

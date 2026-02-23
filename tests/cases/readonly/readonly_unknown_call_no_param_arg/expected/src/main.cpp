@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 13: def mutate(b: Box) -> None:
 void mutate(Box& b) {
@@ -27,7 +26,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 24: print(ok(Box(5)))
     Box __tmp_1 = Box(5);
     std::cout << ok(__tmp_1) << "\n";

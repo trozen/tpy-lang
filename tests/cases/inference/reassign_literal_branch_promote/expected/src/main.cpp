@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Literal-seeded variable (Int32 default) promoted to BigInt via
 // # reassignment inside an if-branch should keep BigInt after the branch.
@@ -82,7 +81,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 35: test_augassign()
     test_augassign();
     // 36: test_binop()

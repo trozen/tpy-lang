@@ -8,7 +8,7 @@
 
 namespace tpy_user::pkg::consumer {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "pkg.consumer";
 
 void __tpy_init();
 } // namespace tpy_user::pkg::consumer

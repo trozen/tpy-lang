@@ -8,8 +8,8 @@ namespace tpy_user::main {
 template<typename T> struct Container;
 struct IntContainer;
 
-extern std::string_view __name__;
 extern IntContainer* c;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class Container[T]:
 template<typename T>

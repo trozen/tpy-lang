@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def add(a: tpy.Int32, b: tpy.Int32) -> tpy.Int32:
 int32_t add(int32_t a, int32_t b) {
@@ -26,7 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 12: main()
     main();
 }

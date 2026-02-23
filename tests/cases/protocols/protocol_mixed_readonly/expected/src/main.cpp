@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 40: obj = Impl(42)
 Impl* obj{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 40: obj = Impl(42)
     static Impl __global_slot_1 = Impl(42);
     obj = &__global_slot_1;

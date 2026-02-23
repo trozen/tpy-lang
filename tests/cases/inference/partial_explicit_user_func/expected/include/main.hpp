@@ -8,7 +8,7 @@ namespace tpy_user::main {
 template<typename T> struct Box;
 template<typename A, typename B> struct Wrapper;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename A, typename B>
 Wrapper<A, B> wrap_with_tag(A&& inner, B&& tag);

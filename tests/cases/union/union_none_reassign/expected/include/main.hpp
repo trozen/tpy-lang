@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Dog;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::string_view test_reassign_to_none();
 std::string_view test_init_none_then_assign();

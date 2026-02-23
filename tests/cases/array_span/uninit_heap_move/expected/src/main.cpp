@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 12: storage = make_storage()
 UninitHeapStorage<int32_t>* storage{};
 
@@ -46,7 +45,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.mem import UninitHeapStorage
     // 12: storage = make_storage()
     static UninitHeapStorage<int32_t> __global_slot_1 = make_storage();

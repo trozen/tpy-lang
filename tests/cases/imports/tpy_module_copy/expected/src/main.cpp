@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 3: s: str = "hello"
 std::string_view s;
 // 4: u = t.copy(s)
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: s: str = "hello"
     s = "hello";
     // 4: u = t.copy(s)

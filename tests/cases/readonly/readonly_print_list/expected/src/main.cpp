@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def show(l: readonly[list[Int32]]) -> None:
 void show(const std::vector<int32_t>& l) {
@@ -24,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 11: main()
     main();
 }

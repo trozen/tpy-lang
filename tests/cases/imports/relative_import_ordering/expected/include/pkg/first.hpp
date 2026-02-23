@@ -5,7 +5,7 @@
 
 namespace tpy_user::pkg::first {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "pkg.first";
 
 void __tpy_init();
 } // namespace tpy_user::pkg::first

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def while_escape() -> None:
 void while_escape() {
@@ -31,7 +30,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 19: while_escape()
     while_escape();
 }

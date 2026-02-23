@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # StaticList methods (append, len, subscript)
 // 5: sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
 StaticList<int32_t, 8>* sl{};
@@ -30,8 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests that methods work on all container types via unified module lookup."""
     // 4: # StaticList methods (append, len, subscript)
     // 5: sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
     static StaticList<int32_t, 8> __global_slot_1 = StaticList<int32_t, 8>();

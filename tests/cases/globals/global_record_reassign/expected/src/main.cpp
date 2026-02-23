@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # First assignment (creates global slot)
 // 10: c = Container(1)
 Container* c{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 9: # First assignment (creates global slot)
     // 10: c = Container(1)
     static Container __global_slot_1 = Container(1);

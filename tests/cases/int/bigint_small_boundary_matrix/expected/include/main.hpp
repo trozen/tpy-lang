@@ -5,12 +5,12 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern tpy::BigInt B;
 extern tpy::BigInt SMALL_MAX;
 extern tpy::BigInt SMALL_MIN;
 extern tpy::BigInt BIG_POS;
 extern tpy::BigInt BIG_NEG;
+inline constexpr std::string_view __name__ = "__main__";
 
 void show_mul(std::string_view label, const tpy::BigInt& a, const tpy::BigInt& b);
 

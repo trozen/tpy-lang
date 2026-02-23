@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test converting large floats to int (requires GMP, not int64)
 // 2: a = int(1e18)  # Within int64 range
 tpy::BigInt a;
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Test converting large floats to int (requires GMP, not int64)
     // 2: a = int(1e18)  # Within int64 range
     a = tpy::BigInt::from_float(1e+18);

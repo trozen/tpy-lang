@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct RangeIter;
 struct NumberRange;
 
-extern std::string_view __name__;
 extern NumberRange* nums;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class RangeIter:
 struct RangeIter {

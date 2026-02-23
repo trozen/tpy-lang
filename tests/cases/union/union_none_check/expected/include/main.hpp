@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Dog;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::string_view describe(std::variant<std::monostate, Dog, int32_t>& v);
 void process(std::variant<std::monostate, Dog, int32_t>& v);

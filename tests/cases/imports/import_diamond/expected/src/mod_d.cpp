@@ -3,7 +3,6 @@
 
 namespace tpy_user::mod_d {
 
-std::string_view __name__;
 
 // 6: def d_value() -> Int32:
 int32_t d_value() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mod_d";
     // 3: # This print verifies D is only initialized once
     // 4: print("D init")
     std::cout << "D init" << "\n";

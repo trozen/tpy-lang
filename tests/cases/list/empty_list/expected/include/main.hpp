@@ -5,9 +5,9 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::vector<tpy::BigInt>* global_list;
 extern std::vector<int32_t>* global_list2;
+inline constexpr std::string_view __name__ = "__main__";
 
 tpy::BigInt test_empty_list();
 int32_t test_empty_list_int32();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test 'pass' statement in various contexts
 // 5: def empty_function() -> None:
@@ -88,7 +87,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 59: # Test empty function
     // 60: empty_function()
     empty_function();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 7: def return_owned_int32() -> Own[Int32]:
 int32_t return_owned_int32() {
@@ -40,8 +39,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests that coercions work correctly through Own[T] wrapper.
     // 24: main()
     main();
 }

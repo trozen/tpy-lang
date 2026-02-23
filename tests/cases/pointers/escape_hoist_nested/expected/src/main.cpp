@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def nested_loop_escape() -> None:
 void nested_loop_escape() {
@@ -30,7 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 18: nested_loop_escape()
     nested_loop_escape();
 }

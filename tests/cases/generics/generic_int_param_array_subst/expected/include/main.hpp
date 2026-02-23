@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 template<typename T, std::size_t N> struct Buffer;
 
-extern std::string_view __name__;
 extern std::array<int32_t, 3>* arr_global;
+inline constexpr std::string_view __name__ = "__main__";
 
 void use_array(std::array<int32_t, 3>& arr);
 std::array<int32_t, 3>& get_global_array();

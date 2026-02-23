@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Invalid string for float parsing
 // 2: x: float = float("not_a_number")
 double x{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Invalid string for float parsing
     // 2: x: float = float("not_a_number")
     x = tpy::float_from_str("not_a_number");

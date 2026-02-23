@@ -9,7 +9,7 @@ struct Handle;
 struct Holder;
 template<typename T> struct GenericHolder;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

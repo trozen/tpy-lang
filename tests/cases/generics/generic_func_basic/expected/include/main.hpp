@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* nums;
 extern std::vector<std::string_view>* words;
 extern std::vector<int32_t>* vals;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items);

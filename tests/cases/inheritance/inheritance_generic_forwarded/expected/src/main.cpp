@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 24: w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
 Wrapper<std::string_view>* w{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 24: w: Wrapper[str] = Wrapper[str]("hello", Int32(42))
     static Wrapper<std::string_view> __global_slot_1 = Wrapper<std::string_view>("hello", 42);
     w = &__global_slot_1;

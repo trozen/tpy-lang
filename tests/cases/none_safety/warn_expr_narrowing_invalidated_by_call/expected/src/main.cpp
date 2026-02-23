@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 11: def opaque(b: Box) -> None:
 void opaque(Box& b) {
@@ -29,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: print(use_after_call(Box(4)))
     Box __tmp_1 = Box(4);
     std::cout << use_after_call(__tmp_1) << "\n";

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 1: nums = list(range(5))
 std::vector<int32_t>* nums{};
 // 3: nums2 = list(range(2, 7))
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: nums = list(range(5))
     static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
     nums = &__global_slot_1;

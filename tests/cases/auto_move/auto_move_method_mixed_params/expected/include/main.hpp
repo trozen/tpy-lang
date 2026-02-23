@@ -10,7 +10,7 @@ struct Holder;
 template<typename T> struct GenericHolder;
 template<typename T> struct GenericBox;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

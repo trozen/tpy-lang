@@ -7,7 +7,7 @@
 
 namespace tpy_user::outer::inner::consumer {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "outer.inner.consumer";
 
 int32_t compute();
 

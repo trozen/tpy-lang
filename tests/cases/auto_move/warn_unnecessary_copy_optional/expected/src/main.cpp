@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 9: def consume_own(b: Own[Box]) -> Int32:
 int32_t consume_own(Box b) {
@@ -38,7 +37,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 26: main()
     main();
 }

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def test_array_overload() -> None:
 void test_array_overload() {
@@ -56,7 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
     // 27: test_array_overload()
     test_array_overload();

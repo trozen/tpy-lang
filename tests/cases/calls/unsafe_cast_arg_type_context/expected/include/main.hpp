@@ -7,11 +7,11 @@ namespace tpy_user::main {
 
 struct Sink;
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* carg;
 extern std::vector<void*>* parg_list;
 extern void* carg_ptr;
 extern Sink* sink;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take_ptr(void* p);
 

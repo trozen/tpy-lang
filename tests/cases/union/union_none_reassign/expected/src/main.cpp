@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 9: def test_reassign_to_none() -> str:
 std::string_view test_reassign_to_none() {
@@ -62,7 +61,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 30: main()
     main();
 }

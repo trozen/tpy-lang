@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct MyContainer;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sized T>
 int32_t get_length(tpy::param_val_or_ref_t<T> item);

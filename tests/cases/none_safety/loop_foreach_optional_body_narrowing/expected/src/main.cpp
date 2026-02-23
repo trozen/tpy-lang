@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 13: vals: list[Int32 | None] = list()
 std::vector<std::optional<int32_t>>* vals{};
 
@@ -30,7 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 13: vals: list[Int32 | None] = list()
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;

@@ -41,7 +41,7 @@ struct __tpy_RefAdapter_DynNamed : __tpy_Base_DynNamed {
 struct Dog;
 struct Cat;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void greet(__tpy_Base_DynNamed& n);
 void main();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 44: def find_point(pts: list[Point], x: Int32) -> Point | None:
 Point* find_point(std::vector<Point>& pts, int32_t x) {
@@ -56,7 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 68: main()
     main();
 }

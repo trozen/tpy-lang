@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 104: pts: list[Point] = [Point(5, 6), Point(7, 8)]
 std::vector<Point>* pts{};
 
@@ -158,7 +157,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 91: print(value_type_branches(True))
     std::cout << value_type_branches(true) << "\n";
     // 92: print(value_type_branches(False))

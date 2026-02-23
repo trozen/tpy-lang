@@ -5,7 +5,7 @@
 
 namespace tpy_user::outer::inner {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "outer.inner";
 
 void __tpy_init();
 } // namespace tpy_user::outer::inner

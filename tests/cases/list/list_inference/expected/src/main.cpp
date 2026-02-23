@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Global with annotation -> vector (ListType)
 // 4: global_list: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* global_list{};
@@ -66,7 +65,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Global with annotation -> vector (ListType)
     // 4: global_list: list[Int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};

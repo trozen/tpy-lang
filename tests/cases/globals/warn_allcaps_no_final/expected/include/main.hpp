@@ -5,9 +5,10 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+extern int32_t MAX_SIZE;
+inline constexpr std::string_view __name__ = "__main__";
 
-void f();
+void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -1,0 +1,1 @@
+__init__.py:4: warning: ALL_CAPS variable 'VERSION' without Final annotation; use Final[Int32] if this is a constant

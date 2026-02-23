@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test min/max with Int32
 // 5: a: Int32 = 10
 int32_t a{};
@@ -30,8 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test min() and max() builtin functions."""
     // 4: # Test min/max with Int32
     // 5: a: Int32 = 10
     a = 10;

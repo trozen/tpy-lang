@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 14: def make_list(x: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> make_list(int32_t x) {
@@ -50,7 +49,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 38: main()
     main();
 }

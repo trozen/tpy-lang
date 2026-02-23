@@ -5,7 +5,6 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern bool b0;
 extern bool b1;
 extern bool b2;
@@ -15,6 +14,7 @@ extern bool b5;
 extern bool b6;
 extern bool b7;
 extern bool b8;
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpy_user::main

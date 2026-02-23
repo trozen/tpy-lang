@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Big integers that exceed Int32 range -- forces BigInt path
 // 2: base = 1 << 100  # tpyc: warning(/outside default Int32 range/)
 tpy::BigInt base;
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Big integers that exceed Int32 range -- forces BigInt path
     // 2: base = 1 << 100  # tpyc: warning(/outside default Int32 range/)
     base = ((tpy::BigInt(1)) << (tpy::BigInt(100)));

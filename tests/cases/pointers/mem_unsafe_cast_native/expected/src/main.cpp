@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 6: def get_thing(sec: Ptr[SectorT]) -> Ptr[ThingT]:
 thing_t* get_thing(sector_t* sec) {
@@ -28,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.unsafe import unsafe_cast
     // 4: from ntypes import ThingT, SectorT
     ::tpy_user::ntypes::__tpy_init();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 5: def accept(x: Int32 | str | None) -> None:
 void accept(const std::variant<std::monostate, int32_t, std::string_view>& x) {
@@ -29,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 16: test()
     test();
 }

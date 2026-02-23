@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test 2: Array literal assigned to variable with explicit type, then passed
 // 15: nums: Array[Int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* nums{};
@@ -36,7 +35,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 11: # Test 1: Array literal passed directly to Span parameter
     // 12: print(sum_span([1, 2, 3, 4, 5]))
     std::cout << sum_span(tpy::as_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";

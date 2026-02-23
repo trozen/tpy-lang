@@ -61,7 +61,7 @@ concept BarUser = requires(T& t) {
 };
 
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Step exactly divides range: exit value = stop = INT32_MAX
 // 10: count: Int32 = Int32(0)
 int32_t count{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 5: # Large step, one iteration (step > range width)
     // 6: for i in range(Int32(0), Int32(2147483647), Int32(2147483647)):
     tpy::range_check_overflow<int32_t>(0, 2147483647, 2147483647);

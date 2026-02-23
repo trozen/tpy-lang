@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 6: carg: list[Int32] = [Int32(1)]
 std::vector<int32_t>* carg{};
 // 15: parg_list = list[Ptr[None]]()
@@ -24,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: from tpy.unsafe import unsafe_cast, unsafe_ptr
     // 6: carg: list[Int32] = [Int32(1)]
     static std::vector<int32_t> __global_slot_1 = {1};

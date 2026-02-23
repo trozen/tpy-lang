@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 15: def test_single() -> None:
 void test_single() {
@@ -119,7 +118,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.unsafe import (
     // 72: test_single()
     test_single();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def gt_pair(a: Int32 | None, b: Int32 | None) -> bool:
 bool gt_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: print(gt_pair(3, 1))
     std::cout << tpy::print_bool(gt_pair(3, 1)) << "\n";
     // 9: print(gt_pair(None, 1))

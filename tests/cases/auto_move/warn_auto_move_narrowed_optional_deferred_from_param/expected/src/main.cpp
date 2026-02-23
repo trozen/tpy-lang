@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 9: def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point p) {
@@ -28,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main

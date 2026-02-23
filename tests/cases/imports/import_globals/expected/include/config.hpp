@@ -5,8 +5,8 @@
 
 namespace tpy_user::config {
 
-extern std::string_view __name__;
 extern int32_t MAX_VALUE;
+inline constexpr std::string_view __name__ = "config";
 
 int32_t get_max();
 

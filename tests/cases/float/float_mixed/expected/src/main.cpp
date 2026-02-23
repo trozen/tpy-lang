@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Mixed int/float operations (auto-promotion to float)
 // 2: a = 1 + 2.0
 double a{};
@@ -17,7 +16,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Mixed int/float operations (auto-promotion to float)
     // 2: a = 1 + 2.0
     a = (static_cast<double>(tpy::BigInt(1)) + (2.0));

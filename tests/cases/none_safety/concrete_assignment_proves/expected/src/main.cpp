@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 11: def make() -> Int32:
 int32_t make() {
@@ -19,7 +18,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 16: print(make())
     std::cout << make() << "\n";
 }

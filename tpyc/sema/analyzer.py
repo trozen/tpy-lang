@@ -7,9 +7,10 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, NamedType, UnionType, STR, NoneType, VoidType, INT32, ReadonlyType, unwrap_readonly
+from ..typesys import TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, NoneType, VoidType, INT32, ReadonlyType, unwrap_readonly
 from ..namespace import Namespace
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, is_super_del_call
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
+from ..parse.nodes import TpyStrLiteral
 
 from .diagnostics import Scope, Diagnostic, SemanticError
 from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
@@ -254,13 +255,20 @@ class SemanticAnalyzer:
         for func in module.functions:
             self.registrar.register_function(func)
 
-        # Third pass: register top-level variable declarations (globals)
-        if module.top_level_stmts:
-            self.registrar.register_globals(module.top_level_stmts)
+        # Inject synthetic __name__: Final[str] before registration so it flows
+        # through the same path as user-defined Finals (single source of truth)
+        module_name = self.ctx.module_name
+        name_decl = TpyVarDecl(
+            name="__name__",
+            type=FinalType(STR),
+            init=TpyStrLiteral(value=module_name),
+        )
+        if module.top_level_stmts is None:
+            module.top_level_stmts = []
+        module.top_level_stmts.insert(0, name_decl)
 
-        # Register module-level __name__ (user assignments will overwrite at runtime)
-        self.ctx.global_scope.define("__name__", STR)
-        self.ctx.global_ns.bind_variable("__name__", STR)
+        # Third pass: register top-level variable declarations (globals)
+        self.registrar.register_globals(module.top_level_stmts)
 
         # Fourth pass: analyze top-level statements (globals must be in scope for functions)
         if module.top_level_stmts:

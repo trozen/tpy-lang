@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def body_renarrow(flag: bool, x: Int32 | None) -> Int32:
 int32_t body_renarrow(bool flag, std::optional<int32_t> x) {
@@ -26,7 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 12: print(body_renarrow(True, 8))
     std::cout << body_renarrow(true, 8) << "\n";
     // 13: print(body_renarrow(True, None))

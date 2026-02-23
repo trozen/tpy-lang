@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 130: g: Point = Point(0, 0)
 Point* g{};
 // 134: pt: Point = Point(0, 0)
@@ -227,7 +226,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 130: g: Point = Point(0, 0)
     static Point __global_slot_1 = Point(0, 0);
     g = &__global_slot_1;

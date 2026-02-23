@@ -14,7 +14,7 @@ concept Calculator = requires(T& t) {
 
 struct SimpleCalc;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Calculator T_c>
 void use_calc(T_c& c);

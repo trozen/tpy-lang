@@ -16,7 +16,7 @@ concept Holder = requires(T& t) {
 struct MyHolder;
 struct Factory;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void test_static();
 void test_protocol();

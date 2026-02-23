@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def nested_ok(x: Int32 | None, y: Int32 | None) -> Int32:
 int32_t nested_ok(std::optional<int32_t> x, std::optional<int32_t> y) {
@@ -26,7 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 12: print(nested_ok(4, 1))
     std::cout << nested_ok(4, 1) << "\n";
     // 13: print(nested_ok(None, 1))

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Constructor without LHS annotation - type inferred from constructor
 // 19: nums = list[Int32]()
 std::vector<int32_t>* nums{};
@@ -46,8 +45,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests list[T]() constructor syntax."""
     // 18: # Constructor without LHS annotation - type inferred from constructor
     // 19: nums = list[Int32]()
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>();

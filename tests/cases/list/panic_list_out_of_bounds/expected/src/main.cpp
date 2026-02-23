@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test that out-of-bounds access on StaticList panics at runtime
 // 5: def test_out_of_bounds() -> None:
@@ -28,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 15: test_out_of_bounds()
     test_out_of_bounds();
 }

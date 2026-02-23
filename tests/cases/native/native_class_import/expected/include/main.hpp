@@ -8,7 +8,7 @@ int32_t vec2_sum(ns::Vec2* v);
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

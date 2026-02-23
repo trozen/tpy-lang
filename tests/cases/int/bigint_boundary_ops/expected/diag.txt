@@ -1,0 +1,7 @@
+main.py:35: warning: ALL_CAPS variable 'SMALL_MAX' without Final annotation; use Final[int] if this is a constant
+main.py:36: warning: ALL_CAPS variable 'SMALL_MIN' without Final annotation; use Final[int] if this is a constant
+main.py:37: warning: ALL_CAPS variable 'BIG_POS' without Final annotation; use Final[int] if this is a constant
+main.py:38: warning: ALL_CAPS variable 'BIG_NEG' without Final annotation; use Final[int] if this is a constant
+main.py:39: warning: ALL_CAPS variable 'WIDE_POS' without Final annotation; use Final[int] if this is a constant
+main.py:40: warning: ALL_CAPS variable 'WIDE_NEG' without Final annotation; use Final[int] if this is a constant
+main.py:41: warning: ALL_CAPS variable 'ONE_BIG' without Final annotation; use Final[int] if this is a constant

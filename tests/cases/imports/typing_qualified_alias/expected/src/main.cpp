@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 5: def safe_inc(x: t.Optional[Int32]) -> Int32:
 int32_t safe_inc(std::optional<int32_t> x) {
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 28: main()
     main();
 }

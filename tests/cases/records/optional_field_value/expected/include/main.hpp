@@ -7,10 +7,10 @@ namespace tpy_user::main {
 
 struct Config;
 
-extern std::string_view __name__;
 extern Config* c;
 extern std::optional<int32_t> r;
 extern Config* c2;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 4: class Config:
 struct Config {

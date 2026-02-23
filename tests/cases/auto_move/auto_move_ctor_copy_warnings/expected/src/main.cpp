@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 61: def test_nested_field_move(o: Outer, inner: Own[Inner]) -> None:
 void test_nested_field_move(Outer& o, Inner inner) {
@@ -79,7 +78,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 107: main()
     main();
 }

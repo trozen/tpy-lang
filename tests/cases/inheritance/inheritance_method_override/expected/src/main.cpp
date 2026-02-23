@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test method override
 // 41: s = Square(5)
 Square* s{};
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 40: # Test method override
     // 41: s = Square(5)
     static Square __global_slot_1 = Square(5);

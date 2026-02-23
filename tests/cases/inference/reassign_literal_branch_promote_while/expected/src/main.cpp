@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Literal-seeded variable promoted to BigInt inside an if-branch within
 // # a while loop should keep BigInt for subsequent operations in the loop body.
@@ -75,7 +74,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 31: test_augassign_in_while()
     test_augassign_in_while();
     // 32: test_binop_in_while()

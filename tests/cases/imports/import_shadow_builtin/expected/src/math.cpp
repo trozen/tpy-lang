@@ -3,7 +3,6 @@
 
 namespace tpy_user::math {
 
-std::string_view __name__;
 // 7: MAGIC: Int32 = 42
 int32_t MAGIC{};
 
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "math";
     // 7: MAGIC: Int32 = 42
     MAGIC = 42;
 }

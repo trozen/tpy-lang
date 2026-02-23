@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct Point;
 struct Holder;
 
-extern std::string_view __name__;
 extern Holder* h;
+inline constexpr std::string_view __name__ = "__main__";
 
 void describe(Point* p);
 

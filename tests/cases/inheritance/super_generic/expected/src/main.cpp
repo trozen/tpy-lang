@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test with generic parent
 // 25: lc = LabeledContainer("count", 42)
 LabeledContainer* lc{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 24: # Test with generic parent
     // 25: lc = LabeledContainer("count", 42)
     static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);

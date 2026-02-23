@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Direct assignment then use — OK
 // 11: def direct_assign() -> None:
@@ -140,7 +139,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 78: direct_assign()
     direct_assign();
     // 79: param_use(Point(11, 12))

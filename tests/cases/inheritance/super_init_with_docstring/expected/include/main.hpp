@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct Parent;
 struct Child;
 
-extern std::string_view __name__;
 extern Child* c;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # Test: docstring before super().__init__() is allowed
 // 3: class Parent:
@@ -37,7 +37,6 @@ struct Child : Parent {
     // 13:     def __init__(self, value: int, extra: int) -> None:
     Child() = default;
     explicit Child(const tpy::BigInt& value, const tpy::BigInt& extra) : Parent(value), extra(extra) {
-        // 14:         """Initialize Child with value and extra."""
     }
 };
 

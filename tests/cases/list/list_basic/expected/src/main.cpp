@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 11: mem: list[Int32] = [0] * 10
 std::vector<int32_t>* mem{};
 // # Unannotated list repetition (infers default int)
@@ -35,7 +34,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 11: mem: list[Int32] = [0] * 10
     static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(10, {0}));
     mem = &__global_slot_1;

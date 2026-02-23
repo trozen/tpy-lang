@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # 7. Literal arithmetic: BigInt result assigned to Int32
 // 42: a: Int32 = 1 + 2           # addition
 int32_t a{};
@@ -95,7 +94,6 @@ int32_t constructor_test(const tpy::BigInt& x) {
 
 // 49: def literal_ops_local() -> Int32:
 int32_t literal_ops_local() {
-    // 50:     """Local variable with literal arithmetic."""
     // 51:     x: Int32 = 100 + 200
     int32_t x = tpy::add_check<int32_t>(100, 200);
     // 52:     return x
@@ -107,8 +105,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test BigInt -> Int32 conversions with range checks."""
     // 41: # 7. Literal arithmetic: BigInt result assigned to Int32
     // 42: a: Int32 = 1 + 2           # addition
     a = tpy::add_check<int32_t>(1, 2);

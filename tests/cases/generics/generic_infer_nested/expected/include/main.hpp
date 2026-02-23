@@ -8,10 +8,10 @@ namespace tpy_user::main {
 template<typename T> struct Inner;
 template<typename T> struct Outer;
 
-extern std::string_view __name__;
 extern Inner<tpy::BigInt>* inner;
 extern Outer<Inner<tpy::BigInt>>* outer;
 extern Outer<Inner<int32_t>>* outer2;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 4: class Inner[T]:
 template<typename T>

@@ -26,8 +26,8 @@ concept Measurable = requires(T& t) {
 
 struct Box;
 
-extern std::string_view __name__;
 extern Box* b;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # Class that implements multiple protocols
 // 21: class Box(Printable, Describable, Measurable):

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 11: def stale_after_rebind(b: Box, other: Box) -> Int32:
 int32_t stale_after_rebind(Box& b, Box& other) {
@@ -30,7 +29,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 21: print(stale_after_rebind(Box(5), Box(3)))
     Box __tmp_1 = Box(5);
     Box __tmp_2 = Box(3);

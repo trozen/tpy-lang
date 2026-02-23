@@ -7,7 +7,7 @@ namespace tpy_user::container {
 
 template<typename T> struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "container";
 
 // 1: class Box[T]:
 template<typename T>

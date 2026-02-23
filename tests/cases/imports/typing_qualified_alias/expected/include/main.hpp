@@ -13,7 +13,7 @@ concept Greetable = requires(T& t) {
 
 struct Person;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 int32_t safe_inc(std::optional<int32_t> x);
 template<Greetable T_g>

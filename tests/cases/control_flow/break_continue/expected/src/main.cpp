@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 3: def test_break():
 void test_break() {
@@ -92,7 +91,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 41: test_break()
     test_break();
     // 42: test_continue()

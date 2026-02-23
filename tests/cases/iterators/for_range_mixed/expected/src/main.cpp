@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Mixed Int32/BigInt args should widen to BigInt (not truncate to Int32)
 // 4: start: Int32 = 0
 int32_t start{};
@@ -23,7 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Mixed Int32/BigInt args should widen to BigInt (not truncate to Int32)
     // 4: start: Int32 = 0
     start = 0;

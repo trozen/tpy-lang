@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 27: # 1. for-loop over child inheriting next() from parent
     // 28: for x in DoubleCounter(3):
     auto __iter_0 = DoubleCounter(3);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def sum_items(items: list[Int32], bonus: Int32 | None) -> Int32:
 int32_t sum_items(std::vector<int32_t>& items, std::optional<int32_t> bonus) {
@@ -49,7 +48,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 15: print(sum_items([1, 2, 3], 10))
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::cout << sum_items(__tmp_1, 10) << "\n";

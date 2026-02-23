@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sized T>
 tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item);

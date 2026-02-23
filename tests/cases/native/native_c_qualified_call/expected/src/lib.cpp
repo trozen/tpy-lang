@@ -3,7 +3,6 @@
 
 namespace tpy_user::lib {
 
-std::string_view __name__;
 
 
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "lib";
 }
 
 } // namespace tpy_user::lib

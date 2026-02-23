@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Multi-element list repetition with StaticList
 // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
 StaticList<int32_t, 8>* sl{};
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Multi-element list repetition with StaticList
     // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
     static StaticList<int32_t, 8> __global_slot_1 = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(3, {1, 2}));

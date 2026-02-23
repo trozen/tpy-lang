@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 17: def print_point(p: Point) -> None:
 void print_point(Point& p) {
@@ -31,7 +30,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 28: test()
     test();
 }

@@ -3,7 +3,6 @@
 
 namespace tpy_user::mypackage::utils {
 
-std::string_view __name__;
 
 // 1: def helper() -> None:
 void helper() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mypackage.utils";
 }
 
 } // namespace tpy_user::mypackage::utils

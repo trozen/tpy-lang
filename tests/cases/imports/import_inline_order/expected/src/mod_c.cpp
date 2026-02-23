@@ -3,7 +3,6 @@
 
 namespace tpy_user::mod_c {
 
-std::string_view __name__;
 // 5: shared_value: Int32 = Int32(42)
 int32_t shared_value{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "mod_c";
     // 3: print("mod_c init")
     std::cout << "mod_c init" << "\n";
     // 5: shared_value: Int32 = Int32(42)

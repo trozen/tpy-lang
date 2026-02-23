@@ -7,9 +7,9 @@ namespace tpy_user::main {
 
 struct Box;
 
-extern std::string_view __name__;
 extern Box* b;
 extern std::optional<int32_t> x;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 4: class Box:
 struct Box {

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 template<typename T> struct Box;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void modify_list(std::vector<int32_t>& items);
 void main();

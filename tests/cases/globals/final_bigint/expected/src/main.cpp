@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 const tpy::BigInt BIG_VALUE = tpy::BigInt(1000000);
 
 // 6: def main() -> None:
@@ -17,8 +16,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 4: BIG_VALUE: Final[int] = 1000000
     // 9: main()
     main();
 }

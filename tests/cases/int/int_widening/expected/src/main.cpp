@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def print_i16(x: Int16) -> None:
 void print_i16(int16_t x) {
@@ -99,7 +98,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 58: main()
     main();
 }

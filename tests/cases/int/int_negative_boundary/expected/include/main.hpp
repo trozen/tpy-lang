@@ -5,11 +5,11 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern int32_t a;
 extern tpy::BigInt b;
 extern int32_t c;
 extern tpy::BigInt d;
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpy_user::main

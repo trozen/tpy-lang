@@ -5,7 +5,7 @@
 
 namespace tpy_user::helpers {
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "helpers";
 
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items);

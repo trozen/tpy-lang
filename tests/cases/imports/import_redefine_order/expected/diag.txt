@@ -1,0 +1,4 @@
+utils.py:3: warning: ALL_CAPS variable 'MAX' without Final annotation; use Final[Int32] if this is a constant
+utils.py:4: warning: ALL_CAPS variable 'MIN' without Final annotation; use Final[Int32] if this is a constant
+main.py:9: warning: ALL_CAPS variable 'MAX' without Final annotation; use Final[Int32] if this is a constant
+main.py:12: warning: ALL_CAPS variable 'MIN' without Final annotation; use Final[int] if this is a constant

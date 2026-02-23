@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Dog;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag);
 std::string_view test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v);

@@ -7,7 +7,6 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* nums;
 extern StaticList<int32_t, 3>* sl;
 extern std::vector<int32_t>* items;
@@ -17,6 +16,7 @@ extern Point* p;
 extern int32_t first_num;
 extern int32_t second_num;
 extern int32_t result;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
 tpy::return_val_or_ref_t<T> First(std::vector<T>& items);

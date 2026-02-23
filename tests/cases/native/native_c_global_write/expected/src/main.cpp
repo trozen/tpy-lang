@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def set_same_name(val: Int32) -> None:
 void set_same_name(int32_t val) {
@@ -24,12 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: from tpy.extern import native_c_global
     // 4: # Write to native_c_global at function scope.
     // 5: # Renamed globals must use the C name in the assignment target.
-    // 7: opentop: Int32 = native_c_global("opentop")
-    // 8: counter: Int32 = native_c_global("g_counter")
     // 18: set_same_name(Int32(10))
     set_same_name(10);
     // 19: set_renamed(Int32(20))

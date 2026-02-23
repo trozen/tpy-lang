@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # First loop consumes the iterator
 // 23: c = Counter(3)
 Counter* c{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: # First loop consumes the iterator
     // 23: c = Counter(3)
     static Counter __global_slot_1 = Counter(3);

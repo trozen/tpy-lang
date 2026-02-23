@@ -22,8 +22,8 @@ concept Describable = requires(T& t) {
 
 struct Person;
 
-extern std::string_view __name__;
 extern Person* p;
+inline constexpr std::string_view __name__ = "__main__";
 
 // # Class implementing protocols defined in same file
 // 18: class Person(Printable, Describable):

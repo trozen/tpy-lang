@@ -3,25 +3,21 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 13: def read_point(p: ConstPtr[Point]) -> Int32:
 int32_t read_point(const Point* p) {
-    // 14:     """Read from a const pointer - should work."""
     // 15:     return p.x + p.y
     return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
 }
 
 // 17: def modify_via_ptr(p: Ptr[Point], new_x: Int32) -> None:
 void modify_via_ptr(Point* p, int32_t new_x) {
-    // 18:     """Modify via mutable pointer."""
     // 19:     p.x = new_x
     tpy::deref_check(p).x = new_x;
 }
 
 // 21: def test_ptr_to_const_ptr() -> None:
 void test_ptr_to_const_ptr() {
-    // 22:     """Test Ptr to ConstPtr conversion."""
     // 23:     pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
     // 25:     # Get mutable pointer
@@ -49,7 +45,6 @@ void test_ptr_to_const_ptr() {
 
 // 43: def test_const_ptr_preserves_value() -> None:
 void test_const_ptr_preserves_value() {
-    // 44:     """Test that const pointer sees updates to underlying value."""
     // 45:     pt: Point = Point(1, 2)
     Point pt = Point(1, 2);
     // 46:     mp: Ptr[Point] = pt
@@ -70,7 +65,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 55: # Run tests
     // 56: print("=== ptr to const ===")
     std::cout << "=== ptr to const ===" << "\n";

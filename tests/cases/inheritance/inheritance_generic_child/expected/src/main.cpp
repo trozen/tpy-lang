@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test Case 1: Generic child of non-generic parent
 // 32: b = Box[Int32]("mybox", 42)
 Box<int32_t>* b{};
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 31: # Test Case 1: Generic child of non-generic parent
     // 32: b = Box[Int32]("mybox", 42)
     static Box<int32_t> __global_slot_1 = Box<int32_t>("mybox", 42);

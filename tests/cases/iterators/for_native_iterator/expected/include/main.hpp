@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Counter;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::OptIterator<int32_t> T_it>
 int32_t sum_iter(T_it& it);

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 28: g = GoodReader(42)
 GoodReader* g{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 28: g = GoodReader(42)
     static GoodReader __global_slot_1 = GoodReader(42);
     g = &__global_slot_1;

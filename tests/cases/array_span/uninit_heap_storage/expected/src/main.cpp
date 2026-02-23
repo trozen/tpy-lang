@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Value type: Int32
 // 15: storage = UninitHeapStorage[Int32](4)
 UninitHeapStorage<int32_t>* storage{};
@@ -23,7 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.unsafe import unsafe_load
     // 4: from tpy.mem import UninitHeapStorage
     // 14: # Value type: Int32

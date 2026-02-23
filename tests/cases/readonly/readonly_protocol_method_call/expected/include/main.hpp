@@ -5,8 +5,8 @@
 
 namespace tpy_user::main {
 
-extern std::string_view __name__;
 extern std::vector<int32_t>* items;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sized T_s>
 int32_t get_len(T_s& s);

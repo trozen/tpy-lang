@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 8: x: I = I(42)
 int32_t x{};
 // 9: ch: C = "x"  # Char from string literal, not constructor
@@ -22,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 8: x: I = I(42)
     x = 42;
     // 9: ch: C = "x"  # Char from string literal, not constructor

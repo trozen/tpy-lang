@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 10: def main() -> None:
 void main() {
@@ -18,12 +17,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: from tpy.extern import native_c_global
     // 4: # C global import with rename
-    // 5: frame_count: Int32 = native_c_global("g_frame_count")
     // 7: # C global import without rename (Python name = C name)
-    // 8: tick: Int32 = native_c_global()
     // 14: main()
     main();
 }

@@ -14,7 +14,7 @@ concept Container = requires(T& t) {
 struct IntBox;
 template<Container<int32_t> V> struct Holder;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test for-each over inferred list (no annotation needed)
 // 4: items = [1, 2, 3, 4, 5]
 std::vector<int32_t>* items{};
@@ -68,7 +67,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: # Test for-each over inferred list (no annotation needed)
     // 4: items = [1, 2, 3, 4, 5]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3, 4, 5};

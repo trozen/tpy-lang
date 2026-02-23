@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 3: def classify(x: Int32) -> Int32:
 int32_t classify(int32_t x) {
@@ -72,7 +71,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 33: print(classify(-5))
     std::cout << classify(-5) << "\n";
     // 34: print(classify(0))

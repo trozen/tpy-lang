@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 4: x: int = int("abc")
 tpy::BigInt x;
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: x: int = int("abc")
     x = tpy::BigInt::from_str("abc");
     // 5: print(x)  # Should not reach here

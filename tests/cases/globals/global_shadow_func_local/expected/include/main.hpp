@@ -8,8 +8,8 @@ namespace tpy_user::main {
 struct Point;
 struct Picker;
 
-extern std::string_view __name__;
 extern Point* p;
+inline constexpr std::string_view __name__ = "__main__";
 
 void foo(bool cond);
 

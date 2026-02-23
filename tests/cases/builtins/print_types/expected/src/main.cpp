@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 16: s = "world"
 std::string_view s;
 // # Char
@@ -37,7 +36,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: # None literal
     // 5: print(None)
     std::cout << "None" << "\n";

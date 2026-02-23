@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Indexed take on heap storage
 // 13: h = UninitHeapStorage[Int32](3)
 UninitHeapStorage<int32_t>* h{};
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.mem import UninitArrayStorage, UninitHeapStorage
     // 12: # Indexed take on heap storage
     // 13: h = UninitHeapStorage[Int32](3)

@@ -3,14 +3,12 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 35: # Pass Counter objects (which extend OptIterator[Int32])
     // 36: print(sum_iter(Counter(0, 5)))          # 0+1+2+3+4 = 10
     auto __tmp_1 = Counter(0, 5);

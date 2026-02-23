@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Inference from list[int]
 // 14: nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
@@ -19,8 +18,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test basic generic functions with type inference."""
     // 13: # Inference from list[int]
     // 14: nums = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};

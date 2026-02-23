@@ -13,8 +13,8 @@ concept Readable = requires(const T& t) {
 
 struct GoodReader;
 
-extern std::string_view __name__;
 extern GoodReader* g;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<Readable T_r>
 int32_t use_readable(T_r& r);

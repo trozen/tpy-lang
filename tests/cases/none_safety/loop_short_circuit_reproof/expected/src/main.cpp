@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 4: def shrink(x: Int32 | None) -> Int32:
 int32_t shrink(std::optional<int32_t> x) {
@@ -21,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 10: print(shrink(2))
     std::cout << shrink(2) << "\n";
     // 11: print(shrink(0))

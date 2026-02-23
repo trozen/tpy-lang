@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Single element repeat - list
 // 5: zeros: list[Int32] = [0] * 5
 std::vector<int32_t>* zeros{};
@@ -24,8 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Tests single-element list repeat with repeat_range codegen."""
     // 4: # Single element repeat - list
     // 5: zeros: list[Int32] = [0] * 5
     static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(5, {0}));

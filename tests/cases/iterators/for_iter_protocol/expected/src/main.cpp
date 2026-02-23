@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # 2. Can iterate again (fresh iterator each time)
 // 34: nums = NumberRange(10, 13)
 NumberRange* nums{};
@@ -13,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 29: # 1. Container with __iter__ in for-loop
     // 30: for x in NumberRange(0, 5):
     auto __obj_0 = NumberRange(0, 5);

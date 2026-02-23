@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 18: global_pet: Pet = Cat()
 __tpy_Base_Pet* global_pet{};
 
@@ -43,7 +42,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
   static std::optional<Cat> __global_slot_1;
     // 18: global_pet: Pet = Cat()
     __global_slot_1.emplace(Cat());

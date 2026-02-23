@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Export with explicit C name — verifies renamed call codegen
 // @extern_c("Helper_Add")
@@ -29,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
 }
 
 } // namespace tpy_user::main

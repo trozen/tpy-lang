@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct Inner;
 struct Outer;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void modify_inner(Inner* p);
 int32_t read_inner(const Inner* p);

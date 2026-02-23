@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Test abs with Int32
 // 5: x: Int32 = -42
 int32_t x{};
@@ -22,8 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test abs() builtin function for Int32, BigInt, and float."""
     // 4: # Test abs with Int32
     // 5: x: Int32 = -42
     x = -42;

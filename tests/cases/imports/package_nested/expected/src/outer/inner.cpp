@@ -3,14 +3,12 @@
 
 namespace tpy_user::outer::inner {
 
-std::string_view __name__;
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    __name__ = "outer.inner";
 }
 
 } // namespace tpy_user::outer::inner

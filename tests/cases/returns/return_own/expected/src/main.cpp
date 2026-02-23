@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 9: def create_point(x: Int32, y: Int32) -> Own[Point]:
 Point create_point(int32_t x, int32_t y) {
@@ -32,7 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 22: main()
     main();
 }

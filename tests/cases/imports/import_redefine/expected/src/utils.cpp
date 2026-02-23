@@ -3,7 +3,6 @@
 
 namespace tpy_user::utils {
 
-std::string_view __name__;
 // 3: MAX: Int32 = Int32(100)
 int32_t MAX{};
 
@@ -18,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "utils";
     // 3: MAX: Int32 = Int32(100)
     MAX = 100;
 }

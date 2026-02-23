@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Create instance and call function
 // 26: h = Helper(42)
 Helper* h{};
@@ -21,8 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test that local variables correctly shadow class names for method calls."""
     // 22: # Static method call via class name
     // 23: print(Helper.add(10, 20))
     std::cout << Helper::add(10, 20) << "\n";

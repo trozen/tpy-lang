@@ -36,9 +36,9 @@ struct Dog;
 struct Cat;
 struct Parrot;
 
-extern std::string_view __name__;
 extern __tpy_Base_Pet* pet;
 extern int32_t i;
+inline constexpr std::string_view __name__ = "__main__";
 
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {

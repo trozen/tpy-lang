@@ -130,6 +130,19 @@ Phases are not strictly sequential -- items from different phases can be interle
 based on what's most needed. E1 (Send/Sync markers) is recommended early regardless
 of phase, to avoid costly retrofitting when concurrency arrives.
 
+### Future Extensions (not planned near-term)
+
+Extensions to completed features. Not actively planned but tracked here so they
+don't get lost.
+
+| Feature | Parent | Notes |
+|---------|--------|-------|
+| Bare `Final` | A1 | Infer type from initializer (`x: Final = 1`) |
+| Final arithmetic initializers | A1 | Needs constexpr checked ops or plain-op codegen |
+| Final for class/local constants | A1 | Extend beyond module-level |
+| Final for non-primitive types | A1 | `Final[list[T]]` -- needs deep immutability |
+| Cross-module Final references | A1 | Use imported Finals in initializers |
+
 ---
 
 ## I. Type System Foundations
@@ -328,7 +341,9 @@ Local shadowing in functions is allowed.
 Supported types: fixed-width integers, float, bool, str, Char, BigInt. Constexpr-eligible
 types emit `inline constexpr` in header; BigInt uses `extern const` / `const` split.
 
-**Current state**: Done. Bare `Final` (type inference) not yet supported.
+**Current state**: Done. `__name__` is a synthetic `Final[str]` constant. ALL_CAPS
+module-level variables without `Final` produce a warning. See Future Extensions table
+for planned enhancements.
 
 **Dependencies**: Stepping stone to compile-time evaluation.
 

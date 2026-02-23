@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Top-level (module scope) escape: same detection should work
 // # outside of function bodies.
 // 12: saved: Point = Point(0, 0)
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
   static std::optional<Point> __global_slot_2;
     // 10: # Top-level (module scope) escape: same detection should work
     // 11: # outside of function bodies.

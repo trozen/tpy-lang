@@ -3,12 +3,10 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // # Test string comparison operators
 // 5: def test_equality() -> None:
 void test_equality() {
-    // 6:     """Test == and != for strings."""
     // 7:     a: str = "hello"
     std::string_view a = "hello";
     // 8:     b: str = "hello"
@@ -54,7 +52,6 @@ void test_equality() {
 
 // 34: def test_ordering() -> None:
 void test_ordering() {
-    // 35:     """Test <, <=, >, >= for strings (lexicographic)."""
     // 36:     a: str = "apple"
     std::string_view a = "apple";
     // 37:     b: str = "banana"
@@ -102,7 +99,6 @@ void test_ordering() {
 
 // 64: def test_empty_strings() -> None:
 void test_empty_strings() {
-    // 65:     """Test comparisons with empty strings."""
     // 66:     empty: str = ""
     std::string_view empty = "";
     // 67:     nonempty: str = "x"
@@ -128,14 +124,12 @@ void test_empty_strings() {
 
 // 79: def strings_equal(s1: str, s2: str) -> bool:
 bool strings_equal(std::string_view s1, std::string_view s2) {
-    // 80:     """Helper function to compare strings."""
     // 81:     return s1 == s2
     return (s1 == s2);
 }
 
 // 83: def test_comparison_in_function() -> None:
 void test_comparison_in_function() {
-    // 84:     """Test string comparison as function parameter/return."""
     // 85:     if strings_equal("test", "test"):
     if (strings_equal("test", "test")) {
         // 86:         print("test == test: yes")
@@ -153,7 +147,6 @@ void test_comparison_in_function() {
 
 // 93: def test_comparison_with_literals() -> None:
 void test_comparison_with_literals() {
-    // 94:     """Test comparing variables to string literals."""
     // 95:     name: str = "Alice"
     std::string_view name = "Alice";
     // 97:     if name == "Alice":
@@ -175,7 +168,6 @@ void test_comparison_with_literals() {
 
 // 106: def find_string(items: list[str], target: str) -> Int32:
 int32_t find_string(std::vector<std::string_view>& items, std::string_view target) {
-    // 107:     """Find index of string in list, -1 if not found."""
     // 108:     i: Int32 = 0
     int32_t i = 0;
     // 109:     while i < len(items):
@@ -194,7 +186,6 @@ int32_t find_string(std::vector<std::string_view>& items, std::string_view targe
 
 // 115: def test_comparison_in_loop() -> None:
 void test_comparison_in_loop() {
-    // 116:     """Test string comparison in a loop."""
     // 117:     names: list[str] = ["Alice", "Bob", "Charlie"]
     std::vector<std::string_view> names = {"Alice", "Bob", "Charlie"};
     // 119:     idx: Int32 = find_string(names, "Bob")
@@ -212,7 +203,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 125: # Run all tests
     // 126: print("=== equality ===")
     std::cout << "=== equality ===" << "\n";

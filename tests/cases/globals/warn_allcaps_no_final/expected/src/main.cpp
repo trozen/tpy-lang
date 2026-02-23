@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-// 1: __name__ = "custom"
-std::string_view __name__;
+// 4: MAX_SIZE: Int32 = 100  # tpyc: warning(/without Final/)
+int32_t MAX_SIZE{};
 
-// 3: def f():
-void f() {
-    // 4:     print(__name__)
-    std::cout << __name__ << "\n";
+// 6: def main() -> None:
+void main() {
+    // 7:     print(MAX_SIZE)
+    std::cout << MAX_SIZE << "\n";
 }
 
 void __tpy_init() {
@@ -17,10 +17,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: __name__ = "custom"
-    __name__ = "custom";
-    // 6: f()
-    f();
+    // 4: MAX_SIZE: Int32 = 100  # tpyc: warning(/without Final/)
+    MAX_SIZE = 100;
+    // 9: main()
+    main();
 }
 
 } // namespace tpy_user::main

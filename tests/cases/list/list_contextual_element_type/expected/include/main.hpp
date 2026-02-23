@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct Rect;
 struct Circle;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 std::vector<std::optional<int32_t>> make_optional_list();
 void main();

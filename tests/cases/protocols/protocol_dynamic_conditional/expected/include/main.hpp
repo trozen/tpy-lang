@@ -36,7 +36,7 @@ struct Dog;
 struct Cat;
 struct Parrot;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 void branch_init(bool cond);
 void branch_reassign(bool cond);

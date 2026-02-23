@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct Point;
 struct Holder;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 Holder make_holder(Point& p);
 void test_init_from_temp();

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Inference from int literal -> Box[int]
 // 13: box = Box(42)
 Box<int32_t>* box{};
@@ -18,8 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
-    // 1: """Test basic type inference for user-defined generic classes."""
     // 12: # Inference from int literal -> Box[int]
     // 13: box = Box(42)
     static Box<int32_t> __global_slot_1 = Box<int32_t>(42);

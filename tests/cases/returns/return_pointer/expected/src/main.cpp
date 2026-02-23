@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 7: def identity_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* identity_ptr(Point* p) {
@@ -44,7 +43,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 26: main()
     main();
 }

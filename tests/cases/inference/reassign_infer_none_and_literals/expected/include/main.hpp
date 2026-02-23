@@ -7,12 +7,12 @@ namespace tpy_user::main {
 
 struct Point;
 
-extern std::string_view __name__;
 extern Point* p;
 extern std::optional<int32_t> n;
 extern int32_t z;
 extern double f;
 extern std::optional<bool> flag;
+inline constexpr std::string_view __name__ = "__main__";
 
 Point make_point();
 bool get_flag();

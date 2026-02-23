@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 13: def sink(b: Own[Box[Int32]]) -> None:
 void sink(Box<int32_t> b) {
@@ -44,7 +43,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 28: main()
     main();
 }

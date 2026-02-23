@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct MyInt;
 
-extern std::string_view __name__;
+inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Comparable T>
 bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);

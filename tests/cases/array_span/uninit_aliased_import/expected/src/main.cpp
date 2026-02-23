@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Aliased array storage
 // 7: a = U[Int32, 2]()
 UninitArrayStorage<int32_t, 2>* a{};
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.mem import UninitArrayStorage as U
     // 6: # Aliased array storage
     // 7: a = U[Int32, 2]()

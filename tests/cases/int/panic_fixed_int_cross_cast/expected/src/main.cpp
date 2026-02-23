@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 4: x: Int32 = Int32(300)
 int32_t x{};
 // 5: y: UInt8 = UInt8(x)
@@ -14,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 4: x: Int32 = Int32(300)
     x = 300;
     // 5: y: UInt8 = UInt8(x)

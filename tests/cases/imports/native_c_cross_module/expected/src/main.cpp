@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 7: def main() -> None:
 void main() {
@@ -20,7 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 1: # Test: both `import lib` and `from lib import ...` coexist
     // 2: # The named imports must not be dropped when bare import also exists.
     // 3: import lib

@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 1: def add_offset(x: float | None) -> float:
 double add_offset(std::optional<double> x) {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 5: print(add_offset(1.5))
     std::cout << tpy::print_float(add_offset(1.5)) << "\n";
     // 6: print(add_offset(None))

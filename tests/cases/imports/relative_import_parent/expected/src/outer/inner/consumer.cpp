@@ -3,7 +3,6 @@
 
 namespace tpy_user::outer::inner::consumer {
 
-std::string_view __name__;
 
 // 4: def compute() -> Int32:
 int32_t compute() {
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "outer.inner.consumer";
     // 2: from ..utils import add
     ::tpy_user::outer::__tpy_init();
     ::tpy_user::outer::utils::__tpy_init();

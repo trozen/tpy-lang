@@ -3,11 +3,9 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 
 // 6: def test_int32_plus_bigint():
 void test_int32_plus_bigint() {
-    // 7:     """Int32 + BigInt should promote to BigInt."""
     // 8:     x: Int32 = 5
     int32_t x = 5;
     // 9:     y = 10  # default int (Int32)
@@ -20,7 +18,6 @@ void test_int32_plus_bigint() {
 
 // 14: def test_bigint_plus_int32():
 void test_bigint_plus_int32() {
-    // 15:     """BigInt + Int32 should be BigInt."""
     // 16:     x = 10  # default int (Int32)
     int32_t x = 10;
     // 17:     y: Int32 = 5
@@ -33,7 +30,6 @@ void test_bigint_plus_int32() {
 
 // 22: def test_mixed_arithmetic():
 void test_mixed_arithmetic() {
-    // 23:     """Various mixed operations."""
     // 24:     a: Int32 = 20
     int32_t a = 20;
     // 25:     b = 3  # default int (Int32)
@@ -50,7 +46,6 @@ void test_mixed_arithmetic() {
 
 // 33: def test_large_bigint():
 void test_large_bigint() {
-    // 34:     """Int32 + large BigInt must not overflow."""
     // 35:     x: Int32 = 5
     int32_t x = 5;
     // 36:     y = 10 ** 20  # tpyc: warning(/outside default Int32 range/)
@@ -63,7 +58,6 @@ void test_large_bigint() {
 
 // 41: def test_augmented_assign_mixed():
 void test_augmented_assign_mixed() {
-    // 42:     """Int32 augmented assignment with BigInt converts to Int32."""
     // 43:     x: Int32 = 100
     int32_t x = 100;
     // 44:     b = 7  # default int (Int32)
@@ -92,7 +86,6 @@ void test_augmented_assign_mixed() {
 
 // 62: def test_nested_literal_binop():
 void test_nested_literal_binop() {
-    // 63:     """Nested literal binops assigned to Int32 should use Int32 arithmetic."""
     // 64:     x: Int32 = 1 + (2 + 3)
     int32_t x = tpy::add_check<int32_t>(1, tpy::add_check<int32_t>(2, 3));
     // 65:     print(x)  # 6
@@ -115,7 +108,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 76: test_int32_plus_bigint()
     test_int32_plus_bigint();
     // 77: test_bigint_plus_int32()

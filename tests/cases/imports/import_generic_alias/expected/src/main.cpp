@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // 3: x: SL[int, 3] = SL[int, 3]()
 StaticList<tpy::BigInt, 3>* x{};
 
@@ -12,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: x: SL[int, 3] = SL[int, 3]()
     static StaticList<tpy::BigInt, 3> __global_slot_1 = StaticList<tpy::BigInt, 3>();
     x = &__global_slot_1;

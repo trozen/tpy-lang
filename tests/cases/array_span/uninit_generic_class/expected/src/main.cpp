@@ -3,7 +3,6 @@
 
 namespace tpy_user::main {
 
-std::string_view __name__;
 // # Value type
 // 23: h = Holder[Int32](42)
 Holder<int32_t>* h{};
@@ -16,7 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    __name__ = "__main__";
     // 3: from tpy.mem import UninitHeapStorage
     // 22: # Value type
     // 23: h = Holder[Int32](42)
