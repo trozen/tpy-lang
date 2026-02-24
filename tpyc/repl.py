@@ -75,7 +75,7 @@ class REPLSession:
                         if isinstance(stmt, (
                             ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
                             ast.Assign, ast.AnnAssign, ast.AugAssign,
-                            ast.Import, ast.ImportFrom,
+                            ast.Import, ast.ImportFrom, ast.TypeAlias,
                         )):
                             # Get the source lines for this statement
                             start = stmt.lineno - 1

@@ -1,0 +1,1 @@
+main.py:16: error: Type alias 'Pet' is not callable. Use Cat | Dog directly, or let the type be inferred from an annotation

@@ -1,0 +1,1 @@
+main.py:13: error: Type alias 'P' is not callable. Use Point directly, or let the type be inferred from an annotation

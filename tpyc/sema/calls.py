@@ -119,6 +119,16 @@ class CallAnalyzer:
             from .methods import MethodAnalyzer
             return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
 
+        # Type aliases are not callable (matches CPython behavior)
+        if expr.call_type is None:
+            alias_type = self.ctx.registry.get_type_alias(expr.func)
+            if alias_type is not None:
+                raise self.ctx.error(
+                    f"Type alias '{expr.func}' is not callable. "
+                    f"Use {alias_type} directly, or let the type be inferred from an annotation",
+                    expr
+                )
+
         # Generic type instantiation (e.g., Container[T, N](), StaticList[Int32, 8]())
         # Only if it's actually a type - for generic functions with uppercase names,
         # call_type may be set but we should use type_args instead
