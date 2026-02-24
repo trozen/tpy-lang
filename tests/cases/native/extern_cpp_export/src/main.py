@@ -1,4 +1,5 @@
-from tpy import native, Int32
+from tpy.extern import native
+from tpy import Int32
 
 @native("my_ns::exported_func")
 def my_func(x: Int32) -> Int32: ...

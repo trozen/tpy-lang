@@ -1,1 +1,1 @@
-main.py:4: error: @extern_c function 'bad_func' must have a body (it exports a TPy function)
+main.py:5: error: @extern_c function 'bad_func' must have a body (it exports a TPy function)

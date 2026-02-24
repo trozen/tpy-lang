@@ -5,16 +5,16 @@ namespace tpy_user::main {
 
 
 // @extern_c
-// 4: def app_init() -> None:
+// 5: def app_init() -> None:
 extern "C" void app_init() {
-    // 5:     print("app_init called")
+    // 6:     print("app_init called")
     std::cout << "app_init called" << "\n";
 }
 
 // @extern_c("app_tick")
-// 8: def game_tick(time: Int32) -> None:
+// 9: def game_tick(time: Int32) -> None:
 extern "C" void app_tick(int32_t time) {
-    // 9:     print(time)
+    // 10:     print(time)
     std::cout << time << "\n";
 }
 
@@ -23,6 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // 1: from tpy.extern import extern_c
 }
 
 } // namespace tpy_user::main

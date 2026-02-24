@@ -1,4 +1,5 @@
-from tpy import native_c, Int32
+from tpy.extern import native_c
+from tpy import Int32
 
 @native_c
 class Point:  # tpyc: error(/must have '...' body/)

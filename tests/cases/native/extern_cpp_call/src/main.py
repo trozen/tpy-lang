@@ -1,4 +1,5 @@
-from tpy import native, Int32
+from tpy.extern import native
+from tpy import Int32
 
 # C++ import with namespace — verifies namespaced call codegen
 @native("my_ns::helper")

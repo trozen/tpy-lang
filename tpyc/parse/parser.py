@@ -7,7 +7,7 @@ Validates that only allowed constructs are used.
 
 from __future__ import annotations
 import ast
-from typing import Optional
+from typing import NoReturn, Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, FinalType,
@@ -379,6 +379,84 @@ class Parser:
             return resolved == ("typing", "Protocol")
         return False
 
+    # Sentinels for _resolve_decorator arg_value
+    _EMPTY_CALL = object()  # @name() -- call with zero args
+    _BAD_ARGS = object()    # @name(x, y) or non-constant -- caller must error
+
+    def _resolve_decorator(self, dec: ast.expr) -> tuple[str, str, object] | None:
+        """Resolve a decorator to (module, original_name, arg_value).
+
+        Handles bare (@name), qualified (@mod.name), call-with-args (@name(arg)),
+        and qualified-call (@mod.name(arg)) forms.
+
+        arg_value meanings:
+          None       -- bare form (@name)
+          _EMPTY_CALL -- call with zero args (@name())
+          _BAD_ARGS  -- invalid args (multiple or non-constant)
+          <value>    -- single constant arg value (str, bool, int, etc.)
+
+        Returns None if the decorator name cannot be resolved through imports.
+        """
+        # Extract the function node and args from Call decorators
+        func_node = dec
+        arg_value = None
+        if isinstance(dec, ast.Call):
+            func_node = dec.func
+            if dec.keywords:
+                arg_value = self._BAD_ARGS
+            elif not dec.args:
+                arg_value = self._EMPTY_CALL
+            elif len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant):
+                arg_value = dec.args[0].value
+            else:
+                arg_value = self._BAD_ARGS
+
+        # Bare name: @name or @name(arg)
+        if isinstance(func_node, ast.Name):
+            name = func_node.id
+            # @staticmethod is a Python builtin, not resolved through imports
+            if name == "staticmethod":
+                return ("builtins", "staticmethod", arg_value)
+            resolved = self._resolve_type_name(name)
+            if resolved:
+                return (resolved[0], resolved[1], arg_value)
+            return None
+
+        # Qualified name: @mod.name or @mod.name(arg)
+        if isinstance(func_node, ast.Attribute) and isinstance(func_node.value, ast.Name):
+            resolved = self._resolve_qualified_type_name(func_node)
+            if resolved:
+                return (resolved[0], resolved[1], arg_value)
+            return None
+
+        return None
+
+    @staticmethod
+    def _decorator_local_name(dec: ast.expr) -> str | None:
+        """Extract the local name used in the source for a decorator (for error messages)."""
+        func_node = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(func_node, ast.Name):
+            return func_node.id
+        if isinstance(func_node, ast.Attribute):
+            return f"{func_node.value.id}.{func_node.attr}" if isinstance(func_node.value, ast.Name) else None
+        return None
+
+    def _require_decorator(self, dec: ast.expr, context: str) -> tuple[str, object]:
+        """Resolve a decorator or raise a helpful error. Returns (qname, arg)."""
+        resolved = self._resolve_decorator(dec)
+        if resolved is None:
+            local_name = self._decorator_local_name(dec) or "?"
+            raise ParseError(f"Unknown decorator '{local_name}' on {context}", dec)
+        return f"{resolved[0]}.{resolved[1]}", resolved[2]
+
+    def _parse_readonly_arg(self, arg: object, dec: ast.expr) -> tuple[bool, bool]:
+        """Parse @readonly arg value -> (is_readonly, readonly_opt_out)."""
+        if arg is None:
+            return (True, False)
+        if isinstance(arg, bool):
+            return (arg, not arg)
+        raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
+
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
         """Parse a class definition as a record or protocol."""
         # Check if this is a Protocol definition (has Protocol as one of its bases)
@@ -392,28 +470,25 @@ class Parser:
         native_name: str | None = None
         is_nocopy = False
         for dec in node.decorator_list:
-            if isinstance(dec, ast.Name) and dec.id in self._RECORD_LINKAGE_DECORATORS:
-                new_linkage = self._RECORD_LINKAGE_DECORATORS[dec.id]
+            qname, arg = self._require_decorator(dec, f"class '{node.name}'")
+            if qname in self._RECORD_LINKAGE_MAP:
+                new_linkage = self._RECORD_LINKAGE_MAP[qname]
                 if linkage != RecordLinkage.DEFAULT:
                     raise ParseError(
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
-            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id in self._RECORD_LINKAGE_DECORATORS:
-                new_linkage = self._RECORD_LINKAGE_DECORATORS[dec.func.id]
-                if linkage != RecordLinkage.DEFAULT:
-                    raise ParseError(
-                        f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
-                linkage = new_linkage
-                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
-                    native_name = dec.args[0].value
-                else:
-                    raise ParseError(f"@{dec.func.id}() requires a single string argument", dec)
-            elif isinstance(dec, ast.Name) and dec.id == "nocopy":
+                if isinstance(arg, str):
+                    native_name = arg
+                elif arg is not None:
+                    dec_name = self._decorator_local_name(dec)
+                    raise ParseError(f"@{dec_name}() requires a single string argument", dec)
+            elif qname == "tpy.nocopy":
+                if arg is not None:
+                    raise ParseError("@nocopy does not take arguments", dec)
                 is_nocopy = True
-            elif isinstance(dec, ast.Name):
-                raise ParseError(f"Unknown decorator '{dec.id}' on class '{node.name}'", dec)
             else:
-                raise ParseError(f"Unsupported decorator on class '{node.name}'", dec)
+                dec_name = self._decorator_local_name(dec) or "?"
+                raise ParseError(f"Unknown decorator '{dec_name}' on class '{node.name}'", dec)
 
         # Extract type parameters FIRST so they're in scope when parsing bases
         # Python 3.12+ syntax: class Foo[T, U]:
@@ -515,13 +590,16 @@ class Parser:
         """Parse a protocol definition."""
         is_dynamic = False
         for dec in node.decorator_list:
-            if isinstance(dec, ast.Name):
-                resolved = self._resolve_type_name(dec.id)
-                if resolved == ("tpy", "dynamic"):
-                    is_dynamic = True
-                    continue
-            raise ParseError(f"Unsupported decorator on protocol '{node.name}'. "
-                             f"Only @dynamic (from tpy) is allowed on protocols", dec)
+            qname, arg = self._require_decorator(dec, f"protocol '{node.name}'")
+            if qname == "tpy.dynamic":
+                if arg is not None:
+                    raise ParseError("@dynamic does not take arguments", dec)
+                is_dynamic = True
+                continue
+            dec_name = self._decorator_local_name(dec) or "?"
+            raise ParseError(
+                f"Unsupported decorator '@{dec_name}' on protocol '{node.name}'. "
+                f"Only @dynamic (from tpy) is allowed on protocols", dec)
 
         # Extract parent protocols (excluding Protocol itself)
         parent_protocols = []
@@ -567,18 +645,11 @@ class Parser:
                 is_readonly = False
                 readonly_opt_out = False
                 for dec in item.decorator_list:
-                    if isinstance(dec, ast.Name) and dec.id == "readonly":
-                        is_readonly = True
-                    elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "readonly":
-                        if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, bool):
-                            if dec.args[0].value:
-                                is_readonly = True
-                            else:
-                                readonly_opt_out = True
-                        else:
-                            raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
+                    qname, arg = self._require_decorator(dec, f"protocol method '{item.name}'")
+                    if qname == "tpy.readonly":
+                        is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
                     else:
-                        dec_name = dec.id if isinstance(dec, ast.Name) else type(dec).__name__
+                        dec_name = self._decorator_local_name(dec) or "?"
                         raise ParseError(f"Unknown decorator '{dec_name}' on protocol method '{item.name}'", dec)
 
                 # Parse method signature (body should be ... or pass)
@@ -628,10 +699,14 @@ class Parser:
         self._type_param_scope = old_scope
         return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, loc=self._loc(node))
 
-    # Decorator names that set method linkage (for method renaming on native classes)
-    _METHOD_LINKAGE_DECORATORS: dict[str, FunctionLinkage] = {
-        "native": FunctionLinkage.NATIVE,
-        "native_c": FunctionLinkage.NATIVE_C,
+    _RECORD_LINKAGE_MAP: dict[str, RecordLinkage] = {
+        "tpy.extern.native": RecordLinkage.NATIVE,
+        "tpy.extern.native_c": RecordLinkage.NATIVE_C,
+    }
+
+    _METHOD_LINKAGE_MAP: dict[str, FunctionLinkage] = {
+        "tpy.extern.native": FunctionLinkage.NATIVE,
+        "tpy.extern.native_c": FunctionLinkage.NATIVE_C,
     }
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyFunction:
@@ -643,26 +718,20 @@ class Parser:
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
-            if isinstance(dec, ast.Name) and dec.id == "staticmethod":
+            qname, arg = self._require_decorator(dec, f"method '{node.name}'")
+            if qname == "builtins.staticmethod":
                 is_staticmethod = True
-            elif isinstance(dec, ast.Name) and dec.id == "readonly":
-                is_readonly = True
-            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "readonly":
-                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, bool):
-                    if dec.args[0].value:
-                        is_readonly = True
-                    else:
-                        readonly_opt_out = True
-                else:
-                    raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
-            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id in self._METHOD_LINKAGE_DECORATORS:
-                method_linkage = self._METHOD_LINKAGE_DECORATORS[dec.func.id]
-                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
-                    native_name = dec.args[0].value
-                else:
-                    raise ParseError(f"@{dec.func.id}() on method requires a single string argument", dec)
+            elif qname == "tpy.readonly":
+                is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+            elif qname in self._METHOD_LINKAGE_MAP:
+                method_linkage = self._METHOD_LINKAGE_MAP[qname]
+                if isinstance(arg, str):
+                    native_name = arg
+                elif arg is not None:
+                    dec_name = self._decorator_local_name(dec)
+                    raise ParseError(f"@{dec_name}() on method requires a single string argument", dec)
             else:
-                dec_name = dec.id if isinstance(dec, ast.Name) else type(dec).__name__
+                dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
@@ -729,17 +798,10 @@ class Parser:
             loc=self._loc(node)
         )
 
-    # Decorator names that set record linkage
-    _RECORD_LINKAGE_DECORATORS: dict[str, RecordLinkage] = {
-        "native": RecordLinkage.NATIVE,
-        "native_c": RecordLinkage.NATIVE_C,
-    }
-
-    # Decorator names that set function linkage
-    _LINKAGE_DECORATORS: dict[str, FunctionLinkage] = {
-        "native": FunctionLinkage.NATIVE,
-        "native_c": FunctionLinkage.NATIVE_C,
-        "extern_c": FunctionLinkage.EXTERN_C,
+    _FUNCTION_LINKAGE_MAP: dict[str, FunctionLinkage] = {
+        "tpy.extern.native": FunctionLinkage.NATIVE,
+        "tpy.extern.native_c": FunctionLinkage.NATIVE_C,
+        "tpy.extern.extern_c": FunctionLinkage.EXTERN_C,
     }
 
     def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
@@ -750,36 +812,27 @@ class Parser:
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
-            if isinstance(dec, ast.Name) and dec.id == "noalloc":
+            qname, arg = self._require_decorator(dec, f"function '{node.name}'")
+            if qname == "tpy.noalloc":
+                if arg is not None:
+                    raise ParseError("@noalloc does not take arguments", dec)
                 is_noalloc = True
-            elif isinstance(dec, ast.Name) and dec.id == "readonly":
-                is_readonly = True
-            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id == "readonly":
-                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, bool):
-                    if dec.args[0].value:
-                        is_readonly = True
-                    else:
-                        readonly_opt_out = True
-                else:
-                    raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
-            elif isinstance(dec, ast.Name) and dec.id in self._LINKAGE_DECORATORS:
-                new_linkage = self._LINKAGE_DECORATORS[dec.id]
+            elif qname == "tpy.readonly":
+                is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+            elif qname in self._FUNCTION_LINKAGE_MAP:
+                new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
                     raise ParseError(
                         f"Function '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
-            elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Name) and dec.func.id in self._LINKAGE_DECORATORS:
-                new_linkage = self._LINKAGE_DECORATORS[dec.func.id]
-                if linkage != FunctionLinkage.DEFAULT:
-                    raise ParseError(
-                        f"Function '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
-                linkage = new_linkage
-                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant) and isinstance(dec.args[0].value, str):
-                    native_name = dec.args[0].value
-                else:
-                    raise ParseError(f"@{dec.func.id}() requires a single string argument", dec)
+                if isinstance(arg, str):
+                    native_name = arg
+                elif arg is not None:
+                    dec_name = self._decorator_local_name(dec)
+                    raise ParseError(f"@{dec_name}() requires a single string argument", dec)
             else:
-                raise ParseError(f"Unknown decorator on function '{node.name}'", dec)
+                dec_name = self._decorator_local_name(dec) or "?"
+                raise ParseError(f"Unknown decorator '{dec_name}' on function '{node.name}'", dec)
 
         # Extract type parameters from Python 3.12+ syntax: def foo[T, U]():
         # Also extract bounds: def foo[T: Comparable]():

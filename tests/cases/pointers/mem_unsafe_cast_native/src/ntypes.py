@@ -1,5 +1,6 @@
 # Native C struct declarations for cross-module import
-from tpy import native_c, Int32, Ptr
+from tpy.extern import native_c
+from tpy import Int32, Ptr
 
 @native_c("thing_t")
 class ThingT:

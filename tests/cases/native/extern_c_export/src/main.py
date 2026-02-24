@@ -1,4 +1,5 @@
-from tpy import extern_c, Int32
+from tpy.extern import extern_c
+from tpy import Int32
 
 @extern_c
 def app_init() -> None:

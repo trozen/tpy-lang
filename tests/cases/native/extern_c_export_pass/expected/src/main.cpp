@@ -15,6 +15,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // 1: from tpy.extern import extern_c
 }
 
 } // namespace tpy_user::main

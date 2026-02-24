@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 
 
-// 28: def main() -> None:
+// 29: def main() -> None:
 void main() {
-    // 29:     v = Vec2(Int32(3), Int32(4))
+    // 30:     v = Vec2(Int32(3), Int32(4))
     Vec2 v = Vec2(3, 4);
-    // 30:     print(v.x)
+    // 31:     print(v.x)
     std::cout << v.x << "\n";
-    // 31:     print(v.y)
+    // 32:     print(v.y)
     std::cout << v.y << "\n";
-    // 32:     print(vec2_sum(Ptr(v)))
+    // 33:     print(vec2_sum(Ptr(v)))
     std::cout << vec2_sum(&v) << "\n";
-    // 33:     print(v.sum())
+    // 34:     print(v.sum())
     std::cout << v.sum() << "\n";
-    // 34:     print(v.dot(Vec2(Int32(1), Int32(2))))
+    // 35:     print(v.dot(Vec2(Int32(1), Int32(2))))
     std::cout << v.dot(Vec2(1, 2)) << "\n";
-    // 36:     z = Vec2.zero()
+    // 37:     z = Vec2.zero()
     Vec2 z = Vec2::zero();
-    // 37:     print(z.x)
+    // 38:     print(z.x)
     std::cout << z.x << "\n";
-    // 38:     print(z.y)
+    // 39:     print(z.y)
     std::cout << z.y << "\n";
-    // 40:     c = Color(Int32(100), Int32(150), Int32(200))
+    // 41:     c = Color(Int32(100), Int32(150), Int32(200))
     ns::Color c = ns::Color(100, 150, 200);
-    // 41:     print(c.r)
+    // 42:     print(c.r)
     std::cout << c.r << "\n";
-    // 42:     print(color_brightness(Ptr(c)))
+    // 43:     print(color_brightness(Ptr(c)))
     std::cout << color_brightness(&c) << "\n";
-    // 43:     print(c.brightness())
+    // 44:     print(c.brightness())
     std::cout << c.brightness() << "\n";
 }
 
@@ -41,7 +41,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 45: main()
+    // 1: from tpy.extern import native, native_c
+    // 46: main()
     main();
 }
 

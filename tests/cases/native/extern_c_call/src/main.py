@@ -1,4 +1,5 @@
-from tpy import extern_c, Int32
+from tpy.extern import extern_c
+from tpy import Int32
 
 # Export with explicit C name — verifies renamed call codegen
 @extern_c("Helper_Add")

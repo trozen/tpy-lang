@@ -106,7 +106,7 @@ The key compiler feature enabling all of this. A decorator for declaring foreign
 functions — the compiler emits direct C/C++ calls instead of generating a body.
 
 ```python
-from tpy import extern_c
+from tpy.extern import extern_c
 
 # Module-level directives: what to #include and link
 extern_c.include("SDL2/SDL.h")
@@ -155,7 +155,8 @@ bindings using `@extern_c`. It's pure TurboPython — just function declarations
 
 ```python
 # tpy_sdl2/sdl2.py
-from tpy import extern_c, Int32, Ptr
+from tpy.extern import extern_c
+from tpy import Int32, Ptr
 
 extern_c.include("SDL2/SDL.h")
 extern_c.link("SDL2")
@@ -207,7 +208,8 @@ needed beyond the initial `@extern_c` support.
 
 ```python
 # doomgeneric_tpy.py
-from tpy import extern_c, Int32, Ptr, Array
+from tpy.extern import extern_c
+from tpy import Int32, Ptr, Array
 from tpy_sdl2 import (
     SDL_Init, SDL_CreateWindow, SDL_CreateRenderer, SDL_CreateTexture,
     SDL_UpdateTexture, SDL_RenderCopy, SDL_RenderPresent, SDL_PollEvent,

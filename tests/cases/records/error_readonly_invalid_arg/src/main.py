@@ -1,5 +1,5 @@
 # @readonly(1) with non-bool argument is rejected.
-from tpy import Int32
+from tpy import Int32, readonly
 
 class Bad:
     x: Int32

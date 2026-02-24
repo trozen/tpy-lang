@@ -6,25 +6,25 @@ namespace tpy_user::main {
 
 
 
-// 26: def main() -> None:
+// 27: def main() -> None:
 void main() {
-    // 27:     p = Point(Int32(10), Int32(20))
+    // 28:     p = Point(Int32(10), Int32(20))
     Point p = Point{10, 20};
-    // 28:     print(p.x)
+    // 29:     print(p.x)
     std::cout << p.x << "\n";
-    // 29:     print(p.y)
+    // 30:     print(p.y)
     std::cout << p.y << "\n";
-    // 30:     print(point_sum(Ptr(p)))
+    // 31:     print(point_sum(Ptr(p)))
     std::cout << point_sum(&p) << "\n";
-    // 31:     print(p.manhattan())
+    // 32:     print(p.manhattan())
     std::cout << p.manhattan() << "\n";
-    // 33:     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
+    // 34:     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
     Rect r = Rect{0, 0, 800, 600};
-    // 34:     print(r.w)
+    // 35:     print(r.w)
     std::cout << r.w << "\n";
-    // 35:     print(rect_area(Ptr(r)))
+    // 36:     print(rect_area(Ptr(r)))
     std::cout << rect_area(&r) << "\n";
-    // 36:     print(r.area())
+    // 37:     print(r.area())
     std::cout << r.area() << "\n";
 }
 
@@ -33,7 +33,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 38: main()
+    // 1: from tpy.extern import native_c
+    // 39: main()
     main();
 }
 

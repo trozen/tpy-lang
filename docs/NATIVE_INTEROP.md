@@ -40,10 +40,10 @@ TurboPython can import existing C/C++ functions and export its own functions wit
 
 ## API
 
-Three decorators, all imported from `tpy`:
+Three decorators, all imported from `tpy.extern`:
 
 ```python
-from tpy import native, native_c, extern_c
+from tpy.extern import native, native_c, extern_c
 ```
 
 ### `@native` — Import a C++ function
@@ -139,7 +139,8 @@ Native C functions imported in one module can be used in another via normal Pyth
 
 ```python
 # lib.py
-from tpy import native_c, Int32
+from tpy.extern import native_c
+from tpy import Int32
 
 @native_c
 def abs(x: Int32) -> Int32: ...
@@ -150,7 +151,8 @@ def get_clock() -> Int32: ...
 
 ```python
 # main.py
-from tpy import extern_c, Int32
+from tpy.extern import extern_c
+from tpy import Int32
 from lib import abs, get_clock
 
 @extern_c
@@ -196,7 +198,8 @@ Planned: `str`, `Ptr[T]`, `ConstPtr[T]`, opaque handle types.
 Import existing C++ classes so TPy code can declare their fields and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
 
 ```python
-from tpy import native, Int32, Float
+from tpy.extern import native
+from tpy import Int32, Float
 
 # Bare @native — Python and C++ names match
 @native
@@ -277,7 +280,8 @@ When importing native functions or classes, the compiler needs to know which C/C
 # tpy: link("box2d")
 # tpy: link("SDL2")
 
-from tpy import native, native_c, Int32
+from tpy.extern import native, native_c
+from tpy import Int32
 
 @native("b2::Vec2")
 class Vec2:
@@ -310,7 +314,8 @@ The pragma approach is preferred because a single header often covers multiple d
 Import C structs. Similar to `@native` classes but with C linkage — no methods, no namespaces, POD-only. Construction uses aggregate initialization (`{}` syntax).
 
 ```python
-from tpy import native_c, Int32
+from tpy.extern import native_c
+from tpy import Int32
 
 # Bare @native_c — Python and C names match
 @native_c
@@ -400,7 +405,8 @@ Fields without a rename annotation use their Python name as-is (current behavior
 Export a TPy class with C-compatible layout, so it can be used from C code. The class must only contain C-compatible fields. The compiler generates a C-compatible struct definition.
 
 ```python
-from tpy import extern_c, Int32
+from tpy.extern import extern_c
+from tpy import Int32
 
 @extern_c
 class GameState:
@@ -552,7 +558,8 @@ This is similar to C#'s marshaling attributes or Cython's typed memoryviews.
 Pass TPy functions as C callbacks. The compiler generates a C-compatible function pointer from a TPy function.
 
 ```python
-from tpy import native_c, Int32, CCallback
+from tpy.extern import native_c
+from tpy import Int32, CCallback
 
 @native_c
 def qsort(base: Ptr[None], count: Int32, size: Int32,
@@ -597,7 +604,7 @@ This is a last resort — it breaks portability and type safety. But it's useful
 Import C/C++ enums as TPy types:
 
 ```python
-from tpy import native_c
+from tpy.extern import native_c
 
 @native_c
 class WindowFlags:

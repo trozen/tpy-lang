@@ -1,5 +1,6 @@
 # Module defining a @native_c type and a helper function
-from tpy import native_c, Int32, Ptr
+from tpy.extern import native_c
+from tpy import Int32, Ptr
 
 @native_c("c_rect")
 class Rect:

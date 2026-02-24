@@ -1,4 +1,5 @@
-from tpy import native, native_c, Int32
+from tpy.extern import native, native_c
+from tpy import Int32
 
 @native
 @native_c

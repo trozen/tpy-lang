@@ -1,1 +1,1 @@
-main.py:4: error: @native_c function 'bad_func' must have `...` body (it declares an external symbol)
+main.py:5: error: @native_c function 'bad_func' must have `...` body (it declares an external symbol)

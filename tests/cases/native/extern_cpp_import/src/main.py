@@ -1,4 +1,5 @@
-from tpy import native, Int32
+from tpy.extern import native
+from tpy import Int32
 
 @native("physics::calculate_force")
 def calc_force(mass: float, accel: float) -> float: ...

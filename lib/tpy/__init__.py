@@ -439,6 +439,11 @@ def noalloc(func):
     return func
 
 
+def nocopy(cls):
+    """No-op in CPython. The compiler enforces no-copy semantics at compile time."""
+    return cls
+
+
 def dynamic(cls):
     """Decorator marking a protocol for dynamic dispatch.
 
@@ -461,21 +466,6 @@ class readonly:
         if func_or_flag is None or isinstance(func_or_flag, bool):
             return lambda func: func
         return func_or_flag
-
-
-class _ExternLinkage:
-    """Decorator for native/native_c/extern_c linkage. No-op in CPython."""
-    def __call__(self, name_or_func):
-        if callable(name_or_func):
-            return name_or_func
-        def decorator(func):
-            return func
-        return decorator
-
-native = _ExternLinkage()
-native_c = _ExternLinkage()
-extern_c = _ExternLinkage()
-extern_cpp = _ExternLinkage()
 
 
 # ---------------------------------------------------------------------------

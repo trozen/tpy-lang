@@ -3158,10 +3158,11 @@ TurboPython can import existing C/C++ functions and export its own functions wit
 
 ### Native Functions (Working)
 
-Three decorators, all imported from `tpy`:
+Three decorators, all imported from `tpy.extern`:
 
 ```python
-from tpy import native, native_c, extern_c, Int32
+from tpy.extern import native, native_c, extern_c
+from tpy import Int32
 
 # Import a C++ function (forward declaration)
 @native
@@ -3197,7 +3198,8 @@ Cross-module imports of native functions work normally — the compiler re-decla
 Import existing C++ classes and C structs so TPy code can declare their fields, call their methods, and pass them to native functions. No struct definition is generated — the compiler trusts the external type exists.
 
 ```python
-from tpy import native, native_c, Int32, Float
+from tpy.extern import native, native_c
+from tpy import Int32, Float
 
 # @native — C++ class import (constructor call syntax)
 @native

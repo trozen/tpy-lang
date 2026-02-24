@@ -1,4 +1,5 @@
-from tpy import native, Int32
+from tpy.extern import native
+from tpy import Int32
 
 @native
 class Vec2:  # tpyc: error(/must have '...' body/)

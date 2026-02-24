@@ -1,4 +1,5 @@
-from tpy import native, native_c, Int32, Ptr
+from tpy.extern import native, native_c
+from tpy import Int32, Ptr
 from lib import Vec2, MyRect, rect_area
 
 # Native function using imported type from lib

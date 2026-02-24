@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // @extern_c
-// 5: def app_init() -> None:
+// 6: def app_init() -> None:
 extern "C" void app_init() {
-    // 6:     abs(Int32(0))
+    // 7:     abs(Int32(0))
     std::abs(0);
-    // 7:     x: Int32 = get_clock()
+    // 8:     x: Int32 = get_clock()
     int32_t x = tpy_clock();
-    // 8:     print(x)
+    // 9:     print(x)
     std::cout << x << "\n";
 }
 
@@ -20,7 +20,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from mathlib import abs, get_clock
+    // 1: from tpy.extern import extern_c
+    // 3: from mathlib import abs, get_clock
     ::tpy_user::mathlib::__tpy_init();
 }
 

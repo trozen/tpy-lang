@@ -9,6 +9,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // 1: # Native C struct declarations for cross-module import
+    // 2: from tpy.extern import native_c
 }
 
 } // namespace tpy_user::ntypes
