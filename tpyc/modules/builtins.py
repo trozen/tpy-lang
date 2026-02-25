@@ -7,7 +7,7 @@ Defines functions like chr, print, len, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, BIGINT, FLOAT, CHAR, STR, VOID, BOOL, RANGE, RangeType, ListType,
+    INT32, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
     NamedType, TypeParamRef, OwnType, ALL_FIXED_INTS, FixedIntType,
 )
 
@@ -220,13 +220,13 @@ def init_module() -> BuiltinModule:
         ),
     ])
 
-    module.register_type(STR, cpp_type="std::string_view",
+    module.register_type(STR, cpp_type="std::string",
         extends=["NativeIterable[Char]"],
         constructors=[
-            MethodDef(params=[], returns=STR, cpp='""'),
-            MethodDef(params=[ParamDef("x", STR)], returns=STR, cpp="{0}"),
-            MethodDef(params=[ParamDef("x", BOOL)], returns=STR, cpp="tpy::bool_to_str({0})"),
-            MethodDef(params=[ParamDef("x", CHAR)], returns=STR, cpp="tpy::char_to_str({0})"),
+            MethodDef(params=[], returns=STR, cpp='std::string()'),
+            MethodDef(params=[ParamDef("x", STR)], returns=STR, cpp="std::string({0})"),
+            MethodDef(params=[ParamDef("x", BOOL)], returns=STR, cpp="std::string(tpy::bool_to_str({0}))"),
+            MethodDef(params=[ParamDef("x", CHAR)], returns=STR, cpp="std::string(tpy::char_to_str({0}))"),
             *[MethodDef(params=[ParamDef("x", t)], returns=STR,
                        cpp=f"tpy::fixed_to_str<{t.to_cpp()}>({{0}})")
               for t in ALL_FIXED_INTS],
@@ -246,6 +246,23 @@ def init_module() -> BuiltinModule:
             cpp="tpy::get_char({self}, {0})",
             is_readonly=True,
         )],
+        "__add__": [
+            MethodDef(
+                params=[ParamDef("other", STR)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+            MethodDef(
+                params=[ParamDef("other", STRING)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+            MethodDef(
+                params=[ParamDef("other", STRVIEW)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+        ],
     })
 
     # int: arbitrary precision integer (BigInt)

@@ -1,0 +1,6 @@
+hello
+5
+42
+True
+a
+c

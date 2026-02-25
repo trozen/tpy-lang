@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, ListType, ArrayType, PendingListType, SpanType, IntLiteralType,
-    StrType, NamedType, CHAR, is_protocol_type,
+    StrType, NamedType, CHAR, is_protocol_type, is_any_str_type,
 )
 from ..parse import TpyExpr, TpyName, TpyCoerce
 from .diagnostics import SemanticError
@@ -159,8 +159,8 @@ class ListLiteralTracker:
                 return iterable_type.type_args[0]
             return None
 
-        # Handle str -> Char
-        if isinstance(iterable_type, StrType):
+        # Handle str/String/StrView -> Char
+        if is_any_str_type(iterable_type):
             return CHAR
 
         # Check OptIterator extends (e.g., Range extends OptIterator[Int32])

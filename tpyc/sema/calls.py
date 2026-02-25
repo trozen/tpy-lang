@@ -12,6 +12,7 @@ from ..typesys import (
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     UnionType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
+    is_any_str_type,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName, TpyFunction
 from ..namespace import BindingKind
@@ -921,7 +922,7 @@ class CallAnalyzer:
             self.check_own_param(arg, arg_type, pname, ptype)
 
             # Special case: single-char string literal can be passed as Char
-            if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
+            if not (isinstance(ptype, CharType) and is_any_str_type(arg_type) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                 coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)
@@ -1016,7 +1017,7 @@ class CallAnalyzer:
             self.check_own_param(arg, arg_type, pname, resolved_ptype)
 
             # Special case: single-char string literal can be passed as Char
-            if not (isinstance(resolved_ptype, CharType) and isinstance(arg_type, StrType) and
+            if not (isinstance(resolved_ptype, CharType) and is_any_str_type(arg_type) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                 coerced_arg = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)
@@ -1214,7 +1215,7 @@ class CallAnalyzer:
             self.check_own_param(arg, arg_type, pname, ptype)
 
             # Special case: single-char string literal can be passed as Char
-            if not (isinstance(ptype, CharType) and isinstance(arg_type, StrType) and
+            if not (isinstance(ptype, CharType) and is_any_str_type(arg_type) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
                 coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)

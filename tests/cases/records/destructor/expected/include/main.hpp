@@ -17,7 +17,7 @@ void main();
 // 4: class Resource:
 struct Resource {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
     bool __tpy_owned_ = true;
 
     // 6:     def __init__(self, name: str):

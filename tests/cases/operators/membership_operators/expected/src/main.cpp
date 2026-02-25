@@ -91,15 +91,15 @@ void test_span_membership() {
 // 54: def test_string_membership() -> None:
 void test_string_membership() {
     // 56:     text: str = "hello world"
-    std::string_view text = "hello world";
+    std::string text = "hello world";
     // 58:     # Single character 'in' string
     // 59:     if "o" in text:
-    if ((std::string_view(text).find("o") != std::string_view::npos)) {
+    if ((text.find("o") != std::string::npos)) {
         // 60:         print("'o' in string: yes")
         std::cout << "'o' in string: yes" << "\n";
     }
     // 61:     if "z" in text:
-    if ((std::string_view(text).find("z") != std::string_view::npos)) {
+    if ((text.find("z") != std::string::npos)) {
         // 62:         print("'z' in string: yes")
         std::cout << "'z' in string: yes" << "\n";
     } else {
@@ -108,12 +108,12 @@ void test_string_membership() {
     }
     // 66:     # 'not in' for string
     // 67:     if "z" not in text:
-    if ((!(std::string_view(text).find("z") != std::string_view::npos))) {
+    if ((!(text.find("z") != std::string::npos))) {
         // 68:         print("'z' not in string: yes")
         std::cout << "'z' not in string: yes" << "\n";
     }
     // 69:     if "e" not in text:
-    if ((!(std::string_view(text).find("e") != std::string_view::npos))) {
+    if ((!(text.find("e") != std::string::npos))) {
         // 70:         print("'e' not in string: yes")
         std::cout << "'e' not in string: yes" << "\n";
     } else {

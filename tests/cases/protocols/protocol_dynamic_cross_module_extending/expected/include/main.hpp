@@ -10,12 +10,12 @@ namespace tpy_user::main {
 // 8: class NamedPet(Pet, Protocol):
 template<typename T>
 concept NamedPet = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string_view>;
-    { t.speak() } -> std::convertible_to<std::string_view>;
+    { t.name() } -> std::convertible_to<std::string>;
+    { t.speak() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_NamedPet : ::tpy_user::pet::__tpy_Base_Pet {
-    virtual std::string_view name() = 0;
+    virtual std::string name() = 0;
     virtual ~__tpy_Base_NamedPet() = default;
 };
 
@@ -24,16 +24,16 @@ struct __tpy_Adapter_NamedPet : __tpy_Base_NamedPet {
     T inner;
     template<typename... Args>
     __tpy_Adapter_NamedPet(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view name() override { return inner.name(); }
-    std::string_view speak() override { return inner.speak(); }
+    std::string name() override { return inner.name(); }
+    std::string speak() override { return inner.speak(); }
 };
 
 template<NamedPet T>
 struct __tpy_RefAdapter_NamedPet : __tpy_Base_NamedPet {
     T& inner;
     __tpy_RefAdapter_NamedPet(T& ref) : inner(ref) {}
-    std::string_view name() override { return inner.name(); }
-    std::string_view speak() override { return inner.speak(); }
+    std::string name() override { return inner.name(); }
+    std::string speak() override { return inner.speak(); }
 };
 
 struct Dog;
@@ -51,13 +51,13 @@ struct Dog : __tpy_Base_NamedPet {
     Dog() = default;
 
     // 12:     def speak(self) -> str:
-    std::string_view speak() override {
+    std::string speak() override {
         // 13:         return "Woof"
         return "Woof";
     }
 
     // 14:     def name(self) -> str:
-    std::string_view name() override {
+    std::string name() override {
         // 15:         return "Rex"
         return "Rex";
     }
@@ -75,13 +75,13 @@ struct Parrot {
     Parrot() = default;
 
     // 18:     def speak(self) -> str:
-    std::string_view speak() {
+    std::string speak() {
         // 19:         return "Squawk"
         return "Squawk";
     }
 
     // 20:     def name(self) -> str:
-    std::string_view name() {
+    std::string name() {
         // 21:         return "Polly"
         return "Polly";
     }

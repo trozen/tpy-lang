@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 15: def main() -> None:
 void main() {
     // 16:     c: Container[str, 10] = Container[str, 10]()
-    Container<std::string_view, 10> c = Container<std::string_view, 10>();
+    Container<std::string, 10> c = Container<std::string, 10>();
     // 17:     print(c.get_double())      # 20
     std::cout << c.get_double() << "\n";
     // 18:     print(c.get_plus_one())    # 11

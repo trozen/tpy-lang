@@ -9,14 +9,14 @@ namespace tpy_user::main {
 // 11: class Stringable(Protocol):
 template<typename T>
 concept Stringable = requires(T& t) {
-    { t.to_str() } -> std::convertible_to<std::string_view>;
+    { t.to_str() } -> std::convertible_to<std::string>;
 };
 
 // # Test 7: Protocol with multiple methods
 // 43: class MultiMethod(Protocol):
 template<typename T>
 concept MultiMethod = requires(T& t) {
-    { t.get_name() } -> std::convertible_to<std::string_view>;
+    { t.get_name() } -> std::convertible_to<std::string>;
     { t.get_value() } -> std::convertible_to<int32_t>;
 };
 
@@ -38,7 +38,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<tpy::Sized T>
 int32_t get_length(tpy::param_val_or_ref_t<T> item);
 template<Stringable T>
-std::string_view stringify(tpy::param_val_or_ref_t<T> item);
+std::string stringify(tpy::param_val_or_ref_t<T> item);
 template<tpy::Sized T, Stringable U>
 int32_t process_both(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b);
 template<MultiMethod T>
@@ -61,7 +61,7 @@ struct Printer {
     Printer() = default;
 
     // 20:     def get_str(self, item: T) -> str:
-    std::string_view get_str(tpy::param_val_or_ref_t<T> item) {
+    std::string get_str(tpy::param_val_or_ref_t<T> item) {
         // 21:         # Call protocol method on bounded type parameter inside generic class method
         // 22:         return item.to_str()
         return item.to_str();
@@ -86,7 +86,7 @@ struct MyValue {
     explicit MyValue(int32_t v) : val(v) {}
 
     // 31:     def to_str(self) -> str:
-    std::string_view to_str() {
+    std::string to_str() {
         // 32:         return "value"
         return "value";
     }
@@ -118,7 +118,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // 78:     def to_str(self) -> str:
-    std::string_view to_str() {
+    std::string to_str() {
         // 79:         return "Point"
         return "Point";
     }
@@ -137,7 +137,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // 82: class Widget:
 struct Widget {
     // 83:     name: str
-    std::string_view name;
+    std::string name;
     // 84:     val: Int32
     int32_t val;
 
@@ -146,7 +146,7 @@ struct Widget {
     explicit Widget(std::string_view name, int32_t val) : name(name), val(val) {}
 
     // 90:     def get_name(self) -> str:
-    std::string_view get_name() {
+    std::string get_name() {
         // 91:         return self.name
         return this->name;
     }
@@ -201,7 +201,7 @@ int32_t get_length(tpy::param_val_or_ref_t<T> item) {
 // # Test 3: Generic function with user protocol bound
 // 15: def stringify[T: Stringable](item: T) -> str:
 template<Stringable T>
-std::string_view stringify(tpy::param_val_or_ref_t<T> item) {
+std::string stringify(tpy::param_val_or_ref_t<T> item) {
     // 16:     return item.to_str()
     return item.to_str();
 }

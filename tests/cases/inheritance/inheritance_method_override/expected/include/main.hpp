@@ -17,7 +17,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // 3: class Shape:
 struct Shape {
     // 4:     name: str
-    std::string_view name;
+    std::string name;
 
     // 6:     def __init__(self, name: str) -> None:
     Shape() = default;
@@ -30,7 +30,7 @@ struct Shape {
     }
 
     // 12:     def describe(self) -> str:
-    std::string_view describe() {
+    std::string describe() {
         // 13:         return self.name
         return this->name;
     }

@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Result& obj) {
 // 16: class Message:
 struct Message {
     // 17:     text: str
-    std::string_view text;
+    std::string text;
 
     // 19:     def __init__(self, text: str) -> None:
     Message() = default;
@@ -62,7 +62,7 @@ template<Convertible T> struct Wrapper;
 // 36: class WrapperMaker(Protocol):
 template<typename T>
 concept WrapperMaker = requires(T& t) {
-    { t.make(std::declval<std::string_view>()) } -> std::convertible_to<Wrapper<Message>>;
+    { t.make(std::declval<std::string>()) } -> std::convertible_to<Wrapper<Message>>;
 };
 
 struct DefaultWrapperMaker;

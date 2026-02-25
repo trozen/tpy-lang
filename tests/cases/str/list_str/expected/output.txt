@@ -1,0 +1,9 @@
+3
+hello
+world
+4
+bar
+hello
+world
+foo
+bar

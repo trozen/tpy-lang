@@ -10,7 +10,7 @@ struct Point;
 extern std::vector<int32_t>* nums;
 extern StaticList<int32_t, 3>* sl;
 extern std::vector<int32_t>* items;
-extern std::vector<std::string_view>* strs;
+extern std::vector<std::string>* strs;
 extern std::vector<Point>* points;
 extern Point* p;
 extern int32_t first_num;

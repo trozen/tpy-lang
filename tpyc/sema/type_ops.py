@@ -722,7 +722,7 @@ class TypeOperations:
 
         For types extending NativeIterable[T], returns T.
         """
-        from ..typesys import StrType, CharType, CHAR
+        from ..typesys import is_any_str_type, CharType, CHAR
 
         # Handle NativeIterable[T] protocol type
         if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterable":
@@ -731,8 +731,8 @@ class TypeOperations:
                 return first_arg if isinstance(first_arg, TpyType) else None
             return None
 
-        # Handle str -> Char
-        if isinstance(iterable_type, StrType):
+        # Handle str/String/StrView -> Char
+        if is_any_str_type(iterable_type):
             return CHAR
 
         # Use get_element_type() for container types (list, Array, Span, etc.)

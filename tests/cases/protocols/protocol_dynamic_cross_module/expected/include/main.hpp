@@ -22,7 +22,7 @@ struct Dog : ::tpy_user::pet::__tpy_Base_Pet {
     Dog() = default;
 
     // 6:     def speak(self) -> str:
-    std::string_view speak() override {
+    std::string speak() override {
         // 7:         return "Woof"
         return "Woof";
     }
@@ -41,7 +41,7 @@ struct Cat {
     Cat() = default;
 
     // 11:     def speak(self) -> str:
-    std::string_view speak() {
+    std::string speak() {
         // 12:         return "Meow"
         return "Meow";
     }

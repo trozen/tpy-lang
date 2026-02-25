@@ -9,11 +9,11 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
-    FinalType, FixedIntType, BoolType,
+    FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
-    unwrap_readonly,
-    INT32, VOID, BIGINT, is_protocol_type,
+    unwrap_readonly, is_any_str_type,
+    INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
 from ..parse import (
     TpyExpr,
@@ -493,6 +493,8 @@ class StatementAnalyzer:
         # Detect FinalType from annotation (covers function-level where register_globals didn't run)
         if stmt.type and isinstance(stmt.type, FinalType):
             stmt.type = stmt.type.wrapped
+            if isinstance(stmt.type, StrType):
+                stmt.type = STRVIEW
             stmt.is_final = True
         if stmt.is_final:
             if not self.ctx.is_top_level:
@@ -511,10 +513,10 @@ class StatementAnalyzer:
                     stmt
                 )
             inner = stmt.type
-            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, BoolType, StrType, CharType)):
+            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, BoolType, StrViewType, CharType)):
                 raise self.ctx.error(
                     f"Final[{inner}] is not supported; "
-                    f"only primitive types (int, float, bool, str, Char, IntN) are allowed",
+                    f"only primitive types (int, float, bool, str, StrView, Char, IntN) are allowed",
                     stmt
                 )
             if not self._is_constant_expr(stmt.init):
@@ -726,7 +728,7 @@ class StatementAnalyzer:
                     ann_line = stmt.loc.line if stmt.loc else None
                     self.reassign.retro_validate_against_annotation(stmt.name, stmt.type, annotation_line=ann_line)
                 # Special case: single-char string literal can be assigned to Char
-                if (isinstance(stmt.type, CharType) and isinstance(init_type, StrType) and
+                if (isinstance(stmt.type, CharType) and is_any_str_type(init_type) and
                     isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
                     pass  # Allow str literal -> Char
                 else:
@@ -1008,15 +1010,23 @@ class StatementAnalyzer:
                 f"to keep {type_name} arithmetic.",
                 stmt,
             )
-        # Both must be numeric types for arithmetic augmented assignment
-        if not isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
+        # Target must be numeric or an owned string type (str, String).
+        # StrView is excluded -- it's non-owning, so += would dangle.
+        is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType))
+        is_str_target = isinstance(target_type, (StrType, StringType))
+        if not is_numeric_target and not is_str_target:
             raise self.ctx.error(
-                f"Augmented assignment target must be a numeric type, got {target_type}",
+                f"Augmented assignment target must be a numeric or string type, got {target_type}",
                 stmt,
             )
-        if not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
+        if is_numeric_target and not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
             raise self.ctx.error(
                 f"Augmented assignment value must be a numeric type, got {value_type}",
+                stmt,
+            )
+        if is_str_target and not is_any_str_type(value_type):
+            raise self.ctx.error(
+                f"Augmented assignment value must be a string type, got {value_type}",
                 stmt,
             )
         # Special case: FixedInt += BigInt should use the target's ops (value gets converted)

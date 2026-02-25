@@ -172,6 +172,20 @@ inline std::string_view char_to_str(char c) {
 }
 
 /**
+ * str_concat - Concatenate two string-like values into a new std::string.
+ *
+ * Takes both sides as string_view (zero-copy from std::string, string_view,
+ * and const char*) and performs a single optimally-sized allocation.
+ */
+inline std::string str_concat(std::string_view a, std::string_view b) {
+    std::string result;
+    result.reserve(a.size() + b.size());
+    result.append(a);
+    result.append(b);
+    return result;
+}
+
+/**
  * bool_to_str - Convert bool to "True" or "False" string.
  * Returns const char* pointing to static storage (safe for std::string_view).
  */

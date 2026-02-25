@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // 6: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
-    { t.to_string() } -> std::convertible_to<std::string_view>;
+    { t.to_string() } -> std::convertible_to<std::string>;
 };
 
 struct Point;
@@ -31,7 +31,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // 17:     def to_string(self) -> str:
-    std::string_view to_string() {
+    std::string to_string() {
         // 18:         return "Point"
         return "Point";
     }

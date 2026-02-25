@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string_view check(std::optional<int32_t> v);
+std::string check(std::optional<int32_t> v);
 void main();
 
 void __tpy_init();

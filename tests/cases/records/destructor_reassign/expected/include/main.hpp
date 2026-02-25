@@ -19,7 +19,7 @@ void test_inherit();
 // 6: class Resource:
 struct Resource {
     // 7:     name: str
-    std::string_view name;
+    std::string name;
     bool __tpy_owned_ = true;
 
     // 8:     def __init__(self, name: str):
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 // 31: class Base:
 struct Base {
     // 32:     tag: str
-    std::string_view tag;
+    std::string tag;
     bool __tpy_owned_ = true;
 
     // 33:     def __init__(self, tag: str):

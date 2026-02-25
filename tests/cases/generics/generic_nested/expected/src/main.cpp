@@ -18,7 +18,7 @@ void main() {
     std::cout << box.get() << "\n";
     // 35:     # Local variable with type parameter (tests the second fix)
     // 36:     c2: Container[str] = Container[str]("hello")
-    Container<std::string_view> c2 = Container<std::string_view>("hello");
+    Container<std::string> c2 = Container<std::string>("hello");
     // 37:     print(c2.get_value())
     std::cout << c2.get_value() << "\n";
 }

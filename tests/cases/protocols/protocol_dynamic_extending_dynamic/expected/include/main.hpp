@@ -9,11 +9,11 @@ namespace tpy_user::main {
 // 7: class Pet(Protocol):
 template<typename T>
 concept Pet = requires(T& t) {
-    { t.make_noise() } -> std::convertible_to<std::string_view>;
+    { t.make_noise() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_Pet {
-    virtual std::string_view make_noise() = 0;
+    virtual std::string make_noise() = 0;
     virtual ~__tpy_Base_Pet() = default;
 };
 
@@ -22,26 +22,26 @@ struct __tpy_Adapter_Pet : __tpy_Base_Pet {
     T inner;
     template<typename... Args>
     __tpy_Adapter_Pet(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 template<Pet T>
 struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
     T& inner;
     __tpy_RefAdapter_Pet(T& ref) : inner(ref) {}
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 // @dynamic
 // 11: class NamedPet(Pet, Protocol):
 template<typename T>
 concept NamedPet = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string_view>;
-    { t.make_noise() } -> std::convertible_to<std::string_view>;
+    { t.name() } -> std::convertible_to<std::string>;
+    { t.make_noise() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_NamedPet : __tpy_Base_Pet {
-    virtual std::string_view name() = 0;
+    virtual std::string name() = 0;
     virtual ~__tpy_Base_NamedPet() = default;
 };
 
@@ -50,16 +50,16 @@ struct __tpy_Adapter_NamedPet : __tpy_Base_NamedPet {
     T inner;
     template<typename... Args>
     __tpy_Adapter_NamedPet(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view name() override { return inner.name(); }
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string name() override { return inner.name(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 template<NamedPet T>
 struct __tpy_RefAdapter_NamedPet : __tpy_Base_NamedPet {
     T& inner;
     __tpy_RefAdapter_NamedPet(T& ref) : inner(ref) {}
-    std::string_view name() override { return inner.name(); }
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string name() override { return inner.name(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 struct Dog;
@@ -77,13 +77,13 @@ struct Dog : __tpy_Base_NamedPet {
     Dog() = default;
 
     // 15:     def make_noise(self) -> str:
-    std::string_view make_noise() override {
+    std::string make_noise() override {
         // 16:         return "Woof"
         return "Woof";
     }
 
     // 17:     def name(self) -> str:
-    std::string_view name() override {
+    std::string name() override {
         // 18:         return "Rex"
         return "Rex";
     }
@@ -101,13 +101,13 @@ struct Parrot {
     Parrot() = default;
 
     // 21:     def make_noise(self) -> str:
-    std::string_view make_noise() {
+    std::string make_noise() {
         // 22:         return "Squawk"
         return "Squawk";
     }
 
     // 23:     def name(self) -> str:
-    std::string_view name() {
+    std::string name() {
         // 24:         return "Polly"
         return "Polly";
     }

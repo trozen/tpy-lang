@@ -12,7 +12,8 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - ~~`tpy::__len__()`~~ PARTIAL: `__len__`, `__getitem__`, `__setitem__` are now free functions in `dunder.hpp`. Consider also generating `__len__()` as `size()` member function for STL compatibility.
 - `ValueType` protocol bound — `T: ValueType` would suppress copy warnings for generic fields, since value types copy silently
-- proper string handling (STRING_HANDLING.md)
+- string: PendingStrType local inference (keep literal-derived locals as string_view, promote on concat/conversion)
+- f-strings
 - keyword arguments
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?
 - coerce int32 -> uint32?
@@ -53,12 +54,11 @@
 - `@override` decorator (Python 3.12 `typing.override`): mark methods that override a parent/protocol method; error if the method doesn't actually override anything (typo protection). C++ codegen already emits `override` automatically.
 - dict full support
 - set
-- str full support
+- str: slicing, __str__ dispatch via str(obj)
 - tuple, multiple returns (mandelbrot TODOs)
 - list slicing (`items[1:3]`)
 - list/StaticList operator (+=, *, +, in), sort
 - bytes type
-- list(str)
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
 - `Self` type
@@ -118,7 +118,7 @@
 - `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
 
 ## Known Limitations
-- `str(numeric)` returns `std::string` but `str` type maps to `std::string_view` - storing result in variable creates dangling reference (UAF). Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking in type system.
+- Optional[T] narrowing codegen: returning a narrowed Optional (e.g. `if s is not None: return s`) emits `return s` instead of `return *s`, failing C++ compilation. Narrowing updates the sema type but codegen still sees the optional variable.
 - Pointer-local slot reuse: reassigned T* pointer-locals allocate a fresh `std::optional<T>` slot per assignment. The initial slot could be reused after reassignment instead of allocating a new one.
 - Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope. (Note: `if`/`else` in functions is fixed — branch-declared vars are pre-declared before the if-statement.)
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.

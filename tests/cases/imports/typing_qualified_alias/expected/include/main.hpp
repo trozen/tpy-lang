@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // 10: class Greetable(t.Protocol):
 template<typename T>
 concept Greetable = requires(T& t) {
-    { t.greet() } -> std::convertible_to<std::string_view>;
+    { t.greet() } -> std::convertible_to<std::string>;
 };
 
 struct Person;
@@ -23,14 +23,14 @@ void main();
 // 13: class Person:
 struct Person {
     // 14:     name: str
-    std::string_view name;
+    std::string name;
 
     // 15:     def __init__(self, n: str):
     Person() = default;
     explicit Person(std::string_view n) : name(n) {}
 
     // 17:     def greet(self) -> str:
-    std::string_view greet() {
+    std::string greet() {
         // 18:         return self.name
         return this->name;
     }

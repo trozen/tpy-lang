@@ -1,0 +1,5 @@
+hello
+falsy
+falsy
+world
+none

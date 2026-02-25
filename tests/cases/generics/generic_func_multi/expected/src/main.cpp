@@ -5,10 +5,10 @@ namespace tpy_user::main {
 
 // # Inference from arguments
 // 23: p1 = create_pair(10, "hello")
-Pair<int32_t, std::string_view>* p1{};
+Pair<int32_t, std::string>* p1{};
 // # Swap pair
 // 28: p2 = swap_pair(p1)
-Pair<std::string_view, int32_t>* p2{};
+Pair<std::string, int32_t>* p2{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -18,8 +18,8 @@ void __tpy_init() {
     // 22: # Inference from arguments
     // 23: p1 = create_pair(10, "hello")
     int32_t __tmp_1 = 10;
-    std::string_view __tmp_2 = "hello";
-    static Pair<int32_t, std::string_view> __global_slot_1 = create_pair<int32_t, std::string_view>(__tmp_1, __tmp_2);
+    std::string __tmp_2 = "hello";
+    static Pair<int32_t, std::string> __global_slot_1 = create_pair<int32_t, std::string>(__tmp_1, __tmp_2);
     p1 = &__global_slot_1;
     // 24: print(p1.first)
     std::cout << p1->first << "\n";
@@ -27,7 +27,7 @@ void __tpy_init() {
     std::cout << p1->second << "\n";
     // 27: # Swap pair
     // 28: p2 = swap_pair(p1)
-    static Pair<std::string_view, int32_t> __global_slot_2 = swap_pair<int32_t, std::string_view>((*p1));
+    static Pair<std::string, int32_t> __global_slot_2 = swap_pair<int32_t, std::string>((*p1));
     p2 = &__global_slot_2;
     // 29: print(p2.first)
     std::cout << p2->first << "\n";

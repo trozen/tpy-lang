@@ -1375,10 +1375,6 @@ class StatementGenerator:
         if isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
 
-        # For strings, wrap in std::string_view for range-based for
-        if isinstance(iterable_type, StrType):
-            iterable = f"std::string_view({iterable})"
-
         # Flush any pending temps before for loop header
         self.ctx.temps.flush(out, indent)
 

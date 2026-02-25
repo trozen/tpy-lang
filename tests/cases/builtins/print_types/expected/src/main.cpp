@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // 16: s = "world"
-std::string_view s;
+std::string s;
 // # Char
 // 20: c: Char = "A"
 char c{};

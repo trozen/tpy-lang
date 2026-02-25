@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
@@ -37,6 +38,7 @@ template<> struct is_value_type<uint64_t> : std::true_type {};
 template<> struct is_value_type<bool> : std::true_type {};
 template<> struct is_value_type<char> : std::true_type {};
 template<> struct is_value_type<double> : std::true_type {};
+template<> struct is_value_type<std::string> : std::true_type {};
 template<> struct is_value_type<std::string_view> : std::true_type {};
 template<> struct is_value_type<BigInt> : std::true_type {};
 

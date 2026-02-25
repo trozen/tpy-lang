@@ -1,1 +1,1 @@
-main.py:5: error: Augmented assignment target must be a numeric type, got Int32 | None
+main.py:5: error: Augmented assignment target must be a numeric or string type, got Int32 | None

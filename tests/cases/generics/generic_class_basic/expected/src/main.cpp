@@ -17,7 +17,7 @@ void main() {
     std::cout << box_int.get() << "\n";
     // 23:     # Test with str
     // 24:     box_str: Box[str] = Box[str]("hello")
-    Box<std::string_view> box_str = Box<std::string_view>("hello");
+    Box<std::string> box_str = Box<std::string>("hello");
     // 25:     print(box_str.get())
     std::cout << box_str.get() << "\n";
     // 26:     box_str.set("world")

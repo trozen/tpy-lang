@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 22: def describe(s: MaybeShape) -> str:
-std::string_view describe(MaybeShape& s) {
+std::string describe(MaybeShape& s) {
     // 23:     if s is None:
     if ((std::holds_alternative<std::monostate>(s))) {
         // 24:         return "nothing"

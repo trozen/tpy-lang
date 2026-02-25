@@ -8,9 +8,9 @@ namespace tpy_user::main {
 template<typename T> struct Container;
 template<typename T> struct Child;
 
-extern std::vector<std::string_view>* items;
-extern Child<std::string_view>* c;
-extern std::vector<std::string_view>* val;
+extern std::vector<std::string>* items;
+extern Child<std::string>* c;
+extern std::vector<std::string>* val;
 inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class Container[T]:

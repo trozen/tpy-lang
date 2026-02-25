@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 // # Test with Leaf[str]
 // 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
-Leaf<std::string_view>* leaf{};
+Leaf<std::string>* leaf{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -14,7 +14,7 @@ void __tpy_init() {
 
     // 48: # Test with Leaf[str]
     // 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
-    static Leaf<std::string_view> __global_slot_1 = Leaf<std::string_view>("hello", 42, "bonus");
+    static Leaf<std::string> __global_slot_1 = Leaf<std::string>("hello", 42, "bonus");
     leaf = &__global_slot_1;
     // 51: # Inherited method with type param in parameter (from Base)
     // 52: leaf.set_first("world")

@@ -19,7 +19,7 @@ void test_augassign_in_while() {
     // 9:     while ip < 10:
     while ((ip < 10)) {
         // 10:         c = '>'
-        std::string_view c = ">";
+        std::string c = ">";
         // 11:         if c == '>':
         if ((c == ">")) {
             // 12:             pass

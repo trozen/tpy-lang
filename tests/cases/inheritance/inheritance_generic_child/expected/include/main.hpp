@@ -11,14 +11,14 @@ template<typename T> struct Container;
 template<typename U> struct Wrapper;
 
 extern Box<int32_t>* b;
-extern Wrapper<std::string_view>* w;
+extern Wrapper<std::string>* w;
 inline constexpr std::string_view __name__ = "__main__";
 
 // # Case 1: Generic class inheriting from non-generic class
 // 4: class Animal:
 struct Animal {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
 
     // 6:     def __init__(self, name: str) -> None:
     Animal() = default;

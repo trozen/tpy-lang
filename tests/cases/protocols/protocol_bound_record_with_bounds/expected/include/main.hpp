@@ -9,21 +9,21 @@ namespace tpy_user::main {
 // 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
-    { t.to_str() } -> std::convertible_to<std::string_view>;
+    { t.to_str() } -> std::convertible_to<std::string>;
 };
 
 // # Record that implements Printable
 // 9: class Message:
 struct Message {
     // 10:     text: str
-    std::string_view text;
+    std::string text;
 
     // 12:     def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
     // 15:     def to_str(self) -> str:
-    std::string_view to_str() {
+    std::string to_str() {
         // 16:         return self.text
         return this->text;
     }
@@ -42,7 +42,7 @@ template<Printable T> struct Wrapper;
 // 29: class WrapperMaker(Protocol):
 template<typename T>
 concept WrapperMaker = requires(T& t) {
-    { t.make(std::declval<std::string_view>()) } -> std::convertible_to<Wrapper<Message>>;
+    { t.make(std::declval<std::string>()) } -> std::convertible_to<Wrapper<Message>>;
 };
 
 struct DefaultWrapperMaker;

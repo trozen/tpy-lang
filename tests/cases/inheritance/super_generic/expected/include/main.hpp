@@ -39,14 +39,14 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // 13: class LabeledContainer(Container[Int32]):
 struct LabeledContainer : Container<int32_t> {
     // 14:     label: str
-    std::string_view label;
+    std::string label;
 
     // 16:     def __init__(self, label: str, value: Int32) -> None:
     LabeledContainer() = default;
     explicit LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
 
     // 20:     def describe(self) -> str:
-    std::string_view describe() {
+    std::string describe() {
         // 21:         return self.label
         return this->label;
     }

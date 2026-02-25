@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child<T, N>& obj) {
 template<typename T, std::size_t N>
 struct GrandChild : Child<T, N> {
     // 20:     name: str
-    std::string_view name;
+    std::string name;
 
     // 22:     def __init__(self, v: T, e: Int32, n: str) -> None:
     GrandChild() = default;

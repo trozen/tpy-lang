@@ -9,15 +9,15 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag);
-std::string_view test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v);
-std::string_view test_or(std::variant<std::monostate, Dog, int32_t>& v, std::variant<std::monostate, Dog, int32_t>& w);
+std::string test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag);
+std::string test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v);
+std::string test_or(std::variant<std::monostate, Dog, int32_t>& v, std::variant<std::monostate, Dog, int32_t>& w);
 void main();
 
 // 4: class Dog:
 struct Dog {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
 
     // 6:     def __init__(self, name: str) -> None:
     Dog() = default;

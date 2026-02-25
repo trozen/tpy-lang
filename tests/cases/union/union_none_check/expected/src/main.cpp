@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def describe(v: Int32 | Dog | None) -> str:
-std::string_view describe(std::variant<std::monostate, Dog, int32_t>& v) {
+std::string describe(std::variant<std::monostate, Dog, int32_t>& v) {
     // 10:     if v is None:
     if ((std::holds_alternative<std::monostate>(v))) {
         // 11:         return "nothing"

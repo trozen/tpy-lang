@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <type_traits>
 #include <variant>
 
@@ -68,6 +70,15 @@ const T& deref_optional_check(const std::optional<T>& opt) {
 template <typename T>
 inline bool is_truthy(const std::optional<T>& opt) {
     return opt.has_value() && static_cast<bool>(*opt);
+}
+
+// String truthiness: non-empty is truthy (std::string has no operator bool)
+inline bool is_truthy(const std::optional<std::string>& opt) {
+    return opt.has_value() && !opt->empty();
+}
+
+inline bool is_truthy(const std::optional<std::string_view>& opt) {
+    return opt.has_value() && !opt->empty();
 }
 
 /**

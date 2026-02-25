@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, FinalType,
+    IMPLICIT_READONLY_METHODS, FinalType, StrType, StrViewType, STRVIEW,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
 from .diagnostics import SemanticError
@@ -119,6 +119,13 @@ class TypeRegistrar:
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
                     f"Protocols are only valid for function parameters",
+                    loc=fld.loc
+                )
+            # StrView fields are a lifetime hazard -- use str or String instead
+            if isinstance(fld.type, StrViewType):
+                raise SemanticError(
+                    f"StrView cannot be used as a field type (dangling reference risk). "
+                    f"Use 'str' or 'String' for owned string fields",
                     loc=fld.loc
                 )
 
@@ -708,6 +715,10 @@ class TypeRegistrar:
                 # Detect Final[T]: unwrap, record finality, register inner type
                 if isinstance(actual_type, FinalType):
                     actual_type = actual_type.wrapped
+                    # Final[str] generates constexpr string_view, so the effective
+                    # type is StrView (enables coercion when used as std::string)
+                    if isinstance(actual_type, StrType):
+                        actual_type = STRVIEW
                     stmt.is_final = True
                     self.ctx.final_globals.add(stmt.name)
                 self.ctx.global_scope.define(stmt.name, actual_type)

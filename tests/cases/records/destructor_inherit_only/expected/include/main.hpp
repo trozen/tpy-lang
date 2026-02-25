@@ -16,7 +16,7 @@ void main();
 // 6: class Base:
 struct Base {
     // 7:     name: str
-    std::string_view name;
+    std::string name;
     bool __tpy_owned_ = true;
 
     // 8:     def __init__(self, name: str):
@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // 13: class Child(Base):
 struct Child : Base {
     // 14:     tag: str
-    std::string_view tag;
+    std::string tag;
 
     // 15:     def __init__(self, name: str, tag: str):
     Child() = default;

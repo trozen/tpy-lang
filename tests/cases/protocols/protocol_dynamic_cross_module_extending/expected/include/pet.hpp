@@ -9,11 +9,11 @@ namespace tpy_user::pet {
 // 6: class Pet(Protocol):
 template<typename T>
 concept Pet = requires(T& t) {
-    { t.speak() } -> std::convertible_to<std::string_view>;
+    { t.speak() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_Pet {
-    virtual std::string_view speak() = 0;
+    virtual std::string speak() = 0;
     virtual ~__tpy_Base_Pet() = default;
 };
 
@@ -22,14 +22,14 @@ struct __tpy_Adapter_Pet : __tpy_Base_Pet {
     T inner;
     template<typename... Args>
     __tpy_Adapter_Pet(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view speak() override { return inner.speak(); }
+    std::string speak() override { return inner.speak(); }
 };
 
 template<Pet T>
 struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
     T& inner;
     __tpy_RefAdapter_Pet(T& ref) : inner(ref) {}
-    std::string_view speak() override { return inner.speak(); }
+    std::string speak() override { return inner.speak(); }
 };
 
 inline constexpr std::string_view __name__ = "pet";

@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // 3: class Animal:
 struct Animal {
     // 4:     name: str
-    std::string_view name;
+    std::string name;
     // 5:     age: Int32
     int32_t age;
 
@@ -24,13 +24,13 @@ struct Animal {
     explicit Animal(std::string_view name, int32_t age) : name(name), age(age) {}
 
     // 11:     def speak(self) -> str:
-    std::string_view speak() {
+    std::string speak() {
         // 12:         return "..."
         return "...";
     }
 
     // 14:     def describe(self) -> str:
-    std::string_view describe() {
+    std::string describe() {
         // 15:         return self.name
         return this->name;
     }
@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 // 18: class Dog(Animal):
 struct Dog : Animal {
     // 19:     breed: str
-    std::string_view breed;
+    std::string breed;
 
     // 21:     def __init__(self, name: str, age: Int32, breed: str) -> None:
     Dog() = default;
@@ -60,7 +60,7 @@ struct Dog : Animal {
     }
 
     // 26:     def speak(self) -> str:
-    std::string_view speak() {
+    std::string speak() {
         // 27:         return "Woof!"
         return "Woof!";
     }

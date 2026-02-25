@@ -10,13 +10,13 @@ namespace tpy_user::main {
 template<typename T>
 concept Shape = requires(T& t) {
     { t.area() } -> std::convertible_to<double>;
-    { t.name() } -> std::convertible_to<std::string_view>;
+    { t.name() } -> std::convertible_to<std::string>;
     { t.scale(std::declval<double>()) } -> std::convertible_to<void>;
 };
 
 struct __tpy_Base_Shape {
     virtual double area() = 0;
-    virtual std::string_view name() = 0;
+    virtual std::string name() = 0;
     virtual void scale(double factor) = 0;
     virtual ~__tpy_Base_Shape() = default;
 };
@@ -27,7 +27,7 @@ struct __tpy_Adapter_Shape : __tpy_Base_Shape {
     template<typename... Args>
     __tpy_Adapter_Shape(Args&&... args) : inner(std::forward<Args>(args)...) {}
     double area() override { return inner.area(); }
-    std::string_view name() override { return inner.name(); }
+    std::string name() override { return inner.name(); }
     void scale(double factor) override { inner.scale(factor); }
 };
 
@@ -36,7 +36,7 @@ struct __tpy_RefAdapter_Shape : __tpy_Base_Shape {
     T& inner;
     __tpy_RefAdapter_Shape(T& ref) : inner(ref) {}
     double area() override { return inner.area(); }
-    std::string_view name() override { return inner.name(); }
+    std::string name() override { return inner.name(); }
     void scale(double factor) override { inner.scale(factor); }
 };
 
@@ -62,7 +62,7 @@ struct Circle : __tpy_Base_Shape {
     }
 
     // 23:     def name(self) -> str:
-    std::string_view name() override {
+    std::string name() override {
         // 24:         return "Circle"
         return "Circle";
     }

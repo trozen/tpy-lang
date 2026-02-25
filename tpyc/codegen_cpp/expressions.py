@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
     ResolvedBinop
 )
 from ..parse import (
@@ -287,9 +287,9 @@ class ExpressionGenerator:
             if self.ctx.is_indirect_name(expr.right):
                 right = f"(*{right})"
             right_resolved = self.types.get_resolved_type(expr.right)
-            if isinstance(right_resolved, StrType):
-                # String contains: use std::string_view::find
-                find_expr = f"(std::string_view({right}).find({left}) != std::string_view::npos)"
+            if is_any_str_type(right_resolved):
+                # String contains: use .find() (works for both std::string and string_view)
+                find_expr = f"({right}.find({left}) != std::string::npos)"
             else:
                 # Collection: use std::find
                 find_expr = f"(std::find({right}.begin(), {right}.end(), {left}) != {right}.end())"

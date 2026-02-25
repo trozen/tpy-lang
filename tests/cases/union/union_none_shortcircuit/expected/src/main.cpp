@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def test_and_flag(v: Int32 | Dog | None, flag: bool) -> str:
-std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag) {
+std::string test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bool flag) {
     // 10:     if v is not None and flag:
     if (((!std::holds_alternative<std::monostate>(v)) && flag)) {
         // 11:         if isinstance(v, Int32):
@@ -22,7 +22,7 @@ std::string_view test_and_flag(std::variant<std::monostate, Dog, int32_t>& v, bo
 }
 
 // 16: def test_and_isinstance(v: Int32 | Dog | None) -> str:
-std::string_view test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v) {
+std::string test_and_isinstance(std::variant<std::monostate, Dog, int32_t>& v) {
     // 17:     if v is not None and isinstance(v, Int32):
     if (((!std::holds_alternative<std::monostate>(v)) && std::holds_alternative<int32_t>(v))) {
         auto& __v = std::get<int32_t>(v);
@@ -34,7 +34,7 @@ std::string_view test_and_isinstance(std::variant<std::monostate, Dog, int32_t>&
 }
 
 // 21: def test_or(v: Int32 | Dog | None, w: Int32 | Dog | None) -> str:
-std::string_view test_or(std::variant<std::monostate, Dog, int32_t>& v, std::variant<std::monostate, Dog, int32_t>& w) {
+std::string test_or(std::variant<std::monostate, Dog, int32_t>& v, std::variant<std::monostate, Dog, int32_t>& w) {
     // 22:     if v is None or w is None:
     if (((std::holds_alternative<std::monostate>(v)) || (std::holds_alternative<std::monostate>(w)))) {
         // 23:         return "has none"

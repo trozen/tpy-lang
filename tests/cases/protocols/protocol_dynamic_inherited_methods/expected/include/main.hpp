@@ -8,18 +8,18 @@ namespace tpy_user::main {
 // 5: class HasName(Protocol):
 template<typename T>
 concept HasName = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string_view>;
+    { t.name() } -> std::convertible_to<std::string>;
 };
 
 // @dynamic
 // 9: class DynNamed(HasName, Protocol):
 template<typename T>
 concept DynNamed = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string_view>;
+    { t.name() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_DynNamed {
-    virtual std::string_view name() = 0;
+    virtual std::string name() = 0;
     virtual ~__tpy_Base_DynNamed() = default;
 };
 
@@ -28,14 +28,14 @@ struct __tpy_Adapter_DynNamed : __tpy_Base_DynNamed {
     T inner;
     template<typename... Args>
     __tpy_Adapter_DynNamed(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view name() override { return inner.name(); }
+    std::string name() override { return inner.name(); }
 };
 
 template<DynNamed T>
 struct __tpy_RefAdapter_DynNamed : __tpy_Base_DynNamed {
     T& inner;
     __tpy_RefAdapter_DynNamed(T& ref) : inner(ref) {}
-    std::string_view name() override { return inner.name(); }
+    std::string name() override { return inner.name(); }
 };
 
 struct Dog;
@@ -52,7 +52,7 @@ struct Dog : __tpy_Base_DynNamed {
     Dog() = default;
 
     // 13:     def name(self) -> str:
-    std::string_view name() override {
+    std::string name() override {
         // 14:         return "Rex"
         return "Rex";
     }
@@ -70,7 +70,7 @@ struct Cat {
     Cat() = default;
 
     // 17:     def name(self) -> str:
-    std::string_view name() {
+    std::string name() {
         // 18:         return "Whiskers"
         return "Whiskers";
     }

@@ -39,7 +39,7 @@ void test_array_negative_indexing() {
 // 30: def test_string_negative_indexing() -> None:
 void test_string_negative_indexing() {
     // 32:     text: str = "hello"
-    std::string_view text = "hello";
+    std::string text = "hello";
     // 34:     # Last character
     // 35:     print(text[-1])
     std::cout << tpy::get_char(text, static_cast<int32_t>(tpy::__len__(text) - 1)) << "\n";

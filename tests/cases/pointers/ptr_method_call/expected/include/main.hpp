@@ -29,7 +29,7 @@ struct Point {
     }
 
     // 11:     def describe(self) -> str:
-    std::string_view describe() {
+    std::string describe() {
         // 12:         return "Point"
         return "Point";
     }

@@ -8,11 +8,11 @@ namespace tpy_user::main {
 // 5: def test_equality() -> None:
 void test_equality() {
     // 7:     a: str = "hello"
-    std::string_view a = "hello";
+    std::string a = "hello";
     // 8:     b: str = "hello"
-    std::string_view b = "hello";
+    std::string b = "hello";
     // 9:     c: str = "world"
-    std::string_view c = "world";
+    std::string c = "world";
     // 11:     # Equal strings
     // 12:     if a == b:
     if ((a == b)) {
@@ -53,11 +53,11 @@ void test_equality() {
 // 34: def test_ordering() -> None:
 void test_ordering() {
     // 36:     a: str = "apple"
-    std::string_view a = "apple";
+    std::string a = "apple";
     // 37:     b: str = "banana"
-    std::string_view b = "banana";
+    std::string b = "banana";
     // 38:     c: str = "apple"
-    std::string_view c = "apple";
+    std::string c = "apple";
     // 40:     # Less than
     // 41:     if a < b:
     if ((a < b)) {
@@ -100,11 +100,11 @@ void test_ordering() {
 // 64: def test_empty_strings() -> None:
 void test_empty_strings() {
     // 66:     empty: str = ""
-    std::string_view empty = "";
+    std::string empty = "";
     // 67:     nonempty: str = "x"
-    std::string_view nonempty = "x";
+    std::string nonempty = "x";
     // 68:     empty2: str = ""
-    std::string_view empty2 = "";
+    std::string empty2 = "";
     // 70:     if empty == empty2:
     if ((empty == empty2)) {
         // 71:         print("empty == empty: yes")
@@ -148,7 +148,7 @@ void test_comparison_in_function() {
 // 93: def test_comparison_with_literals() -> None:
 void test_comparison_with_literals() {
     // 95:     name: str = "Alice"
-    std::string_view name = "Alice";
+    std::string name = "Alice";
     // 97:     if name == "Alice":
     if ((name == "Alice")) {
         // 98:         print("name is Alice")
@@ -167,7 +167,7 @@ void test_comparison_with_literals() {
 }
 
 // 106: def find_string(items: list[str], target: str) -> Int32:
-int32_t find_string(std::vector<std::string_view>& items, std::string_view target) {
+int32_t find_string(std::vector<std::string>& items, std::string_view target) {
     // 108:     i: Int32 = 0
     int32_t i = 0;
     // 109:     while i < len(items):
@@ -187,7 +187,7 @@ int32_t find_string(std::vector<std::string_view>& items, std::string_view targe
 // 115: def test_comparison_in_loop() -> None:
 void test_comparison_in_loop() {
     // 117:     names: list[str] = ["Alice", "Bob", "Charlie"]
-    std::vector<std::string_view> names = {"Alice", "Bob", "Charlie"};
+    std::vector<std::string> names = {"Alice", "Bob", "Charlie"};
     // 119:     idx: Int32 = find_string(names, "Bob")
     int32_t idx = find_string(names, "Bob");
     // 120:     print(idx)

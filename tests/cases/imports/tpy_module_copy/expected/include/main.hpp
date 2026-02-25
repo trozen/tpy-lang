@@ -5,8 +5,8 @@
 
 namespace tpy_user::main {
 
-extern std::string_view s;
-extern std::string_view u;
+extern std::string s;
+extern std::string u;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

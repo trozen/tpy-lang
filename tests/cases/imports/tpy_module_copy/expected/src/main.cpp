@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 // 3: s: str = "hello"
-std::string_view s;
+std::string s;
 // 4: u = t.copy(s)
-std::string_view u;
+std::string u;
 
 void __tpy_init() {
     static bool initialized = false;

@@ -21,8 +21,8 @@ template<Container<int32_t> C>
 int32_t extract(tpy::param_val_or_ref_t<C> c);
 template<Container<int32_t> C>
 void update(tpy::param_val_or_ref_t<C> c, int32_t v);
-template<Container<std::string_view> C>
-std::string_view extract_str(tpy::param_val_or_ref_t<C> c);
+template<Container<std::string> C>
+std::string extract_str(tpy::param_val_or_ref_t<C> c);
 void main();
 
 // 15: class IntBox:
@@ -57,14 +57,14 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 // 28: class StrBox:
 struct StrBox {
     // 29:     value: str
-    std::string_view value;
+    std::string value;
 
     // 31:     def __init__(self, v: str):
     StrBox() = default;
     explicit StrBox(std::string_view v) : value(v) {}
 
     // 34:     def get(self) -> str:
-    std::string_view get() {
+    std::string get() {
         // 35:         return self.value
         return this->value;
     }
@@ -96,8 +96,8 @@ void update(tpy::param_val_or_ref_t<C> c, int32_t v) {
     c.set(v);
 }
 // 49: def extract_str[C: Container[str]](c: C) -> str:
-template<Container<std::string_view> C>
-std::string_view extract_str(tpy::param_val_or_ref_t<C> c) {
+template<Container<std::string> C>
+std::string extract_str(tpy::param_val_or_ref_t<C> c) {
     // 50:     return c.get()
     return c.get();
 }

@@ -8,7 +8,7 @@ namespace tpy_user::main {
 Holder<int32_t>* h{};
 // # str
 // 29: s = Holder[str]("hello")
-Holder<std::string_view>* s{};
+Holder<std::string>* s{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -28,7 +28,7 @@ void __tpy_init() {
     std::cout << h->take() << "\n";
     // 28: # str
     // 29: s = Holder[str]("hello")
-    static Holder<std::string_view> __global_slot_2 = Holder<std::string_view>("hello");
+    static Holder<std::string> __global_slot_2 = Holder<std::string>("hello");
     s = &__global_slot_2;
     // 30: print(s.get())
     std::cout << s->get() << "\n";

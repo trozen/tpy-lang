@@ -1,0 +1,1 @@
+main.py:6: error: Augmented assignment value must be a string type, got Int32

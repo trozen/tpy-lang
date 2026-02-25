@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // 3: class MyList(StaticList[Int32, 10]):
 struct MyList : StaticList<int32_t, 10> {
     // 4:     label: str
-    std::string_view label;
+    std::string label;
 
     // 6:     def __init__(self, label: str, items: Span[Int32]) -> None:
     MyList() = default;

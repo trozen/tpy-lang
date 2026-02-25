@@ -197,6 +197,11 @@ inline char get_char(std::string_view s, int32_t index) {
     return s[i];
 }
 
+inline char get_char(const std::string& s, int32_t index) {
+    auto i = normalize_index(s, index, "string index out of bounds");
+    return s[i];
+}
+
 // =============================================
 // std::vector list methods
 // =============================================

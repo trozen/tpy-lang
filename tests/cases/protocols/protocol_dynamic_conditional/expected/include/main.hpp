@@ -9,11 +9,11 @@ namespace tpy_user::main {
 // 6: class Pet(Protocol):
 template<typename T>
 concept Pet = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string_view>;
+    { t.name() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_Pet {
-    virtual std::string_view name() = 0;
+    virtual std::string name() = 0;
     virtual ~__tpy_Base_Pet() = default;
 };
 
@@ -22,14 +22,14 @@ struct __tpy_Adapter_Pet : __tpy_Base_Pet {
     T inner;
     template<typename... Args>
     __tpy_Adapter_Pet(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view name() override { return inner.name(); }
+    std::string name() override { return inner.name(); }
 };
 
 template<Pet T>
 struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
     T& inner;
     __tpy_RefAdapter_Pet(T& ref) : inner(ref) {}
-    std::string_view name() override { return inner.name(); }
+    std::string name() override { return inner.name(); }
 };
 
 struct Dog;
@@ -51,7 +51,7 @@ struct Dog : __tpy_Base_Pet {
     Dog() = default;
 
     // 11:     def name(self) -> str:
-    std::string_view name() override {
+    std::string name() override {
         // 12:         return "Rex"
         return "Rex";
     }
@@ -69,7 +69,7 @@ struct Cat {
     Cat() = default;
 
     // 15:     def name(self) -> str:
-    std::string_view name() {
+    std::string name() {
         // 16:         return "Whiskers"
         return "Whiskers";
     }
@@ -87,7 +87,7 @@ struct Parrot {
     Parrot() = default;
 
     // 19:     def name(self) -> str:
-    std::string_view name() {
+    std::string name() {
         // 20:         return "Polly"
         return "Polly";
     }

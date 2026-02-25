@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def test_reassign_to_none() -> str:
-std::string_view test_reassign_to_none() {
+std::string test_reassign_to_none() {
     // 10:     v: Int32 | Dog | None = Int32(5)
     std::variant<std::monostate, Dog, int32_t> __slot_1 = 5;
     std::optional<std::variant<std::monostate, Dog, int32_t>> __slot_2;
@@ -26,7 +26,7 @@ std::string_view test_reassign_to_none() {
 }
 
 // 17: def test_init_none_then_assign() -> str:
-std::string_view test_init_none_then_assign() {
+std::string test_init_none_then_assign() {
     // 18:     v: Int32 | Dog | None = None
     std::variant<std::monostate, Dog, int32_t> __slot_1 = std::monostate{};
     std::optional<std::variant<std::monostate, Dog, int32_t>> __slot_2;

@@ -256,17 +256,46 @@ total *= big_value  # same: converts to Int32 first
 This ensures fixed-width variables stay in the checked arithmetic domain. If the BigInt value is too large for the target type, the conversion panics at runtime.
 
 ### Strings
-- **Working**: `str` type with string literals, comparison, iteration
+- **Working**: `str` type -- context-dependent: `std::string` by default, `std::string_view` for parameters
+- **Working**: `String` (`tpy.String`) -- explicit owned `std::string` (parameters use `const std::string&`)
+- **Working**: `StrView` (`tpy.StrView`) -- explicit `std::string_view`
 - **Working**: `Char` type for single characters
+- **Working**: String concatenation with `+` and `+=`
+- **Working**: `str()` conversions (e.g. `str(42)`) safe to store in variables (no dangling)
+- **Working**: `list[str]` generates `std::vector<std::string>`
+- **Working**: `Final[str]` generates `constexpr std::string_view` (compile-time constant)
 - **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
-- **Planned**: String concatenation and formatting
 
-#### String Literal Assignment (Open)
+#### String Type Semantics (Working)
 
-Plain string literals should be lightweight:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields/locals are owned:
+
 ```python
-s = "abc"  # → const char* or std::string_view (backend-configurable)
+def greet(name: str) -> str:   # param=string_view, return=std::string
+    return "Hello, " + name
+
+class Config:
+    name: str                  # field = std::string (owned)
+
+s: str = str(42)               # local = std::string (no dangling)
 ```
+
+For explicit control, use `String` or `StrView` from the `tpy` module:
+
+```python
+from tpy import String, StrView
+
+def process(name: String) -> String:   # const std::string& in, std::string out
+    return name
+
+def peek(data: StrView) -> StrView:    # string_view in, string_view out
+    return data
+```
+
+`StrView` is a non-owning view, so the compiler enforces safety restrictions:
+- Cannot be used as a record field (dangling risk -- use `str` or `String`)
+- Cannot use `+=` (would dangle -- use `str` or `String` for mutable strings)
+- Returning a `StrView` referencing a local or temporary is an error
 
 #### F-string Formatting (Open)
 
@@ -275,65 +304,22 @@ F-strings behave differently based on context and profile:
 ```python
 # Unrestricted mode - allocates std::string
 s = f"x={x}"
-# → std::string s = std::format("x={}", x);
+# -> std::string s = std::format("x={}", x);
 
 # Restricted mode (@noalloc) - error or warning
 s = f"x={x}"  # ERROR: f-string allocates in @noalloc context
 
 # Fixed-size string - no allocation
 buf: FixStr64 = f"x={x}"
-# → formats into pre-sized buffer, truncates if needed
+# -> formats into pre-sized buffer, truncates if needed
 
 # Format string passthrough - zero overhead
 def log(fs: FormatString) -> None: ...
 log(f"x={x}")
-# → log("x={}", x)  # format string + args passed separately
+# -> log("x={}", x)  # format string + args passed separately
 ```
 
 The `FormatString` type enables C++ templates that accept format strings directly, avoiding intermediate string allocation.
-
-#### String Type Semantics (Open - deciding on design)
-
-The key question: what C++ type does `str` map to?
-
-**Option 1: `str` = `string_view` everywhere, `String` for owned**
-```python
-def process(name: str) -> String:  # view in, owned out
-    return f"Hello, {name}"
-
-class Config:
-    name: String  # owned field
-```
-- Matches Rust model (`&str` vs `String`)
-- Parameters are zero-copy by default
-- Downside: breaks Python compatibility - `-> str` becomes `-> String`
-
-**Option 2: `str` = `std::string` everywhere, `StrView` for borrowed**
-```python
-def process(name: StrView) -> str:  # explicit view in, owned out
-    return f"Hello, {name}"
-
-class Config:
-    name: str  # owned field
-```
-- Python code returning `str` works unchanged
-- Downside: parameters copy by default unless you use `StrView`
-
-**Option 3: Context-dependent (matches Python semantics)**
-```python
-def process(name: str) -> str:  # param=view, return=owned
-    return f"Hello, {name}"
-
-class Config:
-    name: str  # owned field
-```
-- Parameter: `std::string_view` (borrowed, like Python references)
-- Return/field/local: `std::string` (owned, like Python objects)
-- Use `StrView` for explicit non-owning fields when needed
-- Most Python-compatible, matches how Python actually works at runtime
-- Only "confusing" if thinking in C++ terms, but goal is Python-first
-
-**Leaning toward Option 3**: it matches Python's actual semantics (parameters are borrowed, returns/fields are owned), keeps code Python-compatible, and `StrView` provides an escape hatch for explicit non-owning references.
 
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
@@ -1557,7 +1543,7 @@ greet(pet)          # already-erased value passed directly
 When a class explicitly inherits a `@dynamic` protocol, the compiler generates C++ struct inheritance with `override` on matching methods:
 ```python
 class Dog(Pet):                    # -> struct Dog : __tpy_Base_Pet {
-    def make_noise(self) -> str:   # ->   string_view make_noise() override { ... }
+    def make_noise(self) -> str:   # ->   std::string make_noise() override { ... }
         return "Woof"
 ```
 
@@ -2249,7 +2235,7 @@ struct Pair {
 
 // Instantiation
 Box<int32_t> box{42};
-Pair<std::string_view, int32_t> pair{"hello", 100};
+Pair<std::string, int32_t> pair{"hello", 100};
 ```
 
 **Type Inference**:
@@ -2319,7 +2305,7 @@ struct Container {
 };
 
 // Instantiation
-Container<std::string_view, 10> c{};
+Container<std::string, 10> c{};
 ```
 
 **Key points:**
@@ -2394,19 +2380,19 @@ print(d.speak())   # Call overridden method: "Woof!"
 Generated C++:
 ```cpp
 struct Animal {
-  std::string_view name;
+  std::string name;
   int32_t age;
   Animal() = default;
   explicit Animal(std::string_view name, int32_t age) : name(name), age(age) {}
-  std::string_view speak() { return "..."; }
+  std::string speak() { return "..."; }
 };
 
 struct Dog : Animal {
-  std::string_view breed;
+  std::string breed;
   Dog() = default;
   explicit Dog(std::string_view name, int32_t age, std::string_view breed)
     : Animal(name, age), breed(breed) {}  // Base init + field init
-  std::string_view speak() { return "Woof!"; }
+  std::string speak() { return "Woof!"; }
 };
 ```
 
@@ -2449,8 +2435,8 @@ class Dog(Animal):
 
 Generated C++ uses qualified method call:
 ```cpp
-std::string_view full_speak() {
-  std::string_view parent_msg = Animal::speak();
+std::string full_speak() {
+  std::string parent_msg = Animal::speak();
   return parent_msg;
 }
 ```
@@ -2605,7 +2591,7 @@ def main() -> Int32:
 Generated C++:
 ```cpp
 struct IntStack : StaticList<int32_t, 100> {
-  std::string_view name;
+  std::string name;
 
   IntStack() = default;
   explicit IntStack(std::string_view name) : name(name) {}
@@ -2870,17 +2856,10 @@ s = str(True)     # → "True"
 s = str(False)    # → "False"
 s = str(c)        # → single-char string from Char
 
-# Numeric conversions (inline use only!)
-print(str(42))    # → "42" - safe inline
-print(str(3.14))  # → "3.14" - safe inline
+# Numeric conversions
+s = str(42)       # → "42" - safe (str is owned std::string)
+s = str(3.14)     # → "3.14"
 ```
-
-**⚠️ Known UAF risk**: `str(numeric)` returns `std::string` but `str` maps to `std::string_view`. Storing in a variable creates a dangling reference:
-```python
-s: str = str(42)  # UNSAFE - s points to destroyed temporary
-print(s)          # undefined behavior
-```
-Safe for inline use only (e.g., `print(str(42))`). Proper fix requires ownership tracking.
 
 ---
 

@@ -13,7 +13,7 @@ void test_empty_strings();
 bool strings_equal(std::string_view s1, std::string_view s2);
 void test_comparison_in_function();
 void test_comparison_with_literals();
-int32_t find_string(std::vector<std::string_view>& items, std::string_view target);
+int32_t find_string(std::vector<std::string>& items, std::string_view target);
 void test_comparison_in_loop();
 
 void __tpy_init();

@@ -13,9 +13,9 @@ void main() {
     std::cout << get_length<std::vector<int32_t>>(items) << "\n";
     // 111:     # Test 1b: len() on str (builtin Sized)
     // 112:     msg = "hello"
-    std::string_view msg = "hello";
+    std::string msg = "hello";
     // 113:     print(get_length(msg))  # 5
-    std::cout << get_length<std::string_view>(msg) << "\n";
+    std::cout << get_length<std::string>(msg) << "\n";
     // 115:     # Test 2: User-defined protocol method
     // 116:     v = MyValue(42)
     MyValue v = MyValue(42);

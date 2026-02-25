@@ -12,7 +12,7 @@ from typing import NoReturn, Optional
 from ..typesys import (
     TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, FinalType,
     TypeParamRef, OptionalType, VoidType, make_union,
-    INT32, VOID, STR, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
+    INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
 )
@@ -164,6 +164,10 @@ class Parser:
                 return fixed_int
             elif original == "Char":
                 return CHAR
+            elif original == "String":
+                return STRING
+            elif original == "StrView":
+                return STRVIEW
         elif module == "typing":
             if original == "Self":
                 return SELF

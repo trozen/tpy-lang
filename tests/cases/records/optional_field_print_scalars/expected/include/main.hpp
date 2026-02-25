@@ -19,7 +19,7 @@ struct Settings {
     // 7:     ratio: float | None
     std::optional<double> ratio;
     // 8:     label: str | None
-    std::optional<std::string_view> label;
+    std::optional<std::string> label;
 
     // 10:     def __init__(self) -> None:
     Settings() : count(std::nullopt), flag(std::nullopt), ratio(std::nullopt), label(std::nullopt) {}

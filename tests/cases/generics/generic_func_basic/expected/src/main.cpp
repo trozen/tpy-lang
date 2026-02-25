@@ -8,7 +8,7 @@ namespace tpy_user::main {
 std::vector<int32_t>* nums{};
 // # Inference from list[str]
 // 19: words = ["hello", "world"]
-std::vector<std::string_view>* words{};
+std::vector<std::string>* words{};
 // # Inference from list[Int32]
 // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
 std::vector<int32_t>* vals{};
@@ -28,12 +28,12 @@ void __tpy_init() {
     std::cout << last<int32_t>((*nums)) << "\n";
     // 18: # Inference from list[str]
     // 19: words = ["hello", "world"]
-    static std::vector<std::string_view> __global_slot_2 = {"hello", "world"};
+    static std::vector<std::string> __global_slot_2 = {"hello", "world"};
     words = &__global_slot_2;
     // 20: print(first(words))
-    std::cout << first<std::string_view>((*words)) << "\n";
+    std::cout << first<std::string>((*words)) << "\n";
     // 21: print(last(words))
-    std::cout << last<std::string_view>((*words)) << "\n";
+    std::cout << last<std::string>((*words)) << "\n";
     // 23: # Inference from list[Int32]
     // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};

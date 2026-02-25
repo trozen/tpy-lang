@@ -7,7 +7,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, BIGINT, FLOAT, STR, CHAR, VOID, BOOL, SELF,
+    INT32, BIGINT, FLOAT, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
     ArrayType, SpanType, TypeParamRef, PtrType, ConstPtrType, NamedType, OwnType, OptionalType,
 )
@@ -318,6 +318,95 @@ def init_module() -> BuiltinModule:
         methods={},
         cpp_concept="tpy::NativeRangeConstructible",
     )
+
+    # String: Explicit owned string type (std::string)
+    module.register_type(STRING, cpp_type="std::string",
+        extends=["NativeIterable[Char]"],
+        constructors=[
+            MethodDef(params=[], returns=STRING, cpp="std::string()"),
+            MethodDef(params=[ParamDef("x", STR)], returns=STRING, cpp="std::string({0})"),
+            MethodDef(params=[ParamDef("x", STRING)], returns=STRING, cpp="std::string({0})"),
+            MethodDef(params=[ParamDef("x", STRVIEW)], returns=STRING, cpp="std::string({0})"),
+            MethodDef(params=[ParamDef("x", BOOL)], returns=STRING, cpp="std::string(tpy::bool_to_str({0}))"),
+            MethodDef(params=[ParamDef("x", CHAR)], returns=STRING, cpp="std::string(tpy::char_to_str({0}))"),
+            *[MethodDef(params=[ParamDef("x", t)], returns=STRING,
+                       cpp=f"tpy::fixed_to_str<{t.to_cpp()}>({{0}})")
+              for t in ALL_FIXED_INTS],
+            MethodDef(params=[ParamDef("x", BIGINT)], returns=STRING, cpp="({0}).to_string()"),
+            MethodDef(params=[ParamDef("x", FLOAT)], returns=STRING, cpp="tpy::float_to_str({0})"),
+        ],
+        methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="static_cast<int32_t>({self}.size())",
+            is_readonly=True,
+        )],
+        "__getitem__": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=CHAR,
+            cpp="tpy::get_char({self}, {0})",
+            is_readonly=True,
+        )],
+        "__add__": [
+            MethodDef(
+                params=[ParamDef("other", STR)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+            MethodDef(
+                params=[ParamDef("other", STRING)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+            MethodDef(
+                params=[ParamDef("other", STRVIEW)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+        ],
+    })
+
+    # StrView: Explicit string view type (std::string_view)
+    module.register_type(STRVIEW, cpp_type="std::string_view",
+        extends=["NativeIterable[Char]"],
+        constructors=[
+            MethodDef(params=[], returns=STRVIEW, cpp='std::string_view()'),
+            MethodDef(params=[ParamDef("x", STR)], returns=STRVIEW, cpp="std::string_view({0})"),
+            MethodDef(params=[ParamDef("x", STRING)], returns=STRVIEW, cpp="std::string_view({0})"),
+            MethodDef(params=[ParamDef("x", STRVIEW)], returns=STRVIEW, cpp="{0}"),
+        ],
+        methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="static_cast<int32_t>({self}.size())",
+            is_readonly=True,
+        )],
+        "__getitem__": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=CHAR,
+            cpp="tpy::get_char({self}, {0})",
+            is_readonly=True,
+        )],
+        "__add__": [
+            MethodDef(
+                params=[ParamDef("other", STR)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+            MethodDef(
+                params=[ParamDef("other", STRING)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+            MethodDef(
+                params=[ParamDef("other", STRVIEW)],
+                returns=STRING,
+                cpp="tpy::str_concat({self}, {0})",
+            ),
+        ],
+    })
 
     # copy() - explicit copy for ownership transfer
     module.function("copy", overloads=[

@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
-    PendingListType, SpanType, StrType, OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
+    PendingListType, SpanType, StrType, StrViewType, OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
+    is_any_str_type,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -448,7 +449,7 @@ class TypeCompatibility:
         # Subscript: check if the base is a read-only type (Span, str)
         if isinstance(expr, TpySubscript):
             obj_type = self.ctx.get_expr_type(expr.obj)
-            if isinstance(obj_type, (SpanType, StrType)):
+            if isinstance(obj_type, SpanType) or is_any_str_type(obj_type):
                 return False  # Span and str elements are read-only
             return self.is_mutable_lvalue(expr.obj)
         return False
@@ -549,6 +550,25 @@ class TypeCompatibility:
                 raise self.ctx.error(
                     "Cannot return pointer to local or temporary value; "
                     "the returned pointer would dangle",
+                    expr
+                )
+            return
+        # StrView is a value type but holds an interior pointer -- returning
+        # a StrView referencing a local would dangle after the function returns.
+        if isinstance(return_type, StrViewType):
+            inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+            # StrView(x) constructor: check the wrapped argument
+            if isinstance(inner, TpyCall) and inner.args:
+                if self.is_dangling_return(inner.args[0]):
+                    raise self.ctx.error(
+                        "Cannot return StrView referencing a local or temporary; "
+                        "use str or String to return an owned copy",
+                        inner
+                    )
+            elif self.is_dangling_return(expr):
+                raise self.ctx.error(
+                    "Cannot return StrView referencing a local or temporary; "
+                    "use str or String to return an owned copy",
                     expr
                 )
             return

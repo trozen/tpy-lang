@@ -42,7 +42,7 @@ void main() {
     std::cout << (*r) << "\n";
     // 44:     # Constructor with __init__: args infer some params, context infers the rest
     // 45:     p: Pair[Int32, str] = Pair(Int32(42))  # tpyc: ok -- A from arg, B from context
-    Pair<int32_t, std::string_view> p = Pair<int32_t, std::string_view>(42);
+    Pair<int32_t, std::string> p = Pair<int32_t, std::string>(42);
     // 46:     print(p)
     std::cout << p << "\n";
     // 48:     print("done")

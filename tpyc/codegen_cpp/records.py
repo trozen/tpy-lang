@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
-    ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own,
+    ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -257,7 +257,7 @@ class RecordGenerator:
                 out.write(f'\n{INDENT}   << ", "')
             out.write(f'\n{INDENT}   << "{fld.name}="')
             # Handle strings - quote them
-            if isinstance(fld.type, StrType):
+            if is_any_str_type(fld.type):
                 out.write(f' << "\\"" << obj.{fld.name} << "\\""')
             elif isinstance(fld.type, OptionalType):
                 inner = fld.type.inner
@@ -266,7 +266,7 @@ class RecordGenerator:
                     out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{fld.name})')
                 elif isinstance(inner, FloatType):
                     out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{fld.name})')
-                elif isinstance(inner, StrType):
+                elif is_any_str_type(inner):
                     # Quoted string: None or "value"
                     f = fld.name
                     out.write(f' << (obj.{f}.has_value() ? std::string("\\"") + std::string(obj.{f}.value()) + "\\"" : std::string("None"))')

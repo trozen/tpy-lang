@@ -15,7 +15,7 @@ void main();
 // 5: class Tracker:
 struct Tracker {
     // 6:     name: str
-    std::string_view name;
+    std::string name;
     bool __tpy_owned_ = true;
 
     // 7:     def __init__(self, name: str):

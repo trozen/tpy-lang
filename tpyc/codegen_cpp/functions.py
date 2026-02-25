@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType,
+    Int32Type, BoolType, FloatType, CharType, PtrType, ConstPtrType, StrType, is_any_str_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..namespace import Namespace
@@ -75,10 +75,9 @@ class FunctionGenerator:
         Uses C-compatible types: str maps to const char* instead of
         std::string_view (which is not ABI-compatible with C).
         """
-        from ..typesys import StrType
         parts = []
         for pname, ptype in params:
-            if isinstance(ptype, StrType):
+            if is_any_str_type(ptype):
                 parts.append(f"const char* {pname}")
             else:
                 parts.append(ptype.to_cpp_param(pname))
@@ -452,9 +451,15 @@ class FunctionGenerator:
 
         Constexpr-eligible types: inline constexpr T NAME = VALUE;
         BigInt: extern const tpy::BigInt NAME;
+
+        Special case: Final[str] uses std::string_view (string literals have
+        static lifetime, constexpr requires literal type).
         """
         var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()
+        # Final[str] -> constexpr std::string_view (string literals are static)
+        if isinstance(var_type, StrType):
+            cpp_type = "std::string_view"
         if is_constexpr_eligible(var_type):
             init_expr = self._gen_final_init_expr(stmt, var_type)
             out.write(f"inline constexpr {cpp_type} {stmt.name} = {init_expr};\n")

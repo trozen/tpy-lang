@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -46,6 +47,11 @@ int32_t __len__(std::span<const T> x) {
 
 template<typename T>
 int32_t __len__(std::span<T> x) {
+    return static_cast<int32_t>(x.size());
+}
+
+// Overload: std::string
+inline int32_t __len__(const std::string& x) {
     return static_cast<int32_t>(x.size());
 }
 
@@ -100,6 +106,12 @@ decltype(auto) __getitem__(const std::array<T, N>& x, int32_t i) {
 template<typename T>
 decltype(auto) __getitem__(std::span<const T> x, int32_t i) {
     auto idx = normalize_index(x, i, "span index out of bounds");
+    return x[idx];
+}
+
+// Overload: std::string
+inline char __getitem__(const std::string& x, int32_t i) {
+    auto idx = normalize_index(x, i, "string index out of bounds");
     return x[idx];
 }
 

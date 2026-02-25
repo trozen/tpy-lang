@@ -6,7 +6,7 @@ namespace tpy_user::main {
 // 5: nums: list[Int32] = [Int32(10), Int32(20), Int32(30)]
 std::vector<int32_t>* nums{};
 // 9: words: list[str] = ["hello", "world"]
-std::vector<std::string_view>* words{};
+std::vector<std::string>* words{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -23,12 +23,12 @@ void __tpy_init() {
     // 7: print(length(nums))
     std::cout << ::tpy_user::helpers::length<int32_t>((*nums)) << "\n";
     // 9: words: list[str] = ["hello", "world"]
-    static std::vector<std::string_view> __global_slot_2 = {"hello", "world"};
+    static std::vector<std::string> __global_slot_2 = {"hello", "world"};
     words = &__global_slot_2;
     // 10: print(first(words))
-    std::cout << ::tpy_user::helpers::first<std::string_view>((*words)) << "\n";
+    std::cout << ::tpy_user::helpers::first<std::string>((*words)) << "\n";
     // 11: print(length(words))
-    std::cout << ::tpy_user::helpers::length<std::string_view>((*words)) << "\n";
+    std::cout << ::tpy_user::helpers::length<std::string>((*words)) << "\n";
 }
 
 } // namespace tpy_user::main

@@ -5,9 +5,9 @@ namespace tpy_user::utils {
 
 
 // 1: def get_name() -> str:
-std::string_view get_name() {
+std::string get_name() {
     // 2:     return __name__
-    return __name__;
+    return std::string(__name__);
 }
 
 void __tpy_init() {

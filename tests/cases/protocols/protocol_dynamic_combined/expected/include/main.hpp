@@ -9,11 +9,11 @@ namespace tpy_user::main {
 // 6: class Describable(Protocol):
 template<typename T>
 concept Describable = requires(T& t) {
-    { t.describe() } -> std::convertible_to<std::string_view>;
+    { t.describe() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_Describable {
-    virtual std::string_view describe() = 0;
+    virtual std::string describe() = 0;
     virtual ~__tpy_Base_Describable() = default;
 };
 
@@ -22,25 +22,25 @@ struct __tpy_Adapter_Describable : __tpy_Base_Describable {
     T inner;
     template<typename... Args>
     __tpy_Adapter_Describable(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view describe() override { return inner.describe(); }
+    std::string describe() override { return inner.describe(); }
 };
 
 template<Describable T>
 struct __tpy_RefAdapter_Describable : __tpy_Base_Describable {
     T& inner;
     __tpy_RefAdapter_Describable(T& ref) : inner(ref) {}
-    std::string_view describe() override { return inner.describe(); }
+    std::string describe() override { return inner.describe(); }
 };
 
 // @dynamic
 // 11: class Noise(Protocol):
 template<typename T>
 concept Noise = requires(T& t) {
-    { t.make_noise() } -> std::convertible_to<std::string_view>;
+    { t.make_noise() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_Noise {
-    virtual std::string_view make_noise() = 0;
+    virtual std::string make_noise() = 0;
     virtual ~__tpy_Base_Noise() = default;
 };
 
@@ -49,14 +49,14 @@ struct __tpy_Adapter_Noise : __tpy_Base_Noise {
     T inner;
     template<typename... Args>
     __tpy_Adapter_Noise(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 template<Noise T>
 struct __tpy_RefAdapter_Noise : __tpy_Base_Noise {
     T& inner;
     __tpy_RefAdapter_Noise(T& ref) : inner(ref) {}
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 struct Dog;
@@ -74,13 +74,13 @@ struct Dog : __tpy_Base_Describable, __tpy_Base_Noise {
     Dog() = default;
 
     // 16:     def describe(self) -> str:
-    std::string_view describe() override {
+    std::string describe() override {
         // 17:         return "a dog"
         return "a dog";
     }
 
     // 18:     def make_noise(self) -> str:
-    std::string_view make_noise() override {
+    std::string make_noise() override {
         // 19:         return "Woof"
         return "Woof";
     }
@@ -98,13 +98,13 @@ struct Cat : __tpy_Base_Describable, __tpy_Base_Noise {
     Cat() = default;
 
     // 22:     def describe(self) -> str:
-    std::string_view describe() override {
+    std::string describe() override {
         // 23:         return "a cat"
         return "a cat";
     }
 
     // 24:     def make_noise(self) -> str:
-    std::string_view make_noise() override {
+    std::string make_noise() override {
         // 25:         return "Meow"
         return "Meow";
     }

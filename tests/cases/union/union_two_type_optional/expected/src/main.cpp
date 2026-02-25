@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 4: def check(v: Int32 | None) -> str:
-std::string_view check(std::optional<int32_t> v) {
+std::string check(std::optional<int32_t> v) {
     // 5:     if v is None:
     if ((!v.has_value())) {
         // 6:         return "none"

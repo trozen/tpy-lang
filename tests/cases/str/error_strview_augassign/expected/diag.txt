@@ -1,0 +1,1 @@
+main.py:6: error: Augmented assignment target must be a numeric or string type, got StrView

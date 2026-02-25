@@ -7,7 +7,7 @@ namespace tpy_user::utils {
 
 inline constexpr std::string_view __name__ = "utils";
 
-std::string_view get_name();
+std::string get_name();
 
 void __tpy_init();
 } // namespace tpy_user::utils

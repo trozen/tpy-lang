@@ -8,7 +8,7 @@ namespace tpy_user::main {
 Box<int32_t>* b{};
 // # Test Case 2: Generic child of concrete generic parent
 // 37: w = Wrapper[str](100, "hello")
-Wrapper<std::string_view>* w{};
+Wrapper<std::string>* w{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -25,7 +25,7 @@ void __tpy_init() {
     std::cout << b->get() << "\n";
     // 36: # Test Case 2: Generic child of concrete generic parent
     // 37: w = Wrapper[str](100, "hello")
-    static Wrapper<std::string_view> __global_slot_2 = Wrapper<std::string_view>(100, "hello");
+    static Wrapper<std::string> __global_slot_2 = Wrapper<std::string>(100, "hello");
     w = &__global_slot_2;
     // 38: print(w.get())  # inherited, returns Int32 (not U)
     std::cout << w->get() << "\n";

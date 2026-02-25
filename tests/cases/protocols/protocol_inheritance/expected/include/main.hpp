@@ -8,13 +8,13 @@ namespace tpy_user::main {
 // 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
-    { t.to_str() } -> std::convertible_to<std::string_view>;
+    { t.to_str() } -> std::convertible_to<std::string>;
 };
 
 // 9: class PrintableAndSized(Printable, Sized, Protocol):
 template<typename T>
 concept PrintableAndSized = requires(T& t) {
-    { t.to_str() } -> std::convertible_to<std::string_view>;
+    { t.to_str() } -> std::convertible_to<std::string>;
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
@@ -28,14 +28,14 @@ void main();
 // 13: class Message:
 struct Message {
     // 14:     text: str
-    std::string_view text;
+    std::string text;
 
     // 16:     def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
     // 19:     def to_str(self) -> str:
-    std::string_view to_str() {
+    std::string to_str() {
         // 20:         return self.text
         return this->text;
     }

@@ -18,20 +18,20 @@ void __tpy_init() {
 
     // 4: # Empty string
     // 5: print(str())  # empty
-    std::cout << "" << "\n";
+    std::cout << std::string() << "\n";
     // 7: # From str (identity)
     // 8: print(str("hello"))  # hello
-    std::cout << "hello" << "\n";
+    std::cout << std::string("hello") << "\n";
     // 10: # From bool (static strings - safe)
     // 11: print(str(True))   # True
-    std::cout << tpy::bool_to_str(true) << "\n";
+    std::cout << std::string(tpy::bool_to_str(true)) << "\n";
     // 12: print(str(False))  # False
-    std::cout << tpy::bool_to_str(false) << "\n";
+    std::cout << std::string(tpy::bool_to_str(false)) << "\n";
     // 14: # From Char (static lookup - safe)
     // 15: c: Char = "A"
     c = 'A';
     // 16: print(str(c))  # A
-    std::cout << tpy::char_to_str(c) << "\n";
+    std::cout << std::string(tpy::char_to_str(c)) << "\n";
     // 18: # From Int32 (inline usage - safe)
     // 19: print(str(Int32(42)))    # 42
     std::cout << tpy::fixed_to_str<int32_t>(42) << "\n";

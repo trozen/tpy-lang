@@ -9,8 +9,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sequence<int32_t> T_s>
 int32_t seq_at(T_s& s, int32_t i);
-template<tpy::Sequence<std::string_view> T_s>
-std::string_view seq_str_at(T_s& s, int32_t i);
+template<tpy::Sequence<std::string> T_s>
+std::string seq_str_at(T_s& s, int32_t i);
 void main();
 
 // 6: def seq_at(s: Sequence[Int32], i: Int32) -> Int32:
@@ -20,8 +20,8 @@ int32_t seq_at(T_s& s, int32_t i) {
     return tpy::__getitem__(s, i);
 }
 // 9: def seq_str_at(s: Sequence[str], i: Int32) -> str:
-template<tpy::Sequence<std::string_view> T_s>
-std::string_view seq_str_at(T_s& s, int32_t i) {
+template<tpy::Sequence<std::string> T_s>
+std::string seq_str_at(T_s& s, int32_t i) {
     // 10:     return s[i]
     return tpy::__getitem__(s, i);
 }

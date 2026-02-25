@@ -14,7 +14,7 @@ int32_t main();
 // 4: class IntStack(StaticList[Int32, 100]):
 struct IntStack : StaticList<int32_t, 100> {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
 
     // 7:     def __init__(self, name: str) -> None:
     IntStack() = default;

@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
-    ReadonlyType, unwrap_readonly,
+    ReadonlyType, unwrap_readonly, is_any_str_type,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
@@ -365,8 +365,8 @@ class ExpressionAnalyzer:
             tracker = ListLiteralTracker(self.ctx)
             if tracker.is_type_iterable(right_type):
                 # For string containers, LHS must be str or Char
-                if isinstance(right_type, StrType):
-                    if not isinstance(left_type, (StrType, CharType)):
+                if is_any_str_type(right_type):
+                    if not (is_any_str_type(left_type) or isinstance(left_type, CharType)):
                         raise SemanticError(
                             f"Cannot check '{left_type}' membership in str (expected str or Char)",
                             expr.loc

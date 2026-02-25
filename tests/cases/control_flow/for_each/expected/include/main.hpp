@@ -8,7 +8,7 @@ namespace tpy_user::main {
 extern std::vector<int32_t>* items;
 extern int32_t total;
 extern std::array<int32_t, 3>* arr;
-extern std::string_view text;
+extern std::string text;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t sum_array();

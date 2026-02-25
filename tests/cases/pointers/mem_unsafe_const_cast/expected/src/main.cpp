@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // 4: s: str = "hello"
-std::string_view s;
+std::string s;
 // 5: cp: ConstPtr[Char] = unsafe_ptr(s)
 const char* cp{};
 // 6: p: Ptr[Char] = unsafe_const_cast(cp)

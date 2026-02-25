@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 // # Inference from int, str -> Pair[int, str]
 // 14: pair = Pair(1, "hello")
-Pair<int32_t, std::string_view>* pair{};
+Pair<int32_t, std::string>* pair{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -14,7 +14,7 @@ void __tpy_init() {
 
     // 13: # Inference from int, str -> Pair[int, str]
     // 14: pair = Pair(1, "hello")
-    static Pair<int32_t, std::string_view> __global_slot_1 = Pair<int32_t, std::string_view>(1, "hello");
+    static Pair<int32_t, std::string> __global_slot_1 = Pair<int32_t, std::string>(1, "hello");
     pair = &__global_slot_1;
     // 15: print(pair.first)
     std::cout << pair->first << "\n";

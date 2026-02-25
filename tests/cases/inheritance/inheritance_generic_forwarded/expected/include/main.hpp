@@ -8,7 +8,7 @@ namespace tpy_user::main {
 template<typename T> struct Container;
 template<typename T> struct Wrapper;
 
-extern Wrapper<std::string_view>* w;
+extern Wrapper<std::string>* w;
 inline constexpr std::string_view __name__ = "__main__";
 
 // 3: class Container[T]:

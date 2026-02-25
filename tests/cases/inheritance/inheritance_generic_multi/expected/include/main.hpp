@@ -9,7 +9,7 @@ template<typename T, typename U> struct Base;
 template<typename T> struct Middle;
 template<typename T> struct Leaf;
 
-extern Leaf<std::string_view>* leaf;
+extern Leaf<std::string>* leaf;
 inline constexpr std::string_view __name__ = "__main__";
 
 // 12: class Base[T, U]:
@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const Middle<T>& obj) {
 template<typename T>
 struct Leaf : Middle<T> {
     // 37:     extra: str
-    std::string_view extra;
+    std::string extra;
 
     // 39:     def __init__(self, first: T, second: Int32, extra: str) -> None:
     Leaf() = default;
@@ -90,7 +90,7 @@ struct Leaf : Middle<T> {
     }
 
     // 44:     def get_extra(self) -> str:
-    std::string_view get_extra() {
+    std::string get_extra() {
         // 45:         return self.extra
         return this->extra;
     }

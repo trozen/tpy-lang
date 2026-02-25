@@ -9,11 +9,11 @@ namespace tpy_user::main {
 // 7: class Pet(Protocol):
 template<typename T>
 concept Pet = requires(T& t) {
-    { t.make_noise() } -> std::convertible_to<std::string_view>;
+    { t.make_noise() } -> std::convertible_to<std::string>;
 };
 
 struct __tpy_Base_Pet {
-    virtual std::string_view make_noise() = 0;
+    virtual std::string make_noise() = 0;
     virtual ~__tpy_Base_Pet() = default;
 };
 
@@ -22,14 +22,14 @@ struct __tpy_Adapter_Pet : __tpy_Base_Pet {
     T inner;
     template<typename... Args>
     __tpy_Adapter_Pet(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 template<Pet T>
 struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
     T& inner;
     __tpy_RefAdapter_Pet(T& ref) : inner(ref) {}
-    std::string_view make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return inner.make_noise(); }
 };
 
 struct Parrot;
@@ -46,7 +46,7 @@ struct Parrot {
     Parrot() = default;
 
     // 13:     def make_noise(self) -> str:
-    std::string_view make_noise() {
+    std::string make_noise() {
         // 14:         return "Squawk"
         return "Squawk";
     }

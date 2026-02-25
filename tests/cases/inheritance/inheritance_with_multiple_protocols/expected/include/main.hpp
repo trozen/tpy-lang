@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // 18: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
-    { t.__str__() } -> std::convertible_to<std::string_view>;
+    { t.__str__() } -> std::convertible_to<std::string>;
 };
 
 // 23: class Measurable(Protocol):
@@ -21,7 +21,7 @@ concept Measurable = requires(T& t) {
 // 28: class Describable(Protocol):
 template<typename T>
 concept Describable = requires(T& t) {
-    { t.describe() } -> std::convertible_to<std::string_view>;
+    { t.describe() } -> std::convertible_to<std::string>;
 };
 
 struct Vehicle;
@@ -34,7 +34,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // 5: class Vehicle:
 struct Vehicle {
     // 6:     brand: str
-    std::string_view brand;
+    std::string brand;
     // 7:     year: Int32
     int32_t year;
 
@@ -43,7 +43,7 @@ struct Vehicle {
     explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
     // 13:     def get_brand(self) -> str:
-    std::string_view get_brand() {
+    std::string get_brand() {
         // 14:         return self.brand
         return this->brand;
     }
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
 // 34: class Car(Vehicle, Printable, Measurable, Describable):
 struct Car : Vehicle {
     // 35:     model: str
-    std::string_view model;
+    std::string model;
     // 36:     car_weight: Int32
     int32_t car_weight;
 
@@ -76,7 +76,7 @@ struct Car : Vehicle {
     }
 
     // 44:     def __str__(self) -> str:
-    std::string_view __str__() const {
+    std::string __str__() const {
         // 45:         return self.model
         return this->model;
     }
@@ -88,7 +88,7 @@ struct Car : Vehicle {
     }
 
     // 50:     def describe(self) -> str:
-    std::string_view describe() {
+    std::string describe() {
         // 51:         return "A car"
         return "A car";
     }

@@ -212,16 +212,74 @@ class VoidType(TpyType):
 
 @dataclass(frozen=True)
 class StrType(TpyType):
-    """String type."""
+    """String type -- context-dependent C++ mapping.
+
+    Default (locals, fields, returns, type args): std::string (owned).
+    Parameters: std::string_view (zero-copy).
+    """
 
     def to_cpp(self) -> str:
-        return "std::string_view"
+        return "std::string"
 
     def __str__(self) -> str:
         return "str"
 
     def qualified_name(self) -> Optional[str]:
         return "builtins.str"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"std::string_view {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"std::string_view {name}"
+
+    def get_element_type(self) -> Optional['TpyType']:
+        from tpyc.typesys import CHAR
+        return CHAR
+
+
+@dataclass(frozen=True)
+class StringType(TpyType):
+    """Explicit owned string type: tpy.String -> std::string."""
+
+    def to_cpp(self) -> str:
+        return "std::string"
+
+    def __str__(self) -> str:
+        return "String"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.String"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"const std::string& {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"const std::string& {name}"
+
+    def get_element_type(self) -> Optional['TpyType']:
+        from tpyc.typesys import CHAR
+        return CHAR
+
+
+@dataclass(frozen=True)
+class StrViewType(TpyType):
+    """Explicit string view type: tpy.StrView -> std::string_view."""
+
+    def to_cpp(self) -> str:
+        return "std::string_view"
+
+    def __str__(self) -> str:
+        return "StrView"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.StrView"
 
     def is_value_type(self) -> bool:
         return True
@@ -759,13 +817,19 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def is_any_str_type(typ: 'TpyType') -> bool:
+    """Check if a type is any string type (str, String, StrView)."""
+    return isinstance(typ, (StrType, StringType, StrViewType))
+
+
 def is_constexpr_eligible(typ: 'TpyType') -> bool:
     """Check if a type can use C++ constexpr (vs runtime const).
 
-    Constexpr-eligible: fixed-width integers, float, bool, char, str.
-    Non-constexpr (needs const): BigInt (non-trivial constructor).
+    Constexpr-eligible: fixed-width integers, float, bool, char, str, StrView.
+    Non-constexpr (needs const): BigInt (non-trivial constructor), String (std::string).
+    Note: StrType uses std::string_view for Final[str] (overridden in codegen).
     """
-    return isinstance(typ, (FixedIntType, FloatType, BoolType, CharType, StrType))
+    return isinstance(typ, (FixedIntType, FloatType, BoolType, CharType, StrType, StrViewType))
 
 
 def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
@@ -1114,6 +1178,8 @@ ALL_FIXED_INTS = [INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64]
 
 VOID = VoidType()
 STR = StrType()
+STRING = StringType()
+STRVIEW = StrViewType()
 CHAR = CharType()
 BOOL = BoolType()
 FLOAT = FloatType()

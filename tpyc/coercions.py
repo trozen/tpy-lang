@@ -8,7 +8,7 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
-    NamedType, PtrType, ConstPtrType, CharType, StrType,
+    NamedType, PtrType, ConstPtrType, CharType, StrType, StringType, StrViewType,
     SpanType, PendingListType, TypeParamRef, TypeParamKind,
 )
 
@@ -165,7 +165,61 @@ COERCIONS: list[Coercion] = [
         name="char_to_str",
         from_type=CharType,
         to_type=StrType,
+        codegen=lambda e, _a, _b, _c: f"std::string(tpy::char_to_str({e}))",
+    ),
+    # Char to String coercion
+    Coercion(
+        name="char_to_string",
+        from_type=CharType,
+        to_type=StringType,
+        codegen=lambda e, _a, _b, _c: f"std::string(1, {e})",
+    ),
+    # Char to StrView coercion
+    Coercion(
+        name="char_to_strview",
+        from_type=CharType,
+        to_type=StrViewType,
         codegen=lambda e, _a, _b, _c: f"tpy::char_to_str({e})",
+    ),
+
+    # String <-> StrType identity coercions (both map to std::string)
+    Coercion(
+        name="string_to_str",
+        from_type=StringType,
+        to_type=StrType,
+    ),
+    Coercion(
+        name="str_to_string",
+        from_type=StrType,
+        to_type=StringType,
+    ),
+
+    # String -> StrView (safe implicit, C++ handles std::string -> string_view)
+    Coercion(
+        name="string_to_strview",
+        from_type=StringType,
+        to_type=StrViewType,
+    ),
+    # StrType -> StrView (safe implicit, C++ handles std::string -> string_view)
+    Coercion(
+        name="str_to_strview",
+        from_type=StrType,
+        to_type=StrViewType,
+    ),
+
+    # StrView -> String (allocates)
+    Coercion(
+        name="strview_to_string",
+        from_type=StrViewType,
+        to_type=StringType,
+        codegen=lambda e, _a, _b, _c: f"std::string({e})",
+    ),
+    # StrView -> StrType (allocates -- StrType is now std::string)
+    Coercion(
+        name="strview_to_str",
+        from_type=StrViewType,
+        to_type=StrType,
+        codegen=lambda e, _a, _b, _c: f"std::string({e})",
     ),
 
     # Pointer coercions

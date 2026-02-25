@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 extern std::vector<int32_t>* nums;
-extern std::vector<std::string_view>* words;
+extern std::vector<std::string>* words;
 extern std::vector<int32_t>* vals;
 inline constexpr std::string_view __name__ = "__main__";
 

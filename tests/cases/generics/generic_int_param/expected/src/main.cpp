@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void main() {
     // 12:     # Test basic integer type parameter
     // 13:     c1: Container[str, 10] = Container[str, 10]("hello")
-    Container<std::string_view, 10> c1 = Container<std::string_view, 10>("hello");
+    Container<std::string, 10> c1 = Container<std::string, 10>("hello");
     // 14:     print(c1.value)
     std::cout << c1.value << "\n";
     // 16:     c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
@@ -16,7 +16,7 @@ void main() {
     // 17:     print(c2.value)
     std::cout << c2.value << "\n";
     // 19:     c3: Container[str, 100] = Container[str, 100]("world")
-    Container<std::string_view, 100> c3 = Container<std::string_view, 100>("world");
+    Container<std::string, 100> c3 = Container<std::string, 100>("world");
     // 20:     print(c3.value)
     std::cout << c3.value << "\n";
 }

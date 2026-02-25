@@ -9,14 +9,14 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string_view test_reassign_to_none();
-std::string_view test_init_none_then_assign();
+std::string test_reassign_to_none();
+std::string test_init_none_then_assign();
 void main();
 
 // 4: class Dog:
 struct Dog {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
 
     // 6:     def __init__(self, name: str) -> None:
     Dog() = default;

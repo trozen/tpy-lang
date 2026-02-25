@@ -9,14 +9,14 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string_view describe(std::variant<std::monostate, Dog, int32_t>& v);
+std::string describe(std::variant<std::monostate, Dog, int32_t>& v);
 void process(std::variant<std::monostate, Dog, int32_t>& v);
 void main();
 
 // 4: class Dog:
 struct Dog {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
 
     // 6:     def __init__(self, name: str) -> None:
     Dog() = default;

@@ -9,14 +9,14 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string_view check(std::variant<std::monostate, Cat, int32_t>& v);
-std::string_view check_not(std::variant<std::monostate, Cat, int32_t>& v);
+std::string check(std::variant<std::monostate, Cat, int32_t>& v);
+std::string check_not(std::variant<std::monostate, Cat, int32_t>& v);
 void main();
 
 // 4: class Cat:
 struct Cat {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
 
     // 6:     def __init__(self, name: str) -> None:
     Cat() = default;

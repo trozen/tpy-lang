@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 10: def main() -> None:
 void main() {
     // 11:     text: str = "hello"
-    std::string_view text = "hello";
+    std::string text = "hello";
     // 13:     # str conforms to Sequence[Char]
     // 14:     print(first_char(text))    # h
     std::cout << first_char(text) << "\n";

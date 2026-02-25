@@ -9,13 +9,13 @@ namespace tpy_user::main {
 // 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
-    { t.__str__() } -> std::convertible_to<std::string_view>;
+    { t.__str__() } -> std::convertible_to<std::string>;
 };
 
 // 10: class Describable(Protocol):
 template<typename T>
 concept Describable = requires(T& t) {
-    { t.describe() } -> std::convertible_to<std::string_view>;
+    { t.describe() } -> std::convertible_to<std::string>;
 };
 
 // 15: class Measurable(Protocol):
@@ -42,13 +42,13 @@ struct Box {
     explicit Box(int32_t width, int32_t height) : width(width), height(height) {}
 
     // 29:     def __str__(self) -> str:
-    std::string_view __str__() const {
+    std::string __str__() const {
         // 30:         return "Box"
         return "Box";
     }
 
     // 32:     def describe(self) -> str:
-    std::string_view describe() {
+    std::string describe() {
         // 33:         return "A rectangular box"
         return "A rectangular box";
     }

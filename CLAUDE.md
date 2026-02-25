@@ -333,7 +333,9 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `UInt8/16/32/64` | `uint8_t/uint16_t/uint32_t/uint64_t` |
 | `float` | `double` (IEEE 754) |
 | `bool` | `bool` |
-| `str` | `const char*` (parameters: `std::string_view`) |
+| `str` | `std::string` (parameters: `std::string_view`) |
+| `String` | `std::string` (parameters: `const std::string&`) |
+| `StrView` | `std::string_view` |
 | `Char` | `char` |
 | `None` | `void` (return type) |
 | `Optional[T]` | `std::optional<T>` |

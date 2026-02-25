@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // 5: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
-    { t.__str__() } -> std::convertible_to<std::string_view>;
+    { t.__str__() } -> std::convertible_to<std::string>;
 };
 
 struct Person;
@@ -21,7 +21,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // 11: class Person(Printable):
 struct Person {
     // 12:     name: str
-    std::string_view name;
+    std::string name;
     // 13:     age: Int32
     int32_t age;
 
@@ -30,7 +30,7 @@ struct Person {
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
     // 19:     def __str__(self) -> str:
-    std::string_view __str__() const {
+    std::string __str__() const {
         // 20:         return self.name
         return this->name;
     }

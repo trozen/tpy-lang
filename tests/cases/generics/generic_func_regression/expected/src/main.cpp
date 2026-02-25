@@ -14,7 +14,7 @@ StaticList<int32_t, 3>* sl{};
 std::vector<int32_t>* items{};
 // # Test 4: Same generic function with different types
 // 33: strs = ["hello", "world"]
-std::vector<std::string_view>* strs{};
+std::vector<std::string>* strs{};
 // # Test 5: Generic function with record type (inferred)
 // 37: points = [Point(1, 2), Point(3, 4)]
 std::vector<Point>* points{};
@@ -56,10 +56,10 @@ void __tpy_init() {
     std::cout << tpy::__len__((*items)) << "\n";
     // 32: # Test 4: Same generic function with different types
     // 33: strs = ["hello", "world"]
-    static std::vector<std::string_view> __global_slot_4 = {"hello", "world"};
+    static std::vector<std::string> __global_slot_4 = {"hello", "world"};
     strs = &__global_slot_4;
     // 34: print(First(strs))
-    std::cout << First<std::string_view>((*strs)) << "\n";
+    std::cout << First<std::string>((*strs)) << "\n";
     // 36: # Test 5: Generic function with record type (inferred)
     // 37: points = [Point(1, 2), Point(3, 4)]
     static std::vector<Point> __global_slot_5 = {Point(1, 2), Point(3, 4)};

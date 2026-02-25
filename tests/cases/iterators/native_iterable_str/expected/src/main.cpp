@@ -8,14 +8,14 @@ namespace tpy_user::main {
 void main() {
     // 25:     # str variable passed to NativeIterable[Char] param
     // 26:     s: str = "hello"
-    std::string_view s = "hello";
+    std::string s = "hello";
     // 27:     print(count_chars(s))  # 5
     std::cout << count_chars(s) << "\n";
     // 28:     print(first_char(s))   # h
     std::cout << first_char(s) << "\n";
     // 30:     # Another str variable
     // 31:     abc: str = "abc"
-    std::string_view abc = "abc";
+    std::string abc = "abc";
     // 32:     print(count_chars(abc))  # 3
     std::cout << count_chars(abc) << "\n";
     // 34:     # Span with NativeIterable (via extends)

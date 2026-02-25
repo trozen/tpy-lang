@@ -8,7 +8,7 @@ namespace tpy_user::traits {
 // 3: class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
-    { t.to_string() } -> std::convertible_to<std::string_view>;
+    { t.to_string() } -> std::convertible_to<std::string>;
 };
 
 inline constexpr std::string_view __name__ = "traits";

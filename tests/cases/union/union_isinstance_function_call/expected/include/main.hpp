@@ -18,7 +18,7 @@ void main();
 // 2: class Dog:
 struct Dog {
     // 3:     name: str
-    std::string_view name;
+    std::string name;
 
     // 4:     def __init__(self, name: str) -> None:
     Dog() = default;
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // 7: class Cat:
 struct Cat {
     // 8:     name: str
-    std::string_view name;
+    std::string name;
 
     // 9:     def __init__(self, name: str) -> None:
     Cat() = default;

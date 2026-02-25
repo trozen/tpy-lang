@@ -23,7 +23,7 @@ from pathlib import Path
 from .parse import Parser, ParseError, TpyExprStmt
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenerator
-from .typesys import VoidType, StrType, CharType
+from .typesys import VoidType, StrType, CharType, is_any_str_type
 from .compiler import CppCompilerConfig
 
 
@@ -355,7 +355,7 @@ class REPLSession:
                 # Only wrap if the expression has a non-void type
                 if expr_type is not None and not isinstance(expr_type, VoidType):
                     # Track if we're printing a string/char for post-processing
-                    is_str_or_char = isinstance(expr_type, (StrType, CharType))
+                    is_str_or_char = is_any_str_type(expr_type) or isinstance(expr_type, CharType)
 
                     # Re-parse with print wrapper
                     wrapped_source = f"print({new_source.strip()})"

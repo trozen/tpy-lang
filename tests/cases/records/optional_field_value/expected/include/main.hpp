@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // 4: class Config:
 struct Config {
     // 5:     name: str
-    std::string_view name;
+    std::string name;
     // 6:     max_retries: Int32 | None
     std::optional<int32_t> max_retries;
 

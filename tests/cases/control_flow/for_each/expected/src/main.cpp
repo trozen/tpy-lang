@@ -13,7 +13,7 @@ int32_t total{};
 std::array<int32_t, 3>* arr{};
 // # Test for-each over string
 // 33: text = "AB"
-std::string_view text;
+std::string text;
 
 // # Test for-each with local inferred array (no mutation -> std::array)
 // 16: def sum_array() -> Int32:
@@ -97,7 +97,7 @@ void __tpy_init() {
     // 33: text = "AB"
     text = "AB";
     // 34: for c in text:
-    for (char c : std::string_view(text)) {
+    for (char c : text) {
         // 35:     print(c)
         std::cout << c << "\n";
     }
