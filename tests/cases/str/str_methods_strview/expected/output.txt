@@ -1,0 +1,9 @@
+strip: hello
+upper: HELLO
+lower: hello
+find: 2
+startswith: True
+endswith: True
+count: 2
+replace: herro
+isalpha: True

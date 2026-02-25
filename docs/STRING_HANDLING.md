@@ -24,6 +24,47 @@
 | `FixStr[N]` fixed-capacity string, stack allocated | Future |
 | `str` field lifetime safety rules | Future |
 
+## String Methods
+
+Methods available on `str`, `String`, and `StrView` types. All methods are `is_readonly` (no mutation).
+
+| Python method | Status | Notes |
+|---------------|--------|-------|
+| `len(s)` | Working | `__len__` -> `s.size()` |
+| `s[i]` | Working | `__getitem__` -> `tpy::get_char`, returns `Char` |
+| `s + t` | Working | `__add__` -> `tpy::str_concat`, returns `String` |
+| `s.split()` | Working | Whitespace split -> `list[str]` |
+| `s.split(sep)` | Working | Separator split -> `list[str]` |
+| `s.split(sep, maxsplit)` | Working | Split with limit -> `list[str]` |
+| `s.join(items)` | Working | Join iterable of strings -> `str` |
+| `s.strip()` | Working | Whitespace strip, returns `StrView` |
+| `s.lstrip()` | Working | Strip from left, returns `StrView` |
+| `s.rstrip()` | Working | Strip from right, returns `StrView` |
+| `s.replace(old, new)` | Working | Replace all occurrences |
+| `s.find(sub)` | Working | Returns index or -1 |
+| `s.rfind(sub)` | Working | Reverse find, returns index or -1 |
+| `s.index(sub)` | Working | Like find but panics on miss |
+| `s.startswith(prefix)` | Working | Returns `bool` |
+| `s.endswith(suffix)` | Working | Returns `bool` |
+| `s.upper()` | Working | ASCII uppercase |
+| `s.lower()` | Working | ASCII lowercase |
+| `s.count(sub)` | Working | Count non-overlapping occurrences |
+| `s.isdigit()` | Working | All chars are digits (empty=False) |
+| `s.isalpha()` | Working | All chars are alphabetic (empty=False) |
+| `s.isalnum()` | Working | All chars are alphanumeric (empty=False) |
+| `s.isspace()` | Working | All chars are whitespace (empty=False) |
+| `s.isupper()` | Working | All cased chars are uppercase (needs cased char) |
+| `s.islower()` | Working | All cased chars are lowercase (needs cased char) |
+| `s.capitalize()` | Working | Uppercase first, lowercase rest |
+| `s.title()` | Working | Titlecase words |
+| `s.swapcase()` | Working | Swap upper/lower |
+| `s.removeprefix(p)` | Working | Remove prefix, returns `StrView` |
+| `s.removesuffix(s)` | Working | Remove suffix, returns `StrView` |
+| `s.rindex(sub)` | Working | Like `rfind` but panics on miss |
+| `s.splitlines()` | Working | Split on `\n`/`\r\n`, returns `list[str]` |
+| `s[i:j]` (slicing) | Not yet | Requires slice syntax support |
+| `s.format(...)` | Not yet | f-strings planned separately |
+
 ## Types
 
 ### `str` -- context-dependent

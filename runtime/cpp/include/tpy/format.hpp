@@ -16,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include "core.hpp"
 
@@ -182,6 +183,351 @@ inline std::string str_concat(std::string_view a, std::string_view b) {
     result.reserve(a.size() + b.size());
     result.append(a);
     result.append(b);
+    return result;
+}
+
+// -- str.split / str.join helpers ------------------------------------------
+// split returns vector<string> (copies) rather than vector<string_view> because
+// TurboPython has no borrow checker to prevent mutation of the source while
+// views exist. A future splitview() could return views for perf-critical code.
+
+inline std::vector<std::string> str_split(std::string_view s, std::string_view sep) {
+    if (sep.empty()) {
+        tpy_panic("empty separator");
+    }
+    std::vector<std::string> result;
+    size_t start = 0;
+    while (true) {
+        size_t pos = s.find(sep, start);
+        if (pos == std::string_view::npos) {
+            result.emplace_back(s.substr(start));
+            break;
+        }
+        result.emplace_back(s.substr(start, pos - start));
+        start = pos + sep.size();
+    }
+    return result;
+}
+
+inline std::vector<std::string> str_split(std::string_view s, std::string_view sep, int32_t maxsplit) {
+    if (sep.empty()) {
+        tpy_panic("empty separator");
+    }
+    if (maxsplit < 0) {
+        return str_split(s, sep);
+    }
+    std::vector<std::string> result;
+    size_t start = 0;
+    int32_t splits = 0;
+    while (splits < maxsplit) {
+        size_t pos = s.find(sep, start);
+        if (pos == std::string_view::npos) break;
+        result.emplace_back(s.substr(start, pos - start));
+        start = pos + sep.size();
+        ++splits;
+    }
+    result.emplace_back(s.substr(start));
+    return result;
+}
+
+inline std::vector<std::string> str_split_whitespace(std::string_view s) {
+    std::vector<std::string> result;
+    size_t i = 0;
+    while (i < s.size()) {
+        while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+        if (i >= s.size()) break;
+        size_t start = i;
+        while (i < s.size() && !std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+        result.emplace_back(s.substr(start, i - start));
+    }
+    return result;
+}
+
+inline std::vector<std::string> str_split_whitespace(std::string_view s, int32_t maxsplit) {
+    if (maxsplit < 0) {
+        return str_split_whitespace(s);
+    }
+    std::vector<std::string> result;
+    size_t i = 0;
+    int32_t splits = 0;
+    while (i < s.size()) {
+        while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+        if (i >= s.size()) break;
+        if (splits >= maxsplit) {
+            result.emplace_back(s.substr(i));
+            return result;
+        }
+        size_t start = i;
+        while (i < s.size() && !std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+        result.emplace_back(s.substr(start, i - start));
+        ++splits;
+    }
+    return result;
+}
+
+template<typename Container>
+inline std::string str_join(std::string_view sep, const Container& items) {
+    std::string result;
+    bool first = true;
+    for (const auto& item : items) {
+        if (!first) result.append(sep);
+        result.append(std::string_view(item));
+        first = false;
+    }
+    return result;
+}
+
+inline std::string str_join(std::string_view sep, std::initializer_list<const char*> items) {
+    std::string result;
+    bool first = true;
+    for (auto item : items) {
+        if (!first) result.append(sep);
+        result.append(item);
+        first = false;
+    }
+    return result;
+}
+
+inline std::string str_join(std::string_view sep, std::initializer_list<std::string_view> items) {
+    std::string result;
+    bool first = true;
+    for (auto item : items) {
+        if (!first) result.append(sep);
+        result.append(item);
+        first = false;
+    }
+    return result;
+}
+
+// -- str.strip / lstrip / rstrip -------------------------------------------
+
+inline std::string_view str_strip(std::string_view s) {
+    size_t start = 0;
+    while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) ++start;
+    size_t end = s.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
+    return s.substr(start, end - start);
+}
+
+inline std::string_view str_lstrip(std::string_view s) {
+    size_t start = 0;
+    while (start < s.size() && std::isspace(static_cast<unsigned char>(s[start]))) ++start;
+    return s.substr(start);
+}
+
+inline std::string_view str_rstrip(std::string_view s) {
+    size_t end = s.size();
+    while (end > 0 && std::isspace(static_cast<unsigned char>(s[end - 1]))) --end;
+    return s.substr(0, end);
+}
+
+// -- str.replace -----------------------------------------------------------
+
+inline std::string str_replace(std::string_view s, std::string_view old_sub, std::string_view new_sub) {
+    if (old_sub.empty()) {
+        tpy_panic("empty substring in replace");
+    }
+    std::string result;
+    size_t start = 0;
+    while (true) {
+        size_t pos = s.find(old_sub, start);
+        if (pos == std::string_view::npos) {
+            result.append(s.substr(start));
+            break;
+        }
+        result.append(s.substr(start, pos - start));
+        result.append(new_sub);
+        start = pos + old_sub.size();
+    }
+    return result;
+}
+
+// -- str.find / rfind / index ----------------------------------------------
+
+inline int32_t str_find(std::string_view s, std::string_view sub) {
+    auto pos = s.find(sub);
+    return pos == std::string_view::npos ? -1 : static_cast<int32_t>(pos);
+}
+
+inline int32_t str_rfind(std::string_view s, std::string_view sub) {
+    auto pos = s.rfind(sub);
+    return pos == std::string_view::npos ? -1 : static_cast<int32_t>(pos);
+}
+
+inline int32_t str_index(std::string_view s, std::string_view sub) {
+    auto pos = s.find(sub);
+    if (pos == std::string_view::npos) {
+        tpy_panic("substring not found");
+    }
+    return static_cast<int32_t>(pos);
+}
+
+// -- str.startswith / endswith ---------------------------------------------
+
+inline bool str_startswith(std::string_view s, std::string_view prefix) {
+    return s.starts_with(prefix);
+}
+
+inline bool str_endswith(std::string_view s, std::string_view suffix) {
+    return s.ends_with(suffix);
+}
+
+// -- str.upper / lower -----------------------------------------------------
+
+inline std::string str_upper(std::string_view s) {
+    std::string result(s);
+    for (auto& c : result) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    return result;
+}
+
+inline std::string str_lower(std::string_view s) {
+    std::string result(s);
+    for (auto& c : result) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return result;
+}
+
+// -- str.count -------------------------------------------------------------
+
+inline int32_t str_count(std::string_view s, std::string_view sub) {
+    if (sub.empty()) {
+        tpy_panic("empty substring in count");
+    }
+    int32_t n = 0;
+    size_t start = 0;
+    while (true) {
+        size_t pos = s.find(sub, start);
+        if (pos == std::string_view::npos) break;
+        ++n;
+        start = pos + sub.size();
+    }
+    return n;
+}
+
+// -- str.isdigit / isalpha / isalnum / isspace -----------------------------
+
+inline bool str_isdigit(std::string_view s) {
+    if (s.empty()) return false;
+    for (auto c : s) if (!std::isdigit(static_cast<unsigned char>(c))) return false;
+    return true;
+}
+
+inline bool str_isalpha(std::string_view s) {
+    if (s.empty()) return false;
+    for (auto c : s) if (!std::isalpha(static_cast<unsigned char>(c))) return false;
+    return true;
+}
+
+inline bool str_isalnum(std::string_view s) {
+    if (s.empty()) return false;
+    for (auto c : s) if (!std::isalnum(static_cast<unsigned char>(c))) return false;
+    return true;
+}
+
+inline bool str_isspace(std::string_view s) {
+    if (s.empty()) return false;
+    for (auto c : s) if (!std::isspace(static_cast<unsigned char>(c))) return false;
+    return true;
+}
+
+// -- str.isupper / islower -------------------------------------------------
+
+inline bool str_isupper(std::string_view s) {
+    bool has_cased = false;
+    for (auto c : s) {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (std::islower(uc)) return false;
+        if (std::isupper(uc)) has_cased = true;
+    }
+    return has_cased;
+}
+
+inline bool str_islower(std::string_view s) {
+    bool has_cased = false;
+    for (auto c : s) {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (std::isupper(uc)) return false;
+        if (std::islower(uc)) has_cased = true;
+    }
+    return has_cased;
+}
+
+// -- str.capitalize / title / swapcase -------------------------------------
+
+inline std::string str_capitalize(std::string_view s) {
+    std::string result(s);
+    if (!result.empty()) {
+        result[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(result[0])));
+        for (size_t i = 1; i < result.size(); ++i)
+            result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
+    }
+    return result;
+}
+
+inline std::string str_title(std::string_view s) {
+    std::string result(s);
+    bool after_boundary = true;
+    for (size_t i = 0; i < result.size(); ++i) {
+        unsigned char uc = static_cast<unsigned char>(result[i]);
+        if (std::isalpha(uc)) {
+            result[i] = static_cast<char>(after_boundary ? std::toupper(uc) : std::tolower(uc));
+            after_boundary = false;
+        } else {
+            after_boundary = true;
+        }
+    }
+    return result;
+}
+
+inline std::string str_swapcase(std::string_view s) {
+    std::string result(s);
+    for (auto& c : result) {
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (std::isupper(uc)) c = static_cast<char>(std::tolower(uc));
+        else if (std::islower(uc)) c = static_cast<char>(std::toupper(uc));
+    }
+    return result;
+}
+
+// -- str.removeprefix / removesuffix ---------------------------------------
+
+inline std::string_view str_removeprefix(std::string_view s, std::string_view prefix) {
+    if (s.starts_with(prefix)) return s.substr(prefix.size());
+    return s;
+}
+
+inline std::string_view str_removesuffix(std::string_view s, std::string_view suffix) {
+    if (!suffix.empty() && s.ends_with(suffix)) return s.substr(0, s.size() - suffix.size());
+    return s;
+}
+
+// -- str.rindex ------------------------------------------------------------
+
+inline int32_t str_rindex(std::string_view s, std::string_view sub) {
+    auto pos = s.rfind(sub);
+    if (pos == std::string_view::npos) {
+        tpy_panic("substring not found");
+    }
+    return static_cast<int32_t>(pos);
+}
+
+// -- str.splitlines --------------------------------------------------------
+
+inline std::vector<std::string> str_splitlines(std::string_view s) {
+    std::vector<std::string> result;
+    size_t start = 0;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '\n') {
+            result.emplace_back(s.substr(start, i - start));
+            start = i + 1;
+        } else if (s[i] == '\r') {
+            result.emplace_back(s.substr(start, i - start));
+            if (i + 1 < s.size() && s[i + 1] == '\n') ++i;
+            start = i + 1;
+        }
+    }
+    if (start < s.size()) {
+        result.emplace_back(s.substr(start));
+    }
     return result;
 }
 

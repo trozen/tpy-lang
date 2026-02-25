@@ -1,0 +1,62 @@
+strip: hello
+lstrip: hello  
+rstrip:   hello
+strip tabs: hi
+replace: xxbxx
+replace once: hell0 w0rld
+find: 2
+find miss: -1
+rfind: 3
+rfind miss: -1
+index: 1
+startswith: True
+startswith miss: False
+endswith: True
+endswith miss: False
+empty prefix: True
+empty suffix: True
+upper: HELLO WORLD 123
+lower: hello world 123
+upper empty: 
+lower empty: 
+count: 2
+count miss: 0
+count single: 3
+isdigit 123: True
+isdigit abc: False
+isdigit empty: False
+isalpha abc: True
+isalpha 123: False
+isalpha empty: False
+isalnum a1: True
+isalnum !: False
+isalnum empty: False
+isspace: True
+isspace no: False
+isspace empty: False
+isupper ABC: True
+isupper abc: False
+isupper ABC123: True
+isupper 123: False
+isupper empty: False
+islower abc: True
+islower ABC: False
+islower abc123: True
+islower 123: False
+islower empty: False
+capitalize: Hello world
+capitalize upper: Hello
+capitalize empty: 
+title: Hello World Foo
+title mixed: They'Re Bill'S
+swapcase: hELLO wORLD
+swapcase empty: 
+removeprefix: Case
+removeprefix miss: TestCase
+removesuffix: Test
+removesuffix miss: TestCase
+removesuffix empty: hello
+rindex: 3
+splitlines: 3 one two three
+splitlines crlf: 3 a b c
+chain: hello, python!

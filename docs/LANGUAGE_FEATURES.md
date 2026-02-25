@@ -264,6 +264,9 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 - **Working**: `str()` conversions (e.g. `str(42)`) safe to store in variables (no dangling)
 - **Working**: `list[str]` generates `std::vector<std::string>`
 - **Working**: `Final[str]` generates `constexpr std::string_view` (compile-time constant)
+- **Working**: `str.split()`, `str.split(sep)`, `str.split(sep, maxsplit)` -- returns `list[str]`
+- **Working**: `str.join(items)` -- joins iterable of strings
+- **Working**: `strip`/`lstrip`/`rstrip`, `replace`, `find`/`rfind`/`index`/`rindex`, `startswith`/`endswith`, `upper`/`lower`, `capitalize`/`title`/`swapcase`, `count`, `isdigit`/`isalpha`/`isalnum`/`isspace`/`isupper`/`islower`, `removeprefix`/`removesuffix`, `splitlines`
 - **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
 
 #### String Type Semantics (Working)
