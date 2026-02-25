@@ -12,7 +12,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // 4: class Ops:
 struct Ops {
 
-    Ops() = default;
 
     //     @staticmethod
     //     @readonly

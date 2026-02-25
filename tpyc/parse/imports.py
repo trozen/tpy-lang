@@ -16,7 +16,7 @@ from .nodes import (
 # Modules with special parser handling (not resolved as user files)
 # tpy: type imports, __future__: ignored, typing: type hints, builtins: always available
 # Note: math, time, sys can be shadowed by user files and are NOT in this set
-SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins"}
+SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins", "enum"}
 
 # Types from tpy that require explicit import (not auto-available like Python builtins)
 # Python builtins (int, str, bool, list, float, None) remain auto-available

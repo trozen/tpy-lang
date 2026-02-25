@@ -19,7 +19,6 @@ struct Point {
     // 7:     y: Int32
     int32_t y;
 
-    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -36,7 +35,6 @@ struct Container {
     // 11:     val: Int32
     int32_t val;
 
-    Container() = default;
 
     // 13:     def take(self, p: Own[Point] | None) -> None:
     void take(std::optional<Point> p) {

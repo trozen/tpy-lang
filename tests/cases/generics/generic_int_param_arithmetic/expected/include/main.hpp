@@ -15,7 +15,6 @@ void main();
 template<typename T, std::size_t N>
 struct Container {
 
-    Container() = default;
 
     // 5:     def get_double(self) -> Int32:
     int32_t get_double() {

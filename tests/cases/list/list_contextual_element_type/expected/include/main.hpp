@@ -20,7 +20,6 @@ struct Rect {
     // 9:     h: Int32
     int32_t h;
 
-    Rect() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
@@ -37,7 +36,6 @@ struct Circle {
     // 12:     r: Int32
     int32_t r;
 
-    Circle() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {

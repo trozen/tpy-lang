@@ -1,0 +1,1 @@
+main.py:11: error: Cannot compare 'Color' with 'Int32'

@@ -85,6 +85,7 @@ class SemanticContext:
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_type_aliases: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
 
     # --- Final globals ---

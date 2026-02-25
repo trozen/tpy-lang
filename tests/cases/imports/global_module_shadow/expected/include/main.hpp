@@ -17,7 +17,6 @@ struct Timer {
     // 5:     x: Int32
     int32_t x;
 
-    Timer() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Timer& obj) {

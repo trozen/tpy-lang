@@ -457,6 +457,16 @@ class StatementAnalyzer:
                 return t.map_inner_types(_resolve)
             stmt.type = _resolve(stmt.type)
 
+        # Resolve imported enum types in annotation (NamedType -> EnumType)
+        if stmt.type and self.ctx.registry.enums:
+            def _resolve_enum(t: TpyType) -> TpyType:
+                if isinstance(t, NamedType) and not t.is_protocol:
+                    enum = self.ctx.registry.get_enum(t.name)
+                    if enum is not None:
+                        return enum
+                return t.map_inner_types(_resolve_enum)
+            stmt.type = _resolve_enum(stmt.type)
+
         # Resolve type to set is_protocol flag on imported protocol NamedTypes
         if stmt.type:
             stmt.type = self.type_ops.resolve_type(stmt.type)

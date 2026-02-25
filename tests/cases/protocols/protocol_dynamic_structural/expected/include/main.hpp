@@ -43,7 +43,6 @@ void main();
 // 12: class Parrot:
 struct Parrot {
 
-    Parrot() = default;
 
     // 13:     def make_noise(self) -> str:
     std::string make_noise() {

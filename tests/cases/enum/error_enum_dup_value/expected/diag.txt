@@ -1,0 +1,1 @@
+main.py:6: error: Duplicate enum value 0 (already used by 'Red')

@@ -74,7 +74,6 @@ void main();
 // 14: class Dog(NamedPet):
 struct Dog : __tpy_Base_NamedPet {
 
-    Dog() = default;
 
     // 15:     def make_noise(self) -> str:
     std::string make_noise() override {
@@ -98,7 +97,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // 20: class Parrot:
 struct Parrot {
 
-    Parrot() = default;
 
     // 21:     def make_noise(self) -> str:
     std::string make_noise() {

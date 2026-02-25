@@ -483,6 +483,14 @@ class TpyProtocol:
 
 
 @dataclass
+class TpyEnum:
+    """Enum definition -- symbolic constants grouped under a named type."""
+    name: str
+    members: list[tuple[str, int, SourceLocation | None]]  # auto() already resolved to int by parser
+    loc: SourceLocation | None = None
+
+
+@dataclass
 class ParseWarning:
     """A warning generated during parsing."""
     message: str
@@ -495,6 +503,7 @@ class TpyModule:
     records: list[TpyRecord]
     functions: list[TpyFunction]
     protocols: list[TpyProtocol] = field(default_factory=list)
+    enums: list[TpyEnum] = field(default_factory=list)
     top_level_stmts: list[TpyStmt] = field(default_factory=list)
     source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
     # Import tracking: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")

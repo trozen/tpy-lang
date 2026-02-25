@@ -83,7 +83,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // 33: class DefaultFactory:
 struct DefaultFactory {
 
-    DefaultFactory() = default;
 
     // 34:     def make(self, text: str) -> Own[Container[Message]]:
     Container<Message> make(std::string_view text) {

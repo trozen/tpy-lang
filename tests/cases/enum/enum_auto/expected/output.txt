@@ -1,0 +1,4 @@
+Direction.North
+1
+Direction.West
+4

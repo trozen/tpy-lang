@@ -43,7 +43,6 @@ void main();
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
-    Dog() = default;
 
     // 11:     def make_noise(self) -> str:
     std::string make_noise() override {

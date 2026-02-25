@@ -27,7 +27,6 @@ struct Box {
     // 6:     value: Int32
     int32_t value;
 
-    Box() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
@@ -44,7 +43,6 @@ struct Container {
     // 34:     val: T
     T val;
 
-    Container() = default;
 
     // 36:     def forward_val(self) -> T:
     tpy::return_val_or_ref_t<T> forward_val() {

@@ -15,7 +15,6 @@ void main();
 template<typename T, std::size_t N>
 struct Container {
 
-    Container() = default;
 
     // 5:     def get_size_as_bigint(self) -> int:
     tpy::BigInt get_size_as_bigint() {

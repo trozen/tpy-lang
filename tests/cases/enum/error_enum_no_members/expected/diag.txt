@@ -1,0 +1,1 @@
+main.py:4: error: Enum 'Empty' must have at least one member

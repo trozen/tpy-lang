@@ -14,7 +14,6 @@ int32_t add_one(int32_t x);
 // 4: class Ops:
 struct Ops {
 
-    Ops() = default;
 
     //     @staticmethod
     //     @readonly

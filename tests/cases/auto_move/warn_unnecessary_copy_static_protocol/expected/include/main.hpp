@@ -29,7 +29,6 @@ struct Point {
     // 7:     y: Int32
     int32_t y;
 
-    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -44,7 +43,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // 12: class MyHolder:
 struct MyHolder {
 
-    MyHolder() = default;
 
     // 13:     def store(self, p: Own[Point]) -> None:
     void store(Point p) {
@@ -62,7 +60,6 @@ inline std::ostream& operator<<(std::ostream& os, const MyHolder& obj) {
 // 16: class Factory:
 struct Factory {
 
-    Factory() = default;
 
     //     @staticmethod
     // 18:     def consume(p: Own[Point]) -> Int32:

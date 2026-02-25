@@ -19,7 +19,6 @@ struct Point {
     // 7:     y: Int32
     int32_t y;
 
-    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

@@ -24,7 +24,7 @@ from .codegen_cpp.context import module_to_cpp_namespace
 from .typesys import TpyType, INT32, INT64, BIGINT
 
 if TYPE_CHECKING:
-    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, ModuleInfo, ModuleVarInfo
+    from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, EnumType, ModuleInfo, ModuleVarInfo
 
 
 DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
@@ -204,11 +204,13 @@ class ModuleExports:
     functions: dict[str, FunctionInfo] = field(default_factory=dict)
     records: dict[str, RecordInfo] = field(default_factory=dict)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)
+    enums: dict[str, 'EnumType'] = field(default_factory=dict)
     variables: dict[str, TpyType] = field(default_factory=dict)
     type_aliases: dict[str, TpyType] = field(default_factory=dict)
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
+    reexported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -708,6 +710,21 @@ class Compiler:
                     if module_info and original_name in module_info.protocols:
                         exports.protocols[local_name] = module_info.protocols[original_name]
 
+        # Export all user-defined enums
+        for enum in compiled.ast.enums:
+            enum_type = analyzer.registry.get_enum(enum.name)
+            if enum_type:
+                exports.enums[enum.name] = enum_type
+
+        # For __init__.py, also re-export imported enums from user modules
+        if compiled.is_package_init:
+            for local_name, (source_module, original_name) in analyzer.ctx.user_imported_enums.items():
+                if local_name not in exports.enums:
+                    module_info = analyzer.registry.get_module(source_module)
+                    if module_info and original_name in module_info.enums:
+                        exports.enums[local_name] = module_info.enums[original_name]
+                        exports.reexported_enums[local_name] = (source_module, original_name)
+
         # Export type aliases
         for name, (typ, _loc) in compiled.ast.type_aliases.items():
             exports.type_aliases[name] = typ
@@ -767,6 +784,7 @@ class Compiler:
             records=exports.records,
             protocols=exports.protocols,
             type_aliases=exports.type_aliases,
+            enums=exports.enums,
         )
 
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
@@ -810,7 +828,8 @@ class Compiler:
             actual_user_modules=actual_user_modules,
             reexported_functions=compiled.exports.reexported_functions,
             reexported_records=compiled.exports.reexported_records,
-            reexported_variables=compiled.exports.reexported_variables
+            reexported_variables=compiled.exports.reexported_variables,
+            reexported_enums=compiled.exports.reexported_enums
         )
 
         hpp_path.write_text(hpp_code)
@@ -829,5 +848,6 @@ class Compiler:
             actual_user_modules=actual_user_modules,
             reexported_functions=compiled.exports.reexported_functions,
             reexported_records=compiled.exports.reexported_records,
-            reexported_variables=compiled.exports.reexported_variables
+            reexported_variables=compiled.exports.reexported_variables,
+            reexported_enums=compiled.exports.reexported_enums
         )

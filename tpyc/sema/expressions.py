@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
-    ReadonlyType, unwrap_readonly, is_any_str_type,
+    ReadonlyType, unwrap_readonly, EnumType, is_any_str_type,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
@@ -331,11 +331,20 @@ class ExpressionAnalyzer:
         def is_numeric_type(t: TpyType) -> bool:
             return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType))
 
-        # Identity operators (is / is not) -- only valid with None
+        # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
             # Unwrap ReadonlyType for nullable checks.
             left_check = unwrap_readonly(left_type)
             right_check = unwrap_readonly(right_type)
+            # Enum identity: lower to ==/!=
+            if isinstance(left_check, EnumType) and isinstance(right_check, EnumType):
+                if left_check.name == right_check.name:
+                    expr.op = "==" if expr.op == "is" else "!="
+                    return BOOL
+                raise self.ctx.error(
+                    f"Cannot compare enum types '{left_check.name}' and '{right_check.name}'",
+                    expr,
+                )
             nullable_types = (OptionalType, PtrType, ConstPtrType)
             if isinstance(left_check, NoneType) and isinstance(right_check, nullable_types):
                 return BOOL
@@ -351,6 +360,27 @@ class ExpressionAnalyzer:
             raise self.ctx.error(
                 f"'is' / 'is not' can only compare Optional/Ptr/union types with None, "
                 f"got {left_type} and {right_type}",
+                expr,
+            )
+
+        # Enum comparison: same type only, no ordering
+        if isinstance(left_effective, EnumType) or isinstance(right_effective, EnumType):
+            if isinstance(left_effective, EnumType) and isinstance(right_effective, EnumType):
+                if left_effective.name != right_effective.name:
+                    raise self.ctx.error(
+                        f"Cannot compare enum types '{left_effective.name}' and '{right_effective.name}'",
+                        expr,
+                    )
+                if expr.op in ("<", ">", "<=", ">="):
+                    raise self.ctx.error(
+                        f"Ordering operators not supported for enum type '{left_effective.name}'",
+                        expr,
+                    )
+                return BOOL
+            # One side is enum, other is not
+            enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
+            raise self.ctx.error(
+                f"Cannot compare '{enum_name}' with '{right_effective if isinstance(left_effective, EnumType) else left_effective}'",
                 expr,
             )
 
@@ -487,7 +517,7 @@ class ExpressionAnalyzer:
 
         # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
         if expr.op == "!":
-            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType, OptionalType)):
+            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType, OptionalType, EnumType)):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
             if record and (record.get_method_overloads("__bool__")
@@ -575,6 +605,14 @@ class ExpressionAnalyzer:
                     # If not a variable, let it fall through to error at the end
                     # (method calls are handled in _analyze_method_call)
 
+                # Enum type-level member access: Color.Red -> EnumType
+                if binding and binding.kind == BindingKind.ENUM:
+                    enum_type = binding.enum_type
+                    if expr.field in enum_type.members:
+                        return enum_type
+                    raise self.ctx.error(
+                        f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
+
         obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers
@@ -590,6 +628,16 @@ class ExpressionAnalyzer:
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
             expr.needs_optional_runtime_check = True
             actual_type = actual_type.inner
+
+        # Enum instance property access: c.name -> str, c.value -> underlying type
+        if isinstance(actual_type, EnumType):
+            if expr.field == "name":
+                return STR
+            elif expr.field == "value":
+                return actual_type.underlying_type
+            raise self.ctx.error(
+                f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
+                f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
 
         # Deref chain loop -- resolves through Ptr, ConstPtr, and any Deref[T] type
         current_type = actual_type

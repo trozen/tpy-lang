@@ -13,7 +13,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // 4: class Base:
 struct Base {
 
-    Base() = default;
 
     //     @readonly
     // 6:     def value(self) -> Int32:
@@ -32,7 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // 10: class Child(Base):
 struct Child : Base {
 
-    Child() = default;
 
     //     @readonly
     // 12:     def value_plus_one(self) -> Int32:

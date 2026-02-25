@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, FinalType, StrType, StrViewType, STRVIEW,
+    IMPLICIT_READONLY_METHODS, FinalType, EnumType, StrType, StrViewType, STRVIEW,
 )
-from ..parse import TpyRecord, TpyProtocol, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
+from ..parse import TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 
@@ -96,6 +96,38 @@ class TypeRegistrar:
         if module_info and func_name in module_info.functions:
             return module_info.functions[func_name]
         return None
+
+    def register_enum(self, enum: TpyEnum) -> None:
+        """Register an enum type."""
+        # Validate no duplicate member names
+        seen_names: set[str] = set()
+        for name, _, loc in enum.members:
+            if name in seen_names:
+                raise SemanticError(
+                    f"Duplicate enum member name: '{name}'",
+                    loc=loc or enum.loc,
+                )
+            seen_names.add(name)
+
+        # Validate no duplicate values
+        seen_values: dict[int, str] = {}
+        for name, value, loc in enum.members:
+            if value in seen_values:
+                raise SemanticError(
+                    f"Duplicate enum value {value} "
+                    f"(already used by '{seen_values[value]}')",
+                    loc=loc or enum.loc,
+                )
+            seen_values[value] = name
+
+        enum_type = EnumType(
+            name=enum.name,
+            members=tuple(m for m, _, _ in enum.members),
+            member_values=tuple((m, v) for m, v, _ in enum.members),
+            module_name=self.ctx.module_name if self.ctx.module_name != "__main__" else None,
+        )
+        self.ctx.registry.register_enum(enum_type)
+        self.ctx.global_ns.bind_enum(enum_type)
 
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""

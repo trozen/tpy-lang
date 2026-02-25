@@ -71,7 +71,6 @@ void main();
 // 15: class Dog(Describable, Noise):
 struct Dog : __tpy_Base_Describable, __tpy_Base_Noise {
 
-    Dog() = default;
 
     // 16:     def describe(self) -> str:
     std::string describe() override {
@@ -95,7 +94,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // 21: class Cat(Describable, Noise):
 struct Cat : __tpy_Base_Describable, __tpy_Base_Noise {
 
-    Cat() = default;
 
     // 22:     def describe(self) -> str:
     std::string describe() override {

@@ -222,6 +222,7 @@ class CodeGenContext:
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_type_aliases: dict[str, tuple[str, str]] = field(default_factory=dict)
+    user_imported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
     current_stmt_line: int = 0
 
@@ -234,6 +235,7 @@ class CodeGenContext:
     reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
+    reexported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
 
     def reset_scope(self) -> None:
         """Reset all per-scope state for a new function/method/module-init body."""

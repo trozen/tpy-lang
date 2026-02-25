@@ -17,7 +17,6 @@ struct Inner {
     // 6:     value: Int32
     int32_t value;
 
-    Inner() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {

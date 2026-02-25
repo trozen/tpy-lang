@@ -1,0 +1,4 @@
+Signal.Error
+-1
+Signal.Ok
+0

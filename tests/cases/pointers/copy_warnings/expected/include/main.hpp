@@ -23,7 +23,6 @@ struct Point {
     // 5:     y: Int32
     int32_t y;
 
-    Point() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -42,7 +41,6 @@ struct Rect {
     // 9:     width: Int32
     int32_t width;
 
-    Rect() = default;
 
     // 11:     def set_corner(self, p: Point) -> None:
     void set_corner(Point& p) {
@@ -75,7 +73,6 @@ struct Container {
     // 20:     items: list[Int32]
     std::vector<int32_t> items;
 
-    Container() = default;
 
     // 22:     def set_items(self, data: list[Int32]) -> None:
     void set_items(std::vector<int32_t>& data) {
@@ -101,7 +98,6 @@ struct Holder {
     // 28:     value: T
     T value;
 
-    Holder() = default;
 
     // 30:     def set_value(self, v: T) -> None:
     void set_value(tpy::param_val_or_ref_t<T> v) {

@@ -11,7 +11,7 @@ from typing import NoReturn, Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, FinalType,
-    TypeParamRef, OptionalType, VoidType, make_union,
+    TypeParamRef, OptionalType, VoidType, make_union, EnumType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
@@ -25,7 +25,7 @@ from .nodes import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
-    RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyModule,
+    RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
 )
 from .imports import (
     ImportProcessor, SPECIAL_MODULES,
@@ -189,6 +189,8 @@ class Parser:
                     node
                 )
             return NamedType(name, is_protocol=True)
+        elif (enum_type := self.registry.get_enum(name)) is not None:
+            return enum_type
         elif (alias := self.registry.get_type_alias(name)) is not None:
             return alias
         elif (protocol_def := lookup_builtin_protocol(name)) is not None:
@@ -304,6 +306,7 @@ class Parser:
         records = []
         functions = []
         protocols = []
+        enums = []
         top_level_stmts = []
         type_aliases: dict[str, tuple[TpyType, SourceLocation | None]] = {}
         imports: dict[str, set[tuple[str, str]] | None | str] = {}
@@ -346,6 +349,15 @@ class Parser:
                         methods=result.methods,
                         type_params=result.type_params
                     ))
+                elif isinstance(result, TpyEnum):
+                    enums.append(result)
+                    # Register the enum type so it can be used in type annotations
+                    enum_type = EnumType(
+                        name=result.name,
+                        members=tuple(m for m, _, _ in result.members),
+                        member_values=tuple((m, v) for m, v, _ in result.members),
+                    )
+                    self.registry.register_enum(enum_type)
                 else:
                     records.append(result)
                     # Register the record type
@@ -371,7 +383,7 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
+        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""
@@ -381,6 +393,16 @@ class Parser:
         elif isinstance(base, ast.Attribute):
             resolved = self._resolve_qualified_type_name(base)
             return resolved == ("typing", "Protocol")
+        return False
+
+    def _is_enum_base(self, base: ast.expr) -> bool:
+        """Check if a base class expression refers to enum.Enum."""
+        if isinstance(base, ast.Name):
+            resolved = self._resolve_type_name(base.id)
+            return resolved == ("enum", "Enum")
+        elif isinstance(base, ast.Attribute):
+            resolved = self._resolve_qualified_type_name(base)
+            return resolved == ("enum", "Enum")
         return False
 
     # Sentinels for _resolve_decorator arg_value
@@ -461,10 +483,14 @@ class Parser:
             return (arg, not arg)
         raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
 
-    def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol:
-        """Parse a class definition as a record or protocol."""
-        # Check if this is a Protocol definition (has Protocol as one of its bases)
+    def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol | TpyEnum:
+        """Parse a class definition as a record, protocol, or enum."""
         if node.bases:
+            # Check for enum first (Enum is from the enum module)
+            has_enum = any(self._is_enum_base(base) for base in node.bases)
+            if has_enum:
+                return self._parse_enum(node)
+            # Check if this is a Protocol definition (has Protocol as one of its bases)
             has_protocol = any(self._is_protocol_base(base) for base in node.bases)
             if has_protocol:
                 return self._parse_protocol(node)
@@ -702,6 +728,85 @@ class Parser:
         # Restore the scope
         self._type_param_scope = old_scope
         return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, loc=self._loc(node))
+
+    def _parse_enum(self, node: ast.ClassDef) -> TpyEnum:
+        """Parse an enum class definition."""
+        if node.decorator_list:
+            raise ParseError(f"Decorators are not supported on enum '{node.name}'", node)
+
+        members: list[tuple[str, int, SourceLocation | None]] = []
+        has_auto = False
+        has_explicit = False
+        auto_value = 1  # auto() starts at 1, matching CPython
+
+        for stmt in node.body:
+            # Skip pass and docstrings
+            if isinstance(stmt, ast.Pass):
+                continue
+            if (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant)
+                    and isinstance(stmt.value.value, str)):
+                continue
+
+            if not isinstance(stmt, ast.Assign):
+                raise ParseError(
+                    f"Enum body must contain only member assignments (name = value), "
+                    f"got {type(stmt).__name__}",
+                    stmt,
+                )
+            if len(stmt.targets) != 1 or not isinstance(stmt.targets[0], ast.Name):
+                raise ParseError("Enum member must be a simple name = value assignment", stmt)
+
+            member_name = stmt.targets[0].id
+            value_node = stmt.value
+
+            # Check for auto() call
+            if isinstance(value_node, ast.Call):
+                if isinstance(value_node.func, ast.Name):
+                    resolved = self._resolve_type_name(value_node.func.id)
+                    if resolved == ("enum", "auto"):
+                        if has_explicit:
+                            raise ParseError(
+                                "Mixed auto() and explicit values are not yet supported; "
+                                "use all auto() or all explicit values",
+                                stmt,
+                            )
+                        has_auto = True
+                        members.append((member_name, auto_value, self._loc(stmt)))
+                        auto_value += 1
+                        continue
+                raise ParseError(
+                    "Enum member value must be an integer literal or auto()", stmt)
+
+            # Integer literal (positive)
+            if isinstance(value_node, ast.Constant) and isinstance(value_node.value, int) and not isinstance(value_node.value, bool):
+                if has_auto:
+                    raise ParseError(
+                        "Mixed auto() and explicit values are not yet supported; "
+                        "use all auto() or all explicit values",
+                        stmt,
+                    )
+                has_explicit = True
+                members.append((member_name, value_node.value, self._loc(stmt)))
+            # Negative integer: -N
+            elif (isinstance(value_node, ast.UnaryOp) and isinstance(value_node.op, ast.USub)
+                    and isinstance(value_node.operand, ast.Constant)
+                    and isinstance(value_node.operand.value, int)):
+                if has_auto:
+                    raise ParseError(
+                        "Mixed auto() and explicit values are not yet supported; "
+                        "use all auto() or all explicit values",
+                        stmt,
+                    )
+                has_explicit = True
+                members.append((member_name, -value_node.operand.value, self._loc(stmt)))
+            else:
+                raise ParseError(
+                    "Enum member value must be an integer literal or auto()", stmt)
+
+        if not members:
+            raise ParseError(f"Enum '{node.name}' must have at least one member", node)
+
+        return TpyEnum(name=node.name, members=members, loc=self._loc(node))
 
     _RECORD_LINKAGE_MAP: dict[str, RecordLinkage] = {
         "tpy.extern.native": RecordLinkage.NATIVE,

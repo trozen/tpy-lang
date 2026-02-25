@@ -4,22 +4,23 @@
 
 | Step | Description | Status |
 |------|-------------|--------|
-| 1 | EnumType in type system | Not started |
-| 2 | Parser: detect enum base, parse members, auto() | Not started |
-| 3 | Sema: register enum, validate members | Not started |
-| 4 | Sema: member access (Color.Red), .name, .value | Not started |
-| 5 | Sema: ==/!= between same enum type, reject cross-type | Not started |
-| 6 | Codegen: enum class, name helper, operator<< | Not started |
-| 7 | is/is not as ==/!= for enums | Not started |
-| 8 | Truthiness: all enum values are truthy | Not started |
-| 9 | Enum as record field, list element, Optional member | Not started |
-| 10 | Cross-module enum import | Not started |
+| 1 | EnumType in type system | Done |
+| 2 | Parser: detect enum base, parse members, auto() | Done |
+| 3 | Sema: register enum, validate members | Done |
+| 4 | Sema: member access (Color.Red), .name, .value | Done |
+| 5 | Sema: ==/!= between same enum type, reject cross-type | Done |
+| 6 | Codegen: enum class, name helper, operator<< | Done |
+| 7 | is/is not as ==/!= for enums | Done |
+| 8 | Truthiness: all enum values are truthy | Done |
+| 9 | Enum as record field, list element, Optional member | Done |
+| 10 | Cross-module enum import | Done |
 | **Later** | IntEnum (int-compatible, arithmetic, ordering) | Not started |
 | **Later** | StrEnum (str-compatible, auto = lowercased name) | Not started |
 | **Later** | Flag / IntFlag (bitwise combinable, powers of 2) | Not started |
 | **Later** | Iteration (for c in Color) | Not started |
 | **Later** | Value lookup (Color(0)) | Not started |
 | **Later** | Configurable underlying type | Not started |
+| **Later** | Optional[Enum] niche optimization (sentinel value instead of std::optional) | Not started |
 | **Later** | match/case exhaustiveness checking | Not started |
 
 ---
@@ -422,7 +423,7 @@ enum class Color : int32_t {
 };
 
 // --- name accessor ---
-inline const char* __tpy_enum_name(Color __e) {
+inline std::string_view __tpy_enum_name(Color __e) {
     switch (__e) {
         case Color::Red: return "Red";
         case Color::Green: return "Green";
@@ -677,6 +678,38 @@ handling strategy (panic, Optional return).
 - Union type tags (enums as discriminators)
 - Many real-world patterns (state machines, options, configuration)
 - Self-hosting (4 enum definitions in the compiler source)
+
+---
+
+## Future: Optional[Enum] Niche Optimization
+
+Currently `Optional[Color]` maps to `std::optional<Color>`, which adds a `bool`
+flag (typically doubling the size from 4 to 8 bytes due to alignment). Since enum
+types have a finite set of valid values, the compiler can use an unused underlying
+value as a sentinel for `None`, eliminating the extra storage.
+
+For example, if `Color` has members `{0, 1, 2}`, the compiler could use `-1`
+(or `INT32_MIN`, or `max_value + 1`) as the `None` sentinel, making
+`Optional[Color]` the same size as `Color`:
+
+```cpp
+// Before (std::optional):
+std::optional<Color> c;  // 8 bytes (4 value + 1 bool + 3 padding)
+
+// After (niche optimization):
+Color c;                 // 4 bytes, sentinel value means None
+```
+
+This is similar to Rust's niche optimization for `Option<NonZero*>` types.
+
+Implementation considerations:
+- Requires generating a sentinel value per enum type at compile time
+- Needs custom `has_value()` / `value()` accessors (or a wrapper type)
+- The sentinel must not collide with any member value -- pick a value outside
+  the member range (e.g., `min_value - 1` or `max_value + 1`, clamped to the
+  underlying type's range)
+- Falls back to `std::optional` if all underlying values are used (unlikely
+  for typical enums with <100 members on Int32)
 
 ---
 

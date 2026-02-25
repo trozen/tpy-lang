@@ -45,7 +45,6 @@ void main();
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
-    Dog() = default;
 
     //     @readonly
     // 12:     def name(self) -> str:
@@ -64,7 +63,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // 15: class Cat(Pet):
 struct Cat : __tpy_Base_Pet {
 
-    Cat() = default;
 
     //     @readonly
     // 17:     def name(self) -> str:

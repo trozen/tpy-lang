@@ -14,7 +14,6 @@ tpy::BigInt build_flag();
 // 4: class Token:
 struct Token {
 
-    Token() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Token& obj) {

@@ -33,7 +33,6 @@ inline std::ostream& operator<<(std::ostream& os, const Product& obj) {
 // 11: class Factory:
 struct Factory {
 
-    Factory() = default;
 
     // 12:     def create(self) -> Own[Product]:
     Product create() {

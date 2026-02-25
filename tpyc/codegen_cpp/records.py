@@ -224,8 +224,12 @@ class RecordGenerator:
             else:
                 out.write(" {}\n")
         else:
-            # No __init__, use default constructor
-            out.write(f"{INDENT}{record.name}() = default;\n")
+            # No __init__: for plain records, omit constructor declaration so the
+            # struct stays a C++ aggregate (supports both Type() and Type(a,b,c)).
+            # Records with __del__/@nocopy get user-declared copy/move ops which
+            # suppress the implicit default ctor, so they still need = default.
+            if record_info and (record_info.is_nocopy or record_info.has_del):
+                out.write(f"{INDENT}{record.name}() = default;\n")
 
         # Delete copy ops for @nocopy or __del__ classes.
         # __del__ implies non-copyable: copying would create two owned objects that

@@ -1,0 +1,1 @@
+main.py:6: error: Mixed auto() and explicit values are not yet supported; use all auto() or all explicit values

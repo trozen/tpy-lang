@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // 1: class Animal:
 struct Animal {
 
-    Animal() = default;
 
     // 2:     def speak(self) -> None:
     void speak() {
@@ -38,7 +37,6 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 // 8: class Dog(Animal):
 struct Dog : Animal {
 
-    Dog() = default;
 
     // 9:     def speak(self) -> None:
     void speak() {

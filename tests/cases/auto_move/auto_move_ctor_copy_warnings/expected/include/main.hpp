@@ -26,7 +26,6 @@ struct Inner {
     // 7:     value: Int32
     int32_t value;
 
-    Inner() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -131,7 +130,6 @@ struct OptHolder {
     // 47:     inner: Inner | None
     std::optional<Inner> inner;
 
-    OptHolder() = default;
 
     // 49:     def set(self, inner: Own[Inner]) -> None:
     void set(Inner inner) {
@@ -160,7 +158,6 @@ struct Outer {
     // 58:     inner: Inner
     Inner inner;
 
-    Outer() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {

@@ -72,7 +72,8 @@ class CodeGenerator:
                  actual_user_modules: set[str] | None = None,
                  reexported_functions: dict[str, tuple[str, str]] | None = None,
                  reexported_records: dict[str, tuple[str, str]] | None = None,
-                 reexported_variables: dict[str, tuple[str, str]] | None = None) -> tuple[str, str]:
+                 reexported_variables: dict[str, tuple[str, str]] | None = None,
+                 reexported_enums: dict[str, tuple[str, str]] | None = None) -> tuple[str, str]:
         """Generate C++ header and source files.
 
         Args:
@@ -84,6 +85,7 @@ class CodeGenerator:
             reexported_functions: Dict of {local_name: (source_module, original_name)} for re-exports.
             reexported_records: Dict of {local_name: (source_module, original_name)} for re-exports.
             reexported_variables: Dict of {local_name: (source_module, original_name)} for re-exports.
+            reexported_enums: Dict of {local_name: (source_module, original_name)} for re-exports.
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
@@ -101,6 +103,14 @@ class CodeGenerator:
                 register_native_cpp_name(local_name, record_info.native_name)
             elif not (record_info and record_info.is_native):
                 register_native_cpp_name(local_name, qualified_cpp_name(src_mod, original_name))
+        for local_name, (src_mod, original_name) in self.analyzer.ctx.user_imported_enums.items():
+            qualified = qualified_cpp_name(src_mod, original_name)
+            # Register under both alias and original name: alias for NamedType
+            # annotations (parser doesn't know the type), original for EnumType
+            # values (EnumType.name is the original name)
+            register_native_cpp_name(local_name, qualified)
+            if local_name != original_name:
+                register_native_cpp_name(original_name, qualified)
         # Register imported union type aliases so UnionType.to_cpp() can use
         # the alias name instead of expanding to std::variant<...>
         for local_name, (_src_mod, original_name) in self.analyzer.ctx.user_imported_type_aliases.items():
@@ -119,10 +129,12 @@ class CodeGenerator:
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
         self.ctx.user_imported_variables = dict(self.analyzer.ctx.user_imported_variables)
         self.ctx.user_imported_type_aliases = dict(self.analyzer.ctx.user_imported_type_aliases)
+        self.ctx.user_imported_enums = dict(self.analyzer.ctx.user_imported_enums)
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
         self.ctx.reexported_functions = reexported_functions or {}
         self.ctx.reexported_records = reexported_records or {}
         self.ctx.reexported_variables = reexported_variables or {}
+        self.ctx.reexported_enums = reexported_enums or {}
         hpp = io.StringIO()
         cpp = io.StringIO()
 
@@ -431,6 +443,10 @@ class CodeGenerator:
         global_decls: list, final_decls: list, seen_globals: dict, deps: _ProtocolDeps
     ) -> None:
         """Generate remaining forward decls, global externs, record definitions, functions, and re-exports."""
+        # Enum class declarations (before records, since records may have enum fields)
+        for enum in module.enums:
+            self._gen_enum_decl(hpp, enum)
+
         # Forward declare remaining records (excluding native records)
         emitted_fwd = False
         for record in module.records:
@@ -562,6 +578,16 @@ class CodeGenerator:
                     hpp.write(f"using {local_name} = {qualified};\n")
             hpp.write("\n")
 
+        # Re-exported enums
+        if self.ctx.reexported_enums:
+            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_enums.items()):
+                qualified = qualified_cpp_name(source_module, original_name)
+                if local_name == original_name:
+                    hpp.write(f"using {qualified};\n")
+                else:
+                    hpp.write(f"using {local_name} = {qualified};\n")
+            hpp.write("\n")
+
         # Re-exported variables
         if self.ctx.reexported_variables:
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_variables.items()):
@@ -569,6 +595,33 @@ class CodeGenerator:
                 hpp.write(f"inline auto& {local_name} = {qualified};\n")
             hpp.write("\n")
 
+
+    def _gen_enum_decl(self, out: TextIO, enum) -> None:
+        """Generate C++ enum class declaration with helpers."""
+        enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
+        if not enum_type:
+            return
+        underlying = enum_type.underlying_type.to_cpp()
+
+        # enum class declaration
+        out.write(f"enum class {enum.name} : {underlying} {{\n")
+        for member_name, value, _ in enum.members:
+            out.write(f"    {member_name} = {value},\n")
+        out.write("};\n\n")
+
+        # __tpy_enum_name helper for .name property and printing
+        out.write(f"inline std::string_view __tpy_enum_name({enum.name} __e) {{\n")
+        out.write(f"    switch (__e) {{\n")
+        for member_name, _, _ in enum.members:
+            out.write(f"        case {enum.name}::{member_name}: return \"{member_name}\";\n")
+        out.write(f"        default: tpy_panic(\"invalid enum value\");\n")
+        out.write(f"    }}\n")
+        out.write(f"}}\n\n")
+
+        # operator<< for print support: prints "EnumName.MemberName"
+        out.write(f"inline std::ostream& operator<<(std::ostream& __os, {enum.name} __e) {{\n")
+        out.write(f"    return __os << \"{enum.name}.\" << __tpy_enum_name(__e);\n")
+        out.write(f"}}\n\n")
 
     def _module_to_include_path(self, module_name: str) -> str:
         """Convert dotted module name to include path.

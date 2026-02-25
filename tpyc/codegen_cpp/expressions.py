@@ -11,6 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
+    EnumType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
     ResolvedBinop
 )
@@ -239,6 +240,9 @@ class ExpressionGenerator:
 
         expr_type = self.types.get_resolved_type(expr)
         rendered = self.gen_expr(expr)
+        # Enum values are always truthy
+        if isinstance(expr_type, EnumType):
+            return "true"
         if isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr():
             return f"tpy::is_truthy({rendered})"
         # Types with __bool__() or __len__() fallback (user-defined and builtin containers)
@@ -1021,7 +1025,7 @@ class ExpressionGenerator:
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
             return f"this->{expr.field}"
 
-        # Check for module variable access (e.g., sys.argv)
+        # Check for module variable access (e.g., sys.argv) and enum member access
         if isinstance(expr.obj, TpyName):
             if self.ctx.current_ns:
                 binding = self.ctx.current_ns.lookup(expr.obj.name)
@@ -1032,11 +1036,38 @@ class ExpressionGenerator:
                     if module_info and expr.field in module_info.variables:
                         return module_info.variables[expr.field].cpp_expr
 
+                # Enum type-level member access: Color.Red -> Color::Red
+                if binding and binding.kind == BindingKind.ENUM:
+                    enum_name = expr.obj.name
+                    # For cross-module enums, use qualified name
+                    if enum_name in self.ctx.user_imported_enums:
+                        src_mod, original = self.ctx.user_imported_enums[enum_name]
+                        enum_name = qualified_cpp_name(src_mod, original)
+                    return f"{enum_name}::{expr.field}"
+
         obj = self.gen_expr(expr.obj)
         # Assignment narrowing: inline std::get<T> for member access only
         obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
         # Check if obj is a pointer type or global - use -> instead of .
         obj_type = self.ctx.get_expr_type(expr.obj)
+
+        # Enum instance property access: c.name, c.value
+        actual_obj_type = obj_type
+        if isinstance(actual_obj_type, ReadonlyType):
+            actual_obj_type = actual_obj_type.wrapped
+        if isinstance(actual_obj_type, OwnType):
+            actual_obj_type = actual_obj_type.wrapped
+        if isinstance(actual_obj_type, EnumType):
+            if expr.field == "name":
+                # Qualify __tpy_enum_name for imported enums
+                if actual_obj_type.name in self.ctx.user_imported_enums:
+                    source_module, _ = self.ctx.user_imported_enums[actual_obj_type.name]
+                    ns = qualified_cpp_name(source_module, "__tpy_enum_name")
+                    return f"{ns}({obj})"
+                return f"__tpy_enum_name({obj})"
+            elif expr.field == "value":
+                return f"static_cast<{actual_obj_type.underlying_type.to_cpp()}>({obj})"
+
         # Narrowed vars (from isinstance std::get) are direct references, not pointers
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed

@@ -18,7 +18,6 @@ int32_t take_ptr(void* p);
 // 11: class Sink:
 struct Sink {
 
-    Sink() = default;
 
     // 12:     def put(self, p: Ptr[None]) -> Int32:
     int32_t put(void* p) {

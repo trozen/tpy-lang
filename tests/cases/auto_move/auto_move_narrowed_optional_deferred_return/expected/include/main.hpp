@@ -17,7 +17,6 @@ struct Handle {
     // 6:     value: Int32
     int32_t value;
 
-    Handle() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {

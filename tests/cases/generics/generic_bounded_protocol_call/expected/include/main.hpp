@@ -58,7 +58,6 @@ void main();
 template<Stringable T>
 struct Printer {
 
-    Printer() = default;
 
     // 20:     def get_str(self, item: T) -> str:
     std::string get_str(tpy::param_val_or_ref_t<T> item) {

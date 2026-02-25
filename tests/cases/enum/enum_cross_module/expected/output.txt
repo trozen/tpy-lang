@@ -1,0 +1,6 @@
+Color.Red
+Red
+0
+False
+True
+True

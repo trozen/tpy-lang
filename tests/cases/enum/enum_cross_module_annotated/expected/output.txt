@@ -1,0 +1,3 @@
+Color.Green
+red
+Color.Blue

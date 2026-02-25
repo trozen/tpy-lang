@@ -366,6 +366,52 @@ class BigIntType(TpyType):
 
 
 @dataclass(frozen=True)
+class EnumType(TpyType):
+    """Enum type -- symbolic constants grouped under a named type.
+
+    Maps to C++ enum class. Members are integer-valued constants.
+    """
+    name: str
+    members: tuple[str, ...] = ()                     # ("Red", "Green", "Blue")
+    member_values: tuple[tuple[str, int], ...] = ()   # (("Red", 0), ("Green", 1), ("Blue", 2))
+    underlying_type: 'TpyType' = None  # type: ignore[assignment]  # Defaults to INT32 at runtime
+    module_name: str | None = None
+
+    def __post_init__(self) -> None:
+        # Frozen dataclass -- use object.__setattr__ to set default
+        if self.underlying_type is None:
+            object.__setattr__(self, 'underlying_type', INT32)
+
+    @property
+    def member_value_map(self) -> dict[str, int]:
+        """Dict-like lookup for member values."""
+        return dict(self.member_values)
+
+    def to_cpp(self) -> str:
+        return _native_cpp_names.get(self.name, self.name)
+
+    def __str__(self) -> str:
+        return self.name
+
+    def qualified_name(self) -> str | None:
+        if self.module_name:
+            return f"{self.module_name}.{self.name}"
+        return None
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def __eq__(self, other: object) -> bool:
+        """Type identity is by name only -- module_name is codegen metadata."""
+        if not isinstance(other, EnumType):
+            return NotImplemented
+        return self.name == other.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
+
+@dataclass(frozen=True)
 class RangeType(TpyType):
     """Range type: range() -> tpy::Range<T> (lazy iterator over T)."""
     elem: "TpyType"
@@ -1456,6 +1502,7 @@ class ModuleInfo:
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)  # protocol_name -> ProtocolInfo
     type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
+    enums: dict[str, 'EnumType'] = field(default_factory=dict)  # enum_name -> EnumType
 
 
 class TypeRegistry:
@@ -1469,6 +1516,7 @@ class TypeRegistry:
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
         self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
+        self.enums: dict[str, 'EnumType'] = {}  # enum_name -> EnumType
         # Fundamental types not in module system (pointer wrappers)
         self._fundamental_types = {"Own"}
 
@@ -1514,6 +1562,16 @@ class TypeRegistry:
         """
         self.protocols[name or info.name] = info
 
+    def register_enum(self, info: 'EnumType', name: str | None = None) -> None:
+        """Register an enum type.
+
+        Args:
+            info: The enum type to register.
+            name: Optional name to register under (defaults to info.name).
+                  Used for imported enums that may have a local alias.
+        """
+        self.enums[name or info.name] = info
+
     def register_type_alias(self, name: str, typ: 'TpyType') -> None:
         """Register a type alias (e.g., Shape = Circle | Rect)."""
         self.type_aliases[name] = typ
@@ -1556,11 +1614,14 @@ class TypeRegistry:
     def get_protocol(self, name: str) -> Optional[ProtocolInfo]:
         return self.protocols.get(name)
 
+    def get_enum(self, name: str) -> Optional['EnumType']:
+        return self.enums.get(name)
+
     def is_known_type(self, name: str) -> bool:
         """Check if a name refers to a known type."""
         if name in self._fundamental_types:
             return True
-        if name in self.records or name in self.protocols or name in self.type_aliases:
+        if name in self.records or name in self.protocols or name in self.type_aliases or name in self.enums:
             return True
         # Check module system for registered types
         from tpyc.modules import get_builtins, get_tpy

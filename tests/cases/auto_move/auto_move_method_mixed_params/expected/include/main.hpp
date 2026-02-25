@@ -19,7 +19,6 @@ struct Inner {
     // 6:     value: Int32
     int32_t value;
 
-    Inner() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
@@ -34,7 +33,6 @@ struct Holder {
     // 10:     inner: Inner
     Inner inner;
 
-    Holder() = default;
 
     // 12:     def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
     void set_with_tag(Inner inner, int32_t tag) {

@@ -18,7 +18,6 @@ struct Box {
     // 6:     value: Int32
     int32_t value;
 
-    Box() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {

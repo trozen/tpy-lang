@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
     PendingListType, ListType, ArrayType, TypeParamRef, NamedType, UnionType,
-    NoneType, VoidType,
+    NoneType, VoidType, EnumType,
     unwrap_readonly, is_protocol_type,
     INT32, BIGINT, FLOAT,
     _union_alias_names
@@ -227,6 +227,11 @@ class TypeResolver:
                     )
                     return f"{qualified}<{args}>"
                 return qualified
+        # Imported enum types: qualify with source module namespace
+        if isinstance(typ, EnumType):
+            if typ.name in self.ctx.user_imported_enums:
+                source_module, original_name = self.ctx.user_imported_enums[typ.name]
+                return qualified_cpp_name(source_module, original_name)
         # Union types: use alias name if registered, otherwise qualify member names
         if isinstance(typ, UnionType):
             alias = _union_alias_names.get(typ.members)

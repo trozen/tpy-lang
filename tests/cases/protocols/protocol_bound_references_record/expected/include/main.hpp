@@ -36,7 +36,6 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 // 16: class DefaultFooMaker:
 struct DefaultFooMaker {
 
-    DefaultFooMaker() = default;
 
     // 17:     def make(self) -> Own[Foo]:
     Foo make() {

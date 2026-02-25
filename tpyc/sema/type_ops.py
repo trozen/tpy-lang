@@ -92,7 +92,9 @@ class TypeOperations:
         if isinstance(typ, NamedType) and typ.is_record:
             record_info = self.ctx.registry.get_record_for_type(typ)
             if not record_info:
-                if not allow_forward_ref:
+                if self.ctx.registry.get_enum(typ.name) is not None:
+                    pass  # imported enum -- NamedType will be resolved to EnumType
+                elif not allow_forward_ref:
                     raise SemanticError(f"Unknown type: {typ.name}", loc)
                 pass
             elif typ.type_args:

@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // 3: class Base:
 struct Base {
 
-    Base() = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {

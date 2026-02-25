@@ -1079,7 +1079,7 @@ s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
-- **Planned**: Enums → `enum class`
+- **Working**: Enums → `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`, truthiness, cross-module import)
 
 ### Protocols (Partial)
 

@@ -19,7 +19,7 @@ from enum import Enum, auto
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .typesys import TpyType, FunctionInfo, RecordInfo
+    from .typesys import TpyType, FunctionInfo, RecordInfo, EnumType
 
 
 class BindingKind(Enum):
@@ -27,6 +27,7 @@ class BindingKind(Enum):
     VARIABLE = auto()       # Local or global variable
     FUNCTION = auto()       # User-defined function
     RECORD = auto()         # User-defined record (class)
+    ENUM = auto()           # User-defined enum type
     MODULE = auto()         # import X
     IMPORTED_NAME = auto()  # from X import Y
     BUILTIN = auto()        # Built-in names like __name__
@@ -40,6 +41,7 @@ class NameBinding:
     type: Optional[TpyType] = None           # For VARIABLE/BUILTIN
     func_info: Optional[FunctionInfo] = None  # For FUNCTION
     record_info: Optional[RecordInfo] = None  # For RECORD
+    enum_type: Optional[EnumType] = None      # For ENUM
     import_source: Optional[tuple[str, str]] = None  # For IMPORTED_NAME: (module, original_name)
 
 
@@ -74,6 +76,10 @@ class Namespace:
     def bind_record(self, info: RecordInfo) -> None:
         """Convenience method to bind a user-defined record."""
         self.bind(NameBinding(kind=BindingKind.RECORD, name=info.name, record_info=info))
+
+    def bind_enum(self, enum_type: EnumType, name: str | None = None) -> None:
+        """Convenience method to bind a user-defined enum."""
+        self.bind(NameBinding(kind=BindingKind.ENUM, name=name or enum_type.name, enum_type=enum_type))
 
     def bind_module(self, module_name: str, alias: str | None = None) -> None:
         """Convenience method to bind an imported module.

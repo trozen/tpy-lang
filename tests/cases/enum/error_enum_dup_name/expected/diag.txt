@@ -1,0 +1,1 @@
+main.py:6: error: Duplicate enum member name: 'Red'

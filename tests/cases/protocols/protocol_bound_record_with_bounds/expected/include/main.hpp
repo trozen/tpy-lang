@@ -82,7 +82,6 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 // 33: class DefaultWrapperMaker:
 struct DefaultWrapperMaker {
 
-    DefaultWrapperMaker() = default;
 
     // 34:     def make(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> make(std::string_view text) {

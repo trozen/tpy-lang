@@ -23,7 +23,6 @@ struct Container {
     // 5:     val: T
     T val;
 
-    Container() = default;
 };
 
 template<typename T>

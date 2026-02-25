@@ -45,7 +45,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // 15: class DefaultFactory:
 struct DefaultFactory {
 
-    DefaultFactory() = default;
 
     // 16:     def create_point(self, x: Int32, y: Int32) -> Own[Point]:
     Point create_point(int32_t x, int32_t y) {

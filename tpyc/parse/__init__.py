@@ -13,7 +13,7 @@ from .nodes import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
-    RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol,
+    RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum,
     ParseWarning, TpyModule,
     is_super_del_call,
 )
@@ -35,7 +35,7 @@ __all__ = [
     "TpyStmt", "TpyVarDecl", "TpyAssign", "TpyAugAssign", "TpyExprStmt", "TpyReturn",
     "TpyAssert", "TpyIf", "TpyWhile", "TpyForEach", "TpyBreak", "TpyContinue",
     "TpyPassStmt", "TpyGlobal", "TpyRaiseStopIteration",
-    "RelativeImportKey", "TpyImport", "TpyFunction", "TpyRecord", "TpyProtocol",
+    "RelativeImportKey", "TpyImport", "TpyFunction", "TpyRecord", "TpyProtocol", "TpyEnum",
     "ParseWarning", "TpyModule",
     "is_super_del_call",
     # imports

@@ -10,6 +10,7 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, NoneType, VoidType,
     INT32, ReadonlyType, unwrap_readonly, OwnType, OptionalType, RecordInfo, FieldInfo,
+    EnumType,
 )
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
@@ -235,9 +236,17 @@ class SemanticAnalyzer:
         if self.ctx.user_imported_type_aliases:
             self._resolve_imported_aliases(module)
 
-        # First pass: register all records
+        # Resolve imported enum types in AST type annotations.
+        # Same issue as aliases: parser creates NamedType("Color") for imported
+        # enums since it doesn't have cross-module type info at parse time.
+        if self.ctx.user_imported_enums:
+            self._resolve_imported_enums(module)
+
+        # First pass: register all records and enums
         for record in module.records:
             self.registrar.register_record(record)
+        for enum in module.enums:
+            self.registrar.register_enum(enum)
 
         # Register protocols (two phases to allow forward references)
         for protocol in module.protocols:
@@ -459,6 +468,43 @@ class SemanticAnalyzer:
             resolved = SemanticAnalyzer._resolve_alias(typ, aliases)
             if resolved is not typ:
                 func.params[i] = (name, resolved)
+
+    def _resolve_imported_enums(self, module: TpyModule) -> None:
+        """Substitute imported enum NamedTypes in module AST type annotations."""
+        from ..parse.nodes import TpyVarDecl
+        enums = {name: self.ctx.registry.get_enum(name)
+                 for name in self.ctx.user_imported_enums}
+        for func in module.functions:
+            self._resolve_func_enums(func, enums)
+        for record in module.records:
+            for f in record.fields:
+                f.type = self._resolve_enum(f.type, enums)
+            for method in record.methods:
+                self._resolve_func_enums(method, enums)
+        for stmt in module.top_level_stmts:
+            if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
+                stmt.type = self._resolve_enum(stmt.type, enums)
+
+    @staticmethod
+    def _resolve_func_enums(func: TpyFunction, enums: dict[str, EnumType]) -> None:
+        """Resolve enum types in a function's signature."""
+        if func.return_type is not None:
+            func.return_type = SemanticAnalyzer._resolve_enum(func.return_type, enums)
+        for i, (name, typ) in enumerate(func.params):
+            resolved = SemanticAnalyzer._resolve_enum(typ, enums)
+            if resolved is not typ:
+                func.params[i] = (name, resolved)
+
+    @staticmethod
+    def _resolve_enum(typ: TpyType, enums: dict[str, EnumType]) -> TpyType:
+        """Recursively substitute NamedType placeholders with EnumType for imported enums."""
+        if isinstance(typ, NamedType) and not typ.is_protocol:
+            resolved = enums.get(typ.name)
+            if resolved is not None:
+                return resolved
+        return typ.map_inner_types(
+            lambda t: SemanticAnalyzer._resolve_enum(t, enums)
+        )
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
@@ -690,6 +736,19 @@ class SemanticAnalyzer:
                             rec = module_info.records[member.name]
                             self.ctx.registry.register_record(rec, member.name)
                             self.ctx.user_imported_records[member.name] = (module_name, member.name)
+            return
+
+        # Check for enum
+        if module_info.enums and original_name in module_info.enums:
+            enum_type = module_info.enums[original_name]
+            self.ctx.registry.register_enum(enum_type, local_name)
+            # Also register under original name: the parser resolves aliases
+            # back to original names for type annotations (NamedType("Color")
+            # even when the alias is "C")
+            if local_name != original_name:
+                self.ctx.registry.register_enum(enum_type, original_name)
+            self.ctx.global_ns.bind_enum(enum_type, name=local_name)
+            self.ctx.user_imported_enums[local_name] = (module_name, original_name)
             return
 
         # Check for variable

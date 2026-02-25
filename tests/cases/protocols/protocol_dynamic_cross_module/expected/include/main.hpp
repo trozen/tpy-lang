@@ -19,7 +19,6 @@ void main();
 // 5: class Dog(Pet):
 struct Dog : ::tpy_user::pet::__tpy_Base_Pet {
 
-    Dog() = default;
 
     // 6:     def speak(self) -> str:
     std::string speak() override {
@@ -38,7 +37,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // 10: class Cat:
 struct Cat {
 
-    Cat() = default;
 
     // 11:     def speak(self) -> str:
     std::string speak() {

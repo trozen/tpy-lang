@@ -43,7 +43,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // 10: class Dog(Pet):
 struct Dog : __tpy_Base_Pet {
 
-    Dog() = default;
 
     // 11:     def name(self) -> str:
     std::string name() override {
@@ -61,7 +60,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // 14: class Cat:
 struct Cat {
 
-    Cat() = default;
 
     // 15:     def name(self) -> str:
     std::string name() {
@@ -79,7 +77,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // 18: class Parrot:
 struct Parrot {
 
-    Parrot() = default;
 
     // 19:     def name(self) -> str:
     std::string name() {
