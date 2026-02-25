@@ -864,8 +864,8 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
 
 
 def is_any_str_type(typ: 'TpyType') -> bool:
-    """Check if a type is any string type (str, String, StrView)."""
-    return isinstance(typ, (StrType, StringType, StrViewType))
+    """Check if a type is any string type (str, String, StrView, PendingStr)."""
+    return isinstance(typ, (StrType, StringType, StrViewType, PendingStrType))
 
 
 def is_constexpr_eligible(typ: 'TpyType') -> bool:
@@ -1229,6 +1229,48 @@ class ListLiteralInfo:
     has_explicit_annotation: bool = False
     explicit_type: Optional[TpyType] = None
     coerced_element_type: Optional[TpyType] = None  # Element type from typed param (list[T] or Span[T])
+    resolved_type: Optional[TpyType] = None
+
+
+@dataclass(frozen=True)
+class PendingStrType(TpyType):
+    """Unresolved string local -- becomes StrView or str based on usage.
+
+    Assigned to str-typed locals in function contexts during the first
+    analysis phase. After the full function body is analyzed, resolved
+    based on collected usage (augmented assignment, owned source, etc.).
+    """
+    str_var_id: int
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(
+            f"PendingStrType should be resolved before codegen (str_var_id={self.str_var_id})"
+        )
+
+    def __str__(self) -> str:
+        return "str"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.str"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def get_element_type(self) -> Optional[TpyType]:
+        from tpyc.typesys import CHAR
+        return CHAR
+
+
+@dataclass
+class StrVarInfo:
+    """Tracks usage of a string local to decide StrView vs str."""
+    str_var_id: int
+    variable_name: str
+    initialized_from_owned: bool = False
+    used_in_augassign: bool = False
+    passed_to_string_param: bool = False
+    reassigned_from_owned: bool = False
+    source_str_var_id: Optional[int] = None  # if initialized from another PendingStrType local
     resolved_type: Optional[TpyType] = None
 
 

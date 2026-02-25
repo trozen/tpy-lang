@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from ..typesys import (
-    TpyType, TypeRegistry, ListLiteralInfo, TypeParamKind, IntLiteralType,
+    TpyType, TypeRegistry, ListLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
     FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
     unwrap_readonly,
 )
@@ -67,6 +67,12 @@ class SemanticContext:
     variable_to_literal: dict[str, int] = field(default_factory=dict)
     pending_resolutions: list[int] = field(default_factory=list)
     var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
+
+    # --- String local tracking (PendingStrType inference) ---
+    str_var_counter: int = 0
+    str_vars: dict[int, StrVarInfo] = field(default_factory=dict)
+    variable_to_str_var: dict[str, int] = field(default_factory=dict)
+    pending_str_resolutions: list[int] = field(default_factory=list)
 
     # --- Import tracking ---
     # imports: module_name -> set of (original_name, local_name) tuples (for "from X import Y [as Z]")
@@ -258,6 +264,8 @@ class SemanticContext:
         """Reset per-function tracking state between function analyses."""
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
+        self.variable_to_str_var.clear()
+        self.pending_str_resolutions.clear()
         self.super_init_call = None
         self.super_del_call = None
         self.loop_vars.clear()

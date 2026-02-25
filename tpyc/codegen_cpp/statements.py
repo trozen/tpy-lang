@@ -10,7 +10,8 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
-    ArrayType, ListType, PendingListType, OwnType, OptionalType, NoneType, NamedType, StrType,
+    ArrayType, ListType, PendingListType, PendingStrType, OwnType, OptionalType,
+    NoneType, NamedType, StrType, StrViewType, STR,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable,
@@ -211,6 +212,11 @@ class StatementGenerator:
                 if self.ctx.is_indirect_name(stmt.value):
                     ret_expr = f"(*{ret_expr})"
                     ret_expr = self.expressions._maybe_move(stmt.value, ret_expr)
+                # StrView local returned as str needs explicit conversion
+                elif isinstance(ret_type, StrType):
+                    expr_type = self.types.get_resolved_type(stmt.value)
+                    if isinstance(expr_type, StrViewType):
+                        ret_expr = f"std::string({ret_expr})"
                 return f"{indent}return {ret_expr};\n"
             return f"{indent}return;\n"
         elif isinstance(stmt, TpyBreak):
@@ -363,6 +369,9 @@ class StatementGenerator:
             elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
                 elem = self.ctx.analyzer.ctx.default_int_for_literal(target_type.element_type)
                 target_type = ArrayType(elem, target_type.size)
+            elif isinstance(target_type, PendingStrType):
+                info = self.ctx.analyzer.ctx.str_vars.get(target_type.str_var_id)
+                target_type = info.resolved_type if info and info.resolved_type else STR
         return target_type
 
     def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
@@ -376,6 +385,9 @@ class StatementGenerator:
             elem = getattr(var_type, "element_type", None)
             if isinstance(elem, IntLiteralType):
                 var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(elem))
+        elif isinstance(var_type, PendingStrType):
+            info = self.ctx.analyzer.ctx.str_vars.get(var_type.str_var_id)
+            var_type = info.resolved_type if info and info.resolved_type else STR
         # Optional non-value types use inner type (pointer-local adds T*)
         if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
             var_type = var_type.inner
@@ -398,7 +410,7 @@ class StatementGenerator:
                 self.ctx.analyzer,
                 include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
             )
-            if resolved_type is None or isinstance(resolved_type, PendingListType):
+            if resolved_type is None or isinstance(resolved_type, (PendingListType, PendingStrType)):
                 resolved_type = self.ctx.get_expr_type(stmt.init)
             if resolved_type is None:
                 raise CodeGenError(
@@ -727,6 +739,11 @@ class StatementGenerator:
 
         if stmt.init:
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
+            # string_view -> string init requires explicit conversion in C++
+            if isinstance(target_type, StrType):
+                init_resolved = self.types.get_resolved_type(stmt.init)
+                if isinstance(init_resolved, StrViewType):
+                    init_expr = f"std::string({init_expr})"
             return f"{indent}{cpp_type} {stmt.name} = {init_expr};\n"
         else:
             return f"{indent}{cpp_type} {stmt.name};\n"

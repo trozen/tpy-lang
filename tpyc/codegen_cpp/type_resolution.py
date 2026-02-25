@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ..typesys import PendingListType, TpyType
+from ..typesys import PendingListType, PendingStrType, TpyType
 from ..parse import TpyVarDecl
 
 
@@ -21,7 +21,7 @@ def resolve_stmt_binding_type(
         return var_type
 
     var_type = analyzer.var_types.get(id(stmt))
-    if var_type is None or isinstance(var_type, PendingListType):
+    if var_type is None or isinstance(var_type, (PendingListType, PendingStrType)):
         if include_global_binding:
             binding = analyzer.global_ns.lookup_local(stmt.name)
             if binding and binding.type is not None:
@@ -41,6 +41,6 @@ def resolve_stmt_type_cascade(
         analyzer,
         include_global_binding=include_global_binding,
     )
-    if var_type is None or isinstance(var_type, PendingListType):
+    if var_type is None or isinstance(var_type, (PendingListType, PendingStrType)):
         var_type = types.get_resolved_type(stmt.init)
     return var_type

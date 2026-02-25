@@ -8,7 +8,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, IntLiteralType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
+    IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     UnionType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
     from .compatibility import TypeCompatibility
     from .list_literals import ListLiteralTracker
+    from .str_vars import StrVarTracker
     from .expressions import ExpressionAnalyzer
 
 from tpyc import modules as builtin_modules
@@ -72,12 +74,14 @@ class CallAnalyzer:
         protocols: ProtocolChecker,
         compat: TypeCompatibility,
         list_tracker: ListLiteralTracker,
+        str_tracker: 'StrVarTracker | None' = None,
     ):
         self.ctx = ctx
         self.type_ops = type_ops
         self.protocols = protocols
         self.compat = compat
         self.list_tracker = list_tracker
+        self.str_tracker = str_tracker
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
 
@@ -928,9 +932,11 @@ class CallAnalyzer:
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            # Track parameter context for list inference
+            # Track parameter context for list/str inference
             if isinstance(arg_type, PendingListType):
                 self.list_tracker.mark_list_param_context(arg, ptype)
+            if isinstance(arg_type, PendingStrType) and self.str_tracker:
+                self.str_tracker.mark_str_param_context(arg, ptype)
 
         return func.return_type
 
@@ -1023,9 +1029,11 @@ class CallAnalyzer:
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            # Track parameter context for list inference
+            # Track parameter context for list/str inference
             if isinstance(arg_type, PendingListType):
                 self.list_tracker.mark_list_param_context(arg, resolved_ptype)
+            if isinstance(arg_type, PendingStrType) and self.str_tracker:
+                self.str_tracker.mark_str_param_context(arg, resolved_ptype)
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
@@ -1221,8 +1229,10 @@ class CallAnalyzer:
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            # Track parameter context for list inference
+            # Track parameter context for list/str inference
             if isinstance(arg_type, PendingListType):
                 self.list_tracker.mark_list_param_context(arg, ptype)
+            if isinstance(arg_type, PendingStrType) and self.str_tracker:
+                self.str_tracker.mark_str_param_context(arg, ptype)
 
         return func.return_type

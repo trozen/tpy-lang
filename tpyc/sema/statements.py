@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, PendingListType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
+    ListType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
+    ListLiteralInfo, StrVarInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
     unwrap_readonly, is_any_str_type,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from .type_ops import TypeOperations
     from .compatibility import TypeCompatibility
     from .list_literals import ListLiteralTracker
+    from .str_vars import StrVarTracker
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
@@ -54,6 +55,7 @@ class StatementAnalyzer:
         type_ops: TypeOperations,
         compat: TypeCompatibility,
         list_tracker: ListLiteralTracker,
+        str_tracker: StrVarTracker,
         protocols: ProtocolChecker,
         narrowing: NarrowingTracker,
     ):
@@ -61,6 +63,7 @@ class StatementAnalyzer:
         self.type_ops = type_ops
         self.compat = compat
         self.list_tracker = list_tracker
+        self.str_tracker = str_tracker
         self.protocols = protocols
         self.narrowing = narrowing
         self.scopes = ScopeTracker(ctx, compat)
@@ -762,29 +765,38 @@ class StatementAnalyzer:
                 # coercion -- this is a binding, not passing by reference.
                 inner_existing = unwrap_readonly(existing_type)
                 inner_init = unwrap_readonly(init_type)
-                var_type = self.reassign.resolve_reassignment_target_type(
-                    stmt.name, inner_existing, inner_init, init_expr=stmt.init
-                )
-                # Reassignment: check if we need to upgrade IntLiteralType
-                if isinstance(inner_existing, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
-                    # Upgrade from IntLiteralType to concrete type
-                    # Update var_types so codegen knows the resolved type
-                    orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
-                    if orig_decl:
-                        self.ctx.var_types[id(orig_decl)] = var_type
+                # PendingStrType reassignment: track view-compatibility, keep pending
+                if isinstance(inner_existing, PendingStrType):
+                    if is_any_str_type(inner_init):
+                        if not self.str_tracker.is_view_compatible_source(stmt.init, inner_init):
+                            self.str_tracker.mark_str_reassigned_from_owned(stmt.name)
+                        else:
+                            self.str_tracker.track_reassign_source(stmt.name, inner_init)
+                    var_type = existing_type
                 else:
-                    # Normal reassignment: use existing type, check compatibility
-                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
-                                                         f"reassignment to '{stmt.name}'",
-                                                         coercion_ctx=CoercionContext.ASSIGN)
-                # Readonly status flows from the value expression
-                if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
-                    var_type = ReadonlyType(var_type)
-                if var_type != existing_type:
-                    # Keep original declaration's resolved type in sync for codegen.
-                    orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
-                    if orig_decl:
-                        self.ctx.var_types[id(orig_decl)] = unwrap_readonly(var_type)
+                    var_type = self.reassign.resolve_reassignment_target_type(
+                        stmt.name, inner_existing, inner_init, init_expr=stmt.init
+                    )
+                    # Reassignment: check if we need to upgrade IntLiteralType
+                    if isinstance(inner_existing, IntLiteralType) and isinstance(var_type, (Int32Type, BigIntType)):
+                        # Upgrade from IntLiteralType to concrete type
+                        # Update var_types so codegen knows the resolved type
+                        orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
+                        if orig_decl:
+                            self.ctx.var_types[id(orig_decl)] = var_type
+                    else:
+                        # Normal reassignment: use existing type, check compatibility
+                        stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
+                                                             f"reassignment to '{stmt.name}'",
+                                                             coercion_ctx=CoercionContext.ASSIGN)
+                    # Readonly status flows from the value expression
+                    if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
+                        var_type = ReadonlyType(var_type)
+                    if var_type != existing_type:
+                        # Keep original declaration's resolved type in sync for codegen.
+                        orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
+                        if orig_decl:
+                            self.ctx.var_types[id(orig_decl)] = unwrap_readonly(var_type)
             else:
                 # New variable: resolve IntLiteralType.
                 if isinstance(init_type, IntLiteralType):
@@ -819,6 +831,34 @@ class StatementAnalyzer:
             )
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
+
+        # String variable PendingStrType inference (function-local only, new vars)
+        if (isinstance(var_type, StrType) and stmt.init is not None
+                and not self.ctx.is_top_level and not is_global_declared
+                and existing_type is None):
+            str_var_id = self.ctx.str_var_counter
+            self.ctx.str_var_counter += 1
+            is_owned = not self.str_tracker.is_view_compatible_source(stmt.init, init_type)
+            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=stmt.name,
+                                initialized_from_owned=is_owned)
+            self.ctx.str_vars[str_var_id] = sv_info
+            self.ctx.variable_to_str_var[stmt.name] = str_var_id
+            self.ctx.pending_str_resolutions.append(str_var_id)
+            var_type = PendingStrType(str_var_id)
+        # Alias: new var initialized from an existing PendingStrType local.
+        # Gets its own ID with source tracking; if the source later resolves
+        # to str, this alias is retroactively promoted during resolution.
+        elif (isinstance(var_type, PendingStrType) and stmt.init is not None
+                and not self.ctx.is_top_level and not is_global_declared
+                and existing_type is None):
+            str_var_id = self.ctx.str_var_counter
+            self.ctx.str_var_counter += 1
+            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=stmt.name,
+                                source_str_var_id=var_type.str_var_id)
+            self.ctx.str_vars[str_var_id] = sv_info
+            self.ctx.variable_to_str_var[stmt.name] = str_var_id
+            self.ctx.pending_str_resolutions.append(str_var_id)
+            var_type = PendingStrType(str_var_id)
 
         if is_global_declared:
             # Update global scope type; bind in current scope for local reads
@@ -911,20 +951,30 @@ class StatementAnalyzer:
             # binding, not passing by reference.
             inner_target = unwrap_readonly(target_type)
             inner_value = unwrap_readonly(value_type)
-            target_type = self.reassign.resolve_reassignment_target_type(
-                stmt.target.name, inner_target, inner_value, init_expr=stmt.value
-            )
-            # Readonly status flows from the value expression
-            if isinstance(value_type, ReadonlyType) and not target_type.is_value_type():
-                target_type = ReadonlyType(target_type)
+            # PendingStrType reassignment: track view-compatibility, keep pending
+            if isinstance(inner_target, PendingStrType):
+                if is_any_str_type(inner_value):
+                    if not self.str_tracker.is_view_compatible_source(stmt.value, inner_value):
+                        self.str_tracker.mark_str_reassigned_from_owned(stmt.target.name)
+                    else:
+                        self.str_tracker.track_reassign_source(stmt.target.name, inner_value)
+                # target_type stays PendingStrType
+            else:
+                target_type = self.reassign.resolve_reassignment_target_type(
+                    stmt.target.name, inner_target, inner_value, init_expr=stmt.value
+                )
+                # Readonly status flows from the value expression
+                if isinstance(value_type, ReadonlyType) and not target_type.is_value_type():
+                    target_type = ReadonlyType(target_type)
             self.ctx.current_scope.define(stmt.target.name, target_type)
             if self.ctx.current_ns:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.reassign.record_write(stmt.target.name, stmt.value, inner_value)
-            var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
-            if var_decl:
-                self.ctx.var_types[id(var_decl)] = unwrap_readonly(target_type)
+            if not isinstance(inner_target, PendingStrType):
+                var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
+                if var_decl:
+                    self.ctx.var_types[id(var_decl)] = unwrap_readonly(target_type)
 
         # Disallow reassignment of non-value-type params and loop vars
         if isinstance(stmt.target, TpyName):
@@ -1020,10 +1070,13 @@ class StatementAnalyzer:
                 f"to keep {type_name} arithmetic.",
                 stmt,
             )
-        # Target must be numeric or an owned string type (str, String).
+        # Target must be numeric or an owned string type (str, String, PendingStr).
         # StrView is excluded -- it's non-owning, so += would dangle.
         is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType))
-        is_str_target = isinstance(target_type, (StrType, StringType))
+        is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
+        # PendingStrType += promotes to owned str
+        if isinstance(target_type, PendingStrType) and isinstance(stmt.target, TpyName):
+            self.str_tracker.mark_str_augassign(stmt.target.name)
         if not is_numeric_target and not is_str_target:
             raise self.ctx.error(
                 f"Augmented assignment target must be a numeric or string type, got {target_type}",

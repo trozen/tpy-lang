@@ -22,6 +22,7 @@ from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
 from .list_literals import ListLiteralTracker
+from .str_vars import StrVarTracker
 from .protocols import ProtocolChecker
 from .registration import TypeRegistrar
 from .narrowing import NarrowingTracker
@@ -54,6 +55,7 @@ class SemanticAnalyzer:
         self.operators = OperatorResolver(self.ctx)
         self.compat = TypeCompatibility(self.ctx)
         self.list_tracker = ListLiteralTracker(self.ctx)
+        self.str_tracker = StrVarTracker(self.ctx)
 
         # Layer 2: Depends on type_ops
         self.protocols = ProtocolChecker(self.ctx, self.type_ops)
@@ -70,13 +72,15 @@ class SemanticAnalyzer:
             self.ctx, self.type_ops, self.operators, self.protocols, self.compat, self.narrowing
         )
         self.calls = CallAnalyzer(
-            self.ctx, self.type_ops, self.protocols, self.compat, self.list_tracker
+            self.ctx, self.type_ops, self.protocols, self.compat, self.list_tracker,
+            self.str_tracker
         )
         self.methods = MethodAnalyzer(
             self.ctx, self.type_ops, self.protocols, self.compat
         )
         self.stmts = StatementAnalyzer(
-            self.ctx, self.type_ops, self.compat, self.list_tracker, self.protocols, self.narrowing
+            self.ctx, self.type_ops, self.compat, self.list_tracker, self.str_tracker,
+            self.protocols, self.narrowing
         )
 
         # Layer 4: Wire circular refs via explicit setters
@@ -401,8 +405,9 @@ class SemanticAnalyzer:
             self.stmts.analyze_stmt(stmt)
         self._check_unresolved_none_inference()
 
-        # Resolve pending list types after analyzing the full function
+        # Resolve pending list/str types after analyzing the full function
         self.list_tracker.resolve_pending_list_types()
+        self.str_tracker.resolve_pending_str_types()
 
         self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
@@ -603,8 +608,9 @@ class SemanticAnalyzer:
                             method
                         )
 
-            # Resolve pending list types after analyzing the full method
+            # Resolve pending list/str types after analyzing the full method
             self.list_tracker.resolve_pending_list_types()
+            self.str_tracker.resolve_pending_str_types()
 
             self.function_scan_results[id(method)] = scan
             if self.ctx.hoisted_vars:
@@ -646,8 +652,9 @@ class SemanticAnalyzer:
             self.stmts.analyze_stmt(stmt)
         self._check_unresolved_none_inference()
 
-        # Resolve pending list types (same as function analysis)
+        # Resolve pending list/str types (same as function analysis)
         self.list_tracker.resolve_pending_list_types()
+        self.str_tracker.resolve_pending_str_types()
 
         if self.ctx.hoisted_vars:
             self.top_level_hoisted_vars = self.ctx.hoisted_vars.copy()

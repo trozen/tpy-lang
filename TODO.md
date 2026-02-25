@@ -13,7 +13,7 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - ~~`tpy::__len__()`~~ PARTIAL: `__len__`, `__getitem__`, `__setitem__` are now free functions in `dunder.hpp`. Consider also generating `__len__()` as `size()` member function for STL compatibility.
 - `ValueType` protocol bound — `T: ValueType` would suppress copy warnings for generic fields, since value types copy silently
-- string: PendingStrType local inference (keep literal-derived locals as string_view, promote on concat/conversion)
+- refactor: `find_binop_overload` in `operators.py` uses `type_matches_numeric` directly instead of the unified matching in `overloads.py`; had to add a special-case for PendingStrType -- should delegate to `type_matches_strict` so new deferred types work automatically
 - f-strings
 - keyword arguments
 - ConstPtr[T] vs Ptr[readonly[T]] vs ReadOnlyPtr[T]?

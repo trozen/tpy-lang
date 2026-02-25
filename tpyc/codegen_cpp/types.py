@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
-    PendingListType, ListType, ArrayType, TypeParamRef, NamedType, UnionType,
-    NoneType, VoidType, EnumType,
+    PendingListType, PendingStrType, ListType, ArrayType, TypeParamRef, NamedType,
+    UnionType, NoneType, VoidType, EnumType,
     unwrap_readonly, is_protocol_type,
-    INT32, BIGINT, FLOAT,
+    INT32, BIGINT, FLOAT, STR,
     _union_alias_names
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
@@ -134,6 +134,8 @@ class TypeResolver:
             if isinstance(elem_type, IntLiteralType):
                 elem_type = self.ctx.analyzer.ctx.default_int_for_literal(elem_type)
             return ListType(elem_type)
+        if isinstance(typ, PendingStrType):
+            return self._resolve_pending_str(typ)
         # Resolve IntLiteralType based on context (FixedInt if target, else
         # configured default int type).
         if isinstance(typ, IntLiteralType):
@@ -145,6 +147,11 @@ class TypeResolver:
             elem = self.ctx.analyzer.ctx.default_int_for_literal(typ.element_type)
             return ListType(elem)
         return typ
+
+    def _resolve_pending_str(self, typ: PendingStrType) -> TpyType:
+        """Resolve a PendingStrType to its concrete type (STR or STRVIEW)."""
+        sv_info = self.ctx.analyzer.ctx.str_vars.get(typ.str_var_id)
+        return sv_info.resolved_type if sv_info and sv_info.resolved_type else STR
 
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
         """Substitute type parameters with concrete types for codegen.
@@ -242,5 +249,8 @@ class TypeResolver:
                 for m in typ.members
             ]
             return f"std::variant<{', '.join(cpp_members)}>"
+        # Resolve PendingStrType to its concrete type before codegen
+        if isinstance(typ, PendingStrType):
+            return self._resolve_pending_str(typ).to_cpp()
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()

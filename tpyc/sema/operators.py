@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32
+    INT32, PendingStrType, StrType,
 )
 from .overloads import type_matches_numeric
 from tpyc import modules as builtin_modules
@@ -77,6 +77,8 @@ class OperatorResolver:
             if len(method.params) == 1:
                 _, param_type = method.params[0]
                 if type_matches_numeric(arg_type, param_type):
+                    return method
+                if isinstance(arg_type, PendingStrType) and isinstance(param_type, StrType):
                     return method
         return None
 

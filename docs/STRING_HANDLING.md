@@ -1,150 +1,137 @@
 # String Handling Design
 
-## Status
+## Roadmap
 
 | Feature | Status |
 |---------|--------|
-| `str` as `const char*` / `std::string_view` | Done |
-| `str` literals, parameters, basic operations | Done |
-| `DynStr` owning string type (`std::string`) | Planned |
-| `str` -> `DynStr` implicit coercion | Planned |
-| `str(numeric)` returning `DynStr` | Planned |
+| `str` context-dependent type (param=`string_view`, return/field=`string`) | Done |
+| `String` explicit owned type (`const std::string&` params) | Done |
+| `StrView` explicit view type (`std::string_view`) | Done |
+| `Char` single character type | Done |
+| String concatenation (`+`, `+=`) | Done |
+| `str()` numeric conversions (`str(42)`) | Done |
+| `list[str]` generates `std::vector<std::string>` | Done |
+| `Final[str]` generates `constexpr std::string_view` | Done |
+| PendingStrType local inference (view vs owned) | Done |
+| Alias source tracking with retroactive promotion | Done |
+| `string_view` -> `string` codegen for return and init | Done |
+| `str` slicing (`s[1:3]`) | Planned |
+| `__str__` dispatch via `str(obj)` | Planned |
+| f-strings | Planned |
 | `@noalloc` string restrictions | Planned |
-| `FixStr[N]` fixed-capacity strings | Planned |
-| `str` field lifetime safety rules | Planned |
-
-## Goals
-
-- Keep `str` as a non-owning view for fast argument passing and zero allocations.
-- Provide an explicit owning string type for safe storage and return values.
-- Allow implicit widening from `str` to owning strings in normal code, but forbid it in `@noalloc` contexts.
-- Keep the model predictable and explicit where allocations can happen.
-
-## Relationship to Ownership Model
-
-Both `str` and `DynStr` are **value types** in the ownership model (see `docs/OWNERSHIP_DESIGN.md`). They are not pointer variables — they are stored directly in local variables, fields, and containers. Assignment copies the value, no warnings needed.
-
-This is correct because Python strings are immutable — copy-vs-share is unobservable. The compiler optimizes to a move when the source is dead.
-
-Key consequence: `s += gen_str(...)` in a loop is plain in-place `std::string::operator+=`. No aliasing concerns, no dead slot accumulation, no special optimization needed.
+| `@noalloc` warn on unnecessary `string_view` -> `string` copies | Planned |
+| `@noalloc` warn on alias that could stay `string_view` | Planned |
+| `FixStr[N]` fixed-capacity string, stack allocated | Future |
+| `str` field lifetime safety rules | Future |
 
 ## Types
 
-- `str`
-  - C++: `std::string_view`
-  - Non-owning view. Safe only when the referenced storage outlives the view.
-  - Value type — 16 bytes, copies trivially.
+### `str` -- context-dependent
 
-- `DynStr` (owning)
-  - C++: `std::string`
-  - Owns its storage, safe to store, return, and concatenate.
-  - Value type — ~32 bytes (SSO), copies on assignment, move when source is dead.
-  - For hot paths where DynStr copies are too expensive, use `str` (zero-copy view) or `FixStr[N]` (stack-allocated, bounded).
+`str` maps to different C++ types depending on context:
 
-## Conversions
+| Context | C++ type | Rationale |
+|---------|----------|-----------|
+| Parameter | `std::string_view` | Borrowed -- no allocation |
+| Return type | `std::string` | Owned -- caller gets independent value |
+| Class field | `std::string` | Owned -- field outlives any source |
+| Local variable | Inferred (see below) | PendingStrType decides |
 
-### `str(...)` builtins
+### `String` (`tpy.String`) -- explicit owned
 
-- `str()` -> empty `str` (view of a static empty string)
-- `str(str)` -> `str` (identity)
-- `str(Char)` -> `str` (view of static char table)
-- `str(Bool)` -> `str` (view of static "True"/"False")
-- `str(Int32)` -> `DynStr`
-- `str(int)` (BigInt) -> `DynStr`
-- `str(float)` -> `DynStr`
+Always `std::string`. Parameters use `const std::string&` (avoids `string_view` -> `string` temporary construction when caller has a `string`).
 
-Rationale: numeric conversions must allocate to be safe, so they produce `DynStr`.
+### `StrView` (`tpy.StrView`) -- explicit view
 
-### `DynStr(...)` constructors
+Always `std::string_view`. Use when you know the source outlives the variable.
 
-- `DynStr(str)` -> `DynStr` (alloc; may use SSO)
-- `DynStr(DynStr)` -> `DynStr` (copy)
-- `DynStr(Char/Bool/Int32/BigInt/float)` -> `DynStr` (alloc; may use SSO)
+### `Char`
 
-### Implicit coercions
+Single character, maps to `char` in C++.
 
-- `str` -> `DynStr`: allowed in normal code (implicit allocation).
-- `DynStr` -> `str`: allowed (view of owned storage).
-- In `@noalloc` contexts: `str` -> `DynStr` is an error.
+## Local Variable Inference (PendingStrType)
+
+String locals are not immediately assigned a concrete type. Instead, they start as `PendingStrType` and are resolved after the full function body is analyzed.
+
+### Resolution rules
+
+**Resolves to `StrView` (`std::string_view`)** when:
+- Initialized from a string literal (`s = "hello"`)
+- Initialized from a `str` parameter (`s = name`)
+- Initialized from an explicit `StrView` local
+- Initialized from a `Final[str]` global constant
+- Initialized from a function/method returning `StrView`
+- AND no owned-requiring usage is detected
+
+**Resolves to `str` (`std::string`)** when any of:
+- Initialized from an owned source (`str(42)`, function returning `str`/`String`)
+- Used in augmented assignment (`s += "x"`)
+- Passed to a `String` parameter (`const std::string&`)
+- Reassigned from an owned source
+- Source is another PendingStrType local that resolved to `std::string` (retroactive promotion)
+
+### Alias tracking
+
+When `s2 = s1` where `s1` is a PendingStrType local, `s2` gets its own pending ID with a `source_str_var_id` pointing back to `s1`. After the first resolution pass, a fixup pass checks: if a source resolved to `std::string`, all aliases are retroactively promoted. This prevents dangling `string_view` pointing at a `std::string` that may reallocate.
+
+The fixup handles chains (`a = "x"; b = a; c = b; b += "y"` promotes both `b` and `c`).
+
+### What does NOT trigger promotion
+
+These are safe with `string_view` because C++ handles the conversion at the usage site:
+- Concatenation operand (`s + "x"`) -- `tpy::str_concat` takes `string_view` args
+- Stored in container (`list.append(s)`) -- C++ constructs `string` at call site
+- Assigned to a field (`self.name = s`) -- C++ converts at assignment
+- Returned from function (`return s`) -- codegen wraps with `std::string(s)`
+
+## Codegen
+
+### `string_view` -> `string` conversions
+
+C++ requires explicit conversion from `string_view` to `string` in two contexts:
+
+1. **Copy-initialization**: `std::string s = sv;` fails; codegen emits `std::string s = std::string(sv);`
+2. **Return**: `return sv;` from a `std::string`-returning function fails; codegen emits `return std::string(sv);`
+
+Assignment (`s = sv;` where `s` is already `std::string`) works implicitly via `operator=`.
+
+## Coercions
+
+| From | To | C++ | Direction |
+|------|----|-----|-----------|
+| `StrView` | `str` | `std::string(expr)` | Allocates |
+| `StrView` | `String` | `std::string(expr)` | Allocates |
+| `str` | `StrView` | implicit | Safe (view of owned) |
+| `String` | `StrView` | implicit | Safe (view of owned) |
+| `Char` | `String` | `std::string(1, expr)` | Allocates |
+| `Char` | `StrView` | `tpy::char_to_str(expr)` | Static table |
 
 ## Operators
 
-- `str + str` -> `DynStr`
-- `str + DynStr` -> `DynStr`
-- `DynStr + DynStr` -> `DynStr`
+- `str + str` -> `str` (via `tpy::str_concat`, returns `std::string`)
+- `str += str` -> in-place `tpy::str_concat` (reassignment)
 
-Rationale: concatenation produces new storage, so it returns `DynStr`.
+## Planned: `@noalloc` Warnings
 
-## Local Type Deduction
+In `@noalloc` contexts, the compiler should warn about unnecessary allocations:
 
-For unannotated locals:
-
-- If the initializer or any later assignment requires ownership
-  (e.g., concatenation, `str(int)`, `DynStr(...)`), infer `DynStr`.
-- Otherwise infer `str`.
-
-For annotated locals:
-
-- `s: str = s + "x"` is a type error (must be `DynStr` or explicitly convert).
-
-Examples:
-
-- `s = "abc"` -> `str`
-- `s = s + "x"` -> `DynStr`
-- `s = str(123)` -> `DynStr`
-
-## Function Parameters
-
-- `str` params accept `str` and `DynStr` (implicit view).
-- `DynStr` params require `DynStr` (unless explicitly converted).
-
-## Return Types
-
-- `-> str` returns a view — must reference data that outlives the function (literals, parameters, globals). This follows the same pattern as returning `T` (by reference) in the ownership model.
-- `-> DynStr` returns owned data. This follows the same pattern as returning `Own[T]` (by value) in the ownership model.
-
-## Class Members and Lifetime Safety
-
-The ownership model specifies that record fields store values inline.
-
-- **`DynStr` fields**: Safe — owns its storage inline. No lifetime concerns.
-- **`str` fields**: Risky — stores a `string_view` inline, which is a non-owning view referencing external data. This is analogous to `Ptr[T]` fields in the ownership model: the view itself is stored inline, but it doesn't own what it points to.
-
-### Rules for `str` fields
-
-`str` fields follow conservative lifetime rules. Only known long-lived sources are allowed:
-
-Allowed sources:
- - String literals
- - Global/static `str`
- - `self.owned_field: DynStr` (view of owned storage)
- - `self.field: str` (self-assignment)
-
-Disallowed sources:
- - Any `str` returned from function calls
- - Concatenation results (`str + str`, `str + DynStr`, etc.)
- - `str(int/float/BigInt)` and any other converting constructor
- - Local `str` variables (unless proven static)
-
-For fields that need to store arbitrary string data, use `DynStr`.
-
-## `@noalloc` Behavior
-
-- Implicit `str` -> `DynStr` is disallowed.
-- `DynStr(...)` and `str(int/float/BigInt)` are disallowed.
-- `str` operations that allocate (concatenation) are disallowed.
+- **Alias could stay `string_view`**: `c = b` where `b` is `std::string` but `b` isn't mutated after `c`'s last use. A `string_view` would avoid the copy. Requires lifetime analysis.
+- **Return copy**: Returning a `StrView` local from a `str`-returning function triggers a copy. Similar to `Own[]` return copy warnings.
 
 ## Future: Fixed-Storage Strings
 
-Fixed-capacity owning strings for `@noalloc` or bounded-alloc contexts.
+`FixStr[N]` -- fixed-capacity owning string for `@noalloc` or bounded-alloc contexts.
 
-Potential options:
-
-- `FixStr[N]` generic: `FixStr[128]`
-- Named aliases: `FixStr128`, `FixStr256`, etc.
-
-Behavior:
-
-- Like `DynStr`, but storage is inline and fixed-size.
-- Concatenation and numeric formatting must check capacity and fail/panic or error at compile time when provable.
+- Like `std::string` but storage is inline and fixed-size.
+- Concatenation and formatting check capacity, panic on overflow.
 - Useful for `@noalloc` code with bounded sizes.
+
+## Future: `str` Field Lifetime Safety
+
+`str` fields store a `string_view` inline -- a non-owning view that doesn't control the lifetime of the referenced data. Conservative rules would restrict allowed sources:
+
+**Allowed**: string literals, global/static `str`, view of an owned field on the same object.
+
+**Disallowed**: function return values, concatenation results, numeric conversions, local variables.
+
+For fields that need to store arbitrary string data, use `String`.

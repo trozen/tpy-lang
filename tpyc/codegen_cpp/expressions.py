@@ -732,7 +732,7 @@ class ExpressionGenerator:
             # For generic functions, always emit explicit type args to avoid C++ deduction issues
             # with tpy::param_val_or_ref_t<T> parameters
             if func_info.is_generic() and expr.inferred_type_args:
-                type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
+                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
                 return f"{func_cpp_name}<{type_args_str}>({', '.join(gen_args)})"
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
@@ -836,7 +836,7 @@ class ExpressionGenerator:
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
-                type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
+                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
                 return f"{qualified_cpp_name(expr.user_module_call, expr.method)}<{type_args_str}>({args})"
             return f"{qualified_cpp_name(expr.user_module_call, expr.method)}({args})"
 
@@ -907,7 +907,7 @@ class ExpressionGenerator:
                 return f"{cpp_class}::{cpp_method}({args})"
             class_name = expr.obj.name
             if expr.inferred_type_args:
-                type_args_str = ", ".join(t.to_cpp() for t in expr.inferred_type_args)
+                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
                 class_name = f"{class_name}<{type_args_str}>"
             return f"{class_name}::{expr.method}({args})"
         # Handle module.function() (import X -> X.func())

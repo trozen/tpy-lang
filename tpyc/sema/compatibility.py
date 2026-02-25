@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
-    PendingListType, SpanType, StrType, StrViewType, OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
+    PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
+    OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
     is_any_str_type,
@@ -220,6 +221,14 @@ class TypeCompatibility:
             if isinstance(expected, ArrayType):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
                     return None
+
+        # Allow PendingStrType compatibility during first phase (before resolution)
+        if isinstance(actual, PendingStrType):
+            if isinstance(expected, (StrType, StringType, StrViewType)):
+                return None
+        if isinstance(expected, PendingStrType):
+            if isinstance(actual, (StrType, StringType, StrViewType)):
+                return None
 
         ctx = coercion_ctx or context
         coercion = resolve_coercion(actual, expected, ctx)

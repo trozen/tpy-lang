@@ -268,7 +268,7 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 
 #### String Type Semantics (Working)
 
-`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields/locals are owned:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal or param source), `std::string` when ownership is needed:
 
 ```python
 def greet(name: str) -> str:   # param=string_view, return=std::string
@@ -277,7 +277,11 @@ def greet(name: str) -> str:   # param=string_view, return=std::string
 class Config:
     name: str                  # field = std::string (owned)
 
-s: str = str(42)               # local = std::string (no dangling)
+s = "hello"                    # local = std::string_view (literal source)
+t = name                       # local = std::string_view (param source)
+u = str(42)                    # local = std::string (owned source)
+v = "start"
+v += " end"                    # local = std::string (augmented assignment)
 ```
 
 For explicit control, use `String` or `StrView` from the `tpy` module:

@@ -47,7 +47,7 @@ void test_elif_chain() {
     // 22:     x = 0
     tpy::BigInt x = tpy::BigInt(0);
     // 23:     c = '>'
-    std::string c = ">";
+    std::string_view c = ">";
     // 24:     if c == '>':
     if ((c == ">")) {
         // 25:         pass

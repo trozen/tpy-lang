@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Callable
 from ..typesys import (
     TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
+    PendingStrType, StrType, StringType, StrViewType,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -32,6 +33,9 @@ def type_matches_strict(
     # (type compatibility will catch unsafe cases separately)
     arg_inner = unwrap_readonly(arg_type)
     if arg_inner == param_type:
+        return True
+    # PendingStrType (unresolved str local) matches str params
+    if isinstance(arg_inner, PendingStrType) and isinstance(param_type, StrType):
         return True
     if protocol_checker and is_protocol_type(param_type):
         return protocol_checker(arg_inner, param_type)
@@ -78,6 +82,9 @@ def type_matches_with_coercion(
     """
     arg_inner = unwrap_readonly(arg_type)
     if type_matches_numeric(arg_inner, param_type):
+        return True
+    # PendingStrType matches any string type (str, String, StrView)
+    if isinstance(arg_inner, PendingStrType) and isinstance(param_type, (StrType, StringType, StrViewType)):
         return True
     if protocol_checker and is_protocol_type(param_type):
         return protocol_checker(arg_inner, param_type)
