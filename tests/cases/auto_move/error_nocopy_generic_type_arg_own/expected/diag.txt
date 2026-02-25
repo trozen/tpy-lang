@@ -1,0 +1,1 @@
+main.py:26: error: non-copyable type 'Holder[Handle]' (type argument 'Handle' is non-copyable) is used after this point and cannot be moved into 'h: Own[Holder[Handle]]'. Remove later uses or restructure the code.

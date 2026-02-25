@@ -1,0 +1,1 @@
+main.py:23: error: non-copyable type 'Holder[Handle]' (type argument 'Handle' is non-copyable) cannot be returned as Own[Holder[Handle]]. Only the original owner can be moved at its last use.

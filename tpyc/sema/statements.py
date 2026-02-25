@@ -183,11 +183,8 @@ class StatementAnalyzer:
                                          and self.compat._is_movable_var(stmt.value.name))
                         if not is_auto_moved:
                             ret_type_inner = self.ctx.get_expr_type(stmt.value) if stmt.value else None
-                            is_nocopy = False
-                            if ret_type_inner is not None:
-                                unwrapped = unwrap_readonly(ret_type_inner)
-                                rec = self.ctx.registry.get_record_for_type(unwrapped)
-                                is_nocopy = rec is not None and rec.is_nocopy
+                            is_nocopy = (ret_type_inner is not None
+                                         and self.ctx.is_type_nocopy(ret_type_inner))
                             if is_nocopy:
                                 reason = self.ctx.nocopy_reason(ret_type_inner)
                                 is_movable = (isinstance(stmt.value, TpyName)

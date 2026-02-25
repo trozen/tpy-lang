@@ -202,11 +202,20 @@ class SemanticContext:
             return f"non-copyable type '{typ}'"
         # Walk fields to find the nocopy one (implicitly propagated)
         for f in record.fields:
-            if self._is_field_nocopy(f.type):
+            if self.is_type_nocopy(f.type):
                 return (
                     f"non-copyable type '{typ}' (field '{f.name}' "
                     f"has non-copyable type '{f.type}')"
                 )
+        # Check type arguments for generic instantiations
+        if isinstance(inner, NamedType) and inner.type_args:
+            if record is None or not record.has_copy:
+                for arg in inner.type_args:
+                    if isinstance(arg, TpyType) and self.is_type_nocopy(arg):
+                        return (
+                            f"non-copyable type '{typ}' (type argument "
+                            f"'{arg}' is non-copyable)"
+                        )
         # Check parent
         if record.parent is not None:
             parent_rec = self.registry.get_record_for_type(record.parent)
@@ -218,20 +227,27 @@ class SemanticContext:
         # Explicitly decorated with @nocopy (or builtin nocopy)
         return f"@nocopy type '{typ}'"
 
-    def _is_field_nocopy(self, typ: TpyType) -> bool:
-        """Check if a field type is nocopy (for diagnostic walking)."""
+    def is_type_nocopy(self, typ: TpyType) -> bool:
+        """Check if a type is nocopy, recursively unwrapping wrappers and generics.
+
+        For generic instantiations like Box[NocopyType], checks whether any
+        type argument is nocopy. Respects __copy__ escape hatch: if the
+        containing record defines __copy__, type-arg nocopy is suppressed.
+        """
         if isinstance(typ, ReadonlyType):
-            return self._is_field_nocopy(typ.wrapped)
+            return self.is_type_nocopy(typ.wrapped)
         if isinstance(typ, OwnType):
-            return self._is_field_nocopy(typ.wrapped)
+            return self.is_type_nocopy(typ.wrapped)
         if isinstance(typ, OptionalType):
-            return self._is_field_nocopy(typ.inner)
+            return self.is_type_nocopy(typ.inner)
         record = self.registry.get_record_for_type(typ)
         if record is not None and record.is_nocopy:
             return True
         if isinstance(typ, NamedType) and typ.type_args:
+            if record is not None and record.has_copy:
+                return False
             for arg in typ.type_args:
-                if isinstance(arg, TpyType) and self._is_field_nocopy(arg):
+                if isinstance(arg, TpyType) and self.is_type_nocopy(arg):
                     return True
         return False
 

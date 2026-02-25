@@ -304,32 +304,8 @@ class SemanticAnalyzer:
             self._analyze_function(func)
 
     def _is_type_nocopy(self, typ: TpyType) -> bool:
-        """Check if a type is nocopy, recursively unwrapping wrappers and generics.
-
-        Unwraps Optional, Own, ReadonlyType. For generic types (NamedType with
-        type_args, list[T], etc.), recursively checks type arguments -- e.g.
-        list[NocopyType] is nocopy because std::vector<T> requires T to be copyable.
-        """
-        # Unwrap wrappers
-        if isinstance(typ, ReadonlyType):
-            return self._is_type_nocopy(typ.wrapped)
-        if isinstance(typ, OwnType):
-            return self._is_type_nocopy(typ.wrapped)
-        if isinstance(typ, OptionalType):
-            return self._is_type_nocopy(typ.inner)
-
-        # Check the type itself
-        record = self.ctx.registry.get_record_for_type(typ)
-        if record is not None and record.is_nocopy:
-            return True
-
-        # Check generic type arguments (e.g. list[NocopyType])
-        if isinstance(typ, NamedType) and typ.type_args:
-            for arg in typ.type_args:
-                if isinstance(arg, TpyType) and self._is_type_nocopy(arg):
-                    return True
-
-        return False
+        """Delegate to canonical is_type_nocopy on context."""
+        return self.ctx.is_type_nocopy(typ)
 
     def _propagate_nocopy(self, module: TpyModule) -> None:
         """Propagate nocopy from fields/parents to containing records.

@@ -1,0 +1,1 @@
+main.py:22: error: Cannot copy non-copyable type 'Wrapper[Handle]' (type argument 'Handle' is non-copyable). Non-copyable values can only be moved (pass directly at last use).

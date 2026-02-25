@@ -2,7 +2,6 @@
 
 ## Next
 - argument default values
-- nocopy propagation for generic instantiations: `class Box[T]` with field `x: T` is copyable at definition, but `Box[NocopyType]` should be nocopy at instantiation site. Currently C++ catches this but TPy sema doesn't.
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns
 - bi-directional contextual type inference (Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
 - class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
@@ -128,6 +127,7 @@
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.
 - No `Iterable[T]` protocol: `__iter__` support is structural (detected by `get_iter_element_type()`), not protocol-based. Can't write `def f(it: Iterable[T])` as a parameter type. Adding it requires return-type conformance checking in the protocol system — currently protocol conformance only checks type equality on method signatures, not whether a return type *conforms to* another protocol (e.g., `Counter` conforming to `OptIterator[T]`).
 - Destructor drop flag shadowing in inheritance: when both parent and child have `__del__`, each class emits its own `bool __tpy_owned_ = true` field. The child's shadows the parent's, creating two independent flags that must stay in sync. Currently correct (each move op/destructor operates on its own class's flag), but fragile. Fix: emit `__tpy_owned_` only on the root class that introduces `__del__`; children inherit it without shadowing.
+- Last-use analysis is not flow-sensitive: `if cond: return h` followed by `print(h.fd); return h` flags the first `return h` as not-at-last-use because `h` appears later in the function body. But `return` exits the function, so `h` can't be used again on that path. Fix requires per-branch last-use tracking.
 
 ## ShedSkin examples
 - score4

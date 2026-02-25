@@ -385,10 +385,8 @@ class CallAnalyzer:
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
-        # @nocopy types cannot be copied (unwrap readonly to catch readonly[Handle])
-        inner_type = unwrap_readonly(arg_type)
-        record_info = self.ctx.registry.get_record_for_type(inner_type)
-        if record_info and record_info.is_nocopy:
+        # @nocopy types cannot be copied
+        if self.ctx.is_type_nocopy(arg_type):
             reason = self.ctx.nocopy_reason(arg_type)
             raise self.ctx.error(
                 f"Cannot copy {reason}. "
@@ -488,12 +486,10 @@ class CallAnalyzer:
     def _is_nocopy_type(self, typ: TpyType) -> bool:
         """Check if a type is @nocopy (move-only, copy deleted).
 
-        Unwraps ReadonlyType so readonly[Handle] is detected as @nocopy.
-        Uses get_record_for_type() to handle both user records and builtin module types.
+        Delegates to the canonical is_type_nocopy() which handles wrappers,
+        generic type arguments, and the __copy__ escape hatch.
         """
-        inner = unwrap_readonly(typ)
-        record_info = self.ctx.registry.get_record_for_type(inner)
-        return record_info is not None and record_info.is_nocopy
+        return self.ctx.is_type_nocopy(typ)
 
     def _check_own_param_arg(self, arg: TpyExpr, arg_type: TpyType,
                               pname: str, ptype: OwnType) -> None:

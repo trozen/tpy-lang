@@ -101,6 +101,8 @@ class RecordGenerator:
         if record is not None and record.is_nocopy:
             return True
         if isinstance(typ, NamedType) and typ.type_args:
+            if record is not None and record.has_copy:
+                return False
             return any(
                 isinstance(a, TpyType) and self._is_field_type_nocopy(a)
                 for a in typ.type_args
