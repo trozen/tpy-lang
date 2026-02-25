@@ -1,0 +1,1 @@
+main.py:26: error: non-copyable type 'Container' (field 'handle' has non-copyable type 'Handle') is used after this point and cannot be moved into 'c: Own[Container]'. Remove later uses or restructure the code.

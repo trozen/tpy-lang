@@ -183,21 +183,21 @@ class StatementAnalyzer:
                             is_nocopy = False
                             if ret_type_inner is not None:
                                 unwrapped = unwrap_readonly(ret_type_inner)
-                                if isinstance(unwrapped, NamedType):
-                                    rec = self.ctx.registry.get_record(unwrapped.name)
-                                    is_nocopy = rec is not None and rec.is_nocopy
+                                rec = self.ctx.registry.get_record_for_type(unwrapped)
+                                is_nocopy = rec is not None and rec.is_nocopy
                             if is_nocopy:
+                                reason = self.ctx.nocopy_reason(ret_type_inner)
                                 is_movable = (isinstance(stmt.value, TpyName)
                                               and self.compat._is_movable_var(stmt.value.name))
                                 if is_movable:
                                     raise self.ctx.error(
-                                        f"@nocopy type '{ret_type_inner}' is used after this point "
+                                        f"{reason} is used after this point "
                                         f"and cannot be moved into return type Own[{expected.wrapped}]. "
                                         f"Remove later uses or restructure the code.",
                                         stmt.value
                                     )
                                 raise self.ctx.error(
-                                    f"@nocopy type '{ret_type_inner}' cannot be returned as "
+                                    f"{reason} cannot be returned as "
                                     f"Own[{expected.wrapped}]. "
                                     f"Only the original owner can be moved at its last use.",
                                     stmt.value

@@ -57,6 +57,7 @@ class BuiltinTypeDef:
     param_kinds: list[TypeParamKind] = field(default_factory=list)  # Kind of each type param
     type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
     extends: list[str] = field(default_factory=list)  # Protocols: ["NativeIterable[T]"]
+    is_nocopy: bool = False  # True for move-only types (copy deleted)
 
 
 @dataclass
@@ -125,7 +126,8 @@ class BuiltinModule:
     def register_type(self, type_obj: "TpyType", cpp_type: str,
                       methods: dict[str, list[MethodDef]] | None = None,
                       constructors: list[MethodDef] | None = None,
-                      extends: list[str] | None = None):
+                      extends: list[str] | None = None,
+                      is_nocopy: bool = False):
         """Register a built-in type using its type object. Preferred for non-parameterized types."""
         qname = type_obj.qualified_name()
         assert qname is not None, f"Type {type_obj} has no qualified_name"
@@ -135,6 +137,7 @@ class BuiltinModule:
             methods=methods or {},
             constructors=constructors or [],
             extends=extends or [],
+            is_nocopy=is_nocopy,
         )
 
     def type(self, name: str, cpp_type: str,
@@ -144,6 +147,7 @@ class BuiltinModule:
              param_kinds: list[TypeParamKind] | None = None,
              type_factory: "Callable[..., TpyType] | None" = None,
              extends: list[str] | None = None,
+             is_nocopy: bool = False,
              ):
         """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
         type_params = type_params or []
@@ -176,6 +180,7 @@ class BuiltinModule:
             param_kinds=param_kinds,
             type_factory=type_factory,
             extends=extends or [],
+            is_nocopy=is_nocopy,
         )
 
 
@@ -366,6 +371,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         type_param_kinds=type_def.param_kinds,
         extends_protocols=type_def.extends,
         cpp_type=type_def.cpp_type,
+        is_nocopy=type_def.is_nocopy,
     )
 
 

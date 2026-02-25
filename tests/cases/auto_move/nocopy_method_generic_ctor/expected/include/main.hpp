@@ -20,6 +20,7 @@ struct Handle {
     int32_t fd;
 
     Handle() = default;
+    // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
     Handle(Handle&&) = default;
@@ -39,6 +40,11 @@ struct Holder {
     Handle h;
 
     Holder() = default;
+    // non-copyable (field 'h')
+    Holder(const Holder&) = delete;
+    Holder& operator=(const Holder&) = delete;
+    Holder(Holder&&) = default;
+    Holder& operator=(Holder&&) = default;
 
     // 13:     def take(self, h: Own[Handle]) -> None:
     void take(Handle h) {

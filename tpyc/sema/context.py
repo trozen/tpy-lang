@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, TypeParamKind, IntLiteralType,
-    FixedIntType, INT32, BIGINT,
+    FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
+    unwrap_readonly,
 )
 from ..namespace import Namespace
 from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall
@@ -173,6 +174,54 @@ class SemanticContext:
     def warning_from_loc(self, message: str, loc: 'SourceLocation | None') -> None:
         """Record a warning diagnostic from a SourceLocation."""
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
+
+    def nocopy_reason(self, typ: TpyType) -> str:
+        """Return a human-readable reason why a type is nocopy.
+
+        For explicitly @nocopy types returns "@nocopy type 'X'".
+        For implicitly nocopy types (propagated from fields) returns a message
+        explaining which field caused it.
+        """
+        inner = unwrap_readonly(typ)
+        if isinstance(inner, OwnType):
+            inner = inner.wrapped
+        record = self.registry.get_record_for_type(inner)
+        if record is None:
+            return f"non-copyable type '{typ}'"
+        # Walk fields to find the nocopy one (implicitly propagated)
+        for f in record.fields:
+            if self._is_field_nocopy(f.type):
+                return (
+                    f"non-copyable type '{typ}' (field '{f.name}' "
+                    f"has non-copyable type '{f.type}')"
+                )
+        # Check parent
+        if record.parent is not None:
+            parent_rec = self.registry.get_record_for_type(record.parent)
+            if parent_rec is not None and parent_rec.is_nocopy:
+                return (
+                    f"non-copyable type '{typ}' (parent '{record.parent}' "
+                    f"is non-copyable)"
+                )
+        # Explicitly decorated with @nocopy (or builtin nocopy)
+        return f"@nocopy type '{typ}'"
+
+    def _is_field_nocopy(self, typ: TpyType) -> bool:
+        """Check if a field type is nocopy (for diagnostic walking)."""
+        if isinstance(typ, ReadonlyType):
+            return self._is_field_nocopy(typ.wrapped)
+        if isinstance(typ, OwnType):
+            return self._is_field_nocopy(typ.wrapped)
+        if isinstance(typ, OptionalType):
+            return self._is_field_nocopy(typ.inner)
+        record = self.registry.get_record_for_type(typ)
+        if record is not None and record.is_nocopy:
+            return True
+        if isinstance(typ, NamedType) and typ.type_args:
+            for arg in typ.type_args:
+                if isinstance(arg, TpyType) and self._is_field_nocopy(arg):
+                    return True
+        return False
 
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the cached type of an expression."""

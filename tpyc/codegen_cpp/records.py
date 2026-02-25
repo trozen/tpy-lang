@@ -8,7 +8,8 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
+    TpyType, NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, ReadonlyType,
+    TypeParamRef, TypeParamKind, RecordInfo,
     ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
 )
 from ..parse import (
@@ -89,6 +90,33 @@ class RecordGenerator:
                 result.append(record)
 
         return result
+
+    def _is_field_type_nocopy(self, typ: TpyType) -> bool:
+        """Check if a field type is nocopy (for comment generation)."""
+        if isinstance(typ, (ReadonlyType, OwnType)):
+            return self._is_field_type_nocopy(typ.wrapped)
+        if isinstance(typ, OptionalType):
+            return self._is_field_type_nocopy(typ.inner)
+        record = self.ctx.analyzer.registry.get_record_for_type(typ)
+        if record is not None and record.is_nocopy:
+            return True
+        if isinstance(typ, NamedType) and typ.type_args:
+            return any(
+                isinstance(a, TpyType) and self._is_field_type_nocopy(a)
+                for a in typ.type_args
+            )
+        return False
+
+    def _find_nocopy_field(self, record_info: RecordInfo) -> str | None:
+        """Find the name of the first nocopy field, for diagnostic comments."""
+        for f in record_info.fields:
+            if self._is_field_type_nocopy(f.type):
+                return f.name
+        if record_info.parent is not None:
+            parent_rec = self.ctx.analyzer.registry.get_record_for_type(record_info.parent)
+            if parent_rec is not None and parent_rec.is_nocopy:
+                return None  # parent nocopy, not a field
+        return None
 
     def _is_native(self, record: TpyRecord) -> bool:
         """Check if a record is a native import (no C++ generation needed)."""
@@ -203,6 +231,14 @@ class RecordGenerator:
         # __del__ implies non-copyable: copying would create two owned objects that
         # both run cleanup (double-drop). Move ops come from _gen_move_and_destructor.
         if record_info and (record_info.is_nocopy or record_info.has_del):
+            if record_info.is_nocopy:
+                out.write(f"{INDENT}// non-copyable")
+                nocopy_field = self._find_nocopy_field(record_info)
+                if record.is_nocopy:
+                    out.write(" (@nocopy)")
+                elif nocopy_field:
+                    out.write(f" (field '{nocopy_field}')")
+                out.write("\n")
             out.write(f"{INDENT}{record.name}(const {record.name}&) = delete;\n")
             out.write(f"{INDENT}{record.name}& operator=(const {record.name}&) = delete;\n")
             if record_info.is_nocopy and not record_info.has_del:

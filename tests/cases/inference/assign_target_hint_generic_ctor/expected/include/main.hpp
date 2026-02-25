@@ -24,6 +24,7 @@ struct Wrapper {
         // 12:         self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
+    // non-copyable (field '_storage')
     Wrapper(const Wrapper&) = delete;
     Wrapper& operator=(const Wrapper&) = delete;
     Wrapper(Wrapper&& other) noexcept : _storage(std::move(other._storage)) {

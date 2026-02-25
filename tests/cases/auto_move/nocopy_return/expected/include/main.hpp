@@ -19,6 +19,7 @@ struct Handle {
     int32_t fd;
 
     Handle() = default;
+    // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
     Handle(Handle&&) = default;

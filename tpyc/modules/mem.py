@@ -84,6 +84,7 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[], returns=VOID, cpp=""),
         ],
         methods=_storage_methods(),
+        is_nocopy=True,
     )
 
     # UninitHeapStorage[T]: heap-allocated uninitialized storage
@@ -100,6 +101,7 @@ def init_module() -> BuiltinModule:
             ),
         ],
         methods=_storage_methods(),
+        is_nocopy=True,
     )
 
     return module

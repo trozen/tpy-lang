@@ -81,6 +81,7 @@ struct WithHeapStorage {
         // 29:         self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
+    // non-copyable (field '_storage')
     WithHeapStorage(const WithHeapStorage&) = delete;
     WithHeapStorage& operator=(const WithHeapStorage&) = delete;
     WithHeapStorage(WithHeapStorage&& other) noexcept : _storage(std::move(other._storage)) {

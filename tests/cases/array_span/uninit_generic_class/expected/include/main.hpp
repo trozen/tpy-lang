@@ -23,6 +23,11 @@ struct Holder {
         // 10:         self._storage.init0(value)
         this->_storage.init0(value);
     }
+    // non-copyable (field '_storage')
+    Holder(const Holder&) = delete;
+    Holder& operator=(const Holder&) = delete;
+    Holder(Holder&&) = default;
+    Holder& operator=(Holder&&) = default;
 
     // 12:     def get(self) -> T:
     tpy::return_val_or_ref_t<T> get() {

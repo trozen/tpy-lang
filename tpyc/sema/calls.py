@@ -383,14 +383,14 @@ class CallAnalyzer:
             arg_type = arg_type.wrapped
         # @nocopy types cannot be copied (unwrap readonly to catch readonly[Handle])
         inner_type = unwrap_readonly(arg_type)
-        if isinstance(inner_type, NamedType):
-            record_info = self.ctx.registry.get_record(inner_type.name)
-            if record_info and record_info.is_nocopy:
-                raise self.ctx.error(
-                    f"Cannot copy @nocopy type '{inner_type}'. "
-                    f"@nocopy values can only be moved (pass directly at last use).",
-                    expr,
-                )
+        record_info = self.ctx.registry.get_record_for_type(inner_type)
+        if record_info and record_info.is_nocopy:
+            reason = self.ctx.nocopy_reason(arg_type)
+            raise self.ctx.error(
+                f"Cannot copy {reason}. "
+                f"Non-copyable values can only be moved (pass directly at last use).",
+                expr,
+            )
         expr.resolved_function_info = FunctionInfo(
             name="copy",
             params=[ParamInfo("x", arg_type)],
@@ -485,12 +485,11 @@ class CallAnalyzer:
         """Check if a type is @nocopy (move-only, copy deleted).
 
         Unwraps ReadonlyType so readonly[Handle] is detected as @nocopy.
+        Uses get_record_for_type() to handle both user records and builtin module types.
         """
         inner = unwrap_readonly(typ)
-        if isinstance(inner, NamedType):
-            record_info = self.ctx.registry.get_record(inner.name)
-            return record_info is not None and record_info.is_nocopy
-        return False
+        record_info = self.ctx.registry.get_record_for_type(inner)
+        return record_info is not None and record_info.is_nocopy
 
     def _check_own_param_arg(self, arg: TpyExpr, arg_type: TpyType,
                               pname: str, ptype: OwnType) -> None:
@@ -509,19 +508,20 @@ class CallAnalyzer:
                                and self.compat._is_movable_var(arg.name))
         if not is_last_use_movable:
             if self._is_nocopy_type(arg_type):
+                reason = self.ctx.nocopy_reason(arg_type)
                 is_movable = (isinstance(arg, TpyName)
                               and self.compat._is_movable_var(arg.name))
                 if is_movable:
                     # Movable owner, but not at last use (used later)
                     raise self.ctx.error(
-                        f"@nocopy type '{arg_type}' is used after this point "
+                        f"{reason} is used after this point "
                         f"and cannot be moved into '{pname}: Own[{ptype.wrapped}]'. "
                         f"Remove later uses or restructure the code.",
                         arg
                     )
                 # Not movable (T& alias, readonly param, etc.)
                 raise self.ctx.error(
-                    f"@nocopy type '{arg_type}' cannot be copied into "
+                    f"{reason} cannot be copied into "
                     f"'{pname}: Own[{ptype.wrapped}]'. "
                     f"Only the original owner can be moved at its last use.",
                     arg

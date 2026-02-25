@@ -22,6 +22,7 @@ struct Handle {
     // 8:     def __init__(self, id: Int32):
     Handle() = default;
     explicit Handle(int32_t id) : id(id) {}
+    // non-copyable (@nocopy)
     Handle(const Handle&) = delete;
     Handle& operator=(const Handle&) = delete;
     Handle(Handle&& other) noexcept : id(std::move(other.id)) {

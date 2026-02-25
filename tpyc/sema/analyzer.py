@@ -7,7 +7,10 @@ Main orchestrator that wires all components together.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, NoneType, VoidType, INT32, ReadonlyType, unwrap_readonly
+from ..typesys import (
+    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, NoneType, VoidType,
+    INT32, ReadonlyType, unwrap_readonly, OwnType, OptionalType, RecordInfo, FieldInfo,
+)
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
 from ..parse.nodes import TpyStrLiteral
@@ -246,6 +249,11 @@ class SemanticAnalyzer:
         for record in module.records:
             self.registrar.validate_record_inheritance(record)
 
+        # Propagate @nocopy from fields to containing records.
+        # Done after inheritance validation so parent types are resolved.
+        # Definition order handles transitive propagation naturally.
+        self._propagate_nocopy(module)
+
         # Transfer type aliases from parser to sema registry, validating members
         for name, (typ, loc) in module.type_aliases.items():
             self._validate_type_alias_members(name, typ, loc)
@@ -281,6 +289,58 @@ class SemanticAnalyzer:
         # Sixth pass: analyze function bodies
         for func in module.functions:
             self._analyze_function(func)
+
+    def _is_type_nocopy(self, typ: TpyType) -> bool:
+        """Check if a type is nocopy, recursively unwrapping wrappers and generics.
+
+        Unwraps Optional, Own, ReadonlyType. For generic types (NamedType with
+        type_args, list[T], etc.), recursively checks type arguments -- e.g.
+        list[NocopyType] is nocopy because std::vector<T> requires T to be copyable.
+        """
+        # Unwrap wrappers
+        if isinstance(typ, ReadonlyType):
+            return self._is_type_nocopy(typ.wrapped)
+        if isinstance(typ, OwnType):
+            return self._is_type_nocopy(typ.wrapped)
+        if isinstance(typ, OptionalType):
+            return self._is_type_nocopy(typ.inner)
+
+        # Check the type itself
+        record = self.ctx.registry.get_record_for_type(typ)
+        if record is not None and record.is_nocopy:
+            return True
+
+        # Check generic type arguments (e.g. list[NocopyType])
+        if isinstance(typ, NamedType) and typ.type_args:
+            for arg in typ.type_args:
+                if isinstance(arg, TpyType) and self._is_type_nocopy(arg):
+                    return True
+
+        return False
+
+    def _propagate_nocopy(self, module: TpyModule) -> None:
+        """Propagate nocopy from fields/parents to containing records.
+
+        Processes records in definition order. If any field's type is nocopy,
+        the containing record becomes nocopy too. Also checks parent type.
+        Skips records that define __copy__ (opt-out escape hatch).
+        """
+        for record in module.records:
+            info = self.ctx.registry.get_record(record.name)
+            if info is None or info.is_nocopy:
+                continue
+            # __copy__ opts out of propagation
+            if "__copy__" in info.methods:
+                continue
+            # Check parent
+            if info.parent is not None and self._is_type_nocopy(info.parent):
+                info.is_nocopy = True
+                continue
+            # Check fields
+            for f in info.fields:
+                if self._is_type_nocopy(f.type):
+                    info.is_nocopy = True
+                    break
 
     def _normalize_param_type(self, ptype: TpyType, is_readonly_ctx: bool) -> TpyType:
         """Normalize a parameter type for readonly context.

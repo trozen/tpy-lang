@@ -886,6 +886,38 @@ def main():
   alias points to old storage and no longer constrains moves of the new h
 - `Own[T]` parameter forwarding works at last use
 
+**Nocopy propagation:** Classes that contain non-copyable fields automatically become
+non-copyable themselves, without needing an explicit `@nocopy` decorator. This works
+transitively and with generic types:
+
+```python
+@nocopy
+class Handle:
+    fd: Int32
+
+class Container:       # implicitly nocopy (field 'handle' is @nocopy)
+    handle: Handle
+
+class Outer:           # implicitly nocopy (field 'c' contains nocopy Handle)
+    c: Container
+
+class Handles:         # implicitly nocopy (list[Handle] requires copyable T)
+    items: list[Handle]
+```
+
+Propagation also applies to:
+- Builtin nocopy types (`UninitHeapStorage`, `UninitArrayStorage`)
+- `Optional[NocopyType]`, `Own[NocopyType]` fields
+- Inherited parent types (if parent is nocopy, child is too)
+- Generic type arguments (`list[T]`, `Array[T, N]`, etc.)
+
+Error messages for implicitly-nocopy types explain the reason:
+```
+error: Cannot copy non-copyable type 'Container' (field 'handle' has
+non-copyable type 'Handle'). Non-copyable values can only be moved
+(pass directly at last use).
+```
+
 Generated C++ for @nocopy records includes:
 ```cpp
 struct Handle {

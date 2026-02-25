@@ -156,7 +156,7 @@ tests/
 │           │   ├── main.py
 │           │   ├── native_types.hpp   # (optional) C++ type defs for native interop tests
 │           │   └── native_types.cpp   # (optional) C++ stubs for native interop tests
-│           ├── no_cpython.txt         # (optional) Skip CPython compatibility test
+│           ├── no_cpython.txt         # (optional) Skip CPython compatibility test (see note below)
 │           └── expected/
 │               ├── diag.txt           # Compiler diagnostics
 │               ├── include/main.hpp   # Generated header (if compiles)
@@ -182,6 +182,8 @@ tests/
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs
 5. Run `uv run pytest -k {name}` to verify
+
+**CPython compatibility:** Avoid adding `no_cpython.txt` unless absolutely necessary. Most tests can be made CPython-compatible by adding `__init__` methods (CPython doesn't create instance attributes from type annotations alone) and using `lib/cpy/` stubs. The `lib/cpy/tpy/` package provides CPython implementations of TPy types (`Own`, `nocopy`, `UninitHeapStorage`, etc.). Only skip CPython when the test truly depends on C++-only behavior (e.g. `@native` interop).
 
 Per-case compiler options can be set with optional `options.json` at the case root.
 Currently supported:

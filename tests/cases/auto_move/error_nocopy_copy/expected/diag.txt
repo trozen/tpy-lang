@@ -1,1 +1,1 @@
-main.py:12: error: Cannot copy @nocopy type 'Handle'. @nocopy values can only be moved (pass directly at last use).
+main.py:12: error: Cannot copy @nocopy type 'Handle'. Non-copyable values can only be moved (pass directly at last use).
