@@ -152,6 +152,42 @@ Assignment (`s = sv;` where `s` is already `std::string`) works implicitly via `
 - `str + str` -> `str` (via `tpy::str_concat`, returns `std::string`)
 - `str += str` -> in-place `tpy::str_concat` (reassignment)
 
+## Planned: F-Strings
+
+F-strings (`f"hello {name}"`) will use C++20 `std::format` as the default backend.
+
+### Design principle: keep f-strings structured in the AST
+
+The parser will represent f-strings as a `TpyFString` node containing a list of
+literal segments and typed expressions (with optional format specs). This
+structure must NOT be desugared into string concatenation in the parser -- codegen
+needs the full information to choose the emission strategy based on context:
+
+| Context | C++ codegen | Allocates? |
+|---------|-------------|------------|
+| Assignment: `s = f"x={x}"` | `std::format("x={}", x)` | Yes |
+| Print: `print(f"x={x}")` | `std::cout << "x=" << x << "\n"` | No |
+| FormatString param: `log(f"x={x}")` | `log("x={}", x)` | No |
+| Macro passthrough (future) | `LOG_INFO("x={}", x)` | No |
+
+This mirrors Rust's approach where `format!`, `println!`, and `write!` share the
+same format syntax but emit different code. The initial implementation only needs
+the assignment case (`std::format`). Print optimization and FormatString
+passthrough are additive -- no AST redesign needed.
+
+### Format specs
+
+Python format specs (`.2f`, `>10`, `#x`) map almost 1:1 to C++20 format specs.
+The main divergence is bool/float formatting: `std::format("{}", true)` outputs
+`true` but Python outputs `True`. Wrapper types or custom formatters will be
+needed to match Python semantics.
+
+### `@noalloc` interaction
+
+In `@noalloc` contexts, `f"..."` assigned to a string should be an error (it
+allocates). But `print(f"...")` or FormatString passthrough could be allowed since
+they don't allocate.
+
 ## Planned: `@noalloc` Warnings
 
 In `@noalloc` contexts, the compiler should warn about unnecessary allocations:
