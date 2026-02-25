@@ -789,9 +789,15 @@ class StatementAnalyzer:
                         var_type = ReadonlyType(var_type)
                     if var_type != existing_type:
                         # Keep original declaration's resolved type in sync for codegen.
+                        resolved = unwrap_readonly(var_type)
                         orig_decl = self.ctx.var_decl_by_name.get(stmt.name)
                         if orig_decl:
-                            self.ctx.var_types[id(orig_decl)] = unwrap_readonly(var_type)
+                            self.ctx.var_types[id(orig_decl)] = resolved
+                        # Retroactively update declared_var_types for earlier lines
+                        # so # tpyc: type() reflects the final variable type.
+                        for key in self.ctx.declared_var_types:
+                            if key[1] == stmt.name:
+                                self.ctx.declared_var_types[key] = resolved
             else:
                 # New variable: resolve IntLiteralType.
                 if isinstance(init_type, IntLiteralType):
@@ -987,9 +993,16 @@ class StatementAnalyzer:
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
             if not isinstance(inner_target, PendingStrType):
+                resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
-                    self.ctx.var_types[id(var_decl)] = unwrap_readonly(target_type)
+                    self.ctx.var_types[id(var_decl)] = resolved
+                # Retroactively update declared_var_types for earlier lines
+                # so # tpyc: type() reflects the final variable type.
+                if resolved != unwrap_readonly(inner_target):
+                    for key in self.ctx.declared_var_types:
+                        if key[1] == stmt.target.name:
+                            self.ctx.declared_var_types[key] = resolved
 
         # Disallow reassignment of non-value-type params and loop vars
         if isinstance(stmt.target, TpyName):

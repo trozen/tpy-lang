@@ -1,0 +1,1 @@
+main.py:6: error: Type mismatch in reassignment to 'x': expected UInt64, got Int64

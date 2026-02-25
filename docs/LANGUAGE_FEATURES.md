@@ -1978,6 +1978,14 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Augmented assignment currently does not perform literal anchoring (`x = 0; x += Int32(5)` remains `int`/`BigInt`).
   - For `x = 0` style literal-seeded vars, `x += Int32(...)` emits a warning that augmented assignment does not narrow the variable type.
   - The warning also applies when RHS is a function returning `Int32`; explicit `int` anchors (`x: int = 0`, `x = int(0)`) do not warn.
+- **Working**: Numeric widening across reassignments
+  - `x = Int32(1); x = Int64(2)` infers `Int64` (same-sign, wider wins)
+  - `x = Int32(1); x = 1.5` infers `float` (any integer + float -> float)
+  - `x = 1.5; x = Int32(1)` stays `float` (bidirectional -- order doesn't matter)
+  - `x = Int32(1); x = int(2)` infers `int`/BigInt (FixedInt + BigInt -> BigInt)
+  - `x = UInt8(1); x = Int32(2)` infers `Int32` (unsigned -> wider signed)
+  - Mixed sign same width is an error: `x = Int32(1); x = UInt32(2)` (requires annotation)
+  - Bool mixed with numeric is an error: `x = True; x = Int32(1)` (requires annotation)
 - **Working**: Optional class members (`self.field: T | None`) → `std::optional<T>` inline storage
   - Field access through optional (`obj.field.x`) works via `std::optional::operator->()`
   - `is None` / `is not None` checks use `.has_value()`

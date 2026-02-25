@@ -32,7 +32,7 @@ from ..typesys import (
     STRVIEW,
 )
 from .diagnostics import SemanticError
-from .numeric_lattice import merge_literal_seed_target
+from .numeric_lattice import merge_literal_seed_target, widen_numeric_types
 
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
@@ -152,6 +152,11 @@ class LocalTypeDeduction:
                 return merged
             self.ctx.literal_default_vars.discard(name)
             return existing_type
+
+        # Numeric widening: different numeric types widen to the wider type.
+        widened = widen_numeric_types(existing_type, init_type)
+        if widened is not None:
+            return widened
 
         return existing_type
 

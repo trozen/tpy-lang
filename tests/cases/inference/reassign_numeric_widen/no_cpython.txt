@@ -1,0 +1,1 @@
+Numeric widening changes variable type (e.g. float stays float after Int32 assignment), which differs from Python's dynamic typing.

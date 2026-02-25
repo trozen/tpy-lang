@@ -16,7 +16,8 @@ Status: In Progress
 | Late annotation retro-validation for top-level globals | Done |
 | Numeric lattice helper scaffolding for future numeric families | Done |
 | Augmented assignment policy (`x=0; x += Int32(5)` does not anchor; emits warning) | Done |
-| Full lattice extension for future int/float families (`Int64`, `UInt32`, `Float32`) | TODO |
+| Numeric widening across reassignments (Int32->Int64, FixedInt->float, FixedInt->BigInt, unsigned->wider signed) | Done |
+| Full lattice extension for remaining numeric families (`Float32`) | TODO |
 
 This document defines how TurboPython should infer variable types across multiple
 assignments when no explicit annotation is present.

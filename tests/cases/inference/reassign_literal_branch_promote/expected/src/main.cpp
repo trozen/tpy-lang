@@ -61,7 +61,7 @@ void test_elif_chain() {
         // 30:         if True:
         if (true) {
             // 31:             x = get_big()
-            x = (get_big()).to_fixed_check<int32_t>();
+            x = get_big();
         }
     }
     // 32:     x += 1
