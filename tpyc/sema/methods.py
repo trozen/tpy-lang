@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
     from .compatibility import TypeCompatibility
+    from .local_deduction import LocalTypeDeduction
     from .expressions import ExpressionAnalyzer
     from .calls import CallAnalyzer
 
@@ -41,11 +42,13 @@ class MethodAnalyzer:
         type_ops: TypeOperations,
         protocols: ProtocolChecker,
         compat: TypeCompatibility,
+        deduction: LocalTypeDeduction,
     ):
         self.ctx = ctx
         self.type_ops = type_ops
         self.protocols = protocols
         self.compat = compat
+        self.deduction = deduction
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
         self.calls: CallAnalyzer | None = None
@@ -216,9 +219,7 @@ class MethodAnalyzer:
         # List mutation tracking (before deref chain -- applies to direct list types only)
         if isinstance(obj_type, (PendingListType, ListType)):
             if expr.method in LIST_MUTATION_METHODS:
-                from .list_literals import ListLiteralTracker
-                tracker = ListLiteralTracker(self.ctx)
-                tracker.mark_list_mutated(expr.obj)
+                self.deduction.mark_list_mutated(expr.obj)
 
         # Deref chain -- resolves through Ptr, ConstPtr, and any Deref[T] type
         original_type = obj_type

@@ -1,0 +1,285 @@
+# Local Variable Type Deduction -- Unified Post-Body Pass
+
+## Roadmap
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| 1 | Unify infrastructure: replace ListLiteralTracker, StrVarTracker, and deduction parts of ReassignmentInference with single VarFacts-based pass. Preserve existing behavior. | Not started |
+| 2 | New deduction rules: numeric widening across assignments (int->float, Int32->Int64), different-size list reassignment, return-type-driven deduction, alias propagation for lists. | Not started |
+| 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Not started |
+
+## Motivation
+
+The compiler currently has three independent mechanisms for deducing local
+variable types after analyzing a function body:
+
+1. **ReassignmentInference** -- handles `None + T -> Optional[T]` and int
+   literal range refinement (runs inline during analysis)
+2. **ListLiteralTracker** -- resolves `PendingListType` to `Array` vs `list`
+3. **StrVarTracker** -- resolves `PendingStrType` to `StrView` vs `str`
+
+These share the same lifecycle (collect usage facts during analysis, resolve
+after body) but are completely independent. They duplicate infrastructure
+(counters, tracking dicts, cleanup, call sites) and cannot coordinate --
+e.g. reassignment inference cannot see whether a list resolved to Array or
+list.
+
+This document proposes replacing all three with a single unified post-body
+deduction pass.
+
+## Scope
+
+The unified pass replaces **post-body resolution only**. Simple cases where
+a variable has a single initializer with an unambiguous type (e.g.
+`x = get_int32()`) continue to be resolved inline during analysis -- there
+is nothing to defer.
+
+The pass kicks in when a variable's type cannot be determined from its
+initializer alone:
+
+- Multiple assignments with different types
+- Pending container kind (Array vs list)
+- Pending string ownership (StrView vs str)
+- None-seeded variables
+- Int-literal-seeded variables
+- Type influenced by usage (parameter passing, return)
+
+Explicit type annotations always take precedence and are never overridden
+by deduction.
+
+## Design
+
+### Phase 1: Fact Collection (during body analysis)
+
+For every local variable without an explicit annotation, record:
+
+```
+VarFacts:
+    name: str
+    writes: list[WriteInfo]        # every assignment to this var
+    param_passes: list[ParamInfo]  # every call site where var is an argument
+    returns: list[ReturnInfo]      # every return statement returning this var
+    aliases: list[AliasInfo]       # variables assigned from this var
+    method_calls: list[MethodCallInfo]  # methods called on this var (e.g. .append)
+```
+
+Each WriteInfo captures:
+
+```
+WriteInfo:
+    type: TpyType          # type of the RHS
+    expr: TpyExpr          # the expression (for diagnostics)
+    line: int
+    is_init: bool           # first assignment?
+    source_var: str | None  # if RHS is another variable, its name (for alias tracking)
+```
+
+ParamInfo captures:
+
+```
+ParamInfo:
+    param_type: TpyType    # the declared parameter type at the call site
+    line: int
+```
+
+ReturnInfo captures:
+
+```
+ReturnInfo:
+    return_type: TpyType   # the function's declared return type
+    line: int
+```
+
+This replaces the current separate tracking structures (ListLiteralInfo,
+StrVarInfo, write_history, literal_default_vars, etc.).
+
+### Phase 2: Resolution (after body analysis)
+
+For each variable with collected facts, resolve in dependency order
+(aliases resolved after their sources):
+
+#### Step 1: Determine candidate type from writes
+
+Apply these rules in order:
+
+**a) All writes are the same concrete type** -> use that type.
+
+**b) Numeric widening** -- all writes are numeric types (int literals,
+FixedInt, BigInt, Float):
+- Compute the widest type using the numeric lattice.
+- Int literals adapt to the widest concrete type.
+- If any write is Float and others are integer types -> Float.
+- Mixed signed/unsigned of same width -> error (force annotation).
+- Bool mixed with numeric -> error (force annotation).
+
+**c) None + single concrete type T** -- one or more writes are None, all
+others are the same type T:
+- Deduce `Optional[T]`.
+- Only when None is the *initial* assignment (`x = None` as first write).
+- `T` then `None` is an error -- if the programmer wants Optional,
+  they should annotate. This prevents accidental None assignments from
+  silently widening the type.
+
+**d) Int literal range refinement** -- all writes are int literals or a
+single FixedInt type:
+- Check if all literal values fit the FixedInt range.
+- If not, promote to BigInt.
+- (Existing behavior, moved into unified pass.)
+
+**e) Incompatible types** -> error.
+
+#### Step 2: Refine from usage context
+
+After determining the candidate type from writes, refine based on how
+the variable is used:
+
+**Parameter passing:** If the variable is passed to a typed parameter
+and the candidate type is pending/ambiguous:
+- List literal passed to `list[T]` param -> `list[T]`
+- List literal passed to `Span[T]` param only -> stays Array
+  (Span accepts both, Array is cheaper)
+- List literal passed to both `list[T]` and `Span[U]` -> `list[T]`
+- String passed to `String` param -> `str` (owned)
+- Int literal passed to `Int64` param -> candidate narrows to `Int64`
+
+**Return type:** If the variable is returned and the function has a
+declared return type, use it to inform deduction:
+- `return xs` where return type is `list[T]` -> xs is `list[T]`
+
+**Conflicting usage:** If param passes / returns demand conflicting
+types, error. In the face of ambiguity, refuse the temptation to guess --
+the user must add an explicit annotation.
+
+#### Step 3: Container-specific rules
+
+For list literals (currently PendingListType):
+
+| Condition | Resolved Type |
+|-----------|---------------|
+| Explicit annotation | use annotation |
+| `.append()`, `.pop()`, etc. called | `list[T]` |
+| Passed to `list[T]` param | `list[T]` |
+| Reassigned with different-size literal | `list[T]` |
+| Is global | `list[T]` |
+| Default | `Array[T, N]` |
+
+Element type follows from the write/usage analysis (widened if needed).
+
+#### Step 4: String-specific rules
+
+For string locals (currently PendingStrType):
+
+| Condition | Resolved Type |
+|-----------|---------------|
+| Initialized from owned source (`str()`, function returning str) | `str` |
+| `+=` used | `str` |
+| Passed to `String` param | `str` |
+| Reassigned from owned source | `str` |
+| Default | `StrView` |
+
+#### Step 5: Alias propagation
+
+After all variables are resolved individually, propagate through alias
+chains. This is a correctness requirement, not just a style preference:
+
+**Strings:** `b = a` where `a` is a `StrView` generates
+`std::string_view b = a`. If `a` is later promoted to `str` (e.g. via
+`+=`), `b` would dangle. So `b` must also become `str`.
+
+**Lists:** `b = a` where `a` is a `list` generates
+`std::vector<T>& b = a` (a reference). This preserves Python's
+shared-mutation semantics -- `b.append(x)` also mutates `a`. If `a`
+stayed `Array`, the assignment would copy and mutations would diverge
+from Python behavior. So if either variable requires `list`, both must
+be `list`.
+
+**Rules:**
+- If `b = a` and either `a` or `b` is promoted to an owned/heap type,
+  the other must also be promoted.
+- If `b = a` then `b = [1,2,3]` (reassigned), the alias is broken --
+  `b` is resolved independently.
+- Iterate until stable (handles chains: `c = b`, `b = a`, `a` promoted).
+
+### Phase 3: Apply resolved types
+
+Update scope bindings, expr_types cache, and var_types for all resolved
+variables. This is the same as today but done in one sweep instead of
+three separate passes.
+
+## Scenarios
+
+### Works today (no change needed)
+
+| Scenario | Deduced |
+|----------|---------|
+| `x = 0; x = 1_000_000_000_000` | BigInt |
+| `x = 0; x = some_int32` | Int32 |
+| `x = None; x = User()` | Optional[User] |
+| `x = "hello"; print(x)` | StrView |
+| `x = "hello"; x += " world"` | str |
+| `x = [1,2,3]; for i in x: ...` | Array[Int32, 3] |
+| `x = [1,2,3]; x.append(4)` | list[Int32] |
+
+### New (enabled by unified pass)
+
+| Scenario | Deduced |
+|----------|---------|
+| `x = 0; x = 3.14` | float |
+| `x = get_int32(); x = get_int64()` | Int64 |
+| `x = 3.14; x = 42` | float |
+| `x = [1,2,3]; x = [4,5]` (different sizes) | list[Int32] |
+| `x = [1,2]; x.append(big_int64)` | list[Int64] |
+| `x = [1,2,3]; return x` (return type `list[T]`) | list[T] |
+| `a = [1,2,3]; b = a; b.append(4)` -> a also list | list[Int32] |
+
+### Errors (by design)
+
+| Scenario | Why |
+|----------|-----|
+| `x = True; x = 42` | bool is not numeric for deduction |
+| `x = get_int32(); x = get_uint32()` | mixed sign, same width |
+| `x = User(); x = None` | T then None requires annotation |
+| `x = 42; x = "hello"` | incompatible types |
+| `x = User(); x = Config()` | unrelated classes |
+| `x = None` (never concrete) | cannot deduce Optional[???] |
+
+## Implementation Plan
+
+1. Define `VarFacts`, `WriteInfo`, `ParamInfo`, `ReturnInfo`, `AliasInfo`
+   data structures.
+
+2. Add fact collection hooks in `statements.py` and `expressions.py` --
+   these replace the current `mark_*` calls and `record_write` calls.
+
+3. Implement `LocalTypeDeduction.resolve()` containing the resolution
+   logic (steps 1-5 above). This replaces `ListLiteralTracker`,
+   `StrVarTracker`, and the resolution parts of `ReassignmentInference`.
+
+4. Call `resolve()` from `analyzer.py` at the existing three call sites
+   (after function body, after method body, after top-level code),
+   replacing the current three separate calls.
+
+5. Keep `ReassignmentInference.retro_validate_against_annotation()` --
+   this validates writes against explicit annotations and is orthogonal
+   to deduction. It stays inline.
+
+6. Remove `ListLiteralTracker`, `StrVarTracker`, and the deduction parts
+   of `ReassignmentInference`. Clean up `SemanticContext` tracking dicts.
+
+7. Update tests, add new test cases for the new scenarios.
+
+## Resolved Questions
+
+- **Alias tracking for lists:** Yes, propagate. `b = a` on a list
+  generates a reference (`std::vector<T>& b = a`) to preserve Python's
+  shared-mutation semantics. If `b` is mutated (e.g. `b.append(x)`),
+  `a` must also be `list` -- otherwise `b = a` would copy an Array and
+  mutations wouldn't be shared. Same correctness motivation as strings.
+
+- **Multiple param passes with different element types:** Error. In the
+  face of ambiguity, refuse the temptation to guess. If `xs` is passed
+  to both `f(list[Int32])` and `g(list[Int64])`, the user must annotate.
+
+- **Interaction with narrowing:** Deduced `Optional[T]` should work
+  with narrowing (`if x is not None`). Deferred to Phase 3 if the
+  plumbing is non-trivial.

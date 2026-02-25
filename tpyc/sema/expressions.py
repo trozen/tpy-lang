@@ -391,9 +391,9 @@ class ExpressionAnalyzer:
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
-            from .list_literals import ListLiteralTracker
-            tracker = ListLiteralTracker(self.ctx)
-            if tracker.is_type_iterable(right_type):
+            from .list_literals import IterableHelper
+            helper = IterableHelper(self.ctx)
+            if helper.is_type_iterable(right_type):
                 # For string containers, LHS must be str or Char
                 if is_any_str_type(right_type):
                     if not (is_any_str_type(left_type) or isinstance(left_type, CharType)):

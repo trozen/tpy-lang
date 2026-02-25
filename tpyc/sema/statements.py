@@ -32,14 +32,12 @@ from .diagnostics import SemanticError
 from .narrowing import NarrowingTracker
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
-from .reassignment_inference import ReassignmentInference
-
 if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .compatibility import TypeCompatibility
-    from .list_literals import ListLiteralTracker
-    from .str_vars import StrVarTracker
+    from .local_deduction import LocalTypeDeduction
+    from .list_literals import IterableHelper
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
@@ -54,21 +52,20 @@ class StatementAnalyzer:
         ctx: SemanticContext,
         type_ops: TypeOperations,
         compat: TypeCompatibility,
-        list_tracker: ListLiteralTracker,
-        str_tracker: StrVarTracker,
+        deduction: LocalTypeDeduction,
+        iterable: IterableHelper,
         protocols: ProtocolChecker,
         narrowing: NarrowingTracker,
     ):
         self.ctx = ctx
         self.type_ops = type_ops
         self.compat = compat
-        self.list_tracker = list_tracker
-        self.str_tracker = str_tracker
+        self.deduction = deduction
+        self.iterable = iterable
         self.protocols = protocols
         self.narrowing = narrowing
         self.scopes = ScopeTracker(ctx, compat)
         self.init = InitTracker(ctx)
-        self.reassign = ReassignmentInference(ctx, compat)
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
 
@@ -299,7 +296,7 @@ class StatementAnalyzer:
             iterable_type = self.expr.analyze_expr(stmt.iterable)
             is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
             inner_iterable_type = unwrap_readonly(iterable_type)
-            elem_type = self.list_tracker.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
+            elem_type = self.iterable.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
             # Elements from a readonly iterable inherit readonly status
             if is_readonly_iterable and not elem_type.is_value_type():
                 elem_type = ReadonlyType(unwrap_readonly(elem_type))
@@ -730,14 +727,14 @@ class StatementAnalyzer:
 
             if stmt.type:
                 if existing_type is not None:
-                    self.reassign.check_conflicting_annotation(
+                    self.deduction.check_conflicting_annotation(
                         stmt.name,
                         stmt.type,
                         stmt,
                         new_line=(stmt.loc.line if stmt.loc else None),
                     )
                     ann_line = stmt.loc.line if stmt.loc else None
-                    self.reassign.retro_validate_against_annotation(stmt.name, stmt.type, annotation_line=ann_line)
+                    self.deduction.retro_validate_against_annotation(stmt.name, stmt.type, annotation_line=ann_line)
                 # Special case: single-char string literal can be assigned to Char
                 if (isinstance(stmt.type, CharType) and is_any_str_type(init_type) and
                     isinstance(stmt.init, TpyStrLiteral) and len(stmt.init.value) == 1):
@@ -753,7 +750,7 @@ class StatementAnalyzer:
                 # Inherit ReadonlyType from init expression
                 if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
                     var_type = ReadonlyType(var_type)
-                self.reassign.set_authoritative_annotation(
+                self.deduction.set_authoritative_annotation(
                     stmt.name,
                     stmt.type,
                     line=(stmt.loc.line if stmt.loc else None),
@@ -766,13 +763,13 @@ class StatementAnalyzer:
                 # PendingStrType reassignment: track view-compatibility, keep pending
                 if isinstance(inner_existing, PendingStrType):
                     if is_any_str_type(inner_init):
-                        if not self.str_tracker.is_view_compatible_source(stmt.init, inner_init):
-                            self.str_tracker.mark_str_reassigned_from_owned(stmt.name)
+                        if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
+                            self.deduction.mark_str_reassigned_from_owned(stmt.name)
                         else:
-                            self.str_tracker.track_reassign_source(stmt.name, inner_init)
+                            self.deduction.track_str_reassign_source(stmt.name, inner_init)
                     var_type = existing_type
                 else:
-                    var_type = self.reassign.resolve_reassignment_target_type(
+                    var_type = self.deduction.resolve_reassignment_target_type(
                         stmt.name, inner_existing, inner_init, init_expr=stmt.init
                     )
                     # Reassignment: check if we need to upgrade IntLiteralType
@@ -810,7 +807,7 @@ class StatementAnalyzer:
                 else:
                     var_type = init_type
             # Track inferred writes for potential future retro-validation.
-            self.reassign.record_write(stmt.name, stmt.init, init_type)
+            self.deduction.record_write(stmt.name, stmt.init, init_type)
         elif stmt.type:
             if isinstance(stmt.type, OptionalType):
                 # Optional without initializer is allowed (defaults to None/nullptr)
@@ -822,7 +819,7 @@ class StatementAnalyzer:
                 )
             else:
                 var_type = stmt.type
-            self.reassign.set_authoritative_annotation(
+            self.deduction.set_authoritative_annotation(
                 stmt.name,
                 stmt.type,
                 line=(stmt.loc.line if stmt.loc else None),
@@ -836,7 +833,7 @@ class StatementAnalyzer:
                 and existing_type is None):
             str_var_id = self.ctx.str_var_counter
             self.ctx.str_var_counter += 1
-            is_owned = not self.str_tracker.is_view_compatible_source(stmt.init, init_type)
+            is_owned = not self.deduction.is_view_compatible_source(stmt.init, init_type)
             sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=stmt.name,
                                 decl_line=stmt.loc.line if stmt.loc else None,
                                 initialized_from_owned=is_owned)
@@ -957,13 +954,13 @@ class StatementAnalyzer:
             # PendingStrType reassignment: track view-compatibility, keep pending
             if isinstance(inner_target, PendingStrType):
                 if is_any_str_type(inner_value):
-                    if not self.str_tracker.is_view_compatible_source(stmt.value, inner_value):
-                        self.str_tracker.mark_str_reassigned_from_owned(stmt.target.name)
+                    if not self.deduction.is_view_compatible_source(stmt.value, inner_value):
+                        self.deduction.mark_str_reassigned_from_owned(stmt.target.name)
                     else:
-                        self.str_tracker.track_reassign_source(stmt.target.name, inner_value)
+                        self.deduction.track_str_reassign_source(stmt.target.name, inner_value)
                 # target_type stays PendingStrType
             else:
-                target_type = self.reassign.resolve_reassignment_target_type(
+                target_type = self.deduction.resolve_reassignment_target_type(
                     stmt.target.name, inner_target, inner_value, init_expr=stmt.value
                 )
                 # Readonly status flows from the value expression
@@ -973,7 +970,7 @@ class StatementAnalyzer:
             if self.ctx.current_ns:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
-            self.reassign.record_write(stmt.target.name, stmt.value, inner_value)
+            self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
             if not isinstance(inner_target, PendingStrType):
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
@@ -1079,7 +1076,7 @@ class StatementAnalyzer:
         is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
         # PendingStrType += promotes to owned str
         if isinstance(target_type, PendingStrType) and isinstance(stmt.target, TpyName):
-            self.str_tracker.mark_str_augassign(stmt.target.name)
+            self.deduction.mark_str_augassign(stmt.target.name)
         if not is_numeric_target and not is_str_target:
             raise self.ctx.error(
                 f"Augmented assignment target must be a numeric or string type, got {target_type}",

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, NoneType, VoidType,
+    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, VoidType,
     INT32, ReadonlyType, unwrap_readonly, OwnType, OptionalType, RecordInfo, FieldInfo,
     EnumType,
 )
@@ -21,8 +21,8 @@ from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
-from .list_literals import ListLiteralTracker
-from .str_vars import StrVarTracker
+from .list_literals import IterableHelper
+from .local_deduction import LocalTypeDeduction
 from .protocols import ProtocolChecker
 from .registration import TypeRegistrar
 from .narrowing import NarrowingTracker
@@ -54,8 +54,8 @@ class SemanticAnalyzer:
         self.type_ops = TypeOperations(self.ctx)
         self.operators = OperatorResolver(self.ctx)
         self.compat = TypeCompatibility(self.ctx)
-        self.list_tracker = ListLiteralTracker(self.ctx)
-        self.str_tracker = StrVarTracker(self.ctx)
+        self.iterable = IterableHelper(self.ctx)
+        self.deduction = LocalTypeDeduction(self.ctx, self.compat)
 
         # Layer 2: Depends on type_ops
         self.protocols = ProtocolChecker(self.ctx, self.type_ops)
@@ -72,14 +72,13 @@ class SemanticAnalyzer:
             self.ctx, self.type_ops, self.operators, self.protocols, self.compat, self.narrowing
         )
         self.calls = CallAnalyzer(
-            self.ctx, self.type_ops, self.protocols, self.compat, self.list_tracker,
-            self.str_tracker
+            self.ctx, self.type_ops, self.protocols, self.compat, self.deduction
         )
         self.methods = MethodAnalyzer(
-            self.ctx, self.type_ops, self.protocols, self.compat
+            self.ctx, self.type_ops, self.protocols, self.compat, self.deduction
         )
         self.stmts = StatementAnalyzer(
-            self.ctx, self.type_ops, self.compat, self.list_tracker, self.str_tracker,
+            self.ctx, self.type_ops, self.compat, self.deduction, self.iterable,
             self.protocols, self.narrowing
         )
 
@@ -379,11 +378,7 @@ class SemanticAnalyzer:
         # Analyze body
         for stmt in func.body:
             self.stmts.analyze_stmt(stmt)
-        self._check_unresolved_none_inference()
-
-        # Resolve pending list/str types after analyzing the full function
-        self.list_tracker.resolve_pending_list_types()
-        self.str_tracker.resolve_pending_str_types()
+        self.deduction.resolve_all()
 
         self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
@@ -547,7 +542,6 @@ class SemanticAnalyzer:
             # Analyze body
             for stmt in method.body:
                 self.stmts.analyze_stmt(stmt)
-            self._check_unresolved_none_inference()
 
             # Validate super().__init__() position in __init__ methods
             if method.name == "__init__" and self.ctx.super_init_call is not None:
@@ -584,9 +578,7 @@ class SemanticAnalyzer:
                             method
                         )
 
-            # Resolve pending list/str types after analyzing the full method
-            self.list_tracker.resolve_pending_list_types()
-            self.str_tracker.resolve_pending_str_types()
+            self.deduction.resolve_all()
 
             self.function_scan_results[id(method)] = scan
             if self.ctx.hoisted_vars:
@@ -626,11 +618,7 @@ class SemanticAnalyzer:
 
         for stmt in stmts:
             self.stmts.analyze_stmt(stmt)
-        self._check_unresolved_none_inference()
-
-        # Resolve pending list/str types (same as function analysis)
-        self.list_tracker.resolve_pending_list_types()
-        self.str_tracker.resolve_pending_str_types()
+        self.deduction.resolve_all()
 
         if self.ctx.hoisted_vars:
             self.top_level_hoisted_vars = self.ctx.hoisted_vars.copy()
@@ -640,24 +628,6 @@ class SemanticAnalyzer:
         self.ctx.current_scope = None
         self.ctx.current_ns = None
         self.ctx.is_top_level = False
-
-    def _check_unresolved_none_inference(self) -> None:
-        """Reject variables left as bare None without an inferred or annotated type."""
-        if not self.ctx.unresolved_none_vars:
-            return
-        name = sorted(self.ctx.unresolved_none_vars)[0]
-        # Emit at the first None write location.
-        for typ, expr in self.ctx.write_history.get(name, []):
-            if isinstance(typ, NoneType):
-                raise self._error(
-                    f"Cannot infer type for '{name}': assigned None but never assigned a concrete value; "
-                    f"add a type annotation (e.g., {name}: T | None = None)",
-                    expr
-                )
-        raise self._error(
-            f"Cannot infer type for '{name}': assigned None but never assigned a concrete value; "
-            f"add a type annotation (e.g., {name}: T | None = None)"
-        )
 
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""

@@ -1,17 +1,16 @@
 """
-TurboPython List Literal Tracking
+TurboPython Iterable Type Helpers
 
-Tracks list literals and resolves their types (Array vs list) based on usage.
+General-purpose iterable-type queries (is_type_iterable, get_iterable_element_type).
+List literal deduction logic has moved to local_deduction.LocalTypeDeduction.
 """
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, ListType, ArrayType, PendingListType, SpanType, IntLiteralType,
-    StrType, NamedType, CHAR, is_protocol_type, is_any_str_type,
+    TpyType, CHAR, is_protocol_type, is_any_str_type,
 )
-from ..parse import TpyExpr, TpyName, TpyCoerce
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
@@ -21,108 +20,11 @@ if TYPE_CHECKING:
 from tpyc import modules as builtin_modules
 
 
-class ListLiteralTracker:
-    """Tracks list literals and resolves their types based on usage."""
+class IterableHelper:
+    """General-purpose iterable type queries."""
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
-
-    def mark_list_mutated(self, obj_expr: TpyExpr) -> None:
-        """Mark a list literal as mutated if it can be traced to one."""
-        if isinstance(obj_expr, TpyName):
-            var_name = obj_expr.name
-            if var_name in self.ctx.variable_to_literal:
-                literal_id = self.ctx.variable_to_literal[var_name]
-                if literal_id in self.ctx.list_literals:
-                    self.ctx.list_literals[literal_id].is_mutated = True
-
-    def mark_list_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
-        """Track parameter context for list literal inference."""
-        literal_id = None
-
-        if isinstance(arg_expr, TpyCoerce):
-            arg_expr = arg_expr.expr
-
-        # Direct variable reference
-        if isinstance(arg_expr, TpyName):
-            var_name = arg_expr.name
-            if var_name in self.ctx.variable_to_literal:
-                literal_id = self.ctx.variable_to_literal[var_name]
-
-        if literal_id is not None and literal_id in self.ctx.list_literals:
-            info = self.ctx.list_literals[literal_id]
-            if isinstance(param_type, ListType):
-                info.passed_to_list_param = True
-                info.coerced_element_type = param_type.element_type
-            elif isinstance(param_type, SpanType):
-                info.passed_to_span_param = True
-                info.coerced_element_type = param_type.element_type
-
-    def resolve_pending_list_types(self) -> None:
-        """Resolve all pending list types after function analysis.
-
-        Resolution rules (in priority order):
-        1. Explicit annotation -> use it
-        2. is_mutated -> ListType
-        3. passed_to_list_param -> ListType
-        4. Otherwise -> ArrayType
-
-        Element type resolution:
-        - If passed to typed param (list[T] or Span[T]), use T
-        - IntLiteralType defaults to ctx.default_int_type for containers
-        """
-        for literal_id in self.ctx.pending_resolutions:
-            if literal_id not in self.ctx.list_literals:
-                continue
-
-            info = self.ctx.list_literals[literal_id]
-
-            # Resolve element type
-            # Priority: coerced type from param > resolved inner PendingListType > default
-            elem_type = info.element_type
-
-            # If element type is a PendingListType, look up its resolved type
-            if isinstance(elem_type, PendingListType):
-                inner_info = self.ctx.list_literals.get(elem_type.literal_id)
-                if inner_info and inner_info.resolved_type:
-                    elem_type = inner_info.resolved_type
-
-            if isinstance(elem_type, IntLiteralType):
-                if info.coerced_element_type is not None:
-                    # Use element type from typed parameter (list[T] or Span[T])
-                    elem_type = info.coerced_element_type
-                else:
-                    # Use configured integer default when no stronger context exists.
-                    elem_type = self.ctx.default_int_for_literal(elem_type)
-
-            # Determine resolved type
-            if info.has_explicit_annotation and info.explicit_type:
-                resolved = info.explicit_type
-            elif info.is_mutated:
-                resolved = ListType(elem_type)
-            elif info.passed_to_list_param:
-                resolved = ListType(elem_type)
-            elif info.is_global:
-                # Globals can be imported and mutated by other modules
-                resolved = ListType(elem_type)
-            else:
-                # Default: Array (stack-allocated, no mutation detected)
-                resolved = ArrayType(elem_type, info.size)
-
-            info.resolved_type = resolved
-
-            # Update expr_types for the literal expression
-            self.ctx.set_expr_type(info.expr, resolved)
-
-            # Update scope binding if this literal was assigned to a variable
-            if info.variable_name and self.ctx.current_scope:
-                current_type = self.ctx.current_scope.lookup(info.variable_name)
-                if isinstance(current_type, PendingListType):
-                    self.ctx.current_scope.define(info.variable_name, resolved)
-
-            # Update declared_var_types for test type-annotation validation
-            if info.variable_name and info.decl_line is not None:
-                self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
 
     def is_type_iterable(self, typ: TpyType) -> bool:
         """Check if a type is iterable.
