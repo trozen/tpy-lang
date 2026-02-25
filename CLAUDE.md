@@ -131,6 +131,7 @@ tests/
 │   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
 │   ├── control_flow/         # if/else, for loops, break/continue
+│   ├── enum/                 # Enum types, auto(), cross-module, comparison
 │   ├── float/                # Float operations
 │   ├── generics/             # Generic types, functions, inference, bounds
 │   ├── globals/              # Global variables, name binding

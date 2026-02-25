@@ -749,6 +749,9 @@ Enum tests should be CPython-compatible (no `no_cpython.txt` needed). CPython's
 | `enum_is` | `is` / `is not` comparison |
 | `enum_if_chain` | if/elif chain on enum values |
 | `enum_truthiness` | All enum values (including 0) are truthy |
+| `enum_not` | `not` operator on enum values |
+| `enum_list` | Enum values in a list |
+| `enum_cross_module_annotated` | Cross-module enum with explicit type annotations |
 
 ### Error Cases
 
