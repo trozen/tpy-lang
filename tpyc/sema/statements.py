@@ -724,6 +724,7 @@ class StatementAnalyzer:
                 self.ctx.variable_to_literal[stmt.name] = literal_id
                 info = self.ctx.list_literals[literal_id]
                 info.variable_name = stmt.name
+                info.decl_line = stmt.loc.line if stmt.loc else None
 
                 # If explicit annotation is provided, record it
                 if stmt.type and isinstance(stmt.init, TpyArrayLiteral):
@@ -840,6 +841,7 @@ class StatementAnalyzer:
             self.ctx.str_var_counter += 1
             is_owned = not self.str_tracker.is_view_compatible_source(stmt.init, init_type)
             sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=stmt.name,
+                                decl_line=stmt.loc.line if stmt.loc else None,
                                 initialized_from_owned=is_owned)
             self.ctx.str_vars[str_var_id] = sv_info
             self.ctx.variable_to_str_var[stmt.name] = str_var_id
@@ -854,6 +856,7 @@ class StatementAnalyzer:
             str_var_id = self.ctx.str_var_counter
             self.ctx.str_var_counter += 1
             sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=stmt.name,
+                                decl_line=stmt.loc.line if stmt.loc else None,
                                 source_str_var_id=var_type.str_var_id)
             self.ctx.str_vars[str_var_id] = sv_info
             self.ctx.variable_to_str_var[stmt.name] = str_var_id
@@ -925,6 +928,9 @@ class StatementAnalyzer:
         # Track first var_decl for later type updates on reassignment-driven inference.
         if existing_type is None:
             self.ctx.var_decl_by_name[stmt.name] = stmt
+        # Record declared type for test type-annotation validation.
+        if stmt.loc:
+            self.ctx.declared_var_types[(stmt.loc.line, stmt.name)] = var_type
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""

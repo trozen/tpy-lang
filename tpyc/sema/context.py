@@ -68,6 +68,11 @@ class SemanticContext:
     pending_resolutions: list[int] = field(default_factory=list)
     var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
 
+    # --- Resolved types for variable declarations (for test annotations) ---
+    # Keyed by (line, varname). Persists across functions (NOT cleared in
+    # reset_function_tracking) so the test framework can query after full compilation.
+    declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
+
     # --- String local tracking (PendingStrType inference) ---
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)

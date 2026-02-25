@@ -181,6 +181,7 @@ tests/
 3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
    - `# tpyc: ok` - line should compile without error
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
+   - `# tpyc: type(TypeName)` - assert the compiler-inferred type of the variable declared on this line (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Validated in `test_comp` only (not in update mode).
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs
 5. Run `uv run pytest -k {name}` to verify
 

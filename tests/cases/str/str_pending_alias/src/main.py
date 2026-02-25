@@ -1,30 +1,30 @@
 # Test PendingStrType alias: each alias gets independent promotion
 def test_alias_augassign() -> None:
-    s1 = "hello"
-    s2 = s1
+    s1 = "hello"  # tpyc: type(StrView)
+    s2 = s1  # tpyc: type(str)
     s2 += " world"
     print(s1)   # s1 stays StrView (literal, no mutation)
     print(s2)   # s2 promoted to str (augmented assignment)
 
 def test_alias_stays_view() -> None:
-    s1 = "hello"
-    s2 = s1       # s1 stays StrView, s2 also StrView (source stayed view)
+    s1 = "hello"  # tpyc: type(StrView)
+    s2 = s1  # tpyc: type(StrView)
     print(s1)
     print(s2)
 
 def test_chain_alias_promote() -> None:
-    a = "x"
-    b = a
-    c = b
+    a = "x"  # tpyc: type(StrView)
+    b = a  # tpyc: type(str)
+    c = b  # tpyc: type(str)
     b += " y"
     print(a)   # StrView (literal, no mutation)
     print(b)   # str (augassign promotes b, which promotes c retroactively)
     print(c)   # str (source b resolved to str)
 
 def test_reassign_from_owned_pending(cond: bool) -> None:
-    result = "ok"
+    result = "ok"  # tpyc: type(str)
     if cond:
-        s = str(123)
+        s = str(123)  # tpyc: type(str)
         result = s   # s resolves to str -> result must be promoted too
     print(result)
 

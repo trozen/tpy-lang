@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // # Test PendingStrType alias: each alias gets independent promotion
 // 2: def test_alias_augassign() -> None:
 void test_alias_augassign() {
-    // 3:     s1 = "hello"
+    // 3:     s1 = "hello"  # tpyc: type(StrView)
     std::string_view s1 = "hello";
-    // 4:     s2 = s1
+    // 4:     s2 = s1  # tpyc: type(str)
     std::string s2 = std::string(s1);
     // 5:     s2 += " world"
     s2 = tpy::str_concat(s2, " world");
@@ -21,9 +21,9 @@ void test_alias_augassign() {
 
 // 9: def test_alias_stays_view() -> None:
 void test_alias_stays_view() {
-    // 10:     s1 = "hello"
+    // 10:     s1 = "hello"  # tpyc: type(StrView)
     std::string_view s1 = "hello";
-    // 11:     s2 = s1       # s1 stays StrView, s2 also StrView (source stayed view)
+    // 11:     s2 = s1  # tpyc: type(StrView)
     std::string_view s2 = s1;
     // 12:     print(s1)
     std::cout << s1 << "\n";
@@ -33,11 +33,11 @@ void test_alias_stays_view() {
 
 // 15: def test_chain_alias_promote() -> None:
 void test_chain_alias_promote() {
-    // 16:     a = "x"
+    // 16:     a = "x"  # tpyc: type(StrView)
     std::string_view a = "x";
-    // 17:     b = a
+    // 17:     b = a  # tpyc: type(str)
     std::string b = std::string(a);
-    // 18:     c = b
+    // 18:     c = b  # tpyc: type(str)
     std::string c = b;
     // 19:     b += " y"
     b = tpy::str_concat(b, " y");
@@ -51,11 +51,11 @@ void test_chain_alias_promote() {
 
 // 24: def test_reassign_from_owned_pending(cond: bool) -> None:
 void test_reassign_from_owned_pending(bool cond) {
-    // 25:     result = "ok"
+    // 25:     result = "ok"  # tpyc: type(str)
     std::string result = "ok";
     // 26:     if cond:
     if (cond) {
-        // 27:         s = str(123)
+        // 27:         s = str(123)  # tpyc: type(str)
         std::string s = tpy::fixed_to_str<int8_t>(123);
         // 28:         result = s   # s resolves to str -> result must be promoted too
         result = s;

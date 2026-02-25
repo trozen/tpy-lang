@@ -5,7 +5,7 @@ def takes_string(s: String) -> None:
     print(s)
 
 def test_string_param() -> None:
-    s = "hello"
+    s = "hello"  # tpyc: type(str)
     takes_string(s)
     print(s)
 

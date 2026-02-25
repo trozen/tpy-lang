@@ -156,3 +156,5 @@ class StrVarTracker:
             var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
             if var_decl:
                 self.ctx.var_types[id(var_decl)] = resolved
+            if info.decl_line is not None:
+                self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved

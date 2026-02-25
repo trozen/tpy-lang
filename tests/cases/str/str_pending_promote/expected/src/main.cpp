@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // # Test PendingStrType promotes to str (std::string) for owned-requiring usage
 // 2: def test_str_constructor() -> None:
 void test_str_constructor() {
-    // 3:     s = str(42)
+    // 3:     s = str(42)  # tpyc: type(str)
     std::string s = tpy::fixed_to_str<int8_t>(42);
     // 4:     print(s)
     std::cout << s << "\n";
@@ -15,7 +15,7 @@ void test_str_constructor() {
 
 // 6: def test_augassign() -> None:
 void test_augassign() {
-    // 7:     s = "hello"
+    // 7:     s = "hello"  # tpyc: type(str)
     std::string s = "hello";
     // 8:     s += " world"
     s = tpy::str_concat(s, " world");
@@ -25,7 +25,7 @@ void test_augassign() {
 
 // 11: def test_reassign_from_owned() -> None:
 void test_reassign_from_owned() {
-    // 12:     s = "start"
+    // 12:     s = "start"  # tpyc: type(str)
     std::string s = "start";
     // 13:     s = str(99)
     s = tpy::fixed_to_str<int8_t>(99);

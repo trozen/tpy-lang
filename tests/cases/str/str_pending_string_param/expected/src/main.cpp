@@ -12,7 +12,7 @@ void takes_string(const std::string& s) {
 
 // 7: def test_string_param() -> None:
 void test_string_param() {
-    // 8:     s = "hello"
+    // 8:     s = "hello"  # tpyc: type(str)
     std::string s = "hello";
     // 9:     takes_string(s)
     takes_string(s);

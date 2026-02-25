@@ -120,6 +120,10 @@ class ListLiteralTracker:
                 if isinstance(current_type, PendingListType):
                     self.ctx.current_scope.define(info.variable_name, resolved)
 
+            # Update declared_var_types for test type-annotation validation
+            if info.variable_name and info.decl_line is not None:
+                self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
+
     def is_type_iterable(self, typ: TpyType) -> bool:
         """Check if a type is iterable.
 

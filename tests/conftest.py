@@ -75,6 +75,8 @@ class CompileResult:
     cpp_path: Path | None = None
     # For multi-module compilation: list of all (module_name, hpp_path, cpp_path) tuples
     all_modules: list[tuple[str, Path, Path]] = field(default_factory=list)
+    # Resolved types for variable declarations (from sema), for # tpyc: type(...) validation
+    declared_var_types: dict[tuple[int, str], object] | None = None
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -156,7 +158,9 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         layout = BuildLayout(output_dir, entry_module.name)
         hpp_path = layout.hpp_path(entry_module.name)
         cpp_path = layout.cpp_path(entry_module.name)
-        return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path, all_modules=all_modules)
+        declared_var_types = entry_module.analyzer.ctx.declared_var_types if entry_module.analyzer else None
+        return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
+                             all_modules=all_modules, declared_var_types=declared_var_types)
 
     except CompileError as e:
         return CompileResult(success=False, diagnostics=e.format() + "\n")
@@ -355,6 +359,81 @@ def validate_annotations(src_file: Path, diagnostics: str) -> list[str]:
             if not found:
                 errors.append(
                     f"Line {ann.line}: expected {ann.level}(/{ann.pattern}/) but got: {line_diags or 'nothing'}"
+                )
+
+    return errors
+
+
+@dataclass
+class TypeAnnotation:
+    """A type annotation from source code (# tpyc: type(...))."""
+    line: int
+    expected_type: str
+
+
+def parse_type_annotations(source: str) -> list[TypeAnnotation]:
+    """Parse # tpyc: type(...) annotations from source code."""
+    annotations = []
+    pattern = re.compile(r'#\s*tpyc:\s*type\(\s*(.+?)\s*\)')
+
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        stripped = line.lstrip()
+        if stripped.startswith('#'):
+            continue
+        match = pattern.search(line)
+        if match:
+            annotations.append(TypeAnnotation(line=lineno, expected_type=match.group(1)))
+
+    return annotations
+
+
+_VAR_NAME_RE = re.compile(r'\s*(\w+)\s*(?::\s*[\w\[\], .|]+\s*)?=')
+
+
+def validate_type_annotations(
+    src_file: Path,
+    declared_var_types: dict[tuple[int, str], object],
+) -> list[str]:
+    """Validate # tpyc: type(...) annotations against compiler-resolved types.
+
+    Returns list of validation errors (empty if all pass).
+    """
+    source = src_file.read_text()
+    annotations = parse_type_annotations(source)
+    errors = []
+
+    for ann in annotations:
+        # Extract variable name from the source line
+        line_text = source.splitlines()[ann.line - 1]
+        var_match = _VAR_NAME_RE.match(line_text)
+        if not var_match:
+            errors.append(f"Line {ann.line}: could not extract variable name from line")
+            continue
+        var_name = var_match.group(1)
+
+        key = (ann.line, var_name)
+        actual_type = declared_var_types.get(key)
+        if actual_type is None:
+            errors.append(
+                f"Line {ann.line}: no declared type found for '{var_name}'"
+            )
+            continue
+
+        actual_str = str(actual_type)
+        expected = ann.expected_type
+
+        if expected.startswith('/') and expected.endswith('/'):
+            # Regex match
+            if not re.search(expected[1:-1], actual_str):
+                errors.append(
+                    f"Line {ann.line}: expected type matching /{expected[1:-1]}/ "
+                    f"for '{var_name}' but got '{actual_str}'"
+                )
+        else:
+            if actual_str != expected:
+                errors.append(
+                    f"Line {ann.line}: expected type '{expected}' "
+                    f"for '{var_name}' but got '{actual_str}'"
                 )
 
     return errors

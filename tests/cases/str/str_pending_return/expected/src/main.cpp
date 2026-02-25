@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // # Test returning a view local from a str-returning function
 // 2: def make_greeting(name: str) -> str:
 std::string make_greeting(std::string_view name) {
-    // 3:     result = "hello " + name
+    // 3:     result = "hello " + name  # tpyc: type(String)
     std::string result = (tpy::str_concat("hello ", name));
     // 4:     return result
     return result;
@@ -15,7 +15,7 @@ std::string make_greeting(std::string_view name) {
 
 // 6: def echo(msg: str) -> str:
 std::string echo(std::string_view msg) {
-    // 7:     s = msg
+    // 7:     s = msg  # tpyc: type(StrView)
     std::string_view s = msg;
     // 8:     return s
     return std::string(s);

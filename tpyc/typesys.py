@@ -1222,6 +1222,7 @@ class ListLiteralInfo:
     element_type: TpyType
     size: int
     variable_name: Optional[str] = None
+    decl_line: Optional[int] = None
     is_global: bool = False
     is_mutated: bool = False
     passed_to_list_param: bool = False
@@ -1266,6 +1267,7 @@ class StrVarInfo:
     """Tracks usage of a string local to decide StrView vs str."""
     str_var_id: int
     variable_name: str
+    decl_line: Optional[int] = None
     initialized_from_owned: bool = False
     used_in_augassign: bool = False
     passed_to_string_param: bool = False

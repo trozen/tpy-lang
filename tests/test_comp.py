@@ -17,6 +17,7 @@ from conftest import (
     compile_with_diagnostics,
     get_case_default_int,
     validate_annotations,
+    validate_type_annotations,
     parse_annotations,
     check_or_update,
     discover_cases,
@@ -116,3 +117,9 @@ def test_comp(case_dir, main_src, tmp_path):
             if not gen_path.exists():
                 pytest.fail(f"{gen_path} not generated", pytrace=False)
             check_or_update(gen_path.read_text(), expected_file, f"{mod_name}{ext}")
+
+    # Validate # tpyc: type(...) annotations against compiler-resolved types
+    if not UPDATE_EXPECTED and result.declared_var_types is not None:
+        type_errors = validate_type_annotations(main_src, result.declared_var_types)
+        if type_errors:
+            pytest.fail("\n".join(type_errors), pytrace=False)

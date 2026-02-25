@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // 4: def test_literal() -> None:
 void test_literal() {
-    // 5:     s = "hello"
+    // 5:     s = "hello"  # tpyc: type(StrView)
     std::string_view s = "hello";
     // 6:     print(s)
     std::cout << s << "\n";
@@ -16,7 +16,7 @@ void test_literal() {
 
 // 9: def test_param(msg: str) -> None:
 void test_param(std::string_view msg) {
-    // 10:     s = msg
+    // 10:     s = msg  # tpyc: type(StrView)
     std::string_view s = msg;
     // 11:     print(s)
     std::cout << s << "\n";
@@ -26,7 +26,7 @@ void test_param(std::string_view msg) {
 void test_strview_source() {
     // 14:     sv: StrView = StrView("view")
     std::string_view sv = std::string_view("view");
-    // 15:     s = sv
+    // 15:     s = sv  # tpyc: type(StrView)
     std::string_view s = sv;
     // 16:     print(s)
     std::cout << s << "\n";
