@@ -186,7 +186,18 @@ def _analyze_stmt(
     elif isinstance(stmt, TpyVarDecl):
         # Reads from the init expression
         if stmt.init:
+            # For alias creation (alias = source), temporarily hide the alias
+            # from the live set so it doesn't suppress the source's last-use.
+            # The alias doesn't exist yet at this point in execution -- it's
+            # being created by this statement -- so it can't constrain moves.
+            hide_alias = (isinstance(stmt.init, TpyName)
+                          and stmt.name != stmt.init.name
+                          and stmt.name in live)
+            if hide_alias:
+                live.discard(stmt.name)
             _process_reads(stmt.init, live, last_uses, source_aliases, detached_aliases)
+            if hide_alias:
+                live.add(stmt.name)
         # Kill: variable is (re)defined here
         live.discard(stmt.name)
 
@@ -375,6 +386,9 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
         live.update(body_live)
 
     elif isinstance(stmt, TpyVarDecl):
+        # No hide_alias here (unlike _analyze_stmt) -- conservative for loop
+        # fixpoint: prevents move-through inside loop bodies where the source
+        # may be live from prior iterations.
         if stmt.init:
             for node in _collect_reads_expr(stmt.init):
                 live.add(node.name)

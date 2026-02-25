@@ -1,0 +1,1 @@
+main.py:17: error: @nocopy type 'Handle' cannot be returned as Own[Handle]. Only the original owner can be moved at its last use.

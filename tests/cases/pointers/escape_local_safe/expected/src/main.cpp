@@ -148,7 +148,7 @@ void same_scope_ok() {
     // 80:     a: Point = Point(1, 1)
     Point a = Point(1, 1);
     // 81:     b: Point = a  # tpyc: ok
-    Point& b = a;
+    Point b = std::move(a);
     // 82:     print(b.x)
     std::cout << b.x << "\n";
 }

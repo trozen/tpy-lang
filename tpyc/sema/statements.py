@@ -887,7 +887,22 @@ class StatementAnalyzer:
         # Update rvalue status for hoist eligibility (both new vars and reassignments)
         if stmt.init:
             if self.compat.is_lvalue(stmt.init):
-                self.ctx.rvalue_vars.discard(stmt.name)
+                # Move-through: lvalue alias at last use of source promotes to rvalue.
+                # Both target and source must be non-reassigned Tier 1 locals
+                # (reassigned vars become T* pointer-locals in codegen).
+                if (isinstance(stmt.init, TpyName)
+                        and existing_type is None
+                        and stmt.name not in self.ctx.current_reassigned_vars
+                        and stmt.init.name not in self.ctx.current_reassigned_vars
+                        and id(stmt.init) in self.ctx.all_last_uses
+                        and self.compat._is_movable_var(stmt.init.name)
+                        and var_type is not None
+                        and not var_type.is_value_type()
+                        and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())):
+                    self.ctx.rvalue_vars.add(stmt.name)
+                    self.ctx.move_through_vars.add(stmt.name)
+                else:
+                    self.ctx.rvalue_vars.discard(stmt.name)
             else:
                 self.ctx.rvalue_vars.add(stmt.name)
         # Track provenance for non-value types and pointer types

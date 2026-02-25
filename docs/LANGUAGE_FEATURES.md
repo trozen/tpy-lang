@@ -882,7 +882,10 @@ def main():
 - Passing to `Own[T]` parameter works at last use (auto-moved)
 - Passing to `Own[T]` when NOT at last use is a compile error with a clear message
 - Non-consuming uses (field access, method calls, pass by reference) work normally
-- `alias = h` creates a `T&` reference (borrow), but aliases cannot be consumed
+- `alias = h` at `h`'s last use performs move-through: `alias` becomes the owner
+  via `std::move(h)`, enabling return or consumption through `alias`
+- `alias = h` when `h` is used later creates a `T&` reference (borrow); aliases
+  created this way cannot be consumed
 - Returning a @nocopy local at last use works (C++ NRVO/implicit move)
 - Auto-move is suppressed when T& aliases of the source variable are still live
   (prevents dangling references through aliases)

@@ -96,6 +96,10 @@ class SemanticAnalyzer:
         self.function_hoisted_vars: dict[int, set[str]] = {}
         self.top_level_hoisted_vars: set[str] = set()
 
+        # Per-function/method move-through vars (lvalue alias promoted to rvalue)
+        self.function_move_through_vars: dict[int, set[str]] = {}
+        self.top_level_move_through_vars: set[str] = set()
+
         # Per-function `global x` declarations (for codegen)
         self.function_global_decls: dict[int, set[str]] = {}
 
@@ -383,6 +387,8 @@ class SemanticAnalyzer:
         self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
             self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
+        if self.ctx.move_through_vars:
+            self.function_move_through_vars[id(func)] = self.ctx.move_through_vars.copy()
         if self.ctx.global_declarations:
             self.function_global_decls[id(func)] = self.ctx.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
@@ -583,6 +589,8 @@ class SemanticAnalyzer:
             self.function_scan_results[id(method)] = scan
             if self.ctx.hoisted_vars:
                 self.function_hoisted_vars[id(method)] = self.ctx.hoisted_vars.copy()
+            if self.ctx.move_through_vars:
+                self.function_move_through_vars[id(method)] = self.ctx.move_through_vars.copy()
             if self.ctx.global_declarations:
                 self.function_global_decls[id(method)] = self.ctx.global_declarations.copy()
             self.if_branch_decls.update(self.ctx.if_branch_decls)
@@ -622,6 +630,8 @@ class SemanticAnalyzer:
 
         if self.ctx.hoisted_vars:
             self.top_level_hoisted_vars = self.ctx.hoisted_vars.copy()
+        if self.ctx.move_through_vars:
+            self.top_level_move_through_vars = self.ctx.move_through_vars.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
 
         self.ctx.current_function = None

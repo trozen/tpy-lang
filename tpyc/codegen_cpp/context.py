@@ -201,6 +201,9 @@ class CodeGenContext:
     # Generic Own[T] params: name -> type param name (for std::forward)
     forwarding_params: dict[str, str] = field(default_factory=dict)
 
+    # --- Move-through vars (lvalue alias promoted to owned via std::move) ---
+    move_through_vars: set[str] = field(default_factory=set)
+
     # --- Hoisted variable tracking (scope escape phase 2) ---
     hoisted_vars: set[str] = field(default_factory=set)
     pending_hoist_decls: list[str] = field(default_factory=list)
@@ -252,6 +255,7 @@ class CodeGenContext:
         self.lvalue_reassigned_vars = set()
         self.movable_locals = set()
         self.forwarding_params = {}
+        self.move_through_vars = set()
         self.hoisted_vars = set()
         self.pending_hoist_decls = []
         self.current_ns = None

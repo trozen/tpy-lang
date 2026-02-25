@@ -521,6 +521,7 @@ class FunctionGenerator:
             self.ctx.rvalue_reassigned_vars = set()
             self.ctx.lvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.top_level_hoisted_vars.copy()
+        self.ctx.move_through_vars = self.ctx.analyzer.top_level_move_through_vars.copy()
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
 

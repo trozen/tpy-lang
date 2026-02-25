@@ -122,6 +122,7 @@ class SemanticContext:
     var_scope_depth: dict[str, int] = field(default_factory=dict)
     hoisted_vars: set[str] = field(default_factory=set)
     rvalue_vars: set[str] = field(default_factory=set)
+    move_through_vars: set[str] = field(default_factory=set)
 
     # --- Last-use tracking for auto-move ---
     all_last_uses: set[int] = field(default_factory=set)
@@ -293,6 +294,7 @@ class SemanticContext:
         self.var_scope_depth.clear()
         self.hoisted_vars.clear()
         self.rvalue_vars.clear()
+        self.move_through_vars.clear()
         self.current_reassigned_vars.clear()
         self.current_lvalue_reassigned.clear()
         self.definitely_assigned.clear()

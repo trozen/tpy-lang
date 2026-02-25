@@ -97,6 +97,7 @@ class StatementGenerator:
             self.ctx.rvalue_reassigned_vars = set()
             self.ctx.lvalue_reassigned_vars = set()
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
+        self.ctx.move_through_vars = self.ctx.analyzer.function_move_through_vars.get(id(func), set())
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             actual = unwrap_readonly(ptype)
@@ -267,6 +268,8 @@ class StatementGenerator:
         if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
             return True
         if target_type.is_value_type():
+            return False
+        if name in self.ctx.move_through_vars:
             return False
         if name in self.ctx.reassigned_vars:
             return True
@@ -728,17 +731,22 @@ class StatementGenerator:
                 return f"{indent}{cpp_type}& {stmt.name} = {init_expr};\n"
 
         # Tier 1 non-value-type locals are eligible for auto-move at last use
+        init_is_rvalue = stmt.init is None or self.ctx.is_rvalue_source(stmt.init)
+        if stmt.name in self.ctx.move_through_vars:
+            init_is_rvalue = True
         if (target_type and not target_type.is_value_type()
                 and local_var_is_movable(
                     stmt.name,
                     self.ctx.hoisted_vars,
                     self.ctx.reassigned_vars,
                     self.ctx.lvalue_reassigned_vars,
-                    stmt.init is None or self.ctx.is_rvalue_source(stmt.init))):
+                    init_is_rvalue)):
             self.ctx.movable_locals.add(stmt.name)
 
         if stmt.init:
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
+            if stmt.name in self.ctx.move_through_vars:
+                init_expr = f"std::move({init_expr})"
             # string_view -> string init requires explicit conversion in C++
             if isinstance(target_type, StrType):
                 init_resolved = self.types.get_resolved_type(stmt.init)
