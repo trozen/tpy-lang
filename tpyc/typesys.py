@@ -1037,11 +1037,20 @@ def union_none_narrow(union: UnionType) -> tuple[TpyType, TpyType]:
     return make_union(*non_none), NoneType()
 
 
-@dataclass(frozen=True)
-class ArrayType(TpyType):
+class ArrayType(NamedType):
     """Fixed-size array: Array[T, N] -> std::array<T, N>"""
-    element_type: TpyType
-    size: "int | TypeParamRef"  # Can be literal int or forwarded INT type param
+
+    def __init__(self, element_type: TpyType, size: "int | TypeParamRef"):
+        NamedType.__init__(self, name="Array", type_args=(element_type, size),
+                           _module_qname="tpy.Array")
+
+    @property
+    def element_type(self) -> TpyType:
+        return self.type_args[0]
+
+    @property
+    def size(self) -> "int | TypeParamRef":
+        return self.type_args[1]
 
     def to_cpp(self) -> str:
         size_cpp = self.size.name if isinstance(self.size, TypeParamRef) else str(self.size)
@@ -1067,10 +1076,16 @@ class ArrayType(TpyType):
         return ArrayType(types[0], self.size)
 
 
-@dataclass(frozen=True)
-class SpanType(TpyType):
+class SpanType(NamedType):
     """Non-owning read-only view: Span[T] -> std::span<const T>"""
-    element_type: TpyType
+
+    def __init__(self, element_type: TpyType):
+        NamedType.__init__(self, name="Span", type_args=(element_type,),
+                           _module_qname="tpy.Span")
+
+    @property
+    def element_type(self) -> TpyType:
+        return self.type_args[0]
 
     def to_cpp(self) -> str:
         return f"std::span<const {self.element_type.to_cpp()}>"
@@ -1098,10 +1113,16 @@ class SpanType(TpyType):
         return SpanType(types[0])
 
 
-@dataclass(frozen=True)
-class ListType(TpyType):
+class ListType(NamedType):
     """Dynamic list: list[T] -> std::vector<T>"""
-    element_type: TpyType
+
+    def __init__(self, element_type: TpyType):
+        NamedType.__init__(self, name="list", type_args=(element_type,),
+                           _module_qname="builtins.list")
+
+    @property
+    def element_type(self) -> TpyType:
+        return self.type_args[0]
 
     def to_cpp(self) -> str:
         return f"std::vector<{self.element_type.to_cpp()}>"

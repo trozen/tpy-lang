@@ -45,15 +45,14 @@ class TypeOperations:
                     for arg in typ.type_args
                 )
                 if new_args != typ.type_args or typ.is_protocol != resolved_is_protocol:
-                    return NamedType(typ.name, new_args, resolved_is_protocol, typ._module_qname)
+                    if typ.is_protocol != resolved_is_protocol:
+                        # Protocol flag changed -- only for user records/protocols
+                        return NamedType(typ.name, new_args, resolved_is_protocol, typ._module_qname)
+                    # Only type_args changed -- use with_inner_types to preserve subclass
+                    new_inner = tuple(a for a in new_args if isinstance(a, TpyType))
+                    return typ.with_inner_types(new_inner)
             elif typ.is_protocol != resolved_is_protocol:
                 return typ.with_protocol_flag(resolved_is_protocol)
-        elif isinstance(typ, (ListType, ArrayType, SpanType)):
-            elem = typ.get_element_type()
-            if elem:
-                resolved_elem = self.resolve_type(elem)
-                if resolved_elem != elem:
-                    return typ.with_inner_types((resolved_elem,))
         elif isinstance(typ, (PtrType, ConstPtrType)):
             resolved_pointee = self.resolve_type(typ.pointee)
             if resolved_pointee != typ.pointee:
@@ -115,6 +114,15 @@ class TypeOperations:
                     f"{typ.name}[{', '.join(record_info.type_params)}]",
                     loc,
                 )
+            # Container element validation (ListType, ArrayType, SpanType are NamedType subclasses)
+            elem_type = typ.get_element_type()
+            if elem_type is not None:
+                self.validate_type(elem_type, allow_type_param_ref, loc)
+                if is_protocol_type(elem_type):
+                    raise SemanticError(
+                        f"Protocol type '{elem_type.name}' cannot be used as a container element type",
+                        loc,
+                    )
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
             if is_protocol_type(typ.inner):
@@ -316,8 +324,6 @@ class TypeOperations:
             return self.is_forwarded_type_param(typ.wrapped, type_params)
         if isinstance(typ, ReadonlyType):
             return self.is_forwarded_type_param(typ.wrapped, type_params)
-        if isinstance(typ, (ListType, SpanType, ArrayType)):
-            return self.is_forwarded_type_param(typ.element_type, type_params)
         return False
 
     def get_type_param_bound(self, type_param_name: str) -> TpyType | None:

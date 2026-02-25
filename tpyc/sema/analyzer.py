@@ -357,7 +357,7 @@ class SemanticAnalyzer:
         elif isinstance(typ, NamedType):
             members = [typ]
         for m in members:
-            if isinstance(m, NamedType) and not m.is_protocol:
+            if isinstance(m, NamedType) and not m.is_protocol and not m.is_module_type:
                 if self.ctx.registry.get_record(m.name) is None:
                     raise SemanticError(
                         f"Type alias '{alias_name}' references unknown type '{m.name}'",
@@ -367,7 +367,7 @@ class SemanticAnalyzer:
     @staticmethod
     def _resolve_alias(typ: TpyType, aliases: dict[str, TpyType]) -> TpyType:
         """Recursively substitute alias NamedTypes with their resolved types."""
-        if isinstance(typ, NamedType) and not typ.is_protocol:
+        if isinstance(typ, NamedType) and not typ.is_protocol and not typ.is_module_type:
             resolved = aliases.get(typ.name)
             if resolved is not None:
                 return resolved

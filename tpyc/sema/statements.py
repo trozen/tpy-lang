@@ -450,7 +450,7 @@ class StatementAnalyzer:
         # Recursive to handle nested types like list[Shape], Optional[Shape]
         if stmt.type and self.ctx.registry.type_aliases:
             def _resolve(t: TpyType) -> TpyType:
-                if isinstance(t, NamedType) and not t.is_protocol:
+                if isinstance(t, NamedType) and not t.is_protocol and not t.is_module_type:
                     alias = self.ctx.registry.get_type_alias(t.name)
                     if alias is not None:
                         return alias
