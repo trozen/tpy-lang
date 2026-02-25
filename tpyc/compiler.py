@@ -250,15 +250,18 @@ class Compiler:
     Handles module discovery, dependency resolution, and compilation order.
     """
 
-    def __init__(self, entry_point: Path, default_int: str = "Int32"):
+    def __init__(self, entry_point: Path, default_int: str = "Int32",
+                 lib_dirs: list[Path] | None = None):
         """Initialize compiler with entry point path.
 
         Args:
             entry_point: Path to the main source file.
             default_int: Unannotated integer literal default type.
+            lib_dirs: Extra directories to search for library modules.
         """
         self.entry_point = entry_point.resolve()
-        self.resolver = ModuleResolver(self.entry_point.parent)
+        self.resolver = ModuleResolver(self.entry_point.parent,
+                                       extra_dirs=lib_dirs or [])
         self.default_int_type = parse_default_int_type(default_int)
         self._init_shared()
 
@@ -275,11 +278,15 @@ class Compiler:
         source: str,
         module_name: str = "main",
         default_int: str = "Int32",
+        lib_dirs: list[Path] | None = None,
     ) -> "Compiler":
         """Create a compiler for a single module from source code (e.g., stdin)."""
         compiler = cls.__new__(cls)
         compiler.entry_point = Path("<stdin>")
-        compiler.resolver = None
+        if lib_dirs:
+            compiler.resolver = ModuleResolver(Path.cwd(), extra_dirs=lib_dirs)
+        else:
+            compiler.resolver = None
         compiler.default_int_type = parse_default_int_type(default_int)
         compiler._init_shared()
         compiler._source_input = (source, module_name)
@@ -307,9 +314,17 @@ class Compiler:
                 exports=ModuleExports(),
                 is_entry_point=True,
             )
-            self.compile_order = [entry_name]
-            self._analyze_module(self.modules[entry_name])
-            return [self.modules[entry_name]]
+
+            if self.resolver:
+                # Discover imported library modules
+                self._discover_imports(entry_name, ast, [entry_name])
+                self._compute_compile_order()
+            else:
+                self.compile_order = [entry_name]
+
+            for name in self.compile_order:
+                self._analyze_module(self.modules[name])
+            return [self.modules[name] for name in self.compile_order]
 
         # 1. Discover all modules (starting from entry point)
         # Entry point uses simple name (not dotted) since it's the root
@@ -499,6 +514,31 @@ class Compiler:
         self._discover_package_inits(imported_name, new_chain, import_lineno)
         self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno,
                                is_package_init=resolved.is_package_init)
+
+    def _discover_imports(self, module_name: str, ast: TpyModule,
+                          import_chain: list[str]) -> None:
+        """Discover imported modules from a parsed AST.
+
+        Used for source-input compilation (from_source) to discover library
+        dependencies without requiring a file on disk.
+        """
+        builtin_names = get_builtin_module_names()
+        import_queue = list(ast.user_module_imports.items())
+        processed = set()
+        while import_queue:
+            imported_name, import_lineno = import_queue.pop(0)
+            if imported_name in processed:
+                continue
+            processed.add(imported_name)
+
+            if RelativeImportKey.is_placeholder(imported_name):
+                # Relative imports not supported for source input
+                continue
+
+            self._process_user_import(
+                imported_name, import_lineno, module_name,
+                Path("<stdin>"), builtin_names, import_chain
+            )
 
     def _discover_package_inits(self, dotted_name: str, import_chain: list[str],
                                  import_lineno: int | None) -> None:

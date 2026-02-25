@@ -2883,8 +2883,10 @@ s = str(3.14)     # → "3.14"
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
 - **Working**: Re-exports in `__init__.py` (functions, records, protocols, variables)
 - **Working**: Shadowing warnings -- defining a class that shadows an imported special name (e.g., `class Sized` after `from typing import Sized`) emits a warning
+- **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
+- **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
+- **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
 - **Open**: `from typing import *` (not supported)
-- **Open**: Importing additional Python stdlib subsets that can be statically compiled
 
 ### User-Defined Modules (Working)
 
@@ -3069,6 +3071,57 @@ namespace tpy_user::mypackage {
 ```cpp
 inline auto& f = tpy_user::mypackage::utils::func;    // Function alias
 using Pt = tpy_user::mypackage::utils::Point;         // Record alias
+```
+
+### Standard Library Infrastructure (Working)
+
+TurboPython has two library search roots that provide reusable modules:
+
+- **`tplib`** -- TPy-specific standard library (`from tplib import Box`)
+- **`stdlib`** -- Python stdlib analogs (`from bisect import bisect_left`)
+
+**Module resolution order** (first match wins):
+1. Entry point directory (user modules)
+2. `-L` paths (user-specified, in order)
+3. `lib/tpy/` (tplib, tpy ecosystem)
+4. `lib/stdlib/` (Python stdlib analogs)
+5. Hardcoded builtins as fallback (`math`, `time`, `sys`)
+
+**CLI flags:**
+- `-L /path` -- add extra library search path (can be repeated)
+- `--no-tplib` -- disable tplib standard library
+- `--no-stdlib` -- disable Python stdlib analogs
+
+**Available tplib modules:**
+
+| Module | Description |
+|--------|-------------|
+| `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
+
+```python
+from tplib import Box
+from tpy import Int32
+
+b = Box[Int32](42)
+print(b.get())    # 42
+b.set(100)
+print(b.get())    # 100
+c = b.clone()     # Explicit clone (Box is non-copyable)
+```
+
+**Available stdlib modules:**
+
+| Module | Functions |
+|--------|-----------|
+| `bisect` | `bisect_left`, `bisect_right`, `insort_left`, `insort_right` |
+
+```python
+from bisect import bisect_left, insort_left
+from tpy import Int32
+
+a: list[Int32] = [1, 3, 5, 7]
+pos = bisect_left(a, Int32(4))  # 2
+insort_left(a, Int32(4))        # a = [1, 3, 4, 5, 7]
 ```
 
 ### Standard Library Modules

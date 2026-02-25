@@ -20,11 +20,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from .parse import Parser, ParseError, TpyExprStmt
-from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
-from .codegen_cpp import CodeGenerator
-from .typesys import VoidType, StrType, CharType, is_any_str_type
-from .compiler import CppCompilerConfig
+from .parse import ParseError, TpyExprStmt
+from .sema import SemanticError, DiagnosticLevel
+from .typesys import VoidType, CharType, is_any_str_type
+from .compiler import Compiler, CppCompilerConfig
 
 
 def get_runtime_dir() -> Path:
@@ -36,10 +35,12 @@ def get_runtime_dir() -> Path:
 class REPLSession:
     """Interactive TurboPython REPL session."""
 
-    def __init__(self, verbose: bool = False, preload_files: list[Path] | None = None):
+    def __init__(self, verbose: bool = False, preload_files: list[Path] | None = None,
+                 lib_dirs: list[Path] | None = None):
         self.accumulated_lines: list[str] = []
         self.verbose = verbose
         self.preload_files = preload_files or []
+        self.lib_dirs = lib_dirs
         self.temp_dir = Path(tempfile.mkdtemp(prefix="tpyc_repl_"))
         self.counter = 0  # For unique file names
         self.prev_cpp_lines: list[str] = []  # For verbose diff
@@ -328,22 +329,29 @@ class REPLSession:
         # (typed variable declarations become globals, not main() body)
         combined += "\n0  # repl-noop"
 
-        # Parse
+        # Use unique module name for each compilation
+        self.counter += 1
+        module_name = f"repl_{self.counter}"
+
+        # Compile via Compiler.from_source (supports multi-module imports)
         try:
-            parser = Parser()
-            module = parser.parse(combined)
+            compiler = Compiler.from_source(
+                combined, module_name, lib_dirs=self.lib_dirs
+            )
+            compiled_modules = compiler.compile()
         except ParseError as e:
             return False, f"Parse error: {e}\n"
         except SyntaxError as e:
-            # Python syntax error (e.g., IndentationError) from ast.parse
             return False, f"Syntax error: {e.msg} at line {e.lineno}\n"
-
-        # Semantic analysis
-        try:
-            analyzer = SemanticAnalyzer()
-            analyzer.analyze(module)
         except SemanticError as e:
             return False, f"{e.format('repl')}\n"
+        except Exception as e:
+            return False, f"Compile error: {e}\n"
+
+        # Find the entry module
+        entry_module = next(m for m in compiled_modules if m.is_entry_point)
+        module = entry_module.ast
+        analyzer = entry_module.analyzer
 
         # Check if we should auto-print the expression
         # The second-to-last statement is the user's input (last is the noop)
@@ -357,15 +365,18 @@ class REPLSession:
                     # Track if we're printing a string/char for post-processing
                     is_str_or_char = is_any_str_type(expr_type) or isinstance(expr_type, CharType)
 
-                    # Re-parse with print wrapper
+                    # Re-compile with print wrapper
                     wrapped_source = f"print({new_source.strip()})"
                     combined = "\n".join(self.accumulated_lines + [wrapped_source])
                     combined += "\n0  # repl-noop"
                     try:
-                        parser = Parser()
-                        module = parser.parse(combined)
-                        analyzer = SemanticAnalyzer()
-                        analyzer.analyze(module)
+                        compiler = Compiler.from_source(
+                            combined, module_name, lib_dirs=self.lib_dirs
+                        )
+                        compiled_modules = compiler.compile()
+                        entry_module = next(m for m in compiled_modules if m.is_entry_point)
+                        module = entry_module.ast
+                        analyzer = entry_module.analyzer
                     except (ParseError, SyntaxError, SemanticError):
                         is_str_or_char = False  # Fall back to original if wrapping fails
 
@@ -375,50 +386,56 @@ class REPLSession:
             if diag.level == DiagnosticLevel.WARNING:
                 warning_output += f"{diag.format('repl')}\n"
 
-        # Use unique module name for each compilation
-        self.counter += 1
-        module_name = f"repl_{self.counter}"
+        # Generate code for all modules
+        all_hpp_paths = []
+        all_cpp_paths = []
+        for mod in compiled_modules:
+            hpp_code, cpp_code = compiler.generate_code_to_strings(mod)
 
-        # Code generation
-        codegen = CodeGenerator(analyzer)
-        hpp_code, cpp_code = codegen.generate(module, module_name)
+            # Write dependency headers preserving directory structure for #include
+            mod_parts = mod.name.split('.')
+            if len(mod_parts) > 1:
+                hpp_subdir = self.temp_dir / Path(*mod_parts[:-1])
+                hpp_subdir.mkdir(parents=True, exist_ok=True)
+                hpp_path = hpp_subdir / f"{mod_parts[-1]}.hpp"
+                cpp_path = hpp_subdir / f"{mod_parts[-1]}.cpp"
+            else:
+                hpp_path = self.temp_dir / f"{mod.name}.hpp"
+                cpp_path = self.temp_dir / f"{mod.name}.cpp"
 
-        # Verbose mode: show diff of generated C++
+            hpp_path.write_text(hpp_code)
+            cpp_path.write_text(cpp_code)
+            all_hpp_paths.append(hpp_path)
+            all_cpp_paths.append(cpp_path)
+
+        # Verbose mode: show diff of generated C++ (entry module only)
         verbose_output = ""
         if self.verbose:
-            # Get current lines (stripped, non-empty, skip boilerplate)
+            entry_cpp = all_cpp_paths[-1]  # Entry is last in compile order
+            entry_cpp_code = entry_cpp.read_text()
             current_lines = []
-            lines = [line.strip() for line in cpp_code.split("\n") if line.strip()]
+            lines = [line.strip() for line in entry_cpp_code.split("\n") if line.strip()]
             for i, stripped in enumerate(lines):
-                # Skip boilerplate and noop
                 if stripped.startswith("//") or stripped.startswith("#"):
                     continue
                 if stripped in ("return 0;", "0;", "int main() {"):
                     continue
-                # Skip the final closing brace of main()
                 if stripped == "}" and i == len(lines) - 1:
                     continue
                 current_lines.append(stripped)
 
-            # Use difflib to find added lines (preserves order and duplicates)
             diff = difflib.unified_diff(self.prev_cpp_lines, current_lines, lineterm="", n=0)
             new_lines = [line[1:] for line in diff if line.startswith("+") and not line.startswith("+++")]
 
             if new_lines:
                 verbose_output = "[C++] " + "\n[C++] ".join(new_lines) + "\n"
 
-            # Update previous lines for next diff
             self.prev_cpp_lines = current_lines
 
-        # Write to temp files (do this before adding path to verbose output)
-        hpp_path = self.temp_dir / f"{module_name}.hpp"
-        cpp_path = self.temp_dir / f"{module_name}.cpp"
+        # Build binary path
         binary_path = self.temp_dir / module_name
 
-        hpp_path.write_text(hpp_code)
-        cpp_path.write_text(cpp_code)
-
-        # Compile
+        # Compile all C++ files together
         runtime_dir = get_runtime_dir()
         config = CppCompilerConfig.from_env()
         compile_cmd = [
@@ -427,7 +444,7 @@ class REPLSession:
             "-I", str(runtime_dir / "cpp" / "include"),
             "-I", str(self.temp_dir),
             "-o", str(binary_path),
-            str(cpp_path),
+            *[str(p) for p in all_cpp_paths],
             *config.link_flags,
         ]
 
@@ -447,7 +464,6 @@ class REPLSession:
         # For strings/chars, wrap output in quotes like Python's REPL
         program_output = result.stdout
         if is_str_or_char and program_output:
-            # Output format: "value\n" -> "'value'\n"
             program_output = "'" + program_output.rstrip("\n") + "'\n"
 
         return True, verbose_output + warning_output + program_output

@@ -33,15 +33,20 @@ TESTS_DIR = Path(__file__).parent
 CASES_DIR = TESTS_DIR / "cases"    # All tests (grouped by feature)
 PROJECT_ROOT = TESTS_DIR.parent
 LIB_DIR = PROJECT_ROOT / "lib"
+CPY_LIB_DIR = LIB_DIR / "cpy"
+TPY_LIB_DIR = LIB_DIR / "tpy"
+STDLIB_DIR = LIB_DIR / "stdlib"
+DEFAULT_LIB_DIRS = [TPY_LIB_DIR, STDLIB_DIR]
 RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
 
 
 def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
-    # Include lib dir (for tpy module) and source dir (for multi-module imports)
+    # Include CPython stubs (for tpy module), tpy search root (for tplib),
+    # stdlib analogs, and source dir (for multi-module imports)
     src_dir = src_file.parent
-    env["PYTHONPATH"] = f"{LIB_DIR}{os.pathsep}{src_dir}"
+    env["PYTHONPATH"] = f"{CPY_LIB_DIR}{os.pathsep}{TPY_LIB_DIR}{os.pathsep}{STDLIB_DIR}{os.pathsep}{src_dir}"
 
     result = subprocess.run(
         [sys.executable, str(src_file)],
@@ -127,7 +132,7 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
 
     try:
         # Use Compiler for multi-module support
-        compiler = Compiler(src_file, default_int=default_int)
+        compiler = Compiler(src_file, default_int=default_int, lib_dirs=DEFAULT_LIB_DIRS)
         compiled_modules = compiler.compile()
 
         # Collect warnings from all analyzers
@@ -397,7 +402,7 @@ def _filter_lib_traceback(stderr: str) -> str:
     filtered: list[str] = []
     for line in lines:
         normalized = line.replace("\\", "/")
-        if '/lib/tpy/' in normalized:
+        if '/lib/tpy/' in normalized or '/lib/cpy/' in normalized:
             continue
         filtered.append(line)
     out = "\n".join(filtered).strip()

@@ -42,6 +42,13 @@ uv run tpyc -x examples/hello.py -vv
 # Interactive REPL
 uv run tpyc -i
 
+# Extra library search paths
+uv run tpyc -x -L /my/libs examples/main.py
+
+# Disable tplib or stdlib
+uv run tpyc -x --no-tplib examples/main.py
+uv run tpyc -x --no-stdlib examples/main.py
+
 # Install for development (uses uv package manager)
 uv sync
 ```
@@ -297,15 +304,23 @@ Generated code requires C++23 (for `std::ranges` concepts).
 
 ### Libraries (`lib/`)
 
-Python implementations of TurboPython types for CPython execution and IDE support:
+Library search roots and CPython stubs:
 
 | Directory | Purpose |
 |-----------|---------|
-| `tpy/` | Built-in types (Int32, Ptr, Array, etc.), decorators, protocols; submodules: `mem`, `unsafe` |
-| `tplib/` | TPy standard library (future: Box[T], custom collections) |
-| `stdlib/` | Python stdlib subset for TPy (future: argparse, etc.) |
+| `tpy/` | Search root for TPy ecosystem (tpyc looks here for `tplib` etc.) |
+| `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
+| `stdlib/` | Python stdlib analogs for TPy: `bisect`, etc. |
+| `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 
-CPython tests (`test_cpy.py`) add `lib/` to PYTHONPATH so `from tpy import Int32` resolves to `lib/tpy/`.
+**Compiler search order** (first match wins):
+1. Entry point directory (user modules)
+2. `-L` paths (user-specified, in order)
+3. `lib/tpy/` (tplib, tpy ecosystem)
+4. `lib/stdlib/` (Python stdlib analogs)
+5. Hardcoded builtins as fallback (`math`, `time`, `sys`)
+
+CPython tests (`test_cpy.py`) use PYTHONPATH `lib/cpy/:lib/tpy/:src_dir`.
 
 ## Performance Profiles (Planned)
 
