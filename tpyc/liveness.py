@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyAssign, TpyAugAssign,
-    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyAssert,
+    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert,
     TpyExprStmt, TpyRaiseStopIteration,
     TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp,
     TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
@@ -141,6 +141,27 @@ def _compute_alias_detachment(
     return detached, first_reassign_pos
 
 
+# -- Termination check --------------------------------------------------------
+
+def _stmts_terminate(stmts: list[TpyStmt]) -> bool:
+    """Do all execution paths through stmts end with return/break/raise?
+
+    Only inspects the last statement -- relies on the invariant that the
+    parser does not emit unreachable statements after a terminator.
+    TpyContinue is intentionally excluded: it goes back to the loop header,
+    so variables may still be live in subsequent iterations.
+    """
+    if not stmts:
+        return False
+    last = stmts[-1]
+    if isinstance(last, (TpyReturn, TpyBreak, TpyRaiseStopIteration)):
+        return True
+    if isinstance(last, TpyIf):
+        return (_stmts_terminate(last.then_body)
+                and _stmts_terminate(last.else_body))
+    return False
+
+
 # -- Backward analysis --------------------------------------------------------
 
 def _analyze_stmts_backward(
@@ -255,12 +276,15 @@ def _analyze_if(
     detached_aliases: set[str],
 ) -> None:
     """Analyze if/else with branch merging."""
-    # Analyze then-branch with a copy of live
-    live_then = live.copy()
+    then_terminates = _stmts_terminate(stmt.then_body)
+    else_terminates = _stmts_terminate(stmt.else_body)
+
+    # If a branch terminates, post-if code is unreachable on that path --
+    # start with empty live set instead of inheriting post-if liveness.
+    live_then = set() if then_terminates else live.copy()
     _analyze_stmts_backward(stmt.then_body, live_then, last_uses, source_aliases, detached_aliases)
 
-    # Analyze else-branch with a copy of live
-    live_else = live.copy()
+    live_else = set() if else_terminates else live.copy()
     _analyze_stmts_backward(stmt.else_body, live_else, last_uses, source_aliases, detached_aliases)
 
     # After both branches: union (conservative -- live if used in either path)
@@ -360,9 +384,11 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
     """Update live set for a statement without marking last uses."""
 
     if isinstance(stmt, TpyIf):
-        live_then = live.copy()
+        then_terminates = _stmts_terminate(stmt.then_body)
+        else_terminates = _stmts_terminate(stmt.else_body)
+        live_then = set() if then_terminates else live.copy()
         _compute_live_only(stmt.then_body, live_then)
-        live_else = live.copy()
+        live_else = set() if else_terminates else live.copy()
         _compute_live_only(stmt.else_body, live_else)
         live.clear()
         live.update(live_then | live_else)

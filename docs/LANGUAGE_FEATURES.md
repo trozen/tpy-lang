@@ -824,6 +824,26 @@ else:
     consume(p)  # auto-move on this path
 ```
 
+**Flow-sensitive early-return/break**: When an if-branch terminates (via `return`, `break`, or `raise`), post-if code is unreachable on that path. The compiler treats the terminating branch as having an independent live set, enabling auto-move even when the variable is used after the if on the non-terminating path:
+
+```python
+def test(cond: bool) -> Own[Handle]:
+    h = Handle(1)
+    if cond:
+        return h   # auto-move: post-if code unreachable here
+    print(h.fd)    # h is live here only on the non-return path
+    return h       # auto-move: last use
+```
+
+Similarly, `break` inside an if-branch within a loop is treated as terminating:
+
+```python
+for i in range(n):
+    if i == target:
+        result = consume(p)  # auto-move: break exits loop
+        break
+```
+
 **Return site auto-move**: When a function returns `Own[T]` and the return value is a local variable at its last use, `copy()` is not needed -- the compiler allows it directly (C++ NRVO/implicit move handles the rest):
 
 ```python
