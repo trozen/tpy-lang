@@ -7,7 +7,7 @@ Low-level uninitialized storage types for building containers.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.typesys import (
     VOID, UINT32,
-    ModuleType, TypeParamRef, PtrType, OwnType,
+    NamedType, TypeParamRef, PtrType, OwnType,
 )
 
 T = TypeParamRef("T")
@@ -79,7 +79,7 @@ def init_module() -> BuiltinModule:
         cpp_type="UninitArrayStorage<{T}, {N}>",
         type_params=["T", "N"],
         param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-        type_factory=lambda t, n: ModuleType("tpy.mem.UninitArrayStorage", (t, n)),
+        type_factory=lambda t, n: NamedType("UninitArrayStorage", (t, n), _module_qname="tpy.mem.UninitArrayStorage"),
         constructors=[
             MethodDef(params=[], returns=VOID, cpp=""),
         ],
@@ -91,7 +91,7 @@ def init_module() -> BuiltinModule:
         cpp_type="UninitHeapStorage<{T}>",
         type_params=["T"],
         param_kinds=[TypeParamKind.TYPE],
-        type_factory=lambda t: ModuleType("tpy.mem.UninitHeapStorage", (t,)),
+        type_factory=lambda t: NamedType("UninitHeapStorage", (t,), _module_qname="tpy.mem.UninitHeapStorage"),
         constructors=[
             MethodDef(
                 params=[ParamDef("capacity", UINT32)],

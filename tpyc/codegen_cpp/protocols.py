@@ -112,7 +112,7 @@ class ProtocolGenerator:
         inherits __tpy_Base_{proto_name} through the inheritance chain and no adapter
         wrapping is needed.
         """
-        if not isinstance(concrete_type, NamedType) or not concrete_type.is_record:
+        if not isinstance(concrete_type, NamedType) or not concrete_type.is_user_record:
             return False
         record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
         if not record_info:
@@ -464,7 +464,7 @@ class ProtocolGenerator:
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
         """Recursively collect all record type names from a type."""
-        if isinstance(typ, NamedType) and typ.is_record:
+        if isinstance(typ, NamedType) and typ.is_user_record:
             result.add(typ.name)
         for inner in typ.inner_types():
             self.collect_record_types_from_type(inner, result)
@@ -480,7 +480,7 @@ class ProtocolGenerator:
         When a protocol references Container[Message] where Container has a user-defined
         protocol bound, C++ needs Message to be fully defined to check the constraint.
         """
-        if isinstance(typ, NamedType) and typ.is_record and typ.type_args:
+        if isinstance(typ, NamedType) and typ.is_user_record and typ.type_args:
             record = records_by_name.get(typ.name)
             if record and record.type_param_bounds:
                 # Check if any bound is a user-defined protocol
@@ -492,7 +492,7 @@ class ProtocolGenerator:
                 if has_user_bound:
                     # Collect all type args as needing early definition
                     for type_arg in typ.type_args:
-                        if isinstance(type_arg, NamedType) and type_arg.is_record:
+                        if isinstance(type_arg, NamedType) and type_arg.is_user_record:
                             result.add(type_arg.name)
 
         # Recurse into inner types

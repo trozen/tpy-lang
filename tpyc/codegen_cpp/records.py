@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
-    ListType, ArrayType, SpanType, ModuleType, unwrap_readonly, unwrap_optional_own,
+    ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -64,7 +64,7 @@ class RecordGenerator:
         for record in records:
             record_info = self.ctx.analyzer.registry.get_record(record.name)
             if (record_info and record_info.parent and
-                isinstance(record_info.parent, NamedType) and record_info.parent.is_record and
+                isinstance(record_info.parent, NamedType) and record_info.parent.is_user_record and
                 record_info.parent.name in record_by_name):
                 dependencies[record.name].add(record_info.parent.name)
 
@@ -278,7 +278,7 @@ class RecordGenerator:
             elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
                 # Known iterable container type - use ListPrinter
                 out.write(f' << tpy::ListPrinter(obj.{fld.name})')
-            elif isinstance(fld.type, ModuleType):
+            elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
                 # Module-defined types may not be printable -- use placeholder
                 out.write(f' << "<{fld.type}>"')
             else:

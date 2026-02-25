@@ -211,7 +211,7 @@ class TypeResolver:
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)
             if protocol_info and protocol_info.is_dynamic:
                 return self.protocols.get_dynamic_base_name(typ.name)
-        if isinstance(typ, NamedType) and typ.is_record:
+        if isinstance(typ, NamedType) and typ.is_user_record:
             # Native records use their native C++ name directly (globally visible)
             record_info = self.ctx.analyzer.registry.get_record(typ.name)
             if record_info and record_info.is_native:

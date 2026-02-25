@@ -421,7 +421,7 @@ class MethodAnalyzer:
 
     def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
         """Analyze instance method call on any type (builtin or user record)."""
-        is_user_record = isinstance(obj_type, NamedType) and obj_type.is_record
+        is_user_record = isinstance(obj_type, NamedType) and obj_type.is_user_record
 
         if is_user_record:
             record_info = self.ctx.registry.get_record(obj_type.name)

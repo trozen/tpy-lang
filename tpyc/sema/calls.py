@@ -736,7 +736,7 @@ class CallAnalyzer:
                     f"Protocols are only valid for function parameters",
                     expr
                 )
-            if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:
+            if isinstance(type_arg, NamedType) and type_arg.is_user_record and not type_arg.type_args:
                 if self.ctx.registry.get_record(type_arg.name) is None:
                     raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
             in_generic = bool(

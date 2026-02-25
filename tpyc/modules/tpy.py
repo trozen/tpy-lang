@@ -9,7 +9,7 @@ from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, BIGINT, FLOAT, STR, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
-    ArrayType, SpanType, ModuleType, TypeParamRef, PtrType, ConstPtrType, NamedType, OwnType, OptionalType,
+    ArrayType, SpanType, TypeParamRef, PtrType, ConstPtrType, NamedType, OwnType, OptionalType,
 )
 
 # Shorthand for type parameter T
@@ -173,7 +173,7 @@ def init_module() -> BuiltinModule:
     # StaticList[T, N]: Fixed-capacity container
     module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-                type_factory=lambda t, n: ModuleType("tpy.StaticList", (t, n)),
+                type_factory=lambda t, n: NamedType("StaticList", (t, n), _module_qname="tpy.StaticList"),
                 extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp=""),

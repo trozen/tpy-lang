@@ -560,7 +560,7 @@ class CodeGenContext:
         if isinstance(expr, TpySubscript):
             from .types import TypeResolver
             container_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj)) if self.analyzer.get_expr_type(expr.obj) is not None else None
-            if isinstance(container_type, NamedType) and container_type.is_record:
+            if isinstance(container_type, NamedType) and container_type.is_user_record:
                 return True
         # Function calls
         if isinstance(expr, TpyCall):

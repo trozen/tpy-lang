@@ -174,7 +174,7 @@ COERCIONS: list[Coercion] = [
         from_type=NamedType,
         to_type=PtrType,
         type_match=lambda rec, ptr: (
-            rec.is_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_record and rec.name == ptr.pointee.name
+            rec.is_user_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         requires_mutable=True,
@@ -186,7 +186,7 @@ COERCIONS: list[Coercion] = [
         from_type=NamedType,
         to_type=ConstPtrType,
         type_match=lambda rec, ptr: (
-            rec.is_record and isinstance(ptr, ConstPtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_record and rec.name == ptr.pointee.name
+            rec.is_user_record and isinstance(ptr, ConstPtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         forbid_return_local=True,

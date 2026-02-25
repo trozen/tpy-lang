@@ -150,7 +150,7 @@ class ProtocolChecker:
                             return False
                     return True
             return False
-        elif isinstance(actual, NamedType) and actual.is_record:
+        elif isinstance(actual, NamedType) and actual.is_user_record:
             # User record - check methods in RecordInfo (including inherited methods)
             record = self.ctx.registry.get_record(actual.name)
             if record is None:
@@ -230,7 +230,7 @@ class ProtocolChecker:
 
     def type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:
         """Check if a type has a field with the expected type."""
-        if isinstance(actual, NamedType) and actual.is_record:
+        if isinstance(actual, NamedType) and actual.is_user_record:
             record = self.ctx.registry.get_record(actual.name)
             if record:
                 type_subst = self.type_ops.build_type_substitution(actual)
@@ -488,7 +488,7 @@ class ProtocolChecker:
             parent_info = self._get_parent_record_info(record_info.parent)
             if parent_info:
                 # For user-defined parents, recurse; for builtins, just check directly
-                if isinstance(record_info.parent, NamedType) and record_info.parent.is_record:
+                if isinstance(record_info.parent, NamedType) and record_info.parent.is_user_record:
                     inherited, parent_subst = self.lookup_record_method_overloads(parent_info, method_name)
                     if inherited:
                         # Combine parent's substitution with this class's substitution
@@ -514,7 +514,7 @@ class ProtocolChecker:
         Returns:
             RecordInfo for the parent, or None if not found.
         """
-        if isinstance(parent_type, NamedType) and parent_type.is_record:
+        if isinstance(parent_type, NamedType) and parent_type.is_user_record:
             return self.ctx.registry.get_record(parent_type.name)
         else:
             qname = parent_type.qualified_name()
@@ -537,7 +537,7 @@ class ProtocolChecker:
         if not parent_info.type_params:
             return {}
 
-        if isinstance(parent_type, NamedType) and parent_type.is_record:
+        if isinstance(parent_type, NamedType) and parent_type.is_user_record:
             # User-defined class: extract type args directly
             if not parent_type.type_args:
                 return {}

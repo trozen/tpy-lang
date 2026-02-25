@@ -250,7 +250,7 @@ class TypeRegistrar:
 
         Supports inheritance from:
         - User-defined classes (NamedType with is_record)
-        - Builtin types (ModuleType, ListType, ArrayType, etc.)
+        - Builtin types (ListType, ArrayType, etc.)
         - Protocols (NamedType with is_protocol)
         """
         record_info = self.ctx.registry.get_record(record.name)
@@ -284,7 +284,7 @@ class TypeRegistrar:
                 # It's a protocol implementation - set the is_protocol flag correctly
                 protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NamedType) else base_type
                 implemented_protocols.append(protocol_type)
-            elif isinstance(base_type, NamedType) and base_type.is_record:
+            elif isinstance(base_type, NamedType) and base_type.is_user_record:
                 # It's a user-defined class - check for multiple inheritance
                 if parent is not None:
                     raise SemanticError(
@@ -327,7 +327,7 @@ class TypeRegistrar:
         record_info.implemented_protocols = implemented_protocols
 
         # Validate parent class (only check circular inheritance for user-defined types)
-        if record_info.parent and isinstance(record_info.parent, NamedType) and record_info.parent.is_record:
+        if record_info.parent and isinstance(record_info.parent, NamedType) and record_info.parent.is_user_record:
             # Check for circular inheritance
             if self._has_circular_inheritance(record.name, record_info.parent.name):
                 raise SemanticError(
@@ -450,7 +450,7 @@ class TypeRegistrar:
         Returns:
             RecordInfo for the parent, or None if not found.
         """
-        if isinstance(parent_type, NamedType) and parent_type.is_record:
+        if isinstance(parent_type, NamedType) and parent_type.is_user_record:
             return self.ctx.registry.get_record(parent_type.name)
         else:
             qname = parent_type.qualified_name()

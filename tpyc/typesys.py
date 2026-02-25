@@ -7,7 +7,7 @@ Defines the core types available in TurboPython:
 - ConstPtr[T]: Read-only pointer (maps to const T*)
 - Array[T, N], Span[T], list[T]: Container types
 - User-defined records (classes)
-- ModuleType: Generic parameterized types defined in the module system
+- NamedType: User-defined records/protocols and module-defined generics
 """
 
 from __future__ import annotations
@@ -429,7 +429,7 @@ class TypeParamRef(TpyType):
 
 @dataclass(frozen=True)
 class NamedType(TpyType):
-    """A user-defined type (record or protocol).
+    """A named type: user-defined record/protocol, or module-defined generic.
 
     During parsing, is_protocol defaults to False (unknown).
     After registration in sema, is_protocol is set correctly.
@@ -439,21 +439,39 @@ class NamedType(TpyType):
 
     For generic records with integer type parameters like Matrix[T, N: int]:
     - type_args can contain both TpyType and int values (e.g., (Int32, 8))
+
+    For module-defined types like StaticList[T, N]:
+    - _module_qname stores the qualified name (e.g., "tpy.StaticList")
+    - Behavior (methods, constructors) is looked up via the module system
     """
     name: str
     type_args: tuple['TpyType | int', ...] = ()
     is_protocol: bool = False
+    _module_qname: str | None = None
 
     @property
     def is_record(self) -> bool:
         """Return True if this is a record type (not a protocol)."""
         return not self.is_protocol
 
+    @property
+    def is_user_record(self) -> bool:
+        """Return True if this is a user-defined record (not a module-defined builtin)."""
+        return not self.is_protocol and not self._module_qname
+
+    @property
+    def is_module_type(self) -> bool:
+        """Return True if this is a module-defined builtin type (e.g. StaticList).
+
+        Transitional -- should go away when builtin/user lookup paths are unified.
+        """
+        return self._module_qname is not None
+
     def with_protocol_flag(self, is_protocol: bool) -> 'NamedType':
         """Return a copy with is_protocol set."""
         if self.is_protocol == is_protocol:
             return self
-        return NamedType(self.name, self.type_args, is_protocol)
+        return NamedType(self.name, self.type_args, is_protocol, self._module_qname)
 
     def to_cpp(self) -> str:
         if self.is_protocol:
@@ -479,6 +497,8 @@ class NamedType(TpyType):
         return self.name
 
     def qualified_name(self) -> Optional[str]:
+        if self._module_qname:
+            return self._module_qname
         if self.is_protocol:
             return f"typing.{self.name}"
         return None
@@ -487,6 +507,14 @@ class NamedType(TpyType):
         # Protocol-typed params are passed by const ref
         # Records are object types (not value types)
         return False
+
+    def get_element_type(self) -> Optional['TpyType']:
+        if self._module_qname:
+            # Convention: first type param is the element type
+            for arg in self.type_args:
+                if isinstance(arg, TpyType):
+                    return arg
+        return None
 
     def inner_types(self) -> tuple['TpyType', ...]:
         # Only return actual types, skip integer values
@@ -501,7 +529,7 @@ class NamedType(TpyType):
                 new_args.append(next(type_iter))
             else:
                 new_args.append(arg)  # Keep integer as-is
-        return NamedType(self.name, tuple(new_args), self.is_protocol)
+        return NamedType(self.name, tuple(new_args), self.is_protocol, self._module_qname)
 
 
 @dataclass(frozen=True)
@@ -1055,91 +1083,6 @@ class PendingListType(TpyType):
         return "builtins.list"
 
 
-@dataclass(frozen=True)
-class ModuleType(TpyType):
-    """A parameterized type fully defined in the module system.
-
-    This type gets all its behavior (to_cpp, methods, etc.) from the module
-    definition rather than having it hardcoded in the class. Used for types
-    that don't need special compiler treatment.
-    """
-    _qualified_name: str  # e.g., "mymodule.MyContainer"
-    _type_args: tuple  # e.g., (Int32Type(), 8) for MyContainer[Int32, 8]
-
-    def qualified_name(self) -> Optional[str]:
-        return self._qualified_name
-
-    def _get_type_def(self):
-        """Look up the module definition for this type."""
-        from tpyc.modules import lookup_type
-        type_def = lookup_type(self._qualified_name)
-        if type_def is None:
-            raise RuntimeError(f"ModuleType '{self._qualified_name}' not found in module system")
-        return type_def
-
-    def _get_param_map(self) -> dict[str, 'TpyType | int']:
-        """Build a mapping from type param names to their values."""
-        type_def = self._get_type_def()
-        return dict(zip(type_def.type_params, self._type_args))
-
-    def to_cpp(self) -> str:
-        type_def = self._get_type_def()
-        cpp = type_def.cpp_type
-        param_map = self._get_param_map()
-        for name, value in param_map.items():
-            if isinstance(value, TpyType):
-                cpp = cpp.replace(f"{{{name}}}", value.to_cpp())
-            else:
-                cpp = cpp.replace(f"{{{name}}}", str(value))
-        return cpp
-
-    def __str__(self) -> str:
-        # Extract simple name from qualified name (e.g., "MyType" from "mymodule.MyType")
-        simple_name = self._qualified_name.split(".")[-1]
-        args_str = ", ".join(
-            str(arg) if isinstance(arg, TpyType) else str(arg)
-            for arg in self._type_args
-        )
-        return f"{simple_name}[{args_str}]"
-
-    def get_element_type(self) -> Optional['TpyType']:
-        # Convention: first TYPE param is the element type
-        from tpyc.modules import TypeParamKind
-        type_def = self._get_type_def()
-        for i, kind in enumerate(type_def.param_kinds):
-            if kind == TypeParamKind.TYPE and i < len(self._type_args):
-                arg = self._type_args[i]
-                if isinstance(arg, TpyType):
-                    return arg
-        return None
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        from tpyc.modules import TypeParamKind
-        type_def = self._get_type_def()
-        result = []
-        for i, arg in enumerate(self._type_args):
-            if i < len(type_def.param_kinds) and type_def.param_kinds[i] == TypeParamKind.TYPE:
-                if isinstance(arg, TpyType):
-                    result.append(arg)
-        return tuple(result)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        from tpyc.modules import TypeParamKind
-        type_def = self._get_type_def()
-        new_args = []
-        type_idx = 0
-        for i, arg in enumerate(self._type_args):
-            if i < len(type_def.param_kinds) and type_def.param_kinds[i] == TypeParamKind.TYPE:
-                if isinstance(arg, TpyType):
-                    new_args.append(types[type_idx])
-                    type_idx += 1
-                else:
-                    new_args.append(arg)
-            else:
-                new_args.append(arg)
-        return ModuleType(self._qualified_name, tuple(new_args))
-
-
 @dataclass
 class ListLiteralInfo:
     """Tracks usage information for a list literal to determine its resolved type."""
@@ -1513,7 +1456,7 @@ class TypeRegistry:
         For user records (NamedType with is_record), looks up by name in self.records.
         For builtin types, looks up by qualified_name in self.builtin_records.
         """
-        if isinstance(tpy_type, NamedType) and tpy_type.is_record:
+        if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
             return self.records.get(tpy_type.name)
         qname = tpy_type.qualified_name()
         if qname:

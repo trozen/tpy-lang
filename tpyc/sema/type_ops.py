@@ -45,7 +45,7 @@ class TypeOperations:
                     for arg in typ.type_args
                 )
                 if new_args != typ.type_args or typ.is_protocol != resolved_is_protocol:
-                    return NamedType(typ.name, new_args, resolved_is_protocol)
+                    return NamedType(typ.name, new_args, resolved_is_protocol, typ._module_qname)
             elif typ.is_protocol != resolved_is_protocol:
                 return typ.with_protocol_flag(resolved_is_protocol)
         elif isinstance(typ, (ListType, ArrayType, SpanType)):
@@ -90,7 +90,7 @@ class TypeOperations:
             if typ.kind == TypeParamKind.INT:
                 raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation", loc)
             return
-        if isinstance(typ, NamedType) and typ.is_record:
+        if isinstance(typ, NamedType) and typ.is_user_record:
             record_info = self.ctx.registry.get_record(typ.name)
             if not record_info:
                 if not allow_forward_ref:
@@ -701,7 +701,7 @@ class TypeOperations:
             return None
         method = overloads[0]
         type_subst = builtin_modules.extract_type_params(typ)
-        if not type_subst and isinstance(typ, NamedType) and typ.is_record:
+        if not type_subst and isinstance(typ, NamedType) and typ.is_user_record:
             type_subst = self.build_type_substitution(typ)
         if type_subst:
             method = self.substitute_method_type_params(method, type_subst)

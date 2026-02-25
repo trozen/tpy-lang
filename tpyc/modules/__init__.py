@@ -143,7 +143,8 @@ class BuiltinModule:
              type_params: list[str] | None = None,
              param_kinds: list[TypeParamKind] | None = None,
              type_factory: "Callable[..., TpyType] | None" = None,
-             extends: list[str] | None = None):
+             extends: list[str] | None = None,
+             ):
         """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
         type_params = type_params or []
         param_kinds = param_kinds or []
@@ -362,6 +363,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         methods=methods,
         constructors=constructors,
         type_params=type_def.type_params,
+        type_param_kinds=type_def.param_kinds,
         extends_protocols=type_def.extends,
         cpp_type=type_def.cpp_type,
     )
@@ -693,7 +695,7 @@ def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistr
         # Check user-defined records with __next_opt__()/__next__() -> Optional[T]
         if registry is not None:
             from tpyc.typesys import NamedType, OptionalType
-            if isinstance(tpy_type, NamedType) and tpy_type.is_record:
+            if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
                 return _find_record_next_element(tpy_type.name, tpy_type.type_args, registry)
         return None
 
@@ -738,7 +740,7 @@ def _find_record_next_element(
             return inner
 
     # Walk parent chain
-    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_record:
+    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
         parent_args = list(record.parent.type_args) if record.parent.type_args else None
         if type_subst and parent_args:
             parent_args = [
@@ -753,7 +755,7 @@ def _find_record_next_element(
 def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     """If type has __iter__() returning a OptIterator-conforming type, return element type T."""
     from tpyc.typesys import NamedType
-    if not (isinstance(tpy_type, NamedType) and tpy_type.is_record):
+    if not (isinstance(tpy_type, NamedType) and tpy_type.is_user_record):
         return None
     record = registry.get_record(tpy_type.name)
     if record is None:
@@ -778,13 +780,13 @@ def _find_iter_method_element_type(
             ret = type_subst[ret.name]
         if isinstance(ret, OwnType):
             ret = ret.wrapped
-        if isinstance(ret, NamedType) and ret.is_record:
+        if isinstance(ret, NamedType) and ret.is_user_record:
             elem = _find_record_next_element(ret.name, ret.type_args, registry)
             if elem is not None:
                 return elem
 
     # Walk parent chain
-    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_record:
+    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
         parent_info = registry.get_record(record.parent.name)
         if parent_info:
             parent_subst = dict(type_subst)

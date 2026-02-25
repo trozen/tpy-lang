@@ -472,7 +472,7 @@ class ExpressionGenerator:
             return f"({left} {cpp_op} {right})"
 
         # User-defined types (records) - use generated C++ operator
-        if isinstance(left_type, NamedType) and left_type.is_record:
+        if isinstance(left_type, NamedType) and left_type.is_user_record:
             left = self.gen_expr_deref(expr.left, left_type)
             right = self.gen_expr_deref(expr.right, right_type)
             # Map Python operators to C++ operators
@@ -942,7 +942,7 @@ class ExpressionGenerator:
         # User-defined record methods may need temp handling for TypeParamRef params
         # TypeParamRef generates param_val_or_ref_t<T> which is T& for object types
         # Temporaries can't bind to non-const lvalue reference
-        if isinstance(obj_type, NamedType) and obj_type.is_record:
+        if isinstance(obj_type, NamedType) and obj_type.is_user_record:
             record_info = self.ctx.analyzer.registry.get_record(obj_type.name)
             if record_info:
                 method_info = record_info.get_method(expr.method)

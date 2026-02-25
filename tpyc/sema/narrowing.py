@@ -95,7 +95,7 @@ class NarrowingTracker:
                     return None
                 actual_type = actual_type.inner
 
-            if isinstance(actual_type, NamedType) and actual_type.is_record:
+            if isinstance(actual_type, NamedType) and actual_type.is_user_record:
                 record = self.ctx.registry.get_record(actual_type.name)
                 if not record:
                     return None
@@ -134,7 +134,7 @@ class NarrowingTracker:
                 return elem_type
             if is_protocol_type(actual_type):
                 return self._get_protocol_getitem_type(actual_type)
-            if isinstance(actual_type, NamedType) and actual_type.is_record:
+            if isinstance(actual_type, NamedType) and actual_type.is_user_record:
                 return self._get_record_getitem_type(actual_type)
         return None
 
