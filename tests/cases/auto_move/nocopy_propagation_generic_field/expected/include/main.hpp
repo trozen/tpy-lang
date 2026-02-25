@@ -43,6 +43,11 @@ struct Handles {
 
     // 16:     def __init__(self):
     Handles() : items(std::vector<Handle>{}) {}
+    // non-copyable (field 'items')
+    Handles(const Handles&) = delete;
+    Handles& operator=(const Handles&) = delete;
+    Handles(Handles&&) = default;
+    Handles& operator=(Handles&&) = default;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Handles& obj) {
