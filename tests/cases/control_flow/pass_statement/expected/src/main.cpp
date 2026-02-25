@@ -51,14 +51,11 @@ int32_t pass_in_elif(int32_t x) {
     if ((x < 0)) {
         // 28:         return -1
         return -1;
+    } else if ((x == 0)) {
+        // 30:         pass
     } else {
-        // 29:     elif x == 0:
-        if ((x == 0)) {
-            // 30:         pass
-        } else {
-            // 32:         return 1
-            return 1;
-        }
+        // 32:         return 1
+        return 1;
     }
     // 33:     return 0
     return 0;

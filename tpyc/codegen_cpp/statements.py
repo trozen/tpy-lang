@@ -976,8 +976,99 @@ class StatementGenerator:
         self._emit_isinstance_extractions(out, stmt.then_type_facts, indent_extra=0)
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
-        """Generate an if statement."""
-        # Pre-declare variables first declared inside branches
+        """Generate an if/elif/else chain as flat C++ if/else if/else."""
+        # Collect the elif chain into a flat list of branches.
+        # An elif is else_body == [TpyIf(...)] where the inner if has the
+        # same column as the outer (genuinely nested else: if has deeper col).
+        # We also only flatten when intermediate else_type_facts have no
+        # concrete extractions (all union/none types).
+        chain: list[TpyIf] = []
+        current = stmt
+        while True:
+            chain.append(current)
+            if (len(current.else_body) == 1
+                    and isinstance(current.else_body[0], TpyIf)
+                    and self._is_elif(current, current.else_body[0])
+                    and not self._has_concrete_isinstance_facts(current.else_type_facts)):
+                current = current.else_body[0]
+            else:
+                break
+
+        # Pre-declare variables first declared inside branches (all levels).
+        # Inner elif branch_decls are typically subsets of the outer's and
+        # get skipped by the declared_vars check, but we emit them all for
+        # correctness.
+        for node in chain:
+            self._emit_branch_decls(out, node, indent)
+
+        # Emit if / else if / else chain
+        for i, node in enumerate(chain):
+            cond = self.expressions.gen_truthy_expr(node.condition)
+            if i == 0:
+                self.ctx.temps.flush(out, indent)
+                out.write(f"{indent}if ({cond}) {{\n")
+            elif not self.ctx.temps._pending:
+                out.write(f"{indent}}} else if ({cond}) {{\n")
+            else:
+                # Elif condition produced temp vars -- can't use flat
+                # else-if (no statements allowed between } and else).
+                # Discard the orphan temps and let _gen_if regenerate
+                # the condition in the correct nested scope.
+                self.ctx.temps._pending.clear()
+                out.write(f"{indent}}} else {{\n")
+                self.ctx.indent_level += 1
+                self._gen_if(out, node, self.ctx.indent())
+                self.ctx.indent_level -= 1
+                out.write(f"{indent}}}\n")
+                return
+
+            then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
+
+            self.ctx.indent_level += 1
+            for s in node.then_body:
+                self.gen_stmt(out, s)
+            self.ctx.emit_block_trailing_comments(out, node.then_body, self.ctx.indent())
+            self.ctx.indent_level -= 1
+
+            self._restore_narrowed_vars(then_saved)
+
+        # Final else branch (from the last node in the chain)
+        last = chain[-1]
+        if last.else_body:
+            out.write(f"{indent}}} else {{\n")
+            else_saved = self._emit_isinstance_extractions(out, last.else_type_facts)
+
+            self.ctx.indent_level += 1
+            for s in last.else_body:
+                self.gen_stmt(out, s)
+            self.ctx.emit_block_trailing_comments(out, last.else_body, self.ctx.indent())
+            self.ctx.indent_level -= 1
+
+            self._restore_narrowed_vars(else_saved)
+
+        out.write(f"{indent}}}\n")
+
+    @staticmethod
+    def _is_elif(outer: TpyIf, inner: TpyIf) -> bool:
+        """True when inner is an elif of outer (not a nested else: if).
+
+        Python's AST represents both as orelse=[If(...)]. We distinguish
+        them by column: elif keeps the same column, nested else: if is
+        indented deeper.
+        """
+        if outer.loc is None or inner.loc is None:
+            return False
+        return inner.loc.column == outer.loc.column
+
+    def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
+        """Check if type_facts contain any concrete types that would emit extractions."""
+        return any(
+            not isinstance(ty, (UnionType, NoneType))
+            for ty in type_facts.values()
+        )
+
+    def _emit_branch_decls(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
+        """Pre-declare variables first declared inside if/elif branches."""
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
         for name, var_type in branch_decls.items():
             if (name not in self.ctx.declared_vars
@@ -1022,35 +1113,6 @@ class StatementGenerator:
                     out.write(f"{indent}{cpp_type}* {name};\n")
                 else:
                     out.write(f"{indent}{cpp_type} {name};\n")
-
-        cond = self.expressions.gen_truthy_expr(stmt.condition)
-        self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}if ({cond}) {{\n")
-
-        # isinstance narrowing: emit std::get extractions from sema-computed type facts
-        then_saved = self._emit_isinstance_extractions(out, stmt.then_type_facts)
-
-        self.ctx.indent_level += 1
-        for s in stmt.then_body:
-            self.gen_stmt(out, s)
-        self.ctx.emit_block_trailing_comments(out, stmt.then_body, self.ctx.indent())
-        self.ctx.indent_level -= 1
-
-        self._restore_narrowed_vars(then_saved)
-
-        if stmt.else_body:
-            out.write(f"{indent}}} else {{\n")
-            else_saved = self._emit_isinstance_extractions(out, stmt.else_type_facts)
-
-            self.ctx.indent_level += 1
-            for s in stmt.else_body:
-                self.gen_stmt(out, s)
-            self.ctx.emit_block_trailing_comments(out, stmt.else_body, self.ctx.indent())
-            self.ctx.indent_level -= 1
-
-            self._restore_narrowed_vars(else_saved)
-
-        out.write(f"{indent}}}\n")
 
     def _gen_while(self, out: TextIO, stmt: TpyWhile, indent: str) -> None:
         """Generate a while loop."""

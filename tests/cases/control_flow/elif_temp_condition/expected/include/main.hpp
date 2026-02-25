@@ -7,11 +7,9 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t classify(int32_t x);
-int32_t check_range(int32_t x);
-int32_t check_bounds(int32_t x);
-int32_t complex_condition(int32_t a, int32_t b);
-int32_t nested_else_if(int32_t x, int32_t y);
+bool has_items(std::vector<int32_t>& items);
+int32_t test(int32_t x);
+void main();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- codegen: emit `else if` instead of `else { if` for `elif` chains (flatter, more readable C++ output)
 - argument default values
 - nocopy propagation for generic instantiations: `class Box[T]` with field `x: T` is copyable at definition, but `Box[NocopyType]` should be nocopy at instantiation site. Currently C++ catches this but TPy sema doesn't.
 - move-through for lvalue assignment at last use: `alias = h` at last use of `h` could move instead of creating `T&` ref; would enable `@nocopy` return-through-alias patterns

@@ -51,23 +51,17 @@ void test_elif_chain() {
     // 24:     if c == '>':
     if ((c == ">")) {
         // 25:         pass
-    } else {
-        // 26:     elif c == '[':
-        if ((c == "[")) {
-            // 27:         if True:
-            if (true) {
-                // 28:             x = get_big()
-                x = get_big();
-            }
-        } else {
-            // 29:     elif c == ']':
-            if ((c == "]")) {
-                // 30:         if True:
-                if (true) {
-                    // 31:             x = get_big()
-                    x = (get_big()).to_fixed_check<int32_t>();
-                }
-            }
+    } else if ((c == "[")) {
+        // 27:         if True:
+        if (true) {
+            // 28:             x = get_big()
+            x = get_big();
+        }
+    } else if ((c == "]")) {
+        // 30:         if True:
+        if (true) {
+            // 31:             x = get_big()
+            x = (get_big()).to_fixed_check<int32_t>();
         }
     }
     // 32:     x += 1

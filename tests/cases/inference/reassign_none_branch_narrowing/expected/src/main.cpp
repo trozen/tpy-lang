@@ -37,12 +37,9 @@ void test_elif_branch() {
     // 23:     if x == 0:
     if ((x == 0)) {
         // 24:         pass
-    } else {
-        // 25:     elif x == 1:
-        if ((x == 1)) {
-            // 26:         b = make_box()
-            b = &*(__slot_1 = make_box());
-        }
+    } else if ((x == 1)) {
+        // 26:         b = make_box()
+        b = &*(__slot_1 = make_box());
     }
     // 27:     if b is not None:
     if ((b != nullptr)) {

@@ -11,15 +11,12 @@ int32_t classify(int32_t x) {
     if ((x < 0)) {
         // 6:         return -1
         return -1;
+    } else if ((x == 0)) {
+        // 8:         return 0
+        return 0;
     } else {
-        // 7:     elif x == 0:
-        if ((x == 0)) {
-            // 8:         return 0
-            return 0;
-        } else {
-            // 10:         return 1
-            return 1;
-        }
+        // 10:         return 1
+        return 1;
     }
 }
 
@@ -54,14 +51,30 @@ int32_t complex_condition(int32_t a, int32_t b) {
     if (((a > 0) && (b > 0))) {
         // 27:         return 1
         return 1;
+    } else if (((a < 0) || (b < 0))) {
+        // 29:         return -1
+        return -1;
     } else {
-        // 28:     elif a < 0 or b < 0:
-        if (((a < 0) || (b < 0))) {
-            // 29:         return -1
-            return -1;
+        // 31:         return 0
+        return 0;
+    }
+}
+
+// 33: def nested_else_if(x: Int32, y: Int32) -> Int32:
+int32_t nested_else_if(int32_t x, int32_t y) {
+    // 34:     # Test that genuine else: if stays nested (not flattened like elif)
+    // 35:     if x > 0:
+    if ((x > 0)) {
+        // 36:         return 1
+        return 1;
+    } else {
+        // 38:         if y > 0:
+        if ((y > 0)) {
+            // 39:             return 2
+            return 2;
         } else {
-            // 31:         return 0
-            return 0;
+            // 41:             return 3
+            return 3;
         }
     }
 }
@@ -71,28 +84,34 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: print(classify(-5))
+    // 43: print(classify(-5))
     std::cout << classify(-5) << "\n";
-    // 34: print(classify(0))
+    // 44: print(classify(0))
     std::cout << classify(0) << "\n";
-    // 35: print(classify(5))
+    // 45: print(classify(5))
     std::cout << classify(5) << "\n";
-    // 36: print(check_range(5))
+    // 46: print(check_range(5))
     std::cout << check_range(5) << "\n";
-    // 37: print(check_range(15))
+    // 47: print(check_range(15))
     std::cout << check_range(15) << "\n";
-    // 38: print(check_bounds(-1))
+    // 48: print(check_bounds(-1))
     std::cout << check_bounds(-1) << "\n";
-    // 39: print(check_bounds(50))
+    // 49: print(check_bounds(50))
     std::cout << check_bounds(50) << "\n";
-    // 40: print(check_bounds(101))
+    // 50: print(check_bounds(101))
     std::cout << check_bounds(101) << "\n";
-    // 41: print(complex_condition(1, 1))
+    // 51: print(complex_condition(1, 1))
     std::cout << complex_condition(1, 1) << "\n";
-    // 42: print(complex_condition(-1, 1))
+    // 52: print(complex_condition(-1, 1))
     std::cout << complex_condition(-1, 1) << "\n";
-    // 43: print(complex_condition(0, 0))
+    // 53: print(complex_condition(0, 0))
     std::cout << complex_condition(0, 0) << "\n";
+    // 54: print(nested_else_if(1, 0))
+    std::cout << nested_else_if(1, 0) << "\n";
+    // 55: print(nested_else_if(-1, 1))
+    std::cout << nested_else_if(-1, 1) << "\n";
+    // 56: print(nested_else_if(-1, -1))
+    std::cout << nested_else_if(-1, -1) << "\n";
 }
 
 } // namespace tpy_user::main

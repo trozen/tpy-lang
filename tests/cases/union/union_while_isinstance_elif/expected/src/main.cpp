@@ -15,17 +15,14 @@ void describe(std::variant<Circle, Rect, Triangle>& s) {
             auto& __s = std::get<Circle>(s);
             // 28:             print(s.radius)
             std::cout << tpy::print_float(__s.radius) << "\n";
+        } else if (std::holds_alternative<Rect>(s)) {
+            auto& __s = std::get<Rect>(s);
+            // 30:             print(s.width)
+            std::cout << tpy::print_float(__s.width) << "\n";
         } else {
-            // 29:         elif isinstance(s, Rect):
-            if (std::holds_alternative<Rect>(s)) {
-                auto& __s = std::get<Rect>(s);
-                // 30:             print(s.width)
-                std::cout << tpy::print_float(__s.width) << "\n";
-            } else {
-                auto& __s = std::get<Triangle>(s);
-                // 32:             print(s.base)
-                std::cout << tpy::print_float(__s.base) << "\n";
-            }
+            auto& __s = std::get<Triangle>(s);
+            // 32:             print(s.base)
+            std::cout << tpy::print_float(__s.base) << "\n";
         }
         // 33:         i += 1
         i = tpy::add_check<int32_t>(i, 1);

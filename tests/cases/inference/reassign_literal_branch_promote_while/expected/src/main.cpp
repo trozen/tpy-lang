@@ -23,23 +23,17 @@ void test_augassign_in_while() {
         // 11:         if c == '>':
         if ((c == ">")) {
             // 12:             pass
-        } else {
-            // 13:         elif c == '[':
-            if ((c == "[")) {
-                // 14:             if True:
-                if (true) {
-                    // 15:                 ip = get_big()
-                    ip = get_big();
-                }
-            } else {
-                // 16:         elif c == ']':
-                if ((c == "]")) {
-                    // 17:             if True:
-                    if (true) {
-                        // 18:                 ip = get_big()
-                        ip = get_big();
-                    }
-                }
+        } else if ((c == "[")) {
+            // 14:             if True:
+            if (true) {
+                // 15:                 ip = get_big()
+                ip = get_big();
+            }
+        } else if ((c == "]")) {
+            // 17:             if True:
+            if (true) {
+                // 18:                 ip = get_big()
+                ip = get_big();
             }
         }
         // 19:         ip += 1

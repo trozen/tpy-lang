@@ -10,18 +10,12 @@ std::string color_name(Color c) {
     if ((c == Color::Red)) {
         // 11:         return "red"
         return "red";
-    } else {
-        // 12:     elif c == Color.Green:
-        if ((c == Color::Green)) {
-            // 13:         return "green"
-            return "green";
-        } else {
-            // 14:     elif c == Color.Blue:
-            if ((c == Color::Blue)) {
-                // 15:         return "blue"
-                return "blue";
-            }
-        }
+    } else if ((c == Color::Green)) {
+        // 13:         return "green"
+        return "green";
+    } else if ((c == Color::Blue)) {
+        // 15:         return "blue"
+        return "blue";
     }
     // 16:     return "unknown"
     return "unknown";

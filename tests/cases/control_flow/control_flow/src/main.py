@@ -30,6 +30,16 @@ def complex_condition(a: Int32, b: Int32) -> Int32:
     else:
         return 0
 
+def nested_else_if(x: Int32, y: Int32) -> Int32:
+    # Test that genuine else: if stays nested (not flattened like elif)
+    if x > 0:
+        return 1
+    else:
+        if y > 0:
+            return 2
+        else:
+            return 3
+
 print(classify(-5))
 print(classify(0))
 print(classify(5))
@@ -41,3 +51,6 @@ print(check_bounds(101))
 print(complex_condition(1, 1))
 print(complex_condition(-1, 1))
 print(complex_condition(0, 0))
+print(nested_else_if(1, 0))
+print(nested_else_if(-1, 1))
+print(nested_else_if(-1, -1))
