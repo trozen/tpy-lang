@@ -29,7 +29,6 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .calls import CallAnalyzer
 
-from tpyc import modules as builtin_modules
 from tpyc.modules.builtins import LIST_MUTATION_METHODS
 
 
@@ -421,34 +420,23 @@ class MethodAnalyzer:
 
     def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
         """Analyze instance method call on any type (builtin or user record)."""
-        is_user_record = isinstance(obj_type, NamedType) and obj_type.is_user_record
-
-        if is_user_record:
-            record_info = self.ctx.registry.get_record(obj_type.name)
-            if not record_info:
-                return None
-            overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
-                record_info, expr.method)
-            if not overloads:
-                return None
-            instance_subst = self.type_ops.build_type_substitution(obj_type)
-            if inherited_subst and instance_subst:
-                type_subst = {
-                    k: self.type_ops.substitute_type_params(v, instance_subst)
-                    for k, v in inherited_subst.items()
-                }
-            elif inherited_subst:
-                type_subst = inherited_subst
-            else:
-                type_subst = instance_subst
+        record_info = self.ctx.registry.get_record_for_type(obj_type)
+        if not record_info:
+            return None
+        overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
+            record_info, expr.method)
+        if not overloads:
+            return None
+        instance_subst = self.type_ops.build_type_substitution(obj_type)
+        if inherited_subst and instance_subst:
+            type_subst = {
+                k: self.type_ops.substitute_type_params(v, instance_subst)
+                for k, v in inherited_subst.items()
+            }
+        elif inherited_subst:
+            type_subst = inherited_subst
         else:
-            record_info = self.ctx.registry.get_record_for_type(obj_type)
-            if not record_info:
-                return None
-            overloads = record_info.get_method_overloads(expr.method)
-            if not overloads:
-                return None
-            type_subst = builtin_modules.extract_type_params(obj_type)
+            type_subst = instance_subst
 
         return self._resolve_and_check_args(expr, overloads, type_subst)
 
@@ -513,7 +501,7 @@ class MethodAnalyzer:
         assert isinstance(super_type, SuperType)
 
         parent_type = super_type.parent_type
-        parent_info = self.protocols._get_parent_record_info(parent_type)
+        parent_info = self.ctx.registry.get_record_for_type(parent_type)
         if parent_info is None:
             raise self.ctx.error(f"Parent class '{parent_type}' not found", expr)
 

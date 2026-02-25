@@ -300,7 +300,7 @@ class TypeRegistrar:
                         record.loc
                     )
                 # Check if parent is generic and requires type args
-                parent_info = self.ctx.registry.get_record(base_type.name)
+                parent_info = self.ctx.registry.get_record_for_type(base_type)
                 if parent_info is None:
                     raise SemanticError(
                         f"Parent class '{base_type.name}' not defined for '{record.name}'",
@@ -400,7 +400,7 @@ class TypeRegistrar:
         if not record_info.parent:
             return
 
-        parent_info = self._get_parent_record_info(record_info.parent)
+        parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
         if not parent_info:
             return
 
@@ -431,7 +431,7 @@ class TypeRegistrar:
 
         # Check parent recursively
         if record_info.parent:
-            parent_info = self._get_parent_record_info(record_info.parent)
+            parent_info = self.ctx.registry.get_record_for_type(record_info.parent)
             if parent_info:
                 return self._find_ancestor_with_method(parent_info, method_name)
 
@@ -447,21 +447,6 @@ class TypeRegistrar:
         if qname is None:
             return False
         return self.ctx.registry.get_builtin_record(qname) is not None
-
-    def _get_parent_record_info(self, parent_type: TpyType) -> RecordInfo | None:
-        """Get RecordInfo for a parent type (user-defined or builtin).
-
-        Args:
-            parent_type: The parent type (NamedType or builtin TpyType).
-
-        Returns:
-            RecordInfo for the parent, or None if not found.
-        """
-        if isinstance(parent_type, NamedType) and parent_type.is_user_record:
-            return self.ctx.registry.get_record(parent_type.name)
-        else:
-            qname = parent_type.qualified_name()
-            return self.ctx.registry.get_builtin_record(qname) if qname else None
 
     def register_protocol(self, protocol: TpyProtocol) -> None:
         """Register a protocol type (without validating parents yet)."""

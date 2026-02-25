@@ -90,8 +90,8 @@ class TypeOperations:
             if typ.kind == TypeParamKind.INT:
                 raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation", loc)
             return
-        if isinstance(typ, NamedType) and typ.is_user_record:
-            record_info = self.ctx.registry.get_record(typ.name)
+        if isinstance(typ, NamedType) and typ.is_record:
+            record_info = self.ctx.registry.get_record_for_type(typ)
             if not record_info:
                 if not allow_forward_ref:
                     raise SemanticError(f"Unknown type: {typ.name}", loc)
@@ -232,22 +232,27 @@ class TypeOperations:
         # Use map_inner_types for types that have inner types
         return typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
 
-    def build_type_substitution(self, record_type: NamedType) -> dict[str, TpyType | int]:
+    def build_type_substitution(self, record_type: TpyType) -> dict[str, TpyType | int]:
         """Build a type parameter substitution map for a generic record instantiation.
 
-        Args:
-            record_type: A NamedType with type_args (e.g., Stack[Int32] or Matrix[Int32, 8]).
+        Works for all types: user records and module types (NamedType) use
+        RecordInfo.type_params + type_args; non-NamedType builtins (ListType,
+        ArrayType, etc.) use extract_type_params from the module system.
 
         Returns:
             Mapping from type parameter names to concrete types or integers.
             For example: {"T": Int32, "N": 8} for Matrix[Int32, 8].
         """
-        record_info = self.ctx.registry.get_record(record_type.name)
-        if not record_info or not record_info.is_generic():
-            return {}
-        if not record_type.type_args:
-            return {}
-        return dict(zip(record_info.type_params, record_type.type_args))
+        from tpyc import modules as builtin_modules
+
+        if isinstance(record_type, NamedType):
+            record_info = self.ctx.registry.get_record_for_type(record_type)
+            if not record_info or not record_info.is_generic():
+                return {}
+            if not record_type.type_args:
+                return {}
+            return dict(zip(record_info.type_params, record_type.type_args))
+        return builtin_modules.extract_type_params(record_type)
 
     def substitute_types(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
         """Recursively substitute types throughout a type structure.
@@ -691,8 +696,6 @@ class TypeOperations:
 
     def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""
-        from tpyc import modules as builtin_modules
-
         record_info = self.ctx.registry.get_record_for_type(typ)
         if not record_info:
             return None
@@ -700,9 +703,7 @@ class TypeOperations:
         if not overloads:
             return None
         method = overloads[0]
-        type_subst = builtin_modules.extract_type_params(typ)
-        if not type_subst and isinstance(typ, NamedType) and typ.is_user_record:
-            type_subst = self.build_type_substitution(typ)
+        type_subst = self.build_type_substitution(typ)
         if type_subst:
             method = self.substitute_method_type_params(method, type_subst)
         return method.return_type

@@ -416,11 +416,11 @@ class ExpressionAnalyzer:
             expr.resolved_binop = result
             return result.method.return_type
 
-        # User-defined types (NamedType record) with dunder methods
-        if isinstance(left_effective, NamedType) and left_effective.is_user_record:
+        # Record types (user-defined or module) with dunder methods
+        if isinstance(left_effective, NamedType) and left_effective.is_record:
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
-                record = self.ctx.registry.get_record(left_effective.name)
+                record = self.ctx.registry.get_record_for_type(left_effective)
                 if record and (method := record.get_method(method_name)):
                     # Check parameter count and type
                     if len(method.params) == 1:
@@ -531,8 +531,8 @@ class ExpressionAnalyzer:
 
     def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
         """Try to find a field on typ. Returns field type or None."""
-        if isinstance(typ, NamedType) and typ.is_user_record:
-            record = self.ctx.registry.get_record(typ.name)
+        if isinstance(typ, NamedType) and typ.is_record:
+            record = self.ctx.registry.get_record_for_type(typ)
             if not record:
                 return None
             type_subst = self.type_ops.build_type_substitution(typ)
@@ -781,8 +781,8 @@ class ExpressionAnalyzer:
                 ret = ReadonlyType(unwrap_readonly(ret))
             return ret
 
-        # User records with __getitem__ method
-        if isinstance(actual_type, NamedType) and actual_type.is_user_record:
+        # Records with __getitem__ method
+        if isinstance(actual_type, NamedType) and actual_type.is_record:
             ret = self.narrowing._get_record_getitem_type(actual_type)
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)

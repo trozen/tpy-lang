@@ -213,7 +213,7 @@ class TypeResolver:
                 return self.protocols.get_dynamic_base_name(typ.name)
         if isinstance(typ, NamedType) and typ.is_user_record:
             # Native records use their native C++ name directly (globally visible)
-            record_info = self.ctx.analyzer.registry.get_record(typ.name)
+            record_info = self.ctx.analyzer.registry.get_record_for_type(typ)
             if record_info and record_info.is_native:
                 return typ.to_cpp()  # to_cpp() already resolves via _native_cpp_names
             # Check if this record is imported from a user module

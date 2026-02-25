@@ -95,8 +95,8 @@ class NarrowingTracker:
                     return None
                 actual_type = actual_type.inner
 
-            if isinstance(actual_type, NamedType) and actual_type.is_user_record:
-                record = self.ctx.registry.get_record(actual_type.name)
+            if isinstance(actual_type, NamedType) and actual_type.is_record:
+                record = self.ctx.registry.get_record_for_type(actual_type)
                 if not record:
                     return None
                 type_subst = self.type_ops.build_type_substitution(actual_type)
@@ -134,7 +134,7 @@ class NarrowingTracker:
                 return elem_type
             if is_protocol_type(actual_type):
                 return self._get_protocol_getitem_type(actual_type)
-            if isinstance(actual_type, NamedType) and actual_type.is_user_record:
+            if isinstance(actual_type, NamedType) and actual_type.is_record:
                 return self._get_record_getitem_type(actual_type)
         return None
 
@@ -155,7 +155,7 @@ class NarrowingTracker:
 
     def _get_record_getitem_type(self, record_type: NamedType) -> TpyType | None:
         """Get __getitem__ return type for a record (returns None on failure)."""
-        record = self.ctx.registry.get_record(record_type.name)
+        record = self.ctx.registry.get_record_for_type(record_type)
         if record is None:
             return None
         getitem = self.protocols.lookup_record_method(record, "__getitem__")
