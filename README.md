@@ -46,6 +46,9 @@ Options:
   --dump-code       Print generated C++ to stdout (no build)
   --default-int     Default type for unannotated integer literals: Int32|Int64|BigInt (default: Int32)
   --emit-source     Embed Python source lines as comments in generated C++
+  -L <path>         Extra library search path (can be repeated)
+  --no-tplib        Disable tplib standard library
+  --no-stdlib       Disable Python stdlib analogs
   -v                Verbose output
   -vv               Show compilation commands
 ```
@@ -58,6 +61,9 @@ tpyc -x --default-int=Int32 examples/hello.py
 
 # CPython-like unbounded integer behavior for unannotated literals
 tpyc -x --default-int=BigInt examples/hello.py
+
+# Extra library search paths
+tpyc -x -L /my/libs examples/main.py
 ```
 
 ## Testing

@@ -107,6 +107,9 @@
 - analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
 - in future: __tpy_Pet_Base, adapters etc - how can we make the names better for c++ interop (__tpy prefix is for internal TPy stuff) (or __tpy_Base_Pet, __tpy_Adapter/__tpy_RefAdapter)
 
+## Standard Library
+- `Box[T]` `operator<<` prints raw pointer address instead of contained value; needs custom `__repr__`/`__str__` support
+
 ## Other
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)

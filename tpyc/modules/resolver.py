@@ -5,7 +5,7 @@ Resolves module names to file paths, supporting both flat modules and packages.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -30,7 +30,7 @@ class ModuleResolver:
     """Resolves module names to file paths.
 
     Modules are resolved relative to a base directory (the directory containing
-    the entry point file).
+    the entry point file), then each extra directory in order.
 
     Supports:
     - Flat modules: "utils" -> utils.py
@@ -39,12 +39,12 @@ class ModuleResolver:
     - Namespace packages: Submodule imports work without __init__ files
     """
     base_dir: Path
+    extra_dirs: list[Path] = field(default_factory=list)
 
     def resolve(self, module_path: str) -> ResolvedModule | None:
         """Resolve a module path to a file.
 
-        Supports dotted module paths (e.g., "mypackage.submod") and packages.
-        Uses namespace package semantics (no __init__ required for submodule imports).
+        Searches base_dir first, then each extra_dir in order (first match wins).
 
         Args:
             module_path: The dotted module path to resolve (e.g., "mypackage.submod").
@@ -52,10 +52,29 @@ class ModuleResolver:
         Returns:
             ResolvedModule with path and metadata, or None if not found.
         """
+        result = self._resolve_in(self.base_dir, module_path)
+        if result:
+            return result
+        for d in self.extra_dirs:
+            result = self._resolve_in(d, module_path)
+            if result:
+                return result
+        return None
+
+    def _resolve_in(self, base: Path, module_path: str) -> ResolvedModule | None:
+        """Resolve a module path relative to a single directory.
+
+        Args:
+            base: Directory to search in.
+            module_path: The dotted module path to resolve.
+
+        Returns:
+            ResolvedModule with path and metadata, or None if not found.
+        """
         parts = module_path.split('.')
 
         # Navigate directories for parent packages (namespace package semantics)
-        current = self.base_dir
+        current = base
         for part in parts[:-1]:
             current = current / part
             if not current.is_dir():

@@ -30,9 +30,14 @@ from .compiler import (
 
 def get_runtime_dir() -> Path:
     """Get the path to the runtime directory."""
-    # Runtime is at package_root/runtime/
     package_root = Path(__file__).parent.parent
     return package_root / "runtime"
+
+
+def get_lib_dir() -> Path:
+    """Get the path to the lib directory (tplib, stdlib search roots)."""
+    package_root = Path(__file__).parent.parent
+    return package_root / "lib"
 
 
 def get_module_name(input_path: Path) -> str:
@@ -64,8 +69,30 @@ def main() -> int:
         default="Int32",
         help="Default type for unannotated integer literals (default: Int32)",
     )
+    parser.add_argument(
+        "-L", "--lib", action="append", default=None,
+        help="Extra library search path (can be repeated)",
+    )
+    parser.add_argument(
+        "--no-tplib", action="store_true",
+        help="Disable tplib standard library",
+    )
+    parser.add_argument(
+        "--no-stdlib", action="store_true",
+        help="Disable Python stdlib analogs",
+    )
 
     args = parser.parse_args()
+
+    # Build library search paths
+    lib_dir = get_lib_dir()
+    lib_dirs: list[Path] = []
+    for extra in (args.lib or []):
+        lib_dirs.append(Path(extra).resolve())
+    if not args.no_tplib:
+        lib_dirs.append(lib_dir / "tpy")
+    if not args.no_stdlib:
+        lib_dirs.append(lib_dir / "stdlib")
 
     # Handle REPL mode
     if args.repl:
@@ -74,7 +101,8 @@ def main() -> int:
         if args.input:
             # Support multiple files separated by the input arg
             preload_files = [Path(args.input).resolve()]
-        return REPLSession(verbose=args.verbose, preload_files=preload_files).run()
+        return REPLSession(verbose=args.verbose, preload_files=preload_files,
+                           lib_dirs=lib_dirs).run()
 
     # Handle --print-types
     if args.print_types:
@@ -130,9 +158,10 @@ def main() -> int:
 
         # Create compiler (unified for both stdin and file input)
         if reading_from_stdin:
-            compiler = Compiler.from_source(source, module_name, default_int=args.default_int)
+            compiler = Compiler.from_source(source, module_name, default_int=args.default_int,
+                                            lib_dirs=lib_dirs)
         else:
-            compiler = Compiler(input_path, default_int=args.default_int)
+            compiler = Compiler(input_path, default_int=args.default_int, lib_dirs=lib_dirs)
 
         compiled_modules = compiler.compile()
 
