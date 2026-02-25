@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
-    TypeParamKind, OptionalType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
+    TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, FinalType, EnumType, StrType, StrViewType, STRVIEW,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
@@ -259,6 +259,29 @@ class TypeRegistrar:
                 )
             type_param_bounds[param_name] = bound_type
 
+        # Validate __copy__ signature
+        has_copy = "__copy__" in methods
+        if has_copy:
+            copy_loc = next((m.loc for m in record.methods if m.name == "__copy__"), record.loc)
+            if record.is_nocopy:
+                raise SemanticError(
+                    f"@nocopy class '{record.name}' cannot define __copy__",
+                    record.loc,
+                )
+            copy_info = methods["__copy__"][0]
+            if len(copy_info.params) > 0:
+                raise SemanticError(
+                    f"__copy__ must take no parameters (besides self)",
+                    copy_loc,
+                )
+            ret = copy_info.return_type
+            inner = ret.wrapped if isinstance(ret, OwnType) else ret
+            if not (isinstance(inner, NamedType) and inner.name == record.name):
+                raise SemanticError(
+                    f"__copy__ must return {record.name}, got {ret}",
+                    copy_loc,
+                )
+
         # Don't classify bases here - defer to validate_record_inheritance
         # (so forward-referenced protocols are properly recognized)
         info = RecordInfo(
@@ -277,6 +300,7 @@ class TypeRegistrar:
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,
             has_del=record.del_method is not None,
+            has_copy=has_copy,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)

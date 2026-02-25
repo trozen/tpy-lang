@@ -1,0 +1,1 @@
+__del__ ordering at module exit differs between C++ and CPython

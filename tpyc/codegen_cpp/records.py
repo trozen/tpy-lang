@@ -228,13 +228,22 @@ class RecordGenerator:
             # struct stays a C++ aggregate (supports both Type() and Type(a,b,c)).
             # Records with __del__/@nocopy get user-declared copy/move ops which
             # suppress the implicit default ctor, so they still need = default.
-            if record_info and (record_info.is_nocopy or record_info.has_del):
+            if record_info and (record_info.is_nocopy or record_info.has_del or record_info.has_copy):
                 out.write(f"{INDENT}{record.name}() = default;\n")
 
-        # Delete copy ops for @nocopy or __del__ classes.
-        # __del__ implies non-copyable: copying would create two owned objects that
-        # both run cleanup (double-drop). Move ops come from _gen_move_and_destructor.
-        if record_info and (record_info.is_nocopy or record_info.has_del):
+        # Copy/move ops for @nocopy, __del__, or __copy__ classes.
+        if record_info and record_info.has_copy:
+            n = record.name
+            out.write(f"{INDENT}// copyable via __copy__\n")
+            out.write(f"{INDENT}{n}(const {n}& other) : {n}(other.__copy__()) {{}}\n")
+            out.write(f"{INDENT}{n}& operator=(const {n}& other) {{\n")
+            out.write(f"{INDENT}{INDENT}if (this != &other) {{ *this = other.__copy__(); }}\n")
+            out.write(f"{INDENT}{INDENT}return *this;\n")
+            out.write(f"{INDENT}}}\n")
+            if not record_info.has_del:
+                out.write(f"{INDENT}{n}({n}&&) = default;\n")
+                out.write(f"{INDENT}{n}& operator=({n}&&) = default;\n")
+        elif record_info and (record_info.is_nocopy or record_info.has_del):
             if record_info.is_nocopy:
                 out.write(f"{INDENT}// non-copyable")
                 nocopy_field = self._find_nocopy_field(record_info)

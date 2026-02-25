@@ -1313,7 +1313,8 @@ class RecordInfo:
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
-    has_del: bool = False          # True if class declares __del__ (needs drop flag)
+    has_del: bool = False           # True if class declares __del__ (needs drop flag)
+    has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""
@@ -1446,6 +1447,7 @@ IMPLICIT_READONLY_METHODS = frozenset({
     "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
     "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
     "__neg__", "__pos__", "__invert__",
+    "__copy__",
 })
 
 

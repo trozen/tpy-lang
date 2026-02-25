@@ -478,7 +478,10 @@ def copy(obj):
     """Explicit copy for ownership transfer.
 
     In CPython, uses copy.deepcopy() to match C++ by-value semantics.
+    If the object defines __copy__(), delegates to it (matches TurboPython semantics).
     """
+    if hasattr(obj, '__copy__'):
+        return obj.__copy__()
     return _copy_module.deepcopy(obj)
 
 

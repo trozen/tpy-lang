@@ -930,6 +930,35 @@ struct Handle {
 };
 ```
 
+**`__copy__` escape hatch:** A class that would be implicitly nocopy (due to nocopy fields)
+can define `__copy__` to remain copyable. The method takes no parameters (besides self) and
+returns `Own[ClassName]`. The compiler generates a C++ copy constructor that delegates to
+`__copy__()`:
+
+```python
+@nocopy
+class Handle:
+    fd: Int32
+    def __init__(self, fd: Int32):
+        self.fd = fd
+
+class Container:      # would be implicitly nocopy, but __copy__ opts out
+    handle: Handle
+    def __init__(self, handle: Own[Handle]):
+        self.handle = handle
+    def __copy__(self) -> Own[Container]:
+        return Container(Handle(self.handle.fd))
+
+c = Container(Handle(1))
+c2 = copy(c)          # works -- calls __copy__ under the hood
+```
+
+Rules:
+- `__copy__` is implicitly `@readonly` (reads self to produce a copy)
+- `@nocopy` classes cannot define `__copy__` (contradictory -- use `@nocopy` to forbid copies)
+- Return type must be `Own[ClassName]` (or bare `ClassName`)
+- No parameters besides `self`
+
 #### Unsafe Memory Operations -- `tpy.unsafe` (Working)
 
 The `tpy.unsafe` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.

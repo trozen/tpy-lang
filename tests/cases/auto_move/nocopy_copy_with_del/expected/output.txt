@@ -1,0 +1,6 @@
+alloc 1
+alloc 101
+r1 = 1
+r2 = 101
+free 101
+free 1

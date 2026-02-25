@@ -339,7 +339,7 @@ class SemanticAnalyzer:
             if info is None or info.is_nocopy:
                 continue
             # __copy__ opts out of propagation
-            if "__copy__" in info.methods:
+            if info.has_copy:
                 continue
             # Check parent
             if info.parent is not None and self._is_type_nocopy(info.parent):
