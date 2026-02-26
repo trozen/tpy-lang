@@ -191,10 +191,18 @@ class TpyListRepeat(TpyExpr):
 
 
 @dataclass
+class TpySlice(TpyExpr):
+    """Slice expression: lower:upper (step not yet supported)."""
+    lower: TpyExpr | None = None
+    upper: TpyExpr | None = None
+    step: TpyExpr | None = None  # reserved for future step support
+
+
+@dataclass
 class TpySubscript(TpyExpr):
     """Subscript indexing: obj[index]"""
     obj: TpyExpr
-    index: TpyExpr
+    index: TpyExpr  # TpySlice for slicing, other TpyExpr for single-index
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
 

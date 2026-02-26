@@ -13,14 +13,14 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType,
-    INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
+    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyFStringValue, TpyFString,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
 from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
@@ -857,7 +857,7 @@ class ExpressionAnalyzer:
         return ListType(first_type)
 
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
-        """Analyze subscript indexing: obj[index]"""
+        """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
         # Enum name lookup: Color["Red"] -> Color (panics on invalid)
         if isinstance(expr.obj, TpyName) and self.ctx.current_ns:
             binding = self.ctx.current_ns.lookup(expr.obj.name)
@@ -872,6 +872,11 @@ class ExpressionAnalyzer:
                 return binding.enum_type
 
         obj_type = self.analyze_expr(expr.obj)
+
+        # Slice: obj[start:stop]
+        if isinstance(expr.index, TpySlice):
+            return self._analyze_slice(expr, obj_type)
+
         index_type = self.analyze_expr(expr.index)
 
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
@@ -915,6 +920,26 @@ class ExpressionAnalyzer:
             return ret
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
+
+    _SLICEABLE_STR_TYPES = (StrType, StringType, StrViewType, PendingStrType)
+
+    def _analyze_slice(self, expr: TpySubscript, obj_type: TpyType) -> TpyType:
+        """Analyze slice expression: obj[start:stop]"""
+        sl = expr.index
+        assert isinstance(sl, TpySlice)
+        for bound, label in ((sl.lower, "start"), (sl.upper, "stop")):
+            if bound is not None:
+                bound_type = self.analyze_expr(bound)
+                if not isinstance(bound_type, (Int32Type, BigIntType, IntLiteralType)):
+                    raise self.ctx.error(
+                        f"Slice {label} must be an integer type, got {bound_type}", bound
+                    )
+        actual_type = unwrap_readonly(obj_type)
+        # TODO: Optional[str] after narrowing passes this check but codegen
+        # doesn't emit .value() -- same pre-existing issue as single-index subscript.
+        if not isinstance(actual_type, self._SLICEABLE_STR_TYPES):
+            raise self.ctx.error(f"Slicing is not yet supported for {obj_type}", expr)
+        return STRVIEW
 
     # F-string formattable types (no __str__ dispatch yet)
     _FORMATTABLE_TYPES = (

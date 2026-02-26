@@ -2900,6 +2900,7 @@ class Car(Vehicle, Printable, Measurable):
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
 - **Working**: `abs()`, `min()`, `max()` for numeric types
+- **Working**: String slicing: `s[1:3]`, `s[:3]`, `s[1:]`, `s[:-1]` -- returns `StrView`, Python clamping semantics, no step yet
 - **Planned**: List slicing: `items[1:3]`
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Open**: `type()` → compile-time type info
@@ -3530,7 +3531,8 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 - **Open**: List comprehensions → unrolled loops for fixed size
 - **Open**: Dict comprehensions → if dict type exists
 - **Open**: Lambda → anonymous struct with `operator()` or inline
-- **Open**: Slice `[start:end]` → view type
+- **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
+- **Open**: List slice `lst[start:end]` -> new `std::vector`
 
 ---
 

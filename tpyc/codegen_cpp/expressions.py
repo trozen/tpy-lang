@@ -20,7 +20,7 @@ from ..parse import (
     TpyFStringValue, TpyFString,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -1212,6 +1212,12 @@ class ExpressionGenerator:
             return f"tpy::EnumUtil<{cpp_type}>::from_name({index})"
 
         obj = self.gen_expr(expr.obj)
+
+        # Slice: obj[start:stop]
+        if isinstance(expr.index, TpySlice):
+            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+            return self._gen_slice(subscript_obj, expr.index)
+
         obj_type = self.types.get_resolved_type(expr.obj)
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access
@@ -1261,6 +1267,26 @@ class ExpressionGenerator:
             if isinstance(expr.operand, TpyIntLiteral):
                 return (True, expr.operand.value)
         return (False, 0)
+
+    def _gen_slice(self, obj: str, sl: TpySlice) -> str:
+        """Generate string slice: tpy::str_slice(obj, start, stop)."""
+        if sl.lower is not None:
+            start = self._gen_slice_bound(sl.lower)
+        else:
+            start = "0"
+        if sl.upper is not None:
+            stop = self._gen_slice_bound(sl.upper)
+        else:
+            stop = "INT32_MAX"
+        return f"tpy::str_slice({obj}, {start}, {stop})"
+
+    def _gen_slice_bound(self, expr: TpyExpr) -> str:
+        """Generate a slice bound expression, converting to int32_t if needed."""
+        index_type = self.ctx.analyzer.get_expr_type(expr)
+        code = self.gen_expr_deref(expr)
+        if self.types.is_runtime_bigint(expr, index_type):
+            code = f"{code}.to_fixed_check<int32_t>()"
+        return code
 
     def _gen_binop_from_result(self, binop_result: ResolvedBinop,
                                left: str, right: str) -> str:

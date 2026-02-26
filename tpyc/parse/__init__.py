@@ -11,7 +11,7 @@ from .nodes import (
     TpyFStringValue, TpyFString,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
+    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,

@@ -202,6 +202,26 @@ inline char get_char(const std::string& s, int32_t index) {
     return s[i];
 }
 
+/**
+ * str_slice - Python-style string slicing with clamping semantics.
+ *
+ * Unlike single-index access, slicing does NOT panic on out-of-bounds:
+ * indices are clamped to [0, len]. Negative indices are normalized first.
+ * Bounds are int32_t; codegen uses INT32_MAX as sentinel for omitted upper
+ * bound, so slicing is correct for strings up to ~2GB.
+ */
+inline std::string_view str_slice(std::string_view s, int32_t start, int32_t stop) {
+    auto len = static_cast<std::ptrdiff_t>(s.size());
+    std::ptrdiff_t i = start;
+    std::ptrdiff_t j = stop;
+    if (i < 0) i += len;
+    if (j < 0) j += len;
+    i = std::clamp(i, std::ptrdiff_t{0}, len);
+    j = std::clamp(j, std::ptrdiff_t{0}, len);
+    if (i >= j) return {};
+    return s.substr(static_cast<std::size_t>(i), static_cast<std::size_t>(j - i));
+}
+
 // =============================================
 // std::vector list methods
 // =============================================

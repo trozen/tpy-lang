@@ -1,0 +1,26 @@
+hello
+world
+world
+hello
+hello world
+---
+def
+abcd
+cde
+abcdef
+---
+hello
+hel
+hello
+
+---
+0
+0
+0
+---
+bcd
+---
+bc
+---
+h
+o

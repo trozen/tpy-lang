@@ -23,7 +23,7 @@ from .nodes import (
     TpyFStringValue, TpyFString,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
+    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
@@ -1651,7 +1651,15 @@ class Parser:
                     if lookup_generic_type_in_module(import_src[1], import_src[0]) is not None:
                         raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
-            index = self._parse_expr(node.slice)
+            if isinstance(node.slice, ast.Slice):
+                sl = node.slice
+                if sl.step is not None:
+                    raise ParseError("Slice step is not yet supported", node)
+                lower = self._parse_expr(sl.lower) if sl.lower is not None else None
+                upper = self._parse_expr(sl.upper) if sl.upper is not None else None
+                index = TpySlice(lower=lower, upper=upper, loc=loc)
+            else:
+                index = self._parse_expr(node.slice)
             return TpySubscript(obj=obj, index=index, loc=loc)
 
         elif isinstance(node, ast.JoinedStr):
