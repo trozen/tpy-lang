@@ -30,8 +30,14 @@ class ScanResult:
     alias_sources: dict[str, str] = field(default_factory=dict)
 
 
-def scan_reassigned_vars(stmts: list[TpyStmt]) -> ScanResult:
+def scan_reassigned_vars(stmts: list[TpyStmt],
+                         pre_declared: set[str] | None = None) -> ScanResult:
     """Pre-scan a function body to find variables that are reassigned after first declaration.
+
+    Args:
+        stmts: The statements to scan.
+        pre_declared: Names already in scope (e.g. function parameters).
+            Assignment to these names counts as reassignment.
 
     Returns a ScanResult with:
     - reassigned: variables with a second TpyVarDecl or TpyAssign after first declaration
@@ -39,7 +45,7 @@ def scan_reassigned_vars(stmts: list[TpyStmt]) -> ScanResult:
     - lvalue_reassigned: subset of reassigned with at least one lvalue reassignment
     - aug_assigned: variables targeted by augmented assignment (+=, -=, etc.)
     """
-    declared: set[str] = set()
+    declared: set[str] = set(pre_declared) if pre_declared else set()
     result = ScanResult()
     _scan_stmts(stmts, declared, result)
     # Reassigned vars become T* pointers, not T& refs -- remove from alias map
@@ -48,21 +54,36 @@ def scan_reassigned_vars(stmts: list[TpyStmt]) -> ScanResult:
     return result
 
 
+def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
+    """Convert an expression to a narrowing key string.
+
+    Returns a simple name for TpyName, or a dotted path for single-level
+    TpyFieldAccess (e.g. "obj.field"). Returns None for unsupported expressions.
+    """
+    if isinstance(expr, TpyName):
+        return expr.name
+    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+        return f"{expr.obj.name}.{expr.field}"
+    return None
+
+
 def match_is_none(expr: TpyExpr) -> tuple[str, bool] | None:
     """Match `v is None`, `v is not None`, `None is v`, `None is not v`.
 
-    Returns (var_name, is_not_none) or None if the pattern doesn't match.
+    Also matches single-level field access: `obj.field is None` etc.
+    Returns (key, is_not_none) or None if the pattern doesn't match.
+    The key is a simple name or a dotted path ("obj.field").
     """
     if not isinstance(expr, TpyBinOp) or expr.op not in ("is", "is not"):
         return None
-    name: str | None = None
-    if isinstance(expr.left, TpyName) and isinstance(expr.right, TpyNoneLiteral):
-        name = expr.left.name
-    elif isinstance(expr.right, TpyName) and isinstance(expr.left, TpyNoneLiteral):
-        name = expr.right.name
-    if name is None:
+    key: str | None = None
+    if isinstance(expr.right, TpyNoneLiteral):
+        key = _expr_to_narrowing_key(expr.left)
+    elif isinstance(expr.left, TpyNoneLiteral):
+        key = _expr_to_narrowing_key(expr.right)
+    if key is None:
         return None
-    return name, expr.op == "is not"
+    return key, expr.op == "is not"
 
 
 def is_scan_rvalue(expr: TpyExpr | None) -> bool:
@@ -109,5 +130,8 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
         if isinstance(stmt, TpyIf):
             _scan_stmts(stmt.then_body, declared, result)
             _scan_stmts(stmt.else_body, declared, result)
-        elif isinstance(stmt, (TpyWhile, TpyForEach)):
+        elif isinstance(stmt, TpyForEach):
+            declared.add(stmt.var)
+            _scan_stmts(stmt.body, declared, result)
+        elif isinstance(stmt, TpyWhile):
             _scan_stmts(stmt.body, declared, result)

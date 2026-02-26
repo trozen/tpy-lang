@@ -26,6 +26,45 @@ if TYPE_CHECKING:
 
 INDENT = "    "
 
+# C++ reserved keywords and common type names that conflict with Python identifiers.
+# When a Python name matches one of these, codegen appends '_' to avoid C++ errors.
+_CPP_RESERVED_WORDS: frozenset[str] = frozenset({
+    # C++ keywords
+    "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor",
+    "bool", "break", "case", "catch", "char", "char8_t", "char16_t", "char32_t",
+    "class", "compl", "concept", "const", "consteval", "constexpr", "constinit",
+    "const_cast", "continue", "co_await", "co_return", "co_yield",
+    "decltype", "default", "delete", "do", "double", "dynamic_cast",
+    "else", "enum", "explicit", "export", "extern",
+    "false", "float", "for", "friend", "goto",
+    "if", "inline", "int", "long", "mutable",
+    "namespace", "new", "noexcept", "not", "not_eq", "nullptr",
+    "operator", "or", "or_eq",
+    "private", "protected", "public",
+    "register", "reinterpret_cast", "requires", "return",
+    "short", "signed", "sizeof", "static", "static_assert", "static_cast",
+    "struct", "switch",
+    "template", "this", "thread_local", "throw", "true", "try", "typedef",
+    "typeid", "typename",
+    "union", "unsigned", "using",
+    "virtual", "void", "volatile",
+    "wchar_t", "while",
+    "xor", "xor_eq",
+})
+
+
+def escape_cpp_name(name: str) -> str:
+    """Escape a Python identifier that clashes with a C++ reserved word.
+
+    Appends '_' to names that collide with C++ keywords or built-in type names.
+    Leaves other names unchanged.  Dunder names (__x__) and internal names
+    (starting with __tpy) are never escaped -- they are compiler-generated.
+    """
+    if name in _CPP_RESERVED_WORDS:
+        return name + "_"
+    return name
+
+
 _TEMPLATE_PLACEHOLDER = re.compile(r"\{(self|\d+)\}")
 
 

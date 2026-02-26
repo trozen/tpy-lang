@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
@@ -90,6 +91,25 @@ void destroy_at(T* p) {
     if constexpr (!std::is_trivially_destructible_v<T>) {
         p->~T();
     }
+}
+
+/**
+ * Checked true division for floats -- panics on zero divisor
+ * to match Python's ZeroDivisionError semantics.
+ */
+inline double truediv(double a, double b) {
+    if (b == 0.0) tpy_panic("Division by zero");
+    return a / b;
+}
+
+inline double floordiv(double a, double b) {
+    if (b == 0.0) tpy_panic("Division by zero");
+    return std::floor(a / b);
+}
+
+inline double fmod(double a, double b) {
+    if (b == 0.0) tpy_panic("Division by zero");
+    return std::fmod(a, b);
 }
 
 } // namespace tpy

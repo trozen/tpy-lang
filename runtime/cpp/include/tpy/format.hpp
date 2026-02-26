@@ -325,7 +325,15 @@ inline std::string_view str_rstrip(std::string_view s) {
 
 inline std::string str_replace(std::string_view s, std::string_view old_sub, std::string_view new_sub) {
     if (old_sub.empty()) {
-        tpy_panic("empty substring in replace");
+        // Python semantics: insert new_sub between every character and at both ends
+        std::string result;
+        result.reserve(s.size() + new_sub.size() * (s.size() + 1));
+        for (size_t i = 0; i < s.size(); ++i) {
+            result.append(new_sub);
+            result += s[i];
+        }
+        result.append(new_sub);
+        return result;
     }
     std::string result;
     size_t start = 0;
@@ -390,7 +398,7 @@ inline std::string str_lower(std::string_view s) {
 
 inline int32_t str_count(std::string_view s, std::string_view sub) {
     if (sub.empty()) {
-        tpy_panic("empty substring in count");
+        return static_cast<int32_t>(s.size()) + 1;
     }
     int32_t n = 0;
     size_t start = 0;

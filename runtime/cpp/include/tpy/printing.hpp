@@ -19,6 +19,7 @@
 
 #include "static_list.hpp"
 #include "bigint.hpp"
+#include "format.hpp"
 
 namespace tpy {
 
@@ -41,8 +42,34 @@ void print_element(std::ostream& os, const T& elem) {
     os << elem;
 }
 
+inline void print_element(std::ostream& os, bool elem) {
+    os << (elem ? "True" : "False");
+}
+
+inline void print_element(std::ostream& os, double elem) {
+    os << format_float(elem);
+}
+
+inline void print_element(std::ostream& os, const std::string& elem) {
+    os << '\'' << elem << '\'';
+}
+
+inline void print_element(std::ostream& os, std::string_view elem) {
+    os << '\'' << elem << '\'';
+}
+
 inline void print_element(std::ostream& os, const BigInt& elem) {
     os << elem.to_string();
+}
+
+// std::vector<bool> uses proxy refs so the bool overload won't match via iterators
+inline void print_element(std::ostream& os, const std::vector<bool>& elem) {
+    os << '[';
+    for (std::size_t i = 0; i < elem.size(); ++i) {
+        if (i > 0) os << ", ";
+        print_element(os, static_cast<bool>(elem[i]));
+    }
+    os << ']';
 }
 
 // Overloads for nested containers
@@ -73,6 +100,18 @@ void print_list_contents(std::ostream& os, Iter begin, Iter end) {
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const ListPrinter<std::vector<T>>& p) {
     detail::print_list_contents(os, p.value.begin(), p.value.end());
+    return os;
+}
+
+// std::vector<bool> uses proxy refs, so the generic iterator path won't pick up
+// the bool overload of print_element. Handle it explicitly.
+inline std::ostream& operator<<(std::ostream& os, const ListPrinter<std::vector<bool>>& p) {
+    os << '[';
+    for (std::size_t i = 0; i < p.value.size(); ++i) {
+        if (i > 0) os << ", ";
+        detail::print_element(os, static_cast<bool>(p.value[i]));
+    }
+    os << ']';
     return os;
 }
 
@@ -120,6 +159,10 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
                   std::is_same_v<T, std::string> ||
                   std::is_same_v<T, const char*>) {
         return os << p.value;
+    } else if constexpr (std::is_same_v<T, bool>) {
+        return os << (p.value ? "True" : "False");
+    } else if constexpr (std::is_same_v<T, double>) {
+        return os << format_float(p.value);
     } else if constexpr (std::ranges::range<T>) {
         return os << ListPrinter(p.value);
     } else {

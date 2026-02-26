@@ -9,9 +9,9 @@ int32_t mutate_and_get(Box& b) {
     // 12:     if b.value is not None:
     if ((b.value.has_value())) {
         // 13:         b.value = b.value + 1
-        b.value = (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
+        b.value = (tpy::add_check<int32_t>((*b.value), 1));
         // 14:         return b.value + 0
-        return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 0));
+        return (tpy::add_check<int32_t>((*b.value), 0));
     }
     // 15:     return 0
     return 0;

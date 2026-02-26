@@ -122,6 +122,14 @@ class TpyType:
         """Return True if this type is passed by mutable reference as a parameter."""
         return not self.is_value_type()
 
+    def param_needs_copy_for_reassign(self) -> bool:
+        """Return True if reassigned params need a mutable local copy.
+
+        Types passed as const ref (BigInt, str) cannot be reassigned in-place,
+        so the codegen renames the param and emits a local mutable copy.
+        """
+        return False
+
     def get_element_type(self) -> Optional['TpyType']:
         """Return the element type for container types, or None for non-containers."""
         return None
@@ -236,6 +244,9 @@ class StrType(TpyType):
     def to_cpp_const_param(self, name: str) -> str:
         return f"std::string_view {name}"
 
+    def param_needs_copy_for_reassign(self) -> bool:
+        return True
+
     def get_element_type(self) -> Optional['TpyType']:
         from tpyc.typesys import CHAR
         return CHAR
@@ -262,6 +273,9 @@ class StringType(TpyType):
 
     def to_cpp_const_param(self, name: str) -> str:
         return f"const std::string& {name}"
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return True
 
     def get_element_type(self) -> Optional['TpyType']:
         from tpyc.typesys import CHAR
@@ -363,6 +377,9 @@ class BigIntType(TpyType):
     def to_cpp_const_param(self, name: str) -> str:
         # Same as to_cpp_param - BigInt always uses const reference
         return f"const {self.to_cpp()}& {name}"
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return True
 
 
 @dataclass(frozen=True)

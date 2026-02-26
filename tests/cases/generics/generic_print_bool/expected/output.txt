@@ -1,0 +1,4 @@
+True
+False
+42
+hello

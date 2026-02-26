@@ -18,7 +18,7 @@ from ..parse import (
 )
 from ..namespace import Namespace
 
-from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError
+from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -156,10 +156,11 @@ class RecordGenerator:
                 proto_info = self.ctx.analyzer.registry.get_protocol(proto.name)
                 if proto_info and proto_info.is_dynamic:
                     bases.append(self.protocols.get_dynamic_base_name(proto.name))
+        cpp_rec_name = escape_cpp_name(record.name)
         if bases:
-            out.write(f"struct {record.name} : {', '.join(bases)} {{\n")
+            out.write(f"struct {cpp_rec_name} : {', '.join(bases)} {{\n")
         else:
-            out.write(f"struct {record.name} {{\n")
+            out.write(f"struct {cpp_rec_name} {{\n")
 
         # Fields
         for fld in record.fields:
@@ -169,7 +170,7 @@ class RecordGenerator:
             default = ""
             if fld.default_value is not None:
                 default = f" = {fld.default_value}"
-            out.write(f"{INDENT}{cpp_type} {fld.name}{default};\n")
+            out.write(f"{INDENT}{cpp_type} {escape_cpp_name(fld.name)}{default};\n")
 
         # Drop flag for classes with __del__ -- prevents double-drop after move.
         # NOTE: in inheritance chains where both parent and child have __del__, each
@@ -192,7 +193,7 @@ class RecordGenerator:
             self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
             if has_params:
                 # Generate default constructor for C++ compatibility
-                out.write(f"{INDENT}{record.name}() = default;\n")
+                out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
                 cpp_params = self.functions.gen_params(
@@ -200,16 +201,16 @@ class RecordGenerator:
                     record.init_method.type_params,
                     const_params=True,
                 )
-                out.write(f"{INDENT}explicit {record.name}({cpp_params})")
+                out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params})")
             else:
                 # No params: generate default constructor with body
-                out.write(f"{INDENT}{record.name}()")
+                out.write(f"{INDENT}{cpp_rec_name}()")
 
             # Build member init list: base init (if any) + field inits
             all_inits = []
             if base_init:
                 all_inits.append(base_init)
-            all_inits.extend(f"{name}({val})" for name, val in inits)
+            all_inits.extend(f"{escape_cpp_name(name)}({val})" for name, val in inits)
             if all_inits:
                 out.write(" : ")
                 out.write(", ".join(all_inits))
@@ -231,11 +232,11 @@ class RecordGenerator:
             # Records with __del__/@nocopy get user-declared copy/move ops which
             # suppress the implicit default ctor, so they still need = default.
             if record_info and (record_info.is_nocopy or record_info.has_del or record_info.has_copy):
-                out.write(f"{INDENT}{record.name}() = default;\n")
+                out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
         # Copy/move ops for @nocopy, __del__, or __copy__ classes.
         if record_info and record_info.has_copy:
-            n = record.name
+            n = cpp_rec_name
             out.write(f"{INDENT}// copyable via __copy__\n")
             out.write(f"{INDENT}{n}(const {n}& other) : {n}(other.__copy__()) {{}}\n")
             out.write(f"{INDENT}{n}& operator=(const {n}& other) {{\n")
@@ -254,11 +255,11 @@ class RecordGenerator:
                 elif nocopy_field:
                     out.write(f" (field '{nocopy_field}')")
                 out.write("\n")
-            out.write(f"{INDENT}{record.name}(const {record.name}&) = delete;\n")
-            out.write(f"{INDENT}{record.name}& operator=(const {record.name}&) = delete;\n")
+            out.write(f"{INDENT}{cpp_rec_name}(const {cpp_rec_name}&) = delete;\n")
+            out.write(f"{INDENT}{cpp_rec_name}& operator=(const {cpp_rec_name}&) = delete;\n")
             if record_info.is_nocopy and not record_info.has_del:
-                out.write(f"{INDENT}{record.name}({record.name}&&) = default;\n")
-                out.write(f"{INDENT}{record.name}& operator=({record.name}&&) = default;\n")
+                out.write(f"{INDENT}{cpp_rec_name}({cpp_rec_name}&&) = default;\n")
+                out.write(f"{INDENT}{cpp_rec_name}& operator=({cpp_rec_name}&&) = default;\n")
 
         # Generate destructor if __del__ is defined
         self._gen_move_and_destructor(out, record)
@@ -284,7 +285,7 @@ class RecordGenerator:
 
     def _gen_record_ostream(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator<< overload for printing a record."""
-        name = record.name
+        name = escape_cpp_name(record.name)
         # For template structs, generate a template operator<<
         if record.type_params:
             # Build params respecting INT type params
@@ -301,39 +302,41 @@ class RecordGenerator:
             out.write(f"inline std::ostream& operator<<(std::ostream& os, const {name}<{type_args}>& obj) {{\n")
         else:
             out.write(f"\ninline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
-        out.write(f'{INDENT}os << "{name}("')
+        # Use the original Python name for the display label
+        out.write(f'{INDENT}os << "{record.name}("')
 
         for i, fld in enumerate(record.fields):
+            cpp_fld = escape_cpp_name(fld.name)
             if i > 0:
                 out.write(f'\n{INDENT}   << ", "')
+            # Display label uses original Python name
             out.write(f'\n{INDENT}   << "{fld.name}="')
             # Handle strings - quote them
             if is_any_str_type(fld.type):
-                out.write(f' << "\\"" << obj.{fld.name} << "\\""')
+                out.write(f' << "\\"" << obj.{cpp_fld} << "\\""')
             elif isinstance(fld.type, OptionalType):
                 inner = fld.type.inner
                 inner_cpp = inner.to_cpp()
                 if isinstance(inner, BoolType):
-                    out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{fld.name})')
+                    out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{cpp_fld})')
                 elif isinstance(inner, FloatType):
-                    out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{fld.name})')
+                    out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{cpp_fld})')
                 elif is_any_str_type(inner):
                     # Quoted string: None or "value"
-                    f = fld.name
-                    out.write(f' << (obj.{f}.has_value() ? std::string("\\"") + std::string(obj.{f}.value()) + "\\"" : std::string("None"))')
+                    out.write(f' << (obj.{cpp_fld}.has_value() ? std::string("\\"") + std::string(obj.{cpp_fld}.value()) + "\\"" : std::string("None"))')
                 else:
-                    out.write(f' << tpy::print_optional_val(obj.{fld.name})')
+                    out.write(f' << tpy::print_optional_val(obj.{cpp_fld})')
             elif isinstance(fld.type, TypeParamRef):
                 # Type parameter - use ValuePrinter which handles both scalars and containers
-                out.write(f' << tpy::ValuePrinter(obj.{fld.name})')
+                out.write(f' << tpy::ValuePrinter(obj.{cpp_fld})')
             elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
                 # Known iterable container type - use ListPrinter
-                out.write(f' << tpy::ListPrinter(obj.{fld.name})')
+                out.write(f' << tpy::ListPrinter(obj.{cpp_fld})')
             elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
                 # Module-defined types may not be printable -- use placeholder
                 out.write(f' << "<{fld.type}>"')
             else:
-                out.write(f' << obj.{fld.name}')
+                out.write(f' << obj.{cpp_fld}')
 
         out.write(f'\n{INDENT}   << ")";\n')
         out.write(f"{INDENT}return os;\n")
@@ -365,6 +368,7 @@ class RecordGenerator:
             return
 
         name = record.name
+        cpp_name = escape_cpp_name(name)
         record_info = self.ctx.analyzer.registry.get_record(name)
 
         # Filter out super().__del__() calls -- they're automatic in C++
@@ -376,21 +380,22 @@ class RecordGenerator:
             parent_cpp = record_info.parent.to_cpp()
             init_parts.append(f"{parent_cpp}(std::move(other))")
         for fld in record.fields:
-            init_parts.append(f"{fld.name}(std::move(other.{fld.name}))")
+            cpp_fld = escape_cpp_name(fld.name)
+            init_parts.append(f"{cpp_fld}(std::move(other.{cpp_fld}))")
 
         init_list = ""
         if init_parts:
             init_list = " : " + ", ".join(init_parts)
 
-        out.write(f"{INDENT}{name}({name}&& other) noexcept{init_list} {{\n")
+        out.write(f"{INDENT}{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
         out.write(f"{INDENT}{INDENT}other.__tpy_owned_ = false;\n")
         out.write(f"{INDENT}}}\n")
 
         # --- Custom move assignment (destroy-and-reconstruct) ---
-        out.write(f"{INDENT}{name}& operator=({name}&& other) noexcept {{\n")
+        out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept {{\n")
         out.write(f"{INDENT}{INDENT}if (this != &other) {{\n")
-        out.write(f"{INDENT}{INDENT}{INDENT}this->~{name}();\n")
-        out.write(f"{INDENT}{INDENT}{INDENT}new (this) {name}(std::move(other));\n")
+        out.write(f"{INDENT}{INDENT}{INDENT}this->~{cpp_name}();\n")
+        out.write(f"{INDENT}{INDENT}{INDENT}new (this) {cpp_name}(std::move(other));\n")
         out.write(f"{INDENT}{INDENT}}}\n")
         out.write(f"{INDENT}{INDENT}return *this;\n")
         out.write(f"{INDENT}}}\n")
@@ -398,7 +403,7 @@ class RecordGenerator:
         # --- Destructor with drop-flag guard ---
         self.ctx.emit_preceding_comments(out, del_method.loc, indent=INDENT)
         self.ctx.emit_source_comment(out, del_method.loc, indent=INDENT)
-        out.write(f"\n{INDENT}~{name}() {{\n")
+        out.write(f"\n{INDENT}~{cpp_name}() {{\n")
         out.write(f"{INDENT}{INDENT}if (!__tpy_owned_) return;\n")
         if body_stmts:
             local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -563,7 +568,7 @@ class RecordGenerator:
 
             # Generate friend operator that delegates to the dunder method
             # Using friend function allows symmetric operand handling
-            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {record.name}& lhs, {param_cpp}) {{\n")
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(record.name)}& lhs, {param_cpp}) {{\n")
             out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
             out.write(f"{INDENT}}}\n")
 

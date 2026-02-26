@@ -26,7 +26,7 @@ from ..parse import (
     TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce,
 )
 from ..namespace import Namespace
-from .context import INDENT, CodeGenError, qualified_cpp_name, expand_cpp_template
+from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
 
 if TYPE_CHECKING:
@@ -53,6 +53,7 @@ class StatementGenerator:
         self.protocols = protocols
         # Will be set after expressions is created
         self.expressions: ExpressionGenerator | None = None
+        self._reassigned_param_copies: list[tuple[str, TpyType]] = []
 
     def set_expressions(self, expressions: ExpressionGenerator):
         """Set expressions generator (to break circular dependency)."""
@@ -62,6 +63,14 @@ class StatementGenerator:
                            track_stmt_line: bool = False) -> None:
         """Buffer body statements, prepend hoist declarations, write to output."""
         body_buf = io.StringIO()
+        # Emit mutable local copies for reassigned const-ref params
+        if self._reassigned_param_copies:
+            indent = self.ctx.indent()
+            for pname, ptype in self._reassigned_param_copies:
+                cpp_name = escape_cpp_name(pname)
+                cpp_type = ptype.to_cpp()
+                body_buf.write(f"{indent}{cpp_type} {cpp_name} = __param_{cpp_name};\n")
+            self._reassigned_param_copies = []
         for stmt in stmts:
             if track_stmt_line:
                 self.ctx.current_stmt_line = stmt.loc.line if hasattr(stmt, 'loc') and stmt.loc else 0
@@ -119,6 +128,14 @@ class StatementGenerator:
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
         if is_method:
             self.ctx.in_method = True
+
+        # Emit mutable local copies for reassigned const-ref params (BigInt, str)
+        # so internal reassignment doesn't change the function signature.
+        self._reassigned_param_copies = []
+        if scan:
+            for pname, ptype in params:
+                if pname in scan.reassigned and ptype.param_needs_copy_for_reassign():
+                    self._reassigned_param_copies.append((pname, ptype))
 
         self._gen_buffered_body(out, body)
         self.ctx.emit_block_trailing_comments(out, body, self.ctx.indent())
@@ -213,6 +230,18 @@ class StatementGenerator:
                 if self.ctx.is_indirect_name(stmt.value):
                     ret_expr = f"(*{ret_expr})"
                     ret_expr = self.expressions._maybe_move(stmt.value, ret_expr)
+                # Unwrap value-optional expressions when return type is non-Optional.
+                # The sema narrows the type inside `if x is not None:` branches,
+                # but the C++ variable/field is still std::optional<T>.
+                elif (
+                    not isinstance(ret_type, OptionalType)
+                    and self._is_value_optional_expr(stmt.value)
+                ):
+                    analyzed_type = self.ctx.get_expr_type(stmt.value)
+                    if isinstance(analyzed_type, OptionalType):
+                        ret_expr = f"tpy::deref_optional_check({ret_expr})"
+                    else:
+                        ret_expr = f"(*{ret_expr})"
                 # StrView local returned as str needs explicit conversion
                 elif isinstance(ret_type, StrType):
                     expr_type = self.types.get_resolved_type(stmt.value)
@@ -461,6 +490,7 @@ class StatementGenerator:
         pre-declared so aliases to the init value aren't overwritten.
         """
         from ..parse import TpyName as _TpyName
+        name = escape_cpp_name(name)
 
         # None literal -> nullptr (Optional/Ptr) or monostate slot (Union)
         if isinstance(init, TpyNoneLiteral):
@@ -584,6 +614,7 @@ class StatementGenerator:
         to avoid creating loop-scoped storage that would dangle.
         """
         from ..parse import TpyName as _TpyName
+        cpp_name = escape_cpp_name(name)
 
         # None literal -> set to nullptr (Optional/Ptr) or monostate (Union)
         if isinstance(init, TpyNoneLiteral):
@@ -593,11 +624,11 @@ class StatementGenerator:
                     is_optional_slot = rebind_slot not in self.ctx.plain_rebind_slots
                     if is_optional_slot:
                         return (f"{indent}{rebind_slot}.emplace(std::monostate{{}});\n"
-                                f"{indent}{name} = &(*{rebind_slot});\n")
+                                f"{indent}{cpp_name} = &(*{rebind_slot});\n")
                     return (f"{indent}{rebind_slot} = std::monostate{{}};\n"
-                            f"{indent}{name} = &{rebind_slot};\n")
-                return f"{indent}(*{name}) = std::monostate{{}};\n"
-            return f"{indent}{name} = nullptr;\n"
+                            f"{indent}{cpp_name} = &{rebind_slot};\n")
+                return f"{indent}(*{cpp_name}) = std::monostate{{}};\n"
+            return f"{indent}{cpp_name} = nullptr;\n"
 
         init_type = self.ctx.get_expr_type(init)
         # Optional non-value field on lvalue -> optional_to_ptr directly
@@ -610,11 +641,11 @@ class StatementGenerator:
             if isinstance(init, TpyFieldAccess):
                 if not self.ctx.is_rvalue_source(init):
                     init_expr = self.expressions.gen_expr(init, target_type)
-                    return f"{indent}{name} = tpy::optional_to_ptr({init_expr});\n"
+                    return f"{indent}{cpp_name} = tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
-                return f"{indent}{name} = {init_expr};\n"
+                return f"{indent}{cpp_name} = {init_expr};\n"
 
         init_expr = self.expressions.gen_expr(init, target_type)
 
@@ -627,7 +658,7 @@ class StatementGenerator:
             if rebind_slot:
                 deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field,
                                                    rebind_slot not in self.ctx.plain_rebind_slots)
-                return f"{indent}{name} = {deref};\n"
+                return f"{indent}{cpp_name} = {deref};\n"
             # First rvalue assignment (e.g. global init) -- declare slot here
             slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[name] = slot
@@ -636,20 +667,20 @@ class StatementGenerator:
                 self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
                 deref = self._ptr_from_rvalue_slot(slot, init_expr, is_opt_field,
                                                    slot not in self.ctx.plain_rebind_slots)
-                return f"{indent}{name} = {deref};\n"
+                return f"{indent}{cpp_name} = {deref};\n"
             if not is_opt_field:
                 self.ctx.plain_rebind_slots.add(slot)
             deref = self._ptr_from_local_slot(slot, is_opt_field)
             return (f"{indent}{static_kw}{slot_type} {slot} = {init_expr};\n"
-                    f"{indent}{name} = {deref};\n")
+                    f"{indent}{cpp_name} = {deref};\n")
         elif isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
-            return f"{indent}{name} = {init_expr};\n"
+            return f"{indent}{cpp_name} = {init_expr};\n"
         elif self.ctx._is_pointer_global(init):
-            return f"{indent}{name} = {init_expr};\n"
+            return f"{indent}{cpp_name} = {init_expr};\n"
         elif self.ctx.is_global_name(init):
-            return f"{indent}{name} = &({init_expr});\n"
+            return f"{indent}{cpp_name} = &({init_expr});\n"
         else:
-            return f"{indent}{name} = &({init_expr});\n"
+            return f"{indent}{cpp_name} = &({init_expr});\n"
 
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
@@ -659,6 +690,9 @@ class StatementGenerator:
         # Final globals are defined at namespace scope, skip in __tpy_init
         if stmt.is_final:
             return None
+
+        cpp_name = escape_cpp_name(stmt.name)
+
         # Global-declared vars: emit assignment to the existing global, not a local decl
         if stmt.name in self.ctx.global_declared_vars:
             if not stmt.init:
@@ -684,7 +718,7 @@ class StatementGenerator:
                     cpp_type = self.types.type_to_cpp(resolve_type) if resolve_type else "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
-                return f"{indent}{stmt.name} = {init_expr};\n"
+                return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
         # Determine target type for first declaration
@@ -724,11 +758,11 @@ class StatementGenerator:
                     return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
                 else:
                     # Optional without initializer -> nullptr
-                    return f"{indent}{cpp_type}* {stmt.name} = nullptr;\n"
+                    return f"{indent}{cpp_type}* {cpp_name} = nullptr;\n"
             else:
                 # T& reference -- alias without rebinding
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
-                return f"{indent}{cpp_type}& {stmt.name} = {init_expr};\n"
+                return f"{indent}{cpp_type}& {cpp_name} = {init_expr};\n"
 
         # Tier 1 non-value-type locals are eligible for auto-move at last use
         init_is_rvalue = stmt.init is None or self.ctx.is_rvalue_source(stmt.init)
@@ -747,14 +781,24 @@ class StatementGenerator:
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
             if stmt.name in self.ctx.move_through_vars:
                 init_expr = f"std::move({init_expr})"
+            # Unwrap value-optional init when target is non-Optional
+            if (
+                not isinstance(target_type, OptionalType)
+                and self._is_value_optional_expr(stmt.init)
+            ):
+                analyzed_type = self.ctx.get_expr_type(stmt.init)
+                if isinstance(analyzed_type, OptionalType):
+                    init_expr = f"tpy::deref_optional_check({init_expr})"
+                else:
+                    init_expr = f"(*{init_expr})"
             # string_view -> string init requires explicit conversion in C++
-            if isinstance(target_type, StrType):
+            elif isinstance(target_type, StrType):
                 init_resolved = self.types.get_resolved_type(stmt.init)
                 if isinstance(init_resolved, StrViewType):
                     init_expr = f"std::string({init_expr})"
-            return f"{indent}{cpp_type} {stmt.name} = {init_expr};\n"
+            return f"{indent}{cpp_type} {cpp_name} = {init_expr};\n"
         else:
-            return f"{indent}{cpp_type} {stmt.name};\n"
+            return f"{indent}{cpp_type} {cpp_name};\n"
 
     def _gen_assign_code(self, stmt: TpyAssign, indent: str) -> str:
         """Generate code for an assignment. Returns code to write."""
@@ -826,6 +870,14 @@ class StatementGenerator:
         # Special handling for subscript targets - use set_value() pattern
         if isinstance(stmt.target, TpySubscript):
             return self._gen_aug_assign_subscript_code(stmt, indent)
+
+        # list += other_list -> extend in place
+        if stmt.is_list_extend:
+            target = self.expressions.gen_expr(stmt.target)
+            if self.ctx.is_indirect_name(stmt.target):
+                target = f"(*{target})"
+            value = self.expressions.gen_expr_deref(stmt.value)
+            return f"{indent}tpy::list_extend({target}, {value});\n"
 
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)
@@ -908,6 +960,21 @@ class StatementGenerator:
             return f"{indent}{code};\n"
         else:
             return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
+
+    def _is_value_optional_var(self, name: str) -> bool:
+        """Check if a variable's C++ declared type is a value-type std::optional<T>."""
+        declared = self.ctx.var_types.get(name) or self.ctx.current_func_params.get(name)
+        return (isinstance(declared, OptionalType) and not declared.uses_pointer_repr())
+
+    def _is_value_optional_expr(self, expr: TpyExpr) -> bool:
+        """Check if an expression's C++ type is a value-type std::optional<T>.
+
+        Handles both TpyName (variable) and TpyFieldAccess (obj.field).
+        """
+        if isinstance(expr, TpyName):
+            return self._is_value_optional_var(expr.name)
+        declared = self.expressions._get_cpp_declared_type(expr)
+        return (isinstance(declared, OptionalType) and not declared.uses_pointer_repr())
 
     def _emit_isinstance_extractions(
         self, out: TextIO, type_facts: dict[str, TpyType], indent_extra: int = 1,
@@ -1044,7 +1111,17 @@ class StatementGenerator:
         last = chain[-1]
         if last.else_body:
             out.write(f"{indent}}} else {{\n")
-            else_saved = self._emit_isinstance_extractions(out, last.else_type_facts)
+            # Skip else_type_facts extraction when the else body is an elif
+            # that will do its own isinstance checks against the original variant.
+            is_elif_continuation = (
+                len(last.else_body) == 1
+                and isinstance(last.else_body[0], TpyIf)
+                and self._is_elif(last, last.else_body[0])
+            )
+            if is_elif_continuation:
+                else_saved: dict[str, str | None] = {}
+            else:
+                else_saved = self._emit_isinstance_extractions(out, last.else_type_facts)
 
             self.ctx.indent_level += 1
             for s in last.else_body:
@@ -1148,6 +1225,7 @@ class StatementGenerator:
         variable from var_types.
         """
         self.ctx.local_scope_names.add(stmt.var)
+        self.ctx.declared_vars.add(stmt.var)
         if elem_type:
             self.ctx.var_types[stmt.var] = elem_type
         old_ns = self.ctx.current_ns
@@ -1193,11 +1271,12 @@ class StatementGenerator:
 
         # Declare loop variable inside the while body
         inner_indent = indent + INDENT
+        cpp_var = escape_cpp_name(stmt.var)
         if elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}{cpp_elem} {stmt.var} = *{opt_name};\n")
+            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{opt_name};\n")
         else:
-            out.write(f"{inner_indent}auto& {stmt.var} = *{opt_name};\n")
+            out.write(f"{inner_indent}auto& {cpp_var} = *{opt_name};\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
@@ -1228,11 +1307,12 @@ class StatementGenerator:
         out.write(f"{indent}while (auto {opt_name} = {iter_name}.__next_opt__()) {{\n")
 
         inner_indent = indent + INDENT
+        cpp_var = escape_cpp_name(stmt.var)
         if elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}{cpp_elem} {stmt.var} = *{opt_name};\n")
+            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{opt_name};\n")
         else:
-            out.write(f"{inner_indent}auto& {stmt.var} = *{opt_name};\n")
+            out.write(f"{inner_indent}auto& {cpp_var} = *{opt_name};\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
@@ -1356,7 +1436,7 @@ class StatementGenerator:
 
         self.ctx.temps.flush(out, indent)
 
-        var = stmt.var
+        var = escape_cpp_name(stmt.var)
         cpp_elem = elem_type.to_cpp()
 
         # Pre-evaluate non-literal args into temps (left-to-right, matching
@@ -1448,6 +1528,11 @@ class StatementGenerator:
 
         iterable = self.expressions.gen_expr_deref(stmt.iterable)
 
+        # C string literals include the null terminator in range-based for,
+        # so wrap them in std::string_view to iterate only the characters.
+        if isinstance(stmt.iterable, TpyStrLiteral):
+            iterable = f"std::string_view({iterable})"
+
         # Determine element type for the loop variable
         # Handle protocol types (e.g., NativeIterable[T])
         if is_protocol_type(iterable_type):
@@ -1467,16 +1552,17 @@ class StatementGenerator:
 
         # Generate C++ range-based for loop
         # Non-value element types use auto& (reference into container, not pointer-local)
+        cpp_var = escape_cpp_name(stmt.var)
         if elem_type:
             if not elem_type.is_value_type():
-                out.write(f"{indent}for (auto& {stmt.var} : {iterable}) {{\n")
+                out.write(f"{indent}for (auto& {cpp_var} : {iterable}) {{\n")
             else:
                 cpp_type = elem_type.to_cpp()
-                out.write(f"{indent}for ({cpp_type} {stmt.var} : {iterable}) {{\n")
+                out.write(f"{indent}for ({cpp_type} {cpp_var} : {iterable}) {{\n")
             # Track the loop variable's type for use in body expressions
             self.ctx.var_types[stmt.var] = elem_type
         else:
             # Fallback: use auto
-            out.write(f"{indent}for (auto {stmt.var} : {iterable}) {{\n")
+            out.write(f"{indent}for (auto {cpp_var} : {iterable}) {{\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)

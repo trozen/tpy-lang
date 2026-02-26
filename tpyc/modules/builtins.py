@@ -203,6 +203,12 @@ def init_module() -> BuiltinModule:
             cpp="tpy::list_copy({self})",
             is_readonly=True,
         )],
+        "__add__": [MethodDef(
+            params=[ParamDef("other", ListType(T))],
+            returns=ListType(T),
+            cpp="tpy::list_concat({self}, {0})",
+            is_readonly=True,
+        )],
     }, constructors=[
         # list(iterable) - create list from any iterable, inferring element type
         MethodDef(
@@ -394,7 +400,7 @@ def init_module() -> BuiltinModule:
             "__add__": ("({self}) + ({0})", BIGINT),
             "__sub__": ("({self}) - ({0})", BIGINT),
             "__mul__": ("({self}) * ({0})", BIGINT),
-            "__truediv__": ("static_cast<double>({self}) / static_cast<double>({0})", FLOAT),
+            "__truediv__": ("tpy::truediv(static_cast<double>({self}), static_cast<double>({0}))", FLOAT),
             "__floordiv__": ("({self}) / ({0})", BIGINT),
             "__mod__": ("({self}) % ({0})", BIGINT),
             "__pow__": ("({self}).pow({0})", BIGINT),
@@ -434,19 +440,19 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="({self}) * static_cast<double>({0})"),
         ],
         "__truediv__": [
-            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="({self}) / ({0})"),
-            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="({self}) / static_cast<double>({0})"),
-            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="({self}) / static_cast<double>({0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::truediv({self}, {0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="tpy::truediv({self}, static_cast<double>({0}))"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="tpy::truediv({self}, static_cast<double>({0}))"),
         ],
         "__floordiv__": [
-            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::floor(({self}) / ({0}))"),
-            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="std::floor(({self}) / static_cast<double>({0}))"),
-            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::floor(({self}) / static_cast<double>({0}))"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::floordiv({self}, {0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="tpy::floordiv({self}, static_cast<double>({0}))"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="tpy::floordiv({self}, static_cast<double>({0}))"),
         ],
         "__mod__": [
-            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::fmod({self}, {0})"),
-            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="std::fmod({self}, static_cast<double>({0}))"),
-            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::fmod({self}, static_cast<double>({0}))"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::fmod({self}, {0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="tpy::fmod({self}, static_cast<double>({0}))"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="tpy::fmod({self}, static_cast<double>({0}))"),
         ],
         "__pow__": [
             MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::pow({self}, {0})"),
@@ -474,19 +480,19 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="static_cast<double>({0}) * ({self})"),
         ],
         "__rtruediv__": [
-            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="({0}) / ({self})"),
-            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="static_cast<double>({0}) / ({self})"),
-            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="static_cast<double>({0}) / ({self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::truediv({0}, {self})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="tpy::truediv(static_cast<double>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="tpy::truediv(static_cast<double>({0}), {self})"),
         ],
         "__rfloordiv__": [
-            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::floor(({0}) / ({self}))"),
-            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="std::floor(static_cast<double>({0}) / ({self}))"),
-            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::floor(static_cast<double>({0}) / ({self}))"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::floordiv({0}, {self})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="tpy::floordiv(static_cast<double>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="tpy::floordiv(static_cast<double>({0}), {self})"),
         ],
         "__rmod__": [
-            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::fmod({0}, {self})"),
-            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="std::fmod(static_cast<double>({0}), {self})"),
-            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::fmod(static_cast<double>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::fmod({0}, {self})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="tpy::fmod(static_cast<double>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="tpy::fmod(static_cast<double>({0}), {self})"),
         ],
         "__rpow__": [
             MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::pow({0}, {self})"),

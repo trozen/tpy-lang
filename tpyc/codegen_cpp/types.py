@@ -55,6 +55,11 @@ class TypeResolver:
 
         # For binary operations, compute type using resolved operand types
         if isinstance(expr, TpyBinOp):
+            # Comparisons always produce bool -- skip arithmetic type logic
+            if expr.op in ("==", "!=", "<", ">", "<=", ">="):
+                typ = self.ctx.analyzer.get_expr_type(expr)
+                return unwrap_readonly(typ) if typ else typ
+
             # First pass without context to detect Int32 operands
             left_raw = self.get_resolved_type(expr.left)
             right_raw = self.get_resolved_type(expr.right)

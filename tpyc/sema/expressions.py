@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
+    NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType, ArrayType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, is_any_str_type,
+    ResolvedBinop, FunctionInfo, ParamInfo,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
@@ -84,8 +85,10 @@ class ExpressionAnalyzer:
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
             typ = self.calls.analyze_call(expr)
+            self.narrowing.invalidate_field_facts_for_call(expr)
         elif isinstance(expr, TpyMethodCall):
             typ = self.methods.analyze_method_call(expr)
+            self.narrowing.invalidate_field_facts_for_method_call(expr)
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)
         elif isinstance(expr, TpyArrayLiteral):
@@ -428,6 +431,55 @@ class ExpressionAnalyzer:
                 expr.resolved_binop = result
             return IntLiteralType(literal_result)
 
+        # List/Array concatenation with +
+        if expr.op == "+":
+            left_elem = left_effective.get_element_type() if isinstance(left_effective, (PendingListType, ListType, ArrayType)) else None
+            right_elem = right_effective.get_element_type() if isinstance(right_effective, (PendingListType, ListType, ArrayType)) else None
+            if left_elem is not None and right_elem is not None:
+                # Resolve element types: IntLiteralType adapts to the other
+                # side's concrete type, or falls back to the default int.
+                left_is_lit = isinstance(left_elem, IntLiteralType)
+                right_is_lit = isinstance(right_elem, IntLiteralType)
+                if left_is_lit and not right_is_lit:
+                    left_elem = right_elem
+                elif right_is_lit and not left_is_lit:
+                    right_elem = left_elem
+                elif left_is_lit and right_is_lit:
+                    left_elem = self.ctx.default_int_for_literal(left_elem)
+                    right_elem = left_elem
+                if left_elem != right_elem:
+                    raise SemanticError(
+                        f"Cannot concatenate list[{left_elem}] and list[{right_elem}]",
+                        expr.loc,
+                    )
+                # Concat produces a list -- mark pending literals as mutated
+                for sub_expr, sub_type in ((expr.left, left_effective), (expr.right, right_effective)):
+                    if isinstance(sub_type, PendingListType):
+                        info = self.ctx.list_literals.get(sub_type.literal_id)
+                        if info:
+                            info.is_mutated = True
+                    elif isinstance(sub_expr, TpyName):
+                        var_name = sub_expr.name
+                        if var_name in self.ctx.variable_to_literal:
+                            lit_id = self.ctx.variable_to_literal[var_name]
+                            info = self.ctx.list_literals.get(lit_id)
+                            if info:
+                                info.is_mutated = True
+                result_type = ListType(left_elem)
+                expr.resolved_binop = ResolvedBinop(
+                    method=FunctionInfo(
+                        name="__add__",
+                        params=[ParamInfo("other", result_type)],
+                        return_type=result_type,
+                        cpp_template="tpy::list_concat({self}, {0})",
+                        is_method=True,
+                    ),
+                    left_wrapper="{expr}",
+                    right_wrapper="{expr}",
+                    receiver_type=result_type,
+                )
+                return result_type
+
         # Protocol-typed operands - look up the dunder method in the protocol
         # For Self in protocols, Self binds to the protocol itself when used as a value type
         if is_protocol_type(left_effective):
@@ -455,8 +507,34 @@ class ExpressionAnalyzer:
                     # Check parameter count and type
                     if len(method.params) == 1:
                         _, param_type = method.params[0]
+                        # Substitute type params for generic types (e.g. list[T].__add__(list[T]))
+                        type_subst = self.type_ops.build_type_substitution(left_effective)
+                        if type_subst:
+                            param_type = self.type_ops.substitute_types(param_type, type_subst)
                         if param_type == right_effective:
-                            return method.return_type
+                            ret_type = method.return_type
+                            if type_subst:
+                                ret_type = self.type_ops.substitute_types(ret_type, type_subst)
+                            # Build ResolvedBinop so codegen uses the method's
+                            # cpp_template instead of raw C++ operator syntax.
+                            cpp = method.cpp_template
+                            if not cpp:
+                                from .operators import DUNDER_CPP_TEMPLATES
+                                cpp = DUNDER_CPP_TEMPLATES.get(method_name)
+                            resolved_method = FunctionInfo(
+                                name=method_name,
+                                params=[ParamInfo(n, t) for n, t in method.params],
+                                return_type=ret_type,
+                                cpp_template=cpp,
+                                is_method=True,
+                            )
+                            expr.resolved_binop = ResolvedBinop(
+                                method=resolved_method,
+                                left_wrapper="{expr}",
+                                right_wrapper="{expr}",
+                                receiver_type=left_effective,
+                            )
+                            return ret_type
 
         raise SemanticError(
             f"Invalid operand types for '{expr.op}': {left_type} and {right_type}",
@@ -655,6 +733,12 @@ class ExpressionAnalyzer:
                 # readonly reference yields a readonly result.
                 if is_readonly_obj and not result.is_value_type():
                     result = ReadonlyType(unwrap_readonly(result))
+                # Apply field path narrowing (e.g. after `if obj.field is not None:`)
+                if isinstance(expr.obj, TpyName):
+                    field_key = f"{expr.obj.name}.{expr.field}"
+                    narrowed = self.ctx.narrowed_types.get(field_key)
+                    if narrowed is not None:
+                        result = narrowed
                 return result
 
             deref_target = self.get_deref_target_type(current_type)
