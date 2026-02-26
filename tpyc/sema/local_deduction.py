@@ -243,6 +243,26 @@ class LocalTypeDeduction:
         if literal_id in self.ctx.list_literals:
             self.ctx.list_literals[literal_id].is_mutated = True
 
+    def link_list_literals(self, target_id: int, value_id: int) -> None:
+        """Link target literal to value literal for alias-based promotion.
+
+        Sets a one-directional edge; the resolution pass propagates promotion
+        in both directions (Array->List transitivity) via the while-changed loop.
+        """
+        target = self.ctx.list_literals.get(target_id)
+        if target is None:
+            return
+        if target.source_literal_id is None:
+            target.source_literal_id = value_id
+        else:
+            # Target already linked to a different source -- it can hold multiple
+            # distinct list literals, so all three must be promoted to list.
+            target.is_mutated = True
+            if target.source_literal_id in self.ctx.list_literals:
+                self.ctx.list_literals[target.source_literal_id].is_mutated = True
+            if value_id in self.ctx.list_literals:
+                self.ctx.list_literals[value_id].is_mutated = True
+
     def mark_list_return_context(self, return_expr: TpyExpr, return_type: TpyType) -> None:
         """Track return-type context for list literal inference."""
         if isinstance(return_type, OwnType):

@@ -769,6 +769,9 @@ class StatementAnalyzer:
                     if isinstance(inner_init, PendingListType):
                         if inner_existing.size != inner_init.size:
                             self.deduction.mark_list_different_size(inner_existing.literal_id)
+                            self.deduction.mark_list_different_size(inner_init.literal_id)
+                        else:
+                            self.deduction.link_list_literals(inner_existing.literal_id, inner_init.literal_id)
                     var_type = existing_type
                 # PendingStrType reassignment: track view-compatibility, keep pending
                 elif isinstance(inner_existing, PendingStrType):
@@ -998,6 +1001,9 @@ class StatementAnalyzer:
                 if isinstance(inner_value, PendingListType):
                     if inner_target.size != inner_value.size:
                         self.deduction.mark_list_different_size(inner_target.literal_id)
+                        self.deduction.mark_list_different_size(inner_value.literal_id)
+                    else:
+                        self.deduction.link_list_literals(inner_target.literal_id, inner_value.literal_id)
                 # target_type stays PendingListType
             # PendingStrType reassignment: track view-compatibility, keep pending
             elif isinstance(inner_target, PendingStrType):
