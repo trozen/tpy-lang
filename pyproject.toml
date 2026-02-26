@@ -15,6 +15,9 @@ package = true
 [tool.setuptools.packages.find]
 include = ["tpyc*", "runtime*"]
 
+[tool.pytest.ini_options]
+addopts = "-n auto"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",

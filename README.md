@@ -70,10 +70,10 @@ tpyc -x -L /my/libs examples/main.py
 
 ```bash
 # Run all tests
-uv run pytest -n auto
+uv run pytest
 
 # Run tests for a specific case
-uv run pytest -k hello -n auto
+uv run pytest -k hello
 ```
 
 ## View library documentation

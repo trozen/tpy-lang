@@ -75,26 +75,26 @@ uv run tpyc -x /tmp/agents/scratch.py
 
 ## Testing
 
-Always use `-n auto` for parallel test execution (much faster).
+Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`.
 
 ```bash
-# Run all tests (parallel)
-uv run pytest -n auto
+# Run all tests
+uv run pytest
 
 # Run fast compilation tests only (diagnostics, codegen)
-uv run pytest tests/test_comp.py -n auto
+uv run pytest tests/test_comp.py
 
 # Run execution tests only (C++ build, run)
-uv run pytest tests/test_exec.py -n auto
+uv run pytest tests/test_exec.py
 
 # Run CPython compatibility tests only
-uv run pytest tests/test_cpy.py -n auto
+uv run pytest tests/test_cpy.py
 
 # Run unit tests only (no C++ toolchain needed)
-uv run pytest tpyc/ -n auto
+uv run pytest tpyc/
 
 # Run tests for one case (pattern matching)
-uv run pytest -k hello -n auto
+uv run pytest -k hello
 
 # Update expected snapshots after intentional changes
 uv run python tests/update_snapshots.py                    # all cases
@@ -183,7 +183,7 @@ tests/
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
    - `# tpyc: type(TypeName)` - assert the compiler-inferred type of the variable declared on this line (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Validated in `test_comp` only (not in update mode).
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs
-5. Run `uv run pytest -k {name}` to verify
+5. Run `uv run pytest -k {name}` to verify (parallel execution is automatic via `addopts`)
 
 **CPython compatibility:** Avoid adding `no_cpython.txt` unless absolutely necessary. Most tests can be made CPython-compatible by adding `__init__` methods (CPython doesn't create instance attributes from type annotations alone) and using `lib/cpy/` stubs. The `lib/cpy/tpy/` package provides CPython implementations of TPy types (`Own`, `nocopy`, `UninitHeapStorage`, etc.). Only skip CPython when the test truly depends on C++-only behavior (e.g. `@native` interop).
 
@@ -377,7 +377,7 @@ When implementing new features:
 - If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
 - **Do NOT use heredocs (`<<EOF`)** in Bash commands -- they trigger permission prompts in Claude Code. Write snippets to files under `/tmp/agents/` instead.
 - Check `TODO.md` for current priorities
-- Run `uv run pytest -n auto` to verify no regressions after changes
+- Run `uv run pytest` to verify no regressions after changes
 - Update test snapshots with `uv run python tests/update_snapshots.py` when expected output changes intentionally
 - **Add tests** when adding new features or making changes that could affect generated code. If proper tests don't already exist or the functionality isn't covered, add tests that check the happy path, errors/warnings, edge cases, and prevent future regressions.
 
