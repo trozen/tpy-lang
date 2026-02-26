@@ -17,6 +17,7 @@ from ..typesys import (
     BigIntType,
     FixedIntType,
     IntLiteralType,
+    ListLiteralInfo,
     ListType,
     NoneType,
     OptionalType,
@@ -237,6 +238,75 @@ class LocalTypeDeduction:
                 info.passed_to_span_param = True
                 info.coerced_element_type = param_type.element_type
 
+    def mark_list_different_size(self, literal_id: int) -> None:
+        """Mark a pending list literal as needing list (different-size reassignment)."""
+        if literal_id in self.ctx.list_literals:
+            self.ctx.list_literals[literal_id].is_mutated = True
+
+    def link_list_literals(self, target_id: int, value_id: int) -> None:
+        """Link target literal to value literal for alias-based promotion.
+
+        Sets a one-directional edge; the resolution pass propagates promotion
+        in both directions (Array->List transitivity) via the while-changed loop.
+        """
+        target = self.ctx.list_literals.get(target_id)
+        if target is None:
+            return
+        if target.source_literal_id is None:
+            target.source_literal_id = value_id
+        else:
+            # Target already linked to a different source -- it can hold multiple
+            # distinct list literals, so all three must be promoted to list.
+            target.is_mutated = True
+            if target.source_literal_id in self.ctx.list_literals:
+                self.ctx.list_literals[target.source_literal_id].is_mutated = True
+            if value_id in self.ctx.list_literals:
+                self.ctx.list_literals[value_id].is_mutated = True
+
+    def mark_list_return_context(self, return_expr: TpyExpr, return_type: TpyType) -> None:
+        """Track return-type context for list literal inference."""
+        if isinstance(return_type, OwnType):
+            return_type = return_type.wrapped
+
+        if isinstance(return_expr, TpyCoerce):
+            return_expr = return_expr.expr
+
+        if isinstance(return_expr, TpyName):
+            var_name = return_expr.name
+            literal_id = self.ctx.variable_to_literal.get(var_name)
+            if literal_id is not None and literal_id in self.ctx.list_literals:
+                info = self.ctx.list_literals[literal_id]
+                if isinstance(return_type, ListType):
+                    info.passed_to_list_param = True
+                    info.coerced_element_type = return_type.element_type
+
+    def register_list_alias(self, var_name: str, init_type: PendingListType, decl_line: int | None = None) -> PendingListType:
+        """Register alias relationship when b = a where a is a PendingListType.
+
+        Creates a new ListLiteralInfo for the alias variable with source_literal_id
+        pointing to the original. Returns a new PendingListType for the alias.
+        """
+        source_literal_id = init_type.literal_id
+        source_info = self.ctx.list_literals.get(source_literal_id)
+        if source_info is None:
+            return init_type
+
+        new_id = self.ctx.literal_counter
+        self.ctx.literal_counter += 1
+        info = ListLiteralInfo(
+            literal_id=new_id,
+            expr=source_info.expr,
+            element_type=init_type.element_type,
+            size=init_type.size,
+            variable_name=var_name,
+            decl_line=decl_line,
+            source_literal_id=source_literal_id,
+        )
+        self.ctx.list_literals[new_id] = info
+        self.ctx.pending_resolutions.append(new_id)
+        self.ctx.variable_to_literal[var_name] = new_id
+        return PendingListType(init_type.element_type, init_type.size, new_id)
+
     def _resolve_pending_list_types(self) -> None:
         """Resolve all pending list types after function analysis.
 
@@ -302,6 +372,49 @@ class LocalTypeDeduction:
             # Update declared_var_types for test type-annotation validation
             if info.variable_name and info.decl_line is not None:
                 self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
+
+        # Second pass: bidirectional alias propagation.
+        # If either side of an alias pair resolved to list, the other must too
+        # (they share identity in Python semantics).
+        # Each node transitions at most once (Array->List), so this terminates
+        # in at most len(pending_resolutions) iterations.
+        changed = True
+        while changed:
+            changed = False
+            for literal_id in self.ctx.pending_resolutions:
+                info = self.ctx.list_literals.get(literal_id)
+                if info is None or info.source_literal_id is None:
+                    continue
+                source = self.ctx.list_literals.get(info.source_literal_id)
+                if source is None:
+                    continue
+                # Forward: source became list -> alias must too
+                if isinstance(info.resolved_type, ArrayType) and isinstance(source.resolved_type, ListType):
+                    info.resolved_type = ListType(info.resolved_type.element_type)
+                    self._update_resolved_binding(info)
+                    changed = True
+                # Reverse: alias became list -> source must too
+                elif isinstance(source.resolved_type, ArrayType) and isinstance(info.resolved_type, ListType):
+                    source.resolved_type = ListType(source.resolved_type.element_type)
+                    self._update_resolved_binding(source)
+                    changed = True
+
+    def _update_resolved_binding(self, info: 'ListLiteralInfo') -> None:
+        """Update scope and var_types after alias propagation changes a resolved type."""
+        resolved = info.resolved_type
+        if resolved is None:
+            return
+        self.ctx.set_expr_type(info.expr, resolved)
+        if info.variable_name and self.ctx.current_scope:
+            current_type = self.ctx.current_scope.lookup(info.variable_name)
+            if current_type is not None:
+                self.ctx.current_scope.define(info.variable_name, resolved)
+        if info.variable_name and info.decl_line is not None:
+            self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
+        if info.variable_name:
+            var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
+            if var_decl:
+                self.ctx.var_types[id(var_decl)] = resolved
 
     # ------------------------------------------------------------------
     # String variable deduction (moved from StrVarTracker)

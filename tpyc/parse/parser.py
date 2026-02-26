@@ -19,9 +19,11 @@ from ..typesys import (
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyFStringValue, TpyFString,
+    TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
+    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
@@ -56,6 +58,71 @@ _CMPOP_TO_STR: dict[type, str] = {
 _UNARYOP_TO_STR: dict[type, str] = {
     ast.USub: "-", ast.Not: "!", ast.Invert: "~",
 }
+
+
+def _validate_fstring_format_spec(spec: str) -> str | None:
+    """Validate an f-string format spec against C++ std::format support.
+
+    Returns an error message for Python-only features, or None if valid.
+    Python features not supported by std::format: '=' alignment, 'z' option,
+    ',' and '_' grouping, 'n' and '%' type codes.
+    """
+    if not spec:
+        return None
+
+    pos = 0
+    n = len(spec)
+
+    # [[fill]align] -- fill can be ANY character if followed by an align char
+    _ALIGN = '<>^='
+    if n >= 2 and spec[1] in _ALIGN:
+        if spec[1] == '=':
+            return "'=' alignment is not supported"
+        pos = 2
+    elif spec[0] in _ALIGN:
+        if spec[0] == '=':
+            return "'=' alignment is not supported"
+        pos = 1
+
+    # [sign]
+    if pos < n and spec[pos] in '+- ':
+        pos += 1
+
+    # [z]
+    if pos < n and spec[pos] == 'z':
+        return "'z' option is not supported"
+
+    # [#]
+    if pos < n and spec[pos] == '#':
+        pos += 1
+
+    # [0]
+    if pos < n and spec[pos] == '0':
+        pos += 1
+
+    # [width]
+    while pos < n and spec[pos].isdigit():
+        pos += 1
+
+    # [grouping_option]
+    if pos < n and spec[pos] in ',_':
+        return f"'{spec[pos]}' grouping is not supported"
+
+    # [.precision]
+    if pos < n and spec[pos] == '.':
+        pos += 1
+        while pos < n and spec[pos].isdigit():
+            pos += 1
+
+    # [type]
+    if pos < n:
+        t = spec[pos]
+        if t == 'n':
+            return "'n' (locale-aware) type is not supported"
+        if t == '%':
+            return "'%' (percentage) type is not supported"
+
+    return None
 
 
 def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
@@ -405,6 +472,29 @@ class Parser:
             return resolved == ("enum", "Enum")
         return False
 
+    def _is_int_enum_base(self, base: ast.expr) -> bool:
+        """Check if a base class expression refers to enum.IntEnum."""
+        if isinstance(base, ast.Name):
+            resolved = self._resolve_type_name(base.id)
+            return resolved == ("enum", "IntEnum")
+        elif isinstance(base, ast.Attribute):
+            resolved = self._resolve_qualified_type_name(base)
+            return resolved == ("enum", "IntEnum")
+        return False
+
+    # Valid integer mixin types for IntEnum: class P(int, Enum) or class P(Int8, Enum)
+    _INT_MIXIN_TYPES: dict[str, str] = {
+        "int": "int",
+        "Int8": "Int8", "Int16": "Int16", "Int32": "Int32", "Int64": "Int64",
+        "UInt8": "UInt8", "UInt16": "UInt16", "UInt32": "UInt32", "UInt64": "UInt64",
+    }
+
+    def _resolve_int_mixin(self, base: ast.expr) -> str | None:
+        """Resolve a base class to an integer mixin type name, or None."""
+        if isinstance(base, ast.Name):
+            return self._INT_MIXIN_TYPES.get(base.id)
+        return None
+
     # Sentinels for _resolve_decorator arg_value
     _EMPTY_CALL = object()  # @name() -- call with zero args
     _BAD_ARGS = object()    # @name(x, y) or non-constant -- caller must error
@@ -486,9 +576,36 @@ class Parser:
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol | TpyEnum:
         """Parse a class definition as a record, protocol, or enum."""
         if node.bases:
-            # Check for enum first (Enum is from the enum module)
+            # Check for IntEnum first: class P(IntEnum) or class P(int, Enum)
+            has_int_enum = any(self._is_int_enum_base(base) for base in node.bases)
+            if has_int_enum:
+                if len(node.bases) != 1:
+                    raise ParseError(
+                        "IntEnum must be the only base class", node)
+                # IntEnum without mixin defaults to Int32 (not BigInt)
+                return self._parse_enum(node, is_int_enum=True, underlying_type_name="Int32")
+
+            # Check for mixin pattern: class P(int, Enum) or class P(Int8, Enum)
             has_enum = any(self._is_enum_base(base) for base in node.bases)
             if has_enum:
+                if len(node.bases) == 2:
+                    # Two bases: one must be Enum, the other an int mixin
+                    mixin_type = None
+                    for base in node.bases:
+                        if not self._is_enum_base(base):
+                            mixin_type = self._resolve_int_mixin(base)
+                            if mixin_type is None:
+                                base_name = base.id if isinstance(base, ast.Name) else ast.unparse(base)
+                                raise ParseError(
+                                    f"Invalid enum mixin type '{base_name}'; "
+                                    f"expected int, Int8..Int64, or UInt8..UInt64",
+                                    node)
+                    if mixin_type is not None:
+                        return self._parse_enum(
+                            node, is_int_enum=True, underlying_type_name=mixin_type)
+                elif len(node.bases) > 2:
+                    raise ParseError(
+                        "Enum class must have at most 2 base classes (mixin + Enum)", node)
                 return self._parse_enum(node)
             # Check if this is a Protocol definition (has Protocol as one of its bases)
             has_protocol = any(self._is_protocol_base(base) for base in node.bases)
@@ -729,7 +846,11 @@ class Parser:
         self._type_param_scope = old_scope
         return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, loc=self._loc(node))
 
-    def _parse_enum(self, node: ast.ClassDef) -> TpyEnum:
+    def _parse_enum(
+        self, node: ast.ClassDef,
+        is_int_enum: bool = False,
+        underlying_type_name: str | None = None,
+    ) -> TpyEnum:
         """Parse an enum class definition."""
         if node.decorator_list:
             raise ParseError(f"Decorators are not supported on enum '{node.name}'", node)
@@ -806,7 +927,11 @@ class Parser:
         if not members:
             raise ParseError(f"Enum '{node.name}' must have at least one member", node)
 
-        return TpyEnum(name=node.name, members=members, loc=self._loc(node))
+        return TpyEnum(
+            name=node.name, members=members,
+            is_int_enum=is_int_enum, underlying_type_name=underlying_type_name,
+            loc=self._loc(node),
+        )
 
     _RECORD_LINKAGE_MAP: dict[str, RecordLinkage] = {
         "tpy.extern.native": RecordLinkage.NATIVE,
@@ -1526,11 +1651,55 @@ class Parser:
                     if lookup_generic_type_in_module(import_src[1], import_src[0]) is not None:
                         raise ParseError(f"Generic type '{name}' cannot be used as a value", node)
             obj = self._parse_expr(node.value)
-            index = self._parse_expr(node.slice)
+            if isinstance(node.slice, ast.Slice):
+                sl = node.slice
+                if sl.step is not None:
+                    raise ParseError("Slice step is not yet supported", node)
+                lower = self._parse_expr(sl.lower) if sl.lower is not None else None
+                upper = self._parse_expr(sl.upper) if sl.upper is not None else None
+                index = TpySlice(lower=lower, upper=upper, loc=loc)
+            else:
+                index = self._parse_expr(node.slice)
             return TpySubscript(obj=obj, index=index, loc=loc)
+
+        elif isinstance(node, ast.JoinedStr):
+            return self._parse_fstring(node, loc)
 
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)
+
+    def _parse_fstring(self, node: ast.JoinedStr, loc: SourceLocation) -> TpyFString:
+        """Parse an f-string (ast.JoinedStr) into a TpyFString node."""
+        parts: list[str | TpyFStringValue] = []
+        for val in node.values:
+            if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                parts.append(val.value)
+            elif isinstance(val, ast.FormattedValue):
+                conv = val.conversion
+                if conv == 114:  # !r
+                    raise ParseError("f-string !r conversion is not supported", node)
+                if conv == 97:  # !a
+                    raise ParseError("f-string !a conversion is not supported", node)
+                expr = self._parse_expr(val.value)
+                fmt_spec: str | None = None
+                if val.format_spec is not None:
+                    # format_spec is a JoinedStr; only constant specs are supported
+                    spec_parts = []
+                    for sp in val.format_spec.values:
+                        if isinstance(sp, ast.Constant) and isinstance(sp.value, str):
+                            spec_parts.append(sp.value)
+                        else:
+                            raise ParseError(
+                                "Expressions inside f-string format specs are not supported", node
+                            )
+                    fmt_spec = "".join(spec_parts)
+                    err = _validate_fstring_format_spec(fmt_spec)
+                    if err is not None:
+                        raise ParseError(f"Unsupported f-string format spec: {err}", node)
+                parts.append(TpyFStringValue(expr=expr, conversion=conv, format_spec=fmt_spec))
+            else:
+                raise ParseError(f"Unsupported f-string part: {type(val).__name__}", node)
+        return TpyFString(parts=parts, loc=loc)
 
     def _binop_to_str(self, op: ast.operator) -> str:
         """Convert binary operator to string."""

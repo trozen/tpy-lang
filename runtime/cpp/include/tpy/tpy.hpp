@@ -12,6 +12,9 @@
 // Core utilities (no dependencies)
 #include "core.hpp"
 
+// Enum utility trait (primary template; specializations in generated code)
+#include "enum.hpp"
+
 // Formatting (no dependencies)
 #include "format.hpp"
 

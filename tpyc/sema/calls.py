@@ -12,7 +12,7 @@ from ..typesys import (
     IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
-    UnionType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
+    UnionType, EnumType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type,
 )
 from ..parse import TpyCall, TpyStrLiteral, TpyName, TpyFunction
@@ -194,6 +194,8 @@ class CallAnalyzer:
                     # Special handling for functions with custom sema
                     if qname == "tpy.copy":
                         return self._analyze_tpy_copy(expr)
+                    if qname == "tpy.try_parse":
+                        return self._analyze_tpy_try_parse(expr)
                     if qname == "builtins.isinstance":
                         return self._analyze_isinstance(expr)
                     if qname == "builtins.print":
@@ -236,6 +238,8 @@ class CallAnalyzer:
                         raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
                 elif binding.kind == BindingKind.MODULE:
                     raise SemanticError(f"Cannot call module '{expr.func}' directly; use module.function()", expr.loc)
+                elif binding.kind == BindingKind.ENUM:
+                    return self._analyze_enum_from_value(expr, binding.enum_type)
                 elif binding.kind == BindingKind.BUILTIN:
                     raise SemanticError(f"'{expr.func}' is not callable", expr.loc)
 
@@ -345,6 +349,8 @@ class CallAnalyzer:
         qname = overloads[0].qualified_name
         if qname == "tpy.copy":
             return self._analyze_tpy_copy(expr)
+        if qname == "tpy.try_parse":
+            return self._analyze_tpy_try_parse(expr)
         if qname == "builtins.isinstance":
             return self._analyze_isinstance(expr)
         if qname == "builtins.print":
@@ -399,6 +405,51 @@ class CallAnalyzer:
             qualified_name="tpy.copy",
         )
         return OwnType(arg_type)
+
+    def _analyze_tpy_try_parse(self, expr: TpyCall) -> TpyType:
+        """Analyze try_parse(EnumType, str) -> Optional[EnumType]."""
+        if len(expr.args) != 2:
+            raise self.ctx.error(
+                "try_parse() takes exactly 2 arguments: try_parse(EnumType, name)",
+                expr,
+            )
+        first_arg = expr.args[0]
+        if not isinstance(first_arg, TpyName):
+            raise self.ctx.error(
+                "try_parse() first argument must be an enum type name",
+                expr,
+            )
+        # Resolve the name to an enum type
+        if self.ctx.current_ns is None:
+            raise self.ctx.error(
+                "try_parse() first argument must be an enum type name",
+                expr,
+            )
+        binding = self.ctx.current_ns.lookup(first_arg.name)
+        if binding is None or binding.kind != BindingKind.ENUM:
+            raise self.ctx.error(
+                f"try_parse() first argument must be an enum type, "
+                f"got '{first_arg.name}'",
+                expr,
+            )
+        enum_type = binding.enum_type
+        # Analyze second arg and check it's a string
+        arg_type = self.expr.analyze_expr(expr.args[1])
+        if not is_any_str_type(arg_type):
+            raise self.ctx.error(
+                f"try_parse() second argument must be a string, got '{arg_type}'",
+                expr,
+            )
+        expr.enum_try_parse = enum_type
+        expr.resolved_function_info = FunctionInfo(
+            name="try_parse",
+            params=[],
+            return_type=OptionalType(enum_type),
+            is_builtin_function=True,
+            special_handling=True,
+            qualified_name="tpy.try_parse",
+        )
+        return OptionalType(enum_type)
 
     def _resolve_isinstance_type(self, name: str, expr: TpyCall) -> TpyType:
         """Resolve a type name used as the second argument to isinstance().
@@ -479,6 +530,24 @@ class CallAnalyzer:
             qualified_name="builtins.isinstance",
         )
         return BOOL
+
+    def _analyze_enum_from_value(self, expr: TpyCall, enum_type: EnumType) -> TpyType:
+        """Analyze enum value lookup: Color(0) -> Color."""
+        if len(expr.args) != 1:
+            raise self.ctx.error(
+                f"Enum '{enum_type.name}' constructor takes exactly 1 argument, "
+                f"got {len(expr.args)}",
+                expr
+            )
+        arg_type = self.expr.analyze_expr(expr.args[0])
+        if not isinstance(arg_type, (IntLiteralType, FixedIntType, BigIntType)):
+            raise self.ctx.error(
+                f"Cannot construct '{enum_type.name}' from '{arg_type}', "
+                f"expected an integer type",
+                expr
+            )
+        expr.enum_from_value = enum_type
+        return enum_type
 
     def _is_nocopy_type(self, typ: TpyType) -> bool:
         """Check if a type is @nocopy (move-only, copy deleted).
@@ -682,6 +751,7 @@ class CallAnalyzer:
         matched = resolve_overload(
             record_info.constructors, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
+            subclass_checker=self.ctx.registry.is_subclass_of,
         )
         if matched:
             expr.resolved_function_info = matched
@@ -760,7 +830,8 @@ class CallAnalyzer:
         if non_generic:
             matched = resolve_overload(non_generic, arg_types, protocol_checker,
                                        deref_checker=self.type_ops.get_deref_coercion_target,
-                                       default_int_type=self.ctx.default_int_type)
+                                       default_int_type=self.ctx.default_int_type,
+                                       subclass_checker=self.ctx.registry.is_subclass_of)
             if matched is not None:
                 expr.resolved_function_info = matched
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):

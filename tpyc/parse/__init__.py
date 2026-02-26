@@ -7,9 +7,11 @@ All existing imports like ``from .parse import X`` continue to work.
 
 from .nodes import (
     ParseError, SourceLocation, RecordLinkage, FunctionLinkage, VarLinkage,
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyFStringValue, TpyFString,
+    TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
+    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
@@ -29,7 +31,9 @@ from .parser import Parser
 __all__ = [
     # nodes
     "ParseError", "SourceLocation", "RecordLinkage", "FunctionLinkage", "VarLinkage",
-    "TpyExpr", "TpyIntLiteral", "TpyFloatLiteral", "TpyStrLiteral", "TpyBoolLiteral",
+    "TpyExpr", "TpyIntLiteral", "TpyFloatLiteral", "TpyStrLiteral",
+    "TpyFStringValue", "TpyFString",
+    "TpyBoolLiteral",
     "TpyNoneLiteral", "TpyName", "TpyBinOp", "TpyUnaryOp", "TpyCall", "TpyMethodCall",
     "TpyFieldAccess", "TpyArrayLiteral", "TpyListRepeat", "TpySubscript", "TpyCoerce",
     "TpyStmt", "TpyVarDecl", "TpyAssign", "TpyAugAssign", "TpyExprStmt", "TpyReturn",

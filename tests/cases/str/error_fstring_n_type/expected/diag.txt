@@ -1,0 +1,1 @@
+main.py:7: error: Unsupported f-string format spec: 'n' (locale-aware) type is not supported

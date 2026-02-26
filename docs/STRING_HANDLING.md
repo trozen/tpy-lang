@@ -15,12 +15,20 @@
 | PendingStrType local inference (view vs owned) | Done |
 | Alias source tracking with retroactive promotion | Done |
 | `string_view` -> `string` codegen for return and init | Done |
-| `str` slicing (`s[1:3]`) | Planned |
-| `__str__` dispatch via `str(obj)` | Planned |
-| f-strings | Planned |
+| `str` slicing (`s[1:3]`) | Done |
+| `str` slice step (`s[::2]`) | Planned |
+| `__str__` / `__repr__` dispatch via `str(obj)` and `repr(obj)` | Planned |
+| f-strings | Done |
 | `@noalloc` string restrictions | Planned |
 | `@noalloc` warn on unnecessary `string_view` -> `string` copies | Planned |
 | `@noalloc` warn on alias that could stay `string_view` | Planned |
+| f-string `!s` conversion with format spec (convert then format) | Planned |
+| f-string `!r` conversion (needs `__repr__` dispatch) | Planned |
+| f-string `int` (BigInt) with format specs (needs `std::formatter<BigInt>`) | Planned |
+| f-string `Optional[T]` support (narrowed optional in f-string context) | Planned |
+| f-string enum: output name instead of integer value (needs `__str__`) | Planned |
+| f-string print optimization (`print(f"...")` -> streaming `<<`) | Planned |
+| f-string format spec full Python compatibility (`,` `_` `=` `n` `%` `z`) | Future |
 | `FixStr[N]` fixed-capacity string, stack allocated | Future |
 | `str` field lifetime safety rules | Future |
 
@@ -62,7 +70,8 @@ Methods available on `str`, `String`, and `StrView` types. All methods are `is_r
 | `s.removesuffix(s)` | Working | Remove suffix, returns `StrView` |
 | `s.rindex(sub)` | Working | Like `rfind` but panics on miss |
 | `s.splitlines()` | Working | Split on `\n`/`\r\n`, returns `list[str]` |
-| `s[i:j]` (slicing) | Not yet | Requires slice syntax support |
+| `s[i:j]` (slicing) | Working | Returns `StrView`, Python clamping semantics |
+| `s[i:j:k]` (slice step) | Not yet | Requires step support |
 | `s.format(...)` | Not yet | f-strings planned separately |
 
 ## Types
@@ -151,6 +160,59 @@ Assignment (`s = sv;` where `s` is already `std::string`) works implicitly via `
 
 - `str + str` -> `str` (via `tpy::str_concat`, returns `std::string`)
 - `str += str` -> in-place `tpy::str_concat` (reassignment)
+
+## F-Strings
+
+F-strings (`f"hello {name}"`) use C++20 `std::format` as the backend.
+
+### AST representation
+
+F-strings are kept structured in the AST as `TpyFString` nodes containing literal
+segments and typed expressions (with optional format specs). This structure is NOT
+desugared into string concatenation -- codegen needs the full information to choose
+the emission strategy based on context:
+
+| Context | C++ codegen | Allocates? |
+|---------|-------------|------------|
+| Assignment: `s = f"x={x}"` | `std::format("x={}", x)` | Yes |
+| Print: `print(f"x={x}")` | `std::format(...)` (currently) | Yes |
+| Print optimized (future) | `std::cout << "x=" << x << "\n"` | No |
+| FormatString param (future) | `log("x={}", x)` | No |
+
+### Supported features
+
+- String interpolation: `f"hello {name}"`
+- Expressions: `f"{a + b}"`
+- Format specs: `f"{val:.2f}"`, `f"{n:#x}"`, `f"{n:>10}"`
+- `!s` conversion: `f"{x!s}"` (equivalent to default)
+- Brace escaping: `f"{{{x}}}"` -> `{42}`
+- Mixed types: int, float, bool, str, Char, fixed ints, BigInt, enum
+
+### Python-compatible formatting
+
+Types that diverge between C++ and Python are pre-converted to match Python
+semantics:
+
+| Type | No spec | With spec |
+|------|---------|-----------|
+| `bool` | `tpy::bool_to_str()` -> "True"/"False" | `static_cast<int>()` -> 0/1 (matches Python: any spec delegates to int) |
+| `float` | `tpy::float_to_str()` -> Python-style (e.g. "3.0") | Raw value (C++ semantics) |
+| `BigInt` | `.to_string()` | Raw value (C++ semantics) |
+
+### Current limitations
+
+- `!r` and `!a` conversions are not supported (need `repr()` first)
+- Expressions inside format specs (`f"{x:{width}}"`) are not supported
+- No `__format__` or `__str__` dispatch on user types
+- Print optimization (streaming without allocation) is not yet implemented
+- Python-only format spec features are rejected with clear errors:
+  `,` and `_` grouping, `=` alignment, `z` option, `n` and `%` type codes
+
+### `@noalloc` interaction (planned)
+
+In `@noalloc` contexts, `f"..."` assigned to a string should be an error (it
+allocates). But `print(f"...")` or FormatString passthrough could be allowed since
+they don't allocate.
 
 ## Planned: `@noalloc` Warnings
 

@@ -11,14 +11,16 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    EnumType,
+    EnumType, IntEnumType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
     ResolvedBinop
 )
 from ..parse import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyFStringValue, TpyFString,
+    TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -195,7 +197,9 @@ class ExpressionGenerator:
             if expr.coercion.name == "int_literal_to_fixed_int":
                 return gen_inner
             # Coercions that call methods on the inner expression need dereferencing for globals
-            if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr", "bigint_to_fixed_int"):
+            if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr",
+                                      "upcast_to_ptr", "upcast_to_const_ptr",
+                                      "bigint_to_fixed_int"):
                 if self.ctx.is_indirect_name(expr.expr):
                     gen_inner = f"(*{gen_inner})"
             return expr.coercion.codegen(gen_inner, expr.actual_type, expr.expected_type, expr.context_kind)
@@ -258,6 +262,9 @@ class ExpressionGenerator:
         elif isinstance(expr, TpySubscript):
             return self._gen_subscript(expr)
 
+        elif isinstance(expr, TpyFString):
+            return self._gen_fstring(expr)
+
         return "/* unknown expr */"
 
     def gen_truthy_expr(self, expr: TpyExpr) -> str:
@@ -287,7 +294,11 @@ class ExpressionGenerator:
 
         expr_type = self.types.get_resolved_type(expr)
         rendered = self.gen_expr(expr)
-        # Enum values are always truthy
+        # IntEnum truthiness: value 0 is falsy (like int)
+        # Base Enum: always truthy (CPython behavior)
+        if isinstance(expr_type, IntEnumType):
+            cpp_underlying = expr_type.underlying_type.to_cpp()
+            return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
         if isinstance(expr_type, EnumType):
             return "true"
         if isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr():
@@ -462,6 +473,13 @@ class ExpressionGenerator:
             elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, FloatType):
                 right = f"static_cast<double>({right})"
 
+            # IntEnum coercion: cast enum operand(s) to underlying type
+            if expr.int_enum_coercion:
+                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
+                if isinstance(left_type, IntEnumType):
+                    left = f"static_cast<{underlying_cpp}>({left})"
+                if isinstance(right_type, IntEnumType):
+                    right = f"static_cast<{underlying_cpp}>({right})"
             return f"({left} {expr.op} {right})"
 
         # Optimization: IntLiteral op IntLiteral with Int32 target -> direct Int32 arithmetic
@@ -524,6 +542,13 @@ class ExpressionGenerator:
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                 right_actual = self.types.get_resolved_type(expr.right, param_type)
                 right = self._convert_to_fixed_int_arg(right, right_actual, param_type, expr.right)
+            # IntEnum coercion: cast enum operand(s) to underlying type
+            if expr.int_enum_coercion:
+                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
+                if isinstance(left_type, IntEnumType):
+                    left = f"static_cast<{underlying_cpp}>({left})"
+                if isinstance(right_type, IntEnumType):
+                    right = f"static_cast<{underlying_cpp}>({right})"
             # Generate binop using helper (handles wrappers and is_reverse)
             result = self._gen_binop_from_result(binop_result, left, right)
             # Wrap in parens to avoid precedence issues with cout << and other operators
@@ -585,6 +610,11 @@ class ExpressionGenerator:
         # Use resolved unary op from sema
         if unaryop_result := expr.resolved_unaryop:
             return expand_cpp_template(unaryop_result.method.cpp_template, operand)
+
+        # IntEnum: unary negation via static_cast
+        if isinstance(operand_type, IntEnumType) and expr.op == "-":
+            underlying_cpp = self.types.type_to_cpp(operand_type.underlying_type)
+            return f"(-static_cast<{underlying_cpp}>({operand}))"
 
         # Fallback for IntLiteralType (not in module system)
         if isinstance(operand_type, IntLiteralType):
@@ -674,6 +704,23 @@ class ExpressionGenerator:
             name_node = TpyName(var_name)
             var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else var_name
             return f"std::holds_alternative<{cpp_type}>({var_ref})"
+        # Enum value lookup: Color(0) -> tpy::EnumUtil<Color>::from_value(0)
+        if expr.enum_from_value is not None:
+            enum_type = expr.enum_from_value
+            cpp_type = enum_type.to_cpp()
+            underlying_cpp = enum_type.underlying_type.to_cpp()
+            arg = self.gen_expr(expr.args[0])
+            # BigInt needs checked conversion to the underlying type
+            arg_type = self.types.get_resolved_type(expr.args[0])
+            if isinstance(arg_type, BigIntType):
+                arg = f"({arg}).to_fixed_check<{underlying_cpp}>()"
+            return f"tpy::EnumUtil<{cpp_type}>::from_value({arg})"
+        # Enum try_parse: try_parse(Color, "Red") -> tpy::EnumUtil<Color>::try_parse("Red")
+        if expr.enum_try_parse is not None:
+            enum_type = expr.enum_try_parse
+            cpp_type = enum_type.to_cpp()
+            arg = self.gen_expr(expr.args[1])
+            return f"tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
         # Check if it's a builtin type constructor (e.g., int from builtins, Int32 from tpy)
         for module_name in ["builtins", "tpy"]:
             qname = f"{module_name}.{expr.func}"
@@ -934,6 +981,13 @@ class ExpressionGenerator:
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:
             module_name = expr.builtin_module_call
+            # try_parse(Color, "Red") from tpy
+            if module_name == "tpy" and expr.method == "try_parse":
+                fi = expr.resolved_function_info
+                enum_type = fi.return_type.inner
+                cpp_type = enum_type.to_cpp()
+                arg = self.gen_expr(expr.args[1])
+                return f"tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
             # copy() from tpy -- deref the argument to get the value
             if module_name == "tpy" and expr.method == "copy":
                 arg = expr.args[0]
@@ -1151,12 +1205,8 @@ class ExpressionGenerator:
             actual_obj_type = actual_obj_type.wrapped
         if isinstance(actual_obj_type, EnumType):
             if expr.field == "name":
-                # Qualify __tpy_enum_name for imported enums
-                if actual_obj_type.name in self.ctx.user_imported_enums:
-                    source_module, _ = self.ctx.user_imported_enums[actual_obj_type.name]
-                    ns = qualified_cpp_name(source_module, "__tpy_enum_name")
-                    return f"{ns}({obj})"
-                return f"__tpy_enum_name({obj})"
+                cpp_type = actual_obj_type.to_cpp()
+                return f"tpy::EnumUtil<{cpp_type}>::name({obj})"
             elif expr.field == "value":
                 return f"static_cast<{actual_obj_type.underlying_type.to_cpp()}>({obj})"
 
@@ -1247,7 +1297,19 @@ class ExpressionGenerator:
 
     def _gen_subscript(self, expr: TpySubscript) -> str:
         """Generate subscript code."""
+        # Enum name lookup: Color["Red"] -> tpy::EnumUtil<Color>::from_name("Red")
+        if expr.enum_from_name is not None:
+            cpp_type = expr.enum_from_name.to_cpp()
+            index = self.gen_expr(expr.index)
+            return f"tpy::EnumUtil<{cpp_type}>::from_name({index})"
+
         obj = self.gen_expr(expr.obj)
+
+        # Slice: obj[start:stop]
+        if isinstance(expr.index, TpySlice):
+            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+            return self._gen_slice(subscript_obj, expr.index)
+
         obj_type = self.types.get_resolved_type(expr.obj)
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access
@@ -1298,6 +1360,26 @@ class ExpressionGenerator:
                 return (True, expr.operand.value)
         return (False, 0)
 
+    def _gen_slice(self, obj: str, sl: TpySlice) -> str:
+        """Generate string slice: tpy::str_slice(obj, start, stop)."""
+        if sl.lower is not None:
+            start = self._gen_slice_bound(sl.lower)
+        else:
+            start = "0"
+        if sl.upper is not None:
+            stop = self._gen_slice_bound(sl.upper)
+        else:
+            stop = "INT32_MAX"
+        return f"tpy::str_slice({obj}, {start}, {stop})"
+
+    def _gen_slice_bound(self, expr: TpyExpr) -> str:
+        """Generate a slice bound expression, converting to int32_t if needed."""
+        index_type = self.ctx.analyzer.get_expr_type(expr)
+        code = self.gen_expr_deref(expr)
+        if self.types.is_runtime_bigint(expr, index_type):
+            code = f"{code}.to_fixed_check<int32_t>()"
+        return code
+
     def _gen_binop_from_result(self, binop_result: ResolvedBinop,
                                left: str, right: str) -> str:
         """Generate binary operation code from a ResolvedBinop.
@@ -1336,3 +1418,54 @@ class ExpressionGenerator:
                 # IntLiterals are emitted as plain C++ integers, not BigInt objects
                 return gen_expr
         return gen_expr
+
+    def _gen_fstring(self, expr: TpyFString) -> str:
+        """Generate std::format(...) for an f-string."""
+        fmt_parts: list[str] = []
+        raw_parts: list[str] = []  # without brace-escaping, for pure-literal path
+        args: list[str] = []
+        all_literal = True
+
+        for part in expr.parts:
+            if isinstance(part, str):
+                escaped = escape_cpp_string(part)
+                raw_parts.append(escaped)
+                # Escape braces for std::format
+                fmt_parts.append(escaped.replace("{", "{{").replace("}", "}}"))
+            else:
+                all_literal = False
+                gen_arg = self.gen_expr_deref(part.expr)
+                arg_type = unwrap_readonly(self.types.get_resolved_type(part.expr))
+                has_spec = part.format_spec is not None
+
+                if has_spec:
+                    fmt_parts.append("{:" + part.format_spec + "}")
+                else:
+                    fmt_parts.append("{}")
+
+                # Wrap args that need Python-compatible formatting
+                if isinstance(arg_type, BoolType):
+                    if has_spec:
+                        # Any format spec delegates to int (Python semantics)
+                        gen_arg = f"static_cast<int>({gen_arg})"
+                    else:
+                        # No spec: "True"/"False"
+                        gen_arg = f"tpy::bool_to_str({gen_arg})"
+                elif isinstance(arg_type, FloatType) and not has_spec:
+                    gen_arg = f"tpy::float_to_str({gen_arg})"
+                elif self.types.is_runtime_bigint(part.expr, arg_type) and not has_spec:
+                    gen_arg = f"({gen_arg}).to_string()"
+                elif isinstance(arg_type, FixedIntType) and arg_type.bits == 8:
+                    gen_arg = f"static_cast<int>({gen_arg})"
+                elif isinstance(arg_type, EnumType):
+                    gen_arg = f"static_cast<int>({gen_arg})"
+
+                args.append(gen_arg)
+
+        if all_literal:
+            # Pure literal f-string -- use raw parts (no brace-escaping needed)
+            return f'std::string("{"".join(raw_parts)}")'
+
+        fmt_str = "".join(fmt_parts)
+        args_str = ", ".join(args)
+        return f'std::format("{fmt_str}", {args_str})'

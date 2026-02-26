@@ -12,7 +12,7 @@ from ..typesys import (
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, StrVarInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
-    unwrap_readonly, is_any_str_type,
+    EnumType, unwrap_readonly, is_any_str_type,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
 from ..parse import (
@@ -154,6 +154,26 @@ class StatementAnalyzer:
                 if isinstance(check_type, ReadonlyType):
                     raise self.ctx.error("Cannot mutate readonly reference", target)
 
+    def _resolve_enum_iterable(self, stmt: TpyForEach) -> EnumType | None:
+        """Check if for-each iterates over an enum type (e.g. `for c in Color`).
+
+        Returns the EnumType if so, None otherwise.
+        """
+        iterable = stmt.iterable
+        if not isinstance(iterable, TpyName):
+            return None
+        binding = self.ctx.current_ns.lookup(iterable.name) if self.ctx.current_ns else None
+        if binding is None:
+            return None
+        if binding.kind == BindingKind.ENUM and binding.enum_type is not None:
+            return binding.enum_type
+        if binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
+            src_mod, original_name = binding.import_source
+            enum_type = self.ctx.registry.get_enum(original_name)
+            if enum_type is not None:
+                return enum_type
+        return None
+
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         if isinstance(stmt, TpyVarDecl):
@@ -170,6 +190,8 @@ class StatementAnalyzer:
                 ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
+                # Track return-type context for pending list deduction
+                self.deduction.mark_list_return_context(stmt.value, expected)
                 # Check for lvalue returned as Own[T] without explicit copy()
                 if isinstance(expected, OwnType):
                     if self.compat.is_copy_call(stmt.value):
@@ -293,47 +315,65 @@ class StatementAnalyzer:
             self._restore_ns_var_types(ns_types_before_while)
             self._sync_promoted_var_types()
         elif isinstance(stmt, TpyForEach):
-            iterable_type = self.expr.analyze_expr(stmt.iterable)
-            is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
-            inner_iterable_type = unwrap_readonly(iterable_type)
-            elem_type = self.iterable.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
-            # Elements from a readonly iterable inherit readonly status
-            if is_readonly_iterable and not elem_type.is_value_type():
-                elem_type = ReadonlyType(unwrap_readonly(elem_type))
-            before = self.init.save()
-            ns_types_before_foreach = self._save_ns_var_types()
-            with self.scopes.loop_scope() as inner_scope:
-                self.init.apply_loop_entry_facts(before)
-                # OptIterator and __iter__-based types produce fresh values each iteration
-                is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                if is_native_iterator or is_iter_based:
-                    iter_depth = inner_scope.depth
-                elif self.compat.is_lvalue(stmt.iterable):
-                    # For-each var references container's storage -- use container's depth.
-                    iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
-                else:
-                    # For rvalue iterables (calls), C++ extends the temporary's lifetime
-                    # to the for statement, but it dies when the loop ends. Use body depth
-                    # so that escaping to any outer-scoped variable is caught.
-                    iter_depth = inner_scope.depth
-                # Track provenance for non-value-type loop vars from param-derived iterables
-                track_loop_prov = (
-                    not unwrap_readonly(elem_type).is_value_type()
-                    and self.compat.is_param_derived_expr(stmt.iterable)
-                )
-                if track_loop_prov:
-                    self.init.add_loop_var_provenance(stmt.var)
-                with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
-                    for s in stmt.body:
-                        self.analyze_stmt(s)
-                if track_loop_prov:
-                    self.init.remove_loop_var_provenance(stmt.var)
-            body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
-            self.init.restore(before)
-            self.ctx.non_null_ptr_vars &= body_end_nn_ptr
-            self._restore_ns_var_types(ns_types_before_foreach)
-            self._sync_promoted_var_types()
+            # Check for enum iteration: `for c in Color`
+            enum_type = self._resolve_enum_iterable(stmt)
+            if enum_type is not None:
+                stmt.enum_iterable = enum_type
+                elem_type = enum_type
+                before = self.init.save()
+                ns_types_before_foreach = self._save_ns_var_types()
+                with self.scopes.loop_scope() as inner_scope:
+                    self.init.apply_loop_entry_facts(before)
+                    with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
+                        for s in stmt.body:
+                            self.analyze_stmt(s)
+                body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
+                self.init.restore(before)
+                self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+                self._restore_ns_var_types(ns_types_before_foreach)
+                self._sync_promoted_var_types()
+            else:
+                iterable_type = self.expr.analyze_expr(stmt.iterable)
+                is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
+                inner_iterable_type = unwrap_readonly(iterable_type)
+                elem_type = self.iterable.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
+                # Elements from a readonly iterable inherit readonly status
+                if is_readonly_iterable and not elem_type.is_value_type():
+                    elem_type = ReadonlyType(unwrap_readonly(elem_type))
+                before = self.init.save()
+                ns_types_before_foreach = self._save_ns_var_types()
+                with self.scopes.loop_scope() as inner_scope:
+                    self.init.apply_loop_entry_facts(before)
+                    # OptIterator and __iter__-based types produce fresh values each iteration
+                    is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                    is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                    if is_native_iterator or is_iter_based:
+                        iter_depth = inner_scope.depth
+                    elif self.compat.is_lvalue(stmt.iterable):
+                        # For-each var references container's storage -- use container's depth.
+                        iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
+                    else:
+                        # For rvalue iterables (calls), C++ extends the temporary's lifetime
+                        # to the for statement, but it dies when the loop ends. Use body depth
+                        # so that escaping to any outer-scoped variable is caught.
+                        iter_depth = inner_scope.depth
+                    # Track provenance for non-value-type loop vars from param-derived iterables
+                    track_loop_prov = (
+                        not unwrap_readonly(elem_type).is_value_type()
+                        and self.compat.is_param_derived_expr(stmt.iterable)
+                    )
+                    if track_loop_prov:
+                        self.init.add_loop_var_provenance(stmt.var)
+                    with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
+                        for s in stmt.body:
+                            self.analyze_stmt(s)
+                    if track_loop_prov:
+                        self.init.remove_loop_var_provenance(stmt.var)
+                body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
+                self.init.restore(before)
+                self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+                self._restore_ns_var_types(ns_types_before_foreach)
+                self._sync_promoted_var_types()
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
@@ -454,10 +494,16 @@ class StatementAnalyzer:
                 return t.map_inner_types(_resolve)
             stmt.type = _resolve(stmt.type)
 
-        # Resolve imported enum types in annotation (NamedType -> EnumType)
+        # Resolve enum types in annotation (NamedType -> EnumType).
+        # Also replaces stale EnumType from the parser registry with the
+        # sema registry's version (which may be IntEnumType).
         if stmt.type and self.ctx.registry.enums:
             def _resolve_enum(t: TpyType) -> TpyType:
                 if isinstance(t, NamedType) and not t.is_protocol:
+                    enum = self.ctx.registry.get_enum(t.name)
+                    if enum is not None:
+                        return enum
+                if isinstance(t, EnumType):
                     enum = self.ctx.registry.get_enum(t.name)
                     if enum is not None:
                         return enum
@@ -712,8 +758,10 @@ class StatementAnalyzer:
                 init_type = self.expr.analyze_expr_with_hint(stmt.init, type_hint)
 
 
-            # Track list literal to variable mapping for mutation detection
-            if isinstance(init_type, PendingListType):
+            # Track list literal to variable mapping for mutation detection.
+            # Only bind when the init is an actual list literal or empty constructor,
+            # not a name reference (aliases are handled by register_list_alias).
+            if isinstance(init_type, PendingListType) and not isinstance(stmt.init, TpyName):
                 literal_id = init_type.literal_id
                 self.ctx.variable_to_literal[stmt.name] = literal_id
                 info = self.ctx.list_literals[literal_id]
@@ -760,8 +808,17 @@ class StatementAnalyzer:
                 # coercion -- this is a binding, not passing by reference.
                 inner_existing = unwrap_readonly(existing_type)
                 inner_init = unwrap_readonly(init_type)
+                # PendingListType reassignment: different sizes force list
+                if isinstance(inner_existing, PendingListType):
+                    if isinstance(inner_init, PendingListType):
+                        if inner_existing.size != inner_init.size:
+                            self.deduction.mark_list_different_size(inner_existing.literal_id)
+                            self.deduction.mark_list_different_size(inner_init.literal_id)
+                        else:
+                            self.deduction.link_list_literals(inner_existing.literal_id, inner_init.literal_id)
+                    var_type = existing_type
                 # PendingStrType reassignment: track view-compatibility, keep pending
-                if isinstance(inner_existing, PendingStrType):
+                elif isinstance(inner_existing, PendingStrType):
                     if is_any_str_type(inner_init):
                         if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
                             self.deduction.mark_str_reassigned_from_owned(stmt.name)
@@ -862,6 +919,17 @@ class StatementAnalyzer:
             self.ctx.variable_to_str_var[stmt.name] = str_var_id
             self.ctx.pending_str_resolutions.append(str_var_id)
             var_type = PendingStrType(str_var_id)
+        # Alias: new var initialized from an existing PendingListType local (b = a).
+        # Gets its own literal info with source tracking; if either side later
+        # resolves to list, the other is retroactively promoted during resolution.
+        elif (isinstance(var_type, PendingListType) and stmt.init is not None
+                and isinstance(stmt.init, TpyName)
+                and not self.ctx.is_top_level and not is_global_declared
+                and existing_type is None):
+            var_type = self.deduction.register_list_alias(
+                stmt.name, var_type,
+                decl_line=(stmt.loc.line if stmt.loc else None),
+            )
 
         if is_global_declared:
             # Update global scope type; bind in current scope for local reads
@@ -972,8 +1040,17 @@ class StatementAnalyzer:
             # binding, not passing by reference.
             inner_target = unwrap_readonly(target_type)
             inner_value = unwrap_readonly(value_type)
+            # PendingListType reassignment: different sizes force list
+            if isinstance(inner_target, PendingListType):
+                if isinstance(inner_value, PendingListType):
+                    if inner_target.size != inner_value.size:
+                        self.deduction.mark_list_different_size(inner_target.literal_id)
+                        self.deduction.mark_list_different_size(inner_value.literal_id)
+                    else:
+                        self.deduction.link_list_literals(inner_target.literal_id, inner_value.literal_id)
+                # target_type stays PendingListType
             # PendingStrType reassignment: track view-compatibility, keep pending
-            if isinstance(inner_target, PendingStrType):
+            elif isinstance(inner_target, PendingStrType):
                 if is_any_str_type(inner_value):
                     if not self.deduction.is_view_compatible_source(stmt.value, inner_value):
                         self.deduction.mark_str_reassigned_from_owned(stmt.target.name)
@@ -992,7 +1069,7 @@ class StatementAnalyzer:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
-            if not isinstance(inner_target, PendingStrType):
+            if not isinstance(inner_target, (PendingStrType, PendingListType)):
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:

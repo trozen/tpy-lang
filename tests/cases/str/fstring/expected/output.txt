@@ -1,0 +1,26 @@
+hello world
+
+just text
+int=42
+float=3.14159
+bool=True
+str=A
+10 + 20 = 30
+len(hello) = 5
+3.14
+0xff
+       255
+255=======
+_______255
+{42}
+{literal}
+hello 42 False
+12
+value=99
+s=value=99
+42
+True
+         1
+1
+False
+         0

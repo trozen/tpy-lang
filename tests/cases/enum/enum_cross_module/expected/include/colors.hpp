@@ -11,17 +11,21 @@ enum class Color : int32_t {
     Blue = 2,
 };
 
-inline std::string_view __tpy_enum_name(Color __e) {
-    switch (__e) {
-        case Color::Red: return "Red";
-        case Color::Green: return "Green";
-        case Color::Blue: return "Blue";
-        default: tpy_panic("invalid enum value");
-    }
-}
+} // namespace tpy_user::colors
+
+template<>
+struct tpy::EnumUtil<tpy_user::colors::Color> {
+    static std::string_view name(tpy_user::colors::Color e);
+    static const std::array<tpy_user::colors::Color, 3> members;
+    static tpy_user::colors::Color from_value(int32_t v);
+    static tpy_user::colors::Color from_name(std::string_view s);
+    static std::optional<tpy_user::colors::Color> try_parse(std::string_view s);
+};
+
+namespace tpy_user::colors {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << __tpy_enum_name(__e);
+    return __os << "Color." << tpy::EnumUtil<Color>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "colors";

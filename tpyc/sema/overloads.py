@@ -12,12 +12,14 @@ from ..typesys import (
     TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, StrType, StringType, StrViewType,
+    NamedType, PtrType, ConstPtrType,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
 if TYPE_CHECKING:
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
     DerefChecker = Callable[[TpyType], TpyType | None]
+    SubclassChecker = Callable[['NamedType', 'NamedType'], bool]
 
 
 def type_matches_strict(
@@ -75,6 +77,7 @@ def type_matches_with_coercion(
     param_type: TpyType,
     protocol_checker: ProtocolChecker | None = None,
     deref_checker: DerefChecker | None = None,
+    subclass_checker: SubclassChecker | None = None,
 ) -> bool:
     """Type matching allowing IntLiteral flexibility, protocols, and registered coercions.
 
@@ -94,6 +97,22 @@ def type_matches_with_coercion(
         deref_target = deref_checker(arg_inner)
         if deref_target is not None and deref_target == param_type:
             return True
+    # Inheritance: Child -> Parent (value upcast and pointer coercions)
+    if subclass_checker:
+        if isinstance(arg_inner, NamedType) and arg_inner.is_user_record:
+            if isinstance(param_type, NamedType) and param_type.is_user_record:
+                if subclass_checker(arg_inner, param_type):
+                    return True
+            pointee = getattr(param_type, 'pointee', None)
+            if isinstance(pointee, NamedType) and pointee.is_user_record:
+                if subclass_checker(arg_inner, pointee):
+                    return True
+        if isinstance(arg_inner, (PtrType, ConstPtrType)) and isinstance(arg_inner.pointee, NamedType):
+            if isinstance(param_type, (PtrType, ConstPtrType)) and isinstance(param_type.pointee, NamedType):
+                # ConstPtr cannot coerce to mutable Ptr (would drop const)
+                if not (isinstance(arg_inner, ConstPtrType) and isinstance(param_type, PtrType)):
+                    if subclass_checker(arg_inner.pointee, param_type.pointee):
+                        return True
     return False
 
 
@@ -103,6 +122,7 @@ def resolve_overload(
     protocol_checker: ProtocolChecker | None = None,
     deref_checker: DerefChecker | None = None,
     default_int_type: TpyType | None = None,
+    subclass_checker: SubclassChecker | None = None,
 ) -> FunctionInfo | None:
     """Two-pass overload resolution: exact match first, then with coercions.
 
@@ -113,6 +133,8 @@ def resolve_overload(
                           for protocol conformance checking.
         deref_checker: Optional callback (type) -> deref target or None,
                        for Deref[T] coercion in overload matching.
+        subclass_checker: Optional callback (child, parent) -> bool
+                          for inheritance-based upcast matching.
 
     Returns:
         The matching FunctionInfo, or None if no match found.
@@ -131,7 +153,7 @@ def resolve_overload(
     for overload in overloads:
         if len(overload.params) != len(arg_types):
             continue
-        if all(type_matches_with_coercion(arg_t, ptype, protocol_checker, deref_checker)
+        if all(type_matches_with_coercion(arg_t, ptype, protocol_checker, deref_checker, subclass_checker)
                for arg_t, (_, ptype) in zip(arg_types, overload.params)):
             score = sum(1 for arg_t, (_, ptype) in zip(arg_types, overload.params)
                         if type_matches_numeric(arg_t, ptype))

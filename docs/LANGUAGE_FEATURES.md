@@ -270,6 +270,7 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 - **Working**: `str.replace("", sep)` inserts separator between every character (Python semantics)
 - **Working**: `str.count("")` returns `len(s) + 1` (Python semantics)
 - **Working**: For-each iteration over string literals (no null terminator leak)
+- **Working**: F-strings (`f"hello {name}"`) via `std::format` -- supports format specs (`.2f`, `#x`, `>10`), `!s` conversion, all scalar types
 - **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
 
 #### String Type Semantics (Working)
@@ -307,29 +308,41 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
 - Cannot use `+=` (would dangle -- use `str` or `String` for mutable strings)
 - Returning a `StrView` referencing a local or temporary is an error
 
-#### F-string Formatting (Open)
+#### F-string Formatting (Working)
 
-F-strings behave differently based on context and profile:
+F-strings use `std::format` as the backend:
 
 ```python
-# Unrestricted mode - allocates std::string
 s = f"x={x}"
 # -> std::string s = std::format("x={}", x);
 
-# Restricted mode (@noalloc) - error or warning
+s = f"{val:.2f}"
+# -> std::format("{:.2f}", val);
+```
+
+Bool and float use Python-compatible wrappers for default format (no spec):
+`tpy::bool_to_str()` ("True"/"False"), `tpy::float_to_str()` (Python-style).
+
+**Not yet supported:**
+- `!r` and `!a` conversions (need `repr()`)
+- Expressions inside format specs (`f"{x:{width}}"`)
+- `__format__`/`__str__` dispatch on user types
+- Print streaming optimization (`print(f"...")` currently allocates)
+
+**Planned `@noalloc` interaction:**
+
+```python
+# @noalloc context - error (allocates)
 s = f"x={x}"  # ERROR: f-string allocates in @noalloc context
 
-# Fixed-size string - no allocation
+# Fixed-size string (future) - no heap allocation
 buf: FixStr64 = f"x={x}"
-# -> formats into pre-sized buffer, truncates if needed
 
-# Format string passthrough - zero overhead
+# Format string passthrough (future) - zero overhead
 def log(fs: FormatString) -> None: ...
 log(f"x={x}")
 # -> log("x={}", x)  # format string + args passed separately
 ```
-
-The `FormatString` type enables C++ templates that accept format strings directly, avoiding intermediate string allocation.
 
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
@@ -362,6 +375,9 @@ Context-dependent inference for Python-first semantics:
 | Function local + `.append()`/`.pop()`/etc | `list` | `std::vector` | Explicit mutation requires growable container |
 | Function local, passed to `list[T]` param | `list` | `std::vector` | Callee expects mutable list |
 | Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is read-only view, no mutation possible |
+| Function local, different-size reassignment | `list` | `std::vector` | `x = [1,2,3]; x = [4,5]` -- sizes differ, must be dynamic |
+| Function local, returned as `list[T]` | `list` | `std::vector` | Return type context propagates to local variable |
+| Function local, alias mutated | `list` | `std::vector` | `b = a; b.append(4)` -- both `a` and `b` become list |
 | Explicit annotation `x: Array[T, N]` | `Array` | `std::array` | User opted into fixed size |
 | Explicit annotation `x: list[T]` | `list` | `std::vector` | User opted into dynamic list |
 | Return type `-> Own[list[T]]` | `list` | `std::vector` | Return type context propagates to literal |
@@ -1142,7 +1158,7 @@ s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
-- **Working**: Enums → `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import)
+- **Working**: Enums → `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(Int8, Enum)`)
 
 ### Protocols (Partial)
 
@@ -2513,6 +2529,57 @@ struct Dog : Animal {
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
 
+#### Implicit Upcasting
+
+**Working**: Child instances can be used where parent types are expected.
+
+```python
+class Animal:
+    name: str
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+class Dog(Animal):
+    breed: str
+    def __init__(self, name: str, breed: str) -> None:
+        super().__init__(name)
+        self.breed = breed
+
+def greet(a: Animal) -> None:
+    print(a.name)
+
+d = Dog("Rex", "Lab")
+a: Animal = d        # value upcast
+greet(d)             # param passing (child -> parent)
+```
+
+**Pointer coercion** also works -- a child can be used where a pointer to parent is expected:
+
+```python
+from tpy import Ptr, ConstPtr
+
+def read_animal(p: ConstPtr[Animal]) -> None:
+    print(p.name)
+
+d = Dog("Rex", "Lab")
+read_animal(d)                    # Dog -> ConstPtr[Animal]
+dp: Ptr[Dog] = Ptr(d)
+ap: Ptr[Animal] = dp             # Ptr[Dog] -> Ptr[Animal]
+cap: ConstPtr[Animal] = dp       # Ptr[Dog] -> ConstPtr[Animal]
+```
+
+Generic parent upcasting is supported with type argument matching:
+
+```python
+class IntContainer(Container[Int32]):
+    ...
+
+ic = IntContainer(Int32(42))
+c: Container[Int32] = ic         # upcast to generic parent
+```
+
+**Note:** Covariant containers (`list[Dog] -> list[Animal]`) are not supported -- they are unsafe because the target list could be modified with incompatible types.
+
 #### `super()` Support
 
 **Working**: Python 3-style `super()` for calling parent class constructors and methods.
@@ -2847,6 +2914,7 @@ class Car(Vehicle, Printable, Measurable):
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
 - **Working**: `abs()`, `min()`, `max()` for numeric types
+- **Working**: String slicing: `s[1:3]`, `s[:3]`, `s[1:]`, `s[:-1]` -- returns `StrView`, Python clamping semantics, no step yet
 - **Planned**: List slicing: `items[1:3]`
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Open**: `type()` → compile-time type info
@@ -3477,7 +3545,8 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 - **Open**: List comprehensions → unrolled loops for fixed size
 - **Open**: Dict comprehensions → if dict type exists
 - **Open**: Lambda → anonymous struct with `operator()` or inline
-- **Open**: Slice `[start:end]` → view type
+- **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
+- **Open**: List slice `lst[start:end]` -> new `std::vector`
 
 ---
 
@@ -3490,6 +3559,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
   - Current limitation: assert message must be a string literal
 - **Open**: `try`/`except` → error codes, `std::expected`, or limited exceptions
 - **Open**: `raise` → if exception model chosen
+- **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`
 
 ---
 

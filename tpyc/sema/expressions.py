@@ -11,14 +11,17 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType, ArrayType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
-    ReadonlyType, unwrap_readonly, EnumType, is_any_str_type,
+    ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
+    FixedIntType, StringType, StrViewType,
     ResolvedBinop, FunctionInfo, ParamInfo,
-    INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
+    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyFStringValue, TpyFString,
+    TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
 from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
@@ -97,6 +100,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_list_repeat(expr)
         elif isinstance(expr, TpySubscript):
             typ = self._analyze_subscript(expr)
+        elif isinstance(expr, TpyFString):
+            typ = self._analyze_fstring(expr)
         elif isinstance(expr, TpyCoerce):
             # Coercions are attached post-analysis; treat as the expected type.
             typ = expr.expected_type
@@ -366,26 +371,52 @@ class ExpressionAnalyzer:
                 expr,
             )
 
-        # Enum comparison: same type only, no ordering
+        # Enum operators: base Enum supports == and != only;
+        # IntEnum also supports ordering, comparison with integers, and arithmetic
         if isinstance(left_effective, EnumType) or isinstance(right_effective, EnumType):
-            if isinstance(left_effective, EnumType) and isinstance(right_effective, EnumType):
-                if left_effective.name != right_effective.name:
-                    raise self.ctx.error(
-                        f"Cannot compare enum types '{left_effective.name}' and '{right_effective.name}'",
-                        expr,
-                    )
-                if expr.op in ("<", ">", "<=", ">="):
-                    raise self.ctx.error(
-                        f"Ordering operators not supported for enum type '{left_effective.name}'",
-                        expr,
-                    )
-                return BOOL
-            # One side is enum, other is not
-            enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
-            raise self.ctx.error(
-                f"Cannot compare '{enum_name}' with '{right_effective if isinstance(left_effective, EnumType) else left_effective}'",
-                expr,
-            )
+            left_is_int_enum = isinstance(left_effective, IntEnumType)
+            right_is_int_enum = isinstance(right_effective, IntEnumType)
+            is_comparison = expr.op in ("==", "!=", "<", ">", "<=", ">=")
+
+            if is_comparison:
+                # IntEnum vs integer: coerce enum to underlying type
+                if left_is_int_enum and isinstance(right_effective, (IntLiteralType, FixedIntType, BigIntType)):
+                    expr.int_enum_coercion = left_effective
+                    return BOOL
+                if right_is_int_enum and isinstance(left_effective, (IntLiteralType, FixedIntType, BigIntType)):
+                    expr.int_enum_coercion = right_effective
+                    return BOOL
+                if isinstance(left_effective, EnumType) and isinstance(right_effective, EnumType):
+                    if left_effective.name != right_effective.name:
+                        raise self.ctx.error(
+                            f"Cannot compare enum types '{left_effective.name}' and '{right_effective.name}'",
+                            expr,
+                        )
+                    # IntEnum supports ordering; base Enum does not
+                    if expr.op in ("<", ">", "<=", ">=") and not left_is_int_enum:
+                        raise self.ctx.error(
+                            f"Ordering operators not supported for enum type '{left_effective.name}'",
+                            expr,
+                        )
+                    # IntEnum ordering needs cast to underlying type
+                    if left_is_int_enum and expr.op in ("<", ">", "<=", ">="):
+                        expr.int_enum_coercion = left_effective
+                    return BOOL
+                # One side is enum, other is not (and not int for IntEnum)
+                enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
+                raise self.ctx.error(
+                    f"Cannot compare '{enum_name}' with '{right_effective if isinstance(left_effective, EnumType) else left_effective}'",
+                    expr,
+                )
+
+            # Non-comparison ops: IntEnum arithmetic is handled below;
+            # base Enum in arithmetic is an error
+            if not left_is_int_enum and not right_is_int_enum:
+                enum_name = left_effective.name if isinstance(left_effective, EnumType) else right_effective.name
+                raise self.ctx.error(
+                    f"Operator '{expr.op}' not supported for enum type '{enum_name}'",
+                    expr,
+                )
 
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
@@ -410,6 +441,34 @@ class ExpressionAnalyzer:
         # Logical operators return Bool
         if expr.op in ("&&", "||"):
             return BOOL
+
+        # IntEnum arithmetic: coerce to underlying type, delegate to standard binop
+        if expr.op in ("+", "-", "*", "//", "%"):
+            int_enum_side = None
+            other_side = None
+            if isinstance(left_effective, IntEnumType):
+                int_enum_side = left_effective
+                other_side = right_effective
+            elif isinstance(right_effective, IntEnumType):
+                int_enum_side = right_effective
+                other_side = left_effective
+            if int_enum_side is not None:
+                if isinstance(other_side, IntEnumType):
+                    if other_side.name != int_enum_side.name:
+                        raise self.ctx.error(
+                            f"Cannot mix arithmetic between '{int_enum_side.name}' "
+                            f"and '{other_side.name}'",
+                            expr,
+                        )
+                if isinstance(other_side, (IntEnumType, IntLiteralType, FixedIntType, BigIntType)):
+                    # Coerce IntEnum operands to underlying type so standard
+                    # FixedInt binop resolution (with checked arithmetic) handles it
+                    expr.int_enum_coercion = int_enum_side
+                    if isinstance(left_effective, IntEnumType):
+                        left_effective = left_effective.underlying_type
+                    if isinstance(right_effective, IntEnumType):
+                        right_effective = right_effective.underlying_type
+                    # Fall through to standard binop resolution below
 
         # IntLiteral + IntLiteral -> IntLiteral (stays unresolved until context determines type)
         if isinstance(left_effective, IntLiteralType) and isinstance(right_effective, IntLiteralType):
@@ -610,6 +669,10 @@ class ExpressionAnalyzer:
                 if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
                 return FLOAT
+
+        # IntEnum: unary negation returns the underlying integer type
+        if isinstance(effective_type, IntEnumType) and expr.op == "-":
+            return effective_type.underlying_type
 
         # IntLiteralType special cases - preserve literal nature when possible
         if isinstance(effective_type, IntLiteralType):
@@ -878,8 +941,26 @@ class ExpressionAnalyzer:
         return ListType(first_type)
 
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
-        """Analyze subscript indexing: obj[index]"""
+        """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
+        # Enum name lookup: Color["Red"] -> Color (panics on invalid)
+        if isinstance(expr.obj, TpyName) and self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(expr.obj.name)
+            if binding and binding.kind == BindingKind.ENUM:
+                index_type = self.analyze_expr(expr.index)
+                if not is_any_str_type(index_type):
+                    raise self.ctx.error(
+                        f"Enum subscript index must be a string, got '{index_type}'",
+                        expr,
+                    )
+                expr.enum_from_name = binding.enum_type
+                return binding.enum_type
+
         obj_type = self.analyze_expr(expr.obj)
+
+        # Slice: obj[start:stop]
+        if isinstance(expr.index, TpySlice):
+            return self._analyze_slice(expr, obj_type)
+
         index_type = self.analyze_expr(expr.index)
 
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
@@ -923,3 +1004,47 @@ class ExpressionAnalyzer:
             return ret
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
+
+    _SLICEABLE_STR_TYPES = (StrType, StringType, StrViewType, PendingStrType)
+
+    def _analyze_slice(self, expr: TpySubscript, obj_type: TpyType) -> TpyType:
+        """Analyze slice expression: obj[start:stop]"""
+        sl = expr.index
+        assert isinstance(sl, TpySlice)
+        for bound, label in ((sl.lower, "start"), (sl.upper, "stop")):
+            if bound is not None:
+                bound_type = self.analyze_expr(bound)
+                if not isinstance(bound_type, (Int32Type, BigIntType, IntLiteralType)):
+                    raise self.ctx.error(
+                        f"Slice {label} must be an integer type, got {bound_type}", bound
+                    )
+        actual_type = unwrap_readonly(obj_type)
+        # TODO: Optional[str] after narrowing passes this check but codegen
+        # doesn't emit .value() -- same pre-existing issue as single-index subscript.
+        if not isinstance(actual_type, self._SLICEABLE_STR_TYPES):
+            raise self.ctx.error(f"Slicing is not yet supported for {obj_type}", expr)
+        return STRVIEW
+
+    # F-string formattable types (no __str__ dispatch yet)
+    _FORMATTABLE_TYPES = (
+        FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType,
+        StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,
+    )
+
+    def _analyze_fstring(self, expr: TpyFString) -> TpyType:
+        """Analyze f-string parts and return STR (owned string)."""
+        for part in expr.parts:
+            if isinstance(part, TpyFStringValue):
+                part_type = self.analyze_expr(part.expr)
+                resolved = unwrap_readonly(part_type)
+                if not isinstance(resolved, self._FORMATTABLE_TYPES):
+                    raise self.ctx.error(
+                        f"Type {part_type} cannot be used in f-string (no __str__ method)",
+                        part.expr,
+                    )
+                if part.format_spec is not None and isinstance(resolved, (BigIntType, IntLiteralType)):
+                    raise self.ctx.error(
+                        "Format specs on int are not yet supported (use a fixed-width type like Int32)",
+                        part.expr,
+                    )
+        return STR
