@@ -751,6 +751,7 @@ class CallAnalyzer:
         matched = resolve_overload(
             record_info.constructors, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
+            subclass_checker=self.ctx.registry.is_subclass_of,
         )
         if matched:
             expr.resolved_function_info = matched
@@ -829,7 +830,8 @@ class CallAnalyzer:
         if non_generic:
             matched = resolve_overload(non_generic, arg_types, protocol_checker,
                                        deref_checker=self.type_ops.get_deref_coercion_target,
-                                       default_int_type=self.ctx.default_int_type)
+                                       default_int_type=self.ctx.default_int_type,
+                                       subclass_checker=self.ctx.registry.is_subclass_of)
             if matched is not None:
                 expr.resolved_function_info = matched
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):

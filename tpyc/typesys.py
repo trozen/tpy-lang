@@ -1652,6 +1652,28 @@ class TypeRegistry:
         """Get a builtin record by qualified name."""
         return self.builtin_records.get(qname)
 
+    def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
+        """Check if child is a subclass of parent (walking the inheritance chain).
+
+        Compares name + type_args at each level so generic parents are
+        matched correctly (e.g. IntContainer -> Container[Int32]).
+        """
+        if not (isinstance(child, NamedType) and child.is_user_record
+                and isinstance(parent, NamedType) and parent.is_user_record):
+            return False
+        current_info = self.records.get(child.name)
+        visited: set[str] = set()
+        while current_info and current_info.parent and current_info.name not in visited:
+            visited.add(current_info.name)
+            p = current_info.parent
+            if isinstance(p, NamedType) and p.name == parent.name and p.type_args == parent.type_args:
+                return True
+            if isinstance(p, NamedType) and p.is_user_record:
+                current_info = self.records.get(p.name)
+            else:
+                break
+        return False
+
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.
 

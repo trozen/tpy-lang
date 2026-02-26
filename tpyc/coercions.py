@@ -297,3 +297,25 @@ DEREF_COERCION = Coercion(
     to_type=TpyType,
     codegen=_deref_codegen,
 )
+
+# Pre-built coercions for inheritance-based upcasts (not in COERCIONS list --
+# requires TypeRegistry access that type_match lambdas don't have).
+# Used directly by compatibility.py.
+UPCAST_TO_PTR = Coercion(
+    name="upcast_to_ptr",
+    from_type=NamedType,
+    to_type=PtrType,
+    requires_lvalue=True,
+    requires_mutable=True,
+    forbid_return_local=True,
+    codegen=lambda e, _a, _b, _c: f"&{e}",
+)
+
+UPCAST_TO_CONST_PTR = Coercion(
+    name="upcast_to_const_ptr",
+    from_type=NamedType,
+    to_type=ConstPtrType,
+    requires_lvalue=True,
+    forbid_return_local=True,
+    codegen=lambda e, _a, _b, _c: f"&{e}",
+)

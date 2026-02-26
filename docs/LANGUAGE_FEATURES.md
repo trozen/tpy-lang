@@ -2504,6 +2504,57 @@ struct Dog : Animal {
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
 
+#### Implicit Upcasting
+
+**Working**: Child instances can be used where parent types are expected.
+
+```python
+class Animal:
+    name: str
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+class Dog(Animal):
+    breed: str
+    def __init__(self, name: str, breed: str) -> None:
+        super().__init__(name)
+        self.breed = breed
+
+def greet(a: Animal) -> None:
+    print(a.name)
+
+d = Dog("Rex", "Lab")
+a: Animal = d        # value upcast
+greet(d)             # param passing (child -> parent)
+```
+
+**Pointer coercion** also works -- a child can be used where a pointer to parent is expected:
+
+```python
+from tpy import Ptr, ConstPtr
+
+def read_animal(p: ConstPtr[Animal]) -> None:
+    print(p.name)
+
+d = Dog("Rex", "Lab")
+read_animal(d)                    # Dog -> ConstPtr[Animal]
+dp: Ptr[Dog] = Ptr(d)
+ap: Ptr[Animal] = dp             # Ptr[Dog] -> Ptr[Animal]
+cap: ConstPtr[Animal] = dp       # Ptr[Dog] -> ConstPtr[Animal]
+```
+
+Generic parent upcasting is supported with type argument matching:
+
+```python
+class IntContainer(Container[Int32]):
+    ...
+
+ic = IntContainer(Int32(42))
+c: Container[Int32] = ic         # upcast to generic parent
+```
+
+**Note:** Covariant containers (`list[Dog] -> list[Animal]`) are not supported -- they are unsafe because the target list could be modified with incompatible types.
+
 #### `super()` Support
 
 **Working**: Python 3-style `super()` for calling parent class constructors and methods.

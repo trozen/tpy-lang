@@ -106,6 +106,7 @@ class MethodAnalyzer:
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 deref_checker=self.type_ops.get_deref_coercion_target,
                 default_int_type=self.ctx.default_int_type,
+                subclass_checker=self.ctx.registry.is_subclass_of,
             )
             if resolved is None:
                 arg_strs = ", ".join(str(t) for t in arg_types)

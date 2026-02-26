@@ -20,7 +20,7 @@ from ..parse import (
     TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp, TpyBinOp, TpyCoerce,
     TpyNoneLiteral, TpyIntLiteral, TpyFunction, SourceLocation
 )
-from ..coercions import resolve_coercion, Coercion, CoercionContext
+from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
@@ -135,6 +135,27 @@ class TypeCompatibility:
                 loc
             )
 
+        # Inheritance: Child -> Parent (implicit value upcast, C++ handles slicing/ref binding)
+        if (isinstance(actual, NamedType) and actual.is_user_record
+                and isinstance(expected, NamedType) and expected.is_user_record):
+            if self.ctx.registry.is_subclass_of(actual, expected):
+                return None
+
+        # Inheritance: Ptr[Child] -> Ptr[Parent] / ConstPtr[Parent]
+        if isinstance(actual, PtrType) and isinstance(actual.pointee, NamedType):
+            if isinstance(expected, PtrType) and isinstance(expected.pointee, NamedType):
+                if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
+                    return None
+            if isinstance(expected, ConstPtrType) and isinstance(expected.pointee, NamedType):
+                if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
+                    return None
+
+        # Inheritance: ConstPtr[Child] -> ConstPtr[Parent]
+        if isinstance(actual, ConstPtrType) and isinstance(actual.pointee, NamedType):
+            if isinstance(expected, ConstPtrType) and isinstance(expected.pointee, NamedType):
+                if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
+                    return None
+
         # Allow T -> Own[T] coercion (ownership transfer)
         if isinstance(expected, OwnType):
             # Warn when lvalue is implicitly copied into owned storage
@@ -232,6 +253,15 @@ class TypeCompatibility:
 
         ctx = coercion_ctx or context
         coercion = resolve_coercion(actual, expected, ctx)
+        if coercion is None:
+            # Inheritance: Child -> Ptr[Parent] / ConstPtr[Parent] (address-of with upcast)
+            if isinstance(actual, NamedType) and actual.is_user_record:
+                if isinstance(expected, PtrType) and isinstance(expected.pointee, NamedType):
+                    if self.ctx.registry.is_subclass_of(actual, expected.pointee):
+                        coercion = UPCAST_TO_PTR
+                elif isinstance(expected, ConstPtrType) and isinstance(expected.pointee, NamedType):
+                    if self.ctx.registry.is_subclass_of(actual, expected.pointee):
+                        coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
             # Generic deref coercion: any type with __deref__() -> T coerces to T
             if self.type_ops:

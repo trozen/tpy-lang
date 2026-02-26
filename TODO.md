@@ -42,12 +42,6 @@
 - handling cyclic imports (see Language Features Roadmap -- Longer-term)
 - user-defined function/method overloads via `@overload` decorator (from `typing`). Each `@overload` body is the real implementation (unlike CPython where bodies are stubs). Maps directly to C++ overloads. Infrastructure already exists (overload resolution, type-checked params). (See Language Features Roadmap -- Near-term)
 
-## Polymorphism
-- Implicit upcasting: `parent: Animal = Dog()` (child instance to parent type)
-- Polymorphic coercion: `Dog` → `Ptr[Animal]` (child to parent pointer)
-- Virtual dispatch (requires C++ `virtual` methods) - currently `self.method()` in parent uses static dispatch
-- Protocol-typed local variables: allow protocol types as variable types (e.g. `seq: Sequence[Int32] = items`)
-
 ## Python features
 - `@override` decorator (Python 3.12 `typing.override`): mark methods that override a parent/protocol method; error if the method doesn't actually override anything (typo protection). C++ codegen already emits `override` automatically.
 - dict full support

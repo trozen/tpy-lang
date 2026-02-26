@@ -148,7 +148,9 @@ class ExpressionGenerator:
             if expr.coercion.name == "int_literal_to_fixed_int":
                 return gen_inner
             # Coercions that call methods on the inner expression need dereferencing for globals
-            if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr", "bigint_to_fixed_int"):
+            if expr.coercion.name in ("record_to_ptr", "record_to_const_ptr",
+                                      "upcast_to_ptr", "upcast_to_const_ptr",
+                                      "bigint_to_fixed_int"):
                 if self.ctx.is_indirect_name(expr.expr):
                     gen_inner = f"(*{gen_inner})"
             return expr.coercion.codegen(gen_inner, expr.actual_type, expr.expected_type, expr.context_kind)
