@@ -411,6 +411,16 @@ class EnumType(TpyType):
         return hash(self.name)
 
 
+@dataclass(frozen=True, eq=False)
+class IntEnumType(EnumType):
+    """IntEnum type -- enum that also behaves as an integer.
+
+    Supports arithmetic with integers, ordering comparisons, and int coercion.
+    isinstance(t, EnumType) catches both EnumType and IntEnumType.
+    """
+    pass
+
+
 @dataclass(frozen=True)
 class RangeType(TpyType):
     """Range type: range() -> tpy::Range<T> (lazy iterator over T)."""

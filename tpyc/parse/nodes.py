@@ -14,6 +14,7 @@ from typing import Optional, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, FieldInfo,
     MethodSignature, TypeParamKind,
+    EnumType, IntEnumType,
 )
 
 
@@ -100,6 +101,7 @@ class TpyBinOp(TpyExpr):
     right: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
+    int_enum_coercion: 'IntEnumType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
 
 
 @dataclass
@@ -126,6 +128,8 @@ class TpyCall(TpyExpr):
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
+    enum_from_value: EnumType | None = None  # Set by sema for enum value lookup: Color(0)
+    enum_try_parse: EnumType | None = None   # Set by sema for tpy.try_parse(Color, "Red")
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
 
@@ -178,6 +182,7 @@ class TpySubscript(TpyExpr):
     obj: TpyExpr
     index: TpyExpr
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
+    enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
 
 
 @dataclass
@@ -284,6 +289,7 @@ class TpyForEach(TpyStmt):
     var: str
     iterable: TpyExpr
     body: list[TpyStmt]
+    enum_iterable: 'EnumType | None' = None  # set by sema when iterating over enum type
 
 
 @dataclass
@@ -487,6 +493,8 @@ class TpyEnum:
     """Enum definition -- symbolic constants grouped under a named type."""
     name: str
     members: list[tuple[str, int, SourceLocation | None]]  # auto() already resolved to int by parser
+    is_int_enum: bool = False
+    underlying_type_name: str | None = None  # e.g. "int", "Int8", "UInt32"
     loc: SourceLocation | None = None
 
 

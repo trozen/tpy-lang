@@ -1,0 +1,4 @@
+off is falsy
+on is truthy
+True
+False

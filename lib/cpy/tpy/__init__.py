@@ -50,20 +50,22 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
                     value = value % mod
             return super().__new__(cls, value)
 
-        def __add__(self, other): return type(self)(int.__add__(self, other))
-        def __radd__(self, other): return type(self)(int.__radd__(self, other))
-        def __sub__(self, other): return type(self)(int.__sub__(self, other))
-        def __rsub__(self, other): return type(self)(int.__rsub__(self, other))
-        def __mul__(self, other): return type(self)(int.__mul__(self, other))
-        def __rmul__(self, other): return type(self)(int.__rmul__(self, other))
-        def __floordiv__(self, other): return type(self)(int.__floordiv__(self, other))
-        def __mod__(self, other): return type(self)(int.__mod__(self, other))
-        def __and__(self, other): return type(self)(int.__and__(self, other))
-        def __or__(self, other): return type(self)(int.__or__(self, other))
-        def __xor__(self, other): return type(self)(int.__xor__(self, other))
-        def __lshift__(self, other): return type(self)(int.__lshift__(self, other))
-        def __rshift__(self, other): return type(self)(int.__rshift__(self, other))
-        def __invert__(self): return type(self)(int.__invert__(self))
+        # Use FixedInt (not type(self)) so that subclass arithmetic
+        # (e.g. IntEnum + Int8) returns the base fixed-int type.
+        def __add__(self, other): return FixedInt(int.__add__(self, other))
+        def __radd__(self, other): return FixedInt(int.__radd__(self, other))
+        def __sub__(self, other): return FixedInt(int.__sub__(self, other))
+        def __rsub__(self, other): return FixedInt(int.__rsub__(self, other))
+        def __mul__(self, other): return FixedInt(int.__mul__(self, other))
+        def __rmul__(self, other): return FixedInt(int.__rmul__(self, other))
+        def __floordiv__(self, other): return FixedInt(int.__floordiv__(self, other))
+        def __mod__(self, other): return FixedInt(int.__mod__(self, other))
+        def __and__(self, other): return FixedInt(int.__and__(self, other))
+        def __or__(self, other): return FixedInt(int.__or__(self, other))
+        def __xor__(self, other): return FixedInt(int.__xor__(self, other))
+        def __lshift__(self, other): return FixedInt(int.__lshift__(self, other))
+        def __rshift__(self, other): return FixedInt(int.__rshift__(self, other))
+        def __invert__(self): return FixedInt(int.__invert__(self))
         def __repr__(self): return str(int(self))
         def __str__(self): return str(int(self))
 
@@ -74,7 +76,7 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     FixedInt.trunc = trunc
 
     if signed:
-        def __neg__(self): return type(self)(int.__neg__(self))
+        def __neg__(self): return FixedInt(int.__neg__(self))
         FixedInt.__neg__ = __neg__
 
     FixedInt.__name__ = name
@@ -483,6 +485,14 @@ def copy(obj):
     if hasattr(obj, '__copy__'):
         return obj.__copy__()
     return _copy_module.deepcopy(obj)
+
+
+def try_parse(enum_cls, name: str):
+    """Try to parse a string into an enum member. Returns None if not found."""
+    for member in enum_cls:
+        if member.name == name:
+            return member
+    return None
 
 
 # ---------------------------------------------------------------------------

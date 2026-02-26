@@ -1,0 +1,1 @@
+main.py:9: error: try_parse() second argument must be a string, got 'IntLiteral(123)'

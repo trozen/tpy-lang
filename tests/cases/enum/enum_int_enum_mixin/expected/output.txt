@@ -1,0 +1,5 @@
+SmallEnum.A
+SmallEnum.C
+11
+True
+True
