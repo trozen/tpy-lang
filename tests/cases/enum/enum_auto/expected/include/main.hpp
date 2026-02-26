@@ -12,18 +12,20 @@ enum class Direction : int32_t {
     West = 4,
 };
 
-inline std::string_view __tpy_enum_name(Direction __e) {
-    switch (__e) {
-        case Direction::North: return "North";
-        case Direction::South: return "South";
-        case Direction::East: return "East";
-        case Direction::West: return "West";
-        default: tpy_panic("invalid enum value");
-    }
-}
+} // namespace tpy_user::main
+
+template<>
+struct tpy::EnumUtil<tpy_user::main::Direction> {
+    static std::string_view name(tpy_user::main::Direction e);
+    static const std::array<tpy_user::main::Direction, 4> members;
+    static tpy_user::main::Direction from_value(int32_t v);
+    static std::optional<tpy_user::main::Direction> try_parse(std::string_view s);
+};
+
+namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Direction __e) {
-    return __os << "Direction." << __tpy_enum_name(__e);
+    return __os << "Direction." << tpy::EnumUtil<Direction>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";

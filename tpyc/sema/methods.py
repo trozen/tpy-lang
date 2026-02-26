@@ -176,6 +176,15 @@ class MethodAnalyzer:
             if result is not None:
                 return result
 
+            # Reject method calls on enum types (enums have no class methods)
+            if self.ctx.current_ns:
+                binding = self.ctx.current_ns.lookup(expr.obj.name)
+                if binding and binding.kind == BindingKind.ENUM:
+                    raise self.ctx.error(
+                        f"Enum type '{expr.obj.name}' has no method '{expr.method}'",
+                        expr,
+                    )
+
             # module.function() pattern (import X -> X.func())
             result = self._analyze_module_method_call(expr)
             if result is not None:

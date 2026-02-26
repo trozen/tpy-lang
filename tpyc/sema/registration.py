@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, FinalType, EnumType, StrType, StrViewType, STRVIEW,
+    IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType,
+    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
 from .diagnostics import SemanticError
@@ -120,14 +121,53 @@ class TypeRegistrar:
                 )
             seen_values[value] = name
 
-        enum_type = EnumType(
+        # Determine underlying type
+        underlying = INT32  # default
+        if enum.is_int_enum and enum.underlying_type_name:
+            underlying = self._resolve_int_enum_underlying(enum.underlying_type_name)
+            # Validate member values fit in underlying type range
+            if isinstance(underlying, FixedIntType):
+                for name, value, loc in enum.members:
+                    if value < underlying.min_value or value > underlying.max_value:
+                        raise SemanticError(
+                            f"Enum member '{name}' value {value} is out of range "
+                            f"for {underlying} ({underlying.min_value}..{underlying.max_value})",
+                            loc=loc or enum.loc,
+                        )
+
+        module_name = self.ctx.module_name if self.ctx.module_name != "__main__" else None
+        common_args = dict(
             name=enum.name,
             members=tuple(m for m, _, _ in enum.members),
             member_values=tuple((m, v) for m, v, _ in enum.members),
-            module_name=self.ctx.module_name if self.ctx.module_name != "__main__" else None,
+            underlying_type=underlying,
+            module_name=module_name,
         )
+        if enum.is_int_enum:
+            enum_type = IntEnumType(**common_args)
+        else:
+            enum_type = EnumType(**common_args)
         self.ctx.registry.register_enum(enum_type)
         self.ctx.global_ns.bind_enum(enum_type)
+
+    _INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
+        "int": INT32,
+        "Int8": FixedIntType(8, True),
+        "Int16": FixedIntType(16, True),
+        "Int32": INT32,
+        "Int64": FixedIntType(64, True),
+        "UInt8": FixedIntType(8, False),
+        "UInt16": FixedIntType(16, False),
+        "UInt32": FixedIntType(32, False),
+        "UInt64": FixedIntType(64, False),
+    }
+
+    def _resolve_int_enum_underlying(self, type_name: str) -> TpyType:
+        """Resolve IntEnum underlying type name to TpyType."""
+        result = self._INT_ENUM_UNDERLYING_MAP.get(type_name)
+        if result is None:
+            raise SemanticError(f"Unknown IntEnum underlying type: '{type_name}'")
+        return result
 
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""

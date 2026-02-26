@@ -12,7 +12,7 @@ from ..typesys import (
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, StrVarInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
-    unwrap_readonly, is_any_str_type,
+    EnumType, unwrap_readonly, is_any_str_type,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
 from ..parse import (
@@ -154,6 +154,26 @@ class StatementAnalyzer:
                 if isinstance(check_type, ReadonlyType):
                     raise self.ctx.error("Cannot mutate readonly reference", target)
 
+    def _resolve_enum_iterable(self, stmt: TpyForEach) -> EnumType | None:
+        """Check if for-each iterates over an enum type (e.g. `for c in Color`).
+
+        Returns the EnumType if so, None otherwise.
+        """
+        iterable = stmt.iterable
+        if not isinstance(iterable, TpyName):
+            return None
+        binding = self.ctx.current_ns.lookup(iterable.name) if self.ctx.current_ns else None
+        if binding is None:
+            return None
+        if binding.kind == BindingKind.ENUM and binding.enum_type is not None:
+            return binding.enum_type
+        if binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
+            src_mod, original_name = binding.import_source
+            enum_type = self.ctx.registry.get_enum(original_name)
+            if enum_type is not None:
+                return enum_type
+        return None
+
     def analyze_stmt(self, stmt: TpyStmt) -> None:
         """Analyze a statement."""
         if isinstance(stmt, TpyVarDecl):
@@ -293,47 +313,65 @@ class StatementAnalyzer:
             self._restore_ns_var_types(ns_types_before_while)
             self._sync_promoted_var_types()
         elif isinstance(stmt, TpyForEach):
-            iterable_type = self.expr.analyze_expr(stmt.iterable)
-            is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
-            inner_iterable_type = unwrap_readonly(iterable_type)
-            elem_type = self.iterable.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
-            # Elements from a readonly iterable inherit readonly status
-            if is_readonly_iterable and not elem_type.is_value_type():
-                elem_type = ReadonlyType(unwrap_readonly(elem_type))
-            before = self.init.save()
-            ns_types_before_foreach = self._save_ns_var_types()
-            with self.scopes.loop_scope() as inner_scope:
-                self.init.apply_loop_entry_facts(before)
-                # OptIterator and __iter__-based types produce fresh values each iteration
-                is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                if is_native_iterator or is_iter_based:
-                    iter_depth = inner_scope.depth
-                elif self.compat.is_lvalue(stmt.iterable):
-                    # For-each var references container's storage -- use container's depth.
-                    iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
-                else:
-                    # For rvalue iterables (calls), C++ extends the temporary's lifetime
-                    # to the for statement, but it dies when the loop ends. Use body depth
-                    # so that escaping to any outer-scoped variable is caught.
-                    iter_depth = inner_scope.depth
-                # Track provenance for non-value-type loop vars from param-derived iterables
-                track_loop_prov = (
-                    not unwrap_readonly(elem_type).is_value_type()
-                    and self.compat.is_param_derived_expr(stmt.iterable)
-                )
-                if track_loop_prov:
-                    self.init.add_loop_var_provenance(stmt.var)
-                with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
-                    for s in stmt.body:
-                        self.analyze_stmt(s)
-                if track_loop_prov:
-                    self.init.remove_loop_var_provenance(stmt.var)
-            body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
-            self.init.restore(before)
-            self.ctx.non_null_ptr_vars &= body_end_nn_ptr
-            self._restore_ns_var_types(ns_types_before_foreach)
-            self._sync_promoted_var_types()
+            # Check for enum iteration: `for c in Color`
+            enum_type = self._resolve_enum_iterable(stmt)
+            if enum_type is not None:
+                stmt.enum_iterable = enum_type
+                elem_type = enum_type
+                before = self.init.save()
+                ns_types_before_foreach = self._save_ns_var_types()
+                with self.scopes.loop_scope() as inner_scope:
+                    self.init.apply_loop_entry_facts(before)
+                    with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
+                        for s in stmt.body:
+                            self.analyze_stmt(s)
+                body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
+                self.init.restore(before)
+                self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+                self._restore_ns_var_types(ns_types_before_foreach)
+                self._sync_promoted_var_types()
+            else:
+                iterable_type = self.expr.analyze_expr(stmt.iterable)
+                is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
+                inner_iterable_type = unwrap_readonly(iterable_type)
+                elem_type = self.iterable.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
+                # Elements from a readonly iterable inherit readonly status
+                if is_readonly_iterable and not elem_type.is_value_type():
+                    elem_type = ReadonlyType(unwrap_readonly(elem_type))
+                before = self.init.save()
+                ns_types_before_foreach = self._save_ns_var_types()
+                with self.scopes.loop_scope() as inner_scope:
+                    self.init.apply_loop_entry_facts(before)
+                    # OptIterator and __iter__-based types produce fresh values each iteration
+                    is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                    is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                    if is_native_iterator or is_iter_based:
+                        iter_depth = inner_scope.depth
+                    elif self.compat.is_lvalue(stmt.iterable):
+                        # For-each var references container's storage -- use container's depth.
+                        iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
+                    else:
+                        # For rvalue iterables (calls), C++ extends the temporary's lifetime
+                        # to the for statement, but it dies when the loop ends. Use body depth
+                        # so that escaping to any outer-scoped variable is caught.
+                        iter_depth = inner_scope.depth
+                    # Track provenance for non-value-type loop vars from param-derived iterables
+                    track_loop_prov = (
+                        not unwrap_readonly(elem_type).is_value_type()
+                        and self.compat.is_param_derived_expr(stmt.iterable)
+                    )
+                    if track_loop_prov:
+                        self.init.add_loop_var_provenance(stmt.var)
+                    with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
+                        for s in stmt.body:
+                            self.analyze_stmt(s)
+                    if track_loop_prov:
+                        self.init.remove_loop_var_provenance(stmt.var)
+                body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
+                self.init.restore(before)
+                self.ctx.non_null_ptr_vars &= body_end_nn_ptr
+                self._restore_ns_var_types(ns_types_before_foreach)
+                self._sync_promoted_var_types()
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
@@ -454,10 +492,16 @@ class StatementAnalyzer:
                 return t.map_inner_types(_resolve)
             stmt.type = _resolve(stmt.type)
 
-        # Resolve imported enum types in annotation (NamedType -> EnumType)
+        # Resolve enum types in annotation (NamedType -> EnumType).
+        # Also replaces stale EnumType from the parser registry with the
+        # sema registry's version (which may be IntEnumType).
         if stmt.type and self.ctx.registry.enums:
             def _resolve_enum(t: TpyType) -> TpyType:
                 if isinstance(t, NamedType) and not t.is_protocol:
+                    enum = self.ctx.registry.get_enum(t.name)
+                    if enum is not None:
+                        return enum
+                if isinstance(t, EnumType):
                     enum = self.ctx.registry.get_enum(t.name)
                     if enum is not None:
                         return enum

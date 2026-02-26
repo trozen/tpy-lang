@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    EnumType,
+    EnumType, IntEnumType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
     ResolvedBinop
 )
@@ -240,7 +240,11 @@ class ExpressionGenerator:
 
         expr_type = self.types.get_resolved_type(expr)
         rendered = self.gen_expr(expr)
-        # Enum values are always truthy
+        # IntEnum truthiness: value 0 is falsy (like int)
+        # Base Enum: always truthy (CPython behavior)
+        if isinstance(expr_type, IntEnumType):
+            cpp_underlying = expr_type.underlying_type.to_cpp()
+            return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
         if isinstance(expr_type, EnumType):
             return "true"
         if isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr():
@@ -404,6 +408,13 @@ class ExpressionGenerator:
             # Use gen_expr_deref for pointer-locals/globals (T* needs dereferencing)
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
+            # IntEnum coercion: cast enum operand(s) to underlying type
+            if expr.int_enum_coercion:
+                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
+                if isinstance(left_type, IntEnumType):
+                    left = f"static_cast<{underlying_cpp}>({left})"
+                if isinstance(right_type, IntEnumType):
+                    right = f"static_cast<{underlying_cpp}>({right})"
             return f"({left} {expr.op} {right})"
 
         # Optimization: IntLiteral op IntLiteral with Int32 target -> direct Int32 arithmetic
@@ -450,6 +461,13 @@ class ExpressionGenerator:
                 # Convert argument if needed (e.g., IntLiteralType that's actually BigInt)
                 right_actual = self.types.get_resolved_type(expr.right, param_type)
                 right = self._convert_to_fixed_int_arg(right, right_actual, param_type, expr.right)
+            # IntEnum coercion: cast enum operand(s) to underlying type
+            if expr.int_enum_coercion:
+                underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
+                if isinstance(left_type, IntEnumType):
+                    left = f"static_cast<{underlying_cpp}>({left})"
+                if isinstance(right_type, IntEnumType):
+                    right = f"static_cast<{underlying_cpp}>({right})"
             # Generate binop using helper (handles wrappers and is_reverse)
             result = self._gen_binop_from_result(binop_result, left, right)
             # Wrap in parens to avoid precedence issues with cout << and other operators
@@ -511,6 +529,11 @@ class ExpressionGenerator:
         # Use resolved unary op from sema
         if unaryop_result := expr.resolved_unaryop:
             return expand_cpp_template(unaryop_result.method.cpp_template, operand)
+
+        # IntEnum: unary negation via static_cast
+        if isinstance(operand_type, IntEnumType) and expr.op == "-":
+            underlying_cpp = self.types.type_to_cpp(operand_type.underlying_type)
+            return f"(-static_cast<{underlying_cpp}>({operand}))"
 
         # Fallback for IntLiteralType (not in module system)
         if isinstance(operand_type, IntLiteralType):
@@ -600,6 +623,23 @@ class ExpressionGenerator:
             name_node = TpyName(var_name)
             var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else var_name
             return f"std::holds_alternative<{cpp_type}>({var_ref})"
+        # Enum value lookup: Color(0) -> tpy::EnumUtil<Color>::from_value(0)
+        if expr.enum_from_value is not None:
+            enum_type = expr.enum_from_value
+            cpp_type = enum_type.to_cpp()
+            underlying_cpp = enum_type.underlying_type.to_cpp()
+            arg = self.gen_expr(expr.args[0])
+            # BigInt needs checked conversion to the underlying type
+            arg_type = self.types.get_resolved_type(expr.args[0])
+            if isinstance(arg_type, BigIntType):
+                arg = f"({arg}).to_fixed_check<{underlying_cpp}>()"
+            return f"tpy::EnumUtil<{cpp_type}>::from_value({arg})"
+        # Enum try_parse: try_parse(Color, "Red") -> tpy::EnumUtil<Color>::try_parse("Red")
+        if expr.enum_try_parse is not None:
+            enum_type = expr.enum_try_parse
+            cpp_type = enum_type.to_cpp()
+            arg = self.gen_expr(expr.args[1])
+            return f"tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
         # Check if it's a builtin type constructor (e.g., int from builtins, Int32 from tpy)
         for module_name in ["builtins", "tpy"]:
             qname = f"{module_name}.{expr.func}"
@@ -843,6 +883,13 @@ class ExpressionGenerator:
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:
             module_name = expr.builtin_module_call
+            # try_parse(Color, "Red") from tpy
+            if module_name == "tpy" and expr.method == "try_parse":
+                fi = expr.resolved_function_info
+                enum_type = fi.return_type.inner
+                cpp_type = enum_type.to_cpp()
+                arg = self.gen_expr(expr.args[1])
+                return f"tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
             # copy() from tpy -- deref the argument to get the value
             if module_name == "tpy" and expr.method == "copy":
                 arg = expr.args[0]
@@ -1059,12 +1106,8 @@ class ExpressionGenerator:
             actual_obj_type = actual_obj_type.wrapped
         if isinstance(actual_obj_type, EnumType):
             if expr.field == "name":
-                # Qualify __tpy_enum_name for imported enums
-                if actual_obj_type.name in self.ctx.user_imported_enums:
-                    source_module, _ = self.ctx.user_imported_enums[actual_obj_type.name]
-                    ns = qualified_cpp_name(source_module, "__tpy_enum_name")
-                    return f"{ns}({obj})"
-                return f"__tpy_enum_name({obj})"
+                cpp_type = actual_obj_type.to_cpp()
+                return f"tpy::EnumUtil<{cpp_type}>::name({obj})"
             elif expr.field == "value":
                 return f"static_cast<{actual_obj_type.underlying_type.to_cpp()}>({obj})"
 

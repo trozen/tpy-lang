@@ -10,16 +10,20 @@ enum class Signal : int32_t {
     On = 1,
 };
 
-inline std::string_view __tpy_enum_name(Signal __e) {
-    switch (__e) {
-        case Signal::Off: return "Off";
-        case Signal::On: return "On";
-        default: tpy_panic("invalid enum value");
-    }
-}
+} // namespace tpy_user::main
+
+template<>
+struct tpy::EnumUtil<tpy_user::main::Signal> {
+    static std::string_view name(tpy_user::main::Signal e);
+    static const std::array<tpy_user::main::Signal, 2> members;
+    static tpy_user::main::Signal from_value(int32_t v);
+    static std::optional<tpy_user::main::Signal> try_parse(std::string_view s);
+};
+
+namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Signal __e) {
-    return __os << "Signal." << __tpy_enum_name(__e);
+    return __os << "Signal." << tpy::EnumUtil<Signal>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";

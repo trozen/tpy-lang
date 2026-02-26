@@ -11,7 +11,7 @@ void main() {
     // 7:     print(c)
     std::cout << c << "\n";
     // 8:     print(c.name)
-    std::cout << ::tpy_user::colors::__tpy_enum_name(c) << "\n";
+    std::cout << tpy::EnumUtil<::tpy_user::colors::Color>::name(c) << "\n";
     // 9:     print(color_value(c))
     std::cout << ::tpy_user::colors::color_value(c) << "\n";
     // 11:     g = Color.Green

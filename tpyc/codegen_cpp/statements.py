@@ -1423,6 +1423,15 @@ class StatementGenerator:
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator."""
+        # Enum iteration: `for c in Color` -> range over EnumUtil<Color>::members
+        if stmt.enum_iterable is not None:
+            enum_type = stmt.enum_iterable
+            cpp_type = enum_type.to_cpp()
+            out.write(f"{indent}for ({cpp_type} {stmt.var} : tpy::EnumUtil<{cpp_type}>::members) {{\n")
+            self.ctx.var_types[stmt.var] = enum_type
+            self._gen_loop_body(out, stmt, indent, enum_type)
+            return
+
         from tpyc.modules import get_native_iterator_element_type, get_iter_element_type
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 

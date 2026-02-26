@@ -641,4 +641,7 @@ def init_module() -> BuiltinModule:
         ),
     ], special_handling=True)
 
+    # try_parse(EnumType, str) -> Optional[EnumType]
+    module.function("try_parse", overloads=[], special_handling=True)
+
     return module

@@ -14,14 +14,15 @@
 | 8 | Truthiness: all enum values are truthy | Done |
 | 9 | Enum as record field, list element, Optional member | Done |
 | 10 | Cross-module enum import | Done |
-| **Later** | IntEnum (int-compatible, arithmetic, ordering) | Not started |
+| 11 | Iteration: `for c in Color` (constexpr array) | Done |
+| 12 | Value lookup: `Color(0)` constructor (panic on invalid) | Done |
+| 13 | `try_parse()`: `try_parse(Color, "Red") -> Color \| None` (TPy-specific, `from tpy import try_parse`) | Done |
+| 14 | IntEnum + configurable underlying type (mixin base: `class P(int, Enum)`) | Done |
 | **Later** | StrEnum (str-compatible, auto = lowercased name) | Not started |
 | **Later** | Flag / IntFlag (bitwise combinable, powers of 2) | Not started |
-| **Later** | Iteration (for c in Color) | Not started |
-| **Later** | Value lookup (Color(0)) | Not started |
-| **Later** | Configurable underlying type | Not started |
 | **Later** | Optional[Enum] niche optimization (sentinel value instead of std::optional) | Not started |
 | **Later** | match/case exhaustiveness checking | Not started |
+| **Later** | Name lookup: `Color["Red"]` (KeyError on miss, needs exceptions) | Not started |
 
 ---
 
@@ -410,50 +411,51 @@ In the operator analyzer:
 
 ## Code Generation
 
-### Enum Declaration (Header)
+### `tpy::EnumUtil<T>` Template Specialization
+
+All enum helpers use a single `tpy::EnumUtil<T>` trait (like `std::hash<T>`).
+The primary template is declared in `runtime/cpp/include/tpy/enum.hpp`; each
+enum generates an explicit specialization.
 
 For `class Color(Enum): Red = 0; Green = 1; Blue = 2`:
 
 ```cpp
-// --- enum class ---
-enum class Color : int32_t {
-    Red = 0,
-    Green = 1,
-    Blue = 2,
+// --- Header: enum class + EnumUtil declaration ---
+enum class Color : int32_t { Red = 0, Green = 1, Blue = 2 };
+
+// (namespace closes, then at global scope:)
+template<>
+struct tpy::EnumUtil<tpy_user::main::Color> {
+    static std::string_view name(tpy_user::main::Color e);
+    static const std::array<tpy_user::main::Color, 3> members;
+    static tpy_user::main::Color from_value(int32_t v);
+    static std::optional<tpy_user::main::Color> try_parse(std::string_view s);
 };
 
-// --- name accessor ---
-inline std::string_view __tpy_enum_name(Color __e) {
-    switch (__e) {
-        case Color::Red: return "Red";
-        case Color::Green: return "Green";
-        case Color::Blue: return "Blue";
-        default: tpy_panic("invalid enum value");
-    }
+// (namespace reopens:)
+inline std::ostream& operator<<(std::ostream& os, Color e) {
+    return os << "Color." << tpy::EnumUtil<Color>::name(e);
 }
 
-// --- print support (matches CPython: "Color.Red") ---
-inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << __tpy_enum_name(__e);
+// --- Source: EnumUtil definitions ---
+namespace tpy {
+std::string_view EnumUtil<tpy_user::main::Color>::name(...) { switch ... }
+const std::array<...> EnumUtil<tpy_user::main::Color>::members = { ... };
+tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_value(int32_t v) { ... }
+std::optional<...> EnumUtil<tpy_user::main::Color>::try_parse(std::string_view s) { ... }
 }
 ```
 
-The `default: tpy_panic(...)` in the name switch matches the runtime's pattern
-for invalid states. In normal usage it is unreachable (enum values only come
-from named members), but guards against invalid `static_cast` from C++ interop.
-
-No `__tpy_enum_value` helper is generated -- `.value` codegen emits
-`static_cast<int32_t>(c)` directly, avoiding unnecessary wrapper functions.
-
-All helpers use a `__tpy_` prefix to avoid name collisions. They go in the
-header alongside the enum declaration.
+The `default: tpy_panic(...)` in `name()` and `from_value()` guards against
+invalid `static_cast` from C++ interop. No `__tpy_enum_value` helper is
+generated -- `.value` codegen emits `static_cast<int32_t>(c)` directly.
 
 ### Member Access Codegen
 
 | TPy | C++ |
 |-----|-----|
 | `Color.Red` | `Color::Red` |
-| `c.name` | `__tpy_enum_name(c)` |
+| `c.name` | `tpy::EnumUtil<Color>::name(c)` |
 | `c.value` | `static_cast<int32_t>(c)` |
 | `c == Color.Red` | `c == Color::Red` |
 | `print(c)` | `std::cout << c` (uses `operator<<`) |
@@ -502,47 +504,154 @@ expression analyzer's enum branch handles it the same way as local enums.
 
 ---
 
-## Future: `IntEnum`
+## `IntEnum` and Configurable Underlying Type
 
-`IntEnum` members behave as integers -- they support arithmetic, ordering, and
-comparison with plain `int` values.
+### Unified via Mixin Base
+
+In CPython, `IntEnum` is literally `class IntEnum(int, Enum)` -- the mixin base
+determines the underlying type AND enables int-compatible behavior. TPy follows
+the same pattern:
 
 ```python
 from enum import IntEnum
 
-class Priority(IntEnum):
+class Priority(IntEnum):    # same as: class Priority(int, Enum)
     Low = 1
     Medium = 2
     High = 3
 
-Priority.Low == 1          # True (unlike Enum)
-Priority.Low + 10          # 11
+Priority.Low == 1              # True (unlike Enum)
+Priority.Low + 10              # 11
 Priority.Low < Priority.High   # True
-print(Priority.Low)        # 1 (not "Priority.Low")
+print(Priority.Low)            # Priority.Low (CPython: "Priority.Low")
 ```
+
+Custom underlying types use the same mixin syntax:
+
+```python
+from tpy import Int8
+
+class SmallColor(Int8, Enum):
+    Red = 0
+    Green = 1
+```
+
+This is CPython-compatible -- `class Foo(int, Enum)` and `class Foo(IntEnum)`
+both work in CPython today.
+
+**Note**: `IntEnum` (and `int, Enum`) defaults to `Int32` as the underlying type,
+not `BigInt`. This differs from TurboPython's `int` type elsewhere (which is `BigInt`),
+but makes sense because `enum class` requires a fixed-width C++ type.
+
+### Type System
+
+`IntEnumType` inherits from `EnumType`:
+
+```python
+@dataclass(frozen=True)
+class IntEnumType(EnumType):
+    pass  # underlying_type already on EnumType
+```
+
+Since `IntEnumType` is a subclass of `EnumType`, all existing enum handling
+works automatically (`isinstance(t, EnumType)` catches both). Only the new
+paths (arithmetic, ordering, int comparison) check `isinstance(t, IntEnumType)`.
+
+### Behavior Differences from Base Enum
+
+| Feature | `Enum` | `IntEnum` |
+|---------|--------|-----------|
+| `==`/`!=` with int | Error | Allowed |
+| `<`/`>`/`<=`/`>=` | Error | Allowed (same type + int) |
+| Arithmetic (`+`, `-`, `*`, `//`, `%`) | Error | Allowed (result is underlying int type) |
+| `**` (power), `/` (true div) | Error | Error (not supported) |
+| Unary `-` | Error | Allowed (result is underlying int type) |
+| `bool(value_0)` | `True` | `False` (follows int semantics) |
+| `print()` | `Color.Red` | `Priority.Low` |
 
 ### C++ Mapping
 
-`IntEnum` maps to the same `enum class` but with implicit conversions:
+`IntEnum` maps to the same `enum class` with no generated operator overloads.
+The sema coerces IntEnum operands to their underlying type, and codegen emits
+`static_cast` -- reusing the existing FixedInt checked arithmetic and plain
+C++ comparison:
 
 ```cpp
 enum class Priority : int32_t { Low = 1, Medium = 2, High = 3 };
 
-// IntEnum: implicit conversion to underlying type
-inline int32_t operator+(Priority a, int32_t b) {
-    return static_cast<int32_t>(a) + b;
-}
-// ... similar for -, *, /, <, <=, >, >=, ==, != with int
+// Arithmetic: coerced to underlying type, reuses FixedInt checked ops
+// Priority::Low + 10  -->  tpy::add_check<int32_t>(static_cast<int32_t>(Priority::Low), 10)
+
+// Comparison: coerced to underlying type, plain C++ comparison
+// Priority::Low == 1  -->  static_cast<int32_t>(Priority::Low) == 1
 ```
 
-Or alternatively, use a plain `enum` (not `enum class`) to get implicit int
-conversion -- but this loses scoped naming. The better approach is `enum class`
-with generated operator overloads.
+We use `enum class` (not plain `enum`) to keep scoped naming. Arithmetic reuses
+the same `tpy::add_check`/`sub_check`/`mul_check`/`div_check`/`mod_check` as
+regular fixed-width integers (overflow detection, Python floor division semantics).
 
-### Print Format
+---
 
-`IntEnum` prints as the integer value (`1`), not the qualified name (`Priority.Low`).
-The `operator<<` overload emits the value instead of the name.
+## Value Lookup
+
+### Constructor: `Color(0)` -- panics on invalid
+
+```python
+c = Color(0)    # Color.Red
+c = Color(99)   # panic: invalid enum value (ValueError once exceptions land)
+```
+
+Matches CPython syntax. Accepts both fixed-width types (`Int32`, `Int8`, etc.)
+and `int` (BigInt -- coerced via `.to_fixed_check<underlying>()`). Panics on
+invalid value for now -- once exception handling is implemented, this becomes a
+proper `ValueError`.
+
+Note: using exceptions for control flow (try/except around `Color(99)` to test
+if a value is valid) should trigger a performance warning. Prefer `try_parse()`
+for safe lookup.
+
+### `try_parse(Color, name)` -- safe lookup by name
+
+```python
+from tpy import try_parse
+
+c: Color | None = try_parse(Color, "Red")    # Color.Red
+c = try_parse(Color, "Purple")               # None
+```
+
+Free function in the `tpy` module returning `Optional[EnumType]`. Works in both
+tpyc and CPython (via the `lib/cpy/tpy/` stub).
+
+### C++ Mapping
+
+```cpp
+// Color(0) -- constructor lookup
+tpy::EnumUtil<Color>::from_value(0)
+
+// Color(n) where n: int (BigInt) -- checked coercion
+tpy::EnumUtil<Color>::from_value((n).to_fixed_check<int32_t>())
+
+// try_parse(Color, "Red") -- name lookup
+tpy::EnumUtil<Color>::try_parse("Red")   // -> std::optional<Color>
+```
+
+---
+
+## Iteration
+
+```python
+for c in Color:
+    print(c)
+```
+
+Uses the `tpy::EnumUtil<Color>::members` static array:
+
+```cpp
+for (Color c : tpy::EnumUtil<Color>::members) { ... }
+```
+
+The `for c in Color` loop iterates over this array. This needs the `NativeIterable`
+codegen path since the array has `begin()`/`end()`.
 
 ---
 
@@ -568,7 +677,7 @@ print(Mode.Read)      # read
 - Map to `const char*` constants with a wrapper struct for type safety
 - Map to a struct with `static constexpr` members
 
-This depends on TPy's string model (`str` vs `DynStr`) and is deferred until
+This depends on TPy's string model (`str` vs `String`) and is deferred until
 that is resolved.
 
 ---
@@ -606,64 +715,6 @@ inline Permission operator|(Permission a, Permission b) {
 
 `auto()` in `Flag` context produces powers of 2 (1, 2, 4, 8, ...) instead of
 sequential values. This is a different `_generate_next_value_` strategy.
-
----
-
-## Future: Iteration
-
-```python
-for c in Color:
-    print(c)
-```
-
-Requires generating a constexpr array of all members and integrating with the
-iterator protocol:
-
-```cpp
-inline constexpr std::array<Color, 3> __tpy_Color_members = {
-    Color::Red, Color::Green, Color::Blue,
-};
-```
-
-The `for c in Color` loop iterates over this array. This needs the `NativeIterable`
-codegen path since the array has `begin()`/`end()`.
-
----
-
-## Future: Configurable Underlying Type
-
-Default underlying type is `Int32`. For enums with many members or specific C
-interop needs, users may want to control the underlying type.
-
-Possible syntax (to be decided):
-
-```python
-# Option A: generic parameter (cleanest)
-class SmallColor(Enum[Int8]):
-    Red = 0
-    Green = 1
-
-# Option B: class variable
-class SmallColor(Enum):
-    _underlying_ = Int8
-    Red = 0
-    Green = 1
-```
-
-For now, all enums use `Int32`. The underlying type is stored in `EnumType` so
-the codegen is ready for configurability when the syntax is decided.
-
----
-
-## Future: Value Lookup
-
-```python
-c = Color(0)    # Color.Red
-c = Color(99)   # ValueError (needs exception support)
-```
-
-Deferred because it requires either exception support or a different error
-handling strategy (panic, Optional return).
 
 ---
 

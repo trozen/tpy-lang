@@ -176,7 +176,7 @@ class CodeGenerator:
         }
 
         self._write_header_preamble(hpp, native_funcs, native_globals)
-        self._write_source_preamble(cpp)
+        self._write_source_preamble(cpp, module)
 
         # Store global names for use in expression generation (method/field access)
         self.ctx.global_names = set(seen_globals.keys())
@@ -447,6 +447,15 @@ class CodeGenerator:
         for enum in module.enums:
             self._gen_enum_decl(hpp, enum)
 
+        # EnumUtil specializations must be at global scope (outside user namespace)
+        if module.enums:
+            ns = module_to_cpp_namespace(self.ctx.module_name)
+            hpp.write(f"}} // namespace {ns}\n\n")
+            self._gen_enum_util_decls(hpp, module)
+            hpp.write(f"namespace {ns} {{\n\n")
+            for enum in module.enums:
+                self._gen_enum_operator_ostream(hpp, enum)
+
         # Forward declare remaining records (excluding native records)
         emitted_fwd = False
         for record in module.records:
@@ -597,31 +606,86 @@ class CodeGenerator:
 
 
     def _gen_enum_decl(self, out: TextIO, enum) -> None:
-        """Generate C++ enum class declaration with helpers."""
+        """Generate C++ enum class declaration (no helpers)."""
         enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
         if not enum_type:
             return
         underlying = enum_type.underlying_type.to_cpp()
 
-        # enum class declaration
         out.write(f"enum class {enum.name} : {underlying} {{\n")
         for member_name, value, _ in enum.members:
             out.write(f"    {member_name} = {value},\n")
         out.write("};\n\n")
 
-        # __tpy_enum_name helper for .name property and printing
-        out.write(f"inline std::string_view __tpy_enum_name({enum.name} __e) {{\n")
-        out.write(f"    switch (__e) {{\n")
-        for member_name, _, _ in enum.members:
-            out.write(f"        case {enum.name}::{member_name}: return \"{member_name}\";\n")
-        out.write(f"        default: tpy_panic(\"invalid enum value\");\n")
-        out.write(f"    }}\n")
+    def _gen_enum_util_decls(self, out: TextIO, module: TpyModule) -> None:
+        """Generate tpy::EnumUtil<E> specialization declarations (global scope)."""
+        ns = module_to_cpp_namespace(self.ctx.module_name)
+        for enum in module.enums:
+            enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
+            if not enum_type:
+                continue
+            underlying = enum_type.underlying_type.to_cpp()
+            qualified = f"{ns}::{enum.name}"
+            member_count = len(enum.members)
+            out.write(f"template<>\n")
+            out.write(f"struct tpy::EnumUtil<{qualified}> {{\n")
+            out.write(f"    static std::string_view name({qualified} e);\n")
+            out.write(f"    static const std::array<{qualified}, {member_count}> members;\n")
+            out.write(f"    static {qualified} from_value({underlying} v);\n")
+            out.write(f"    static std::optional<{qualified}> try_parse(std::string_view s);\n")
+            out.write(f"}};\n\n")
+
+    def _gen_enum_operator_ostream(self, out: TextIO, enum) -> None:
+        """Generate inline operator<< inside user namespace."""
+        out.write(f"inline std::ostream& operator<<(std::ostream& __os, {enum.name} __e) {{\n")
+        out.write(f"    return __os << \"{enum.name}.\" << tpy::EnumUtil<{enum.name}>::name(__e);\n")
         out.write(f"}}\n\n")
 
-        # operator<< for print support: prints "EnumName.MemberName"
-        out.write(f"inline std::ostream& operator<<(std::ostream& __os, {enum.name} __e) {{\n")
-        out.write(f"    return __os << \"{enum.name}.\" << __tpy_enum_name(__e);\n")
-        out.write(f"}}\n\n")
+    def _gen_enum_source_defs(self, out: TextIO, module: TpyModule) -> None:
+        """Generate tpy::EnumUtil<E> member definitions in namespace tpy."""
+        ns = module_to_cpp_namespace(self.ctx.module_name)
+        out.write("namespace tpy {\n\n")
+        for enum in module.enums:
+            enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
+            if not enum_type:
+                continue
+            underlying = enum_type.underlying_type.to_cpp()
+            qualified = f"{ns}::{enum.name}"
+            member_count = len(enum.members)
+
+            # name()
+            out.write(f"std::string_view EnumUtil<{qualified}>::name({qualified} __e) {{\n")
+            out.write(f"    switch (__e) {{\n")
+            for member_name, _, _ in enum.members:
+                out.write(f"        case {qualified}::{member_name}: return \"{member_name}\";\n")
+            out.write(f"        default: tpy_panic(\"invalid enum value\");\n")
+            out.write(f"    }}\n")
+            out.write(f"}}\n\n")
+
+            # members
+            out.write(f"const std::array<{qualified}, {member_count}>\n")
+            out.write(f"EnumUtil<{qualified}>::members = {{\n")
+            for member_name, _, _ in enum.members:
+                out.write(f"    {qualified}::{member_name},\n")
+            out.write(f"}};\n\n")
+
+            # from_value()
+            out.write(f"{qualified} EnumUtil<{qualified}>::from_value({underlying} __v) {{\n")
+            out.write(f"    switch (__v) {{\n")
+            for member_name, value, _ in enum.members:
+                out.write(f"        case {value}: return {qualified}::{member_name};\n")
+            out.write(f"        default: tpy_panic(\"invalid value for enum '{enum.name}'\");\n")
+            out.write(f"    }}\n")
+            out.write(f"}}\n\n")
+
+            # try_parse()
+            out.write(f"std::optional<{qualified}> EnumUtil<{qualified}>::try_parse(std::string_view __name) {{\n")
+            for member_name, _, _ in enum.members:
+                out.write(f"    if (__name == \"{member_name}\") return {qualified}::{member_name};\n")
+            out.write(f"    return std::nullopt;\n")
+            out.write(f"}}\n\n")
+
+        out.write("} // namespace tpy\n\n")
 
     def _module_to_include_path(self, module_name: str) -> str:
         """Convert dotted module name to include path.
@@ -704,11 +768,14 @@ class CodeGenerator:
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"namespace {ns} {{\n\n")
 
-    def _write_source_preamble(self, out: TextIO) -> None:
+    def _write_source_preamble(self, out: TextIO, module: TpyModule) -> None:
         out.write("// Generated by TurboPython Compiler\n")
         # Use full include path from include root (consistent with header includes)
         include_path = self._module_to_include_path(self.ctx.module_name)
         out.write(f'#include "{include_path}"\n\n')
+        # EnumUtil definitions go before user namespace (they live in namespace tpy)
+        if module.enums:
+            self._gen_enum_source_defs(out, module)
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"namespace {ns} {{\n\n")
 
