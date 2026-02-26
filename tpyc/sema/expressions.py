@@ -11,11 +11,14 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
-    ReadonlyType, unwrap_readonly, EnumType, IntEnumType, FixedIntType, is_any_str_type,
+    ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
+    FixedIntType, StringType, StrViewType,
     INT32, FLOAT, STR, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyFStringValue, TpyFString,
+    TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
@@ -94,6 +97,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_list_repeat(expr)
         elif isinstance(expr, TpySubscript):
             typ = self._analyze_subscript(expr)
+        elif isinstance(expr, TpyFString):
+            typ = self._analyze_fstring(expr)
         elif isinstance(expr, TpyCoerce):
             # Coercions are attached post-analysis; treat as the expected type.
             typ = expr.expected_type
@@ -910,3 +915,27 @@ class ExpressionAnalyzer:
             return ret
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
+
+    # F-string formattable types (no __str__ dispatch yet)
+    _FORMATTABLE_TYPES = (
+        FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType,
+        StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,
+    )
+
+    def _analyze_fstring(self, expr: TpyFString) -> TpyType:
+        """Analyze f-string parts and return STR (owned string)."""
+        for part in expr.parts:
+            if isinstance(part, TpyFStringValue):
+                part_type = self.analyze_expr(part.expr)
+                resolved = unwrap_readonly(part_type)
+                if not isinstance(resolved, self._FORMATTABLE_TYPES):
+                    raise self.ctx.error(
+                        f"Type {part_type} cannot be used in f-string (no __str__ method)",
+                        part.expr,
+                    )
+                if part.format_spec is not None and isinstance(resolved, (BigIntType, IntLiteralType)):
+                    raise self.ctx.error(
+                        "Format specs on int are not yet supported (use a fixed-width type like Int32)",
+                        part.expr,
+                    )
+        return STR

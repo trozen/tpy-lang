@@ -1,0 +1,1 @@
+main.py:5: error: Unsupported f-string format spec: '%' (percentage) type is not supported

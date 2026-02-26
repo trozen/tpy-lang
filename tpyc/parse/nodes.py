@@ -76,6 +76,20 @@ class TpyStrLiteral(TpyExpr):
 
 
 @dataclass
+class TpyFStringValue:
+    """Formatted expression inside an f-string: {expr:spec}."""
+    expr: TpyExpr
+    conversion: int = -1  # -1=none, 115=!s, 114=!r, 97=!a
+    format_spec: str | None = None
+
+
+@dataclass
+class TpyFString(TpyExpr):
+    """F-string: f"text {expr:spec} more text"."""
+    parts: list[str | TpyFStringValue]
+
+
+@dataclass
 class TpyBoolLiteral(TpyExpr):
     """Boolean literal."""
     value: bool

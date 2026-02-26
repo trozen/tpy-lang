@@ -16,7 +16,9 @@ from ..typesys import (
     ResolvedBinop
 )
 from ..parse import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyFStringValue, TpyFString,
+    TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce
 )
@@ -212,6 +214,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpySubscript):
             return self._gen_subscript(expr)
+
+        elif isinstance(expr, TpyFString):
+            return self._gen_fstring(expr)
 
         return "/* unknown expr */"
 
@@ -1295,3 +1300,54 @@ class ExpressionGenerator:
                 # IntLiterals are emitted as plain C++ integers, not BigInt objects
                 return gen_expr
         return gen_expr
+
+    def _gen_fstring(self, expr: TpyFString) -> str:
+        """Generate std::format(...) for an f-string."""
+        fmt_parts: list[str] = []
+        raw_parts: list[str] = []  # without brace-escaping, for pure-literal path
+        args: list[str] = []
+        all_literal = True
+
+        for part in expr.parts:
+            if isinstance(part, str):
+                escaped = escape_cpp_string(part)
+                raw_parts.append(escaped)
+                # Escape braces for std::format
+                fmt_parts.append(escaped.replace("{", "{{").replace("}", "}}"))
+            else:
+                all_literal = False
+                gen_arg = self.gen_expr_deref(part.expr)
+                arg_type = unwrap_readonly(self.types.get_resolved_type(part.expr))
+                has_spec = part.format_spec is not None
+
+                if has_spec:
+                    fmt_parts.append("{:" + part.format_spec + "}")
+                else:
+                    fmt_parts.append("{}")
+
+                # Wrap args that need Python-compatible formatting
+                if isinstance(arg_type, BoolType):
+                    if has_spec:
+                        # Any format spec delegates to int (Python semantics)
+                        gen_arg = f"static_cast<int>({gen_arg})"
+                    else:
+                        # No spec: "True"/"False"
+                        gen_arg = f"tpy::bool_to_str({gen_arg})"
+                elif isinstance(arg_type, FloatType) and not has_spec:
+                    gen_arg = f"tpy::float_to_str({gen_arg})"
+                elif self.types.is_runtime_bigint(part.expr, arg_type) and not has_spec:
+                    gen_arg = f"({gen_arg}).to_string()"
+                elif isinstance(arg_type, FixedIntType) and arg_type.bits == 8:
+                    gen_arg = f"static_cast<int>({gen_arg})"
+                elif isinstance(arg_type, EnumType):
+                    gen_arg = f"static_cast<int>({gen_arg})"
+
+                args.append(gen_arg)
+
+        if all_literal:
+            # Pure literal f-string -- use raw parts (no brace-escaping needed)
+            return f'std::string("{"".join(raw_parts)}")'
+
+        fmt_str = "".join(fmt_parts)
+        args_str = ", ".join(args)
+        return f'std::format("{fmt_str}", {args_str})'

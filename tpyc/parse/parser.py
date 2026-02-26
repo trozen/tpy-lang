@@ -19,7 +19,9 @@ from ..typesys import (
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyFStringValue, TpyFString,
+    TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -56,6 +58,71 @@ _CMPOP_TO_STR: dict[type, str] = {
 _UNARYOP_TO_STR: dict[type, str] = {
     ast.USub: "-", ast.Not: "!", ast.Invert: "~",
 }
+
+
+def _validate_fstring_format_spec(spec: str) -> str | None:
+    """Validate an f-string format spec against C++ std::format support.
+
+    Returns an error message for Python-only features, or None if valid.
+    Python features not supported by std::format: '=' alignment, 'z' option,
+    ',' and '_' grouping, 'n' and '%' type codes.
+    """
+    if not spec:
+        return None
+
+    pos = 0
+    n = len(spec)
+
+    # [[fill]align] -- fill can be ANY character if followed by an align char
+    _ALIGN = '<>^='
+    if n >= 2 and spec[1] in _ALIGN:
+        if spec[1] == '=':
+            return "'=' alignment is not supported"
+        pos = 2
+    elif spec[0] in _ALIGN:
+        if spec[0] == '=':
+            return "'=' alignment is not supported"
+        pos = 1
+
+    # [sign]
+    if pos < n and spec[pos] in '+- ':
+        pos += 1
+
+    # [z]
+    if pos < n and spec[pos] == 'z':
+        return "'z' option is not supported"
+
+    # [#]
+    if pos < n and spec[pos] == '#':
+        pos += 1
+
+    # [0]
+    if pos < n and spec[pos] == '0':
+        pos += 1
+
+    # [width]
+    while pos < n and spec[pos].isdigit():
+        pos += 1
+
+    # [grouping_option]
+    if pos < n and spec[pos] in ',_':
+        return f"'{spec[pos]}' grouping is not supported"
+
+    # [.precision]
+    if pos < n and spec[pos] == '.':
+        pos += 1
+        while pos < n and spec[pos].isdigit():
+            pos += 1
+
+    # [type]
+    if pos < n:
+        t = spec[pos]
+        if t == 'n':
+            return "'n' (locale-aware) type is not supported"
+        if t == '%':
+            return "'%' (percentage) type is not supported"
+
+    return None
 
 
 def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
@@ -1587,8 +1654,44 @@ class Parser:
             index = self._parse_expr(node.slice)
             return TpySubscript(obj=obj, index=index, loc=loc)
 
+        elif isinstance(node, ast.JoinedStr):
+            return self._parse_fstring(node, loc)
+
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)
+
+    def _parse_fstring(self, node: ast.JoinedStr, loc: SourceLocation) -> TpyFString:
+        """Parse an f-string (ast.JoinedStr) into a TpyFString node."""
+        parts: list[str | TpyFStringValue] = []
+        for val in node.values:
+            if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                parts.append(val.value)
+            elif isinstance(val, ast.FormattedValue):
+                conv = val.conversion
+                if conv == 114:  # !r
+                    raise ParseError("f-string !r conversion is not supported", node)
+                if conv == 97:  # !a
+                    raise ParseError("f-string !a conversion is not supported", node)
+                expr = self._parse_expr(val.value)
+                fmt_spec: str | None = None
+                if val.format_spec is not None:
+                    # format_spec is a JoinedStr; only constant specs are supported
+                    spec_parts = []
+                    for sp in val.format_spec.values:
+                        if isinstance(sp, ast.Constant) and isinstance(sp.value, str):
+                            spec_parts.append(sp.value)
+                        else:
+                            raise ParseError(
+                                "Expressions inside f-string format specs are not supported", node
+                            )
+                    fmt_spec = "".join(spec_parts)
+                    err = _validate_fstring_format_spec(fmt_spec)
+                    if err is not None:
+                        raise ParseError(f"Unsupported f-string format spec: {err}", node)
+                parts.append(TpyFStringValue(expr=expr, conversion=conv, format_spec=fmt_spec))
+            else:
+                raise ParseError(f"Unsupported f-string part: {type(val).__name__}", node)
+        return TpyFString(parts=parts, loc=loc)
 
     def _binop_to_str(self, op: ast.operator) -> str:
         """Convert binary operator to string."""

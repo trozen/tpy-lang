@@ -267,6 +267,7 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 - **Working**: `str.split()`, `str.split(sep)`, `str.split(sep, maxsplit)` -- returns `list[str]`
 - **Working**: `str.join(items)` -- joins iterable of strings
 - **Working**: `strip`/`lstrip`/`rstrip`, `replace`, `find`/`rfind`/`index`/`rindex`, `startswith`/`endswith`, `upper`/`lower`, `capitalize`/`title`/`swapcase`, `count`, `isdigit`/`isalpha`/`isalnum`/`isspace`/`isupper`/`islower`, `removeprefix`/`removesuffix`, `splitlines`
+- **Working**: F-strings (`f"hello {name}"`) via `std::format` -- supports format specs (`.2f`, `#x`, `>10`), `!s` conversion, all scalar types
 - **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
 
 #### String Type Semantics (Working)
@@ -304,29 +305,41 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
 - Cannot use `+=` (would dangle -- use `str` or `String` for mutable strings)
 - Returning a `StrView` referencing a local or temporary is an error
 
-#### F-string Formatting (Open)
+#### F-string Formatting (Working)
 
-F-strings behave differently based on context and profile:
+F-strings use `std::format` as the backend:
 
 ```python
-# Unrestricted mode - allocates std::string
 s = f"x={x}"
 # -> std::string s = std::format("x={}", x);
 
-# Restricted mode (@noalloc) - error or warning
+s = f"{val:.2f}"
+# -> std::format("{:.2f}", val);
+```
+
+Bool and float use Python-compatible wrappers for default format (no spec):
+`tpy::bool_to_str()` ("True"/"False"), `tpy::float_to_str()` (Python-style).
+
+**Not yet supported:**
+- `!r` and `!a` conversions (need `repr()`)
+- Expressions inside format specs (`f"{x:{width}}"`)
+- `__format__`/`__str__` dispatch on user types
+- Print streaming optimization (`print(f"...")` currently allocates)
+
+**Planned `@noalloc` interaction:**
+
+```python
+# @noalloc context - error (allocates)
 s = f"x={x}"  # ERROR: f-string allocates in @noalloc context
 
-# Fixed-size string - no allocation
+# Fixed-size string (future) - no heap allocation
 buf: FixStr64 = f"x={x}"
-# -> formats into pre-sized buffer, truncates if needed
 
-# Format string passthrough - zero overhead
+# Format string passthrough (future) - zero overhead
 def log(fs: FormatString) -> None: ...
 log(f"x={x}")
 # -> log("x={}", x)  # format string + args passed separately
 ```
-
-The `FormatString` type enables C++ templates that accept format strings directly, avoiding intermediate string allocation.
 
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)

@@ -17,10 +17,17 @@
 | `string_view` -> `string` codegen for return and init | Done |
 | `str` slicing (`s[1:3]`) | Planned |
 | `__str__` dispatch via `str(obj)` | Planned |
-| f-strings | Planned |
+| f-strings | Done |
 | `@noalloc` string restrictions | Planned |
 | `@noalloc` warn on unnecessary `string_view` -> `string` copies | Planned |
 | `@noalloc` warn on alias that could stay `string_view` | Planned |
+| f-string `!s` conversion with format spec (convert then format) | Planned |
+| f-string `!r`/`!a` conversions (needs `repr()`) | Planned |
+| f-string `int` (BigInt) with format specs (needs `std::formatter<BigInt>`) | Planned |
+| f-string `Optional[T]` support (narrowed optional in f-string context) | Planned |
+| f-string enum: output name instead of integer value (needs `__str__`) | Planned |
+| f-string print optimization (`print(f"...")` -> streaming `<<`) | Planned |
+| f-string format spec full Python compatibility (`,` `_` `=` `n` `%` `z`) | Future |
 | `FixStr[N]` fixed-capacity string, stack allocated | Future |
 | `str` field lifetime safety rules | Future |
 
@@ -152,37 +159,54 @@ Assignment (`s = sv;` where `s` is already `std::string`) works implicitly via `
 - `str + str` -> `str` (via `tpy::str_concat`, returns `std::string`)
 - `str += str` -> in-place `tpy::str_concat` (reassignment)
 
-## Planned: F-Strings
+## F-Strings
 
-F-strings (`f"hello {name}"`) will use C++20 `std::format` as the default backend.
+F-strings (`f"hello {name}"`) use C++20 `std::format` as the backend.
 
-### Design principle: keep f-strings structured in the AST
+### AST representation
 
-The parser will represent f-strings as a `TpyFString` node containing a list of
-literal segments and typed expressions (with optional format specs). This
-structure must NOT be desugared into string concatenation in the parser -- codegen
-needs the full information to choose the emission strategy based on context:
+F-strings are kept structured in the AST as `TpyFString` nodes containing literal
+segments and typed expressions (with optional format specs). This structure is NOT
+desugared into string concatenation -- codegen needs the full information to choose
+the emission strategy based on context:
 
 | Context | C++ codegen | Allocates? |
 |---------|-------------|------------|
 | Assignment: `s = f"x={x}"` | `std::format("x={}", x)` | Yes |
-| Print: `print(f"x={x}")` | `std::cout << "x=" << x << "\n"` | No |
-| FormatString param: `log(f"x={x}")` | `log("x={}", x)` | No |
-| Macro passthrough (future) | `LOG_INFO("x={}", x)` | No |
+| Print: `print(f"x={x}")` | `std::format(...)` (currently) | Yes |
+| Print optimized (future) | `std::cout << "x=" << x << "\n"` | No |
+| FormatString param (future) | `log("x={}", x)` | No |
 
-This mirrors Rust's approach where `format!`, `println!`, and `write!` share the
-same format syntax but emit different code. The initial implementation only needs
-the assignment case (`std::format`). Print optimization and FormatString
-passthrough are additive -- no AST redesign needed.
+### Supported features
 
-### Format specs
+- String interpolation: `f"hello {name}"`
+- Expressions: `f"{a + b}"`
+- Format specs: `f"{val:.2f}"`, `f"{n:#x}"`, `f"{n:>10}"`
+- `!s` conversion: `f"{x!s}"` (equivalent to default)
+- Brace escaping: `f"{{{x}}}"` -> `{42}`
+- Mixed types: int, float, bool, str, Char, fixed ints, BigInt, enum
 
-Python format specs (`.2f`, `>10`, `#x`) map almost 1:1 to C++20 format specs.
-The main divergence is bool/float formatting: `std::format("{}", true)` outputs
-`true` but Python outputs `True`. Wrapper types or custom formatters will be
-needed to match Python semantics.
+### Python-compatible formatting
 
-### `@noalloc` interaction
+Types that diverge between C++ and Python are pre-converted to match Python
+semantics:
+
+| Type | No spec | With spec |
+|------|---------|-----------|
+| `bool` | `tpy::bool_to_str()` -> "True"/"False" | `static_cast<int>()` -> 0/1 (matches Python: any spec delegates to int) |
+| `float` | `tpy::float_to_str()` -> Python-style (e.g. "3.0") | Raw value (C++ semantics) |
+| `BigInt` | `.to_string()` | Raw value (C++ semantics) |
+
+### Current limitations
+
+- `!r` and `!a` conversions are not supported (need `repr()` first)
+- Expressions inside format specs (`f"{x:{width}}"`) are not supported
+- No `__format__` or `__str__` dispatch on user types
+- Print optimization (streaming without allocation) is not yet implemented
+- Python-only format spec features are rejected with clear errors:
+  `,` and `_` grouping, `=` alignment, `z` option, `n` and `%` type codes
+
+### `@noalloc` interaction (planned)
 
 In `@noalloc` contexts, `f"..."` assigned to a string should be an error (it
 allocates). But `print(f"...")` or FormatString passthrough could be allowed since
