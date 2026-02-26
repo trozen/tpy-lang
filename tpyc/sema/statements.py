@@ -170,6 +170,8 @@ class StatementAnalyzer:
                 ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
+                # Track return-type context for pending list deduction
+                self.deduction.mark_list_return_context(stmt.value, expected)
                 # Check for lvalue returned as Own[T] without explicit copy()
                 if isinstance(expected, OwnType):
                     if self.compat.is_copy_call(stmt.value):
@@ -712,8 +714,10 @@ class StatementAnalyzer:
                 init_type = self.expr.analyze_expr_with_hint(stmt.init, type_hint)
 
 
-            # Track list literal to variable mapping for mutation detection
-            if isinstance(init_type, PendingListType):
+            # Track list literal to variable mapping for mutation detection.
+            # Only bind when the init is an actual list literal or empty constructor,
+            # not a name reference (aliases are handled by register_list_alias).
+            if isinstance(init_type, PendingListType) and not isinstance(stmt.init, TpyName):
                 literal_id = init_type.literal_id
                 self.ctx.variable_to_literal[stmt.name] = literal_id
                 info = self.ctx.list_literals[literal_id]
@@ -760,8 +764,14 @@ class StatementAnalyzer:
                 # coercion -- this is a binding, not passing by reference.
                 inner_existing = unwrap_readonly(existing_type)
                 inner_init = unwrap_readonly(init_type)
+                # PendingListType reassignment: different sizes force list
+                if isinstance(inner_existing, PendingListType):
+                    if isinstance(inner_init, PendingListType):
+                        if inner_existing.size != inner_init.size:
+                            self.deduction.mark_list_different_size(inner_existing.literal_id)
+                    var_type = existing_type
                 # PendingStrType reassignment: track view-compatibility, keep pending
-                if isinstance(inner_existing, PendingStrType):
+                elif isinstance(inner_existing, PendingStrType):
                     if is_any_str_type(inner_init):
                         if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
                             self.deduction.mark_str_reassigned_from_owned(stmt.name)
@@ -862,6 +872,17 @@ class StatementAnalyzer:
             self.ctx.variable_to_str_var[stmt.name] = str_var_id
             self.ctx.pending_str_resolutions.append(str_var_id)
             var_type = PendingStrType(str_var_id)
+        # Alias: new var initialized from an existing PendingListType local (b = a).
+        # Gets its own literal info with source tracking; if either side later
+        # resolves to list, the other is retroactively promoted during resolution.
+        elif (isinstance(var_type, PendingListType) and stmt.init is not None
+                and isinstance(stmt.init, TpyName)
+                and not self.ctx.is_top_level and not is_global_declared
+                and existing_type is None):
+            var_type = self.deduction.register_list_alias(
+                stmt.name, var_type,
+                decl_line=(stmt.loc.line if stmt.loc else None),
+            )
 
         if is_global_declared:
             # Update global scope type; bind in current scope for local reads
@@ -972,8 +993,14 @@ class StatementAnalyzer:
             # binding, not passing by reference.
             inner_target = unwrap_readonly(target_type)
             inner_value = unwrap_readonly(value_type)
+            # PendingListType reassignment: different sizes force list
+            if isinstance(inner_target, PendingListType):
+                if isinstance(inner_value, PendingListType):
+                    if inner_target.size != inner_value.size:
+                        self.deduction.mark_list_different_size(inner_target.literal_id)
+                # target_type stays PendingListType
             # PendingStrType reassignment: track view-compatibility, keep pending
-            if isinstance(inner_target, PendingStrType):
+            elif isinstance(inner_target, PendingStrType):
                 if is_any_str_type(inner_value):
                     if not self.deduction.is_view_compatible_source(stmt.value, inner_value):
                         self.deduction.mark_str_reassigned_from_owned(stmt.target.name)
@@ -992,7 +1019,7 @@ class StatementAnalyzer:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
-            if not isinstance(inner_target, PendingStrType):
+            if not isinstance(inner_target, (PendingStrType, PendingListType)):
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:

@@ -358,6 +358,9 @@ Context-dependent inference for Python-first semantics:
 | Function local + `.append()`/`.pop()`/etc | `list` | `std::vector` | Explicit mutation requires growable container |
 | Function local, passed to `list[T]` param | `list` | `std::vector` | Callee expects mutable list |
 | Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is read-only view, no mutation possible |
+| Function local, different-size reassignment | `list` | `std::vector` | `x = [1,2,3]; x = [4,5]` -- sizes differ, must be dynamic |
+| Function local, returned as `list[T]` | `list` | `std::vector` | Return type context propagates to local variable |
+| Function local, alias mutated | `list` | `std::vector` | `b = a; b.append(4)` -- both `a` and `b` become list |
 | Explicit annotation `x: Array[T, N]` | `Array` | `std::array` | User opted into fixed size |
 | Explicit annotation `x: list[T]` | `list` | `std::vector` | User opted into dynamic list |
 | Return type `-> Own[list[T]]` | `list` | `std::vector` | Return type context propagates to literal |

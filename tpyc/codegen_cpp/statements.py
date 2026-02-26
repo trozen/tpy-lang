@@ -372,6 +372,10 @@ class StatementGenerator:
             elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
                 elem = self.ctx.analyzer.ctx.default_int_for_literal(target_type.element_type)
                 target_type = ArrayType(elem, target_type.size)
+            elif isinstance(target_type, PendingListType):
+                info = self.ctx.analyzer.ctx.list_literals.get(target_type.literal_id)
+                if info and info.resolved_type:
+                    target_type = info.resolved_type
             elif isinstance(target_type, PendingStrType):
                 info = self.ctx.analyzer.ctx.str_vars.get(target_type.str_var_id)
                 target_type = info.resolved_type if info and info.resolved_type else STR
@@ -384,10 +388,23 @@ class StatementGenerator:
         elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
             elem = self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type)
             var_type = ArrayType(elem, var_type.size)
-        elif isinstance(var_type, (ListType, PendingListType)):
-            elem = getattr(var_type, "element_type", None)
-            if isinstance(elem, IntLiteralType):
-                var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(elem))
+        elif isinstance(var_type, PendingListType):
+            info = self.ctx.analyzer.ctx.list_literals.get(var_type.literal_id)
+            if info and info.resolved_type:
+                var_type = info.resolved_type
+            else:
+                elem = var_type.element_type
+                if isinstance(elem, IntLiteralType):
+                    var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(elem))
+            # After resolving, normalize IntLiteralType in element types
+            if isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
+                elem = self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type)
+                var_type = ArrayType(elem, var_type.size)
+            elif isinstance(var_type, ListType) and isinstance(var_type.element_type, IntLiteralType):
+                var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type))
+        elif isinstance(var_type, ListType):
+            if isinstance(var_type.element_type, IntLiteralType):
+                var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type))
         elif isinstance(var_type, PendingStrType):
             info = self.ctx.analyzer.ctx.str_vars.get(var_type.str_var_id)
             var_type = info.resolved_type if info and info.resolved_type else STR

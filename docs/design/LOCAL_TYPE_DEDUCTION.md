@@ -6,7 +6,8 @@
 |-------|-------|--------|
 | 1 | Unify infrastructure: replace ListLiteralTracker, StrVarTracker, and deduction parts of ReassignmentInference with single LocalTypeDeduction class. Preserve existing behavior. | Done |
 | 2a | Numeric widening across assignments (int->float, Int32->Int64, unsigned->wider signed). | Done |
-| 2b | Different-size list reassignment, return-type-driven deduction, alias propagation for lists. | Not started |
+| 2b | Different-size list reassignment, return-type-driven deduction, alias propagation for lists. | Done |
+| 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Not started |
 | 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Not started |
 
 ## Motivation
