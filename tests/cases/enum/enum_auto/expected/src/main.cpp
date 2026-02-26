@@ -39,6 +39,12 @@ std::optional<tpy_user::main::Direction> EnumUtil<tpy_user::main::Direction>::tr
     return std::nullopt;
 }
 
+tpy_user::main::Direction EnumUtil<tpy_user::main::Direction>::from_name(std::string_view __name) {
+    auto __result = try_parse(__name);
+    if (!__result.has_value()) tpy_panic("invalid name for enum 'Direction'");
+    return *__result;
+}
+
 } // namespace tpy
 
 namespace tpy_user::main {

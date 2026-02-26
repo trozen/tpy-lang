@@ -35,6 +35,12 @@ std::optional<tpy_user::main::Status> EnumUtil<tpy_user::main::Status>::try_pars
     return std::nullopt;
 }
 
+tpy_user::main::Status EnumUtil<tpy_user::main::Status>::from_name(std::string_view __name) {
+    auto __result = try_parse(__name);
+    if (!__result.has_value()) tpy_panic("invalid name for enum 'Status'");
+    return *__result;
+}
+
 } // namespace tpy
 
 namespace tpy_user::main {

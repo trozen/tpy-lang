@@ -18,6 +18,7 @@ struct tpy::EnumUtil<tpy_user::main::Priority> {
     static std::string_view name(tpy_user::main::Priority e);
     static const std::array<tpy_user::main::Priority, 3> members;
     static tpy_user::main::Priority from_value(int32_t v);
+    static tpy_user::main::Priority from_name(std::string_view s);
     static std::optional<tpy_user::main::Priority> try_parse(std::string_view s);
 };
 

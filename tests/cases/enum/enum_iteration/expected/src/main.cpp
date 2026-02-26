@@ -35,6 +35,12 @@ std::optional<tpy_user::main::Color> EnumUtil<tpy_user::main::Color>::try_parse(
     return std::nullopt;
 }
 
+tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_view __name) {
+    auto __result = try_parse(__name);
+    if (!__result.has_value()) tpy_panic("invalid name for enum 'Color'");
+    return *__result;
+}
+
 std::string_view EnumUtil<tpy_user::main::Status>::name(tpy_user::main::Status __e) {
     switch (__e) {
         case tpy_user::main::Status::Active: return "Active";
@@ -65,6 +71,12 @@ std::optional<tpy_user::main::Status> EnumUtil<tpy_user::main::Status>::try_pars
     if (__name == "Inactive") return tpy_user::main::Status::Inactive;
     if (__name == "Pending") return tpy_user::main::Status::Pending;
     return std::nullopt;
+}
+
+tpy_user::main::Status EnumUtil<tpy_user::main::Status>::from_name(std::string_view __name) {
+    auto __result = try_parse(__name);
+    if (!__result.has_value()) tpy_panic("invalid name for enum 'Status'");
+    return *__result;
 }
 
 } // namespace tpy

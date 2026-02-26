@@ -632,6 +632,7 @@ class CodeGenerator:
             out.write(f"    static std::string_view name({qualified} e);\n")
             out.write(f"    static const std::array<{qualified}, {member_count}> members;\n")
             out.write(f"    static {qualified} from_value({underlying} v);\n")
+            out.write(f"    static {qualified} from_name(std::string_view s);\n")
             out.write(f"    static std::optional<{qualified}> try_parse(std::string_view s);\n")
             out.write(f"}};\n\n")
 
@@ -683,6 +684,13 @@ class CodeGenerator:
             for member_name, _, _ in enum.members:
                 out.write(f"    if (__name == \"{member_name}\") return {qualified}::{member_name};\n")
             out.write(f"    return std::nullopt;\n")
+            out.write(f"}}\n\n")
+
+            # from_name() delegates to try_parse()
+            out.write(f"{qualified} EnumUtil<{qualified}>::from_name(std::string_view __name) {{\n")
+            out.write(f"    auto __result = try_parse(__name);\n")
+            out.write(f"    if (!__result.has_value()) tpy_panic(\"invalid name for enum '{enum.name}'\");\n")
+            out.write(f"    return *__result;\n")
             out.write(f"}}\n\n")
 
         out.write("} // namespace tpy\n\n")

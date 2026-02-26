@@ -35,6 +35,12 @@ std::optional<tpy_user::colors::Color> EnumUtil<tpy_user::colors::Color>::try_pa
     return std::nullopt;
 }
 
+tpy_user::colors::Color EnumUtil<tpy_user::colors::Color>::from_name(std::string_view __name) {
+    auto __result = try_parse(__name);
+    if (!__result.has_value()) tpy_panic("invalid name for enum 'Color'");
+    return *__result;
+}
+
 } // namespace tpy
 
 namespace tpy_user::colors {

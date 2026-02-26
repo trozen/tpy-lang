@@ -18,11 +18,13 @@
 | 12 | Value lookup: `Color(0)` constructor (panic on invalid) | Done |
 | 13 | `try_parse()`: `try_parse(Color, "Red") -> Color \| None` (TPy-specific, `from tpy import try_parse`) | Done |
 | 14 | IntEnum + configurable underlying type (mixin base: `class P(int, Enum)`) | Done |
+| 15 | Name lookup: `Color["Red"]` (panic on invalid, CPython-compatible) | Done |
 | **Later** | StrEnum (str-compatible, auto = lowercased name) | Not started |
 | **Later** | Flag / IntFlag (bitwise combinable, powers of 2) | Not started |
+| **Later** | `__members__` mapping (needs dict type) | Not started |
+| **Later** | `_missing_()` hook for custom missing value handling | Not started |
 | **Later** | Optional[Enum] niche optimization (sentinel value instead of std::optional) | Not started |
 | **Later** | match/case exhaustiveness checking | Not started |
-| **Later** | Name lookup: `Color["Red"]` (KeyError on miss, needs exceptions) | Not started |
 
 ---
 
@@ -610,6 +612,16 @@ Note: using exceptions for control flow (try/except around `Color(99)` to test
 if a value is valid) should trigger a performance warning. Prefer `try_parse()`
 for safe lookup.
 
+### `Color["Red"]` -- name lookup (panics on invalid)
+
+```python
+c = Color["Red"]      # Color.Red
+c = Color["Purple"]   # panic: invalid name for enum 'Color'
+```
+
+Standard CPython subscript syntax. Panics on invalid name (will become `KeyError`
+once exception handling is implemented).
+
 ### `try_parse(Color, name)` -- safe lookup by name
 
 ```python
@@ -631,7 +643,10 @@ tpy::EnumUtil<Color>::from_value(0)
 // Color(n) where n: int (BigInt) -- checked coercion
 tpy::EnumUtil<Color>::from_value((n).to_fixed_check<int32_t>())
 
-// try_parse(Color, "Red") -- name lookup
+// Color["Red"] -- name lookup (panics on invalid)
+tpy::EnumUtil<Color>::from_name("Red")
+
+// try_parse(Color, "Red") -- safe name lookup
 tpy::EnumUtil<Color>::try_parse("Red")   // -> std::optional<Color>
 ```
 

@@ -18,6 +18,7 @@ struct tpy::EnumUtil<tpy_user::colors::Color> {
     static std::string_view name(tpy_user::colors::Color e);
     static const std::array<tpy_user::colors::Color, 3> members;
     static tpy_user::colors::Color from_value(int32_t v);
+    static tpy_user::colors::Color from_name(std::string_view s);
     static std::optional<tpy_user::colors::Color> try_parse(std::string_view s);
 };
 

@@ -1198,6 +1198,12 @@ class ExpressionGenerator:
 
     def _gen_subscript(self, expr: TpySubscript) -> str:
         """Generate subscript code."""
+        # Enum name lookup: Color["Red"] -> tpy::EnumUtil<Color>::from_name("Red")
+        if expr.enum_from_name is not None:
+            cpp_type = expr.enum_from_name.to_cpp()
+            index = self.gen_expr(expr.index)
+            return f"tpy::EnumUtil<{cpp_type}>::from_name({index})"
+
         obj = self.gen_expr(expr.obj)
         obj_type = self.types.get_resolved_type(expr.obj)
         index_type = self.ctx.analyzer.get_expr_type(expr.index)

@@ -19,6 +19,7 @@ struct tpy::EnumUtil<tpy_user::main::Direction> {
     static std::string_view name(tpy_user::main::Direction e);
     static const std::array<tpy_user::main::Direction, 4> members;
     static tpy_user::main::Direction from_value(int32_t v);
+    static tpy_user::main::Direction from_name(std::string_view s);
     static std::optional<tpy_user::main::Direction> try_parse(std::string_view s);
 };
 

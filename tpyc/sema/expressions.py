@@ -853,6 +853,19 @@ class ExpressionAnalyzer:
 
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
         """Analyze subscript indexing: obj[index]"""
+        # Enum name lookup: Color["Red"] -> Color (panics on invalid)
+        if isinstance(expr.obj, TpyName) and self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(expr.obj.name)
+            if binding and binding.kind == BindingKind.ENUM:
+                index_type = self.analyze_expr(expr.index)
+                if not is_any_str_type(index_type):
+                    raise self.ctx.error(
+                        f"Enum subscript index must be a string, got '{index_type}'",
+                        expr,
+                    )
+                expr.enum_from_name = binding.enum_type
+                return binding.enum_type
+
         obj_type = self.analyze_expr(expr.obj)
         index_type = self.analyze_expr(expr.index)
 

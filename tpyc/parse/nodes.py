@@ -182,6 +182,7 @@ class TpySubscript(TpyExpr):
     obj: TpyExpr
     index: TpyExpr
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
+    enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
 
 
 @dataclass

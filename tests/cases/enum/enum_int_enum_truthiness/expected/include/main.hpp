@@ -18,6 +18,7 @@ struct tpy::EnumUtil<tpy_user::main::Status> {
     static std::string_view name(tpy_user::main::Status e);
     static const std::array<tpy_user::main::Status, 3> members;
     static tpy_user::main::Status from_value(int32_t v);
+    static tpy_user::main::Status from_name(std::string_view s);
     static std::optional<tpy_user::main::Status> try_parse(std::string_view s);
 };
 

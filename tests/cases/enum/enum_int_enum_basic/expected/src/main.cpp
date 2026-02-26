@@ -35,6 +35,12 @@ std::optional<tpy_user::main::Priority> EnumUtil<tpy_user::main::Priority>::try_
     return std::nullopt;
 }
 
+tpy_user::main::Priority EnumUtil<tpy_user::main::Priority>::from_name(std::string_view __name) {
+    auto __result = try_parse(__name);
+    if (!__result.has_value()) tpy_panic("invalid name for enum 'Priority'");
+    return *__result;
+}
+
 } // namespace tpy
 
 namespace tpy_user::main {
