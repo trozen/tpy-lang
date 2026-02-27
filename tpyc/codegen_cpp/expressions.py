@@ -504,22 +504,6 @@ class ExpressionGenerator:
             # Fallback for operators not in module system (bitwise operators)
             return f"({left} {expr.op} {right})"
 
-        # List concatenation -- generate directly to avoid template
-        # placeholder collisions with C++ initializer-list braces.
-        if (expr.resolved_binop
-                and isinstance(expr.resolved_binop.receiver_type, ListType)
-                and expr.resolved_binop.method.name == "__add__"):
-            list_type = expr.resolved_binop.receiver_type
-            left = self.gen_expr_deref(expr.left, list_type)
-            right = self.gen_expr_deref(expr.right, list_type)
-            # Bare initializer lists need explicit type for template deduction
-            cpp_type = list_type.to_cpp()
-            if isinstance(expr.left, TpyArrayLiteral):
-                left = f"{cpp_type}{left}"
-            if isinstance(expr.right, TpyArrayLiteral):
-                right = f"{cpp_type}{right}"
-            return f"(tpy::list_concat({left}, {right}))"
-
         # Use resolved binop from sema (builtin arithmetic/bitwise operators)
         if binop_result := expr.resolved_binop:
             # Get types for proper literal promotion
@@ -549,6 +533,14 @@ class ExpressionGenerator:
                     left = f"static_cast<{underlying_cpp}>({left})"
                 if isinstance(right_type, IntEnumType):
                     right = f"static_cast<{underlying_cpp}>({right})"
+            # C++ can't deduce template params from bare initializer lists,
+            # so array literal operands need explicit std::vector<T>{...} prefix
+            if isinstance(receiver_type, ListType):
+                cpp_type = receiver_type.to_cpp()
+                if isinstance(expr.left, TpyArrayLiteral):
+                    left = f"{cpp_type}{left}"
+                if isinstance(expr.right, TpyArrayLiteral):
+                    right = f"{cpp_type}{right}"
             # Generate binop using helper (handles wrappers and is_reverse)
             result = self._gen_binop_from_result(binop_result, left, right)
             # Wrap in parens to avoid precedence issues with cout << and other operators

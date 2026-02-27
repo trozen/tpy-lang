@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType, ArrayType,
+    NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType,
@@ -490,55 +490,6 @@ class ExpressionAnalyzer:
                 expr.resolved_binop = result
             return IntLiteralType(literal_result)
 
-        # List/Array concatenation with +
-        if expr.op == "+":
-            left_elem = left_effective.get_element_type() if isinstance(left_effective, (PendingListType, ListType, ArrayType)) else None
-            right_elem = right_effective.get_element_type() if isinstance(right_effective, (PendingListType, ListType, ArrayType)) else None
-            if left_elem is not None and right_elem is not None:
-                # Resolve element types: IntLiteralType adapts to the other
-                # side's concrete type, or falls back to the default int.
-                left_is_lit = isinstance(left_elem, IntLiteralType)
-                right_is_lit = isinstance(right_elem, IntLiteralType)
-                if left_is_lit and not right_is_lit:
-                    left_elem = right_elem
-                elif right_is_lit and not left_is_lit:
-                    right_elem = left_elem
-                elif left_is_lit and right_is_lit:
-                    left_elem = self.ctx.default_int_for_literal(left_elem)
-                    right_elem = left_elem
-                if left_elem != right_elem:
-                    raise SemanticError(
-                        f"Cannot concatenate list[{left_elem}] and list[{right_elem}]",
-                        expr.loc,
-                    )
-                # Concat produces a list -- mark pending literals as mutated
-                for sub_expr, sub_type in ((expr.left, left_effective), (expr.right, right_effective)):
-                    if isinstance(sub_type, PendingListType):
-                        info = self.ctx.list_literals.get(sub_type.literal_id)
-                        if info:
-                            info.is_mutated = True
-                    elif isinstance(sub_expr, TpyName):
-                        var_name = sub_expr.name
-                        if var_name in self.ctx.variable_to_literal:
-                            lit_id = self.ctx.variable_to_literal[var_name]
-                            info = self.ctx.list_literals.get(lit_id)
-                            if info:
-                                info.is_mutated = True
-                result_type = ListType(left_elem)
-                expr.resolved_binop = ResolvedBinop(
-                    method=FunctionInfo(
-                        name="__add__",
-                        params=[ParamInfo("other", result_type)],
-                        return_type=result_type,
-                        cpp_template="tpy::list_concat({self}, {0})",
-                        is_method=True,
-                    ),
-                    left_wrapper="{expr}",
-                    right_wrapper="{expr}",
-                    receiver_type=result_type,
-                )
-                return result_type
-
         # Protocol-typed operands - look up the dunder method in the protocol
         # For Self in protocols, Self binds to the protocol itself when used as a value type
         if is_protocol_type(left_effective):
@@ -555,6 +506,9 @@ class ExpressionAnalyzer:
         # Arithmetic/bitwise operators - use registry
         if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
             expr.resolved_binop = result
+            # List concat produces a list -- mark pending literals as mutated
+            if isinstance(result.method.return_type, ListType):
+                self._mark_list_concat_operands_mutated(expr, left_effective, right_effective)
             return result.method.return_type
 
         # Record types (user-defined or module) with dunder methods
@@ -599,6 +553,23 @@ class ExpressionAnalyzer:
             f"Invalid operand types for '{expr.op}': {left_type} and {right_type}",
             expr.loc,
         )
+
+    def _mark_list_concat_operands_mutated(
+        self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType,
+    ) -> None:
+        """Mark PendingListType operands as mutated so they resolve to list, not Array."""
+        for sub_expr, sub_type in ((expr.left, left_type), (expr.right, right_type)):
+            if isinstance(sub_type, PendingListType):
+                info = self.ctx.list_literals.get(sub_type.literal_id)
+                if info:
+                    info.is_mutated = True
+            elif isinstance(sub_expr, TpyName):
+                var_name = sub_expr.name
+                if var_name in self.ctx.variable_to_literal:
+                    lit_id = self.ctx.variable_to_literal[var_name]
+                    info = self.ctx.list_literals.get(lit_id)
+                    if info:
+                        info.is_mutated = True
 
     def _try_eval_int_literal_binop(self, op: str, left: int | None, right: int | None) -> int | None:
         """Best-effort constant evaluation for int literal binops."""

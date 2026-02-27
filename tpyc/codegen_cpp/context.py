@@ -70,14 +70,18 @@ _TEMPLATE_PLACEHOLDER = re.compile(r"\{(self|\d+)\}")
 
 def expand_cpp_template(template: str, self_val: str, *args: str) -> str:
     """Expand a C++ template, substituting {self} and positional {0}, {1}, etc."""
+    # Validate before substitution: check that all placeholder indices are in range.
+    # Post-substitution scanning would false-positive on C++ braces in values
+    # (e.g. std::vector<int>{30} looks like {30} placeholder).
+    for m in _TEMPLATE_PLACEHOLDER.finditer(template):
+        token = m.group(1)
+        if token != "self" and int(token) >= len(args):
+            raise CodeGenError(
+                f"Unreplaced placeholder {m.group()} in C++ template: {template}"
+            )
     result = template.replace("{self}", self_val)
     for i, arg in enumerate(args):
         result = result.replace(f"{{{i}}}", arg)
-    remaining = _TEMPLATE_PLACEHOLDER.search(result)
-    if remaining:
-        raise CodeGenError(
-            f"Unreplaced placeholder {remaining.group()} in C++ template: {template}"
-        )
     return result
 
 
