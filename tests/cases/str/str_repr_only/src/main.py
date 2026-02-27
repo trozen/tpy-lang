@@ -1,5 +1,4 @@
-# Test __repr__ only (without __str__): repr() works, print() uses field dump
-# Divergence from Python: Python's str() falls back to __repr__, tpyc does not
+# Test __repr__ fallback: str()/print()/f-string fall back to __repr__ when no __str__
 class Tag:
     label: str
 
@@ -13,7 +12,9 @@ def main() -> None:
     t: Tag = Tag("hello")
     print(repr(t))
     print(f"{t!r}")
-    # print() uses auto-generated field dump (no __str__)
     print(t)
+    print(str(t))
+    print(f"{t}")
+    print(f"{t!s}")
 
 main()

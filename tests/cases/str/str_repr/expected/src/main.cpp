@@ -10,10 +10,10 @@ void main() {
     Point p = Point(tpy::BigInt(3), tpy::BigInt(7));
     // 19:     # str() dispatches to __str__
     // 20:     print(str(p))
-    std::cout << tpy::__str__(p) << "\n";
+    std::cout << std::string(tpy::__str__(p)) << "\n";
     // 22:     # repr() dispatches to __repr__
     // 23:     print(repr(p))
-    std::cout << tpy::__repr__(p) << "\n";
+    std::cout << std::string(tpy::__repr__(p)) << "\n";
     // 25:     # print() uses operator<< which delegates to __str__
     // 26:     print(p)
     std::cout << p << "\n";

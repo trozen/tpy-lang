@@ -4,17 +4,22 @@
 namespace tpy_user::main {
 
 
-// 12: def main() -> None:
+// 11: def main() -> None:
 void main() {
-    // 13:     t: Tag = Tag("hello")
+    // 12:     t: Tag = Tag("hello")
     Tag t = Tag("hello");
-    // 14:     print(repr(t))
-    std::cout << tpy::__repr__(t) << "\n";
-    // 15:     print(f"{t!r}")
+    // 13:     print(repr(t))
+    std::cout << std::string(tpy::__repr__(t)) << "\n";
+    // 14:     print(f"{t!r}")
     std::cout << std::format("{}", tpy::__repr__(t)) << "\n";
-    // 16:     # print() uses auto-generated field dump (no __str__)
-    // 17:     print(t)
+    // 15:     print(t)
     std::cout << t << "\n";
+    // 16:     print(str(t))
+    std::cout << std::string(tpy::__repr__(t)) << "\n";
+    // 17:     print(f"{t}")
+    std::cout << std::format("{}", tpy::__str__(t)) << "\n";
+    // 18:     print(f"{t!s}")
+    std::cout << std::format("{}", tpy::__str__(t)) << "\n";
 }
 
 void __tpy_init() {
@@ -22,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: main()
+    // 20: main()
     main();
 }
 

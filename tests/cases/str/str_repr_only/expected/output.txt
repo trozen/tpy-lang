@@ -1,3 +1,6 @@
 Tag(hello)
 Tag(hello)
-Tag(label="hello")
+Tag(hello)
+Tag(hello)
+Tag(hello)
+Tag(hello)

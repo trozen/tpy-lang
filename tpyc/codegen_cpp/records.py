@@ -287,13 +287,18 @@ class RecordGenerator:
         """Generate operator<< overload for printing a record."""
         name = escape_cpp_name(record.name)
 
-        # Check if record has __str__ method (including inherited) -- if so, delegate to it
+        # Check if record has __str__ or __repr__ (including inherited) -- delegate if so
         record_info = self.ctx.analyzer.registry.get_record(record.name)
         has_str = False
+        has_repr = False
         if record_info:
             overloads, _ = self.ctx.analyzer.protocols.lookup_record_method_overloads(
                 record_info, "__str__")
             has_str = bool(overloads)
+            if not has_str:
+                overloads, _ = self.ctx.analyzer.protocols.lookup_record_method_overloads(
+                    record_info, "__repr__")
+                has_repr = bool(overloads)
         # For template structs, generate a template operator<<
         if record.type_params:
             # Build params respecting INT type params
@@ -313,6 +318,8 @@ class RecordGenerator:
 
         if has_str:
             out.write(f"{INDENT}os << obj.__str__();\n")
+        elif has_repr:
+            out.write(f"{INDENT}os << obj.__repr__();\n")
         else:
             out.write(f'{INDENT}os << "{record.name}("')
 

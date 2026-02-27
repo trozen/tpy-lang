@@ -189,3 +189,9 @@ def unsafe_drop(p) -> None:
     """Call destructor on an object at a pointer location."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
     obj[0] = None
+
+
+def unsafe_str_view(p, size: int) -> str:
+    """Create a string view from a Ptr[Char] and length."""
+    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    return ''.join(obj[i] for i in range(size))

@@ -174,9 +174,17 @@ bool __bool__(const T& x) {
 
 // Default template: user types that define __str__() method
 template<typename T>
-    requires requires(const T& t) { { t.__str__() } -> std::convertible_to<std::string>; }
-std::string __str__(const T& x) {
+    requires requires(const T& t) { t.__str__(); }
+auto __str__(const T& x) {
     return x.__str__();
+}
+
+// Fallback: types with __repr__ but no __str__ (matches Python behavior)
+template<typename T>
+    requires (!requires(const T& t) { t.__str__(); })
+          && requires(const T& t) { t.__repr__(); }
+auto __str__(const T& x) {
+    return x.__repr__();
 }
 
 // =============================================
@@ -185,8 +193,8 @@ std::string __str__(const T& x) {
 
 // Default template: user types that define __repr__() method
 template<typename T>
-    requires requires(const T& t) { { t.__repr__() } -> std::convertible_to<std::string>; }
-std::string __repr__(const T& x) {
+    requires requires(const T& t) { t.__repr__(); }
+auto __repr__(const T& x) {
     return x.__repr__();
 }
 

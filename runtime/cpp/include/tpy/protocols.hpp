@@ -137,23 +137,23 @@ concept Truthy = requires(const T& t) {
 /**
  * Stringable concept - types that support tpy::__str__()
  *
- * A type is Stringable if tpy::__str__(x) is valid and returns std::string.
- * Used for str() conversion on user-defined types.
+ * A type is Stringable if tpy::__str__(x) is valid and returns a string-like
+ * type (std::string or std::string_view).
  */
 template<typename T>
 concept Stringable = requires(const T& t) {
-    { tpy::__str__(t) } -> std::convertible_to<std::string>;
+    { std::string(tpy::__str__(t)) };
 };
 
 /**
  * Representable concept - types that support tpy::__repr__()
  *
- * A type is Representable if tpy::__repr__(x) is valid and returns std::string.
- * Used for repr() conversion on user-defined types.
+ * A type is Representable if tpy::__repr__(x) is valid and returns a
+ * string-like type (std::string or std::string_view).
  */
 template<typename T>
 concept Representable = requires(const T& t) {
-    { tpy::__repr__(t) } -> std::convertible_to<std::string>;
+    { std::string(tpy::__repr__(t)) };
 };
 
 } // namespace tpy

@@ -67,6 +67,9 @@ class UninitArrayStorage(metaclass=_StorageMeta):
     def take0(self) -> object:
         return self.take(0)
 
+    def __getitem__(self, index: int) -> object:
+        return self._slots[index]
+
     def ptr(self):
         from tpy import Ptr
         return Ptr(self)

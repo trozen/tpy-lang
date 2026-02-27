@@ -1021,16 +1021,20 @@ class ExpressionAnalyzer:
                 elif conv == FSTRING_CONV_STR:
                     if not isinstance(resolved, self._FORMATTABLE_TYPES):
                         if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
-                            raise self.ctx.error(
-                                f"Type {part_type} cannot use !s conversion (no __str__ method)",
-                                part.expr,
-                            )
+                            if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
+                                raise self.ctx.error(
+                                    f"Type {part_type} cannot use !s conversion"
+                                    " (no __str__ or __repr__ method)",
+                                    part.expr,
+                                )
                 elif not isinstance(resolved, self._FORMATTABLE_TYPES):
                     if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
-                        raise self.ctx.error(
-                            f"Type {part_type} cannot be used in f-string (no __str__ method)",
-                            part.expr,
-                        )
+                        if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
+                            raise self.ctx.error(
+                                f"Type {part_type} cannot be used in f-string"
+                                " (no __str__ or __repr__ method)",
+                                part.expr,
+                            )
                 if part.format_spec is not None and isinstance(resolved, (BigIntType, IntLiteralType)):
                     raise self.ctx.error(
                         "Format specs on int are not yet supported (use a fixed-width type like Int32)",

@@ -9,9 +9,9 @@ void main() {
     // 28:     wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
     Wrapper<Pair> wp = Wrapper<Pair>(Pair(1, 2));
     // 29:     print(str(wp))
-    std::cout << tpy::__str__(wp) << "\n";
+    std::cout << std::string(tpy::__str__(wp)) << "\n";
     // 30:     print(repr(wp))
-    std::cout << tpy::__repr__(wp) << "\n";
+    std::cout << std::string(tpy::__repr__(wp)) << "\n";
     // 31:     print(wp)
     std::cout << wp << "\n";
     // 32:     print(f"val = {wp}")

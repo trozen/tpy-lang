@@ -6,7 +6,7 @@ Unsafe pointer operations that require explicit import.
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
 from tpyc.typesys import (
-    STR, CHAR, VOID, UINT32, INT64,
+    STR, STRVIEW, CHAR, VOID, UINT32, INT64,
     ArrayType, ListType, TypeParamRef, PtrType, ConstPtrType, OwnType,
 )
 
@@ -192,6 +192,20 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("p", PtrType(T))],
             returns=VOID,
             cpp="tpy::destroy_at({0})",
+        ),
+    ])
+
+    # unsafe_str_view: create a StrView from a Ptr[Char] and length
+    module.function("unsafe_str_view", overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(CHAR)), ParamDef("size", UINT32)],
+            returns=STRVIEW,
+            cpp="std::string_view({0}, {1})",
+        ),
+        MethodDef(
+            params=[ParamDef("p", ConstPtrType(CHAR)), ParamDef("size", UINT32)],
+            returns=STRVIEW,
+            cpp="std::string_view({0}, {1})",
         ),
     ])
 

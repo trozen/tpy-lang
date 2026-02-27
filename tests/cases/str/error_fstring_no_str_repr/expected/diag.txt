@@ -1,0 +1,1 @@
+main.py:7: error: Type Bar cannot be used in f-string (no __str__ or __repr__ method)

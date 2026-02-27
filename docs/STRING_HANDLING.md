@@ -187,6 +187,7 @@ the emission strategy based on context:
 - `!s` conversion: `f"{x!s}"` (str() on the value)
 - `!r` conversion: `f"{x!r}"` (repr() on the value, requires `__repr__`)
 - User types with `__str__`: `f"{obj}"` dispatches to `__str__()`
+- User types with only `__repr__`: `f"{obj}"`, `str(obj)`, `print(obj)` fall back to `__repr__()` (matches Python)
 - Brace escaping: `f"{{{x}}}"` -> `{42}`
 - Mixed types: int, float, bool, str, Char, fixed ints, BigInt, enum, user records
 

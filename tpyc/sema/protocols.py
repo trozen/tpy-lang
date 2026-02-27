@@ -11,6 +11,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
 )
+from ..coercions import is_protocol_safe_coercion
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -220,15 +221,13 @@ class ProtocolChecker:
     def _protocol_type_matches(actual: TpyType, expected: TpyType) -> bool:
         """Check if an actual method type matches the expected protocol type.
 
-        Exact match, plus Own[T] in an implementation matches T in the protocol
-        (the implementation takes ownership, protocol only requires the value).
-
-        No coercions needed: builtin signatures use concrete types (not
-        IntLiteralType), and types are fully resolved before conformance checks.
+        Exact match, Own[T] unwrapping, or protocol-safe coercion (e.g. StrView -> str).
         """
         if actual == expected:
             return True
         if isinstance(actual, OwnType) and actual.wrapped == expected:
+            return True
+        if is_protocol_safe_coercion(actual, expected):
             return True
         return False
 

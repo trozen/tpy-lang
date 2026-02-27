@@ -86,6 +86,8 @@ class Coercion:
     requires_lvalue: bool = False
     requires_mutable: bool = False
     forbid_return_local: bool = False
+    # Lossless coercion safe for protocol return type matching.
+    protocol_safe: bool = False
     check_range: Optional[Callable[[TpyType, TpyType], bool]] = None
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
 
@@ -213,6 +215,7 @@ COERCIONS: list[Coercion] = [
         from_type=StrViewType,
         to_type=StringType,
         codegen=lambda e, _a, _b, _c: f"std::string({e})",
+        protocol_safe=True,
     ),
     # StrView -> StrType (allocates -- StrType is now std::string)
     Coercion(
@@ -220,6 +223,7 @@ COERCIONS: list[Coercion] = [
         from_type=StrViewType,
         to_type=StrType,
         codegen=lambda e, _a, _b, _c: f"std::string({e})",
+        protocol_safe=True,
     ),
 
     # Pointer coercions
@@ -283,6 +287,20 @@ def resolve_coercion(actual: TpyType, expected: TpyType, ctx: CoercionContext) -
             if coercion.type_match(actual, expected):
                 return coercion
     return None
+
+
+def is_protocol_safe_coercion(actual: TpyType, expected: TpyType) -> bool:
+    """Check if actual can coerce to expected in a protocol return type context.
+
+    Only lossless coercions marked protocol_safe=True are considered.
+    """
+    for coercion in COERCIONS:
+        if not coercion.protocol_safe:
+            continue
+        if isinstance(actual, coercion.from_type) and isinstance(expected, coercion.to_type):
+            if coercion.type_match(actual, expected):
+                return True
+    return False
 
 
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: str) -> str:

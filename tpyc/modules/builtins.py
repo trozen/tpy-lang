@@ -51,7 +51,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[ParamDef("x", REPRESENTABLE)],
             returns=STR,
-            cpp="tpy::__repr__({0})",
+            cpp="std::string(tpy::__repr__({0}))",
             is_readonly=True,
         ),
     ])
@@ -254,7 +254,9 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("x", BIGINT)], returns=STR, cpp="({0}).to_string()"),
             MethodDef(params=[ParamDef("x", FLOAT)], returns=STR, cpp="tpy::float_to_str({0})"),
             MethodDef(params=[ParamDef("x", STRINGABLE)], returns=STR,
-                      cpp="tpy::__str__({0})", is_readonly=True),
+                      cpp="std::string(tpy::__str__({0}))", is_readonly=True),
+            MethodDef(params=[ParamDef("x", REPRESENTABLE)], returns=STR,
+                      cpp="std::string(tpy::__repr__({0}))", is_readonly=True),
         ],
         methods={
         "__len__": [MethodDef(

@@ -1,1 +1,1 @@
-main.py:7: error: Type Foo cannot use !s conversion (no __str__ method)
+main.py:7: error: Type Foo cannot use !s conversion (no __str__ or __repr__ method)

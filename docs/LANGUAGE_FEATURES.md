@@ -271,7 +271,7 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 - **Working**: `str.count("")` returns `len(s) + 1` (Python semantics)
 - **Working**: For-each iteration over string literals (no null terminator leak)
 - **Working**: F-strings (`f"hello {name}"`) via `std::format` -- supports format specs (`.2f`, `#x`, `>10`), `!s` conversion, all scalar types
-- **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
+- **Working**: `FixStr[N]` -- fixed-capacity string, stack allocated (via `tplib`); supports `__str__() -> StrView` for zero-copy printing
 
 #### String Type Semantics (Working)
 
@@ -327,6 +327,8 @@ Bool and float use Python-compatible wrappers for default format (no spec):
 - `!s` conversion: applies `str()` / `__str__()`
 - `!r` conversion: applies `repr()` / `__repr__()`
 - User types with `__str__()`: `f"{obj}"` dispatches to `__str__()`
+- User types with only `__repr__()`: `f"{obj}"`, `str(obj)`, `print(obj)` fall back to `__repr__()` (matches Python)
+- `__str__() -> StrView` is accepted (zero-copy; protocol-safe coercion to `str`)
 
 **Not yet supported:**
 - `!a` conversion
@@ -500,7 +502,7 @@ Key features:
 - **Working**: `Ptr[T]` -> `T*`
 - **Working**: `ConstPtr[T]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
-- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`)
+- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
 - **Planned**: `Ref[T]` -> `T&` (explicit reference)
 - **Planned**: `ConstRef[T]` -> `const T&`
@@ -1118,6 +1120,17 @@ print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
 ```
 
 Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[UInt32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[UInt32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`ConstPtr`) is preserved: `Ptr[U]` returns `Ptr[T]`, `ConstPtr[U]` returns `ConstPtr[T]`. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
+
+**`unsafe_str_view`** -- create a `StrView` from a char pointer and length:
+
+```python
+from tpy.unsafe import unsafe_str_view
+
+p: Ptr[Char] = ...
+sv: StrView = unsafe_str_view(p, UInt32(5))   # Ptr[Char], UInt32 -> StrView
+```
+
+Generates `std::string_view(p, size)` in C++. Also accepts `ConstPtr[Char]`. The caller must ensure the pointer remains valid for the lifetime of the returned view.
 
 #### Uninitialized Storage -- `tpy.mem` (Working)
 
@@ -3075,6 +3088,7 @@ s = str(3.14)     # → "3.14"
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
 - **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`)
+- **Working**: `tplib.FixStr[N]` -- fixed-capacity string with stack-allocated storage (char-level operations, `__str__` for zero-copy printing)
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
 - **Open**: `from typing import *` (not supported)
 
@@ -3288,6 +3302,7 @@ TurboPython has two library search roots that provide reusable modules:
 |--------|-------------|
 | `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
 | `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage |
+| `tplib.FixStr[N]` | Fixed-capacity string with stack-allocated storage; `__str__() -> StrView` for zero-copy printing |
 
 ```python
 from tplib import Box
