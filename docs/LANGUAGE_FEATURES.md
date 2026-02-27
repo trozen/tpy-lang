@@ -1183,11 +1183,12 @@ s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 | `ptr()` | Raw `Ptr[T]` to underlying storage |
 
 ### User-Defined
-- **Working**: Classes → C++ structs
+- **Working**: Classes -> C++ structs
+- **Working**: Auto-declare fields from `__init__`: `self.field = param` auto-declares a field using the parameter's type, no class-level annotation needed (CPython-compatible). Only direct parameter assignments at `__init__` top level; computed expressions and inheritance require explicit annotations. See `docs/CONSTRUCTOR_DESIGN.md`.
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
-- **Working**: Enums → `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(Int8, Enum)`)
+- **Working**: Enums -> `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(Int8, Enum)`)
 
 ### Protocols (Partial)
 

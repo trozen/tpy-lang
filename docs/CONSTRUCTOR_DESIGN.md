@@ -4,7 +4,7 @@
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **Phase 1** | Auto-declare fields from `__init__` (infer type from assigned expression, top-level assignments only) | Todo |
+| **Phase 1** | Auto-declare fields from `__init__` (infer type from parameter assignment, top-level only, no inheritance) | Done |
 | **Phase 2** | Warnings and safety: uninitialized field detection, init-list body-assign warning, conditional `= default` | Todo |
 | **Phase 3** | `@dataclass` decorator (auto-generate `__init__` from annotations) | Future |
 | **Future** | Improved init-list extraction: ternary rewriting, lambda-in-init-list, cross-branch analysis | Future |
@@ -131,9 +131,9 @@ class Point:
 ```
 
 Type inference rules for auto-declared fields:
-- `self.f = param` where param has declared type -> use param type
-- `self.f = literal` -> use literal type (warn in `@noalloc` if deducing `int` -> BigInt)
-- `self.f = expr` -> use expression's inferred type
+- `self.f = param` where param has declared type -> use param type **(implemented)**
+- `self.f = literal` -> use literal type (warn in `@noalloc` if deducing `int` -> BigInt) **(planned)**
+- `self.f = expr` -> use expression's inferred type **(planned)**
 
 When both an annotation and an `__init__` assignment exist, the annotation type takes precedence (the assignment is checked for compatibility).
 
@@ -214,12 +214,12 @@ Note: current aggregate behavior (no `__init__` -> struct without constructor) i
 
 ## Implementation Details
 
-### Phase 1: Auto-Declare Fields from `__init__`
-- When `self.field = expr` appears in `__init__` and `field` is not declared as a class annotation, auto-declare it as a field.
-- Infer field type from: (a) `__init__` param type if expr is just a param name, (b) expression type otherwise.
-- When both annotation and `__init__` assignment exist, check compatibility and use the annotation type.
-- Warn in `@noalloc` when deducing `int` (BigInt).
-- C++ struct field order: annotated fields first (in annotation order), then auto-declared fields (in `__init__` assignment order). Auto-declared fields that overlap with annotations don't create duplicates.
+### Phase 1: Auto-Declare Fields from `__init__` (Done)
+- When `self.field = param` appears at top level in `__init__` and `field` is not declared as a class annotation, auto-declare it using the parameter's type.
+- When both annotation and `__init__` assignment exist, the annotation type takes precedence (no duplicate).
+- Disabled for classes with bases (inheritance needs parent field info to avoid shadowing).
+- C++ struct field order follows `__init__` assignment order (fields not assigned in `__init__` appended at the end). This matches the init-list order and avoids `-Wreorder` warnings.
+- Future: extend to `self.f = literal` and `self.f = expr` (requires expression type inference at parse/registration time).
 
 ### Phase 2: Warnings and Safety
 - Add a sema pass that checks all declared fields (both annotated and auto-declared) are initialized in `__init__` (or have defaults).
@@ -234,7 +234,7 @@ Note: current aggregate behavior (no `__init__` -> struct without constructor) i
 
 ## Open Questions
 
-1. **Field ordering with auto-declare**: When fields are auto-declared from `__init__`, the proposed order is: annotated fields first, then auto-declared in `__init__` assignment order. Is this the right choice? Alternative: all fields in `__init__` assignment order (annotations just provide types, not ordering).
+1. ~~**Field ordering with auto-declare**~~: Resolved -- all fields (annotated and auto-declared) are reordered to match `__init__` assignment order. Fields not assigned in `__init__` are appended at the end. This matches the C++ init-list order and avoids `-Wreorder`.
 
 2. **`@noalloc` and auto-declare**: In `@noalloc` mode, `self.x = 42` would infer `int` (BigInt) which is heap-allocated. Should auto-declare be restricted in `@noalloc` to only typed params?
 

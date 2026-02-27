@@ -1,0 +1,1 @@
+main.py:8: error: Record 'Baz' has no field 'doubled'

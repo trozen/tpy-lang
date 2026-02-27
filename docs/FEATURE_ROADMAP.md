@@ -53,7 +53,7 @@ existing compiler model stays the same for existing code.
 | A6 | Keyword args + default values | M | Not started | [VII](#keyword-arguments-and-default-values) |
 | A7 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
 | A8 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
-| A9 | Constructor initializer list codegen | M | Known bug | [II](#constructor-initializer-list-codegen) |
+| A9 | Constructor initializer list codegen | M | Partial | [II](#constructor-initializer-list-codegen) |
 | A10 | Float32 type | S | Not started | [I](#float32-type) |
 | A11 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
 
@@ -606,7 +606,9 @@ Design options:
   -- keeps initializer list, moves branching into per-field lambdas. Works for all
   types but generates unusual C++.
 
-**Current state**: Known bug. Works for trivial types only.
+**Current state**: Phase 1 done -- auto-declare fields from `__init__` parameter assignments,
+field reordering to match init-list order. Initializer list control-flow gaps remain (known bug
+for non-trivial types). See `docs/CONSTRUCTOR_DESIGN.md` for full design and phase status.
 
 **Dependencies**: Interacts with `@nocopy`, `Box[T]`, and any non-trivially-constructible
 field types.
@@ -1183,7 +1185,8 @@ class Point:
     # auto-generates __init__, __eq__, __repr__
 ```
 
-**Current state**: Not started. TPy classes have partial overlap (fields from annotations).
+**Current state**: Not started. TPy classes have partial overlap (fields from annotations,
+auto-declare from `__init__`). See `docs/CONSTRUCTOR_DESIGN.md` Decision 5 for design notes.
 
 **Dependencies**: None for basic form. Full `@dataclass` needs default values.
 

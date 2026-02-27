@@ -711,6 +711,22 @@ class Parser:
             else:
                 raise ParseError(f"Unsupported construct in class '{node.name}'", item)
 
+        # Auto-declare fields from self.f = param assignments in __init__.
+        # Phase 1: only for non-native classes without bases (inheritance
+        # needs parent field info to avoid shadowing, not available at parse time).
+        if not bases and linkage == RecordLinkage.DEFAULT:
+            init_method = None
+            for m in methods:
+                if m.name == "__init__":
+                    init_method = m
+                    break
+            if init_method is not None:
+                new_fields = self._auto_declare_fields_from_init(init_method, fields)
+                fields.extend(new_fields)
+                # Reorder fields to match __init__ assignment order so that
+                # C++ struct layout matches the init list (avoids -Wreorder).
+                fields = self._reorder_fields_by_init(init_method, fields)
+
         # Validate method constraints based on class linkage
         for method in methods:
             if linkage != RecordLinkage.DEFAULT:
@@ -732,6 +748,78 @@ class Parser:
         # Restore the scope
         self._type_param_scope = old_scope
         return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, loc=self._loc(node))
+
+    def _auto_declare_fields_from_init(
+        self,
+        init_method: TpyFunction,
+        existing_fields: list[FieldInfo],
+    ) -> list[FieldInfo]:
+        """Auto-declare fields from top-level `self.f = param` in __init__.
+
+        For CPython compatibility: fields can be created by assignment in
+        __init__ without requiring class-level annotations. Only handles
+        the case where the RHS is a parameter name (type taken from param).
+        """
+        param_types = {name: typ for name, typ in init_method.params}
+        existing_names = {fld.name for fld in existing_fields}
+
+        new_fields: list[FieldInfo] = []
+        for stmt in init_method.body:
+            if not isinstance(stmt, TpyAssign):
+                continue
+            target = stmt.target
+            if not isinstance(target, TpyFieldAccess):
+                continue
+            if not isinstance(target.obj, TpyName) or target.obj.name != "self":
+                continue
+            field_name = target.field
+            if field_name in existing_names:
+                continue
+            value = stmt.value
+            if not isinstance(value, TpyName):
+                continue
+            if value.name not in param_types:
+                continue
+            new_fields.append(FieldInfo(field_name, param_types[value.name], loc=stmt.loc))
+            existing_names.add(field_name)
+
+        return new_fields
+
+    @staticmethod
+    def _reorder_fields_by_init(
+        init_method: TpyFunction,
+        fields: list[FieldInfo],
+    ) -> list[FieldInfo]:
+        """Reorder fields to match __init__ body assignment order.
+
+        C++ initializes members in struct declaration order regardless of
+        init-list order. Matching the two avoids -Wreorder-ctor warnings.
+        Fields not assigned in __init__ are appended at the end.
+        """
+        # Collect field assignment order from __init__ top-level statements
+        init_order: list[str] = []
+        for stmt in init_method.body:
+            if not isinstance(stmt, TpyAssign):
+                continue
+            target = stmt.target
+            if not isinstance(target, TpyFieldAccess):
+                continue
+            if not isinstance(target.obj, TpyName) or target.obj.name != "self":
+                continue
+            if target.field not in init_order:
+                init_order.append(target.field)
+
+        field_map = {f.name: f for f in fields}
+        seen: set[str] = set()
+        ordered: list[FieldInfo] = []
+        for name in init_order:
+            if name in field_map and name not in seen:
+                ordered.append(field_map[name])
+                seen.add(name)
+        for f in fields:
+            if f.name not in seen:
+                ordered.append(f)
+        return ordered
 
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""

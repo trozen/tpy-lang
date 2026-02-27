@@ -7,7 +7,7 @@
 - @dataclass
 - int/bool value provenance (e.g. assert i > 0, then cast to uint without check)
 - bi-directional contextual type inference (Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type): docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md
-- class field instantiation design: should we explicitely create class members in constructor (e.g. `self.obj = Obj()`) or are class member type annotations enough (e.g. `obj: Obj`)? should we store inline by default OR should we use `Own[Obj]` to define inline members?
+- class field instantiation design: Phase 2 (uninitialized field detection, init-list body-assign warning, conditional `= default`) -- see `docs/CONSTRUCTOR_DESIGN.md`
 - `# tpy:` directives handling (including per-module `# tpy: default-int=...`)
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
@@ -22,7 +22,7 @@
 ## Bugs
 - REPL: arr=[1,2,3]; arr[-4]
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
-- Constructor codegen uses body assignments instead of initializer lists: when `__init__` has control flow (if/else, loops), fields are default-constructed then assigned (`this->tag = tag;`) instead of using C++ initializer lists (`: tag(tag)`). Works for trivial types but breaks for non-default-constructible types, `@nocopy` types, and eventually `const` fields. Needs either: (a) analyze which fields can still use initializer list even with control flow, (b) use `std::optional` wrappers for deferred init, or (c) restructure to always emit initializer lists with conditional logic factored differently.
+- Constructor codegen uses body assignments instead of initializer lists when `__init__` has control flow -- see `docs/CONSTRUCTOR_DESIGN.md` Phase 2 (init-list body-assign warning) and Future (improved init-list extraction).
 - Fixed-width integer true division (`Int32 / Int32`) not supported: `__truediv__` is missing from fixed-width int type definitions in `tpyc/modules/tpy.py`. BigInt defines it (returns float via `tpy::truediv`), but Int8-64/UInt8-64 only have `__floordiv__`. Fix: add `__truediv__` to `_register_fixed_int()` casting both operands to double, returning float.
 
 ## Examples
@@ -82,7 +82,7 @@
 - formatting/linting like in genweb
 - `Span(list([1,2,3]))` not supported
 - existing C++ interoperability: when we want to call existing C++ we need to declare types/functions in TPy files, but without generation, only annotating how to use them in code
-- implicitely define class members by assigning in constructor (in @noalloc mode should warn about deducing int)
+- auto-declare fields from `__init__`: extend to `self.f = expr` and `self.f = Constructor()` (Phase 1 param-only is done, see `docs/CONSTRUCTOR_DESIGN.md`)
 - `__int__` equivalent for Int32 etc types (e.g. `__int32__` etc or prefixed: `__tpy_int32__`)
 - hoisted variable slots: keep them at the lowest scope that satisfies lifetime, instead of always hoisting to function scope
 - runtime `using` declarations in global namespace (`tpy.hpp`): generated code should use `tpy::` prefix instead of relying on `using tpy::BigInt` etc.

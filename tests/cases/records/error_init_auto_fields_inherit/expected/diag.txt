@@ -1,0 +1,1 @@
+main.py:15: error: Record 'Child' has no field 'y'
