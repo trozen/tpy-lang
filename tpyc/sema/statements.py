@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, StrVarInfo, PtrType, ConstPtrType, NoneType, OptionalType, UnionType,
+    ListLiteralInfo, StrVarInfo, PtrType, is_const_ptr, NoneType, OptionalType, UnionType,
     EnumType, unwrap_readonly, is_any_str_type,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
@@ -981,11 +981,11 @@ class StatementAnalyzer:
                 self.ctx.rvalue_vars.add(stmt.name)
         # Track provenance for non-value types and pointer types
         # (pointers are value types but carry address provenance)
-        if stmt.init and (not var_type.is_value_type() or isinstance(var_type, (PtrType, ConstPtrType))):
+        if stmt.init and (not var_type.is_value_type() or isinstance(var_type, PtrType)):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
         # Track non-null pointer provenance for null-check elision
-        if stmt.init and isinstance(var_type, (PtrType, ConstPtrType)):
-            # Unwrap coercion (e.g. Ptr[T] -> ConstPtr[T]) to find the source expression
+        if stmt.init and isinstance(var_type, PtrType):
+            # Unwrap coercion (e.g. Ptr[T] -> ReadOnlyPtr[T]) to find the source expression
             init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             is_non_null = (isinstance(init_inner, TpyCall)
                            and init_inner.call_type is not None
@@ -1099,14 +1099,14 @@ class StatementAnalyzer:
                 if not self.protocols.type_conforms_to_protocol(obj_type, mutable_seq):
                     raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
 
-        # Prevent assignment through ConstPtr (read-only pointer)
+        # Prevent assignment through read-only pointer
         if isinstance(stmt.target, TpyName):
             pass  # TpyName targets are fine
         else:
             if isinstance(stmt.target, TpyFieldAccess):
                 obj_type = self.ctx.get_expr_type(stmt.target.obj)
-                if isinstance(obj_type, ConstPtrType):
-                    raise self.ctx.error("Cannot assign through ConstPtr (read-only pointer)", stmt)
+                if is_const_ptr(obj_type):
+                    raise self.ctx.error("Cannot assign through read-only pointer", stmt)
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
@@ -1131,11 +1131,11 @@ class StatementAnalyzer:
             self.scopes.check_escape(stmt.target.name, stmt.value, stmt)
 
         # Track provenance for non-value-type and pointer-type name targets
-        if isinstance(stmt.target, TpyName) and (not target_type.is_value_type() or isinstance(target_type, (PtrType, ConstPtrType))):
+        if isinstance(stmt.target, TpyName) and (not target_type.is_value_type() or isinstance(target_type, PtrType)):
             self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
         # Track non-null pointer provenance for null-check elision
-        if isinstance(stmt.target, TpyName) and isinstance(target_type, (PtrType, ConstPtrType)):
-            # Unwrap coercion (e.g. Ptr[T] -> ConstPtr[T]) to find the source expression
+        if isinstance(stmt.target, TpyName) and isinstance(target_type, PtrType):
+            # Unwrap coercion (e.g. Ptr[T] -> ReadOnlyPtr[T]) to find the source expression
             val_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
             is_non_null = (isinstance(val_inner, TpyCall)
                            and val_inner.call_type is not None

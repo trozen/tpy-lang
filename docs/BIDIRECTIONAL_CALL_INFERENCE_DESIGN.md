@@ -152,14 +152,14 @@ It is now defined as a standard two-type-param generic function:
 # T = target pointee type, U = source pointee type
 unsafe_cast[T, U]:
     Ptr[U] -> Ptr[T]        # reinterpret_cast<T*>(p)
-    ConstPtr[U] -> ConstPtr[T]  # reinterpret_cast<const T*>(p)
+    ReadOnlyPtr[U] -> ReadOnlyPtr[T]  # reinterpret_cast<const T*>(p)
 ```
 
 Usage patterns:
 - `unsafe_cast[UInt32](p)` -- T=UInt32 explicit, U inferred from arg
 - `q: Ptr[UInt32] = unsafe_cast(p)` -- U from arg, T from context
-- ConstPtr arg with Ptr context correctly fails (ConstPtr overload returns
-  ConstPtr, which doesn't match Ptr target)
+- ReadOnlyPtr arg with Ptr context correctly fails (ReadOnlyPtr overload returns
+  ReadOnlyPtr, which doesn't match Ptr target)
 
 ---
 

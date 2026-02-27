@@ -24,7 +24,7 @@ void test_store_and_load() {
 void test_constptr_load() {
     // 13:     x: Int32 = Int32(42)
     int32_t x = 42;
-    // 14:     cp: ConstPtr[Int32] = ConstPtr(x)
+    // 14:     cp: ReadOnlyPtr[Int32] = ReadOnlyPtr(x)
     const int32_t* cp = &x;
     // 15:     val: Int32 = unsafe_load(cp, UInt32(0))
     int32_t val = cp[0];

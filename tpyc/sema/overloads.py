@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, StrType, StringType, StrViewType,
-    NamedType, PtrType, ConstPtrType,
+    NamedType, PtrType,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -113,10 +113,10 @@ def type_matches_with_coercion(
             if isinstance(pointee, NamedType) and pointee.is_user_record:
                 if subclass_checker(arg_inner, pointee):
                     return True
-        if isinstance(arg_inner, (PtrType, ConstPtrType)) and isinstance(arg_inner.pointee, NamedType):
-            if isinstance(param_type, (PtrType, ConstPtrType)) and isinstance(param_type.pointee, NamedType):
-                # ConstPtr cannot coerce to mutable Ptr (would drop const)
-                if not (isinstance(arg_inner, ConstPtrType) and isinstance(param_type, PtrType)):
+        if isinstance(arg_inner, PtrType) and isinstance(arg_inner.pointee, NamedType):
+            if isinstance(param_type, PtrType) and isinstance(param_type.pointee, NamedType):
+                # ReadOnlyPtr cannot coerce to mutable Ptr (would drop const)
+                if not (arg_inner.is_const and not param_type.is_const):
                     if subclass_checker(arg_inner.pointee, param_type.pointee):
                         return True
     return False

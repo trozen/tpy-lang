@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 
-// 13: def read_point(p: ConstPtr[Point]) -> Int32:
+// 13: def read_point(p: ReadOnlyPtr[Point]) -> Int32:
 int32_t read_point(const Point* p) {
     // 15:     return p.x + p.y
     return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
@@ -34,7 +34,7 @@ void test_ptr_to_const_ptr() {
     // 34:     print(pt.x)
     std::cout << pt.x << "\n";
     // 36:     # Convert mutable pointer to const pointer (should be allowed)
-    // 37:     cp: ConstPtr[Point] = mp
+    // 37:     cp: ReadOnlyPtr[Point] = mp
     const Point* cp = mp;
     // 39:     # Read through const pointer
     // 40:     total: Int32 = read_point(cp)
@@ -49,7 +49,7 @@ void test_const_ptr_preserves_value() {
     Point pt = Point(1, 2);
     // 46:     mp: Ptr[Point] = pt
     Point* mp = &pt;
-    // 47:     cp: ConstPtr[Point] = mp
+    // 47:     cp: ReadOnlyPtr[Point] = mp
     const Point* cp = mp;
     // 49:     print(cp.x)
     std::cout << tpy::deref_check(cp).x << "\n";

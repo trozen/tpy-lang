@@ -32,13 +32,13 @@ void main() {
     std::cout << p->y << "\n";
     // 26:     print(p.sum())
     std::cout << p->sum() << "\n";
-    // 27:     # Local ConstPtr from lvalue: provably non-null, skip null check
-    // 28:     cp: ConstPtr[Point] = ConstPtr(pt)
+    // 27:     # Local ReadOnlyPtr from lvalue: provably non-null, skip null check
+    // 28:     cp: ReadOnlyPtr[Point] = ReadOnlyPtr(pt)
     const Point* cp = &pt;
     // 29:     print(cp.x)
     std::cout << cp->x << "\n";
-    // 30:     # Coercion: Ptr[T] -> ConstPtr[T] preserves non-null provenance
-    // 31:     cp2: ConstPtr[Point] = p
+    // 30:     # Coercion: Ptr[T] -> ReadOnlyPtr[T] preserves non-null provenance
+    // 31:     cp2: ReadOnlyPtr[Point] = p
     const Point* cp2 = p;
     // 32:     print(cp2.y)
     std::cout << cp2->y << "\n";

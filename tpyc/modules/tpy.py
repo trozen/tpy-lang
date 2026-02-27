@@ -9,7 +9,7 @@ from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, BIGINT, FLOAT, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
-    ArrayType, SpanType, ListType, TypeParamRef, PtrType, ConstPtrType, NamedType, OwnType, OptionalType,
+    ArrayType, SpanType, ListType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType,
 )
 
 # Shorthand for type parameter T
@@ -157,10 +157,10 @@ def init_module() -> BuiltinModule:
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
                 })
 
-    # ConstPtr[T]: Read-only pointer
-    module.type("ConstPtr", cpp_type="const {T}*", type_params=["T"],
+    # ReadOnlyPtr[T]: Read-only pointer
+    module.type("ReadOnlyPtr", cpp_type="const {T}*", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: ConstPtrType(t),
+                type_factory=lambda t: PtrType(t, is_const=True),
                 extends=["Deref[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
@@ -265,7 +265,7 @@ def init_module() -> BuiltinModule:
 
     # Deref[T] protocol: types that can be dereferenced to yield T
     # Structural protocol -- any type with __deref__() -> T conforms automatically.
-    # Ptr[T] and ConstPtr[T] explicitly extend this for clarity.
+    # Ptr[T] and ReadOnlyPtr[T] explicitly extend this for clarity.
     module.protocol("Deref",
         type_params=["T"],
         methods={

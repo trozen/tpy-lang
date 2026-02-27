@@ -25,7 +25,7 @@ TPY_TYPES = {
     "UInt8", "UInt16", "UInt32", "UInt64",  # Unsigned fixed-width integers
     "Char",  # Character type
     "Span", "Array", "StaticList",  # Container types
-    "Ptr", "ConstPtr", "Own",  # Pointer types
+    "Ptr", "ReadOnlyPtr", "Own",  # Pointer types
 }
 
 # Python builtins -- always available without import

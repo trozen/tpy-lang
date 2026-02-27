@@ -498,7 +498,7 @@ Key features:
 
 ### Pointers/References
 - **Working**: `Ptr[T]` -> `T*`
-- **Working**: `ConstPtr[T]` -> `const T*`
+- **Working**: `ReadOnlyPtr[T]` -> `const T*` (also available as `Ptr[readonly[T]]`)
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
@@ -512,10 +512,10 @@ Implicit conversions between records and pointers with safety checks:
 | From | To | Constraints | Generated C++ |
 |------|-----|-------------|---------------|
 | `T` (record) | `Ptr[T]` | Mutable lvalue, not in return | `&expr` |
-| `T` (record) | `ConstPtr[T]` | Lvalue, not in return | `&expr` |
+| `T` (record) | `ReadOnlyPtr[T]` | Lvalue, not in return | `&expr` |
 | `Ptr[T]` | `T` | Null-checked at runtime | `tpy::deref_check(expr)` |
 | `Deref[T]` type | `T` | Via `__deref__()` | `expr.__deref__()` |
-| `Ptr[T]` | `ConstPtr[T]` | - | (implicit) |
+| `Ptr[T]` | `ReadOnlyPtr[T]` | - | (implicit) |
 
 **Safety rules:**
 - Taking address requires an lvalue (variable, field, or subscript) - temporaries rejected
@@ -525,10 +525,10 @@ Implicit conversions between records and pointers with safety checks:
 
 #### Pointer Constructors (Working)
 
-Explicit constructors for `Ptr[T]` and `ConstPtr[T]`, as an alternative to implicit coercions:
+Explicit constructors for `Ptr[T]` and `ReadOnlyPtr[T]`, as an alternative to implicit coercions:
 
 ```python
-from tpy import Ptr, ConstPtr, Int32
+from tpy import Ptr, ReadOnlyPtr, Int32
 
 def test() -> None:
     # Null pointers
@@ -541,12 +541,21 @@ def test() -> None:
 
     # Address-of with type inference
     py: Ptr[Int32] = Ptr(x)           # → &x (infers Ptr[Int32])
-    cp: ConstPtr[Int32] = ConstPtr(x) # → &x (infers ConstPtr[Int32])
+    cp: ReadOnlyPtr[Int32] = ReadOnlyPtr(x) # → &x (infers ReadOnlyPtr[Int32])
+```
+
+**`Ptr[readonly[T]]` normalization:** `Ptr[readonly[T]]` is equivalent to `ReadOnlyPtr[T]` and normalizes to it at parse time. Both syntaxes produce the same type:
+
+```python
+from tpy import Ptr, readonly, Int32
+
+x: Int32 = Int32(42)
+p: Ptr[readonly[Int32]] = Ptr(x)   # same as ReadOnlyPtr[Int32]
 ```
 
 **Safety rules:**
 - Argument must be an lvalue (`Ptr(Point(1,2))` rejected — temporary)
-- `Ptr` requires a mutable lvalue; `ConstPtr` accepts any lvalue
+- `Ptr` requires a mutable lvalue; `ReadOnlyPtr` accepts any lvalue
 - `Ptr[None](arg)` rejected — void pointer with argument makes no sense
 - Dangling detection works through pointer constructors and intermediate variables:
 
@@ -568,7 +577,7 @@ def ok(x: Int32) -> Ptr[Int32]:
 
 Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and support **auto-deref**: the compiler automatically resolves field access and method calls through `__deref__` chains.
 
-`Ptr[T]` and `ConstPtr[T]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
+`Ptr[T]` and `ReadOnlyPtr[T]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
 
 ```python
 from tpy import Int32, copy
@@ -601,11 +610,11 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 
 **Pointer None semantics:**
 
-- `None` can be assigned to `Ptr[T]` and `ConstPtr[T]` (represents `nullptr`)
-- `p is None` / `p is not None` work for `Ptr[T]` and `ConstPtr[T]`
+- `None` can be assigned to `Ptr[T]` and `ReadOnlyPtr[T]` (represents `nullptr`)
+- `p is None` / `p is not None` work for `Ptr[T]` and `ReadOnlyPtr[T]`
 - `p == None` / `p != None` are rejected; use identity checks (`is` / `is not`)
 
-**Null-safety:** Auto-deref through `Ptr[T]`/`ConstPtr[T]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance (e.g., `Ptr(x)` constructed from a local variable) skip the null check and use direct `->` access.
+**Null-safety:** Auto-deref through `Ptr[T]`/`ReadOnlyPtr[T]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance (e.g., `Ptr(x)` constructed from a local variable) skip the null check and use direct `->` access.
 
 **C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
 
@@ -614,7 +623,7 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 Low-level pointer arithmetic for C interop and performance-critical code. These bypass bounds checking. The API uses free functions from `tpy.unsafe` (not method calls on pointers):
 
 ```python
-from tpy import Ptr, ConstPtr, Int32, UInt32, Array
+from tpy import Ptr, ReadOnlyPtr, Int32, UInt32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 # Get raw pointer to array data
@@ -625,8 +634,8 @@ p: Ptr[Int32] = unsafe_ptr(arr)
 val: Int32 = unsafe_load(p, UInt32(2))       # -> 30
 unsafe_store(p, UInt32(0), Int32(99))        # arr[0] = 99
 
-# ConstPtr has unsafe_load only (no store)
-cp: ConstPtr[Char] = unsafe_ptr("hello")
+# ReadOnlyPtr has unsafe_load only (no store)
+cp: ReadOnlyPtr[Char] = unsafe_ptr("hello")
 ```
 
 Generated C++: `unsafe_ptr(x)` -> `x.data()`, `unsafe_load(p, i)` -> `p[i]`, `unsafe_store(p, i, v)` -> `p[i] = v`.
@@ -1021,7 +1030,7 @@ Rules:
 The `tpy.unsafe` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.
 
 ```python
-from tpy import Ptr, ConstPtr, Int32, UInt32, Array
+from tpy import Ptr, ReadOnlyPtr, Int32, UInt32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 ```
 
@@ -1040,7 +1049,7 @@ lst: list[Int32] = [Int32(10), Int32(20)]
 q: Ptr[Int32] = unsafe_ptr(lst)          # list[T] -> Ptr[T]
 
 s: str = "hello"
-cp: ConstPtr[Char] = unsafe_ptr(s)       # str -> ConstPtr[Char]
+cp: ReadOnlyPtr[Char] = unsafe_ptr(s)       # str -> ReadOnlyPtr[Char]
 ```
 
 The element type `T` is inferred from the argument. All three variants generate `.data()` in C++.
@@ -1049,7 +1058,7 @@ The element type `T` is inferred from the argument. All three variants generate 
 
 ```python
 val: Int32 = unsafe_load(p, UInt32(0))   # Ptr[T], UInt32 -> T
-val2: Int32 = unsafe_load(cp, UInt32(1)) # ConstPtr[T], UInt32 -> T
+val2: Int32 = unsafe_load(cp, UInt32(1)) # ReadOnlyPtr[T], UInt32 -> T
 ```
 
 Generates `p[offset]` in C++.
@@ -1060,7 +1069,7 @@ Generates `p[offset]` in C++.
 unsafe_store(p, UInt32(0), Int32(99))    # Ptr[T], UInt32, Own[T] -> None
 ```
 
-Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `ConstPtr[T]`).
+Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `ReadOnlyPtr[T]`).
 
 **`unsafe_copy_n`** -- copy N elements from a source pointer to a destination pointer:
 
@@ -1069,10 +1078,10 @@ from tpy.unsafe import unsafe_copy_n
 
 src: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
 dst: Array[Int32, 3] = [Int32(0), Int32(0), Int32(0)]
-unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), UInt32(3))  # Ptr[T], Ptr[T]|ConstPtr[T], UInt32 -> None
+unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), UInt32(3))  # Ptr[T], Ptr[T]|ReadOnlyPtr[T], UInt32 -> None
 ```
 
-Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[T]` or `ConstPtr[T]`.
+Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[T]` or `ReadOnlyPtr[T]`.
 
 **`unsafe_ptr_add`** -- advance a pointer by a signed element offset:
 
@@ -1083,7 +1092,7 @@ p: Ptr[Int32] = unsafe_ptr(arr)
 q: Ptr[Int32] = unsafe_ptr_add(p, Int64(3))   # Ptr[T], Int64 -> Ptr[T]
 ```
 
-Generates `(p + 3)` in C++. The offset is in elements (not bytes). Negative offsets move the pointer backward. Works with both `Ptr[T]` and `ConstPtr[T]`.
+Generates `(p + 3)` in C++. The offset is in elements (not bytes). Negative offsets move the pointer backward. Works with both `Ptr[T]` and `ReadOnlyPtr[T]`.
 
 **`unsafe_ptr_diff`** -- compute the element distance between two pointers:
 
@@ -1093,15 +1102,15 @@ from tpy.unsafe import unsafe_ptr_diff
 d: Int64 = unsafe_ptr_diff(p2, p1)   # Ptr[T], Ptr[T] -> Int64
 ```
 
-Generates `static_cast<int64_t>(p2 - p1)` in C++. Returns the number of elements between the two pointers (negative if `p2` precedes `p1`). Both pointers must point into the same allocation. Works with both `Ptr[T]` and `ConstPtr[T]`.
+Generates `static_cast<int64_t>(p2 - p1)` in C++. Returns the number of elements between the two pointers (negative if `p2` precedes `p1`). Both pointers must point into the same allocation. Works with both `Ptr[T]` and `ReadOnlyPtr[T]`.
 
 **`unsafe_const_cast`** -- remove const from a pointer:
 
 ```python
 from tpy.unsafe import unsafe_const_cast
 
-cp: ConstPtr[Int32] = ...
-p: Ptr[Int32] = unsafe_const_cast(cp)    # ConstPtr[T] -> Ptr[T]
+cp: ReadOnlyPtr[Int32] = ...
+p: Ptr[Int32] = unsafe_const_cast(cp)    # ReadOnlyPtr[T] -> Ptr[T]
 ```
 
 Generates `const_cast<T*>(p)` in C++.
@@ -1117,7 +1126,7 @@ q: Ptr[UInt32] = unsafe_cast(p)          # target inferred from annotation
 print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
 ```
 
-Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[UInt32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[UInt32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`ConstPtr`) is preserved: `Ptr[U]` returns `Ptr[T]`, `ConstPtr[U]` returns `ConstPtr[T]`. Casting `ConstPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
+Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[UInt32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[UInt32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`ReadOnlyPtr`) is preserved: `Ptr[U]` returns `Ptr[T]`, `ReadOnlyPtr[U]` returns `ReadOnlyPtr[T]`. Casting `ReadOnlyPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
 
 #### Uninitialized Storage -- `tpy.mem` (Working)
 
@@ -2104,6 +2113,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Readonly methods returning references get both const and non-const C++ overloads; value returns get const only
   - Protocol method readonly: `@readonly` on protocol methods enforces that implementations are also readonly; conformance fails at sema time if a record's method is not readonly when the protocol requires it
   - Protocol concept generation: user-defined protocols where all methods are readonly generate `const T&` in C++ concepts
+  - Deep readonly for pointers: accessing a `Ptr[T]` field through a readonly receiver yields `ReadOnlyPtr[T]`, preventing mutation through pointer fields
   - Limitation: container-mediated aliases not tracked (e.g., `[param]` into list then iterate)
 - **Working**: `readonly[T]` type modifier (per-parameter constness)
   - `readonly[T]` on a parameter means "immutable reference to T", maps to `const T&` in C++
@@ -2378,8 +2388,8 @@ Pair<std::string, int32_t> pair{"hello", 100};
 - Contextual inference from assignment annotation, return type, reassignment, or nested call context fills unresolved params
 - If inference fails, explicit type arguments are required
 - When mixing int literals with `Int32`, inference upgrades to `Int32`: `Same(1, x: Int32)` → `Same[Int32]`
-- Supports inference through wrapper types: `Ptr[T]`, `ConstPtr[T]`, `Own[T]`, `list[T]`
-- `Ptr[T]` arguments match `ConstPtr[T]` parameters (follows coercion rules)
+- Supports inference through wrapper types: `Ptr[T]`, `ReadOnlyPtr[T]`, `Own[T]`, `list[T]`
+- `Ptr[T]` arguments match `ReadOnlyPtr[T]` parameters (follows coercion rules)
 
 **Generic Static Methods**:
 
@@ -2563,16 +2573,16 @@ greet(d)             # param passing (child -> parent)
 **Pointer coercion** also works -- a child can be used where a pointer to parent is expected:
 
 ```python
-from tpy import Ptr, ConstPtr
+from tpy import Ptr, ReadOnlyPtr
 
-def read_animal(p: ConstPtr[Animal]) -> None:
+def read_animal(p: ReadOnlyPtr[Animal]) -> None:
     print(p.name)
 
 d = Dog("Rex", "Lab")
-read_animal(d)                    # Dog -> ConstPtr[Animal]
+read_animal(d)                    # Dog -> ReadOnlyPtr[Animal]
 dp: Ptr[Dog] = Ptr(d)
 ap: Ptr[Animal] = dp             # Ptr[Dog] -> Ptr[Animal]
-cap: ConstPtr[Animal] = dp       # Ptr[Dog] -> ConstPtr[Animal]
+cap: ReadOnlyPtr[Animal] = dp       # Ptr[Dog] -> ReadOnlyPtr[Animal]
 ```
 
 Generic parent upcasting is supported with type argument matching:

@@ -1,5 +1,5 @@
-"""Test type inference with Ptr[T] and ConstPtr[T] parameters."""
-from tpy import Int32, Ptr, ConstPtr
+"""Test type inference with Ptr[T] and ReadOnlyPtr[T] parameters."""
+from tpy import Int32, Ptr, ReadOnlyPtr
 
 
 class PtrHolder[T]:
@@ -9,10 +9,10 @@ class PtrHolder[T]:
         self.ptr = ptr
 
 
-class ConstPtrHolder[T]:
-    ptr: ConstPtr[T]
+class ReadOnlyPtrHolder[T]:
+    ptr: ReadOnlyPtr[T]
 
-    def __init__(self, ptr: ConstPtr[T]) -> None:
+    def __init__(self, ptr: ReadOnlyPtr[T]) -> None:
         self.ptr = ptr
 
 
@@ -27,17 +27,17 @@ pt.y = 20
 
 # Create explicitly-typed pointer variables
 ptr: Ptr[Point] = pt
-cptr: ConstPtr[Point] = pt
+cptr: ReadOnlyPtr[Point] = pt
 
 # Inference from Ptr[Point] -> PtrHolder[Point]
 holder = PtrHolder(ptr)
 holder.ptr.x = 100
 print(pt.x)
 
-# Inference from ConstPtr[Point] -> ConstPtrHolder[Point]
-const_holder = ConstPtrHolder(cptr)
+# Inference from ReadOnlyPtr[Point] -> ReadOnlyPtrHolder[Point]
+const_holder = ReadOnlyPtrHolder(cptr)
 print(const_holder.ptr.y)
 
-# Inference from Ptr[Point] -> ConstPtrHolder[Point] (Ptr coerces to ConstPtr)
-const_holder2 = ConstPtrHolder(ptr)
+# Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to ReadOnlyPtr)
+const_holder2 = ReadOnlyPtrHolder(ptr)
 print(const_holder2.ptr.x)

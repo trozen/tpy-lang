@@ -6,7 +6,7 @@ the C++ pointer arithmetic that the compiler generates.
 """
 
 from __future__ import annotations
-from tpy import Ptr, ConstPtr
+from tpy import Ptr, ReadOnlyPtr
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ class _HeapArrayView:
 def unsafe_ptr(container):
     """Get a raw pointer from a container or string."""
     if isinstance(container, str):
-        return ConstPtr(container)
+        return ReadOnlyPtr(container)
     if isinstance(container, list):
         return Ptr(container)
     if hasattr(container, '_data'):
@@ -127,7 +127,7 @@ def unsafe_copy_n(dest, src, count: int) -> None:
 
 
 def unsafe_const_cast(p):
-    """Remove const from a pointer (ConstPtr[T] -> Ptr[T])."""
+    """Remove const from a pointer (ReadOnlyPtr[T] -> Ptr[T])."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
     return Ptr(obj)
 

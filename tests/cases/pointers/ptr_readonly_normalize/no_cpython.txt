@@ -1,0 +1,1 @@
+Ptr[readonly[T]] normalization not supported in CPython stubs

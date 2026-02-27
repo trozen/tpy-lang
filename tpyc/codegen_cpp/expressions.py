@@ -9,7 +9,7 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, ConstPtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
+    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
@@ -118,7 +118,7 @@ class ExpressionGenerator:
         if obj_type is None:
             return None
         actual_type = unwrap_readonly(obj_type)
-        if isinstance(actual_type, (PtrType, ConstPtrType)):
+        if isinstance(actual_type, PtrType):
             actual_type = actual_type.pointee
         elif isinstance(actual_type, OwnType):
             actual_type = actual_type.wrapped
@@ -867,8 +867,8 @@ class ExpressionGenerator:
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
         if expr.call_type is not None:
-            # Pointer null constructors: Ptr[T]() / ConstPtr[T]() -> typed nullptr
-            if isinstance(expr.call_type, (PtrType, ConstPtrType)) and not expr.args:
+            # Pointer null constructors: Ptr[T]() / ReadOnlyPtr[T]() -> typed nullptr
+            if isinstance(expr.call_type, PtrType) and not expr.args:
                 cpp_type = self.types.type_to_cpp(expr.call_type)
                 return f"static_cast<{cpp_type}>(nullptr)"
             # List repeat already generates the target type via from_range
@@ -1225,7 +1225,7 @@ class ExpressionGenerator:
                 return f"{obj}->{deref_chain[1:]}.{cpp_field}"
             return f"{obj}{deref_chain}.{cpp_field}"
         if obj_type and obj_type.is_pointer():
-            if is_indirect and not isinstance(obj_type, (PtrType, ConstPtrType)):
+            if is_indirect and not isinstance(obj_type, PtrType):
                 # Global pointer wrapper needs deref first: Global<Ptr<T>> -> (*global)->field
                 return f"(*{obj})->{cpp_field}"
             if expr.ptr_non_null:

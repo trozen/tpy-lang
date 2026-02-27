@@ -8,7 +8,7 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
-    NamedType, PtrType, ConstPtrType, CharType, StrType, StringType, StrViewType,
+    NamedType, PtrType, is_const_ptr, CharType, StrType, StringType, StrViewType,
     SpanType, PendingListType, TypeParamRef, TypeParamKind,
 )
 
@@ -238,9 +238,9 @@ COERCIONS: list[Coercion] = [
     Coercion(
         name="record_to_const_ptr",
         from_type=NamedType,
-        to_type=ConstPtrType,
+        to_type=PtrType,
         type_match=lambda rec, ptr: (
-            rec.is_user_record and isinstance(ptr, ConstPtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
+            rec.is_user_record and is_const_ptr(ptr) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         forbid_return_local=True,
@@ -249,8 +249,8 @@ COERCIONS: list[Coercion] = [
     Coercion(
         name="ptr_to_const_ptr",
         from_type=PtrType,
-        to_type=ConstPtrType,
-        type_match=lambda p1, p2: isinstance(p1, PtrType) and isinstance(p2, ConstPtrType) and p1.pointee == p2.pointee,
+        to_type=PtrType,
+        type_match=lambda p1, p2: isinstance(p1, PtrType) and not p1.is_const and is_const_ptr(p2) and p1.pointee == p2.pointee,
     ),
     # Span coercions: any NativeContiguous[T] type can coerce to Span[T]
     # Arg context allows temporaries
@@ -286,7 +286,7 @@ def resolve_coercion(actual: TpyType, expected: TpyType, ctx: CoercionContext) -
 
 
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: str) -> str:
-    if isinstance(actual, (PtrType, ConstPtrType)):
+    if isinstance(actual, PtrType):
         return f"tpy::deref_check({e})"
     return f"{e}.__deref__()"
 
@@ -314,7 +314,7 @@ UPCAST_TO_PTR = Coercion(
 UPCAST_TO_CONST_PTR = Coercion(
     name="upcast_to_const_ptr",
     from_type=NamedType,
-    to_type=ConstPtrType,
+    to_type=PtrType,
     requires_lvalue=True,
     forbid_return_local=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",

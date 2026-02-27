@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, PtrType, ConstPtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
+    TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
     BigIntType, IntLiteralType, TypeParamRef, is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
@@ -510,13 +510,13 @@ class CodeGenContext:
         """Return expression yielding raw pointer value for pointer names.
 
         Most pointer-globals are wrapped and need one dereference (`*name`) to get
-        `T*`, but globals whose declared type is already pointer-like (Ptr/ConstPtr
+        `T*`, but globals whose declared type is already pointer-like (Ptr/ReadOnlyPtr
         or Optional non-value) are already `T*` and must be returned as-is.
         """
         if not self._is_pointer_global(expr):
             return rendered
         expr_type = self.get_expr_type(expr)
-        if isinstance(expr_type, (PtrType, ConstPtrType)):
+        if isinstance(expr_type, PtrType):
             return rendered
         if isinstance(expr_type, OptionalType) and expr_type.uses_pointer_repr():
             return rendered
@@ -595,7 +595,7 @@ class CodeGenContext:
         # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
         if isinstance(expr, TpyCoerce):
             # Pointer dereference is an lvalue, not a temporary
-            if isinstance(expr.actual_type, (PtrType, ConstPtrType)):
+            if isinstance(expr.actual_type, PtrType):
                 return False
             return True
         # Binary and unary ops always produce temporaries
@@ -656,7 +656,7 @@ class CodeGenContext:
             return self.contains_protocol_type(typ.wrapped)
         elif isinstance(typ, ReadonlyType):
             return self.contains_protocol_type(typ.wrapped)
-        elif isinstance(typ, (PtrType, ConstPtrType)):
+        elif isinstance(typ, PtrType):
             return self.contains_protocol_type(typ.pointee)
         elif (elem_type := typ.get_element_type()) is not None:
             return self.contains_protocol_type(elem_type)

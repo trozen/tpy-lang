@@ -1,1 +1,1 @@
-main.py:5: error: unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)
+main.py:5: error: unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)

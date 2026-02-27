@@ -846,7 +846,7 @@ sentinel instead:
 
 | Field type | Post-move null state | Usable as sentinel? |
 |---|---|---|
-| `Ptr[T]`, `ConstPtr[T]` | Need explicit `other.p = nullptr` | Yes, with codegen |
+| `Ptr[T]`, `ReadOnlyPtr[T]` | Need explicit `other.p = nullptr` | Yes, with codegen |
 | `T \| None` (maps to `T*`) | Need explicit null | Yes, with codegen |
 | `UninitHeapStorage[T]` | Nulls on move (heap pointer) | Yes, naturally |
 | `std::unique_ptr<T>` | Guaranteed null after move | Yes, naturally |

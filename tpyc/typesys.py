@@ -4,7 +4,7 @@ TurboPython Type System
 Defines the core types available in TurboPython:
 - Int32: 32-bit integer (maps to int32_t)
 - Ptr[T]: Mutable pointer (maps to T*)
-- ConstPtr[T]: Read-only pointer (maps to const T*)
+- ReadOnlyPtr[T]: Read-only pointer (maps to const T*)
 - Array[T, N], Span[T], list[T]: Container types
 - User-defined records (classes)
 - NamedType: User-defined records/protocols and module-defined generics
@@ -712,26 +712,30 @@ class SuperType(TpyType):
 
 @dataclass(frozen=True)
 class PtrType(TpyType):
-    """Mutable pointer type: Ptr[T] -> T*"""
+    """Pointer type: Ptr[T] -> T*, ReadOnlyPtr[T] -> const T*
+
+    When is_const=True, represents a read-only pointer (ReadOnlyPtr[T]).
+    """
     pointee: TpyType
+    is_const: bool = False
 
     def to_cpp(self) -> str:
+        if self.is_const:
+            return f"const {self.pointee.to_cpp()}*"
         return f"{self.pointee.to_cpp()}*"
 
     def qualified_name(self) -> Optional[str]:
-        return "tpy.Ptr"
+        return "tpy.ReadOnlyPtr" if self.is_const else "tpy.Ptr"
 
     def is_pointer(self) -> bool:
         return True
 
     def __str__(self) -> str:
+        if self.is_const:
+            return f"ReadOnlyPtr[{self.pointee}]"
         return f"Ptr[{self.pointee}]"
 
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.Ptr"
-
     def is_value_type(self) -> bool:
-        # Pointers are small values, passed/returned by value
         return True
 
     def to_cpp_return(self) -> str:
@@ -741,41 +745,24 @@ class PtrType(TpyType):
         return (self.pointee,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return PtrType(types[0])
+        return PtrType(types[0], is_const=self.is_const)
+
+    def as_const(self) -> 'PtrType':
+        """Return a const version of this pointer."""
+        if self.is_const:
+            return self
+        return PtrType(self.pointee, is_const=True)
+
+    def as_mutable(self) -> 'PtrType':
+        """Return a mutable version of this pointer."""
+        if not self.is_const:
+            return self
+        return PtrType(self.pointee, is_const=False)
 
 
-@dataclass(frozen=True)
-class ConstPtrType(TpyType):
-    """Read-only pointer type: ConstPtr[T] -> const T*"""
-    pointee: TpyType
-
-    def to_cpp(self) -> str:
-        return f"const {self.pointee.to_cpp()}*"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.ConstPtr"
-
-    def is_pointer(self) -> bool:
-        return True
-
-    def __str__(self) -> str:
-        return f"ConstPtr[{self.pointee}]"
-
-    def qualified_name(self) -> Optional[str]:
-        return "tpy.ConstPtr"
-
-    def is_value_type(self) -> bool:
-        # Pointers are small values, passed/returned by value
-        return True
-
-    def to_cpp_return(self) -> str:
-        return self.to_cpp()
-
-    def inner_types(self) -> tuple['TpyType', ...]:
-        return (self.pointee,)
-
-    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return ConstPtrType(types[0])
+def is_const_ptr(typ: 'TpyType') -> bool:
+    """Check if a type is a read-only pointer (ReadOnlyPtr[T])."""
+    return isinstance(typ, PtrType) and typ.is_const
 
 
 @dataclass(frozen=True)

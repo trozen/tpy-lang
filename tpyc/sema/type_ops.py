@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType,
+    TpyType, TypeParamRef, NamedType, PtrType, is_const_ptr, OwnType, ReadonlyType,
     ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType, UnionType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
@@ -53,10 +53,10 @@ class TypeOperations:
                     return typ.with_inner_types(new_inner)
             elif typ.is_protocol != resolved_is_protocol:
                 return typ.with_protocol_flag(resolved_is_protocol)
-        elif isinstance(typ, (PtrType, ConstPtrType)):
+        elif isinstance(typ, PtrType):
             resolved_pointee = self.resolve_type(typ.pointee)
             if resolved_pointee != typ.pointee:
-                return type(typ)(resolved_pointee)
+                return PtrType(resolved_pointee, is_const=typ.is_const)
         elif isinstance(typ, OwnType):
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped != typ.wrapped:
@@ -143,7 +143,7 @@ class TypeOperations:
                     )
         elif isinstance(typ, ReadonlyType):
             self.validate_type(typ.wrapped, allow_type_param_ref, loc)
-        elif isinstance(typ, (PtrType, ConstPtrType)):
+        elif isinstance(typ, PtrType):
             self.validate_type(typ.pointee, allow_type_param_ref, loc)
             if is_protocol_type(typ.pointee):
                 raise SemanticError(
@@ -289,7 +289,7 @@ class TypeOperations:
         """Check if a type is or contains a TypeParamRef."""
         if isinstance(typ, TypeParamRef):
             return True
-        if isinstance(typ, (PtrType, ConstPtrType)):
+        if isinstance(typ, PtrType):
             return self.is_type_param_ref(typ.pointee)
         if isinstance(typ, OwnType):
             return self.is_type_param_ref(typ.wrapped)
@@ -320,7 +320,7 @@ class TypeOperations:
             for type_arg in typ.type_args:
                 if isinstance(type_arg, TpyType) and self.is_forwarded_type_param(type_arg, type_params):
                     return True
-        if isinstance(typ, (PtrType, ConstPtrType)):
+        if isinstance(typ, PtrType):
             return self.is_forwarded_type_param(typ.pointee, type_params)
         if isinstance(typ, OwnType):
             return self.is_forwarded_type_param(typ.wrapped, type_params)
@@ -398,16 +398,13 @@ class TypeOperations:
         if isinstance(param_type, NamedType) and param_type.is_record and param_type.type_args:
             return self._match_record_with_inference(param_type, arg_type, inferred)
 
-        # Pointer types (Ptr[T], ConstPtr[T])
+        # Pointer types (Ptr[T], ReadOnlyPtr[T])
         if isinstance(param_type, PtrType):
             if isinstance(arg_type, PtrType):
-                return self.match_type_with_inference(
-                    param_type.pointee, arg_type.pointee, inferred
-                )
-            return False
-
-        if isinstance(param_type, ConstPtrType):
-            if isinstance(arg_type, (ConstPtrType, PtrType)):
+                # Mutable Ptr param only matches mutable Ptr arg;
+                # ReadOnlyPtr param matches both ReadOnlyPtr and Ptr args
+                if not param_type.is_const and arg_type.is_const:
+                    return False
                 return self.match_type_with_inference(
                     param_type.pointee, arg_type.pointee, inferred
                 )
@@ -719,10 +716,10 @@ class TypeOperations:
     def get_deref_coercion_target(self, typ: TpyType) -> TpyType | None:
         """Get the deref target for coercion purposes.
 
-        Like get_deref_target_type() but excludes ConstPtr -- record params
+        Like get_deref_target_type() but excludes ReadOnlyPtr -- record params
         are T& (mutable ref) but deref_check(const T*) returns const T&.
         """
-        if isinstance(typ, ConstPtrType):
+        if is_const_ptr(typ):
             return None
         return self.get_deref_target_type(typ)
 

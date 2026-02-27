@@ -1,1 +1,1 @@
-Uses Ptr/ConstPtr runtime semantics not available in CPython harness.
+Uses Ptr/ReadOnlyPtr runtime semantics not available in CPython harness.

@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, ConstPtrType, BIGINT, clear_native_cpp_names, register_native_cpp_name, register_union_alias
+from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, BIGINT, clear_native_cpp_names, register_native_cpp_name, register_union_alias
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name
@@ -755,7 +755,7 @@ class CodeGenerator:
                 if stmt.linkage == VarLinkage.NATIVE_C_ARRAY:
                     # C array global: Ptr[T] -> extern "C" T name[];
                     # The incomplete array type decays to T* when used.
-                    if isinstance(var_type, (PtrType, ConstPtrType)):
+                    if isinstance(var_type, PtrType):
                         elem_cpp = var_type.pointee.to_cpp()
                     else:
                         elem_cpp = var_type.to_cpp()

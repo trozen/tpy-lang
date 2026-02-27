@@ -1,6 +1,6 @@
-# Pointer coercion: Dog -> Ptr[Animal], Ptr[Dog] -> Ptr[Animal], ConstPtr variants,
-# multi-level (Puppy -> ConstPtr[Animal])
-from tpy import Ptr, ConstPtr
+# Pointer coercion: Dog -> Ptr[Animal], Ptr[Dog] -> Ptr[Animal], ReadOnlyPtr variants,
+# multi-level (Puppy -> ReadOnlyPtr[Animal])
+from tpy import Ptr, ReadOnlyPtr
 
 class Animal:
     name: str
@@ -19,13 +19,13 @@ class Puppy(Dog):
         super().__init__(name, breed)
         self.age_weeks = age_weeks
 
-def read_animal(p: ConstPtr[Animal]) -> None:
+def read_animal(p: ReadOnlyPtr[Animal]) -> None:
     print(p.name)
 
 def main() -> None:
     d: Dog = Dog("Rex", "Lab")
 
-    # Dog -> ConstPtr[Animal] (param passing)
+    # Dog -> ReadOnlyPtr[Animal] (param passing)
     read_animal(d)
 
     # Ptr[Dog] -> Ptr[Animal]
@@ -33,16 +33,16 @@ def main() -> None:
     ap: Ptr[Animal] = dp
     print(ap.name)
 
-    # Ptr[Dog] -> ConstPtr[Animal]
-    cap: ConstPtr[Animal] = dp
+    # Ptr[Dog] -> ReadOnlyPtr[Animal]
+    cap: ReadOnlyPtr[Animal] = dp
     print(cap.name)
 
-    # ConstPtr[Dog] -> ConstPtr[Animal]
-    cdp: ConstPtr[Dog] = ConstPtr(d)
-    cap2: ConstPtr[Animal] = cdp
+    # ReadOnlyPtr[Dog] -> ReadOnlyPtr[Animal]
+    cdp: ReadOnlyPtr[Dog] = ReadOnlyPtr(d)
+    cap2: ReadOnlyPtr[Animal] = cdp
     print(cap2.name)
 
-    # Multi-level: Puppy -> ConstPtr[Animal] (grandchild -> grandparent)
+    # Multi-level: Puppy -> ReadOnlyPtr[Animal] (grandchild -> grandparent)
     p: Puppy = Puppy("Tiny", "Corgi", 8)
     read_animal(p)
 

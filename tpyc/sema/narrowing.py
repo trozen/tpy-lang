@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, OptionalType, NoneType, VoidType, PtrType, ConstPtrType, OwnType, NamedType,
+    TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NamedType,
     TypeParamRef,
     ReadonlyType, UnionType, unwrap_readonly, make_union, union_none_narrow,
     is_protocol_type,
@@ -97,7 +97,7 @@ class NarrowingTracker:
             if obj_type is None:
                 return None
             actual_type = unwrap_readonly(obj_type)
-            if isinstance(actual_type, (PtrType, ConstPtrType)):
+            if isinstance(actual_type, PtrType):
                 actual_type = actual_type.pointee
             elif isinstance(actual_type, OwnType):
                 actual_type = actual_type.wrapped

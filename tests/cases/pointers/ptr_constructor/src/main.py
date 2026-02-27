@@ -1,4 +1,4 @@
-from tpy import Ptr, ConstPtr, Int32
+from tpy import Ptr, ReadOnlyPtr, Int32
 
 class Point:
     x: Int32
@@ -11,15 +11,15 @@ def read_via_ptr(p: Ptr[Point]) -> None:
     print(p.x)
     print(p.y)
 
-def read_via_constptr(p: ConstPtr[Point]) -> None:
+def read_via_constptr(p: ReadOnlyPtr[Point]) -> None:
     print(p.x)
     print(p.y)
 
 def test_null_constructors() -> None:
     p1: Ptr[None] = Ptr[None]()
-    p2: ConstPtr[None] = ConstPtr[None]()
+    p2: ReadOnlyPtr[None] = ReadOnlyPtr[None]()
     p3: Ptr[Int32] = Ptr[Int32]()
-    p4: ConstPtr[Int32] = ConstPtr[Int32]()
+    p4: ReadOnlyPtr[Int32] = ReadOnlyPtr[Int32]()
     print("null ok")
 
 def test_ptr_explicit() -> None:
@@ -34,12 +34,12 @@ def test_ptr_inferred() -> None:
 
 def test_constptr_explicit() -> None:
     pt: Point = Point(50, 60)
-    cp: ConstPtr[Point] = ConstPtr[Point](pt)
+    cp: ReadOnlyPtr[Point] = ReadOnlyPtr[Point](pt)
     read_via_constptr(cp)
 
 def test_constptr_inferred() -> None:
     pt: Point = Point(70, 80)
-    cp: ConstPtr[Point] = ConstPtr(pt)
+    cp: ReadOnlyPtr[Point] = ReadOnlyPtr(pt)
     read_via_constptr(cp)
 
 def test_ptr_write() -> None:

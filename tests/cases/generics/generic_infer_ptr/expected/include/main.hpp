@@ -6,15 +6,15 @@
 namespace tpy_user::main {
 
 template<typename T> struct PtrHolder;
-template<typename T> struct ConstPtrHolder;
+template<typename T> struct ReadOnlyPtrHolder;
 struct Point;
 
 extern Point* pt;
 extern Point* ptr;
 extern const Point* cptr;
 extern PtrHolder<Point>* holder;
-extern ConstPtrHolder<Point>* const_holder;
-extern ConstPtrHolder<Point>* const_holder2;
+extern ReadOnlyPtrHolder<Point>* const_holder;
+extern ReadOnlyPtrHolder<Point>* const_holder2;
 inline constexpr std::string_view __name__ = "__main__";
 
 // 5: class PtrHolder[T]:
@@ -36,20 +36,20 @@ inline std::ostream& operator<<(std::ostream& os, const PtrHolder<T>& obj) {
     return os;
 }
 
-// 12: class ConstPtrHolder[T]:
+// 12: class ReadOnlyPtrHolder[T]:
 template<typename T>
-struct ConstPtrHolder {
-    // 13:     ptr: ConstPtr[T]
+struct ReadOnlyPtrHolder {
+    // 13:     ptr: ReadOnlyPtr[T]
     const T* ptr;
 
-    // 15:     def __init__(self, ptr: ConstPtr[T]) -> None:
-    ConstPtrHolder() = default;
-    explicit ConstPtrHolder(const T* ptr) : ptr(ptr) {}
+    // 15:     def __init__(self, ptr: ReadOnlyPtr[T]) -> None:
+    ReadOnlyPtrHolder() = default;
+    explicit ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
 };
 
 template<typename T>
-inline std::ostream& operator<<(std::ostream& os, const ConstPtrHolder<T>& obj) {
-    os << "ConstPtrHolder("
+inline std::ostream& operator<<(std::ostream& os, const ReadOnlyPtrHolder<T>& obj) {
+    os << "ReadOnlyPtrHolder("
        << "ptr=" << obj.ptr
        << ")";
     return os;

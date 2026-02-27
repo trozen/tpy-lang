@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
-    PtrType, ConstPtrType, ReadonlyType,
+    PtrType, ReadonlyType,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -231,7 +231,7 @@ class MethodAnalyzer:
             if expr.method in LIST_MUTATION_METHODS:
                 self.deduction.mark_list_mutated(expr.obj)
 
-        # Deref chain -- resolves through Ptr, ConstPtr, and any Deref[T] type
+        # Deref chain -- resolves through Ptr, ReadOnlyPtr, and any Deref[T] type
         original_type = obj_type
         current_type = obj_type
         deref_depth = 0
@@ -240,7 +240,7 @@ class MethodAnalyzer:
             if result is not None:
                 expr.deref_depth = deref_depth
                 if (deref_depth > 0
-                        and isinstance(original_type, (PtrType, ConstPtrType))
+                        and isinstance(original_type, PtrType)
                         and isinstance(expr.obj, TpyName)
                         and expr.obj.name in self.ctx.non_null_ptr_vars):
                     expr.ptr_non_null = True

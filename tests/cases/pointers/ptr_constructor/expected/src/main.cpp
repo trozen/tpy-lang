@@ -12,7 +12,7 @@ void read_via_ptr(Point* p) {
     std::cout << tpy::deref_check(p).y << "\n";
 }
 
-// 14: def read_via_constptr(p: ConstPtr[Point]) -> None:
+// 14: def read_via_constptr(p: ReadOnlyPtr[Point]) -> None:
 void read_via_constptr(const Point* p) {
     // 15:     print(p.x)
     std::cout << tpy::deref_check(p).x << "\n";
@@ -24,11 +24,11 @@ void read_via_constptr(const Point* p) {
 void test_null_constructors() {
     // 19:     p1: Ptr[None] = Ptr[None]()
     void* p1 = static_cast<void*>(nullptr);
-    // 20:     p2: ConstPtr[None] = ConstPtr[None]()
+    // 20:     p2: ReadOnlyPtr[None] = ReadOnlyPtr[None]()
     const void* p2 = static_cast<const void*>(nullptr);
     // 21:     p3: Ptr[Int32] = Ptr[Int32]()
     int32_t* p3 = static_cast<int32_t*>(nullptr);
-    // 22:     p4: ConstPtr[Int32] = ConstPtr[Int32]()
+    // 22:     p4: ReadOnlyPtr[Int32] = ReadOnlyPtr[Int32]()
     const int32_t* p4 = static_cast<const int32_t*>(nullptr);
     // 23:     print("null ok")
     std::cout << "null ok" << "\n";
@@ -58,7 +58,7 @@ void test_ptr_inferred() {
 void test_constptr_explicit() {
     // 36:     pt: Point = Point(50, 60)
     Point pt = Point(50, 60);
-    // 37:     cp: ConstPtr[Point] = ConstPtr[Point](pt)
+    // 37:     cp: ReadOnlyPtr[Point] = ReadOnlyPtr[Point](pt)
     const Point* cp = &pt;
     // 38:     read_via_constptr(cp)
     read_via_constptr(cp);
@@ -68,7 +68,7 @@ void test_constptr_explicit() {
 void test_constptr_inferred() {
     // 41:     pt: Point = Point(70, 80)
     Point pt = Point(70, 80);
-    // 42:     cp: ConstPtr[Point] = ConstPtr(pt)
+    // 42:     cp: ReadOnlyPtr[Point] = ReadOnlyPtr(pt)
     const Point* cp = &pt;
     // 43:     read_via_constptr(cp)
     read_via_constptr(cp);

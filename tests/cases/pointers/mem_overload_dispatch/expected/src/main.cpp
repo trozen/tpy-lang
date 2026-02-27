@@ -28,7 +28,7 @@ void test_list_overload() {
 void test_str_overload() {
     // 15:     s: str = "abc"
     std::string s = "abc";
-    // 16:     cp: ConstPtr[Char] = unsafe_ptr(s)
+    // 16:     cp: ReadOnlyPtr[Char] = unsafe_ptr(s)
     const char* cp = s.data();
     // 17:     print(unsafe_load(cp, UInt32(0)))
     std::cout << cp[0] << "\n";

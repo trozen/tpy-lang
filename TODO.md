@@ -1,7 +1,7 @@
 # TODO
 
 ## Next
-- unify ConstPtr[T] = Ptr[readonly[T]]: makes readonly propagation deep (accessing `Ptr[T]` field through readonly receiver yields `ConstPtr[T]` automatically), closes @readonly soundness gap where pointer field mutation bypasses readonly check. Also: C++ codegen should emit `const` for @readonly function params (currently sema-only enforcement)
+- C++ codegen should emit `const` for @readonly function params (currently sema-only enforcement)
 - tpy::BaseClass/Interface helpers, similar to EnumUtil? (instead of __tpy_* types)
 - argument default values
 - @dataclass
@@ -63,7 +63,7 @@
 
 ## Random items
 - AddressSanitizer test mode: add `--asan` flag to compile exec tests with `-fsanitize=address` to detect memory leaks, double-free, and use-after-free. Important before serious usage of `__copy__` + `__del__` patterns (e.g. CopyableBox[T]).
-- Large value-type copy warning: estimate record sizes from fields and warn when Own[T] passes a large type by value (e.g. >128 bytes). For inline data there's no cheap move -- the bits are the object. Suggest Own[Box[T]] for cheap ownership transfer (moves a pointer) or Ptr[T]/ConstPtr[T] for borrowing. Stricter threshold in @noalloc contexts.
+- Large value-type copy warning: estimate record sizes from fields and warn when Own[T] passes a large type by value (e.g. >128 bytes). For inline data there's no cheap move -- the bits are the object. Suggest Own[Box[T]] for cheap ownership transfer (moves a pointer) or Ptr[T]/ReadOnlyPtr[T] for borrowing. Stricter threshold in @noalloc contexts.
 - Box[T] with only Ptr[T] inside, unsafe_alloc/free/init/drop; compiler optimize Box|None to just pointer, None as nullptr (NOTE: library-level `tplib.Box[T]` already works using unsafe primitives; this is about compiler-native Box)
 - use this as source of examples: https://github.com/shedskin/shedskin/tree/master/examples (at some point we would like to make them all work)
 - Char type location: currently in `builtins` module but feels like a tpy type. Python doesn't have `Char`. Decide: keep in builtins, move to tpy, or remove? Affects `from tpy import Char` which currently fails.

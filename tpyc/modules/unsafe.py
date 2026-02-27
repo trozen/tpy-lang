@@ -7,7 +7,7 @@ Unsafe pointer operations that require explicit import.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
 from tpyc.typesys import (
     STR, CHAR, VOID, UINT32, INT64,
-    ArrayType, ListType, TypeParamRef, PtrType, ConstPtrType, OwnType,
+    ArrayType, ListType, TypeParamRef, PtrType, OwnType,
 )
 
 T = TypeParamRef("T")
@@ -20,10 +20,10 @@ def init_module() -> BuiltinModule:
 
     # unsafe_ptr: get a raw pointer from a container or string
     module.function("unsafe_ptr", type_params=["T"], overloads=[
-        # str -> ConstPtr[Char] (non-generic; str is string_view, need .data())
+        # str -> ReadOnlyPtr[Char] (non-generic; str is string_view, need .data())
         MethodDef(
             params=[ParamDef("s", STR)],
-            returns=ConstPtrType(CHAR),
+            returns=PtrType(CHAR, is_const=True),
             cpp="{0}.data()",
         ),
         # Array[T, N] -> Ptr[T]
@@ -48,7 +48,7 @@ def init_module() -> BuiltinModule:
             cpp="{0}[{1}]",
         ),
         MethodDef(
-            params=[ParamDef("p", ConstPtrType(T)), ParamDef("offset", UINT32)],
+            params=[ParamDef("p", PtrType(T, is_const=True)), ParamDef("offset", UINT32)],
             returns=T,
             cpp="{0}[{1}]",
         ),
@@ -81,7 +81,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[
                 ParamDef("dest", PtrType(T)),
-                ParamDef("src", ConstPtrType(T)),
+                ParamDef("src", PtrType(T, is_const=True)),
                 ParamDef("count", UINT32),
             ],
             returns=VOID,
@@ -89,10 +89,10 @@ def init_module() -> BuiltinModule:
         ),
     ])
 
-    # unsafe_const_cast: remove const from a pointer (ConstPtr[T] -> Ptr[T])
+    # unsafe_const_cast: remove const from a pointer (ReadOnlyPtr[T] -> Ptr[T])
     module.function("unsafe_const_cast", type_params=["T"], overloads=[
         MethodDef(
-            params=[ParamDef("p", ConstPtrType(T))],
+            params=[ParamDef("p", PtrType(T, is_const=True))],
             returns=PtrType(T),
             cpp="const_cast<{T}*>({0})",
         ),
@@ -106,8 +106,8 @@ def init_module() -> BuiltinModule:
             cpp="({0} + {1})",
         ),
         MethodDef(
-            params=[ParamDef("p", ConstPtrType(T)), ParamDef("delta", INT64)],
-            returns=ConstPtrType(T),
+            params=[ParamDef("p", PtrType(T, is_const=True)), ParamDef("delta", INT64)],
+            returns=PtrType(T, is_const=True),
             cpp="({0} + {1})",
         ),
     ])
@@ -123,7 +123,7 @@ def init_module() -> BuiltinModule:
             cpp="static_cast<int64_t>({0} - {1})",
         ),
         MethodDef(
-            params=[ParamDef("p1", ConstPtrType(T)), ParamDef("p2", ConstPtrType(T))],
+            params=[ParamDef("p1", PtrType(T, is_const=True)), ParamDef("p2", PtrType(T, is_const=True))],
             returns=INT64,
             cpp="static_cast<int64_t>({0} - {1})",
         ),
@@ -140,10 +140,10 @@ def init_module() -> BuiltinModule:
             returns=PtrType(T),
             cpp="reinterpret_cast<{T}*>({0})",
         ),
-        # ConstPtr[U] -> ConstPtr[T]
+        # ReadOnlyPtr[U] -> ReadOnlyPtr[T]
         MethodDef(
-            params=[ParamDef("p", ConstPtrType(U))],
-            returns=ConstPtrType(T),
+            params=[ParamDef("p", PtrType(U, is_const=True))],
+            returns=PtrType(T, is_const=True),
             cpp="reinterpret_cast<const {T}*>({0})",
         ),
     ])
