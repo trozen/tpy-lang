@@ -269,6 +269,7 @@ class TpyAugAssign(TpyStmt):
     op: str
     value: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
+    is_list_extend: bool = False  # Set by sema for list += (extend semantics)
 
 
 @dataclass

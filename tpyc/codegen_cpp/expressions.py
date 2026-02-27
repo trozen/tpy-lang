@@ -24,7 +24,7 @@ from ..parse import (
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
-from .context import escape_cpp_string, escape_cpp_char, qualified_cpp_name, expand_cpp_template
+from .context import escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, expand_cpp_template
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -74,9 +74,19 @@ class ExpressionGenerator:
         # unwrapped when a concrete value is required.
         expr_type = self.types.get_resolved_type(expr)
         analyzed_type = self.ctx.get_expr_type(expr)
+        # Also check the C++ declared type for variables whose sema type was
+        # narrowed (e.g. inside `if x is not None:`). The sema type is the
+        # narrowed inner type but the C++ variable is still std::optional<T>.
+        cpp_declared_type = self._get_cpp_declared_type(expr)
+        is_value_optional = (
+            isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr()
+        ) or (
+            cpp_declared_type is not None
+            and isinstance(cpp_declared_type, OptionalType) and not cpp_declared_type.uses_pointer_repr()
+        )
         if (
             target_type is not None
-            and isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr()
+            and is_value_optional
             and not isinstance(target_type, OptionalType)
         ):
             # If sema already narrowed this expression to non-Optional, unwrap
@@ -86,6 +96,43 @@ class ExpressionGenerator:
             else:
                 result = f"(*{result})"
         return result
+
+    def _get_cpp_declared_type(self, expr: TpyExpr) -> TpyType | None:
+        """Get the C++ declared type of a variable or field access.
+
+        For names, checks codegen var_types and current_func_params.
+        For field access (obj.field), resolves the field's declared type
+        on the record, which may be Optional even when sema has narrowed it.
+        """
+        if isinstance(expr, TpyName):
+            return self.ctx.var_types.get(expr.name) or self.ctx.current_func_params.get(expr.name)
+        if isinstance(expr, TpyFieldAccess):
+            return self._resolve_field_declared_type(expr)
+        return None
+
+    def _resolve_field_declared_type(self, expr: TpyFieldAccess) -> TpyType | None:
+        """Resolve the declared type of a field on its record/object."""
+        obj_type = self._get_cpp_declared_type(expr.obj)
+        if obj_type is None:
+            obj_type = self.ctx.get_expr_type(expr.obj)
+        if obj_type is None:
+            return None
+        actual_type = unwrap_readonly(obj_type)
+        if isinstance(actual_type, (PtrType, ConstPtrType)):
+            actual_type = actual_type.pointee
+        elif isinstance(actual_type, OwnType):
+            actual_type = actual_type.wrapped
+        elif isinstance(actual_type, OptionalType):
+            if actual_type.inner.is_value_type():
+                return None
+            actual_type = actual_type.inner
+        if isinstance(actual_type, NamedType) and actual_type.is_record:
+            record = self.ctx.analyzer.registry.get_record_for_type(actual_type)
+            if record:
+                for f in record.fields:
+                    if f.name == expr.field:
+                        return f.type
+        return None
 
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
         """Wrap in std::move() or std::forward() if expr is a last-use of a movable local."""
@@ -178,18 +225,18 @@ class ExpressionGenerator:
             if expr.name in self.ctx.user_imported_variables:
                 # Don't qualify if shadowed by a local variable
                 if expr.name in self.ctx.local_scope_names:
-                    return expr.name
+                    return escape_cpp_name(expr.name)
                 # Check if redefined at top level
                 if expr.name in self.ctx.top_level_decls:
                     decl_line = self.ctx.top_level_decls[expr.name]
                     # In a function (current_stmt_line == 0): always use local
                     # At top level: use local only if current line >= declaration line
                     if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
-                        return expr.name
+                        return escape_cpp_name(expr.name)
                 # Use qualified import reference (convert dotted name to C++ namespace)
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
                 return qualified_cpp_name(source_module, original_name)
-            return expr.name
+            return escape_cpp_name(expr.name)
 
         elif isinstance(expr, TpyBinOp):
             return self._gen_binop(expr, target_type)
@@ -415,6 +462,17 @@ class ExpressionGenerator:
             # Use gen_expr_deref for pointer-locals/globals (T* needs dereferencing)
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
+
+            # BigInt has no implicit conversion to/from double in C++, so
+            # mixed BigInt/float comparisons need an explicit cast (mirroring
+            # Python's int-to-float promotion for comparisons).
+            left_cmp = left_target if left_target is not None else left_type
+            right_cmp = right_target if right_target is not None else right_type
+            if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, FloatType):
+                left = f"static_cast<double>({left})"
+            elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, FloatType):
+                right = f"static_cast<double>({right})"
+
             # IntEnum coercion: cast enum operand(s) to underlying type
             if expr.int_enum_coercion:
                 underlying_cpp = self.types.type_to_cpp(expr.int_enum_coercion.underlying_type)
@@ -475,6 +533,14 @@ class ExpressionGenerator:
                     left = f"static_cast<{underlying_cpp}>({left})"
                 if isinstance(right_type, IntEnumType):
                     right = f"static_cast<{underlying_cpp}>({right})"
+            # C++ can't deduce template params from bare initializer lists,
+            # so array literal operands need explicit std::vector<T>{...} prefix
+            if isinstance(receiver_type, ListType):
+                cpp_type = receiver_type.to_cpp()
+                if isinstance(expr.left, TpyArrayLiteral):
+                    left = f"{cpp_type}{left}"
+                if isinstance(expr.right, TpyArrayLiteral):
+                    right = f"{cpp_type}{right}"
             # Generate binop using helper (handles wrappers and is_reverse)
             result = self._gen_binop_from_result(binop_result, left, right)
             # Wrap in parens to avoid precedence issues with cout << and other operators
@@ -761,6 +827,23 @@ class ExpressionGenerator:
                     init_expr = self.gen_expr(arg, resolved_ptype)
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
                     gen_args.append(temp_name)
+                # Union params: wrap concrete member type in std::variant via a temp
+                # so the lvalue reference can bind.
+                elif isinstance(unwrap_readonly(resolved_ptype), UnionType):
+                    arg_type = self.ctx.get_expr_type(arg)
+                    cpp_decl = self._get_cpp_declared_type(arg)
+                    already_union = (
+                        isinstance(arg_type, UnionType)
+                        or (cpp_decl is not None and isinstance(cpp_decl, UnionType))
+                    )
+                    if arg_type is not None and not already_union:
+                        variant_cpp = self.types.type_to_cpp(unwrap_readonly(resolved_ptype))
+                        arg_expr = self.gen_expr_deref(arg, arg_type)
+                        arg_expr = self._maybe_move(arg, arg_expr)
+                        temp_name = self.ctx.temps.create_typed(variant_cpp, arg_expr, brace_init=False)
+                        gen_args.append(temp_name)
+                    else:
+                        gen_args.append(self.gen_call_arg(arg, resolved_ptype))
                 else:
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype))
 
@@ -941,7 +1024,9 @@ class ExpressionGenerator:
                     return self.builtins.gen_method_from_function_info("(*this)", expr.args, method_info)
                 obj = self.gen_expr(expr.obj)
                 obj, an = self._apply_assign_narrowing(expr.obj, obj)
-                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not an) else obj
+                # Dereference Ptr-typed fields when method was resolved through deref chain
+                is_ptr_deref = expr.deref_depth > 0 and self.types.get_resolved_type(expr.obj).is_pointer()
+                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not an) or is_ptr_deref else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # Handle self.method() -> just method() (inside method, implicit this)
@@ -993,8 +1078,11 @@ class ExpressionGenerator:
         if expr.resolved_function_info:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
-                # T* pointer-locals/globals need dereferencing for method template access
-                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not is_assign_narrowed) else obj
+                # Dereference for pointer-locals/globals (T*) and Ptr[T]-typed fields
+                # Only dereference Ptr-typed when method was resolved through deref chain
+                is_ptr_deref = expr.deref_depth > 0 and obj_type is not None and obj_type.is_pointer()
+                needs_deref = (self.ctx.is_indirect_name(expr.obj) and not is_assign_narrowed) or is_ptr_deref
+                method_obj = f"(*{obj})" if needs_deref else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # User-defined record methods may need temp handling for TypeParamRef params
@@ -1074,10 +1162,11 @@ class ExpressionGenerator:
 
     def _gen_field_access(self, expr: TpyFieldAccess) -> str:
         """Generate field access code."""
+        cpp_field = escape_cpp_name(expr.field)
         # Handle self.field -> this->field (inside method)
         # Using this-> avoids shadowing issues when field name matches parameter name
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
-            return f"this->{expr.field}"
+            return f"this->{cpp_field}"
 
         # Check for module variable access (e.g., sys.argv) and enum member access
         if isinstance(expr.obj, TpyName):
@@ -1097,7 +1186,7 @@ class ExpressionGenerator:
                     if enum_name in self.ctx.user_imported_enums:
                         src_mod, original = self.ctx.user_imported_enums[enum_name]
                         enum_name = qualified_cpp_name(src_mod, original)
-                    return f"{enum_name}::{expr.field}"
+                    return f"{enum_name}::{cpp_field}"
 
         obj = self.gen_expr(expr.obj)
         # Assignment narrowing: inline std::get<T> for member access only
@@ -1126,25 +1215,25 @@ class ExpressionGenerator:
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.field}"
+                return f"tpy::deref_optional_check({obj}){deref_chain}.{cpp_field}"
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.field}"
+            return f"tpy::deref_check({ptr_expr}){deref_chain}.{cpp_field}"
         # User-defined Deref: emit .__deref__() calls before field access
         if deref_chain and obj_type and not obj_type.is_pointer():
             if is_indirect or is_optional_ptr:
                 # C++ var is a pointer (narrowed Optional) -- arrow then deref chain
-                return f"{obj}->{deref_chain[1:]}.{expr.field}"
-            return f"{obj}{deref_chain}.{expr.field}"
+                return f"{obj}->{deref_chain[1:]}.{cpp_field}"
+            return f"{obj}{deref_chain}.{cpp_field}"
         if obj_type and obj_type.is_pointer():
             if is_indirect and not isinstance(obj_type, (PtrType, ConstPtrType)):
                 # Global pointer wrapper needs deref first: Global<Ptr<T>> -> (*global)->field
-                return f"(*{obj})->{expr.field}"
+                return f"(*{obj})->{cpp_field}"
             if expr.ptr_non_null:
-                return f"{obj}->{expr.field}"
-            return f"tpy::deref_check({obj}).{expr.field}"
+                return f"{obj}->{cpp_field}"
+            return f"tpy::deref_check({obj}).{cpp_field}"
         if is_indirect or is_optional_ptr:
-            return f"{obj}->{expr.field}"
-        return f"{obj}.{expr.field}"
+            return f"{obj}->{cpp_field}"
+        return f"{obj}.{cpp_field}"
 
     def _gen_array_literal(self, expr: TpyArrayLiteral, target_type: TpyType | None) -> str:
         """Generate array literal code."""

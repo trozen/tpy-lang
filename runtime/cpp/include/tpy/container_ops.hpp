@@ -277,6 +277,20 @@ void list_extend(std::vector<T>& v, std::initializer_list<T> other) {
 }
 
 /**
+ * list_concat - Python list.__add__ (a + b) for std::vector.
+ *
+ * Returns a new vector containing elements from both vectors.
+ */
+template<typename T>
+std::vector<T> list_concat(const std::vector<T>& a, const std::vector<T>& b) {
+    std::vector<T> result;
+    result.reserve(a.size() + b.size());
+    result.insert(result.end(), a.begin(), a.end());
+    result.insert(result.end(), b.begin(), b.end());
+    return result;
+}
+
+/**
  * list_pop_at - Python list.pop(index) for std::vector.
  *
  * Removes and returns element at index. Supports negative indexing.

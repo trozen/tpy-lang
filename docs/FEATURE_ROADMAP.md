@@ -64,6 +64,7 @@ existing compiler model stays the same for existing code.
 | B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Virtual methods in inheritance | M | Not started | [II](#virtual-methods-in-inheritance) |
+| B6 | Per-method type parameter bounds | S-M | Not started | [I](#type-parameter-bounds----per-method) |
 
 ### Phase C: Error Handling + Effects
 
@@ -295,6 +296,44 @@ resolve correctly.
 **Dependencies**: Needed for union types to be usable.
 
 **Effort**: S
+
+---
+
+### Type Parameter Bounds -- Per-Method
+
+```python
+class ArrayList[T, N: int]:
+    def append(self, value: Own[T]) -> None: ...          # works for any T
+
+    def append_default[T: Default](self) -> Ptr[T]: ...   # only requires Default
+```
+
+Class-level and function-level bounds already work (`class C[T: Sized]`,
+`def f[T: Comparable](...)`). The missing piece is **per-method bounds** on class
+type parameters -- constraining individual methods without restricting the whole class.
+
+The proposed syntax reuses `T` in the method's type param list. Since `T` already
+exists at the class level, the compiler treats `[T: Default]` as an additional bound
+on the existing `T` rather than a new type variable. This is valid Python 3.12+ syntax
+(methods can have their own type param lists).
+
+Maps to C++ `requires` clauses on individual member functions:
+```cpp
+T* append_default() requires std::default_initializable<T> { ... }
+```
+
+**Why it matters**: Containers like ArrayList work for any `T`, but specific methods
+need additional capabilities -- `append_default()` needs `T()`, a hypothetical `sort()`
+would need `Comparable`. Without per-method bounds, the choice is: constrain the whole
+class (wrong) or accept opaque C++ errors when the bound is violated (bad UX).
+
+**Current state**: Not started. Class/function-level bounds are working.
+
+**Dependencies**: Type bounds (done). Built-in trait protocols like `Default` (not yet
+defined).
+
+**Effort**: S-M (parser already handles method type params; sema needs to unify with
+class-level `T` and add the bound; codegen emits `requires` clause)
 
 ---
 

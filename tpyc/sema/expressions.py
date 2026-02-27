@@ -13,6 +13,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType,
+    ResolvedBinop, FunctionInfo, ParamInfo,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
 from ..parse import (
@@ -87,8 +88,10 @@ class ExpressionAnalyzer:
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
             typ = self.calls.analyze_call(expr)
+            self.narrowing.invalidate_field_facts_for_call(expr)
         elif isinstance(expr, TpyMethodCall):
             typ = self.methods.analyze_method_call(expr)
+            self.narrowing.invalidate_field_facts_for_method_call(expr)
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)
         elif isinstance(expr, TpyArrayLiteral):
@@ -503,6 +506,9 @@ class ExpressionAnalyzer:
         # Arithmetic/bitwise operators - use registry
         if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
             expr.resolved_binop = result
+            # List concat produces a list -- mark pending literals as mutated
+            if isinstance(result.method.return_type, ListType):
+                self._mark_list_concat_operands_mutated(expr, left_effective, right_effective)
             return result.method.return_type
 
         # Record types (user-defined or module) with dunder methods
@@ -514,13 +520,56 @@ class ExpressionAnalyzer:
                     # Check parameter count and type
                     if len(method.params) == 1:
                         _, param_type = method.params[0]
+                        # Substitute type params for generic types (e.g. list[T].__add__(list[T]))
+                        type_subst = self.type_ops.build_type_substitution(left_effective)
+                        if type_subst:
+                            param_type = self.type_ops.substitute_types(param_type, type_subst)
                         if param_type == right_effective:
-                            return method.return_type
+                            ret_type = method.return_type
+                            if type_subst:
+                                ret_type = self.type_ops.substitute_types(ret_type, type_subst)
+                            # Build ResolvedBinop so codegen uses the method's
+                            # cpp_template instead of raw C++ operator syntax.
+                            cpp = method.cpp_template
+                            if not cpp:
+                                from .operators import DUNDER_CPP_TEMPLATES
+                                cpp = DUNDER_CPP_TEMPLATES.get(method_name)
+                            resolved_method = FunctionInfo(
+                                name=method_name,
+                                params=[ParamInfo(n, t) for n, t in method.params],
+                                return_type=ret_type,
+                                cpp_template=cpp,
+                                is_method=True,
+                            )
+                            expr.resolved_binop = ResolvedBinop(
+                                method=resolved_method,
+                                left_wrapper="{expr}",
+                                right_wrapper="{expr}",
+                                receiver_type=left_effective,
+                            )
+                            return ret_type
 
         raise SemanticError(
             f"Invalid operand types for '{expr.op}': {left_type} and {right_type}",
             expr.loc,
         )
+
+    def _mark_list_concat_operands_mutated(
+        self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType,
+    ) -> None:
+        """Mark PendingListType operands as mutated so they resolve to list, not Array."""
+        for sub_expr, sub_type in ((expr.left, left_type), (expr.right, right_type)):
+            if isinstance(sub_type, PendingListType):
+                info = self.ctx.list_literals.get(sub_type.literal_id)
+                if info:
+                    info.is_mutated = True
+            elif isinstance(sub_expr, TpyName):
+                var_name = sub_expr.name
+                if var_name in self.ctx.variable_to_literal:
+                    lit_id = self.ctx.variable_to_literal[var_name]
+                    info = self.ctx.list_literals.get(lit_id)
+                    if info:
+                        info.is_mutated = True
 
     def _try_eval_int_literal_binop(self, op: str, left: int | None, right: int | None) -> int | None:
         """Best-effort constant evaluation for int literal binops."""
@@ -718,6 +767,12 @@ class ExpressionAnalyzer:
                 # readonly reference yields a readonly result.
                 if is_readonly_obj and not result.is_value_type():
                     result = ReadonlyType(unwrap_readonly(result))
+                # Apply field path narrowing (e.g. after `if obj.field is not None:`)
+                if isinstance(expr.obj, TpyName):
+                    field_key = f"{expr.obj.name}.{expr.field}"
+                    narrowed = self.ctx.narrowed_types.get(field_key)
+                    if narrowed is not None:
+                        result = narrowed
                 return result
 
             deref_target = self.get_deref_target_type(current_type)

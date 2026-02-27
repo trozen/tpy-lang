@@ -110,8 +110,10 @@ def test_comp(case_dir, main_src, tmp_path):
             pytrace=False,
         )
 
-    # Check/update generated code for all modules
-    for mod_name, hpp_path, cpp_path in result.all_modules:
+    # Check/update generated code for local modules (skip library modules like tplib)
+    for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
+        if not is_local:
+            continue
         for ext, gen_path in [(".hpp", hpp_path), (".cpp", cpp_path)]:
             expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
             if not gen_path.exists():

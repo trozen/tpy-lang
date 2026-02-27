@@ -26,7 +26,7 @@ void __tpy_init() {
     // 6: print(x * y)
     std::cout << tpy::print_float(((x) * (y))) << "\n";
     // 7: print(x / y)
-    std::cout << tpy::print_float(((x) / (y))) << "\n";
+    std::cout << tpy::print_float((tpy::truediv(x, y))) << "\n";
     // 8: print(-x)
     std::cout << tpy::print_float(-(x)) << "\n";
 }

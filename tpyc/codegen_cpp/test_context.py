@@ -35,3 +35,12 @@ class TestExpandCppTemplate:
     def test_extra_args_ok(self):
         result = expand_cpp_template("{self}.f({0})", "obj", "a", "unused")
         assert result == "obj.f(a)"
+
+    def test_cpp_braces_in_substituted_value(self):
+        """C++ initializer braces in substituted values must not trigger false positives."""
+        result = expand_cpp_template(
+            "tpy::list_concat({self}, {0})",
+            "v",
+            "std::vector<int>{30}",
+        )
+        assert result == "tpy::list_concat(v, std::vector<int>{30})"

@@ -35,6 +35,25 @@ public:
 #endif
     }
 
+    UninitArrayStorage(UninitArrayStorage&& other) noexcept {
+        std::memcpy(static_cast<void*>(&elems_[0]), static_cast<const void*>(&other.elems_[0]), sizeof(elems_));
+#ifndef NDEBUG
+        alive_ = other.alive_;
+        other.alive_.reset();
+#endif
+    }
+
+    UninitArrayStorage& operator=(UninitArrayStorage&& other) noexcept {
+        if (this != &other) {
+            std::memcpy(static_cast<void*>(&elems_[0]), static_cast<const void*>(&other.elems_[0]), sizeof(elems_));
+#ifndef NDEBUG
+            alive_ = other.alive_;
+            other.alive_.reset();
+#endif
+        }
+        return *this;
+    }
+
     ~UninitArrayStorage() {
 #ifndef NDEBUG
         if (alive_.any()) {

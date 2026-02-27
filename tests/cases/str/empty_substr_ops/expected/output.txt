@@ -1,0 +1,10 @@
+count hello: 6
+count empty: 1
+count single: 2
+replace hello: -h-e-l-l-o-
+replace empty: -
+replace single: []x[]
+count normal: 2
+count miss: 0
+replace normal: xxbxx
+replace miss: hello

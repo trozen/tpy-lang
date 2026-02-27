@@ -373,7 +373,8 @@ class SemanticAnalyzer:
         self.ctx.current_ns = local_ns
 
         # Pre-scan for reassigned variables (shared with codegen)
-        scan = scan_reassigned_vars(func.body)
+        param_names = {pname for pname, _ in func.params}
+        scan = scan_reassigned_vars(func.body, pre_declared=param_names)
         # Last-use analysis for auto-move (shared with codegen)
         self.ctx.all_last_uses |= analyze_last_uses(func.body, scan.alias_sources)
         self.ctx.current_reassigned_vars = scan.reassigned.copy()

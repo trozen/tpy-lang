@@ -1175,13 +1175,28 @@ class StatementAnalyzer:
                 f"to keep {type_name} arithmetic.",
                 stmt,
             )
-        # Target must be numeric or an owned string type (str, String, PendingStr).
+        # Target must be numeric, owned string, or list (for +=).
         # StrView is excluded -- it's non-owning, so += would dangle.
         is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType))
         is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
+        is_list_target = isinstance(target_type, ListType)
         # PendingStrType += promotes to owned str
         if isinstance(target_type, PendingStrType) and isinstance(stmt.target, TpyName):
             self.deduction.mark_str_augassign(stmt.target.name)
+        # list += only supports += (extend semantics)
+        if is_list_target:
+            if stmt.op != "+":
+                raise self.ctx.error(
+                    f"Only '+=' is supported for list types, got '{stmt.op}='",
+                    stmt,
+                )
+            if not isinstance(value_type, ListType) or value_type.element_type != target_type.element_type:
+                raise self.ctx.error(
+                    f"Cannot extend {target_type} with {value_type}",
+                    stmt,
+                )
+            stmt.is_list_extend = True
+            return
         if not is_numeric_target and not is_str_target:
             raise self.ctx.error(
                 f"Augmented assignment target must be a numeric or string type, got {target_type}",

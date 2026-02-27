@@ -15,7 +15,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
-    TpySubscript, TpyNoneLiteral, TpyCall,
+    TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -56,6 +56,17 @@ class NarrowingTracker:
             if binding and binding.kind == BindingKind.VARIABLE:
                 return binding.type
         return self.ctx.current_scope.lookup(name)
+
+    def _resolve_field_path_type(self, key: str) -> TpyType | None:
+        """Resolve the declared type for a dotted field path like 'obj.field'."""
+        parts = key.split(".", 1)
+        if len(parts) != 2:
+            return None
+        obj_name, field_name = parts
+        obj_type = self.declared_type_for_name(obj_name)
+        if obj_type is None:
+            return None
+        return self.declared_type_for_expr(TpyFieldAccess(TpyName(obj_name), field_name))
 
     def effective_union_type(self, name: str) -> TpyType | None:
         """Get effective type for isinstance/narrowing, falling through assignment narrowing.
@@ -209,22 +220,25 @@ class NarrowingTracker:
         # is None / is not None on union or optional types
         match = match_is_none(expr)
         if match is not None:
-            name, is_not_none = match
-            effective = self.ctx.narrowed_types.get(name)
+            key, is_not_none = match
+            effective = self.ctx.narrowed_types.get(key)
             if effective is None:
-                effective = self.declared_type_for_name(name)
+                if "." in key:
+                    effective = self._resolve_field_path_type(key)
+                else:
+                    effective = self.declared_type_for_name(key)
             if isinstance(effective, UnionType) and effective.has_none_member():
                 non_none_type, none_type = union_none_narrow(effective)
                 if is_not_none:
-                    return {name: non_none_type}, {name: none_type}
+                    return {key: non_none_type}, {key: none_type}
                 else:
-                    return {name: none_type}, {name: non_none_type}
+                    return {key: none_type}, {key: non_none_type}
             if self._is_optional_type(effective):
                 inner_type = self._optional_inner_type(effective)
                 if is_not_none:
-                    return {name: inner_type}, {}
+                    return {key: inner_type}, {}
                 else:
-                    return {}, {name: inner_type}
+                    return {}, {key: inner_type}
 
         # Truthiness on Optional: `if x:` narrows to inner type in true branch
         if isinstance(expr, TpyName):
@@ -309,6 +323,8 @@ class NarrowingTracker:
     ) -> None:
         """Update flow facts after assigning/writing a variable."""
         self.ctx.narrowed_types.pop(name, None)
+        # Invalidate field narrowing facts rooted at this variable
+        self._invalidate_field_facts(name)
         # For Optional targets, re-narrow if RHS is provably non-None
         inner_target = unwrap_readonly(target_type)
         if not isinstance(inner_target, OptionalType):
@@ -318,4 +334,48 @@ class NarrowingTracker:
         if rhs_type is None:
             return
         self.ctx.narrowed_types[name] = self._optional_inner_type(target_type)
+
+    def _invalidate_field_facts(self, name: str) -> None:
+        """Remove all field narrowing facts rooted at the given variable name."""
+        prefix = name + "."
+        stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
+        for k in stale:
+            del self.ctx.narrowed_types[k]
+
+    def invalidate_field_facts_for_call(self, call: TpyCall) -> None:
+        """Invalidate field narrowing facts for name arguments passed by mutable reference.
+
+        When a non-value-type object is passed to a function, the callee receives
+        a mutable reference and may modify any field, so field narrowing facts
+        for that object are no longer reliable.
+        """
+        for arg in call.args:
+            if not isinstance(arg, TpyName):
+                continue
+            arg_type = self.ctx.get_expr_type(arg)
+            if arg_type is None:
+                continue
+            inner = unwrap_readonly(arg_type)
+            if inner.is_value_type():
+                continue
+            self._invalidate_field_facts(arg.name)
+
+    def invalidate_field_facts_for_method_call(self, call: TpyMethodCall) -> None:
+        """Invalidate field narrowing facts after a method call.
+
+        The receiver object is passed as mutable self, so any field could be mutated.
+        Also invalidates for any non-value-type arguments.
+        """
+        if isinstance(call.obj, TpyName) and not call.is_static_call:
+            self._invalidate_field_facts(call.obj.name)
+        for arg in call.args:
+            if not isinstance(arg, TpyName):
+                continue
+            arg_type = self.ctx.get_expr_type(arg)
+            if arg_type is None:
+                continue
+            inner = unwrap_readonly(arg_type)
+            if inner.is_value_type():
+                continue
+            self._invalidate_field_facts(arg.name)
 

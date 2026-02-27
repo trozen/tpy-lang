@@ -243,7 +243,7 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 | `float + int` | `float` | Float is wider than int |
 | `int + float` | `float` | Float is wider than int |
 | `float + Int32` | `float` | Float is wider than Int32 |
-| `int / int` | `float` | True division always returns float |
+| `int / int` | `float` | True division always returns float (panics on zero divisor) |
 
 For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), the target type is preserved - the right-hand side is converted to match:
 ```python
@@ -267,6 +267,9 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 - **Working**: `str.split()`, `str.split(sep)`, `str.split(sep, maxsplit)` -- returns `list[str]`
 - **Working**: `str.join(items)` -- joins iterable of strings
 - **Working**: `strip`/`lstrip`/`rstrip`, `replace`, `find`/`rfind`/`index`/`rindex`, `startswith`/`endswith`, `upper`/`lower`, `capitalize`/`title`/`swapcase`, `count`, `isdigit`/`isalpha`/`isalnum`/`isspace`/`isupper`/`islower`, `removeprefix`/`removesuffix`, `splitlines`
+- **Working**: `str.replace("", sep)` inserts separator between every character (Python semantics)
+- **Working**: `str.count("")` returns `len(s) + 1` (Python semantics)
+- **Working**: For-each iteration over string literals (no null terminator leak)
 - **Working**: F-strings (`f"hello {name}"`) via `std::format` -- supports format specs (`.2f`, `#x`, `>10`), `!s` conversion, all scalar types
 - **Planned**: `FixStr[N]` - fixed-capacity string, stack allocated
 
@@ -348,6 +351,7 @@ log(f"x={x}")
 
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
+- **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place
 - **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
@@ -1943,8 +1947,9 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Compound conditions: `isinstance(x, T) and x.field > 0` narrows `x` on the RHS of `and`
   - `isinstance(x, T) or x.other_field > 0` narrows `x` to remaining members on `or` RHS
   - Negative (else-branch) narrowing: remaining union members after isinstance check
-  - Chained elif isinstance for multi-way branching (3+ member unions)
+  - Chained elif isinstance for multi-way branching (3+ member unions) -- full codegen support for 2-way, 3-way, and n-way elif chains
   - Narrowed variables can be used for field access, method calls, and passed to functions expecting the member type
+  - Implicit union wrapping at call sites: passing `A` to a parameter of type `A | B` auto-wraps into `std::variant`
   - `std::get<T>` extraction emitted once at block entry for efficient narrowed access
   - `while isinstance(x, T)` narrows `x` to `T` inside the loop body (same extraction as if-blocks)
   - Assignment narrowing: `v: A | B = A(...)` narrows `v` to `A` so field access works without isinstance; uses inline `std::get<T>()` at access points (not aliased, so `v` can still be passed to functions expecting the full union)
@@ -1967,6 +1972,9 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - `x is None` / `x is not None` for null checks
   - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
+  - Returning narrowed optional values: `if x is not None: return x` correctly unwraps to `T`
+  - Field narrowing: `if obj.field is not None:` narrows `obj.field` to `T` in the guarded scope
+  - Field narrowing facts are invalidated when the root object is passed by mutable reference to a function call
   - Functions returning `T | None` return `T*` in C++
 - **Working**: `Optional[T]` from `typing` is equivalent to `T | None` at parse time
   - `from typing import Optional` then `Optional[Int32]` produces the same type as `Int32 | None`
@@ -2034,6 +2042,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
 - **Working**: `is`, `is not` (identity comparison with `None` only)
+- **Working**: Mixed `int`/`float` comparisons (BigInt promoted to double)
 
 ### Membership
 - **Working**: `in`, `not in` (for list, Array, Span, str)
@@ -2060,8 +2069,9 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `while`
 - **Working**: `for i in range(n)`, `for i in range(start, end)`, `for i in range(start, end, step)`
 - **Working**: `for item in container` (for-each over list, Array, Span, str)
-- **Working**: `for x in iterator` (for-each over OptIterator types — user-defined iterators)
+- **Working**: `for x in iterator` (for-each over OptIterator types -- user-defined iterators)
 - **Working**: `break`, `continue`
+- **Working**: Reassigning loop variables inside for-loop body (compiles as assignment, not redeclaration; note: affects iteration unlike Python)
 - **Open**: `for/else`, `while/else` → flag variable pattern
 
 ### Other
@@ -2074,6 +2084,8 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Definition
 - **Working**: Typed parameters and return types
+- **Working**: Reassigning function parameters (const-ref params like `int`/`str` auto-emit by value when reassigned)
+- **Working**: C++ keyword escaping -- Python identifiers that clash with C++ reserved words (e.g., `default`, `class`, `namespace`) are automatically mangled in generated code
 - **Planned**: Default parameter values
 - **Open**: `*args` → variadic templates or fixed overloads
 - **Open**: `**kwargs` → if keys known at compile time
@@ -2894,6 +2906,8 @@ class Car(Vehicle, Printable, Measurable):
 ## Built-in Functions
 
 - **Working**: `print()`, `len()`, `range()`, `chr()`, `copy()`
+  - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
+  - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
 - **Working**: StaticList methods: `append()`, `pop()`, `clear()`, `push_empty()`, `get_mut()`
@@ -3058,6 +3072,7 @@ s = str(3.14)     # → "3.14"
 - **Working**: Shadowing warnings -- defining a class that shadows an imported special name (e.g., `class Sized` after `from typing import Sized`) emits a warning
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
+- **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`)
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
 - **Open**: `from typing import *` (not supported)
 
@@ -3270,6 +3285,7 @@ TurboPython has two library search roots that provide reusable modules:
 | Module | Description |
 |--------|-------------|
 | `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
+| `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage |
 
 ```python
 from tplib import Box

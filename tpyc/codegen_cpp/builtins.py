@@ -253,6 +253,9 @@ class BuiltinGenerator:
                     parts.append(f'tpy::ListPrinter({cpp_type}{self._gen_expr(arg)})')
                 else:
                     parts.append(f'tpy::ListPrinter({self._gen_expr_deref(arg)})')
+            elif isinstance(arg_type, TypeParamRef):
+                # Generic type parameter -- use ValuePrinter for runtime dispatch
+                parts.append(f'tpy::ValuePrinter({self._gen_expr_deref(arg)})')
             else:
                 # FixedInt, Char, Bool, literals, etc. - direct output
                 expr_code = self._gen_expr_deref(arg)

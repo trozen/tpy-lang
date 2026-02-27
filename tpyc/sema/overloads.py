@@ -69,6 +69,12 @@ def type_matches_numeric(
     if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
         if isinstance(param_type, (Int32Type, BigIntType)):
             return True
+    # Recursive container matching: e.g. ListType(IntLiteralType) vs ListType(Int32)
+    if type(arg_type) == type(param_type):
+        arg_elem = arg_type.get_element_type()
+        param_elem = param_type.get_element_type()
+        if arg_elem is not None and param_elem is not None:
+            return type_matches_numeric(arg_elem, param_elem)
     return False
 
 
