@@ -1,0 +1,1 @@
+main.py:7: error: Type Foo cannot use !s conversion (no __str__ method)

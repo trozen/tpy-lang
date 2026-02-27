@@ -75,11 +75,18 @@ class TpyStrLiteral(TpyExpr):
     value: str
 
 
+# F-string conversion codes (from CPython's ast module)
+FSTRING_CONV_NONE = -1
+FSTRING_CONV_STR = 115    # !s
+FSTRING_CONV_REPR = 114   # !r
+FSTRING_CONV_ASCII = 97   # !a
+
+
 @dataclass
 class TpyFStringValue:
     """Formatted expression inside an f-string: {expr:spec}."""
     expr: TpyExpr
-    conversion: int = -1  # -1=none, 115=!s, 114=!r, 97=!a
+    conversion: int = FSTRING_CONV_NONE
     format_spec: str | None = None
 
 

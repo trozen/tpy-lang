@@ -1,0 +1,1 @@
+main.py:7: error: str() cannot convert Foo

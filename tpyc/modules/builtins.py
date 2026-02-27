@@ -20,6 +20,12 @@ SIZED = NamedType("Sized", is_protocol=True)
 # Truthy protocol type for bool() parameter
 TRUTHY = NamedType("Truthy", is_protocol=True)
 
+# Stringable protocol type for str() parameter
+STRINGABLE = NamedType("Stringable", is_protocol=True)
+
+# Representable protocol type for repr() parameter
+REPRESENTABLE = NamedType("Representable", is_protocol=True)
+
 NAME = "builtins"
 
 # Methods that mutate the list (used by sema to track list literal mutation)
@@ -37,6 +43,15 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", SIZED)],
             returns=INT32,
             cpp="tpy::__len__({0})",
+            is_readonly=True,
+        ),
+    ])
+
+    module.function("repr", overloads=[
+        MethodDef(
+            params=[ParamDef("x", REPRESENTABLE)],
+            returns=STR,
+            cpp="tpy::__repr__({0})",
             is_readonly=True,
         ),
     ])
@@ -232,6 +247,8 @@ def init_module() -> BuiltinModule:
               for t in ALL_FIXED_INTS],
             MethodDef(params=[ParamDef("x", BIGINT)], returns=STR, cpp="({0}).to_string()"),
             MethodDef(params=[ParamDef("x", FLOAT)], returns=STR, cpp="tpy::float_to_str({0})"),
+            MethodDef(params=[ParamDef("x", STRINGABLE)], returns=STR,
+                      cpp="tpy::__str__({0})", is_readonly=True),
         ],
         methods={
         "__len__": [MethodDef(

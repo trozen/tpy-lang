@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyFStringValue, TpyFString,
+    TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
@@ -941,11 +941,13 @@ class ExpressionAnalyzer:
             raise self.ctx.error(f"Slicing is not yet supported for {obj_type}", expr)
         return STRVIEW
 
-    # F-string formattable types (no __str__ dispatch yet)
     _FORMATTABLE_TYPES = (
         FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType,
         StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,
     )
+
+    _STRINGABLE = NamedType("Stringable", is_protocol=True)
+    _REPRESENTABLE = NamedType("Representable", is_protocol=True)
 
     def _analyze_fstring(self, expr: TpyFString) -> TpyType:
         """Analyze f-string parts and return STR (owned string)."""
@@ -953,11 +955,27 @@ class ExpressionAnalyzer:
             if isinstance(part, TpyFStringValue):
                 part_type = self.analyze_expr(part.expr)
                 resolved = unwrap_readonly(part_type)
-                if not isinstance(resolved, self._FORMATTABLE_TYPES):
-                    raise self.ctx.error(
-                        f"Type {part_type} cannot be used in f-string (no __str__ method)",
-                        part.expr,
-                    )
+                conv = part.conversion
+
+                if conv == FSTRING_CONV_REPR:
+                    if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
+                        raise self.ctx.error(
+                            f"Type {part_type} cannot use !r conversion (no __repr__ method)",
+                            part.expr,
+                        )
+                elif conv == FSTRING_CONV_STR:
+                    if not isinstance(resolved, self._FORMATTABLE_TYPES):
+                        if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
+                            raise self.ctx.error(
+                                f"Type {part_type} cannot use !s conversion (no __str__ method)",
+                                part.expr,
+                            )
+                elif not isinstance(resolved, self._FORMATTABLE_TYPES):
+                    if not self.protocols.type_conforms_to_protocol(resolved, self._STRINGABLE):
+                        raise self.ctx.error(
+                            f"Type {part_type} cannot be used in f-string (no __str__ method)",
+                            part.expr,
+                        )
                 if part.format_spec is not None and isinstance(resolved, (BigIntType, IntLiteralType)):
                     raise self.ctx.error(
                         "Format specs on int are not yet supported (use a fixed-width type like Int32)",

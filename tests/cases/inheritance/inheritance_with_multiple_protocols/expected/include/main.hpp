@@ -95,11 +95,7 @@ struct Car : Vehicle {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Car& obj) {
-    os << "Car("
-       << "model=" << "\"" << obj.model << "\""
-       << ", "
-       << "car_weight=" << obj.car_weight
-       << ")";
+    os << obj.__str__();
     return os;
 }
 

@@ -1,1 +1,1 @@
-main.py:5: error: f-string !r conversion is not supported
+main.py:5: error: Type int cannot use !r conversion (no __repr__ method)

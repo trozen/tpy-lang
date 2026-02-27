@@ -17,13 +17,13 @@
 | `string_view` -> `string` codegen for return and init | Done |
 | `str` slicing (`s[1:3]`) | Done |
 | `str` slice step (`s[::2]`) | Planned |
-| `__str__` / `__repr__` dispatch via `str(obj)` and `repr(obj)` | Planned |
+| `__str__` / `__repr__` dispatch via `str(obj)` and `repr(obj)` | Done |
 | f-strings | Done |
 | `@noalloc` string restrictions | Planned |
 | `@noalloc` warn on unnecessary `string_view` -> `string` copies | Planned |
 | `@noalloc` warn on alias that could stay `string_view` | Planned |
 | f-string `!s` conversion with format spec (convert then format) | Planned |
-| f-string `!r` conversion (needs `__repr__` dispatch) | Planned |
+| f-string `!r` conversion | Done |
 | f-string `int` (BigInt) with format specs (needs `std::formatter<BigInt>`) | Planned |
 | f-string `Optional[T]` support (narrowed optional in f-string context) | Planned |
 | f-string enum: output name instead of integer value (needs `__str__`) | Planned |
@@ -184,9 +184,11 @@ the emission strategy based on context:
 - String interpolation: `f"hello {name}"`
 - Expressions: `f"{a + b}"`
 - Format specs: `f"{val:.2f}"`, `f"{n:#x}"`, `f"{n:>10}"`
-- `!s` conversion: `f"{x!s}"` (equivalent to default)
+- `!s` conversion: `f"{x!s}"` (str() on the value)
+- `!r` conversion: `f"{x!r}"` (repr() on the value, requires `__repr__`)
+- User types with `__str__`: `f"{obj}"` dispatches to `__str__()`
 - Brace escaping: `f"{{{x}}}"` -> `{42}`
-- Mixed types: int, float, bool, str, Char, fixed ints, BigInt, enum
+- Mixed types: int, float, bool, str, Char, fixed ints, BigInt, enum, user records
 
 ### Python-compatible formatting
 
@@ -201,9 +203,9 @@ semantics:
 
 ### Current limitations
 
-- `!r` and `!a` conversions are not supported (need `repr()` first)
+- `!a` conversion is not supported
 - Expressions inside format specs (`f"{x:{width}}"`) are not supported
-- No `__format__` or `__str__` dispatch on user types
+- No `__format__` dispatch on user types
 - Print optimization (streaming without allocation) is not yet implemented
 - Python-only format spec features are rejected with clear errors:
   `,` and `_` grouping, `=` alignment, `z` option, `n` and `%` type codes

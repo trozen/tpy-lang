@@ -69,9 +69,7 @@ struct Person : Entity {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
-    os << "Person("
-       << "age=" << obj.age
-       << ")";
+    os << obj.__str__();
     return os;
 }
 

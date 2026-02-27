@@ -1,0 +1,6 @@
+(3, 7)
+Point(x=3, y=7)
+(3, 7)
+point = (3, 7)
+debug: Point(x=3, y=7)
+display: (3, 7)

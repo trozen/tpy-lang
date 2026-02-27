@@ -61,11 +61,7 @@ struct Box {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    os << "Box("
-       << "width=" << obj.width
-       << ", "
-       << "height=" << obj.height
-       << ")";
+    os << obj.__str__();
     return os;
 }
 

@@ -285,6 +285,15 @@ class RecordGenerator:
     def _gen_record_ostream(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator<< overload for printing a record."""
         name = record.name
+
+        # Check if record has __str__ method (including inherited) -- if so, delegate to it
+        record_info = self.ctx.analyzer.registry.get_record(name)
+        has_str = False
+        if record_info:
+            overloads, _ = self.ctx.analyzer.protocols.lookup_record_method_overloads(
+                record_info, "__str__")
+            has_str = bool(overloads)
+
         # For template structs, generate a template operator<<
         if record.type_params:
             # Build params respecting INT type params
@@ -301,41 +310,46 @@ class RecordGenerator:
             out.write(f"inline std::ostream& operator<<(std::ostream& os, const {name}<{type_args}>& obj) {{\n")
         else:
             out.write(f"\ninline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
-        out.write(f'{INDENT}os << "{name}("')
 
-        for i, fld in enumerate(record.fields):
-            if i > 0:
-                out.write(f'\n{INDENT}   << ", "')
-            out.write(f'\n{INDENT}   << "{fld.name}="')
-            # Handle strings - quote them
-            if is_any_str_type(fld.type):
-                out.write(f' << "\\"" << obj.{fld.name} << "\\""')
-            elif isinstance(fld.type, OptionalType):
-                inner = fld.type.inner
-                inner_cpp = inner.to_cpp()
-                if isinstance(inner, BoolType):
-                    out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{fld.name})')
-                elif isinstance(inner, FloatType):
-                    out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{fld.name})')
-                elif is_any_str_type(inner):
-                    # Quoted string: None or "value"
-                    f = fld.name
-                    out.write(f' << (obj.{f}.has_value() ? std::string("\\"") + std::string(obj.{f}.value()) + "\\"" : std::string("None"))')
+        if has_str:
+            out.write(f"{INDENT}os << obj.__str__();\n")
+        else:
+            out.write(f'{INDENT}os << "{name}("')
+
+            for i, fld in enumerate(record.fields):
+                if i > 0:
+                    out.write(f'\n{INDENT}   << ", "')
+                out.write(f'\n{INDENT}   << "{fld.name}="')
+                # Handle strings - quote them
+                if is_any_str_type(fld.type):
+                    out.write(f' << "\\"" << obj.{fld.name} << "\\""')
+                elif isinstance(fld.type, OptionalType):
+                    inner = fld.type.inner
+                    inner_cpp = inner.to_cpp()
+                    if isinstance(inner, BoolType):
+                        out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{fld.name})')
+                    elif isinstance(inner, FloatType):
+                        out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{fld.name})')
+                    elif is_any_str_type(inner):
+                        # Quoted string: None or "value"
+                        f = fld.name
+                        out.write(f' << (obj.{f}.has_value() ? std::string("\\"") + std::string(obj.{f}.value()) + "\\"" : std::string("None"))')
+                    else:
+                        out.write(f' << tpy::print_optional_val(obj.{fld.name})')
+                elif isinstance(fld.type, TypeParamRef):
+                    # Type parameter - use ValuePrinter which handles both scalars and containers
+                    out.write(f' << tpy::ValuePrinter(obj.{fld.name})')
+                elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
+                    # Known iterable container type - use ListPrinter
+                    out.write(f' << tpy::ListPrinter(obj.{fld.name})')
+                elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
+                    # Module-defined types may not be printable -- use placeholder
+                    out.write(f' << "<{fld.type}>"')
                 else:
-                    out.write(f' << tpy::print_optional_val(obj.{fld.name})')
-            elif isinstance(fld.type, TypeParamRef):
-                # Type parameter - use ValuePrinter which handles both scalars and containers
-                out.write(f' << tpy::ValuePrinter(obj.{fld.name})')
-            elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
-                # Known iterable container type - use ListPrinter
-                out.write(f' << tpy::ListPrinter(obj.{fld.name})')
-            elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
-                # Module-defined types may not be printable -- use placeholder
-                out.write(f' << "<{fld.type}>"')
-            else:
-                out.write(f' << obj.{fld.name}')
+                    out.write(f' << obj.{fld.name}')
 
-        out.write(f'\n{INDENT}   << ")";\n')
+            out.write(f'\n{INDENT}   << ")";\n')
+
         out.write(f"{INDENT}return os;\n")
         out.write("}\n")
 

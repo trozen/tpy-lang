@@ -1,0 +1,5 @@
+Wrapper((1, 2))
+Wrapper(value=(1, 2))
+Wrapper((1, 2))
+val = Wrapper((1, 2))
+debug: Wrapper(value=(1, 2))

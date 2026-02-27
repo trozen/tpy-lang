@@ -168,4 +168,26 @@ bool __bool__(const T& x) {
     return x.__bool__();
 }
 
+// =============================================
+// tpy::__str__
+// =============================================
+
+// Default template: user types that define __str__() method
+template<typename T>
+    requires requires(const T& t) { { t.__str__() } -> std::convertible_to<std::string>; }
+std::string __str__(const T& x) {
+    return x.__str__();
+}
+
+// =============================================
+// tpy::__repr__
+// =============================================
+
+// Default template: user types that define __repr__() method
+template<typename T>
+    requires requires(const T& t) { { t.__repr__() } -> std::convertible_to<std::string>; }
+std::string __repr__(const T& x) {
+    return x.__repr__();
+}
+
 } // namespace tpy

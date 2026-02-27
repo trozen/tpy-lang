@@ -51,11 +51,7 @@ struct Person {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
-    os << "Person("
-       << "name=" << "\"" << obj.name << "\""
-       << ", "
-       << "age=" << obj.age
-       << ")";
+    os << obj.__str__();
     return os;
 }
 

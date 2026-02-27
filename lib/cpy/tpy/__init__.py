@@ -527,3 +527,15 @@ class Comparable(_Protocol):
 class Truthy(_Protocol):
     """Protocol for types supporting bool() conversion via __bool__."""
     def __bool__(self) -> bool: ...
+
+
+@_runtime_checkable
+class Stringable(_Protocol):
+    """Protocol for types supporting str() conversion via __str__."""
+    def __str__(self) -> str: ...
+
+
+@_runtime_checkable
+class Representable(_Protocol):
+    """Protocol for types supporting repr() conversion via __repr__."""
+    def __repr__(self) -> str: ...

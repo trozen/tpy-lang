@@ -281,6 +281,20 @@ def init_module() -> BuiltinModule:
         is_readonly=True,
     )
 
+    # Stringable protocol: types that support str() conversion via __str__()
+    module.protocol("Stringable",
+        methods={"__str__": MethodDef(params=[], returns=STR, cpp="tpy::__str__({self})")},
+        cpp_concept="tpy::Stringable",
+        is_readonly=True,
+    )
+
+    # Representable protocol: types that support repr() conversion via __repr__()
+    module.protocol("Representable",
+        methods={"__repr__": MethodDef(params=[], returns=STR, cpp="tpy::__repr__({self})")},
+        cpp_concept="tpy::Representable",
+        is_readonly=True,
+    )
+
     # Comparable protocol
     module.protocol("Comparable",
         methods={

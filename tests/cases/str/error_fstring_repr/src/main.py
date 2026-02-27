@@ -1,4 +1,4 @@
-# Error: f-string !r conversion is not supported.
+# Test error: f-string !r conversion on a type without __repr__ method
 
 def main() -> None:
     x: int = 42

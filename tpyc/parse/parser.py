@@ -20,7 +20,7 @@ from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyFStringValue, TpyFString,
+    TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
@@ -1676,9 +1676,7 @@ class Parser:
                 parts.append(val.value)
             elif isinstance(val, ast.FormattedValue):
                 conv = val.conversion
-                if conv == 114:  # !r
-                    raise ParseError("f-string !r conversion is not supported", node)
-                if conv == 97:  # !a
+                if conv == FSTRING_CONV_ASCII:
                     raise ParseError("f-string !a conversion is not supported", node)
                 expr = self._parse_expr(val.value)
                 fmt_spec: str | None = None

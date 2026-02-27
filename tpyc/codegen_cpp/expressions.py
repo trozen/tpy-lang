@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyFStringValue, TpyFString,
+    TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
@@ -1345,19 +1345,29 @@ class ExpressionGenerator:
                 gen_arg = self.gen_expr_deref(part.expr)
                 arg_type = unwrap_readonly(self.types.get_resolved_type(part.expr))
                 has_spec = part.format_spec is not None
+                conv = part.conversion
 
                 if has_spec:
                     fmt_parts.append("{:" + part.format_spec + "}")
                 else:
                     fmt_parts.append("{}")
 
+                is_user_type = (
+                    (isinstance(arg_type, NamedType) and not arg_type.is_protocol)
+                    or isinstance(arg_type, TypeParamRef)
+                )
+
+                # !r conversion: always wrap with __repr__
+                if conv == FSTRING_CONV_REPR:
+                    gen_arg = f"tpy::__repr__({gen_arg})"
+                # !s conversion on user types: wrap with __str__
+                elif conv == FSTRING_CONV_STR and is_user_type:
+                    gen_arg = f"tpy::__str__({gen_arg})"
                 # Wrap args that need Python-compatible formatting
-                if isinstance(arg_type, BoolType):
+                elif isinstance(arg_type, BoolType):
                     if has_spec:
-                        # Any format spec delegates to int (Python semantics)
                         gen_arg = f"static_cast<int>({gen_arg})"
                     else:
-                        # No spec: "True"/"False"
                         gen_arg = f"tpy::bool_to_str({gen_arg})"
                 elif isinstance(arg_type, FloatType) and not has_spec:
                     gen_arg = f"tpy::float_to_str({gen_arg})"
@@ -1367,6 +1377,8 @@ class ExpressionGenerator:
                     gen_arg = f"static_cast<int>({gen_arg})"
                 elif isinstance(arg_type, EnumType):
                     gen_arg = f"static_cast<int>({gen_arg})"
+                elif is_user_type:
+                    gen_arg = f"tpy::__str__({gen_arg})"
 
                 args.append(gen_arg)
 
