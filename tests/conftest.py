@@ -73,8 +73,9 @@ class CompileResult:
     diagnostics: str  # Full diagnostic output
     hpp_path: Path | None = None
     cpp_path: Path | None = None
-    # For multi-module compilation: list of all (module_name, hpp_path, cpp_path) tuples
-    all_modules: list[tuple[str, Path, Path]] = field(default_factory=list)
+    # For multi-module compilation: list of (module_name, hpp_path, cpp_path, is_local) tuples
+    # is_local=True for modules from the test's src/ dir, False for library modules
+    all_modules: list[tuple[str, Path, Path, bool]] = field(default_factory=list)
     # Resolved types for variable declarations (from sema), for # tpyc: type(...) validation
     declared_var_types: dict[tuple[int, str], object] | None = None
 
@@ -146,13 +147,20 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
 
         # Generate code for all modules and track paths
         entry_module = next(m for m in compiled_modules if m.is_entry_point)
+        src_dir = src_file.parent.resolve()
         all_modules = []
         for mod in compiled_modules:
             hpp_path, cpp_path = compiler.generate_code(
                 mod, output_dir, entry_module_name=entry_module.name,
                 options=TEST_CODEGEN_OPTIONS
             )
-            all_modules.append((mod.name, hpp_path, cpp_path))
+            is_local = False
+            try:
+                mod.path.resolve().relative_to(src_dir)
+                is_local = True
+            except ValueError:
+                pass
+            all_modules.append((mod.name, hpp_path, cpp_path, is_local))
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)

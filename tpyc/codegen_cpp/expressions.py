@@ -1024,7 +1024,9 @@ class ExpressionGenerator:
                     return self.builtins.gen_method_from_function_info("(*this)", expr.args, method_info)
                 obj = self.gen_expr(expr.obj)
                 obj, an = self._apply_assign_narrowing(expr.obj, obj)
-                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not an) else obj
+                # Dereference Ptr-typed fields when method was resolved through deref chain
+                is_ptr_deref = expr.deref_depth > 0 and self.types.get_resolved_type(expr.obj).is_pointer()
+                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not an) or is_ptr_deref else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # Handle self.method() -> just method() (inside method, implicit this)
@@ -1076,8 +1078,11 @@ class ExpressionGenerator:
         if expr.resolved_function_info:
             method_info = expr.resolved_function_info
             if method_info.cpp_template:
-                # T* pointer-locals/globals need dereferencing for method template access
-                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not is_assign_narrowed) else obj
+                # Dereference for pointer-locals/globals (T*) and Ptr[T]-typed fields
+                # Only dereference Ptr-typed when method was resolved through deref chain
+                is_ptr_deref = expr.deref_depth > 0 and obj_type is not None and obj_type.is_pointer()
+                needs_deref = (self.ctx.is_indirect_name(expr.obj) and not is_assign_narrowed) or is_ptr_deref
+                method_obj = f"(*{obj})" if needs_deref else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # User-defined record methods may need temp handling for TypeParamRef params

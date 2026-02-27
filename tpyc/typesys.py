@@ -1665,6 +1665,16 @@ class TypeRegistry:
     def get_record(self, name: str) -> Optional[RecordInfo]:
         return self.records.get(name)
 
+    def find_record(self, name: str) -> Optional[RecordInfo]:
+        """Find a record by name, searching local records and registered modules."""
+        result = self.records.get(name)
+        if result is not None:
+            return result
+        for mod in self.modules.values():
+            if name in mod.records:
+                return mod.records[name]
+        return None
+
     def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:
         """Get a builtin record by qualified name."""
         return self.builtin_records.get(qname)

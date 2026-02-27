@@ -3066,6 +3066,7 @@ s = str(3.14)     # → "3.14"
 - **Working**: Shadowing warnings -- defining a class that shadows an imported special name (e.g., `class Sized` after `from typing import Sized`) emits a warning
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
+- **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`)
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
 - **Open**: `from typing import *` (not supported)
 
@@ -3278,6 +3279,7 @@ TurboPython has two library search roots that provide reusable modules:
 | Module | Description |
 |--------|-------------|
 | `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
+| `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage |
 
 ```python
 from tplib import Box

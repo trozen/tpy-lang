@@ -730,9 +730,9 @@ def _find_record_next_element(
     Classes defining __next__() -> T have a synthesized __next_opt__() -> Optional[T]
     added during registration, so only __next_opt__ needs to be checked here.
     """
-    from tpyc.typesys import NamedType, OptionalType, TypeParamRef
+    from tpyc.typesys import NamedType, OptionalType, OwnType, TypeParamRef
 
-    record = registry.get_record(record_name)
+    record = registry.find_record(record_name)
     if record is None:
         return None
 
@@ -743,6 +743,9 @@ def _find_record_next_element(
     for method in record.get_method_overloads("__next_opt__"):
         if len(method.params) == 0 and isinstance(method.return_type, OptionalType):
             inner = method.return_type.inner
+            # __next__() -> Own[T] produces Optional[Own[T]]; unwrap Own
+            if isinstance(inner, OwnType):
+                inner = inner.wrapped
             if isinstance(inner, TypeParamRef) and inner.name in type_subst:
                 return type_subst[inner.name]
             return inner
@@ -789,7 +792,14 @@ def _find_iter_method_element_type(
         if isinstance(ret, OwnType):
             ret = ret.wrapped
         if isinstance(ret, NamedType) and ret.is_user_record:
-            elem = _find_record_next_element(ret.name, ret.type_args, registry)
+            # Substitute outer type params in the iterator's type args
+            iter_type_args = ret.type_args
+            if iter_type_args and type_subst:
+                iter_type_args = [
+                    type_subst.get(a.name, a) if isinstance(a, TypeParamRef) else a
+                    for a in iter_type_args
+                ]
+            elem = _find_record_next_element(ret.name, iter_type_args, registry)
             if elem is not None:
                 return elem
 

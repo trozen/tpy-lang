@@ -617,11 +617,22 @@ class Compiler:
 
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them
-        for dep_name in compiled.ast.user_module_imports:
-            if dep_name in self.modules:
-                dep_exports = self.modules[dep_name].exports
-                module_info = self._exports_to_module_info(dep_name, dep_exports)
-                analyzer.registry.register_module(module_info)
+        # Also register transitive dependencies so types referenced in method signatures
+        # (e.g. iterator types) are visible even when not explicitly imported
+        registered: set[str] = set()
+        queue = list(compiled.ast.user_module_imports)
+        while queue:
+            dep_name = queue.pop()
+            if dep_name in registered or dep_name not in self.modules:
+                continue
+            registered.add(dep_name)
+            dep_exports = self.modules[dep_name].exports
+            module_info = self._exports_to_module_info(dep_name, dep_exports)
+            analyzer.registry.register_module(module_info)
+            # Enqueue transitive dependencies
+            for transitive in self.modules[dep_name].ast.user_module_imports:
+                if transitive not in registered:
+                    queue.append(transitive)
 
         # Set module name for __name__
         module_name = "__main__" if compiled.is_entry_point else compiled.name
