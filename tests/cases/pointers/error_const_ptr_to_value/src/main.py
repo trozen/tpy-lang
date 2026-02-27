@@ -1,4 +1,4 @@
-from tpy import Int32, ConstPtr
+from tpy import Int32, ReadOnlyPtr
 
 class Point:
     x: Int32
@@ -13,5 +13,5 @@ def print_point(p: Point) -> None:
 
 def test() -> None:
     pt: Point = Point(10, 20)
-    cptr: ConstPtr[Point] = pt
-    print_point(cptr)  # tpyc: error(/Type mismatch.*expected Point, got ConstPtr/)
+    cptr: ReadOnlyPtr[Point] = pt
+    print_point(cptr)  # tpyc: error(/Type mismatch.*expected Point, got ReadOnlyPtr/)

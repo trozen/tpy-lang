@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
-    OwnType, ReadonlyType, VoidType, PtrType, ConstPtrType,
+    OwnType, ReadonlyType, VoidType, PtrType, is_const_ptr,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
     is_any_str_type,
@@ -88,8 +88,8 @@ class TypeCompatibility:
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx
             )
 
-        # None -> Optional[T] / Ptr[T] / ConstPtr[T]: always compatible
-        if isinstance(actual, NoneType) and isinstance(expected, (OptionalType, PtrType, ConstPtrType)):
+        # None -> Optional[T] / Ptr[T] / ReadOnlyPtr[T]: always compatible
+        if isinstance(actual, NoneType) and isinstance(expected, (OptionalType, PtrType)):
             return None
 
         # Union[A, B] -> Union[A, B, C]: each actual member must match some expected member
@@ -141,20 +141,15 @@ class TypeCompatibility:
             if self.ctx.registry.is_subclass_of(actual, expected):
                 return None
 
-        # Inheritance: Ptr[Child] -> Ptr[Parent] / ConstPtr[Parent]
+        # Inheritance: Ptr[Child] -> Ptr[Parent] / ReadOnlyPtr[Parent]
+        # ReadOnlyPtr[Child] -> ReadOnlyPtr[Parent]
         if isinstance(actual, PtrType) and isinstance(actual.pointee, NamedType):
             if isinstance(expected, PtrType) and isinstance(expected.pointee, NamedType):
-                if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
-                    return None
-            if isinstance(expected, ConstPtrType) and isinstance(expected.pointee, NamedType):
-                if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
-                    return None
-
-        # Inheritance: ConstPtr[Child] -> ConstPtr[Parent]
-        if isinstance(actual, ConstPtrType) and isinstance(actual.pointee, NamedType):
-            if isinstance(expected, ConstPtrType) and isinstance(expected.pointee, NamedType):
-                if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
-                    return None
+                # Mutable Ptr can coerce to both Ptr and ReadOnlyPtr parent;
+                # ReadOnlyPtr can only coerce to ReadOnlyPtr parent
+                if not actual.is_const or expected.is_const:
+                    if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
+                        return None
 
         # Allow T -> Own[T] coercion (ownership transfer)
         if isinstance(expected, OwnType):
@@ -254,12 +249,12 @@ class TypeCompatibility:
         ctx = coercion_ctx or context
         coercion = resolve_coercion(actual, expected, ctx)
         if coercion is None:
-            # Inheritance: Child -> Ptr[Parent] / ConstPtr[Parent] (address-of with upcast)
+            # Inheritance: Child -> Ptr[Parent] / ReadOnlyPtr[Parent] (address-of with upcast)
             if isinstance(actual, NamedType) and actual.is_user_record:
                 if isinstance(expected, PtrType) and isinstance(expected.pointee, NamedType):
                     if self.ctx.registry.is_subclass_of(actual, expected.pointee):
                         coercion = UPCAST_TO_PTR
-                elif isinstance(expected, ConstPtrType) and isinstance(expected.pointee, NamedType):
+                elif is_const_ptr(expected) and isinstance(expected.pointee, NamedType):
                     if self.ctx.registry.is_subclass_of(actual, expected.pointee):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
@@ -289,7 +284,7 @@ class TypeCompatibility:
             if source_expr is None or not self.is_mutable_lvalue(source_expr):
                 raise SemanticError(
                     f"Cannot take mutable pointer to read-only or temporary value in {context}; "
-                    f"use ConstPtr for read-only access, or assign to a variable first",
+                    f"use a read-only pointer for read-only access, or assign to a variable first",
                     loc
                 )
         elif coercion.requires_lvalue:
@@ -508,7 +503,7 @@ class TypeCompatibility:
         # Constructor call - creates temporary
         if isinstance(expr, TpyCall):
             # Pointer constructors: dangling depends on the argument, not the pointer itself
-            if isinstance(expr.call_type, (PtrType, ConstPtrType)):
+            if isinstance(expr.call_type, PtrType):
                 if not expr.args:
                     return False  # Ptr[T]() -> nullptr, always safe
                 return self.is_dangling_return(expr.args[0])
@@ -584,7 +579,7 @@ class TypeCompatibility:
         # Only check object types (value types are returned by value)
         # OwnType returns by value (ownership transfer), so no dangling risk
         # Pointer types need dangling checks (the pointer value may point to a local)
-        if isinstance(return_type, (PtrType, ConstPtrType)):
+        if isinstance(return_type, PtrType):
             if self.is_dangling_return(expr):
                 raise self.ctx.error(
                     "Cannot return pointer to local or temporary value; "

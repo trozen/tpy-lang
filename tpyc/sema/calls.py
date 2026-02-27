@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
     IntLiteralType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, ConstPtrType, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
+    PtrType, is_const_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     UnionType, EnumType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type,
 )
@@ -146,7 +146,7 @@ class CallAnalyzer:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
                 if arg_types:
                     self._validate_generic_constructor(expr, arg_types)
-                if isinstance(expr.call_type, (PtrType, ConstPtrType)) and expr.args:
+                if isinstance(expr.call_type, PtrType) and expr.args:
                     self._validate_ptr_constructor(expr)
                     # Set resolved constructor for codegen (the &{0} template)
                     lookup = builtin_modules.lookup_generic_type(expr.func)
@@ -301,7 +301,7 @@ class CallAnalyzer:
                                     elem_type = self.ctx.default_int_for_literal(elem_type)
                                 result_type = type_def.type_factory(elem_type)
                                 expr.call_type = result_type
-                                if isinstance(result_type, (PtrType, ConstPtrType)):
+                                if isinstance(result_type, PtrType):
                                     self._validate_ptr_constructor(expr)
                                 if ctor.cpp:
                                     expr.resolved_function_info = _method_def_to_function_info(ctor)
@@ -701,26 +701,26 @@ class CallAnalyzer:
                         f"argument '{param.name}' must be an lvalue", expr)
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
-        """Validate Ptr/ConstPtr constructor arguments (type match, no void args).
+        """Validate pointer constructor arguments (type match, no void args).
 
         Lvalue checking is handled generically by _validate_lvalue_params.
         """
-        assert isinstance(expr.call_type, (PtrType, ConstPtrType))
+        assert isinstance(expr.call_type, PtrType)
         pointee = expr.call_type.pointee
-        kind = "Ptr" if isinstance(expr.call_type, PtrType) else "ConstPtr"
+        kind = "read-only pointer" if expr.call_type.is_const else "pointer"
 
         if len(expr.args) != 1:
-            raise self.ctx.error(f"{kind}() takes 0 or 1 argument, got {len(expr.args)}", expr)
+            raise self.ctx.error(f"{kind} constructor takes 0 or 1 argument, got {len(expr.args)}", expr)
 
         arg = expr.args[0]
         arg_type = self.ctx.get_expr_type(arg)
 
         if isinstance(pointee, VoidType):
-            raise self.ctx.error(f"{kind}[None]() does not accept arguments", expr)
+            raise self.ctx.error(f"{kind} to None does not accept arguments", expr)
 
         if arg_type != pointee:
             raise self.ctx.error(
-                f"{kind}[{pointee}]() expects {pointee}, got {arg_type}", expr)
+                f"{kind} to {pointee} expects {pointee}, got {arg_type}", expr)
 
     def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
         """Check a builtin type constructor call using unified RecordInfo.constructors."""
@@ -857,13 +857,13 @@ class CallAnalyzer:
             )
             if type_subst is not None:
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
-                # Catch ConstPtr-to-Ptr const-drop for unsafe_cast before
+                # Catch ReadOnlyPtr-to-Ptr const-drop for unsafe_cast before
                 # the generic "type mismatch" at the assignment level.
                 if (overload.qualified_name == "tpy.unsafe.unsafe_cast"
-                        and isinstance(resolved.return_type, ConstPtrType)
-                        and isinstance(self.ctx.expr_type_hint, PtrType)):
+                        and is_const_ptr(resolved.return_type)
+                        and isinstance(self.ctx.expr_type_hint, PtrType) and not self.ctx.expr_type_hint.is_const):
                     raise self.ctx.error(
-                        "unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)", expr
+                        "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
                     )
                 expr.resolved_function_info = resolved
                 expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
@@ -915,24 +915,24 @@ class CallAnalyzer:
                     expr
                 )
 
-        # Check for ConstPtr passed at a position where all overloads expect Ptr
+        # Check for ReadOnlyPtr passed at a position where all overloads expect Ptr
         for i, arg_t in enumerate(arg_types):
-            if isinstance(arg_t, ConstPtrType):
+            if is_const_ptr(arg_t):
                 all_need_ptr_at_i = all(
-                    i < len(o.params) and isinstance(o.params[i].type, PtrType)
+                    i < len(o.params) and isinstance(o.params[i].type, PtrType) and not o.params[i].type.is_const
                     for o in overloads
                 )
                 if all_need_ptr_at_i:
                     raise self.ctx.error(
-                        f"{expr.func}() requires a mutable Ptr, got {arg_t}", expr
+                        f"{expr.func}() requires a mutable pointer, got {arg_t}", expr
                     )
 
         # Targeted diagnostics for unsafe_cast
         if overloads[0].qualified_name == "tpy.unsafe.unsafe_cast" and len(arg_types) == 1:
             arg_t = arg_types[0]
-            if not isinstance(arg_t, (PtrType, ConstPtrType)):
+            if not isinstance(arg_t, PtrType):
                 raise self.ctx.error(
-                    f"unsafe_cast() requires a Ptr or ConstPtr argument, got {arg_t}", expr
+                    f"unsafe_cast() requires a pointer argument, got {arg_t}", expr
                 )
             hint = self.ctx.expr_type_hint
             if hint is not None:
@@ -940,13 +940,13 @@ class CallAnalyzer:
                 if isinstance(hint, OwnType):
                     hint = hint.wrapped
                 hint = unwrap_readonly(hint)
-                if not isinstance(hint, (PtrType, ConstPtrType)):
+                if not isinstance(hint, PtrType):
                     raise self.ctx.error(
-                        f"unsafe_cast() target must be Ptr[T] or ConstPtr[T], got {raw_hint}", expr
+                        f"unsafe_cast() target must be a pointer type, got {raw_hint}", expr
                     )
-                if isinstance(arg_t, ConstPtrType) and isinstance(hint, PtrType):
+                if arg_t.is_const and not hint.is_const:
                     raise self.ctx.error(
-                        "unsafe_cast() cannot cast ConstPtr to Ptr (use unsafe_const_cast first)", expr
+                        "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
                     )
             raise self.ctx.error(
                 "unsafe_cast() requires a type argument or target type annotation "

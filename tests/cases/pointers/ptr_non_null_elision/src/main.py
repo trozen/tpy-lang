@@ -1,4 +1,4 @@
-from tpy import Ptr, ConstPtr, Int32
+from tpy import Ptr, ReadOnlyPtr, Int32
 
 class Point:
     x: Int32
@@ -24,11 +24,11 @@ def main() -> None:
     print(p.x)
     print(p.y)
     print(p.sum())
-    # Local ConstPtr from lvalue: provably non-null, skip null check
-    cp: ConstPtr[Point] = ConstPtr(pt)
+    # Local ReadOnlyPtr from lvalue: provably non-null, skip null check
+    cp: ReadOnlyPtr[Point] = ReadOnlyPtr(pt)
     print(cp.x)
-    # Coercion: Ptr[T] -> ConstPtr[T] preserves non-null provenance
-    cp2: ConstPtr[Point] = p
+    # Coercion: Ptr[T] -> ReadOnlyPtr[T] preserves non-null provenance
+    cp2: ReadOnlyPtr[Point] = p
     print(cp2.y)
     # Propagated provenance: q copies from known non-null p
     q: Ptr[Point] = p

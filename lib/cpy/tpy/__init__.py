@@ -167,8 +167,8 @@ class Ptr(metaclass=_PtrMeta):
         return _Ptr(obj)
 
 
-class ConstPtr(metaclass=_PtrMeta):
-    """ConstPtr[T] type - creates read-only pointer."""
+class ReadOnlyPtr(metaclass=_PtrMeta):
+    """ReadOnlyPtr[T] type - creates read-only pointer."""
 
     def __new__(cls, obj):
         return _ConstPtr(obj)

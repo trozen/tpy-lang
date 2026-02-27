@@ -7,7 +7,7 @@ Record -> Ptr coercions:
 10
 30
 51
-Record -> ConstPtr coercions:
+Record -> ReadOnlyPtr coercions:
 5
 25
 300
@@ -16,7 +16,7 @@ Ptr -> Record coercions:
 9
 11
 27
-Ptr -> ConstPtr coercions:
+Ptr -> ReadOnlyPtr coercions:
 3
 5
 7

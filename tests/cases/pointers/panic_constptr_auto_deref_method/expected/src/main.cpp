@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // 10: def main() -> None:
 void main() {
-    // 11:     p: ConstPtr[Counter] = ConstPtr[Counter]()
+    // 11:     p: ReadOnlyPtr[Counter] = ReadOnlyPtr[Counter]()
     const Counter* p = static_cast<const Counter*>(nullptr);
     // 12:     print(p.__len__())
     std::cout << tpy::deref_check(p).__len__() << "\n";

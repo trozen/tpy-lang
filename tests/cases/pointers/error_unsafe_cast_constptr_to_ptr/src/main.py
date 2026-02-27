@@ -1,5 +1,5 @@
-from tpy import Ptr, ConstPtr, Int32, UInt32
+from tpy import Ptr, ReadOnlyPtr, Int32, UInt32
 from tpy.unsafe import unsafe_cast
 
-cp: ConstPtr[Int32] = ConstPtr[Int32]()
-p: Ptr[UInt32] = unsafe_cast(cp)  # tpyc: error(/cannot cast ConstPtr to Ptr/)
+cp: ReadOnlyPtr[Int32] = ReadOnlyPtr[Int32]()
+p: Ptr[UInt32] = unsafe_cast(cp)  # tpyc: error(/cannot cast read-only pointer to mutable pointer/)

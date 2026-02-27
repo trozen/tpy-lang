@@ -10,7 +10,7 @@ import ast
 from typing import NoReturn, Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, ConstPtrType, OwnType, ReadonlyType, FinalType,
+    TpyType, NamedType, PtrType, OwnType, ReadonlyType, FinalType,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -1203,10 +1203,13 @@ class Parser:
                 if module == "tpy":
                     if original == "Ptr":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        # Ptr[readonly[T]] normalizes to ReadOnlyPtr[T]
+                        if isinstance(inner, ReadonlyType):
+                            return PtrType(inner.wrapped, is_const=True)
                         return PtrType(inner)
-                    elif original == "ConstPtr":
+                    elif original == "ReadOnlyPtr":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return ConstPtrType(inner)
+                        return PtrType(inner, is_const=True)
                     elif original == "Own":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return OwnType(inner)

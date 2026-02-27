@@ -1,0 +1,1 @@
+Ptr null constructor not supported in CPython stubs

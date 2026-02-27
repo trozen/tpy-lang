@@ -144,7 +144,7 @@ tests/
 │   ├── none_safety/          # Optional types, narrowing
 │   ├── operators/            # Operators, coercion, assignment, subscript
 │   ├── auto_move/            # Auto-move at last use, forwarding refs
-│   ├── pointers/             # Ptr, ConstPtr, Own, dangling references
+│   ├── pointers/             # Ptr, ReadOnlyPtr, Own, dangling references
 │   ├── protocols/            # Protocol definition and implementation
 │   ├── readonly/             # @readonly decorator, readonly[T] type modifier
 │   ├── records/              # Class/record methods, dunder, staticmethod
@@ -217,7 +217,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
-| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ConstPtr, Own, Optional, List, Array, Span, StaticList) and TypeRegistry |
+| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ReadOnlyPtr, Own, Optional, List, Array, Span, StaticList) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
@@ -363,7 +363,7 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `Span[T]` | `std::span<const T>` |
 | `StaticList[T, N]` | `StaticList<T, N>` |
 | `Ptr[T]` | `T*` |
-| `ConstPtr[T]` | `const T*` |
+| `ReadOnlyPtr[T]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |
 
 ## Supported Language Features

@@ -189,7 +189,7 @@ Native functions can use any type that has a direct C++ mapping:
 | `bool` | `bool` |
 | `None` (return) | `void` |
 
-Planned: `str`, `Ptr[T]`, `ConstPtr[T]`, opaque handle types.
+Planned: `str`, `Ptr[T]`, `ReadOnlyPtr[T]`, opaque handle types.
 
 ---
 
@@ -348,7 +348,7 @@ Works with native functions using these types:
 
 ```python
 @native_c("SDL_RenderFillRect")
-def fill_rect(renderer: Ptr[Renderer], rect: ConstPtr[Rect]) -> Int32: ...
+def fill_rect(renderer: Ptr[Renderer], rect: ReadOnlyPtr[Rect]) -> Int32: ...
 # → int32_t SDL_RenderFillRect(Renderer* renderer, const SDL_Rect* rect);
 ```
 
@@ -563,10 +563,10 @@ from tpy import Int32, CCallback
 
 @native_c
 def qsort(base: Ptr[None], count: Int32, size: Int32,
-           cmp: CCallback[[ConstPtr[None], ConstPtr[None]], Int32]) -> None: ...
+           cmp: CCallback[[ReadOnlyPtr[None], ReadOnlyPtr[None]], Int32]) -> None: ...
 
-def my_compare(a: ConstPtr[None], b: ConstPtr[None]) -> Int32:
-    return deref(cast(a, ConstPtr[Int32])) - deref(cast(b, ConstPtr[Int32]))
+def my_compare(a: ReadOnlyPtr[None], b: ReadOnlyPtr[None]) -> Int32:
+    return deref(cast(a, ReadOnlyPtr[Int32])) - deref(cast(b, ReadOnlyPtr[Int32]))
 
 qsort(data, n, Int32(4), my_compare)
 ```

@@ -1,4 +1,4 @@
-from tpy import Ptr, ConstPtr, Int32, UInt32, Char, Array, copy
+from tpy import Ptr, ReadOnlyPtr, Int32, UInt32, Char, Array, copy
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 def test_array_overload() -> None:
@@ -13,7 +13,7 @@ def test_list_overload() -> None:
 
 def test_str_overload() -> None:
     s: str = "abc"
-    cp: ConstPtr[Char] = unsafe_ptr(s)
+    cp: ReadOnlyPtr[Char] = unsafe_ptr(s)
     print(unsafe_load(cp, UInt32(0)))
 
 def test_store_and_load() -> None:

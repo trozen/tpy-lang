@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, ConstPtrType, OwnType, ListType, PendingListType,
+    NamedType, PtrType, OwnType, ListType, PendingListType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType,
@@ -293,7 +293,7 @@ class ExpressionAnalyzer:
                         "(not '==' / '!=')",
                         expr,
                     )
-                if isinstance(other, (PtrType, ConstPtrType)):
+                if isinstance(other, PtrType):
                     raise self.ctx.error(
                         "Use 'is None' / 'is not None' for pointer None checks "
                         "(not '==' / '!=')",
@@ -353,7 +353,7 @@ class ExpressionAnalyzer:
                     f"Cannot compare enum types '{left_check.name}' and '{right_check.name}'",
                     expr,
                 )
-            nullable_types = (OptionalType, PtrType, ConstPtrType)
+            nullable_types = (OptionalType, PtrType)
             if isinstance(left_check, NoneType) and isinstance(right_check, nullable_types):
                 return BOOL
             if isinstance(right_check, NoneType) and isinstance(left_check, nullable_types):
@@ -751,7 +751,7 @@ class ExpressionAnalyzer:
                 f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
                 f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
 
-        # Deref chain loop -- resolves through Ptr, ConstPtr, and any Deref[T] type
+        # Deref chain loop -- resolves through Ptr, ReadOnlyPtr, and any Deref[T] type
         current_type = actual_type
         deref_depth = 0
         while deref_depth <= 8:
@@ -759,14 +759,18 @@ class ExpressionAnalyzer:
             if result is not None:
                 expr.deref_depth = deref_depth
                 if (deref_depth > 0
-                        and isinstance(actual_type, (PtrType, ConstPtrType))
+                        and isinstance(actual_type, PtrType)
                         and isinstance(expr.obj, TpyName)
                         and expr.obj.name in self.ctx.non_null_ptr_vars):
                     expr.ptr_non_null = True
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
-                if is_readonly_obj and not result.is_value_type():
-                    result = ReadonlyType(unwrap_readonly(result))
+                # Ptr[T] fields become ReadOnlyPtr[T] (deep const semantics).
+                if is_readonly_obj:
+                    if isinstance(result, PtrType) and not result.is_const:
+                        result = result.as_const()
+                    elif not result.is_value_type():
+                        result = ReadonlyType(unwrap_readonly(result))
                 # Apply field path narrowing (e.g. after `if obj.field is not None:`)
                 if isinstance(expr.obj, TpyName):
                     field_key = f"{expr.obj.name}.{expr.field}"
