@@ -125,7 +125,7 @@ TurboPython distinguishes between **value types** and **object types**:
 
 ### Value Types
 Small, immutable, passed by copy:
-- `int`, `float`, `Int32`, `Int64`, `Float32`, `Float64`, `bool`
+- `int`, `float`, `Int32`, `Int64`, `bool`
 - Small immutable structs (configurable threshold)
 - `FixStr[N]` (fixed-size string)
 
@@ -248,7 +248,7 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), the target type is preserved - the right-hand side is converted to match:
 ```python
 total: Int32 = 0
-big_value = 10  # int (BigInt)
+big_value: int = 10  # int (BigInt)
 total += big_value  # big_value converted to Int32, then Int32 addition
 total *= big_value  # same: converts to Int32 first
 ```
@@ -611,25 +611,27 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 
 #### Unsafe Pointer Operations (Working)
 
-Low-level pointer arithmetic for C interop and performance-critical code. These bypass bounds checking:
+Low-level pointer arithmetic for C interop and performance-critical code. These bypass bounds checking. The API uses free functions from `tpy.unsafe` (not method calls on pointers):
 
 ```python
-from tpy import Ptr, ConstPtr, Int32, Array
+from tpy import Ptr, ConstPtr, Int32, UInt32, Array
+from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 # Get raw pointer to array data
-arr: Array[Int32, 4] = [10, 20, 30, 40]
-p: Ptr[Int32] = arr.unsafe_ptr()
+arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+p: Ptr[Int32] = unsafe_ptr(arr)
 
 # Indexed read/write (no bounds check)
-val: Int32 = p.unsafe_load(Int32(2))   # → 30
-p.unsafe_store(Int32(0), Int32(99))    # arr[0] = 99
+val: Int32 = unsafe_load(p, UInt32(2))       # -> 30
+unsafe_store(p, UInt32(0), Int32(99))        # arr[0] = 99
 
 # ConstPtr has unsafe_load only (no store)
-cp: ConstPtr[Int32] = ConstPtr(arr.unsafe_ptr())
-val2: Int32 = cp.unsafe_load(Int32(1))  # → 20
+cp: ConstPtr[Char] = unsafe_ptr("hello")
 ```
 
-Generated C++: `unsafe_ptr()` → `.data()`, `unsafe_load(i)` → `ptr[i]`, `unsafe_store(i, v)` → `ptr[i] = v`.
+Generated C++: `unsafe_ptr(x)` -> `x.data()`, `unsafe_load(p, i)` -> `p[i]`, `unsafe_store(p, i, v)` -> `p[i] = v`.
+
+See the full `tpy.unsafe` API [below](#unsafe-memory-operations----tpyunsafe-working) for `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_const_cast`, and `unsafe_cast`.
 
 #### Owned Return Values (Working)
 
@@ -1584,7 +1586,7 @@ Planned design:
 Current limitations:
 - **User records**: we generate `operator[]` from `__getitem__`, but it currently returns by value. This prevents mutating elements through `items[i].method()` for user-defined record containers. Addressing this likely requires reference-capable `__getitem__` or a dedicated mutation API in the type system.
 
-#### Working: `@dynamic` Protocol Declaration and Dispatch (Phase 9)
+#### Working: `@dynamic` Protocol Declaration and Dispatch
 
 The `@dynamic` decorator marks a protocol for runtime dispatch support. When applied, the compiler generates C++ artifacts for virtual dispatch:
 
@@ -1935,7 +1937,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 ### Union/Optional
 - **Working**: Union types `A | B | C` → `std::variant<A, B, C>`
   - Two-way, three-way, and n-way unions in annotations (function params, returns, local variables)
-  - Canonical member ordering (sorted by type name, `None`/`std::monostate` always last)
+  - Canonical member ordering (sorted by type name, `None`/`std::monostate` always first)
   - `A | None` with single non-None type still produces `Optional[T]` (backward compatible)
   - Member type compatibility: `T` assignable to `T | U`, `T | U` assignable to `T | U | V`
   - `make_union()` normalizes: flattens nested unions, deduplicates, collapses single-type unions
@@ -3542,7 +3544,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 - **Working**: Local variables (inferred and annotated)
 - **Working**: Global variables (typed)
 - **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args
-- **Open**: `global` → explicit global mutation from functions (attempted and reverted; may revisit)
+- **Working**: `global` keyword for explicit global mutation from functions
 - **Open**: `:=` walrus → if useful pattern emerges
 
 ---

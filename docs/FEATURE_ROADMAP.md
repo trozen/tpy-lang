@@ -48,12 +48,14 @@ existing compiler model stays the same for existing code.
 | A1 | Final constants | S | Done | [I](#final--constant-globals) |
 | A2 | Type aliases | S | Done | [I](#type-aliases) |
 | A3 | Generic Optional codegen fix | M | Done | [I](#generic-optional-codegen-fix) |
-| A4 | DynStr (owned strings) | M | Designed | [I](#string-ownership-dynstr) |
-| A5 | Enums | M | Not started | [I](#enums) |
+| A4 | DynStr (owned strings) | M | Superseded | [I](#string-ownership-dynstr) |
+| A5 | Enums | M | Done | [I](#enums) |
 | A6 | Keyword args + default values | M | Not started | [VII](#keyword-arguments-and-default-values) |
 | A7 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
 | A8 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A9 | Constructor initializer list codegen | M | Known bug | [II](#constructor-initializer-list-codegen) |
+| A10 | Float32 type | S | Not started | [I](#float32-type) |
+| A11 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
 
 ### Phase B: Polymorphism Foundation
 
@@ -82,7 +84,7 @@ existing compiler model stays the same for existing code.
 |---|---------|--------|--------|---------|
 | D1 | Closures / nested functions | L | Not started | [VI](#closures--nested-functions) |
 | D2 | Callable type | L | Not started | [I](#callable--function-pointer-types) |
-| D3 | f-strings | M | Not started | [VII](#f-strings) |
+| D3 | f-strings | M | Done | [VII](#f-strings) |
 | D4 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
 | D5 | Dataclasses | M | Not started | [VII](#dataclasses) |
 | D6 | dict type | L | Not started | [VII](#dict-type) |
@@ -235,20 +237,16 @@ now equivalent to `T | None` at parse time.
 
 Owned string type: `DynStr` -> `std::string`.
 
-**Why it matters**: Current `str` (`std::string_view`) creates dangling references when
-storing `str(numeric)` in a variable. Any program that builds strings dynamically is broken.
-This is the most user-visible limitation.
+**Superseded.** The original DynStr design (separate `str` view + `DynStr` owned type) was
+replaced by context-dependent `str` (PendingStrType): `str` resolves to `std::string` for
+locals/fields and `std::string_view` for parameters. This eliminates dangling references
+without introducing a separate type. String concatenation, `str()` conversions, and f-strings
+all produce `std::string` and are safe to store. The explicit `String` and `StrView` types
+remain available for when the user wants to control the representation.
 
-Design (STRING_HANDLING.md): `str` = view (non-owning), `DynStr` = `std::string` (owning).
-Implicit widening `str -> DynStr` allowed in normal code, blocked in `@noalloc`.
-Concatenation returns `DynStr`. Both are value types (copy silently).
+**Dependencies**: N/A (superseded)
 
-**Current state**: Design doc exists, not implemented.
-
-**Dependencies**: Interacts with `@noalloc` (widening blocked), reassignment inference
-(infer `DynStr` when any assignment produces owned string), f-strings (produce `DynStr`).
-
-**Effort**: M (new type, coercion rules, codegen)
+**Effort**: N/A
 
 ---
 
@@ -267,7 +265,8 @@ Maps to `enum class Color : int32_t` in C++.
 (enums are the tag), and many real-world patterns (state machines, options, flags).
 Int-based enums first; string enums and flag enums later.
 
-**Current state**: Not started.
+**Current state**: Done. Int-based enums with `auto()`, `Enum.member` access, cross-module
+import, `==`/`!=` comparison, `print()` support, and `isinstance()` narrowing all working.
 
 **Dependencies**: Stepping stone to union types and match/case.
 
@@ -418,6 +417,58 @@ does not. `# tpy: include`/`link` designed in NATIVE_INTEROP.md but not implemen
 
 ---
 
+### Float32 Type
+
+```python
+from tpy import Float32
+
+x: Float32 = 1.5   # -> float (C++)
+```
+
+`Float32` -> `float` (C++ single precision). Currently `float` maps to `double` (64-bit).
+No single-precision float type exists.
+
+**Why it matters**: GPU programming, graphics, and memory-sensitive applications need
+32-bit floats. Also useful for C interop where APIs expect `float` rather than `double`.
+
+**Current state**: Not started. Not tracked elsewhere.
+
+**Dependencies**: None. Mirrors existing fixed-width int registration pattern.
+
+**Effort**: S (register type, add coercion rules, codegen mapping)
+
+---
+
+### Iterable[T] Protocol
+
+```python
+from typing import Protocol
+
+class Iterable(Protocol[T]):
+    def __iter__(self) -> OptIterator[T]: ...
+
+def sum_all(items: Iterable[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in items:
+        total += x
+    return total
+```
+
+**Why it matters**: Currently `__iter__` support is structural (detected by
+`get_iter_element_type()`), not protocol-based. Can't write `def f(it: Iterable[T])`
+as a parameter type. This blocks generic iteration abstractions.
+
+**Current state**: Not started. Mentioned in TODO.md known limitations. Adding it requires
+return-type conformance checking in the protocol system -- currently protocol conformance
+only checks type equality on method signatures, not whether a return type *conforms to*
+another protocol.
+
+**Dependencies**: Protocol system (done), return-type conformance checking (not started).
+
+**Effort**: M (protocol definition + conformance extension + codegen)
+
+---
+
 ## II. Polymorphism & Dispatch
 
 ### Box[T] -- Heap Ownership
@@ -437,7 +488,9 @@ own a heap object in TPy.
 
 Phase 6 of MOVE_SEMANTICS_DESIGN. Well-specified, implementation-ready.
 
-**Current state**: Not started. `@nocopy` and `Deref[T]` protocol both exist.
+**Current state**: Not started as a compiler-native type. A library-level `tplib.Box[T]`
+already exists using unsafe primitives (`tpy.unsafe`, `tpy.mem`), providing basic heap
+ownership with `@nocopy` move semantics.
 
 **Dependencies**: Prerequisites done (`@nocopy`, `Deref[T]`, auto-move). Gates `Dyn[P]`.
 
@@ -503,7 +556,8 @@ coercion** (`Dog -> Ptr[Animal]`). Currently assigning a child to a parent type 
 pointer is not supported -- these coercions are needed for inheritance to be useful.
 
 **Current state**: Single inheritance works. No `virtual`, no `override`, no vtable.
-No upcasting coercion. Registration.py has comments noting the dispatch gap.
+Upcasting coercion (child -> parent type) works. Registration.py has comments noting
+the dispatch gap. The key missing piece is virtual dispatch through base pointers.
 
 **Dependencies**: Related to `Dyn[P]` but simpler (class-based vs protocol-based).
 Could implement as: explicit `@virtual` decorator, or auto-detect when override exists.
@@ -630,13 +684,13 @@ differentiator.
 enforcement. Designing what "no allocation" means precisely requires tracking which
 operations allocate and how effects propagate through calls.
 
-Operations that allocate: `list.append`, `str` concatenation -> `DynStr`, `BigInt`
+Operations that allocate: `list.append`, `str` concatenation -> `std::string`, `BigInt`
 arithmetic, `Box::new`, `std::string` construction, container growth.
 
 **Current state**: `is_noalloc` flag propagated in sema, zero enforcement code.
 
-**Dependencies**: Needs `DynStr` (to know what string ops allocate), exception model
-(exceptions allocate), `Box[T]` (heap allocation).
+**Dependencies**: Needs string ownership model (done -- context-dependent `str`), exception
+model (exceptions allocate), `Box[T]` (heap allocation).
 
 **Effort**: L (new sema pass tracking allocation effects, call-chain propagation)
 
@@ -1110,9 +1164,10 @@ msg = f"hello {name}, 1+1={1+1}"
 
 Maps to `std::format` (C++20) or `fmt::format`.
 
-**Current state**: Not started.
+**Current state**: Done. f-strings with expressions, nested field access, and method calls
+work. Maps to `std::ostringstream`-based concatenation in C++.
 
-**Dependencies**: `DynStr` (f-strings produce owned strings).
+**Dependencies**: Context-dependent `str` (done -- f-strings produce `std::string`).
 
 **Effort**: M (parser + expression codegen inside format specs)
 
@@ -1425,7 +1480,7 @@ Features needed for the compiler to compile itself, roughly by priority:
 | list comprehensions | common | VI |
 | isinstance + narrowing | 824 calls, 35 files | I (ADTs replace) |
 | closures/lambda | moderate | VI |
-| string methods | pervasive | I (DynStr) |
+| string methods | pervasive | I (str) |
 | `with` statement | moderate | VI |
 | walrus operator | if useful | - |
 | own parser | replaces Python `ast` | - |
