@@ -265,6 +265,10 @@ class SemanticAnalyzer:
         for record in module.records:
             self.registrar.validate_record_inheritance(record)
 
+        # Validate ValueType fields in a second pass (all ValueType flags are set now)
+        for record in module.records:
+            self.registrar.validate_value_type_fields(record)
+
         # Propagate @nocopy from fields to containing records.
         # Done after inheritance validation so parent types are resolved.
         # Definition order handles transitive propagation naturally.

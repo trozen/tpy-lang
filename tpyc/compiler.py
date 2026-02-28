@@ -21,7 +21,7 @@ from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace
-from .typesys import TpyType, INT32, INT64, BIGINT
+from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 
 if TYPE_CHECKING:
     from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, EnumType, ModuleInfo, ModuleVarInfo
@@ -305,6 +305,8 @@ class Compiler:
             ParseError: If parsing fails.
             SemanticError: If semantic analysis fails.
         """
+        clear_all_compilation_state()
+
         if self._source_input is not None:
             source, entry_name = self._source_input
             parser = Parser()

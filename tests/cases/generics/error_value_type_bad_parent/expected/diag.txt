@@ -1,0 +1,1 @@
+main.py:9: error: ValueType class 'Bad': parent 'Base' is not a value type

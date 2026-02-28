@@ -15,6 +15,7 @@ from ..typesys import (
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
+from .protocols import record_extends_any
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -448,8 +449,9 @@ class TypeOperations:
                 arg_type, registry=self.ctx.registry)
         else:
             elem_type = self._get_iterable_element_type_or_none(arg_type)
-            if elem_type is not None and not builtin_modules.type_extends_any(arg_type, protocol_name):
-                elem_type = None
+            if elem_type is not None:
+                if not record_extends_any(arg_type, protocol_name, self.ctx.registry):
+                    elem_type = None
         if elem_type is None:
             return False
         for ta in param_type.type_args:

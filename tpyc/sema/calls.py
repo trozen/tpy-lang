@@ -652,7 +652,7 @@ class CallAnalyzer:
             fully_checked = True
             for p, at in zip(ctor.params, arg_types):
                 if is_protocol_type(p.type):
-                    if not builtin_modules.type_extends_any(at, p.type.name):
+                    if not self.protocols.type_extends_any_protocol(at, p.type.name):
                         rejected = True
                         break
                 elif _has_type_param_ref(p.type):

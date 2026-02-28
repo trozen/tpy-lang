@@ -12,6 +12,7 @@ from ..typesys import (
     TpyType, CHAR, is_protocol_type, is_any_str_type,
 )
 from .diagnostics import SemanticError
+from .protocols import record_extends_any
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -39,7 +40,7 @@ class IterableHelper:
         if is_protocol_type(typ) and typ.name in ("NativeIterable", "OptIterator"):
             return True
         # Check if type extends NativeIterable or OptIterator
-        if builtin_modules.type_extends_any(typ, "NativeIterable"):
+        if record_extends_any(typ, "NativeIterable", self.ctx.registry):
             return True
         if builtin_modules.get_native_iterator_element_type(typ, registry=self.ctx.registry) is not None:
             return True

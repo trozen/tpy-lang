@@ -1,0 +1,1 @@
+main.py:14: error: Type argument 'NotValue' does not satisfy bound 'ValueType' for type parameter 'T' of 'Box'

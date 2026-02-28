@@ -12,6 +12,7 @@ from ..typesys import (
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT,
+    register_value_type_record,
 )
 from ..parse import TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
 from .diagnostics import SemanticError
@@ -469,6 +470,57 @@ class TypeRegistrar:
                     f"but does not satisfy the protocol requirements",
                     record.loc
                 )
+
+        # ValueType marker: set flag (field validation deferred to a second pass
+        # so that all ValueType records in the module are registered first)
+        for protocol in record_info.implemented_protocols:
+            if protocol.name == "ValueType":
+                if record_info.is_nocopy:
+                    raise SemanticError(
+                        f"@nocopy class '{record.name}' cannot implement ValueType "
+                        f"(value types require copy semantics)",
+                        record.loc
+                    )
+                record_info.is_value_type = True
+                register_value_type_record(record.name)
+                break
+
+    def validate_value_type_fields(self, record: TpyRecord) -> None:
+        """Validate that all fields of a ValueType record are themselves value types,
+        and that any parent class is also a value type.
+
+        Called in a second pass after all records have been processed, so that
+        ValueType records defined later in the same module are already registered.
+        """
+        record_info = self.ctx.registry.get_record(record.name)
+        if record_info is None or not record_info.is_value_type:
+            return
+        if record_info.parent is not None and not record_info.parent.is_value_type():
+            raise SemanticError(
+                f"ValueType class '{record.name}': parent '{record_info.parent}' "
+                f"is not a value type",
+                record.loc
+            )
+        for fld in record_info.fields:
+            if not self._is_field_value_type(fld.type):
+                raise SemanticError(
+                    f"ValueType class '{record.name}': field '{fld.name}' "
+                    f"has non-value type '{fld.type}'",
+                    fld.loc
+                )
+
+    @staticmethod
+    def _is_field_value_type(typ: TpyType) -> bool:
+        """Check if a field type satisfies the ValueType constraint.
+
+        Type parameters are accepted unconditionally -- for generic ValueType
+        records, the C++ is_value_type trait enforces this at instantiation time.
+        """
+        if typ.is_value_type():
+            return True
+        if isinstance(typ, TypeParamRef):
+            return True
+        return False
 
     def _has_circular_inheritance(self, record_name: str, parent_name: str) -> bool:
         """Check if record_name would be in the inheritance chain of parent_name."""

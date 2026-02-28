@@ -30,6 +30,7 @@ class TypeParamKind(Enum):
 # Would need to move into CodeGenContext if codegen ever runs concurrently.
 _native_cpp_names: dict[str, str] = {}
 _union_alias_names: dict[tuple['TpyType', ...], str] = {}
+_value_type_record_names: set[str] = set()
 
 
 def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
@@ -42,10 +43,26 @@ def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> Non
     _union_alias_names[members] = alias_name
 
 
-def clear_native_cpp_names() -> None:
-    """Clear all native C++ name mappings (called per-compilation)."""
+def register_value_type_record(name: str) -> None:
+    """Register a record as a value type (ValueType marker protocol)."""
+    _value_type_record_names.add(name)
+
+
+def clear_codegen_state() -> None:
+    """Clear per-module codegen state (called before each module's codegen).
+
+    Does NOT clear _value_type_record_names -- those are accumulated during
+    sema across all modules and must persist for the full build.
+    """
     _native_cpp_names.clear()
     _union_alias_names.clear()
+
+
+def clear_all_compilation_state() -> None:
+    """Full reset for a new compilation (called once per tpyc invocation)."""
+    _native_cpp_names.clear()
+    _union_alias_names.clear()
+    _value_type_record_names.clear()
 
 
 @dataclass(frozen=True)
@@ -635,8 +652,9 @@ class NamedType(TpyType):
         return None
 
     def is_value_type(self) -> bool:
-        # Protocol-typed params are passed by const ref
-        # Records are object types (not value types)
+        # Records implementing ValueType marker protocol are value types
+        if self.name in _value_type_record_names:
+            return True
         return False
 
     def get_element_type(self) -> Optional['TpyType']:
@@ -1375,6 +1393,7 @@ class RecordInfo:
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
+    is_value_type: bool = False   # True for ValueType marker protocol
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
 

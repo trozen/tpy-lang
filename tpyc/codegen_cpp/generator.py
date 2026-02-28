@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TextIO, TYPE_CHECKING
 import io
 
-from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, BIGINT, clear_native_cpp_names, register_native_cpp_name, register_union_alias
+from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name
@@ -92,7 +92,7 @@ class CodeGenerator:
         # Populate native C++ name mappings for this module's codegen.
         # Must include both own records and imported records so NamedType.to_cpp()
         # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
-        clear_native_cpp_names()
+        clear_codegen_state()
         for record in module.records:
             record_info = self.analyzer.registry.get_record(record.name)
             if record_info and record_info.is_native and record_info.native_name:
@@ -521,6 +521,30 @@ class CodeGenerator:
                 continue
             self.records.gen_record_decl(hpp, record)
             hpp.write("\n")
+
+        # ValueType specializations: exit namespace, emit, re-enter
+        value_type_records = [
+            r for r in module.records
+            if (info := self.analyzer.registry.get_record(r.name)) and info.is_value_type
+        ]
+        if value_type_records:
+            ns = module_to_cpp_namespace(self.ctx.module_name)
+            hpp.write(f"}} // namespace {ns}\n\n")
+            for record in value_type_records:
+                record_info = self.analyzer.registry.get_record(record.name)
+                if record.type_params:
+                    # Generic record: partial specialization
+                    tparams_decl = ", ".join(
+                        f"std::size_t {tp}" if (record_info and i < len(record_info.type_param_kinds)
+                            and record_info.type_param_kinds[i].name == "INT")
+                        else f"typename {tp}"
+                        for i, tp in enumerate(record.type_params)
+                    )
+                    tparams_use = ", ".join(record.type_params)
+                    hpp.write(f"template<{tparams_decl}> struct tpy::is_value_type<{ns}::{record.name}<{tparams_use}>> : std::true_type {{}};\n")
+                else:
+                    hpp.write(f"template<> struct tpy::is_value_type<{ns}::{record.name}> : std::true_type {{}};\n")
+            hpp.write(f"\nnamespace {ns} {{\n\n")
 
         # Module-local type alias definitions (after record definitions
         # so member types are complete for std::variant)

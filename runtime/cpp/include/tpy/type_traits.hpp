@@ -42,6 +42,10 @@ template<> struct is_value_type<std::string> : std::true_type {};
 template<> struct is_value_type<std::string_view> : std::true_type {};
 template<> struct is_value_type<BigInt> : std::true_type {};
 
+// C++ concept for the ValueType marker protocol
+template<typename T>
+concept ValueType = is_value_type<T>::value;
+
 /**
  * Return type helpers for generic code.
  *

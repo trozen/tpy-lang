@@ -7,17 +7,39 @@ Protocol conformance checking and method/field lookups.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+import re
+
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
 )
-from ..coercions import is_protocol_safe_coercion
+from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
 
 if TYPE_CHECKING:
+    from ..typesys import TypeRegistry
     from .context import SemanticContext
     from .type_ops import TypeOperations
 
 from tpyc import modules as builtin_modules
+
+
+def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegistry') -> bool:
+    """Check if a type extends any variant of a protocol (ignoring type args).
+
+    Standalone utility for callers without ProtocolChecker access.
+    Checks both implemented_protocols (user records) and extends_protocols (builtins).
+    """
+    record_info = registry.get_record_for_type(actual)
+    if record_info is None:
+        return False
+    for impl_proto in record_info.implemented_protocols:
+        if impl_proto.name == protocol_name:
+            return True
+    for ext in record_info.extends_protocols:
+        match = re.match(r"(\w+)(?:\[\w+\])?", ext)
+        if match and match.group(1) == protocol_name:
+            return True
+    return False
 
 
 class ProtocolChecker:
@@ -66,13 +88,16 @@ class ProtocolChecker:
             if self.protocol_inherits_from(actual.name, protocol.name):
                 return True
 
-        # Check explicit extends declaration (for builtin types with marker protocols)
-        if builtin_modules.type_extends_protocol(actual, protocol.name, protocol.type_args):
-            return True
-
-        # Marker protocols require explicit extends
+        # Marker protocols require explicit extends declaration
         if protocol_info.is_marker:
-            return False
+            # ValueType: any type with value semantics conforms implicitly
+            if protocol.name == "ValueType" and actual.is_value_type():
+                return True
+            return self._check_record_extends(actual, protocol)
+
+        # Check extends_protocols for builtin types (e.g. NativeIterable[T])
+        if self._check_builtin_extends(actual, protocol):
+            return True
 
         # Build type substitution map
         type_subst: dict[str, TpyType] = {"Self": actual}
@@ -105,6 +130,83 @@ class ProtocolChecker:
                 return False
 
         return True
+
+    def _check_record_extends(self, actual: TpyType, protocol: NamedType) -> bool:
+        """Check if a type extends a protocol via record-level declarations.
+
+        Unified check for both user records (implemented_protocols) and
+        builtin types (extends_protocols strings). Used for marker protocols
+        where explicit declaration is the only conformance path.
+        """
+        record_info = self.ctx.registry.get_record_for_type(actual)
+        if record_info is None:
+            return False
+
+        # User records: check implemented_protocols (concrete NamedTypes)
+        for impl_proto in record_info.implemented_protocols:
+            if impl_proto.name == protocol.name:
+                if len(protocol.type_args) == 0 or impl_proto.type_args == protocol.type_args:
+                    return True
+
+        # Builtin types: check extends_protocols strings
+        return self._match_extends_protocols(record_info, actual, protocol)
+
+    def _check_builtin_extends(self, actual: TpyType, protocol: NamedType) -> bool:
+        """Check extends_protocols for builtin types only (non-marker protocols)."""
+        record_info = self.ctx.registry.get_record_for_type(actual)
+        if record_info is None or not record_info.extends_protocols:
+            return False
+        return self._match_extends_protocols(record_info, actual, protocol)
+
+    def _match_extends_protocols(
+        self, record_info: RecordInfo, actual: TpyType, protocol: NamedType,
+    ) -> bool:
+        """Match extends_protocols strings against an expected protocol."""
+        if not record_info.extends_protocols:
+            return False
+        type_params = builtin_modules.extract_type_params(actual)
+        for ext in record_info.extends_protocols:
+            match = re.match(r"(\w+)\[(\w+)\]", ext)
+            if match:
+                ext_protocol = match.group(1)
+                ext_type_name = match.group(2)
+                if ext_protocol == protocol.name and len(protocol.type_args) == 1:
+                    if ext_type_name in type_params:
+                        actual_type_arg = type_params[ext_type_name]
+                    else:
+                        actual_type_arg = builtin_modules._resolve_concrete_type_name(ext_type_name)
+                        if actual_type_arg is None:
+                            continue
+                    if actual_type_arg == protocol.type_args[0]:
+                        return True
+                    if resolve_coercion(actual_type_arg, protocol.type_args[0], CoercionContext.RETURN) is not None:
+                        return True
+            elif ext == protocol.name and not protocol.type_args:
+                return True
+        return False
+
+    def type_extends_any_protocol(self, actual: TpyType, protocol_name: str) -> bool:
+        """Check if a type extends any variant of a protocol (ignoring type args).
+
+        Unified check for both user records and builtin types.
+        Replaces builtin_modules.type_extends_any().
+        """
+        record_info = self.ctx.registry.get_record_for_type(actual)
+        if record_info is None:
+            return False
+
+        # User records: check implemented_protocols
+        for impl_proto in record_info.implemented_protocols:
+            if impl_proto.name == protocol_name:
+                return True
+
+        # Builtin types: check extends_protocols strings
+        for ext in record_info.extends_protocols:
+            match = re.match(r"(\w+)(?:\[\w+\])?", ext)
+            if match and match.group(1) == protocol_name:
+                return True
+
+        return False
 
     def type_has_method_with_signature(
         self,

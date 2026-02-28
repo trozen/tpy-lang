@@ -333,6 +333,13 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::NativeRangeConstructible",
     )
 
+    # ValueType protocol -- marker for types with value semantics
+    module.protocol("ValueType",
+        type_params=[],
+        methods={},
+        cpp_concept="tpy::ValueType",
+    )
+
     # String: Explicit owned string type (std::string)
     module.register_type(STRING, cpp_type="std::string",
         extends=["NativeIterable[Char]"],

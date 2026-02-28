@@ -539,3 +539,8 @@ class Stringable(_Protocol):
 class Representable(_Protocol):
     """Protocol for types supporting repr() conversion via __repr__."""
     def __repr__(self) -> str: ...
+
+
+class ValueType(_Protocol):
+    """Marker for types with value semantics (passed by value, copy on access)."""
+    pass

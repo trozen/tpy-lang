@@ -1,0 +1,1 @@
+main.py:6: error: @nocopy class 'Bad' cannot implement ValueType (value types require copy semantics)

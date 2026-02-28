@@ -1,0 +1,1 @@
+ValueType is a compile-time marker protocol; CPython uses reference semantics for all objects.

@@ -1,0 +1,1 @@
+main.py:11: error: ValueType class 'Bad': field 'inner' has non-value type 'Inner'

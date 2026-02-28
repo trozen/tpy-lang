@@ -63,15 +63,22 @@ def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
             return True
         return False
 
-    # Check if actual extends NativeContiguous[T] with matching element type
-    from tpyc.modules import type_extends_protocol
-    # Direct element type match
+    # Check if actual extends NativeContiguous[T] with matching element type.
+    # Inline check via BuiltinTypeDef.extends (no registry needed -- Span coercion
+    # only applies to builtin types).
+    from tpyc.modules import lookup_type, extract_type_params
+    type_def = lookup_type(actual)
+    if type_def is None:
+        return False
+    has_contiguous = any(
+        ext.startswith("NativeContiguous[") for ext in type_def.extends
+    )
+    if not has_contiguous:
+        return False
     if actual_elem == expected_elem:
-        return type_extends_protocol(actual, "NativeContiguous", [actual_elem])
-    # Allow IntLiteral element to coerce to FixedInt/BigInt elements
-    # Check NativeContiguous[expected_elem] since containers extend NativeContiguous with concrete types
+        return True
     if isinstance(actual_elem, IntLiteralType) and isinstance(expected_elem, (FixedIntType, BigIntType)):
-        return type_extends_protocol(actual, "NativeContiguous", [expected_elem])
+        return True
     return False
 
 
