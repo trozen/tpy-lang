@@ -10,35 +10,6 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 ---
 
-## Highest Internal Impact
-
-Features that reshape compiler internals (change the model, not just add to it).
-For comparison: move semantics changed how every variable is handled (3-tier model,
-liveness analysis, gen_expr vs gen_expr_deref). Most features below are additive --
-they don't change how existing code compiles. These two do:
-
-1. **Narrowing generalization** (part of union types / isinstance) -- **Done.** The
-   narrowing system tracks type sets ("which types from the union are still possible?")
-   with set-based merge logic, invalidation rules, and loop-entry reset. Existing
-   None-narrowing is a special case. Supports if/elif/else isinstance, assert isinstance,
-   while-loop isinstance, and assignment narrowing.
-
-2. **Generic Optional codegen fix** (A3) -- **Done.** Changed what C++ is emitted for
-   `T | None` patterns when `T` is a type parameter. All Optional-related codegen paths
-   now use `uses_pointer_repr()` instead of `is_value_type()`.
-
-3. **Dynamic dispatch** (B4) -- **Done.** `@dynamic` protocols generate vtable-based
-   dispatch: abstract base classes, owning/ref adapters, direct C++ inheritance for
-   explicit implementors, structural conformance wrapping at call sites. Supports locals,
-   params, return types, cross-module, and protocol inheritance chains. B5 (virtual
-   methods in class inheritance without protocols) remains not started.
-
-Everything else -- effect system, closures, generators, exceptions, Box, match/case,
-dict, tuples -- is **additive**: important and sometimes touching many files, but the
-existing compiler model stays the same for existing code.
-
----
-
 ## Implementation Roadmap
 
 ### Phase A: Quick Wins (unblock real programs)
@@ -48,14 +19,14 @@ existing compiler model stays the same for existing code.
 | A1 | Final constants | S | Done | [I](#final--constant-globals) |
 | A2 | Type aliases | S | Done | [I](#type-aliases) |
 | A3 | Generic Optional codegen fix | M | Done | [I](#generic-optional-codegen-fix) |
-| A4 | DynStr (owned strings) | M | Superseded | [I](#string-ownership-dynstr) |
+| A4 | String ownership (context-dependent str) | M | Done | [I](#string-ownership) |
 | A5 | Enums | M | Done | [I](#enums) |
 | A6 | Keyword args + default values | M | Not started | [VII](#keyword-arguments-and-default-values) |
-| A7 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
-| A8 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
-| A9 | Constructor initializer list codegen | M | Partial | [II](#constructor-initializer-list-codegen) |
-| A10 | Float32 type | S | Not started | [I](#float32-type) |
-| A11 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
+| A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
+| A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
+| A9 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
+| A10 | Tuple type + unpacking | M-L | Not started | [I](#tuple-type) |
+| A11 | dict type | L | Not started | [VII](#dict-type) |
 
 ### Phase B: Polymorphism Foundation
 
@@ -65,8 +36,15 @@ existing compiler model stays the same for existing code.
 | B2 | Union types / ADTs | L | Partial | [I](#union-types--algebraic-data-types) |
 | B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
-| B5 | Virtual methods in inheritance | M | Not started | [II](#virtual-methods-in-inheritance) |
-| B6 | Per-method type parameter bounds | S-M | Not started | [I](#type-parameter-bounds----per-method) |
+| B5 | Per-method type parameter bounds | S-M | Not started | [I](#type-parameter-bounds----per-method) |
+| B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
+| B7 | Float32 type | S | Not started | [I](#float32-type) |
+| B8 | Dataclasses | M | Not started | [VII](#dataclasses) |
+| B9 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
+| B10 | Function overloads (@overload) | M | Infra exists | [VII](#function-overloads-overload) |
+| B11 | List slicing | M | Not started | [VII](#list-slicing) |
+| B12 | `Self` type | S | Not started | [I](#self-type) |
+| B13 | Bi-directional type inference | M | Not started | [I](#bi-directional-type-inference) |
 
 ### Phase C: Error Handling + Effects
 
@@ -76,7 +54,7 @@ existing compiler model stays the same for existing code.
 | C2 | Exception implementation | L | Not started | [III](#exception-model-tryexceptraise) |
 | C3 | @noalloc enforcement | L | Parsed only | [IV](#noalloc-enforcement) |
 | C4 | Effect framework (@nothrow, @pure) | M-L | Not started | [IV](#effect-system-generalized) |
-| C5 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
+| C5 | Cyclic dependency handling | L | Not started | [V](#cyclic-dependency-handling) |
 
 ### Phase D: Functional + Python Compat
 
@@ -85,15 +63,13 @@ existing compiler model stays the same for existing code.
 | D1 | Closures / nested functions | L | Not started | [VI](#closures--nested-functions) |
 | D2 | Callable type | L | Not started | [I](#callable--function-pointer-types) |
 | D3 | f-strings | M | Done | [VII](#f-strings) |
-| D4 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
-| D5 | Dataclasses | M | Not started | [VII](#dataclasses) |
-| D6 | dict type | L | Not started | [VII](#dict-type) |
-| D7 | Tuple type + unpacking | M-L | Not started | [I](#tuple-type) |
-| D8 | Function overloads (@overload) | M | Infra exists | [VII](#function-overloads-overload) |
-| D9 | with statement | M | Not started | [VI](#with-statement-context-managers) |
-| D10 | Lambda | M | Not started | [VI](#lambda) |
-| D11 | List slicing | M | Not started | [VII](#list-slicing) |
-| D12 | Properties (@property) | M | Not started | [VII](#properties) |
+| D4 | with statement | M | Not started | [VI](#with-statement-context-managers) |
+| D5 | Lambda | M | Not started | [VI](#lambda) |
+| D6 | Properties (@property) | M | Not started | [VII](#properties) |
+| D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
+| D8 | `@override` decorator | S | Not started | [VII](#override-decorator) |
+| D9 | set type | L | Not started | [VII](#set-type) |
+| D10 | bytes type | M | Not started | [VII](#bytes-type) |
 
 ### Phase E: Advanced Safety
 
@@ -101,14 +77,13 @@ existing compiler model stays the same for existing code.
 |---|---------|--------|--------|---------|
 | E1 | Send/Sync markers | S-M | Not started | [IV](#thread-safety-markers-send--sync) |
 | E2 | Container mutation during iteration | S-M | Not started | [IV](#container-mutation-during-iteration) |
-| E3 | Override hiding warnings | S | Not started | [II](#virtual-methods-in-inheritance) |
-| E4 | del statement | S-M | Not started | [VI](#del-statement-explicit-destruction) |
-| E5 | Ptr escape analysis | XL | Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
-| E6 | Auto-detect readonly | M-L | Not started | [IV](#auto-detect-readonly-from-method-body) |
-| E7 | Dead code detection | M | Not started | [VIII](#dead-code-detection) |
-| E8 | Error recovery / multi-error diagnostics | L | Not started | [VIII](#error-recovery--multi-error-diagnostics) |
-| E9a | Drop flag (`__tpy_owned_`) | S | Done | [IV](#move-safe-destructors) |
-| E9b | Sentinel field optimization (eliminate drop flag) | M | Not started | [IV](#move-safe-destructors) |
+| E3 | del statement | S-M | Not started | [VI](#del-statement-explicit-destruction) |
+| E4 | Ptr escape analysis | XL | Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
+| E5 | Auto-detect readonly | M-L | Not started | [IV](#auto-detect-readonly-from-method-body) |
+| E6 | Dead code detection | M | Not started | [VIII](#dead-code-detection) |
+| E7 | Error recovery / multi-error diagnostics | L | Not started | [VIII](#error-recovery--multi-error-diagnostics) |
+| E8a | Drop flag (`__tpy_owned_`) | S | Done | [IV](#move-safe-destructors) |
+| E8b | Sentinel field optimization (eliminate drop flag) | M | Not started | [IV](#move-safe-destructors) |
 
 ### Phase F: Compile-Time Power
 
@@ -119,8 +94,7 @@ existing compiler model stays the same for existing code.
 | F3 | Generators / yield | L-XL | Not started | [VI](#generators-yield) |
 | F4 | Typestate | XL | Research | [VIII](#typestate-object-lifecycle) |
 | F5 | Self-interpret (TPy eval in tpyc) | XL | Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
-| F6 | Cyclic dependency handling | L | Not started | [V](#cyclic-dependency-handling) |
-| F7 | Alternative backends | XL | Not started | [V](#alternative-backends) |
+| F6 | Alternative backends | XL | Not started | [V](#alternative-backends) |
 
 ### Phase G: Concurrency (Future)
 
@@ -145,6 +119,7 @@ don't get lost.
 | Final for class/local constants | A1 | Extend beyond module-level |
 | Final for non-primitive types | A1 | `Final[list[T]]` -- needs deep immutability |
 | Cross-module Final references | A1 | Use imported Finals in initializers |
+| Virtual methods in inheritance | B4 | `@dynamic` protocols cover the use case; class-based virtual dispatch is a distant future consideration |
 
 ---
 
@@ -221,80 +196,38 @@ assignment. Dict iteration needs both tuple and dict.
 
 ### Generic Optional Codegen Fix
 
-**Done.** `T | None` in generic contexts now generates `std::optional<T>` instead of
-`T*`/`nullptr`. Concrete non-value types (records, lists) still use pointer representation.
-
-Added `OptionalType.uses_pointer_repr()` method that returns `True` only for concrete
-non-value inner types (no `TypeParamRef` anywhere in the type tree). All 33 codegen sites
-updated to use this instead of `is_value_type()`. Also: `Optional[T]` from `typing` is
-now equivalent to `T | None` at parse time.
-
-**Dependencies**: Interacts with union types (Optional is a degenerate union).
+**Done.** `T | None` in generic contexts uses `std::optional<T>` instead of `T*`/`nullptr`.
+All 33 codegen sites use `uses_pointer_repr()`. `Optional[T]` is equivalent to `T | None`.
 
 ---
 
-### String Ownership (DynStr)
+### String Ownership
 
-Owned string type: `DynStr` -> `std::string`.
-
-**Superseded.** The original DynStr design (separate `str` view + `DynStr` owned type) was
-replaced by context-dependent `str` (PendingStrType): `str` resolves to `std::string` for
+**Done.** Context-dependent `str` (PendingStrType): `str` resolves to `std::string` for
 locals/fields and `std::string_view` for parameters. This eliminates dangling references
 without introducing a separate type. String concatenation, `str()` conversions, and f-strings
 all produce `std::string` and are safe to store. The explicit `String` and `StrView` types
 remain available for when the user wants to control the representation.
 
-**Dependencies**: N/A (superseded)
+**Dependencies**: N/A (done)
 
-**Effort**: N/A
+**Effort**: M (done)
 
 ---
 
 ### Enums
 
-```python
-class Color(Enum):
-    Red = 0
-    Green = 1
-    Blue = 2
-```
-
-Maps to `enum class Color : int32_t` in C++.
-
-**Why it matters**: Enums are a prerequisite for match/case (simplest case), union types
-(enums are the tag), and many real-world patterns (state machines, options, flags).
-Int-based enums first; string enums and flag enums later.
-
-**Current state**: Done. Int-based enums with `auto()`, `Enum.member` access, cross-module
-import, `==`/`!=` comparison, `print()` support, and `isinstance()` narrowing all working.
-
-**Dependencies**: Stepping stone to union types and match/case.
-
-**Effort**: M
+**Done.** Int-based enums (`enum class` in C++) with `auto()`, `Enum.member` access,
+cross-module import, `==`/`!=` comparison, `print()` support, `isinstance()` narrowing.
+Stepping stone to union types and match/case.
 
 ---
 
 ### Type Aliases
 
-```python
-Shape = Circle | Rect                  # old-style assignment
-type Shape = Circle | Rect             # Python 3.12 type statement
-MaybeShape = Circle | Rect | None      # with None member
-```
-
-Maps to C++ `using Shape = std::variant<Circle, Rect>;`. Both syntaxes supported.
-Cross-module import works (`from shapes import Shape`), including alias-only import
-(member records are implicitly imported for codegen). Nested annotations (`list[Shape]`)
-resolve correctly.
-
-**Current state**: Done.
-
-**Not yet supported**: `isinstance(x, Shape)` where Shape is a type alias;
-`isinstance(x, (A, B))` tuple form; pattern matching on variants.
-
-**Dependencies**: Needed for union types to be usable.
-
-**Effort**: S
+**Done.** Both `Shape = A | B` and `type Shape = A | B` (Python 3.12). Maps to
+`using` in C++. Cross-module import works. Not yet supported: `isinstance(x, Shape)`
+on aliases, `isinstance(x, (A, B))` tuple form.
 
 ---
 
@@ -365,27 +298,10 @@ Variadic type params for argument types is a design question.
 
 ### Final / Constant Globals
 
-```python
-MAX_SIZE: Final[Int32] = 100      # -> inline constexpr int32_t MAX_SIZE = 100;
-PI: Final[float] = 3.14159        # -> inline constexpr double PI = 3.14159;
-BIG: Final[int] = 1000000         # -> const tpy::BigInt BIG = ...;
-```
-
-`Final[T]` marks a module-level binding as a compile-time constant. Stricter than
-Python's `Final`: frozen binding + immutable value. Initializer must be a literal,
-unary op on literal, or reference to a previously declared Final (no forward references).
-Local shadowing in functions is allowed.
-
-Supported types: fixed-width integers, float, bool, str, Char, BigInt. Constexpr-eligible
-types emit `inline constexpr` in header; BigInt uses `extern const` / `const` split.
-
-**Current state**: Done. `__name__` is a synthetic `Final[str]` constant. ALL_CAPS
-module-level variables without `Final` produce a warning. See Future Extensions table
-for planned enhancements.
-
-**Dependencies**: Stepping stone to compile-time evaluation.
-
-**Effort**: S
+**Done.** `Final[T]` for module-level constants. Emits `inline constexpr` (or
+`extern const` for BigInt). Supports fixed-width ints, float, bool, str, Char, BigInt.
+`__name__` is a synthetic `Final[str]`. ALL_CAPS without `Final` warns.
+See Future Extensions table for planned enhancements.
 
 ---
 
@@ -458,7 +374,7 @@ def sum_all(items: Iterable[Int32]) -> Int32:
 `get_iter_element_type()`), not protocol-based. Can't write `def f(it: Iterable[T])`
 as a parameter type. This blocks generic iteration abstractions.
 
-**Current state**: Not started. Mentioned in TODO.md known limitations. Adding it requires
+**Current state**: Not started. Adding it requires
 return-type conformance checking in the protocol system -- currently protocol conformance
 only checks type equality on method signatures, not whether a return type *conforms to*
 another protocol.
@@ -466,6 +382,52 @@ another protocol.
 **Dependencies**: Protocol system (done), return-type conformance checking (not started).
 
 **Effort**: M (protocol definition + conformance extension + codegen)
+
+---
+
+### Self Type
+
+```python
+class Builder:
+    def set_name(self, name: str) -> Self:
+        self.name = name
+        return self
+```
+
+`Self` refers to the type of the current class, enabling method chaining and builder
+patterns. In subclasses, `Self` narrows to the subclass type.
+
+Maps to C++ CRTP or deduced `this` (C++23).
+
+**Why it matters**: Common pattern for fluent APIs and builder classes. Without `Self`,
+return type must be the concrete class name (breaks in subclasses) or use a type
+parameter (verbose).
+
+**Current state**: Not started.
+
+**Dependencies**: None.
+
+**Effort**: S (type alias in sema, codegen mapping)
+
+---
+
+### Bi-Directional Type Inference
+
+Propagate expected types downward through call expressions to improve type inference
+and overload resolution. See `docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` for full
+design.
+
+**Why it matters**: Currently type inference is bottom-up only. This means expressions
+like `connect("localhost", Int32(8080))` can't infer that `8080` should be `Int32` from
+the parameter type. Bi-directional inference enables coercion-aware argument matching
+and return-type-based overload filtering.
+
+**Current state**: Not started. Design document exists with phased approach
+(Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type).
+
+**Dependencies**: None for Phase 1b. Overloads (B10) for Phase 3.
+
+**Effort**: M (phased implementation, touches sema call resolution)
 
 ---
 
@@ -533,44 +495,11 @@ See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for full progr
 
 ---
 
-### Virtual Methods in Inheritance
+### Constructor Init-List for Branching `__init__`
 
-```python
-class Animal:
-    def speak(self) -> str: return "..."
-
-class Dog(Animal):
-    def speak(self) -> str: return "woof"
-
-a: Ptr[Animal] = Ptr(Dog())
-a.speak()   # currently calls Animal.speak (static dispatch)
-             # should call Dog.speak (dynamic dispatch)
-```
-
-**Why it matters**: Python uses dynamic dispatch by default. TPy currently uses static
-dispatch (C++ default). This means method override through base pointers is silently wrong.
-At minimum, a warning when child hides parent method without `virtual` is needed.
-
-Also includes **implicit upcasting** (`parent: Animal = Dog()`) and **polymorphic
-coercion** (`Dog -> Ptr[Animal]`). Currently assigning a child to a parent type or
-pointer is not supported -- these coercions are needed for inheritance to be useful.
-
-**Current state**: Single inheritance works. No `virtual`, no `override`, no vtable.
-Upcasting coercion (child -> parent type) works. Registration.py has comments noting
-the dispatch gap. The key missing piece is virtual dispatch through base pointers.
-
-**Dependencies**: Related to `Dyn[P]` but simpler (class-based vs protocol-based).
-Could implement as: explicit `@virtual` decorator, or auto-detect when override exists.
-
-**Effort**: M (codegen for virtual/override, vtable layout)
-
----
-
-### Constructor Initializer List Codegen
-
-When `__init__` has only simple `self.field = param` assignments, the codegen emits
-C++ member initializer lists (`: x(x), y(y)`). But when `__init__` contains any
-control flow (if/else, loops), it falls back to body assignments:
+When `__init__` has control flow (if/else, loops), field assignments inside branches
+fall back to C++ body-assignment instead of the member initializer list. The field is
+default-constructed, then assigned in the body:
 
 ```cpp
 // Simple __init__ -> initializer list (correct)
@@ -590,25 +519,24 @@ This works for trivial types (`int32_t`, `double`, `bool`) but breaks for:
 - **Non-default-constructible types**: field has no `T()` -- C++ won't compile
 - **`@nocopy` (move-only) types**: default-construct + assign requires copy assignment
 - **`const` fields** (future): can only be set in initializer list
-- **Reference fields** (future): must be bound at construction
 
 **Why it matters**: As more complex types become fields (e.g. `Box[T]`, `@nocopy`
-records, `Own[T]`), constructors with any branching will fail to compile in C++.
-This is a correctness bug that will surface more frequently as the type system grows.
+records), constructors with any branching will fail to compile in C++. This is a
+correctness bug that will surface more as the type system grows.
 
 Design options:
-- **(a) Deferred initialization**: wrap fields in `std::optional<T>` when init is
-  conditional, unwrap on first use. Overhead: extra byte per field + has_value checks.
+- **(a) Lambda-in-initializer**: `: field([&]{ if (...) return x; else return y; }())`
+  -- keeps initializer list, moves branching into per-field lambdas. Works for all
+  types, generates unusual but correct C++.
 - **(b) Factored initializer**: analyze which fields are assigned on all paths and
   extract them to the initializer list; only truly conditional fields use body
   assignment. Requires data-flow analysis of `__init__`.
-- **(c) Lambda-in-initializer**: `: field([&]{ if (...) return x; else return y; }())`
-  -- keeps initializer list, moves branching into per-field lambdas. Works for all
-  types but generates unusual C++.
+- **(c) Deferred initialization**: wrap fields in `std::optional<T>` when init is
+  conditional, unwrap on first use. Overhead: extra byte per field + has_value checks.
 
-**Current state**: Phase 1 done -- auto-declare fields from `__init__` parameter assignments,
-field reordering to match init-list order. Initializer list control-flow gaps remain (known bug
-for non-trivial types). See `docs/CONSTRUCTOR_DESIGN.md` for full design and phase status.
+**Current state**: Not started. Simple `self.field = param` at top level uses init-list
+correctly. The problem only manifests when `__init__` has branching and the field type
+is non-trivial.
 
 **Dependencies**: Interacts with `@nocopy`, `Box[T]`, and any non-trivially-constructible
 field types.
@@ -814,7 +742,7 @@ methods, it is readonly.
 
 **Why it matters**: Reduces annotation noise. Most methods are readonly in practice.
 Also improves None-safety narrowing (more methods known readonly = fewer false
-invalidations). Listed as a Hard Problem in TODO.md.
+invalidations).
 
 **Current state**: Not started. `@readonly` infrastructure fully implemented.
 
@@ -978,7 +906,7 @@ Approach:
 compiler has no handling -- cyclic imports would cause infinite recursion or undefined
 behavior in compilation order.
 
-**Current state**: Not started. Listed in Hard Problems (TODO.md).
+**Current state**: Not started.
 
 **Dependencies**: Multi-module compilation (done). Header organization (related).
 
@@ -1000,7 +928,7 @@ However, C++ is currently the right choice for a POC: it's readable, debuggable,
 leverages the entire C++ ecosystem (STL, libraries, tooling). Alternative backends are
 a longer-term consideration.
 
-**Current state**: Not started. Mentioned in TODO.md as investigation item.
+**Current state**: Not started.
 
 **Dependencies**: Stable type system and codegen architecture (changing backends is
 easier when the frontend is stable).
@@ -1159,19 +1087,8 @@ cleanup before scope end.
 
 ### f-strings
 
-```python
-name = "world"
-msg = f"hello {name}, 1+1={1+1}"
-```
-
-Maps to `std::format` (C++20) or `fmt::format`.
-
-**Current state**: Done. f-strings with expressions, nested field access, and method calls
-work. Maps to `std::ostringstream`-based concatenation in C++.
-
-**Dependencies**: Context-dependent `str` (done -- f-strings produce `std::string`).
-
-**Effort**: M (parser + expression codegen inside format specs)
+**Done.** f-strings with expressions, nested field access, and method calls.
+Maps to `std::ostringstream`-based concatenation in C++.
 
 ---
 
@@ -1264,29 +1181,8 @@ the real implementation (unlike CPython stubs).
 
 ### `__bool__` Protocol
 
-```python
-class Container:
-    items: list[Int32]
-    def __bool__(self) -> bool:
-        return len(self.items) > 0
-
-c = Container([])
-if c:            # calls c.__bool__()
-    print("has items")
-```
-
-**Why it matters**: Python uses `__bool__` for truthiness in `if`, `while`, `and`, `or`,
-`not`. Without this, user-defined types can't participate in boolean contexts. Currently
-`if obj:` for a user type either fails or has unexpected C++ behavior.
-
-Also needed: `bool()` builtin dispatching to `__bool__`, and a `Truthy` protocol bound.
-
-**Current state**: Done. `__bool__()` structural detection, `bool()` dispatch, implicit truthiness
-(`if`/`while`/`not`/`and`/`or`), `__len__() != 0` fallback, and `Truthy` protocol bound all working.
-
-**Dependencies**: Protocol system (done).
-
-**Effort**: S (protocol definition + sema truthiness check + codegen)
+**Done.** `__bool__()` structural detection, `bool()` dispatch, implicit truthiness
+in `if`/`while`/`not`/`and`/`or`, `__len__() != 0` fallback, `Truthy` protocol bound.
 
 ---
 
@@ -1347,6 +1243,71 @@ users must use explicit `get_x()`/`set_x()` methods, which is un-Pythonic.
 
 ---
 
+### `@override` Decorator
+
+```python
+from typing import override
+
+class Dog(Animal):
+    @override
+    def speak(self) -> str: return "woof"
+```
+
+Python 3.12's `typing.override`: marks methods that override a parent/protocol method.
+Error if the method doesn't actually override anything (typo protection).
+
+**Why it matters**: Catches method name typos at compile time. C++ codegen already emits
+`override` automatically for detected overrides -- this adds explicit user intent.
+
+**Current state**: Not started.
+
+**Dependencies**: None.
+
+**Effort**: S (decorator parsing + sema check)
+
+---
+
+### set Type
+
+```python
+s: set[Int32] = {1, 2, 3}
+s.add(4)
+if 2 in s:
+    print("found")
+```
+
+Maps to `std::unordered_set<T>`.
+
+**Why it matters**: Common Python data structure for membership testing and deduplication.
+Less critical than dict but still frequently used.
+
+**Current state**: Not started.
+
+**Dependencies**: `Hashable` protocol (for elements).
+
+**Effort**: L (type + literals + methods + iteration)
+
+---
+
+### bytes Type
+
+```python
+data: bytes = b"hello"
+first_byte: Int32 = data[0]
+```
+
+Maps to `std::vector<uint8_t>` or similar.
+
+**Why it matters**: Needed for binary I/O, network protocols, and file handling.
+
+**Current state**: Not started.
+
+**Dependencies**: None for basic form. Slicing for advanced usage.
+
+**Effort**: M (type + literals + methods)
+
+---
+
 ## VIII. Compile-Time Safety (Python Runtime Checks)
 
 Things Python checks at runtime that TPy can verify statically.
@@ -1372,7 +1333,6 @@ Things Python checks at runtime that TPy can verify statically.
 | `TypeError: unhashable type` | Compile-time `Hashable` protocol check for dict keys |
 | Use after `.close()` / resource lifecycle | Typestate analysis (see below) |
 | Missing match cases | Exhaustive pattern matching (see VI) |
-| Method override correctness | Static vs dynamic dispatch warning (see II) |
 
 ### Typestate (Object Lifecycle)
 
@@ -1439,7 +1399,7 @@ Implementation approach: introduce an `Invalid` type that propagates through ana
 without triggering cascading errors. Expressions involving `Invalid` silently produce
 `Invalid` rather than new error messages.
 
-**Current state**: Not started. Mentioned in TODO.md.
+**Current state**: Not started.
 
 **Dependencies**: None, but touches sema broadly (every error path needs graceful recovery).
 
@@ -1463,7 +1423,7 @@ fit for `@noalloc` contexts.
 
 Send/Sync markers (see IV) should be designed before concurrency ships.
 
-**Current state**: Entirely deferred. Mentioned in TODO.md as investigation items.
+**Current state**: Entirely deferred.
 
 ---
 

@@ -75,10 +75,7 @@ class ProtocolGenerator:
         return f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
 
     def get_dynamic_base_name(self, protocol_name: str) -> str:
-        """Get the (possibly qualified) C++ base class name for a @dynamic protocol.
-
-        The base class uses the protocol's own name (e.g., Pet, not __tpy_Base_Pet).
-        """
+        """Get the (possibly qualified) C++ base class name for a @dynamic protocol."""
         if protocol_name in self.ctx.user_imported_protocols:
             source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
             return qualified_cpp_name(source_module, original_name)
