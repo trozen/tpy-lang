@@ -128,6 +128,7 @@ Small, immutable, passed by copy:
 - `int`, `float`, `Int32`, `Int64`, `bool`
 - Small immutable structs (configurable threshold)
 - `FixStr[N]` (fixed-size string)
+- User records that extend `ValueType` (see [ValueType Protocol](#working-valuetype-marker-protocol))
 
 ### Object Types
 Larger, mutable, passed by reference:
@@ -723,9 +724,10 @@ items.insert(0, p)        # WARNING: copies Point into owned storage
 ```
 
 No warning is emitted for:
-- **Value types** (Int32, bool, str, etc.) — copy-vs-share is unobservable
-- **Rvalues** (constructor calls, function results) — no existing owner
-- **`copy()` wrapped** — intent already explicit
+- **Value types** (Int32, bool, str, etc.) -- copy-vs-share is unobservable
+- **`T: ValueType` bounded type params** -- the bound guarantees value semantics
+- **Rvalues** (constructor calls, function results) -- no existing owner
+- **`copy()` wrapped** -- intent already explicit
 
 #### Scope Escape Detection (Working)
 
@@ -1737,6 +1739,44 @@ greet_pet(Dog())  # Dog -> Base_NamedPet -> Base_Pet (transitive upcast)
 ```
 
 See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for the full design.
+
+#### Working: `ValueType` Marker Protocol
+
+The `ValueType` marker protocol declares that a user-defined record has value semantics -- it is small, cheaply copyable, and behaves like a built-in value type (Int32, bool, etc.). Import it from the `tpy` module:
+
+```python
+from tpy import Int32, ValueType
+
+class Vec2(ValueType):
+    x: Int32
+    y: Int32
+
+    def __init__(self, x: Int32, y: Int32) -> None:
+        self.x = x
+        self.y = y
+```
+
+**Effects of `ValueType`:**
+
+- **C++ `tpy::is_value_type` specialization** -- generated code specializes the trait so the runtime recognizes the type as a value type
+- **Copy warning suppression** -- no "copies X into field" warnings for `ValueType` records, since copy-vs-share is unobservable for value types
+- **`T: ValueType` bounds** -- generic type parameters bounded by `ValueType` also suppress copy warnings:
+
+```python
+class Box[T: ValueType]:
+    value: T
+
+    def __init__(self, value: T) -> None:
+        self.value = value  # No warning: T is guaranteed to be a value type
+```
+
+**Validation rules:**
+
+- All fields must themselves be value types (or `ValueType`-bounded type params). Non-value-type fields cause a compile error.
+- `@nocopy` and `ValueType` are mutually exclusive -- a `@nocopy` class cannot be a `ValueType`.
+- A `ValueType` class cannot inherit from a non-`ValueType` parent.
+
+**Implicit conformance:** Built-in value types (Int32, bool, float, etc.) implicitly conform to `ValueType`, so they can be used as arguments for `T: ValueType` bounded type params without explicit declaration.
 
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 

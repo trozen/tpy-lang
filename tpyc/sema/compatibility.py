@@ -162,6 +162,7 @@ class TypeCompatibility:
                 is_auto_moved = self._is_movable_var(source_expr.name)
             if (not is_return and source_expr is not None
                     and not expected.wrapped.is_value_type()
+                    and not self._is_value_type_param(expected.wrapped)
                     and self.is_lvalue(source_expr)
                     and not self.is_copy_call(source_expr)
                     and not is_auto_moved):
@@ -379,6 +380,15 @@ class TypeCompatibility:
             return module_name == "tpy" and func_name == "copy"
         return False
 
+    def _is_value_type_param(self, typ: TpyType) -> bool:
+        """Check if a TypeParamRef has a ValueType bound in the current context."""
+        if not isinstance(typ, TypeParamRef):
+            return False
+        if not self.type_ops:
+            return False
+        bound = self.type_ops.get_type_param_bound(typ.name)
+        return bound is not None and isinstance(bound, NamedType) and bound.name == "ValueType"
+
     def _is_local_shadow(self, name: str) -> bool:
         """Check if a name is bound in a local scope, shadowing a global."""
         scope = self.ctx.current_scope
@@ -451,6 +461,8 @@ class TypeCompatibility:
         in CPython, and the programmer hasn't made intent explicit with copy().
         """
         if target_type.is_value_type():
+            return False
+        if self._is_value_type_param(target_type):
             return False
         if self.is_copy_call(expr):
             return False
