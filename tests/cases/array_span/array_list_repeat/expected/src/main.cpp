@@ -11,7 +11,7 @@ void test_basic() {
     // 6:     print(len(buf))
     std::cout << tpy::__len__(buf) << "\n";
     // 7:     print(buf[0], buf[4])
-    std::cout << buf[0] << " " << buf[4] << "\n";
+    std::cout << tpy::__getitem__(buf, 0) << " " << tpy::__getitem__(buf, 4) << "\n";
 }
 
 // 9: def test_nonzero() -> None:
@@ -19,7 +19,7 @@ void test_nonzero() {
     // 10:     arr: Array[Int32, 4] = [42] * 4
     std::array<int32_t, 4> arr = tpy::from_range<std::array<int32_t, 4>>(tpy::repeat_range<int32_t>(4, {42}));
     // 11:     print(arr[0], arr[1], arr[2], arr[3])
-    std::cout << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << "\n";
+    std::cout << tpy::__getitem__(arr, 0) << " " << tpy::__getitem__(arr, 1) << " " << tpy::__getitem__(arr, 2) << " " << tpy::__getitem__(arr, 3) << "\n";
 }
 
 // 13: def test_multi_element() -> None:
@@ -27,7 +27,7 @@ void test_multi_element() {
     // 14:     arr: Array[Int32, 6] = [1, 2, 3] * 2
     std::array<int32_t, 6> arr = tpy::from_range<std::array<int32_t, 6>>(tpy::repeat_range<int32_t>(2, {1, 2, 3}));
     // 15:     print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
-    std::cout << arr[0] << " " << arr[1] << " " << arr[2] << " " << arr[3] << " " << arr[4] << " " << arr[5] << "\n";
+    std::cout << tpy::__getitem__(arr, 0) << " " << tpy::__getitem__(arr, 1) << " " << tpy::__getitem__(arr, 2) << " " << tpy::__getitem__(arr, 3) << " " << tpy::__getitem__(arr, 4) << " " << tpy::__getitem__(arr, 5) << "\n";
 }
 
 void __tpy_init() {

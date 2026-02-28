@@ -173,7 +173,7 @@ int32_t find_string(std::vector<std::string>& items, std::string_view target) {
     // 109:     while i < len(items):
     while ((i < tpy::__len__(items))) {
         // 110:         if items[i] == target:
-        if ((tpy::get_item(items, i) == target)) {
+        if ((tpy::__getitem__(items, i) == target)) {
             // 111:             return i
             return i;
         }

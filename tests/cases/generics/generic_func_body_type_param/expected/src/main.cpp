@@ -13,9 +13,9 @@ void main() {
     // 21:     print(len(xs))
     std::cout << tpy::__len__(xs) << "\n";
     // 22:     print(xs[0])
-    std::cout << tpy::get_item(xs, 0) << "\n";
+    std::cout << tpy::__getitem__(xs, 0) << "\n";
     // 23:     print(xs[1])
-    std::cout << tpy::get_item(xs, 1) << "\n";
+    std::cout << tpy::__getitem__(xs, 1) << "\n";
     // 24:     ys = collect(Box(Int32(1)), Box(Int32(2)))
     Box __tmp_3 = Box(1);
     Box __tmp_4 = Box(2);
@@ -23,7 +23,7 @@ void main() {
     // 25:     print(len(ys))
     std::cout << tpy::__len__(ys) << "\n";
     // 26:     print(ys[0].value)
-    std::cout << tpy::get_item(ys, 0).value << "\n";
+    std::cout << tpy::__getitem__(ys, 0).value << "\n";
 }
 
 void __tpy_init() {

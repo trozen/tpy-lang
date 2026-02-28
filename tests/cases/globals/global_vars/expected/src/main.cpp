@@ -80,7 +80,7 @@ void __tpy_init() {
     // 11: idx = 1
     idx = 1;
     // 12: print(items[idx])
-    std::cout << tpy::get_item((*items), idx) << "\n";
+    std::cout << tpy::__getitem__((*items), idx) << "\n";
     // 14: # Test 3: Global int used in list repeat count
     // 15: count = 3
     count = 3;
@@ -188,9 +188,9 @@ void __tpy_init() {
     // 96: delta = 5
     delta = 5;
     // 97: arr[0] += delta  # global BigInt on RHS needs deref before .to_int32()
-    tpy::set_item((*arr), 0, tpy::add_check<int32_t>(tpy::get_item((*arr), 0), delta));
+    tpy::__setitem__((*arr), 0, tpy::add_check<int32_t>(tpy::__getitem__((*arr), 0), delta));
     // 98: print(arr[0])
-    std::cout << tpy::get_item((*arr), 0) << "\n";
+    std::cout << tpy::__getitem__((*arr), 0) << "\n";
 }
 
 } // namespace tpy_user::main

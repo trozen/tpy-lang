@@ -237,20 +237,25 @@ class StaticList(metaclass=StaticListMeta):
         self._data.append(obj)
         return Ptr(obj)
 
+    def _normalize_index(self, index: int, msg: str) -> int:
+        i = index
+        if i < 0:
+            i += len(self._data)
+        if i < 0 or i >= len(self._data):
+            raise RuntimeError(msg)
+        return i
+
     def get(self, index: int):
-        if index < 0 or index >= len(self._data):
-            raise RuntimeError(f"StaticList index out of bounds: {index}")
-        return self._data[index]
+        i = self._normalize_index(index, f"StaticList index out of bounds: {index}")
+        return self._data[i]
 
     def get_mut(self, index: int):
-        if index < 0 or index >= len(self._data):
-            raise RuntimeError(f"StaticList index out of bounds: {index}")
-        return Ptr(self._data[index])
+        i = self._normalize_index(index, f"StaticList index out of bounds: {index}")
+        return Ptr(self._data[i])
 
     def set(self, index: int, value) -> None:
-        if index < 0 or index >= len(self._data):
-            raise RuntimeError(f"StaticList index out of bounds: {index}")
-        self._data[index] = value
+        i = self._normalize_index(index, f"StaticList index out of bounds: {index}")
+        self._data[i] = value
 
     def __setitem__(self, index: int, value) -> None:
         self.set(index, value)
@@ -350,21 +355,24 @@ class Array(metaclass=ArrayMeta):
                 raise ValueError(f"Array size mismatch: expected {self._size}, got {len(data)}")
             self._data = list(data)
 
-    def get(self, index: int):
-        if index < 0 or index >= self._size:
-            raise RuntimeError(f"Array index out of bounds: {index}")
+    def _normalize_index(self, index: int, msg: str) -> int:
+        i = index
+        if i < 0:
+            i += self._size
+        if i < 0 or i >= self._size:
+            raise RuntimeError(msg)
+        return i
+
+    def unchecked_get(self, index: int):
         return self._data[index]
 
-    def set(self, index: int, value) -> None:
-        if index < 0 or index >= self._size:
-            raise RuntimeError(f"Array index out of bounds: {index}")
-        self._data[index] = value
-
     def __getitem__(self, index: int):
-        return self.get(index)
+        i = self._normalize_index(index, f"array index out of bounds")
+        return self._data[i]
 
     def __setitem__(self, index: int, value) -> None:
-        self.set(index, value)
+        i = self._normalize_index(index, f"array index out of bounds")
+        self._data[i] = value
 
     def size(self) -> Int32:
         return Int32(self._size)
@@ -406,13 +414,16 @@ class Span(metaclass=SpanMeta):
         else:
             self._data = list(data)
 
-    def get(self, index: int):
-        if index < 0 or index >= len(self._data):
-            raise RuntimeError(f"Span index out of bounds: {index}")
+    def unchecked_get(self, index: int):
         return self._data[index]
 
     def __getitem__(self, index: int):
-        return self.get(index)
+        i = index
+        if i < 0:
+            i += len(self._data)
+        if i < 0 or i >= len(self._data):
+            raise RuntimeError(f"span index out of bounds")
+        return self._data[i]
 
     def size(self) -> Int32:
         return Int32(len(self._data))

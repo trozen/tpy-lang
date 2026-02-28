@@ -12,15 +12,15 @@ void main() {
     // 4:     print(len(words))
     std::cout << tpy::__len__(words) << "\n";
     // 5:     print(words[0])
-    std::cout << tpy::get_item(words, 0) << "\n";
+    std::cout << tpy::__getitem__(words, 0) << "\n";
     // 6:     print(words[1])
-    std::cout << tpy::get_item(words, 1) << "\n";
+    std::cout << tpy::__getitem__(words, 1) << "\n";
     // 7:     words.append("bar")
     words.push_back("bar");
     // 8:     print(len(words))
     std::cout << tpy::__len__(words) << "\n";
     // 9:     print(words[3])
-    std::cout << tpy::get_item(words, 3) << "\n";
+    std::cout << tpy::__getitem__(words, 3) << "\n";
     // 11:     # Iterate over list of strings
     // 12:     for w in words:
     for (std::string w : words) {

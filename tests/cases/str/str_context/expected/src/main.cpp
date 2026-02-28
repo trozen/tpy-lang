@@ -37,7 +37,7 @@ void main() {
     // 30:     names: list[str] = ["hello", "world"]
     std::vector<std::string> names = {"hello", "world"};
     // 31:     print(names[0])  # hello
-    std::cout << tpy::get_item(names, 0) << "\n";
+    std::cout << tpy::__getitem__(names, 0) << "\n";
 }
 
 void __tpy_init() {

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 9: def find_max(points: list[Point]) -> Point:
 Point& find_max(std::vector<Point>& points) {
     // 10:     best = points[0]
-    Point* best = &(tpy::get_item(points, 0));
+    Point* best = &(tpy::__getitem__(points, 0));
     // 11:     for p in points:
     for (auto& p : points) {
         // 12:         if p.x > best.x:
@@ -23,7 +23,7 @@ Point& find_max(std::vector<Point>& points) {
 // 17: def get_first(points: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& points) {
     // 18:     return points[0]  # tpyc: ok (param subscript)
-    return tpy::get_item(points, 0);
+    return tpy::__getitem__(points, 0);
 }
 
 // 21: def get_x(p: Point) -> Point:
@@ -43,7 +43,7 @@ Point& get_field_ref(Point& p) {
 // 30: def chained(points: list[Point]) -> Point:
 Point& chained(std::vector<Point>& points) {
     // 31:     a = points[0]
-    Point& a = tpy::get_item(points, 0);
+    Point& a = tpy::__getitem__(points, 0);
     // 32:     b = a
     Point& b = a;
     // 33:     return b  # tpyc: ok (chained provenance)
@@ -56,10 +56,10 @@ Point& both_branches(std::vector<Point>& points, bool flag) {
     Point* result;
     if (flag) {
         // 38:         result = points[1]
-        result = &(tpy::get_item(points, 1));
+        result = &(tpy::__getitem__(points, 1));
     } else {
         // 40:         result = points[2]
-        result = &(tpy::get_item(points, 2));
+        result = &(tpy::__getitem__(points, 2));
     }
     // 41:     return result  # tpyc: ok (both branches from param)
     return (*result);
@@ -70,11 +70,11 @@ void main() {
     // 45:     pts: list[Point] = [Point(), Point(), Point()]
     std::vector<Point> pts = {Point(), Point(), Point()};
     // 46:     pts[0].x = 10
-    tpy::get_item(pts, 0).x = 10;
+    tpy::__getitem__(pts, 0).x = 10;
     // 47:     pts[1].x = 30
-    tpy::get_item(pts, 1).x = 30;
+    tpy::__getitem__(pts, 1).x = 30;
     // 48:     pts[2].x = 20
-    tpy::get_item(pts, 2).x = 20;
+    tpy::__getitem__(pts, 2).x = 20;
     // 50:     best: Point = find_max(pts)
     Point& best = find_max(pts);
     // 51:     print(best.x)
@@ -83,7 +83,7 @@ void main() {
     // 54:     best.x = 99
     best.x = 99;
     // 55:     print(pts[1].x)
-    std::cout << tpy::get_item(pts, 1).x << "\n";
+    std::cout << tpy::__getitem__(pts, 1).x << "\n";
     // 57:     first: Point = get_first(pts)
     Point& first = get_first(pts);
     // 58:     print(first.x)

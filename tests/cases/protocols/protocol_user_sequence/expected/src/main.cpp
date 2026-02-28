@@ -14,7 +14,7 @@ void main() {
     // 32:     print(wrapper[0])      # 10
     std::cout << wrapper[0] << "\n";
     // 33:     print(wrapper[-1])     # 40
-    std::cout << wrapper[static_cast<int32_t>(tpy::__len__(wrapper) - 1)] << "\n";
+    std::cout << wrapper[-1] << "\n";
     // 35:     # User record conforms to Sequence[Int32]
     // 36:     print(sum_seq(wrapper))  # 100
     std::cout << sum_seq(wrapper) << "\n";

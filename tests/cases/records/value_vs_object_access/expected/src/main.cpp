@@ -14,19 +14,19 @@ void test_value_types() {
     // 16:     nums.append(20)
     nums.push_back(20);
     // 17:     val: Int32 = nums[0]
-    int32_t val = tpy::get_item(nums, 0);
+    int32_t val = tpy::__getitem__(nums, 0);
     // 18:     print(val)  # 10
     std::cout << val << "\n";
     // 20:     # Modifying val doesn't affect nums[0] (value semantics)
     // 21:     val = 99
     val = 99;
     // 22:     print(nums[0])  # Still 10
-    std::cout << tpy::get_item(nums, 0) << "\n";
+    std::cout << tpy::__getitem__(nums, 0) << "\n";
     // 24:     # Test with list[T] as well
     // 25:     int_list: list[Int32] = [5, 6, 7]
     std::vector<int32_t> int_list = {5, 6, 7};
     // 26:     v: Int32 = int_list[1]  # get_value for Int32 element
-    int32_t v = tpy::get_item(int_list, 1);
+    int32_t v = tpy::__getitem__(int_list, 1);
     // 27:     print(v)  # 6
     std::cout << v << "\n";
 }
@@ -42,19 +42,19 @@ void test_object_types() {
     points.push_back(Point(3, 4));
     // 36:     # Accessing object field through subscript
     // 37:     print(points[0].x)  # 1
-    std::cout << tpy::get_item(points, 0).x << "\n";
+    std::cout << tpy::__getitem__(points, 0).x << "\n";
     // 39:     # Modifying object through subscript reference
     // 40:     points[0].x = 100
-    tpy::get_item(points, 0).x = 100;
+    tpy::__getitem__(points, 0).x = 100;
     // 41:     print(points[0].x)  # 100
-    std::cout << tpy::get_item(points, 0).x << "\n";
+    std::cout << tpy::__getitem__(points, 0).x << "\n";
     // 43:     # Test with list[Point] as well
     // 44:     obj_list: list[Point] = [Point(10, 20)]
     std::vector<Point> obj_list = {Point(10, 20)};
     // 45:     obj_list[0].y = 200  # get_ref for Point element
-    tpy::get_item(obj_list, 0).y = 200;
+    tpy::__getitem__(obj_list, 0).y = 200;
     // 46:     print(obj_list[0].y)  # 200
-    std::cout << tpy::get_item(obj_list, 0).y << "\n";
+    std::cout << tpy::__getitem__(obj_list, 0).y << "\n";
 }
 
 void __tpy_init() {

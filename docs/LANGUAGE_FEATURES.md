@@ -496,7 +496,8 @@ std::printf("%d\n", sum_values(std::span(items.data(), items.size())));
 Key features:
 - Uses `std::span<const T>` (read-only) to allow conversion from temporaries
 - Requires C++23 (`-std=c++23`)
-- Standard Python `len()` and `[]` indexing work for both Array and Span
+- Standard Python `len()` and `[]` indexing work for both Array and Span (with bounds checking and negative index support)
+- `unchecked_get(index)` on Array and Span for raw unchecked access (no bounds check, no negative index normalization)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
 
 ### Pointers/References

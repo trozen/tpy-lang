@@ -13,7 +13,7 @@ int32_t count_char(std::string_view text, char target) {
     // 7:     while i < len(text):
     while ((i < tpy::__len__(text))) {
         // 8:         if text[i] == target:
-        if ((tpy::get_char(text, i) == target)) {
+        if ((tpy::__getitem__(text, i) == target)) {
             // 9:             count += 1
             count = tpy::add_check<int32_t>(count, 1);
         }

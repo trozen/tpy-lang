@@ -19,7 +19,7 @@ void __tpy_init() {
     // 25: print("first:")
     std::cout << "first:" << "\n";
     // 26: for x in items[0]:
-    auto& __iter_0 = tpy::get_item((*items), 0);
+    auto& __iter_0 = tpy::__getitem__((*items), 0);
     while (auto __opt_0 = __iter_0.__next_opt__()) {
         int32_t x = *__opt_0;
         // 27:     print(x)
@@ -28,7 +28,7 @@ void __tpy_init() {
     // 29: print("second:")
     std::cout << "second:" << "\n";
     // 30: for x in items[0]:
-    auto& __iter_1 = tpy::get_item((*items), 0);
+    auto& __iter_1 = tpy::__getitem__((*items), 0);
     while (auto __opt_1 = __iter_1.__next_opt__()) {
         int32_t x = *__opt_1;
         // 31:     print(x)

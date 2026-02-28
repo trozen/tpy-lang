@@ -21,7 +21,7 @@ void terminated_branch() {
         // 17:         if i == 0:
         if ((i == 0)) {
             // 18:             p = items[0]
-            p = &(tpy::get_item(items, 0));
+            p = &(tpy::__getitem__(items, 0));
             // 19:             continue
             continue;
         }

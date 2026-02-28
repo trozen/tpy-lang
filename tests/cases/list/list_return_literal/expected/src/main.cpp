@@ -20,7 +20,7 @@ void main() {
     // 22:     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
     // 23:     print(a[0])
-    std::cout << tpy::get_item(a, 0) << "\n";
+    std::cout << tpy::__getitem__(a, 0) << "\n";
     // 25:     # Single-element list from generic function (T inferred from arg)
     // 26:     b: list[Int32] = make_single(42)
     int32_t __tmp_1 = 42;

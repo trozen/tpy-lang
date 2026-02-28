@@ -40,58 +40,6 @@ std::size_t normalize_index(const Container& c, int32_t index, const char* conte
 }
 
 /**
- * get_value - Get a copy of element at index (for value types).
- *
- * Use this for primitive types (Int32, BigInt, Bool, Char, str).
- * Supports negative indexing (Python semantics).
- * Panics if index is out of bounds.
- */
-template <typename T>
-T get_value(std::vector<T>& vec, int32_t index) {
-    auto i = normalize_index(vec, index, "list index out of bounds in get_value()");
-    return vec[i];
-}
-
-template <typename T>
-T get_value(const std::vector<T>& vec, int32_t index) {
-    auto i = normalize_index(vec, index, "list index out of bounds in get_value()");
-    return vec[i];
-}
-
-/**
- * set_value - Set element at index (for value types).
- *
- * Supports negative indexing (Python semantics).
- * Panics if index is out of bounds.
- * Uses perfect forwarding to support both copy and move.
- */
-template <typename T, typename V>
-void set_value(std::vector<T>& vec, int32_t index, V&& value) {
-    auto i = normalize_index(vec, index, "list index out of bounds in set_value()");
-    vec[i] = std::forward<V>(value);
-}
-
-/**
- * get_ref - Get a reference to element at index (for object types).
- *
- * Use this for object types (records, nested containers) where
- * you need to access fields or mutate the element in-place.
- * Supports negative indexing (Python semantics).
- * Panics if index is out of bounds.
- */
-template <typename T>
-T& get_ref(std::vector<T>& vec, int32_t index) {
-    auto i = normalize_index(vec, index, "list index out of bounds in get_ref()");
-    return vec[i];
-}
-
-template <typename T>
-const T& get_ref(const std::vector<T>& vec, int32_t index) {
-    auto i = normalize_index(vec, index, "list index out of bounds in get_ref()");
-    return vec[i];
-}
-
-/**
  * pop_back - Python list.pop() equivalent for std::vector.
  *
  * Removes and returns the last element. Panics if vector is empty.
@@ -107,77 +55,6 @@ T pop_back(std::vector<T>& v) {
 }
 
 /**
- * get_item - Unified element access for std::vector.
- *
- * Returns by value for primitive types, by reference for object types.
- * Uses is_value_type trait for compile-time dispatch.
- */
-template<typename T>
-decltype(auto) get_item(std::vector<T>& v, int32_t index) {
-    auto i = normalize_index(v, index, "list index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(v[i]);  // Return copy for value types
-    } else {
-        return (v[i]);   // Return reference for object types (parens for decltype(auto))
-    }
-}
-
-template<typename T>
-decltype(auto) get_item(const std::vector<T>& v, int32_t index) {
-    auto i = normalize_index(v, index, "list index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(v[i]);
-    } else {
-        return (v[i]);
-    }
-}
-
-/**
- * set_item - Unified element assignment for std::vector.
- *
- * Sets element at index. Supports negative indexing (Python semantics).
- * Panics if index is out of bounds.
- * Uses perfect forwarding to support both copy and move.
- */
-template<typename T, typename V>
-void set_item(std::vector<T>& v, int32_t index, V&& value) {
-    auto i = normalize_index(v, index, "list index out of bounds in assignment");
-    v[i] = std::forward<V>(value);
-}
-
-/**
- * get_item - Unified element access for StaticList.
- */
-template<typename T, std::size_t N>
-decltype(auto) get_item(StaticList<T, N>& sl, int32_t index) {
-    auto i = normalize_index(sl, index, "StaticList index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(sl[i]);
-    } else {
-        return (sl[i]);
-    }
-}
-
-template<typename T, std::size_t N>
-decltype(auto) get_item(const StaticList<T, N>& sl, int32_t index) {
-    auto i = normalize_index(sl, index, "StaticList index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(sl[i]);
-    } else {
-        return (sl[i]);
-    }
-}
-
-/**
- * set_item - Unified element assignment for StaticList.
- */
-template<typename T, std::size_t N, typename V>
-void set_item(StaticList<T, N>& sl, int32_t index, V&& value) {
-    auto i = normalize_index(sl, index, "StaticList index out of bounds in assignment");
-    sl[i] = std::forward<V>(value);
-}
-
-/**
  * get_mut - Get mutable pointer to element (StaticList-specific, for noalloc patterns).
  */
 template<typename T, std::size_t N>
@@ -186,21 +63,6 @@ T* get_mut(StaticList<T, N>& sl, int32_t index) {
     return &sl[i];
 }
 
-/**
- * get_char - Bounds-checked character access for strings.
- *
- * Returns character at index. Supports negative indexing (Python semantics).
- * Panics if index is out of bounds.
- */
-inline char get_char(std::string_view s, int32_t index) {
-    auto i = normalize_index(s, index, "string index out of bounds");
-    return s[i];
-}
-
-inline char get_char(const std::string& s, int32_t index) {
-    auto i = normalize_index(s, index, "string index out of bounds");
-    return s[i];
-}
 
 /**
  * str_slice - Python-style string slicing with clamping semantics.

@@ -20,17 +20,17 @@ std::vector<std::optional<int32_t>> make_list() {
 // 13: def mut() -> None:
 void mut() {
     // 14:     l[0] = None
-    tpy::set_item((*l), 0, std::nullopt);
+    tpy::__setitem__((*l), 0, std::nullopt);
 }
 
 // 16: def f(items: list[Int32 | None]) -> None:
 void f(std::vector<std::optional<int32_t>>& items) {
     // 17:     if items[0] is not None:
-    if ((tpy::get_item(items, 0).has_value())) {
+    if ((tpy::__getitem__(items, 0).has_value())) {
         // 18:         mut()
         mut();
         // 19:         i: Int32 = Int32(1) + items[0]  # tpyc: warning(/Potential None access/)
-        int32_t i = (tpy::add_check<int32_t>(1, tpy::deref_optional_check(tpy::get_item(items, 0))));
+        int32_t i = (tpy::add_check<int32_t>(1, tpy::deref_optional_check(tpy::__getitem__(items, 0))));
         // 20:         print(i)
         std::cout << i << "\n";
     }

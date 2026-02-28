@@ -17,18 +17,18 @@ void main() {
     // 23:     c.items = [Point()]
     c.items = {Point()};
     // 24:     c.items[0].x = 10
-    tpy::get_item(c.items, 0).x = 10;
+    tpy::__getitem__(c.items, 0).x = 10;
     // 26:     # Get a copy of the items
     // 27:     taken: list[Point] = take_items(c)
     std::vector<Point> taken = take_items(c);
     // 29:     # Modify the copy
     // 30:     taken[0].x = 99
-    tpy::get_item(taken, 0).x = 99;
+    tpy::__getitem__(taken, 0).x = 99;
     // 32:     # Original should be unchanged (deep copy semantics)
     // 33:     print(c.items[0].x)  # 10
-    std::cout << tpy::get_item(c.items, 0).x << "\n";
+    std::cout << tpy::__getitem__(c.items, 0).x << "\n";
     // 34:     print(taken[0].x)    # 99
-    std::cout << tpy::get_item(taken, 0).x << "\n";
+    std::cout << tpy::__getitem__(taken, 0).x << "\n";
 }
 
 void __tpy_init() {

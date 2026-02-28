@@ -21,9 +21,9 @@ void main() {
     std::span<const int32_t> span_copy = span;
     // 13:     # Both spans can access the same data
     // 14:     print(span[0])
-    std::cout << span[0] << "\n";
+    std::cout << tpy::__getitem__(span, 0) << "\n";
     // 15:     print(span_copy[0])
-    std::cout << span_copy[0] << "\n";
+    std::cout << tpy::__getitem__(span_copy, 0) << "\n";
     // 16:     print(len(span))
     std::cout << tpy::__len__(span) << "\n";
     // 17:     print(len(span_copy))

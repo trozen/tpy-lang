@@ -33,7 +33,7 @@ int32_t test_empty_list_int32() {
     // 15:     nums.append(Int32(20))
     nums.push_back(20);
     // 16:     return nums[0] + nums[1]
-    return (tpy::add_check<int32_t>(tpy::get_item(nums, 0), tpy::get_item(nums, 1)));
+    return (tpy::add_check<int32_t>(tpy::__getitem__(nums, 0), tpy::__getitem__(nums, 1)));
 }
 
 // 19: def test_list_constructor() -> int:
@@ -55,7 +55,7 @@ int32_t test_list_constructor_int32() {
     // 28:     nums.append(Int32(100))
     nums.push_back(100);
     // 29:     return nums[0]
-    return tpy::get_item(nums, 0);
+    return tpy::__getitem__(nums, 0);
 }
 
 void __tpy_init() {

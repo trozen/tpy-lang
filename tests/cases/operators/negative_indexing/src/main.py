@@ -1,7 +1,6 @@
-from tpy import Int32, Array
+from tpy import Int32, Array, StaticList
 
 # Test negative indexing for various container types
-# Note: StaticList negative indexing is not yet implemented
 
 def test_list_negative_indexing() -> None:
     """Test negative indexing on list."""
@@ -82,6 +81,19 @@ def test_array_negative_assignment() -> None:
     print(arr[1])
     print(arr[2])
 
+def test_staticlist_negative_indexing() -> None:
+    items: StaticList[Int32, 4] = StaticList[Int32, 4]()
+    items.append(10)
+    items.append(20)
+    items.append(30)
+
+    print(items[-1])
+    print(items[-2])
+    print(items[-3])
+
+    items[-1] = 99
+    print(items[-1])
+
 # Run all tests
 print("=== list ===")
 test_list_negative_indexing()
@@ -95,3 +107,5 @@ print("=== expression ===")
 test_negative_index_in_expression()
 print("=== array assignment ===")
 test_array_negative_assignment()
+print("=== staticlist ===")
+test_staticlist_negative_indexing()

@@ -13,7 +13,7 @@ void print_list(std::vector<int32_t>& nums) {
     // 9:     while i < len(nums):
     while ((i < tpy::__len__(nums))) {
         // 10:         print(nums[i])
-        std::cout << tpy::get_item(nums, i) << "\n";
+        std::cout << tpy::__getitem__(nums, i) << "\n";
         // 11:         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
@@ -28,7 +28,7 @@ void print_staticlist(StaticList<int32_t, 16>& nums) {
     // 17:     while i < len(nums):
     while ((i < tpy::__len__(nums))) {
         // 18:         print(nums[i])
-        std::cout << tpy::get_item(nums, i) << "\n";
+        std::cout << tpy::__getitem__(nums, i) << "\n";
         // 19:         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
@@ -130,14 +130,14 @@ void test_setitem() {
     // 86:     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // 88:     nums[0] = 100
-    tpy::set_item(nums, 0, 100);
+    tpy::__setitem__(nums, 0, 100);
     // 89:     nums[2] = 300
-    tpy::set_item(nums, 2, 300);
+    tpy::__setitem__(nums, 2, 300);
     // 90:     print_list(nums)
     print_list(nums);
     // 92:     # Negative index
     // 93:     nums[-1] = 999
-    tpy::set_item(nums, static_cast<int32_t>(tpy::__len__(nums) - 1), 999);
+    tpy::__setitem__(nums, -1, 999);
     // 94:     print_list(nums)
     print_list(nums);
 }
@@ -346,7 +346,7 @@ void test_staticlist_clear() {
     // 226:     print(len(sl))  # 1
     std::cout << tpy::__len__(sl) << "\n";
     // 227:     print(sl[0])    # 100
-    std::cout << tpy::get_item(sl, 0) << "\n";
+    std::cout << tpy::__getitem__(sl, 0) << "\n";
 }
 
 // 235: def print_item_list(items: StaticList[Item, 16]) -> None:
@@ -356,7 +356,7 @@ void print_item_list(StaticList<Item, 16>& items) {
     // 238:     while i < len(items):
     while ((i < tpy::__len__(items))) {
         // 239:         print(items[i].value)
-        std::cout << tpy::get_item(items, i).value << "\n";
+        std::cout << tpy::__getitem__(items, i).value << "\n";
         // 240:         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }

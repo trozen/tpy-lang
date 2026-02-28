@@ -1,7 +1,6 @@
 from tpy import Int32
 
 # Test that subscript out-of-bounds access on list panics at runtime
-# (uses tpy::get_value() internally)
 
 def test_list_subscript_oob() -> None:
     nums: list[Int32] = [1, 2, 3]

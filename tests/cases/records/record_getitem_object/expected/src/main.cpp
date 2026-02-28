@@ -21,7 +21,7 @@ void main() {
     std::cout << plist[1].y << "\n";
     // 34:     # Access via operator[] (also returns const Point&)
     // 35:     print(plist[-1].x)  # 30
-    std::cout << plist[static_cast<int32_t>(tpy::__len__(plist) - 1)].x << "\n";
+    std::cout << plist[-1].x << "\n";
 }
 
 void __tpy_init() {

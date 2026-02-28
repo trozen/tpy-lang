@@ -13,6 +13,7 @@ void test_string_negative_indexing();
 void test_negative_index_assignment();
 void test_negative_index_in_expression();
 void test_array_negative_assignment();
+void test_staticlist_negative_indexing();
 
 void __tpy_init();
 } // namespace tpy_user::main

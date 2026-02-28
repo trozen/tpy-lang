@@ -30,9 +30,9 @@ void __tpy_init() {
     // 6: print(len(zeros))
     std::cout << tpy::__len__((*zeros)) << "\n";
     // 7: print(zeros[0])
-    std::cout << tpy::get_item((*zeros), 0) << "\n";
+    std::cout << tpy::__getitem__((*zeros), 0) << "\n";
     // 8: print(zeros[4])
-    std::cout << tpy::get_item((*zeros), 4) << "\n";
+    std::cout << tpy::__getitem__((*zeros), 4) << "\n";
     // 10: # Single element repeat - StaticList (via constructor)
     // 11: filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
     static StaticList<int32_t, 10> __global_slot_2 = tpy::from_range<StaticList<int32_t, 10>>(tpy::repeat_range<int32_t>(10, {42}));
@@ -40,9 +40,9 @@ void __tpy_init() {
     // 12: print(len(filled))
     std::cout << tpy::__len__((*filled)) << "\n";
     // 13: print(filled[0])
-    std::cout << tpy::get_item((*filled), 0) << "\n";
+    std::cout << tpy::__getitem__((*filled), 0) << "\n";
     // 14: print(filled[9])
-    std::cout << tpy::get_item((*filled), 9) << "\n";
+    std::cout << tpy::__getitem__((*filled), 9) << "\n";
     // 16: # Zero count repeat - produces empty list
     // 17: empty: list[Int32] = [99] * 0
     static std::vector<int32_t> __global_slot_3 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(0, {99}));
@@ -58,9 +58,9 @@ void __tpy_init() {
     // 23: print(len(dynamic))
     std::cout << tpy::__len__((*dynamic)) << "\n";
     // 24: print(dynamic[0])
-    std::cout << tpy::get_item((*dynamic), 0) << "\n";
+    std::cout << tpy::__getitem__((*dynamic), 0) << "\n";
     // 25: print(dynamic[2])
-    std::cout << tpy::get_item((*dynamic), 2) << "\n";
+    std::cout << tpy::__getitem__((*dynamic), 2) << "\n";
 }
 
 } // namespace tpy_user::main

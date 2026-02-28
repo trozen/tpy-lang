@@ -33,7 +33,7 @@ struct IntWrapper {
     // 13:     def __getitem__(self, index: Int32) -> Int32:
     int32_t __getitem__(int32_t index) const {
         // 14:         return self.data[index]
-        return tpy::get_item(this->data, index);
+        return tpy::__getitem__(this->data, index);
     }
 
     int32_t operator[](int32_t index) const {

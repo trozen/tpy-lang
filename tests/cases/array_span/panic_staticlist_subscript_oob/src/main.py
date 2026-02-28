@@ -1,7 +1,6 @@
 from tpy import Int32, StaticList
 
 # Test that subscript out-of-bounds access on StaticList panics at runtime
-# (uses get_value() internally)
 
 def test_subscript_oob() -> None:
     items: StaticList[Int32, 5] = StaticList[Int32, 5]()

@@ -18,9 +18,9 @@ void main() {
     // 9:     s: Span[Int32] = get_span(nums)
     std::span<const int32_t> s = get_span(nums);
     // 10:     print(s[0])
-    std::cout << s[0] << "\n";
+    std::cout << tpy::__getitem__(s, 0) << "\n";
     // 11:     print(s[3])
-    std::cout << s[3] << "\n";
+    std::cout << tpy::__getitem__(s, 3) << "\n";
 }
 
 void __tpy_init() {

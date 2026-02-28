@@ -29,7 +29,7 @@ void test_write_through_array_ptr() {
     // 15:     unsafe_store(p, UInt32(1), Int32(99))
     p[1] = 99;
     // 16:     print(arr[Int32(1)])
-    std::cout << arr[1] << "\n";
+    std::cout << tpy::__getitem__(arr, 1) << "\n";
 }
 
 void __tpy_init() {

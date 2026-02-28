@@ -38,7 +38,7 @@ int32_t take_span(std::span<const int32_t> s) {
     // 39:     while i < len(s):
     while ((i < tpy::__len__(s))) {
         // 40:         result = result + s[i]
-        result = (tpy::add_check<int32_t>(result, s[i]));
+        result = (tpy::add_check<int32_t>(result, tpy::__getitem__(s, i)));
         // 41:         i = i + 1
         i = (tpy::add_check<int32_t>(i, 1));
     }
@@ -273,12 +273,12 @@ void test_subscript_to_ptr() {
     std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
     // 221:     # arr[0] is a Point, passed to function taking Ptr[Point]
     // 222:     take_ptr(arr[0])
-    take_ptr(&arr[0]);
+    take_ptr(&tpy::__getitem__(arr, 0));
     // 223:     print(arr[0].x)  # 2 (was 1, incremented by take_ptr)
-    std::cout << arr[0].x << "\n";
+    std::cout << tpy::__getitem__(arr, 0).x << "\n";
     // 225:     # arr[1] passed to ReadOnlyPtr param
     // 226:     print(take_const_ptr(arr[1]))  # 7
-    std::cout << take_const_ptr(&arr[1]) << "\n";
+    std::cout << take_const_ptr(&tpy::__getitem__(arr, 1)) << "\n";
 }
 
 void __tpy_init() {

@@ -72,7 +72,7 @@ void __tpy_init() {
     // 32: print(len(points))
     std::cout << tpy::__len__((*points)) << "\n";
     // 33: print(points[0].x)
-    std::cout << tpy::get_item((*points), 0).x << "\n";
+    std::cout << tpy::__getitem__((*points), 0).x << "\n";
     // 35: # Nested list of records (tests recursive record check)
     // 36: nested = list[list[Point]]()
     static std::vector<std::vector<Point>> __global_slot_4 = std::vector<std::vector<Point>>();
@@ -87,7 +87,7 @@ void __tpy_init() {
     // 40: print(len(nested))
     std::cout << tpy::__len__((*nested)) << "\n";
     // 41: print(nested[0][0].x)
-    std::cout << tpy::get_item(tpy::get_item((*nested), 0), 0).x << "\n";
+    std::cout << tpy::__getitem__(tpy::__getitem__((*nested), 0), 0).x << "\n";
     // 43: # Test local list creation
     // 44: test_local_list()
     test_local_list();

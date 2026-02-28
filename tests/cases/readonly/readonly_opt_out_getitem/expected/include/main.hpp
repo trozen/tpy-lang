@@ -26,7 +26,7 @@ struct CachedList {
         // 15:         self._hits = self._hits + 1
         this->_hits = (tpy::add_check<int32_t>(this->_hits, 1));
         // 16:         return self._data[idx]
-        return tpy::get_item(this->_data, idx);
+        return tpy::__getitem__(this->_data, idx);
     }
 
     int32_t operator[](int32_t idx) {

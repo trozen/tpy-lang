@@ -33,14 +33,14 @@ void __tpy_init() {
     std::cout << static_cast<int32_t>((*items).size()) << "\n";
     // 18: # Explicit __getitem__
     // 19: print(items.__getitem__(Int32(0)))  # 10
-    std::cout << tpy::get_item((*items), 0) << "\n";
+    std::cout << tpy::__getitem__((*items), 0) << "\n";
     // 20: print(items.__getitem__(Int32(1)))  # 20
-    std::cout << tpy::get_item((*items), 1) << "\n";
+    std::cout << tpy::__getitem__((*items), 1) << "\n";
     // 22: # Explicit __setitem__
     // 23: items.__setitem__(Int32(1), Int32(99))
-    tpy::set_item((*items), 1, 99);
+    tpy::__setitem__((*items), 1, 99);
     // 24: print(items.__getitem__(Int32(1)))  # 99
-    std::cout << tpy::get_item((*items), 1) << "\n";
+    std::cout << tpy::__getitem__((*items), 1) << "\n";
     // 27: # Test StaticList dunders
     // 28: sl = StaticList[Int32, 10]()
     static StaticList<int32_t, 10> __global_slot_2 = StaticList<int32_t, 10>();
@@ -54,12 +54,12 @@ void __tpy_init() {
     std::cout << (*sl).size() << "\n";
     // 35: # Explicit __getitem__
     // 36: print(sl.__getitem__(Int32(0)))  # 100
-    std::cout << tpy::get_item((*sl), 0) << "\n";
+    std::cout << tpy::__getitem__((*sl), 0) << "\n";
     // 38: # Explicit __setitem__
     // 39: sl.__setitem__(Int32(0), Int32(111))
-    tpy::set_item((*sl), 0, 111);
+    tpy::__setitem__((*sl), 0, 111);
     // 40: print(sl.__getitem__(Int32(0)))  # 111
-    std::cout << tpy::get_item((*sl), 0) << "\n";
+    std::cout << tpy::__getitem__((*sl), 0) << "\n";
     // 43: # Test Array dunders
     // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
     static std::array<int32_t, 3> __global_slot_3 = {1, 2, 3};
@@ -69,9 +69,9 @@ void __tpy_init() {
     std::cout << static_cast<int32_t>((*arr).size()) << "\n";
     // 49: # Explicit __getitem__
     // 50: print(arr.__getitem__(Int32(0)))  # 1
-    std::cout << (*arr)[0] << "\n";
+    std::cout << tpy::__getitem__((*arr), 0) << "\n";
     // 51: print(arr.__getitem__(Int32(2)))  # 3
-    std::cout << (*arr)[2] << "\n";
+    std::cout << tpy::__getitem__((*arr), 2) << "\n";
 }
 
 } // namespace tpy_user::main

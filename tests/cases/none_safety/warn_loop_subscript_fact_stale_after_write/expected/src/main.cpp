@@ -9,13 +9,13 @@ std::vector<std::optional<int32_t>>* vals{};
 // 4: def stale_after_write(items: list[Int32 | None], i: Int32) -> Int32:
 int32_t stale_after_write(std::vector<std::optional<int32_t>>& items, int32_t i) {
     // 5:     while items[i] is not None:
-    while ((tpy::get_item(items, i).has_value())) {
+    while ((tpy::__getitem__(items, i).has_value())) {
         // 6:         items[i] = items[i]
-        tpy::set_item(items, i, tpy::get_item(items, i));
+        tpy::__setitem__(items, i, tpy::__getitem__(items, i));
         // 7:         if i < 0:
         if ((i < 0)) {
             // 8:             return items[i] + 1  # tpyc: warning(/Potential None access/)
-            return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::get_item(items, i)), 1));
+            return (tpy::add_check<int32_t>(tpy::deref_optional_check(tpy::__getitem__(items, i)), 1));
         }
         // 9:         break
         break;

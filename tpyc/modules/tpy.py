@@ -99,7 +99,7 @@ def init_module() -> BuiltinModule:
             cpp="static_cast<int32_t>({self}.size())",
             is_readonly=True,
         )],
-        "get": [MethodDef(
+        "unchecked_get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
@@ -108,13 +108,13 @@ def init_module() -> BuiltinModule:
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
-            cpp="{self}[{0}]",
+            cpp="tpy::__getitem__({self}, {0})",
             is_readonly=True,
         )],
         "__setitem__": [MethodDef(
             params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
-            cpp="{self}[{0}] = {1}",
+            cpp="tpy::__setitem__({self}, {0}, {1})",
         )],
     })
 
@@ -130,7 +130,7 @@ def init_module() -> BuiltinModule:
             cpp="static_cast<int32_t>({self}.size())",
             is_readonly=True,
         )],
-        "get": [MethodDef(
+        "unchecked_get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
@@ -139,7 +139,7 @@ def init_module() -> BuiltinModule:
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
-            cpp="{self}[{0}]",
+            cpp="tpy::__getitem__({self}, {0})",
             is_readonly=True,
         )],
     })
@@ -221,13 +221,13 @@ def init_module() -> BuiltinModule:
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
-            cpp="tpy::get_item({self}, {0})",
+            cpp="tpy::__getitem__({self}, {0})",
             is_readonly=True,
         )],
         "__setitem__": [MethodDef(
             params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
-            cpp="tpy::set_item({self}, {0}, {1})",
+            cpp="tpy::__setitem__({self}, {0}, {1})",
         )],
         "extend": [MethodDef(
             params=[ParamDef("other", NamedType("NativeIterable", (T,), is_protocol=True))],
@@ -366,7 +366,7 @@ def init_module() -> BuiltinModule:
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=CHAR,
-            cpp="tpy::get_char({self}, {0})",
+            cpp="tpy::__getitem__({self}, {0})",
             is_readonly=True,
         )],
         "__add__": [
@@ -519,7 +519,7 @@ def init_module() -> BuiltinModule:
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=CHAR,
-            cpp="tpy::get_char({self}, {0})",
+            cpp="tpy::__getitem__({self}, {0})",
             is_readonly=True,
         )],
         "__add__": [

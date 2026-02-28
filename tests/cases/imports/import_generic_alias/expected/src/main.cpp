@@ -21,9 +21,9 @@ void __tpy_init() {
     // 6: print(len(x))
     std::cout << tpy::__len__((*x)) << "\n";
     // 7: print(x[0])
-    std::cout << tpy::get_item((*x), 0) << "\n";
+    std::cout << tpy::__getitem__((*x), 0) << "\n";
     // 8: print(x[1])
-    std::cout << tpy::get_item((*x), 1) << "\n";
+    std::cout << tpy::__getitem__((*x), 1) << "\n";
 }
 
 } // namespace tpy_user::main

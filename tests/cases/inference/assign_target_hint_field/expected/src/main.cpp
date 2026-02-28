@@ -9,9 +9,9 @@ void main() {
     // 38:     a = WithArray[Int32, 3]()
     WithArray<int32_t, 3> a = WithArray<int32_t, 3>();
     // 39:     a.data[0] = Int32(10)
-    a.data[0] = 10;
+    tpy::__setitem__(a.data, 0, 10);
     // 40:     print("array:", a.data[0])
-    std::cout << "array:" << " " << a.data[0] << "\n";
+    std::cout << "array:" << " " << tpy::__getitem__(a.data, 0) << "\n";
     // 42:     l = WithList[Int32]()
     WithList<int32_t> l = WithList<int32_t>();
     // 43:     l.items.append(Int32(42))

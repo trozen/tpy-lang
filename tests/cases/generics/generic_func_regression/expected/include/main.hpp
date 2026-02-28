@@ -50,13 +50,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 template<typename T>
 tpy::return_val_or_ref_t<T> First(std::vector<T>& items) {
     // 6:     return items[0]
-    return tpy::get_item(items, 0);
+    return tpy::__getitem__(items, 0);
 }
 // 16: def get_item[T](items: list[T], idx: Int32) -> T:
 template<typename T>
 tpy::return_val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
     // 17:     return items[idx]
-    return tpy::get_item(items, idx);
+    return tpy::__getitem__(items, idx);
 }
 
 void __tpy_init();

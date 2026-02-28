@@ -11,7 +11,7 @@ void read_items(const Container& c) {
     // 21:     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
     // 22:     print(items[0])
-    std::cout << tpy::get_item(items, 0) << "\n";
+    std::cout << tpy::__getitem__(items, 0) << "\n";
 }
 
 // 24: def main() -> None:

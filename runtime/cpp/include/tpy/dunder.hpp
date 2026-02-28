@@ -2,9 +2,9 @@
  * TurboPython Runtime - Dunder Free Functions
  *
  * Protocol free functions (__len__, __getitem__, __setitem__) that bridge
- * Python dunder methods to C++ types. Overloads for std types delegate to
- * .size() / tpy::get_item / tpy::set_item; the default templates forward
- * to the user type's own dunder method.
+ * Python dunder methods to C++ types. Overloads handle index normalization
+ * and bounds checking (Python semantics). Default templates forward to the
+ * user type's own dunder method.
  */
 
 #pragma once
@@ -86,20 +86,65 @@ int32_t __len__(const T& x) {
 // Overload: std::vector
 template<typename T>
 decltype(auto) __getitem__(const std::vector<T>& x, int32_t i) {
-    return get_item(x, i);
+    auto idx = normalize_index(x, i, "list index out of bounds");
+    if constexpr (is_value_type<T>::value) {
+        return T(x[idx]);
+    } else {
+        return (x[idx]);
+    }
+}
+
+template<typename T>
+decltype(auto) __getitem__(std::vector<T>& x, int32_t i) {
+    auto idx = normalize_index(x, i, "list index out of bounds");
+    if constexpr (is_value_type<T>::value) {
+        return T(x[idx]);
+    } else {
+        return (x[idx]);
+    }
 }
 
 // Overload: StaticList
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(const StaticList<T, N>& x, int32_t i) {
-    return get_item(x, i);
+    auto idx = normalize_index(x, i, "StaticList index out of bounds");
+    if constexpr (is_value_type<T>::value) {
+        return T(x[idx]);
+    } else {
+        return (x[idx]);
+    }
 }
 
-// Overload: std::array
+template<typename T, std::size_t N>
+decltype(auto) __getitem__(StaticList<T, N>& x, int32_t i) {
+    auto idx = normalize_index(x, i, "StaticList index out of bounds");
+    if constexpr (is_value_type<T>::value) {
+        return T(x[idx]);
+    } else {
+        return (x[idx]);
+    }
+}
+
+// Overload: std::array (const)
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(const std::array<T, N>& x, int32_t i) {
     auto idx = normalize_index(x, i, "array index out of bounds");
-    return x[idx];
+    if constexpr (is_value_type<T>::value) {
+        return T(x[idx]);
+    } else {
+        return (x[idx]);
+    }
+}
+
+// Overload: std::array (non-const, needed for &arr[i] -> T*)
+template<typename T, std::size_t N>
+decltype(auto) __getitem__(std::array<T, N>& x, int32_t i) {
+    auto idx = normalize_index(x, i, "array index out of bounds");
+    if constexpr (is_value_type<T>::value) {
+        return T(x[idx]);
+    } else {
+        return (x[idx]);
+    }
 }
 
 // Overload: std::span
@@ -141,13 +186,22 @@ decltype(auto) __getitem__(T& x, int32_t i) {
 // Overload: std::vector
 template<typename T, typename V>
 void __setitem__(std::vector<T>& x, int32_t i, V&& v) {
-    set_item(x, i, std::forward<V>(v));
+    auto idx = normalize_index(x, i, "list index out of bounds");
+    x[idx] = std::forward<V>(v);
 }
 
 // Overload: StaticList
 template<typename T, std::size_t N, typename V>
 void __setitem__(StaticList<T, N>& x, int32_t i, V&& v) {
-    set_item(x, i, std::forward<V>(v));
+    auto idx = normalize_index(x, i, "StaticList index out of bounds");
+    x[idx] = std::forward<V>(v);
+}
+
+// Overload: std::array
+template<typename T, std::size_t N, typename V>
+void __setitem__(std::array<T, N>& x, int32_t i, V&& v) {
+    auto idx = normalize_index(x, i, "array index out of bounds");
+    x[idx] = std::forward<V>(v);
 }
 
 // Default template: user types that define __setitem__() method

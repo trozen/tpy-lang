@@ -31,7 +31,7 @@ void __tpy_init() {
     int32_t __stop_0 = tpy::__len__((*sl));
     for (int32_t i = 0; i < __stop_0; ++i) {
         // 7:     print(sl[i])
-        std::cout << tpy::get_item((*sl), i) << "\n";
+        std::cout << tpy::__getitem__((*sl), i) << "\n";
     }
     // 9: # Multi-element with std::vector (list)
     // 10: nums: list[Int32] = [10, 20] * 2
@@ -43,7 +43,7 @@ void __tpy_init() {
     int32_t __stop_1 = tpy::__len__((*nums));
     for (int32_t i = 0; i < __stop_1; ++i) {
         // 13:     print(nums[i])
-        std::cout << tpy::get_item((*nums), i) << "\n";
+        std::cout << tpy::__getitem__((*nums), i) << "\n";
     }
     // 15: # Empty list repetition (always produces empty list)
     // 16: empty: list[Int32] = [] * 100

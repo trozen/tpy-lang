@@ -19,9 +19,9 @@ void test_strview_getitem() {
     // 10:     s: StrView = StrView("abc")
     std::string_view s = std::string_view("abc");
     // 11:     print(s[0])  # a
-    std::cout << tpy::get_char(s, 0) << "\n";
+    std::cout << tpy::__getitem__(s, 0) << "\n";
     // 12:     print(s[-1])  # c
-    std::cout << tpy::get_char(s, static_cast<int32_t>(tpy::__len__(s) - 1)) << "\n";
+    std::cout << tpy::__getitem__(s, -1) << "\n";
 }
 
 void __tpy_init() {

@@ -161,7 +161,7 @@ void lvalue_init_rvalue_rebind() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
     // 88:     best: Point = items[0]
     std::optional<Point> __slot_1;
-    Point* best = &(tpy::get_item(items, 0));
+    Point* best = &(tpy::__getitem__(items, 0));
     // 89:     for p in items:
     for (auto& p : items) {
         // 90:         if p.x > best.x:

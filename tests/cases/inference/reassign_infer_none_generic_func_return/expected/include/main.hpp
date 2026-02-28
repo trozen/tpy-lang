@@ -15,7 +15,7 @@ tpy::return_val_or_ref_t<T> first(std::vector<T>& items);
 template<typename T>
 tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
     // 5:     return items[0]
-    return tpy::get_item(items, 0);
+    return tpy::__getitem__(items, 0);
 }
 
 void __tpy_init();

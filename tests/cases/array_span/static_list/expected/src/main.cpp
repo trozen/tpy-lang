@@ -27,9 +27,9 @@ void process_list(StaticList<Item, 16>& items) {
     tpy::deref_check(p).value = 30;
     // 19:     # subscript access
     // 20:     first: Item = items[0]
-    Item& first = tpy::get_item(items, 0);
+    Item& first = tpy::__getitem__(items, 0);
     // 21:     items[1] = Item(first.value + 5)
-    tpy::set_item(items, 1, Item((tpy::add_check<int32_t>(first.value, 5))));
+    tpy::__setitem__(items, 1, Item((tpy::add_check<int32_t>(first.value, 5))));
 }
 
 // @noalloc
@@ -39,7 +39,7 @@ void print_list(StaticList<Item, 16>& items) {
     int32_t __stop_0 = tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // 26:         item: Item = items[i]
-        Item& item = tpy::get_item(items, i);
+        Item& item = tpy::__getitem__(items, i);
         // 27:         print(item.value)
         std::cout << item.value << "\n";
     }
@@ -66,21 +66,21 @@ void __tpy_init() {
     // 36: print(len(nums))
     std::cout << tpy::__len__((*nums)) << "\n";
     // 37: print(nums[0])
-    std::cout << tpy::get_item((*nums), 0) << "\n";
+    std::cout << tpy::__getitem__((*nums), 0) << "\n";
     // 38: print(nums[2])
-    std::cout << tpy::get_item((*nums), 2) << "\n";
+    std::cout << tpy::__getitem__((*nums), 2) << "\n";
     // 40: # Test fill constructor via list repetition
     // 41: filled: StaticList[Int32, 8] = StaticList[Int32, 8]([0]*8)
     static StaticList<int32_t, 8> __global_slot_3 = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(8, {0}));
     filled = &__global_slot_3;
     // 42: filled[0] = 42
-    tpy::set_item((*filled), 0, 42);
+    tpy::__setitem__((*filled), 0, 42);
     // 43: print(len(filled))
     std::cout << tpy::__len__((*filled)) << "\n";
     // 44: print(filled[0])
-    std::cout << tpy::get_item((*filled), 0) << "\n";
+    std::cout << tpy::__getitem__((*filled), 0) << "\n";
     // 45: print(filled[7])
-    std::cout << tpy::get_item((*filled), 7) << "\n";
+    std::cout << tpy::__getitem__((*filled), 7) << "\n";
 }
 
 } // namespace tpy_user::main

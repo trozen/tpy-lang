@@ -47,7 +47,7 @@ void __tpy_init() {
     static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
     // 19: print(items[0])
-    std::cout << tpy::get_item((*items), 0) << "\n";
+    std::cout << tpy::__getitem__((*items), 0) << "\n";
 }
 
 } // namespace tpy_user::main

@@ -1,4 +1,4 @@
-from tpy import Int32, StaticList
+from tpy import Int32, Array, StaticList
 
 def test_list_aug_assign() -> None:
     nums: list[Int32] = [1, 2, 3]
@@ -25,6 +25,14 @@ def test_negative_index_aug_assign() -> None:
     nums[-2] *= 2
     print(nums[-2])  # 40
 
+def test_array_aug_assign() -> None:
+    arr: Array[Int32, 3] = [10, 20, 30]
+    arr[0] += 5
+    print(arr[0])  # 15
+    arr[-1] *= 2
+    print(arr[-1])  # 60
+
 test_list_aug_assign()
 test_staticlist_aug_assign()
 test_negative_index_aug_assign()
+test_array_aug_assign()

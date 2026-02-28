@@ -30,7 +30,7 @@ int32_t local_mixed() {
     // 25:     data = [Int32(5), 6, 7]
     std::array<int32_t, 3> data = {5, 6, 7};
     // 26:     return data[2]
-    return data[2];
+    return tpy::__getitem__(data, 2);
 }
 
 // # Case 7: Passing to Span[Int32] param requires Int32 elements
@@ -80,31 +80,31 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     pure_literals = &__global_slot_1;
     // 5: print(pure_literals[0])
-    std::cout << tpy::get_item((*pure_literals), 0) << "\n";
+    std::cout << tpy::__getitem__((*pure_literals), 0) << "\n";
     // 7: # Case 2: Int32 constructor in list forces Int32 element type
     // 8: mixed_int32 = [Int32(1), 2, 3]
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
     mixed_int32 = &__global_slot_2;
     // 9: print(mixed_int32[0])
-    std::cout << tpy::get_item((*mixed_int32), 0) << "\n";
+    std::cout << tpy::__getitem__((*mixed_int32), 0) << "\n";
     // 11: # Case 3: Literal first, then Int32 - should infer Int32
     // 12: mixed_int32_rev = [1, Int32(2), 3]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     mixed_int32_rev = &__global_slot_3;
     // 13: print(mixed_int32_rev[1])
-    std::cout << tpy::get_item((*mixed_int32_rev), 1) << "\n";
+    std::cout << tpy::__getitem__((*mixed_int32_rev), 1) << "\n";
     // 15: # Case 4: Explicit list[Int32] annotation
     // 16: annotated_int32: list[Int32] = [10, 20, 30]
     static std::vector<int32_t> __global_slot_4 = {10, 20, 30};
     annotated_int32 = &__global_slot_4;
     // 17: print(annotated_int32[0])
-    std::cout << tpy::get_item((*annotated_int32), 0) << "\n";
+    std::cout << tpy::__getitem__((*annotated_int32), 0) << "\n";
     // 19: # Case 5: Explicit list[int] annotation (BigInt)
     // 20: annotated_bigint: list[int] = [100, 200, 300]
     static std::vector<tpy::BigInt> __global_slot_5 = {100, 200, 300};
     annotated_bigint = &__global_slot_5;
     // 21: print(annotated_bigint[0])
-    std::cout << tpy::get_item((*annotated_bigint), 0) << "\n";
+    std::cout << tpy::__getitem__((*annotated_bigint), 0) << "\n";
     // 28: print(local_mixed())
     std::cout << local_mixed() << "\n";
     // 37: # Must annotate or use Int32 constructor for Span[Int32] compatibility

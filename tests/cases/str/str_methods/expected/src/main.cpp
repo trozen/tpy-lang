@@ -178,11 +178,11 @@ void test_splitlines() {
     // 87:     lines = "one\ntwo\nthree".splitlines()
     std::vector<std::string> lines = tpy::str_splitlines("one\ntwo\nthree");
     // 88:     print("splitlines:", len(lines), lines[0], lines[1], lines[2])
-    std::cout << "splitlines:" << " " << tpy::__len__(lines) << " " << tpy::get_item(lines, 0) << " " << tpy::get_item(lines, 1) << " " << tpy::get_item(lines, 2) << "\n";
+    std::cout << "splitlines:" << " " << tpy::__len__(lines) << " " << tpy::__getitem__(lines, 0) << " " << tpy::__getitem__(lines, 1) << " " << tpy::__getitem__(lines, 2) << "\n";
     // 89:     lines2 = "a\r\nb\nc".splitlines()
     std::vector<std::string> lines2 = tpy::str_splitlines("a\r\nb\nc");
     // 90:     print("splitlines crlf:", len(lines2), lines2[0], lines2[1], lines2[2])
-    std::cout << "splitlines crlf:" << " " << tpy::__len__(lines2) << " " << tpy::get_item(lines2, 0) << " " << tpy::get_item(lines2, 1) << " " << tpy::get_item(lines2, 2) << "\n";
+    std::cout << "splitlines crlf:" << " " << tpy::__len__(lines2) << " " << tpy::__getitem__(lines2, 0) << " " << tpy::__getitem__(lines2, 1) << " " << tpy::__getitem__(lines2, 2) << "\n";
 }
 
 // 92: def test_chaining() -> None:

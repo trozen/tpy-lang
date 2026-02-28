@@ -44,9 +44,9 @@ void test_subscript_to_ptr() {
     std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
     // 33:     # arr[i] -> Ptr coercion
     // 34:     modify_inner(arr[1])
-    modify_inner(&arr[1]);
+    modify_inner(&tpy::__getitem__(arr, 1));
     // 35:     print(arr[1].x)
-    std::cout << arr[1].x << "\n";
+    std::cout << tpy::__getitem__(arr, 1).x << "\n";
 }
 
 void __tpy_init() {

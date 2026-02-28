@@ -21,13 +21,13 @@ void test_nested_field_copy(Outer& o, Inner inner) {
 // 70: def test_subscript_move(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_move(std::vector<Inner>& xs, Inner inner) {
     // 71:     xs[0] = inner  # tpyc: ok (subscript assign, last use -- auto-moved)
-    tpy::set_item(xs, 0, std::move(inner));
+    tpy::__setitem__(xs, 0, std::move(inner));
 }
 
 // 74: def test_subscript_copy(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_copy(std::vector<Inner>& xs, Inner inner) {
     // 75:     xs[0] = inner  # tpyc: warning(/copies.*container/)
-    tpy::set_item(xs, 0, inner);
+    tpy::__setitem__(xs, 0, inner);
     // 76:     print(inner.value)
     std::cout << inner.value << "\n";
 }

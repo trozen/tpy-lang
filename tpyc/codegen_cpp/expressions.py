@@ -1321,7 +1321,7 @@ class ExpressionGenerator:
                 # For pointer-globals with wrapper storage, this yields raw `T*`.
                 ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
                 subscript_obj = f"tpy::deref_check({ptr_expr})"
-        index_expr = self.gen_index_expr(subscript_obj, expr.index, index_type)
+        index_expr = self.gen_index_expr(expr.index, index_type)
 
         # Use registry lookup for __getitem__
         cpp_template = self.builtins.get_type_method_template(obj_type, "__getitem__")
@@ -1330,30 +1330,33 @@ class ExpressionGenerator:
         # Fallback: operator[] (user records generate const operator[] from __getitem__)
         return f"{subscript_obj}[{index_expr}]"
 
-    def gen_index_expr(self, obj: str, index: TpyExpr, index_type: TpyType) -> str:
-        """Generate index expression, handling negative indices with Python semantics."""
-        is_neg, abs_val = self._is_negative_literal(index)
-        if is_neg:
-            # Negative literal: items[-1] -> items[tpy::__len__(items) - 1]
-            # Use tpy::__len__() for universal support (std types and user records)
-            return f"static_cast<int32_t>(tpy::__len__({obj}) - {abs_val})"
+    def gen_index_expr(self, index: TpyExpr, index_type: TpyType) -> str:
+        """Generate index expression, converting BigInt indices to int32_t.
 
+        The raw index (possibly negative) is passed through to the runtime
+        helpers which handle normalization and bounds checking, matching CPython.
+        """
         index_expr = self.gen_expr_deref(index)
-        if isinstance(index, TpyIntLiteral):
-            return index_expr
-        if self.types.is_runtime_bigint(index, index_type):
+        if not self._is_int_constant(index) and self.types.is_runtime_bigint(index, index_type):
             index_expr = f"{index_expr}.to_fixed_check<int32_t>()"
         return index_expr
 
-    def _is_negative_literal(self, expr: TpyExpr) -> tuple[bool, int]:
-        """Check if expression is a negative integer literal.
+    @staticmethod
+    def _is_int_constant(expr: TpyExpr) -> bool:
+        """Check if expression is a compile-time integer constant that fits in int32_t.
 
-        Returns (True, abs_value) if it's a negative literal, (False, 0) otherwise.
+        Covers both `42` (TpyIntLiteral) and `-1` (TpyUnaryOp("-", TpyIntLiteral)).
+        Only returns True when the value fits in int32_t, so large BigInt literals
+        still get .to_fixed_check<int32_t>() instead of silent narrowing.
         """
-        if isinstance(expr, TpyUnaryOp) and expr.op == "-":
-            if isinstance(expr.operand, TpyIntLiteral):
-                return (True, expr.operand.value)
-        return (False, 0)
+        INT32_MIN = -(1 << 31)
+        INT32_MAX = (1 << 31) - 1
+        if isinstance(expr, TpyIntLiteral):
+            return INT32_MIN <= expr.value <= INT32_MAX
+        if isinstance(expr, TpyUnaryOp) and expr.op == "-" and isinstance(expr.operand, TpyIntLiteral):
+            return INT32_MIN <= -expr.operand.value <= INT32_MAX
+        return False
+
 
     def _gen_slice(self, obj: str, sl: TpySlice) -> str:
         """Generate string slice: tpy::str_slice(obj, start, stop)."""

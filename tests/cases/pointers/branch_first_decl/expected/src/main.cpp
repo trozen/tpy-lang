@@ -126,10 +126,10 @@ void param_branch(std::vector<Point>& points, bool cond) {
     Point* p;
     if (cond) {
         // 76:         p = points[0]
-        p = &(tpy::get_item(points, 0));
+        p = &(tpy::__getitem__(points, 0));
     } else {
         // 78:         p = points[1]
-        p = &(tpy::get_item(points, 1));
+        p = &(tpy::__getitem__(points, 1));
     }
     // 79:     print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
@@ -143,7 +143,7 @@ void mixed_init(std::vector<Point>& points, bool cond) {
     Point* p;
     if (cond) {
         // 85:         p = points[0]
-        p = &(tpy::get_item(points, 0));
+        p = &(tpy::__getitem__(points, 0));
     } else {
         // 87:         p = Point(70, 80)
         p = &*(__slot_1 = Point(70, 80));

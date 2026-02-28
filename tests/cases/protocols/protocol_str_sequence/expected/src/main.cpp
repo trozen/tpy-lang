@@ -15,11 +15,11 @@ void main() {
     std::cout << count_chars(text) << "\n";
     // 17:     # Direct indexing on str
     // 18:     print(text[0])             # h
-    std::cout << tpy::get_char(text, 0) << "\n";
+    std::cout << tpy::__getitem__(text, 0) << "\n";
     // 19:     print(text[-1])            # o
-    std::cout << tpy::get_char(text, static_cast<int32_t>(tpy::__len__(text) - 1)) << "\n";
+    std::cout << tpy::__getitem__(text, -1) << "\n";
     // 20:     print(text[2])             # l
-    std::cout << tpy::get_char(text, 2) << "\n";
+    std::cout << tpy::__getitem__(text, 2) << "\n";
 }
 
 void __tpy_init() {

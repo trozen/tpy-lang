@@ -10,13 +10,13 @@ void test_setitem_mutation() {
     // 10:     items = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     // 11:     items.__setitem__(Int32(0), Int32(99))
-    tpy::set_item(items, 0, 99);
+    tpy::__setitem__(items, 0, 99);
     // 12:     print(items[Int32(0)])  # 99
-    std::cout << tpy::get_item(items, 0) << "\n";
+    std::cout << tpy::__getitem__(items, 0) << "\n";
     // 13:     print(items[Int32(1)])  # 2
-    std::cout << tpy::get_item(items, 1) << "\n";
+    std::cout << tpy::__getitem__(items, 1) << "\n";
     // 14:     print(items[Int32(2)])  # 3
-    std::cout << tpy::get_item(items, 2) << "\n";
+    std::cout << tpy::__getitem__(items, 2) << "\n";
 }
 
 void __tpy_init() {

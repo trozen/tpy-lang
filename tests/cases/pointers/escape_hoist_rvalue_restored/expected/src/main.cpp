@@ -20,7 +20,7 @@ void rvalue_restored() {
         // 16:         p: Point = Point(0, 0)
         Point* p = &*(__slot_2 = Point(0, 0));
         // 17:         p = items[0]
-        p = &(tpy::get_item(items, 0));
+        p = &(tpy::__getitem__(items, 0));
         // 18:         p = Point(i, i + 10)
         p = &*(__slot_3 = Point(i, (tpy::add_check<int32_t>(i, 10))));
         // 19:         saved = p  # tpyc: warning(/hoisted to function scope/)

@@ -55,11 +55,11 @@ void test_init_from_element() {
     // 34:     points: list[Point] = [Point(1, 1), Point(2, 2), Point(3, 3)]
     std::vector<Point> points = {Point(1, 1), Point(2, 2), Point(3, 3)};
     // 35:     elem = points[0]
-    Point& elem = tpy::get_item(points, 0);
+    Point& elem = tpy::__getitem__(points, 0);
     // 36:     elem.x = 100
     elem.x = 100;
     // 37:     print(points[0].x)  # 100 — elem pointed into container
-    std::cout << tpy::get_item(points, 0).x << "\n";
+    std::cout << tpy::__getitem__(points, 0).x << "\n";
 }
 
 // # Test 5: For-each over records — loop var is auto& reference
@@ -73,11 +73,11 @@ void test_foreach_mutation() {
         p.x = tpy::add_check<int32_t>(p.x, 1);
     }
     // 44:     print(points[0].x)  # 2
-    std::cout << tpy::get_item(points, 0).x << "\n";
+    std::cout << tpy::__getitem__(points, 0).x << "\n";
     // 45:     print(points[1].x)  # 3
-    std::cout << tpy::get_item(points, 1).x << "\n";
+    std::cout << tpy::__getitem__(points, 1).x << "\n";
     // 46:     print(points[2].x)  # 4
-    std::cout << tpy::get_item(points, 2).x << "\n";
+    std::cout << tpy::__getitem__(points, 2).x << "\n";
 }
 
 // # Test 6: Rebinding pointer-local to different source
@@ -111,9 +111,9 @@ void test_rvalue_append() {
     // 63:     results.append(Point(6, 6))
     results.push_back(Point(6, 6));
     // 64:     print(results[0].x)  # 5
-    std::cout << tpy::get_item(results, 0).x << "\n";
+    std::cout << tpy::__getitem__(results, 0).x << "\n";
     // 65:     print(results[1].x)  # 6
-    std::cout << tpy::get_item(results, 1).x << "\n";
+    std::cout << tpy::__getitem__(results, 1).x << "\n";
 }
 
 // # Test 8: Build list with copy
@@ -132,9 +132,9 @@ void test_build_with_copy() {
     // 74:     results.append(copy(p))  # tpyc: warning(/unnecessary copy/)
     results.push_back(p);
     // 75:     print(results[0].x)  # 10 — independent copy
-    std::cout << tpy::get_item(results, 0).x << "\n";
+    std::cout << tpy::__getitem__(results, 0).x << "\n";
     // 76:     print(results[1].x)  # 20 — independent copy
-    std::cout << tpy::get_item(results, 1).x << "\n";
+    std::cout << tpy::__getitem__(results, 1).x << "\n";
 }
 
 // # Test 9: Init from global — local points to global's object
@@ -175,7 +175,7 @@ void test_list_sharing() {
     // 97:     print(len(a))  # 4 — shared
     std::cout << tpy::__len__(a) << "\n";
     // 98:     print(a[3])    # 4
-    std::cout << tpy::get_item(a, 3) << "\n";
+    std::cout << tpy::__getitem__(a, 3) << "\n";
 }
 
 // # Test 12: Pointer copy chain — a→b→c, mutation through c visible in a

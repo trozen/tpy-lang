@@ -5,21 +5,20 @@ namespace tpy_user::main {
 
 
 // # Test that subscript out-of-bounds access on StaticList panics at runtime
-// # (uses get_value() internally)
-// 6: def test_subscript_oob() -> None:
+// 5: def test_subscript_oob() -> None:
 void test_subscript_oob() {
-    // 7:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
+    // 6:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
     StaticList<int32_t, 5> items = StaticList<int32_t, 5>();
-    // 8:     items.append(10)
+    // 7:     items.append(10)
     items.push_back(10);
-    // 9:     items.append(20)
+    // 8:     items.append(20)
     items.push_back(20);
-    // 10:     items.append(30)
+    // 9:     items.append(30)
     items.push_back(30);
-    // 12:     # Access index 10 via subscript - out of bounds (only 3 elements)
-    // 13:     x: Int32 = items[10]
-    int32_t x = tpy::get_item(items, 10);
-    // 14:     print(x)
+    // 11:     # Access index 10 via subscript - out of bounds (only 3 elements)
+    // 12:     x: Int32 = items[10]
+    int32_t x = tpy::__getitem__(items, 10);
+    // 13:     print(x)
     std::cout << x << "\n";
 }
 
@@ -28,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: test_subscript_oob()
+    // 15: test_subscript_oob()
     test_subscript_oob();
 }
 

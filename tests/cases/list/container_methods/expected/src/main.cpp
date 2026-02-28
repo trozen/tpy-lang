@@ -19,9 +19,9 @@ void span_ops(std::span<const int32_t> sp) {
     // 23:     print(len(sp))
     std::cout << tpy::__len__(sp) << "\n";
     // 24:     print(sp[0])
-    std::cout << sp[0] << "\n";
+    std::cout << tpy::__getitem__(sp, 0) << "\n";
     // 25:     print(sp[1])
-    std::cout << sp[1] << "\n";
+    std::cout << tpy::__getitem__(sp, 1) << "\n";
 }
 
 void __tpy_init() {
@@ -42,9 +42,9 @@ void __tpy_init() {
     // 9: print(len(sl))
     std::cout << tpy::__len__((*sl)) << "\n";
     // 10: print(sl[0])
-    std::cout << tpy::get_item((*sl), 0) << "\n";
+    std::cout << tpy::__getitem__((*sl), 0) << "\n";
     // 11: print(sl[2])
-    std::cout << tpy::get_item((*sl), 2) << "\n";
+    std::cout << tpy::__getitem__((*sl), 2) << "\n";
     // 13: # Array methods (subscript, len)
     // 14: arr: Array[Int32, 3] = [100, 200, 300]
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
@@ -52,13 +52,13 @@ void __tpy_init() {
     // 15: print(len(arr))
     std::cout << tpy::__len__((*arr)) << "\n";
     // 16: print(arr[0])
-    std::cout << (*arr)[0] << "\n";
+    std::cout << tpy::__getitem__((*arr), 0) << "\n";
     // 17: print(arr[2])
-    std::cout << (*arr)[2] << "\n";
+    std::cout << tpy::__getitem__((*arr), 2) << "\n";
     // 18: arr[1] = 250
-    (*arr)[1] = 250;
+    tpy::__setitem__((*arr), 1, 250);
     // 19: print(arr[1])
-    std::cout << (*arr)[1] << "\n";
+    std::cout << tpy::__getitem__((*arr), 1) << "\n";
     // 27: span_ops(arr)
     span_ops(tpy::as_span((*arr)));
     // 29: # list methods
@@ -70,9 +70,9 @@ void __tpy_init() {
     // 32: print(len(nums))
     std::cout << tpy::__len__((*nums)) << "\n";
     // 33: print(nums[0])
-    std::cout << tpy::get_item((*nums), 0) << "\n";
+    std::cout << tpy::__getitem__((*nums), 0) << "\n";
     // 34: print(nums[3])
-    std::cout << tpy::get_item((*nums), 3) << "\n";
+    std::cout << tpy::__getitem__((*nums), 3) << "\n";
     // 35: nums.pop()
     tpy::pop_back((*nums));
     // 36: print(len(nums))

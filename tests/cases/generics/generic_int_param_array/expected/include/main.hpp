@@ -25,13 +25,13 @@ struct Buffer {
     // 10:     def set(self, idx: Int32, val: T) -> None:
     void set(int32_t idx, tpy::param_val_or_ref_t<T> val) {
         // 11:         self.data[idx] = val
-        this->data[idx] = val;
+        tpy::__setitem__(this->data, idx, val);
     }
 
     // 13:     def get(self, idx: Int32) -> T:
     tpy::return_val_or_ref_t<T> get(int32_t idx) {
         // 14:         return self.data[idx]
-        return this->data[idx];
+        return tpy::__getitem__(this->data, idx);
     }
 };
 

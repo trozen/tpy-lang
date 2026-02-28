@@ -17,7 +17,7 @@ void test_out_of_bounds() {
     items.push_back(30);
     // 11:     # Access index 10 which is out of bounds (only 3 elements)
     // 12:     x: Int32 = items[10]
-    int32_t x = tpy::get_item(items, 10);
+    int32_t x = tpy::__getitem__(items, 10);
     // 13:     print(x)
     std::cout << x << "\n";
 }

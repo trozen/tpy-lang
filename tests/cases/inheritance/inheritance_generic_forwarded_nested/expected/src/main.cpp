@@ -25,9 +25,9 @@ void __tpy_init() {
     static std::vector<std::string> __global_slot_3 = c->get_value();
     val = &__global_slot_3;
     // 27: print(val[0])
-    std::cout << tpy::get_item((*val), 0) << "\n";
+    std::cout << tpy::__getitem__((*val), 0) << "\n";
     // 28: print(val[1])
-    std::cout << tpy::get_item((*val), 1) << "\n";
+    std::cout << tpy::__getitem__((*val), 1) << "\n";
     // 29: print(c.get_extra())
     std::cout << c->get_extra() << "\n";
 }

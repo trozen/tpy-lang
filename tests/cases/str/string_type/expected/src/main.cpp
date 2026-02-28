@@ -35,9 +35,9 @@ void test_string_getitem() {
     // 18:     s: String = String("abc")
     std::string s = std::string("abc");
     // 19:     print(s[0])  # a
-    std::cout << tpy::get_char(s, 0) << "\n";
+    std::cout << tpy::__getitem__(s, 0) << "\n";
     // 20:     print(s[-1])  # c
-    std::cout << tpy::get_char(s, static_cast<int32_t>(tpy::__len__(s) - 1)) << "\n";
+    std::cout << tpy::__getitem__(s, -1) << "\n";
 }
 
 void __tpy_init() {
