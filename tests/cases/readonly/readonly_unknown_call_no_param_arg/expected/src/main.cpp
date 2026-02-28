@@ -12,7 +12,7 @@ void mutate(Box& b) {
 
 // @readonly
 // 18: def ok(b: Box) -> Int32:
-int32_t ok(Box& b) {
+int32_t ok(const Box& b) {
     // 19:     local = Box(b.value)
     Box local = Box(b.value);
     // 20:     mutate(local)  # tpyc: ok

@@ -2118,6 +2118,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)
 - **Working**: `@readonly` ("doesn't mutate its arguments" contract on functions/methods)
+  - C++ codegen: `@readonly` non-value params emit `const T&` (or `const T*` for Optional aliases), matching sema-level enforcement
   - Type-based enforcement: `ReadonlyType` wraps non-value params; field access, subscript, and method calls propagate readonly through expressions
   - Local alias deduction: `alias = param` preserves `ReadonlyType` through variable assignments
   - Constructors, `print`, I/O, and global writes are generally allowed; constructors follow the same call rule when passed param-derived mutable refs

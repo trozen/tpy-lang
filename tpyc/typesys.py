@@ -824,6 +824,9 @@ class ReadonlyType(TpyType):
     def is_ref_param(self) -> bool:
         return False
 
+    def param_needs_copy_for_reassign(self) -> bool:
+        return self.wrapped.param_needs_copy_for_reassign()
+
     def get_element_type(self) -> Optional['TpyType']:
         return self.wrapped.get_element_type()
 

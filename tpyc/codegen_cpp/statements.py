@@ -112,6 +112,8 @@ class StatementGenerator:
             actual = unwrap_readonly(ptype)
             if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                 self.ctx.pointer_locals.add(pname)
+                if isinstance(ptype, ReadonlyType):
+                    self.ctx.const_indirect_locals.add(pname)
             # Own[T] and Own[T] | None params are movable (caller gave up ownership)
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
@@ -306,6 +308,31 @@ class StatementGenerator:
             return True
         if init is not None and not self.ctx.is_rvalue_source(init):
             return True
+        return False
+
+    def _is_const_indirect(self, target_type: TpyType | None, init: TpyExpr | None,
+                           stmt: 'TpyVarDecl | None' = None) -> bool:
+        """Check if a local variable should use const indirection (const T* or const T&).
+
+        Detects when the variable is derived from a ReadonlyType source:
+        - Optional inner is ReadonlyType (None-seeded from readonly param)
+        - Init expression has ReadonlyType in sema (direct alias of readonly param)
+        - Sema var_types holds ReadonlyType for annotated locals that are later
+          reassigned from a readonly source
+        """
+        if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
+            return True
+        if init is not None:
+            sema_type = self.ctx.analyzer.get_expr_type(init)
+            if isinstance(sema_type, ReadonlyType):
+                return True
+        # For annotated Optional locals, sema var_types may hold
+        # OptionalType(ReadonlyType(T)) even when stmt.type is plain Optional[T].
+        if stmt is not None:
+            sema_var_type = self.ctx.analyzer.var_types.get(id(stmt))
+            if (isinstance(sema_var_type, OptionalType)
+                    and isinstance(sema_var_type.inner, ReadonlyType)):
+                return True
         return False
 
     def _is_dynamic_protocol_type(self, target_type: TpyType | None) -> bool:
@@ -508,6 +535,7 @@ class StatementGenerator:
         """
         from ..parse import TpyName as _TpyName
         name = escape_cpp_name(name)
+        const_pfx = "const " if name in self.ctx.const_indirect_locals else ""
 
         # None literal -> nullptr (Optional/Ptr) or monostate slot (Union)
         if isinstance(init, TpyNoneLiteral):
@@ -527,16 +555,16 @@ class StatementGenerator:
                         self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {rebind_slot};\n")
                     else:
                         self.ctx.rebind_slots[name] = init_slot
-                    return f"{indent}{cpp_type}* {name} = &({init_slot}.emplace({init_expr}));\n"
+                    return f"{indent}{const_pfx}{cpp_type}* {name} = &({init_slot}.emplace({init_expr}));\n"
                 if name in self.ctx.rvalue_reassigned_vars:
                     rebind_slot = self.ctx.slots.next_slot()
                     self.ctx.rebind_slots[name] = rebind_slot
                     return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
                             f"{indent}{static_kw}{slot_opt_cpp} {rebind_slot};\n"
-                            f"{indent}{cpp_type}* {name} = &{init_slot};\n")
+                            f"{indent}{const_pfx}{cpp_type}* {name} = &{init_slot};\n")
                 self.ctx.rebind_slots[name] = init_slot
                 return (f"{indent}{static_kw}{cpp_type} {init_slot} = {init_expr};\n"
-                        f"{indent}{cpp_type}* {name} = &{init_slot};\n")
+                        f"{indent}{const_pfx}{cpp_type}* {name} = &{init_slot};\n")
             # Pre-declare rebind slot if future rvalue rebinds need it
             rebind_decl = ""
             if name in self.ctx.rvalue_reassigned_vars:
@@ -549,7 +577,7 @@ class StatementGenerator:
                     self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {slot};\n")
                 else:
                     rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
-            return f"{rebind_decl}{indent}{cpp_type}* {name} = nullptr;\n"
+            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n"
 
         init_type = self.ctx.get_expr_type(init)
         # Optional non-value field on lvalue object -> optional_to_ptr directly
@@ -562,11 +590,11 @@ class StatementGenerator:
             if isinstance(init, TpyFieldAccess):
                 if not self.ctx.is_rvalue_source(init):
                     init_expr = self.expressions.gen_expr(init, target_type)
-                    return f"{indent}{cpp_type}* {name} = tpy::optional_to_ptr({init_expr});\n"
+                    return f"{indent}{const_pfx}{cpp_type}* {name} = tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
-                return f"{indent}{cpp_type}* {name} = {init_expr};\n"
+                return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
 
         init_expr = self.expressions.gen_expr(init, target_type)
 
@@ -575,7 +603,7 @@ class StatementGenerator:
         # Hoisted decls go to function scope -- use global_scope flag from slot state
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
         slot_opt_cpp = f"std::optional<{cpp_type}>"
-        target = f"{cpp_type}* {name}"
+        target = f"{const_pfx}{cpp_type}* {name}"
         if self.ctx.is_rvalue_source(init):
             init_slot = self.ctx.slots.next_slot()
             slot_type = self._slot_decl_type(cpp_type, is_opt_field)
@@ -614,14 +642,14 @@ class StatementGenerator:
                 rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
 
         if isinstance(init, _TpyName) and init.name in self.ctx.pointer_locals:
-            return f"{rebind_decl}{indent}{cpp_type}* {name} = {init_expr};\n"
+            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx._is_pointer_global(init):
-            return f"{rebind_decl}{indent}{cpp_type}* {name} = {init_expr};\n"
+            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
         elif self.ctx.is_global_name(init):
-            return f"{rebind_decl}{indent}{cpp_type}* {name} = &({init_expr});\n"
+            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
         else:
             # lvalue ref: param, subscript, field -> take address
-            return f"{rebind_decl}{indent}{cpp_type}* {name} = &({init_expr});\n"
+            return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
 
     def _gen_pointer_local_rebind(self, name: str, cpp_type: str, init: 'TpyExpr',
                                    target_type: TpyType | None, indent: str) -> str:
@@ -761,6 +789,10 @@ class StatementGenerator:
             is_optional = isinstance(target_type, OptionalType)
             if not is_optional:
                 assert stmt.init, f"indirect local '{stmt.name}' missing initializer"
+            is_const = self._is_const_indirect(target_type, stmt.init, stmt)
+            if is_const:
+                self.ctx.const_indirect_locals.add(stmt.name)
+            const_pfx = "const " if is_const else ""
             if is_optional or stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
                 # T* pointer-local -- needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
@@ -775,11 +807,11 @@ class StatementGenerator:
                     return self._gen_pointer_local_init(stmt.name, cpp_type, stmt.init, target_type, indent)
                 else:
                     # Optional without initializer -> nullptr
-                    return f"{indent}{cpp_type}* {cpp_name} = nullptr;\n"
+                    return f"{indent}{const_pfx}{cpp_type}* {cpp_name} = nullptr;\n"
             else:
                 # T& reference -- alias without rebinding
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
-                return f"{indent}{cpp_type}& {cpp_name} = {init_expr};\n"
+                return f"{indent}{const_pfx}{cpp_type}& {cpp_name} = {init_expr};\n"
 
         # Tier 1 non-value-type locals are eligible for auto-move at last use
         init_is_rvalue = stmt.init is None or self.ctx.is_rvalue_source(stmt.init)
@@ -1188,10 +1220,18 @@ class StatementGenerator:
                     if self.ctx.current_ns and var_type:
                         self.ctx.current_ns.bind_variable(name, var_type)
                     continue
-                # OptionalType uses inner type (pointer-local adds T*)
+                # OptionalType uses inner type (pointer-local adds T*).
+                # var_type.inner may be ReadonlyType(T) when sema readonly-propagation
+                # wrote OptionalType(ReadonlyType(T)) into if_branch_decls.
+                # Unwrap both the Optional and the inner ReadonlyType to get the bare C++ type.
                 resolve_type = var_type
+                is_const = False
                 if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
+                    is_const = isinstance(var_type.inner, ReadonlyType)
                     resolve_type = var_type.inner
+                if isinstance(resolve_type, ReadonlyType):
+                    is_const = True
+                    resolve_type = resolve_type.wrapped
                 cpp_type = self.types.type_to_cpp(resolve_type)
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
@@ -1200,6 +1240,8 @@ class StatementGenerator:
                     self.ctx.current_ns.bind_variable(name, var_type)
                 if self._needs_indirection(var_type, name, None):
                     self.ctx.pointer_locals.add(name)
+                    if is_const:
+                        self.ctx.const_indirect_locals.add(name)
                     if local_var_is_movable(
                             name,
                             self.ctx.hoisted_vars,
@@ -1207,12 +1249,13 @@ class StatementGenerator:
                             self.ctx.lvalue_reassigned_vars,
                             True):  # branch-declared vars have no init; movability is reassignment-based
                         self.ctx.movable_locals.add(name)
+                    const_pfx = "const " if is_const else ""
                     if name in self.ctx.rvalue_reassigned_vars:
                         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
                         slot = self.ctx.slots.next_slot()
                         self.ctx.rebind_slots[name] = slot
                         out.write(f"{indent}{static_kw}std::optional<{cpp_type}> {slot};\n")
-                    out.write(f"{indent}{cpp_type}* {name};\n")
+                    out.write(f"{indent}{const_pfx}{cpp_type}* {name};\n")
                 else:
                     out.write(f"{indent}{cpp_type} {name};\n")
 

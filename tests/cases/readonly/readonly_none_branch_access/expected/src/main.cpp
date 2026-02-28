@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // @readonly
 // 15: def observe_field(flag: bool, p: Box) -> None:
-void observe_field(bool flag, Box& p) {
+void observe_field(bool flag, const Box& p) {
     // 16:     x = None
-    Box* x = nullptr;
+    const Box* x = nullptr;
     // 17:     if flag:
     if (flag) {
         // 18:         x = p
@@ -23,9 +23,9 @@ void observe_field(bool flag, Box& p) {
 
 // @readonly
 // 23: def observe_method(flag: bool, p: Box) -> None:
-void observe_method(bool flag, Box& p) {
+void observe_method(bool flag, const Box& p) {
     // 24:     x = None
-    Box* x = nullptr;
+    const Box* x = nullptr;
     // 25:     if flag:
     if (flag) {
         // 26:         x = p

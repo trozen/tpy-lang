@@ -843,7 +843,10 @@ class StatementAnalyzer:
                                                              coercion_ctx=CoercionContext.ASSIGN)
                     # Readonly status flows from the value expression
                     if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
-                        var_type = ReadonlyType(var_type)
+                        if isinstance(var_type, OptionalType):
+                            var_type = OptionalType(ReadonlyType(var_type.inner))
+                        else:
+                            var_type = ReadonlyType(var_type)
                     if var_type != existing_type:
                         # Keep original declaration's resolved type in sync for codegen.
                         resolved = unwrap_readonly(var_type)

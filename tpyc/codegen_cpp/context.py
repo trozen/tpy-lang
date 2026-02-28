@@ -230,6 +230,7 @@ class CodeGenContext:
 
     # --- Pointer-local tracking ---
     pointer_locals: set[str] = field(default_factory=set)
+    const_indirect_locals: set[str] = field(default_factory=set)
     pointer_globals: set[str] = field(default_factory=set)
     final_globals: set[str] = field(default_factory=set)
     slots: SlotState = field(default_factory=SlotState)
@@ -290,6 +291,7 @@ class CodeGenContext:
         self.local_scope_names = set()
         self.global_declared_vars = set()
         self.pointer_locals = set()
+        self.const_indirect_locals = set()
         self.slots.reset()
         self.rebind_slots = {}
         self.plain_rebind_slots = set()

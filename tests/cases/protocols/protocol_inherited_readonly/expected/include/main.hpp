@@ -24,7 +24,7 @@ extern Impl* obj;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<Child T_x>
-int32_t read_via_child(T_x& x);
+int32_t read_via_child(const T_x& x);
 template<Child T>
 int32_t read_via_bound(const T& x);
 
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 // @readonly
 // 34: def read_via_child(x: Child) -> Int32:
 template<Child T_x>
-int32_t read_via_child(T_x& x) {
+int32_t read_via_child(const T_x& x) {
     // 35:     return x.read()
     return x.read();
 }

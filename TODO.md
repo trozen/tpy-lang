@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- C++ codegen should emit `const` for @readonly function params (currently sema-only enforcement)
 - tpy::BaseClass/Interface helpers, similar to EnumUtil? (instead of __tpy_* types)
 - argument default values
 - @dataclass

@@ -363,9 +363,13 @@ class SemanticAnalyzer:
         # Add parameters to scope and namespace. ReadonlyType is kept for
         # type-based enforcement; @readonly wraps all non-value params.
         local_ns = Namespace(parent=self.ctx.global_ns)
-        for pname, ptype in func.params:
+        for i, (pname, ptype) in enumerate(func.params):
             resolved_ptype = self._normalize_param_type(
                 self.type_ops.resolve_type(ptype), func.is_readonly)
+            # Propagate resolved types to AST so codegen sees ReadonlyType on
+            # @readonly params. Idempotent: _normalize_param_type is a no-op on
+            # already-wrapped types.
+            func.params[i] = (pname, resolved_ptype)
             self.ctx.current_scope.define(pname, resolved_ptype)
             self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
             self.ctx.definitely_assigned.add(pname)
@@ -524,8 +528,11 @@ class SemanticAnalyzer:
                 self.ctx.definitely_assigned.add("self")
                 local_ns.bind_variable("self", self_type)
 
-            for pname, ptype in method.params:
+            for i, (pname, ptype) in enumerate(method.params):
                 resolved_ptype = self._normalize_param_type(ptype, method.is_readonly)
+                # Propagate resolved types to AST so codegen sees ReadonlyType.
+                # Idempotent: _normalize_param_type is a no-op on already-wrapped types.
+                method.params[i] = (pname, resolved_ptype)
                 self.ctx.current_scope.define(pname, resolved_ptype)
                 self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
                 self.ctx.definitely_assigned.add(pname)

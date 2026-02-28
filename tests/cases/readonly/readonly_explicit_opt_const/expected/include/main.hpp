@@ -9,29 +9,29 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void observe_field(bool flag, const Box& p);
-void observe_method(bool flag, const Box& p);
+int32_t maybe_read(const Box& b, bool flag);
+void main();
 
 // 5: class Box:
 struct Box {
-    // 6:     v: Int32
-    int32_t v;
+    // 6:     value: Int32
+    int32_t value;
 
-    // 7:     def __init__(self, v: Int32) -> None:
+    // 8:     def __init__(self, value: Int32) -> None:
     Box() = default;
-    explicit Box(int32_t v) : v(v) {}
+    explicit Box(int32_t value) : value(value) {}
 
     //     @readonly
-    // 11:     def get_v(self) -> Int32:
-    int32_t get_v() const {
-        // 12:         return self.v
-        return this->v;
+    // 12:     def get_value(self) -> Int32:
+    int32_t get_value() const {
+        // 13:         return self.value
+        return this->value;
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     os << "Box("
-       << "v=" << obj.v
+       << "value=" << obj.value
        << ")";
     return os;
 }

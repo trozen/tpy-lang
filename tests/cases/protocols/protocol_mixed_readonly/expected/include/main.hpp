@@ -18,7 +18,7 @@ extern Impl* obj;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<Mixed T_m>
-int32_t safe_read(T_m& m);
+int32_t safe_read(const T_m& m);
 template<Mixed T_m>
 int32_t use_both(T_m& m);
 
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 // @readonly
 // 31: def safe_read(m: Mixed) -> Int32:
 template<Mixed T_m>
-int32_t safe_read(T_m& m) {
+int32_t safe_read(const T_m& m) {
     // 32:     return m.read()
     return m.read();
 }
