@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 26: def greet_pet(pet: Pet) -> None:
-void greet_pet(__tpy_Base_Pet& pet) {
+void greet_pet(Pet& pet) {
     // 27:     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
 // 29: def greet_named(pet: NamedPet) -> None:
-void greet_named(__tpy_Base_NamedPet& pet) {
+void greet_named(NamedPet& pet) {
     // 30:     print(pet.name())
     std::cout << pet.name() << "\n";
 }
@@ -26,15 +26,15 @@ void main() {
     greet_named(dog);
     // 36:     np: NamedPet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_NamedPet* np = &__slot_1;
+    NamedPet* np = &__slot_1;
     // 37:     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent base upcast)
     greet_pet((*np));
     // 38:     greet_named(Parrot())    # Structural -> Adapter_NamedPet -> Base_NamedPet
-    __tpy_Adapter_NamedPet<Parrot> __tmp_1{Parrot()};
+    tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
     greet_named(__tmp_1);
     // 39:     parrot_np: NamedPet = Parrot()
-    __tpy_Adapter_NamedPet<Parrot> __slot_2{Parrot()};
-    __tpy_Base_NamedPet* parrot_np = &__slot_2;
+    tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
+    NamedPet* parrot_np = &__slot_2;
     // 40:     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, upcast)
     greet_pet((*parrot_np));
 }

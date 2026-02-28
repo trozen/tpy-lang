@@ -9,7 +9,7 @@ void main() {
   std::optional<Cat> __slot_2;
     // 19:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 20:     print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
     // 21:     pet = Cat()

@@ -1,7 +1,7 @@
 # Tests cross-module @dynamic protocol: import, local vars, params, return, structural conformance.
 from pet import Pet
 
-# Direct inheritance (C++ struct Dog : __tpy_Base_Pet)
+# Direct inheritance (C++ struct Dog : Pet)
 class Dog(Pet):
     def speak(self) -> str:
         return "Woof"

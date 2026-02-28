@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 33: def bump(c: Counter) -> None:
-void bump(__tpy_Base_Counter& c) {
+void bump(Counter& c) {
     // 34:     c.increment()
     c.increment();
 }
@@ -23,14 +23,14 @@ void main() {
     // 43:     t = Tally()
     Tally t = Tally();
     // 44:     bump(t)
-    __tpy_RefAdapter_Counter<Tally> __tmp_1{t};
+    tpy::RefAdapter<Counter, Tally> __tmp_1{t};
     bump(__tmp_1);
     // 45:     print(t.value())       # 1
     std::cout << t.value() << "\n";
     // 47:     # 3. Local owning: mutation visible (modifying through pointer to owned slot)
     // 48:     c: Counter = MyCounter()
     MyCounter __slot_1{MyCounter()};
-    __tpy_Base_Counter* c = &__slot_1;
+    Counter* c = &__slot_1;
     // 49:     c.increment()
     c->increment();
     // 50:     c.increment()
@@ -39,8 +39,8 @@ void main() {
     std::cout << c->value() << "\n";
     // 53:     # 4. Local owning, structural: same behavior
     // 54:     c2: Counter = Tally()
-    __tpy_Adapter_Counter<Tally> __slot_2{Tally()};
-    __tpy_Base_Counter* c2 = &__slot_2;
+    tpy::Adapter<Counter, Tally> __slot_2{Tally()};
+    Counter* c2 = &__slot_2;
     // 55:     c2.increment()
     c2->increment();
     // 56:     print(c2.value())      # 1

@@ -8,45 +8,49 @@ namespace tpy_user::main {
 // @dynamic
 // 7: class Counter(Protocol):
 template<typename T>
-concept Counter = requires(T& t) {
+concept __Counter_Concept__ = requires(T& t) {
     { t.increment() } -> std::convertible_to<void>;
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
-struct __tpy_Base_Counter {
+struct Counter {
     virtual void increment() = 0;
     virtual int32_t value() = 0;
-    virtual ~__tpy_Base_Counter() = default;
+    virtual ~Counter() = default;
 };
 
-template<Counter T>
-struct __tpy_Adapter_Counter : __tpy_Base_Counter {
+} // namespace tpy_user::main
+
+template<tpy_user::main::__Counter_Concept__ T>
+struct tpy::Adapter<tpy_user::main::Counter, T> : tpy_user::main::Counter {
     T inner;
     template<typename... Args>
-    __tpy_Adapter_Counter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     void increment() override { inner.increment(); }
     int32_t value() override { return inner.value(); }
 };
 
-template<Counter T>
-struct __tpy_RefAdapter_Counter : __tpy_Base_Counter {
+template<tpy_user::main::__Counter_Concept__ T>
+struct tpy::RefAdapter<tpy_user::main::Counter, T> : tpy_user::main::Counter {
     T& inner;
-    __tpy_RefAdapter_Counter(T& ref) : inner(ref) {}
+    RefAdapter(T& ref) : inner(ref) {}
     void increment() override { inner.increment(); }
     int32_t value() override { return inner.value(); }
 };
+
+namespace tpy_user::main {
 
 struct MyCounter;
 struct Tally;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void bump(__tpy_Base_Counter& c);
+void bump(Counter& c);
 void main();
 
 // # Direct inheritor
 // 14: class MyCounter(Counter):
-struct MyCounter : __tpy_Base_Counter {
+struct MyCounter : Counter {
     // 15:     count: Int32
     int32_t count;
 

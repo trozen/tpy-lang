@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 20: def greet(n: DynNamed) -> None:
-void greet(__tpy_Base_DynNamed& n) {
+void greet(DynNamed& n) {
     // 21:     print(n.name())
     std::cout << n.name() << "\n";
 }
@@ -16,7 +16,7 @@ void main() {
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
     // 25:     greet(Cat())
-    __tpy_Adapter_DynNamed<Cat> __tmp_2{Cat()};
+    tpy::Adapter<DynNamed, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
 }
 

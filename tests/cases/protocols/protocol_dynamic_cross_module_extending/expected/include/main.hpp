@@ -9,44 +9,48 @@ namespace tpy_user::main {
 // @dynamic
 // 8: class NamedPet(Pet, Protocol):
 template<typename T>
-concept NamedPet = requires(T& t) {
+concept __NamedPet_Concept__ = requires(T& t) {
     { t.name() } -> std::convertible_to<std::string>;
     { t.speak() } -> std::convertible_to<std::string>;
 };
 
-struct __tpy_Base_NamedPet : ::tpy_user::pet::__tpy_Base_Pet {
+struct NamedPet : ::tpy_user::pet::Pet {
     virtual std::string name() = 0;
-    virtual ~__tpy_Base_NamedPet() = default;
+    virtual ~NamedPet() = default;
 };
 
-template<NamedPet T>
-struct __tpy_Adapter_NamedPet : __tpy_Base_NamedPet {
+} // namespace tpy_user::main
+
+template<tpy_user::main::__NamedPet_Concept__ T>
+struct tpy::Adapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
     T inner;
     template<typename... Args>
-    __tpy_Adapter_NamedPet(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string name() override { return inner.name(); }
     std::string speak() override { return inner.speak(); }
 };
 
-template<NamedPet T>
-struct __tpy_RefAdapter_NamedPet : __tpy_Base_NamedPet {
+template<tpy_user::main::__NamedPet_Concept__ T>
+struct tpy::RefAdapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
     T& inner;
-    __tpy_RefAdapter_NamedPet(T& ref) : inner(ref) {}
+    RefAdapter(T& ref) : inner(ref) {}
     std::string name() override { return inner.name(); }
     std::string speak() override { return inner.speak(); }
 };
+
+namespace tpy_user::main {
 
 struct Dog;
 struct Parrot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet_pet(::tpy_user::pet::__tpy_Base_Pet& pet);
-void greet_named(__tpy_Base_NamedPet& pet);
+void greet_pet(::tpy_user::pet::Pet& pet);
+void greet_named(NamedPet& pet);
 void main();
 
 // 11: class Dog(NamedPet):
-struct Dog : __tpy_Base_NamedPet {
+struct Dog : NamedPet {
 
 
     // 12:     def speak(self) -> str:

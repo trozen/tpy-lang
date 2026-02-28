@@ -8,33 +8,37 @@ namespace tpy_user::main {
 // @dynamic
 // 6: class Describable(Protocol):
 template<typename T>
-concept Describable = requires(T& t) {
+concept __Describable_Concept__ = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string>;
     { t.id() } -> std::convertible_to<int32_t>;
 };
 
-struct __tpy_Base_Describable {
+struct Describable {
     virtual std::string describe() = 0;
     virtual int32_t id() = 0;
-    virtual ~__tpy_Base_Describable() = default;
+    virtual ~Describable() = default;
 };
 
-template<Describable T>
-struct __tpy_Adapter_Describable : __tpy_Base_Describable {
+} // namespace tpy_user::main
+
+template<tpy_user::main::__Describable_Concept__ T>
+struct tpy::Adapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
     T inner;
     template<typename... Args>
-    __tpy_Adapter_Describable(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string describe() override { return inner.describe(); }
     int32_t id() override { return inner.id(); }
 };
 
-template<Describable T>
-struct __tpy_RefAdapter_Describable : __tpy_Base_Describable {
+template<tpy_user::main::__Describable_Concept__ T>
+struct tpy::RefAdapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
     T& inner;
-    __tpy_RefAdapter_Describable(T& ref) : inner(ref) {}
+    RefAdapter(T& ref) : inner(ref) {}
     std::string describe() override { return inner.describe(); }
     int32_t id() override { return inner.id(); }
 };
+
+namespace tpy_user::main {
 
 struct Item;
 
@@ -43,7 +47,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // 12: class Item(Describable):
-struct Item : __tpy_Base_Describable {
+struct Item : Describable {
     // 13:     _name: str
     std::string _name;
     // 14:     _id: Int32

@@ -8,68 +8,72 @@ namespace tpy_user::main {
 // @dynamic
 // 6: class Describable(Protocol):
 template<typename T>
-concept Describable = requires(T& t) {
+concept __Describable_Concept__ = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string>;
 };
 
-struct __tpy_Base_Describable {
+struct Describable {
     virtual std::string describe() = 0;
-    virtual ~__tpy_Base_Describable() = default;
-};
-
-template<Describable T>
-struct __tpy_Adapter_Describable : __tpy_Base_Describable {
-    T inner;
-    template<typename... Args>
-    __tpy_Adapter_Describable(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string describe() override { return inner.describe(); }
-};
-
-template<Describable T>
-struct __tpy_RefAdapter_Describable : __tpy_Base_Describable {
-    T& inner;
-    __tpy_RefAdapter_Describable(T& ref) : inner(ref) {}
-    std::string describe() override { return inner.describe(); }
+    virtual ~Describable() = default;
 };
 
 // @dynamic
 // 11: class Noise(Protocol):
 template<typename T>
-concept Noise = requires(T& t) {
+concept __Noise_Concept__ = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string>;
 };
 
-struct __tpy_Base_Noise {
+struct Noise {
     virtual std::string make_noise() = 0;
-    virtual ~__tpy_Base_Noise() = default;
+    virtual ~Noise() = default;
 };
 
-template<Noise T>
-struct __tpy_Adapter_Noise : __tpy_Base_Noise {
+} // namespace tpy_user::main
+
+template<tpy_user::main::__Describable_Concept__ T>
+struct tpy::Adapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
     T inner;
     template<typename... Args>
-    __tpy_Adapter_Noise(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string describe() override { return inner.describe(); }
+};
+
+template<tpy_user::main::__Describable_Concept__ T>
+struct tpy::RefAdapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string describe() override { return inner.describe(); }
+};
+
+template<tpy_user::main::__Noise_Concept__ T>
+struct tpy::Adapter<tpy_user::main::Noise, T> : tpy_user::main::Noise {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string make_noise() override { return inner.make_noise(); }
 };
 
-template<Noise T>
-struct __tpy_RefAdapter_Noise : __tpy_Base_Noise {
+template<tpy_user::main::__Noise_Concept__ T>
+struct tpy::RefAdapter<tpy_user::main::Noise, T> : tpy_user::main::Noise {
     T& inner;
-    __tpy_RefAdapter_Noise(T& ref) : inner(ref) {}
+    RefAdapter(T& ref) : inner(ref) {}
     std::string make_noise() override { return inner.make_noise(); }
 };
+
+namespace tpy_user::main {
 
 struct Dog;
 struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show_desc(__tpy_Base_Describable& d);
-void show_noise(__tpy_Base_Noise& n);
+void show_desc(Describable& d);
+void show_noise(Noise& n);
 void main();
 
 // 15: class Dog(Describable, Noise):
-struct Dog : __tpy_Base_Describable, __tpy_Base_Noise {
+struct Dog : Describable, Noise {
 
 
     // 16:     def describe(self) -> str:
@@ -92,7 +96,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 // 21: class Cat(Describable, Noise):
-struct Cat : __tpy_Base_Describable, __tpy_Base_Noise {
+struct Cat : Describable, Noise {
 
 
     // 22:     def describe(self) -> str:

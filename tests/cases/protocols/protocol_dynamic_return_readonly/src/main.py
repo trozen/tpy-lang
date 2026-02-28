@@ -1,4 +1,4 @@
-# Returning readonly[DynamicProto] from functions (const __tpy_Base& return path)
+# Returning readonly[DynamicProto] from functions (const Base& return path)
 from tpy import dynamic, readonly
 from typing import Protocol
 

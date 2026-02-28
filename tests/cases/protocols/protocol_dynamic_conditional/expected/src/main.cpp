@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // 22: def branch_init(cond: bool) -> None:
 void branch_init(bool cond) {
   std::optional<Dog> __slot_1;
-  std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
+  std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
     // 23:     if cond:
-    __tpy_Base_Pet* pet;
+    Pet* pet;
     if (cond) {
         // 24:         pet: Pet = Dog()
         __slot_1.emplace(Dog());
@@ -25,10 +25,10 @@ void branch_init(bool cond) {
 
 // 29: def branch_reassign(cond: bool) -> None:
 void branch_reassign(bool cond) {
-  std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
+  std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
     // 30:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 31:     if cond:
     if (cond) {
         // 32:         pet = Cat()
@@ -41,11 +41,11 @@ void branch_reassign(bool cond) {
 
 // 35: def nested_branches(a: bool, b: bool) -> None:
 void nested_branches(bool a, bool b) {
-  std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
-  std::optional<__tpy_Adapter_Pet<Parrot>> __slot_3;
+  std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
+  std::optional<tpy::Adapter<Pet, Parrot>> __slot_3;
     // 36:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 37:     if a:
     if (a) {
         // 38:         if b:
@@ -65,10 +65,10 @@ void nested_branches(bool a, bool b) {
 
 // 44: def loop_reassign(n: Int32) -> None:
 void loop_reassign(int32_t n) {
-  std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
+  std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
     // 45:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 46:     i: Int32 = 0
     int32_t i = 0;
     // 47:     while i < n:
@@ -85,11 +85,11 @@ void loop_reassign(int32_t n) {
 
 // 52: def branch_in_loop(n: Int32) -> None:
 void branch_in_loop(int32_t n) {
-  std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
-  std::optional<__tpy_Adapter_Pet<Parrot>> __slot_3;
+  std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
+  std::optional<tpy::Adapter<Pet, Parrot>> __slot_3;
     // 53:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 54:     i: Int32 = 0
     int32_t i = 0;
     // 55:     while i < n:

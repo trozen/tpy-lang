@@ -513,7 +513,7 @@ class Pet(Protocol):
 class Dog(Pet):
     def make_noise(self) -> str: return "Woof"
 
-def greet(pet: Pet) -> None:      # dynamic dispatch via __tpy_Base_Pet&
+def greet(pet: Pet) -> None:      # dynamic dispatch via Pet&
     print(pet.make_noise())
 
 greet(Dog())                       # implicit upcast, zero cost

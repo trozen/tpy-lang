@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 // 20: global_pet: Pet = Cat()
-__tpy_Base_Pet* global_pet{};
+Pet* global_pet{};
 
 // 22: def echo_readonly(pet: readonly[Pet]) -> readonly[Pet]:
-const __tpy_Base_Pet& echo_readonly(const __tpy_Base_Pet& pet) {
+const Pet& echo_readonly(const Pet& pet) {
     // 23:     return pet
     return pet;
 }
 
 // 25: def get_global_readonly() -> readonly[Pet]:
-const __tpy_Base_Pet& get_global_readonly() {
+const Pet& get_global_readonly() {
     // 26:     return global_pet
     return (*global_pet);
 }

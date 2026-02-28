@@ -791,12 +791,10 @@ class ExpressionGenerator:
                             arg_expr = self.gen_expr_deref(arg, arg_type)
                             if self.ctx.is_temporary_expr(arg):
                                 # Rvalue: owning adapter (value must live in the temp)
-                                adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
-                                adapter_type = f"{adapter_name}<{concrete_cpp}>"
+                                adapter_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
                             else:
                                 # Lvalue: ref adapter (zero-copy, mutations visible)
-                                ref_adapter_name = self.protocols.get_dynamic_ref_adapter_name(proto_name)
-                                adapter_type = f"{ref_adapter_name}<{concrete_cpp}>"
+                                adapter_type = self.protocols.get_dynamic_ref_adapter_type(proto_name, concrete_cpp)
                             temp_name = self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
                             gen_args.append(temp_name)
                         continue

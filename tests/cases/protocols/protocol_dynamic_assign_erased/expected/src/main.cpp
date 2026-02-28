@@ -5,19 +5,19 @@ namespace tpy_user::main {
 
 
 // 17: def greet(pet: Pet) -> None:
-void greet(__tpy_Base_Pet& pet) {
+void greet(Pet& pet) {
     // 18:     print(pet.name())
     std::cout << pet.name() << "\n";
 }
 
 // 20: def main() -> None:
 void main() {
-  std::optional<__tpy_Adapter_Pet<Cat>> __slot_2;
+  std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
     // 21:     p1: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* p1 = &__slot_1;
+    Pet* p1 = &__slot_1;
     // 22:     p2: Pet = p1
-    __tpy_Base_Pet* p2 = &(*p1);
+    Pet* p2 = &(*p1);
     // 23:     greet(p1)
     greet((*p1));
     // 24:     greet(p2)

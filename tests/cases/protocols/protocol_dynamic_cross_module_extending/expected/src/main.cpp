@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 23: def greet_pet(pet: Pet) -> None:
-void greet_pet(::tpy_user::pet::__tpy_Base_Pet& pet) {
+void greet_pet(::tpy_user::pet::Pet& pet) {
     // 24:     print(pet.speak())
     std::cout << pet.speak() << "\n";
 }
 
 // 26: def greet_named(pet: NamedPet) -> None:
-void greet_named(__tpy_Base_NamedPet& pet) {
+void greet_named(NamedPet& pet) {
     // 27:     print(pet.name())
     std::cout << pet.name() << "\n";
 }
@@ -26,15 +26,15 @@ void main() {
     greet_named(dog);
     // 33:     np: NamedPet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_NamedPet* np = &__slot_1;
+    NamedPet* np = &__slot_1;
     // 34:     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent, cross-module)
     greet_pet((*np));
     // 35:     greet_named(Parrot())    # Structural -> Adapter_NamedPet
-    __tpy_Adapter_NamedPet<Parrot> __tmp_1{Parrot()};
+    tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
     greet_named(__tmp_1);
     // 36:     parrot_np: NamedPet = Parrot()
-    __tpy_Adapter_NamedPet<Parrot> __slot_2{Parrot()};
-    __tpy_Base_NamedPet* parrot_np = &__slot_2;
+    tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
+    NamedPet* parrot_np = &__slot_2;
     // 37:     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, cross-module upcast)
     greet_pet((*parrot_np));
 }
@@ -45,7 +45,7 @@ void __tpy_init() {
     initialized = true;
 
     // 1: # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
-    // 2: # Tests that __tpy_Base_NamedPet inherits from the qualified ::tpy_user::pet::__tpy_Base_Pet.
+    // 2: # Tests that NamedPet base class inherits from the qualified ::tpy_user::pet::Pet.
     // 3: from pet import Pet
     ::tpy_user::pet::__tpy_init();
     // 39: main()

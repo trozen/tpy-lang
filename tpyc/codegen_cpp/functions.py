@@ -99,7 +99,7 @@ class FunctionGenerator:
         """Generate function parameter list, using template types for protocol params.
 
         Static protocols use template types (T_paramname).
-        @dynamic protocols use concrete __tpy_Base& reference params.
+        @dynamic protocols use concrete base class& reference params.
         """
         result = []
         for pname, ptype in params:
@@ -129,7 +129,7 @@ class FunctionGenerator:
         return ", ".join(result)
 
     def _resolve_return_type(self, return_type: TpyType, *, const: bool = False) -> str:
-        """Map a return type to C++, using __tpy_Base_{Name}& for @dynamic protocols."""
+        """Map a return type to C++, using Base& for @dynamic protocols."""
         unwrapped = unwrap_readonly(return_type)
         if is_protocol_type(unwrapped) and isinstance(unwrapped, NamedType):
             pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
@@ -435,7 +435,7 @@ class FunctionGenerator:
     def _global_cpp_type(self, var_type: TpyType) -> str:
         """Map a global variable type to C++.
 
-        @dynamic protocol types use __tpy_Base_{Name} instead of the concept
+        @dynamic protocol types use the base class name instead of the concept
         template placeholder, since globals need a concrete pointer type.
         """
         if is_protocol_type(var_type) and isinstance(var_type, NamedType):

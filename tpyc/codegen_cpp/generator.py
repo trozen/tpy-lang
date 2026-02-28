@@ -340,12 +340,16 @@ class CodeGenerator:
         return deps
 
     def _emit_concept_and_dynamic(self, hpp: TextIO, protocol: 'TpyProtocol') -> None:
-        """Emit concept for a protocol, plus base/adapter if @dynamic."""
+        """Emit concept for a protocol, plus base class if @dynamic.
+
+        Adapter specializations (tpy::Adapter, tpy::RefAdapter) are emitted
+        separately at global scope via _gen_dynamic_adapter_specs().
+        """
         from ..parse import TpyProtocol as _TP
         self.protocols.gen_concept_decl(hpp, protocol)
         if protocol.is_dynamic:
             hpp.write("\n")
-            self.protocols.gen_dynamic_base_and_adapter(hpp, protocol)
+            self.protocols.gen_dynamic_base_class(hpp, protocol)
 
     def _generate_forward_decls_and_concepts(
         self, hpp: TextIO, module: TpyModule, deps: _ProtocolDeps
@@ -447,10 +451,12 @@ class CodeGenerator:
         for enum in module.enums:
             self._gen_enum_decl(hpp, enum)
 
-        # EnumUtil specializations must be at global scope (outside user namespace)
-        if module.enums:
+        # Dynamic protocol adapter specs and EnumUtil specs must be at global scope
+        dynamic_protocols = [p for p in module.protocols if p.is_dynamic]
+        if dynamic_protocols or module.enums:
             ns = module_to_cpp_namespace(self.ctx.module_name)
             hpp.write(f"}} // namespace {ns}\n\n")
+            self._gen_dynamic_adapter_specs(hpp, module, dynamic_protocols)
             self._gen_enum_util_decls(hpp, module)
             hpp.write(f"namespace {ns} {{\n\n")
             for enum in module.enums:
@@ -640,6 +646,14 @@ class CodeGenerator:
         for member_name, value, _ in enum.members:
             out.write(f"    {member_name} = {value},\n")
         out.write("};\n\n")
+
+    def _gen_dynamic_adapter_specs(self, out: TextIO, module: TpyModule,
+                                    dynamic_protocols: list) -> None:
+        """Generate tpy::Adapter/RefAdapter partial specializations (global scope)."""
+        ns = module_to_cpp_namespace(self.ctx.module_name)
+        for protocol in dynamic_protocols:
+            self.protocols.gen_dynamic_adapter_specs(out, protocol, ns)
+            out.write("\n")
 
     def _gen_enum_util_decls(self, out: TextIO, module: TpyModule) -> None:
         """Generate tpy::EnumUtil<E> specialization declarations (global scope)."""

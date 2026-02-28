@@ -40,7 +40,7 @@ class ProtocolGenerator:
     def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType]]:
         """Get list of static protocol-typed parameters (unwraps readonly[protocol]).
 
-        Excludes @dynamic protocols -- those use concrete __tpy_Base& params
+        Excludes @dynamic protocols -- those use concrete base class ref params
         instead of template parameters.
         """
         result = []
@@ -55,38 +55,44 @@ class ProtocolGenerator:
         return result
 
     def get_concept_name(self, protocol: NamedType) -> str:
-        """Get the C++ concept name for a protocol type."""
+        """Get the C++ concept name for a protocol type.
+
+        For @dynamic protocols the concept is renamed to __{Name}_Concept__
+        so the clean name is free for the base class struct.
+        Non-dynamic protocols keep their original name.
+        """
         # Unified lookup via registry
         protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
         if protocol_info and protocol_info.cpp_concept:
             return protocol_info.cpp_concept
+        is_dynamic = protocol_info is not None and protocol_info.is_dynamic
         # Check if this is an imported protocol from another user module
         if protocol.name in self.ctx.user_imported_protocols:
             source_module, original_name = self.ctx.user_imported_protocols[protocol.name]
-            return qualified_cpp_name(source_module, original_name)
-        # User-defined protocol - use the protocol name directly
-        return protocol.name
+            cpp_name = f"__{original_name}_Concept__" if is_dynamic else original_name
+            return qualified_cpp_name(source_module, cpp_name)
+        # User-defined protocol
+        return f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
 
     def get_dynamic_base_name(self, protocol_name: str) -> str:
-        """Get the (possibly qualified) C++ name for __tpy_Base_{Name}."""
-        if protocol_name in self.ctx.user_imported_protocols:
-            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
-            return qualified_cpp_name(source_module, f"__tpy_Base_{original_name}")
-        return f"__tpy_Base_{protocol_name}"
+        """Get the (possibly qualified) C++ base class name for a @dynamic protocol.
 
-    def get_dynamic_adapter_name(self, protocol_name: str) -> str:
-        """Get the (possibly qualified) C++ name for __tpy_Adapter_{Name}."""
+        The base class uses the protocol's own name (e.g., Pet, not __tpy_Base_Pet).
+        """
         if protocol_name in self.ctx.user_imported_protocols:
             source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
-            return qualified_cpp_name(source_module, f"__tpy_Adapter_{original_name}")
-        return f"__tpy_Adapter_{protocol_name}"
+            return qualified_cpp_name(source_module, original_name)
+        return protocol_name
 
-    def get_dynamic_ref_adapter_name(self, protocol_name: str) -> str:
-        """Get the (possibly qualified) C++ name for __tpy_RefAdapter_{Name}."""
-        if protocol_name in self.ctx.user_imported_protocols:
-            source_module, original_name = self.ctx.user_imported_protocols[protocol_name]
-            return qualified_cpp_name(source_module, f"__tpy_RefAdapter_{original_name}")
-        return f"__tpy_RefAdapter_{protocol_name}"
+    def get_dynamic_adapter_type(self, protocol_name: str, concrete_cpp: str) -> str:
+        """Get the full C++ type for an owning adapter: tpy::Adapter<Base, Concrete>."""
+        base = self.get_dynamic_base_name(protocol_name)
+        return f"tpy::Adapter<{base}, {concrete_cpp}>"
+
+    def get_dynamic_ref_adapter_type(self, protocol_name: str, concrete_cpp: str) -> str:
+        """Get the full C++ type for a ref adapter: tpy::RefAdapter<Base, Concrete>."""
+        base = self.get_dynamic_base_name(protocol_name)
+        return f"tpy::RefAdapter<{base}, {concrete_cpp}>"
 
     def _protocol_inherits_from(self, protocol_name: str, ancestor_name: str) -> bool:
         """Check if protocol_name transitively inherits from ancestor_name."""
@@ -109,7 +115,7 @@ class ProtocolGenerator:
 
         Returns True when the record explicitly implements a @dynamic protocol that
         is (or transitively inherits from) proto_name. This means the C++ struct
-        inherits __tpy_Base_{proto_name} through the inheritance chain and no adapter
+        inherits the protocol base class through the inheritance chain and no adapter
         wrapping is needed.
         """
         if not isinstance(concrete_type, NamedType) or not concrete_type.is_user_record:
@@ -301,10 +307,14 @@ class ProtocolGenerator:
             not m.is_readonly and not (protocol_info is not None and protocol_info.is_readonly)
             for m in all_methods
         )
+        # @dynamic protocols use __{Name}_Concept__ so the clean name is
+        # free for the base class struct
+        concept_name = (f"__{protocol.name}_Concept__"
+                        if protocol.is_dynamic else protocol.name)
         if not has_mutable_method:
-            out.write(f"concept {protocol.name} = requires(const T& t) {{\n")
+            out.write(f"concept {concept_name} = requires(const T& t) {{\n")
         else:
-            out.write(f"concept {protocol.name} = requires(T& t) {{\n")
+            out.write(f"concept {concept_name} = requires(T& t) {{\n")
 
 
         def subst_type(typ: TpyType) -> TpyType:
@@ -353,22 +363,19 @@ class ProtocolGenerator:
 
         out.write("};\n")
 
-    def gen_dynamic_base_and_adapter(self, out: TextIO, protocol: TpyProtocol) -> None:
-        """Generate abstract base class and type-erasing adapter for @dynamic protocol.
+    def gen_dynamic_base_class(self, out: TextIO, protocol: TpyProtocol) -> None:
+        """Generate abstract base class for a @dynamic protocol.
 
-        Emitted after the concept so the adapter can use the concept as a constraint.
-        When this protocol extends other @dynamic protocols, the base class inherits
-        from their bases (e.g., __tpy_Base_NamedPet : __tpy_Base_Pet) and only declares
-        methods not already present in parent bases. Adapters still override all methods.
+        Emitted inside the user namespace. The base class gets the protocol's
+        clean name (e.g., struct Pet) so C++ interop code can use it directly.
+        When this protocol extends other @dynamic protocols, the base class
+        inherits from their bases (e.g., NamedPet : Pet).
         """
         protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
         if protocol_info is None:
             return
 
         all_methods = self.collect_concept_methods(protocol.name)
-
-        base_name = f"__tpy_Base_{protocol.name}"
-        adapter_name = f"__tpy_Adapter_{protocol.name}"
 
         # Collect @dynamic parent bases and their already-declared methods
         dynamic_parent_bases: list[str] = []
@@ -383,7 +390,7 @@ class ProtocolGenerator:
         # Methods to declare in this base class (exclude those in @dynamic parents)
         base_methods = [m for m in all_methods if m.name not in parent_dynamic_methods]
 
-        # -- Abstract base class --
+        base_name = protocol.name
         if dynamic_parent_bases:
             bases_str = ", ".join(dynamic_parent_bases)
             out.write(f"struct {base_name} : {bases_str} {{\n")
@@ -395,23 +402,37 @@ class ProtocolGenerator:
             params_cpp = self._dynamic_param_list(method_sig)
             out.write(f"{INDENT}virtual {ret_cpp} {method_sig.name}({params_cpp}){const_qual} = 0;\n")
         out.write(f"{INDENT}virtual ~{base_name}() = default;\n")
-        out.write("};\n\n")
+        out.write("};\n")
 
-        # -- Owning adapter template (for locals and rvalue call-site args) --
-        out.write(f"template<{protocol.name} T>\n")
-        out.write(f"struct {adapter_name} : {base_name} {{\n")
+    def gen_dynamic_adapter_specs(self, out: TextIO, protocol: TpyProtocol,
+                                  module_namespace: str) -> None:
+        """Generate tpy::Adapter and tpy::RefAdapter partial specializations.
+
+        Emitted at global scope (outside user namespace), following the EnumUtil
+        pattern. Uses fully-qualified names for concept and base class.
+        """
+        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        if protocol_info is None:
+            return
+
+        all_methods = self.collect_concept_methods(protocol.name)
+        qbase = f"{module_namespace}::{protocol.name}"
+        qconcept = f"{module_namespace}::__{protocol.name}_Concept__"
+
+        # -- Owning adapter (for locals and rvalue call-site args) --
+        out.write(f"template<{qconcept} T>\n")
+        out.write(f"struct tpy::Adapter<{qbase}, T> : {qbase} {{\n")
         out.write(f"{INDENT}T inner;\n")
         out.write(f"{INDENT}template<typename... Args>\n")
-        out.write(f"{INDENT}{adapter_name}(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
+        out.write(f"{INDENT}Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
         self._gen_adapter_overrides(out, all_methods, protocol_info)
         out.write("};\n\n")
 
-        # -- Ref adapter template (for lvalue call-site args, zero-copy) --
-        ref_adapter_name = f"__tpy_RefAdapter_{protocol.name}"
-        out.write(f"template<{protocol.name} T>\n")
-        out.write(f"struct {ref_adapter_name} : {base_name} {{\n")
+        # -- Ref adapter (for lvalue call-site args, zero-copy) --
+        out.write(f"template<{qconcept} T>\n")
+        out.write(f"struct tpy::RefAdapter<{qbase}, T> : {qbase} {{\n")
         out.write(f"{INDENT}T& inner;\n")
-        out.write(f"{INDENT}{ref_adapter_name}(T& ref) : inner(ref) {{}}\n")
+        out.write(f"{INDENT}RefAdapter(T& ref) : inner(ref) {{}}\n")
         self._gen_adapter_overrides(out, all_methods, protocol_info)
         out.write("};\n")
 

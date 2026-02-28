@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 // 18: global_pet: Pet = Cat()
-__tpy_Base_Pet* global_pet{};
+Pet* global_pet{};
 
 // 20: def echo(pet: Pet) -> Pet:
-__tpy_Base_Pet& echo(__tpy_Base_Pet& pet) {
+Pet& echo(Pet& pet) {
     // 21:     return pet
     return pet;
 }
 
 // 23: def get_global() -> Pet:
-__tpy_Base_Pet& get_global() {
+Pet& get_global() {
     // 24:     return global_pet
     return (*global_pet);
 }
@@ -24,12 +24,12 @@ void main() {
     // 28:     dog = Dog()
     Dog dog = Dog();
     // 29:     result: Pet = echo(dog)
-    __tpy_Base_Pet* result = &echo(dog);
+    Pet* result = &echo(dog);
     // 30:     print(result.name())
     std::cout << result->name() << "\n";
     // 32:     # Return global
     // 33:     g: Pet = get_global()
-    __tpy_Base_Pet* g = &get_global();
+    Pet* g = &get_global();
     // 34:     print(g.name())
     std::cout << g->name() << "\n";
     // 36:     # Chain: return value used in another call

@@ -1,5 +1,5 @@
 # Cross-module @dynamic extending @dynamic: child protocol imports and extends parent from another module.
-# Tests that __tpy_Base_NamedPet inherits from the qualified ::tpy_user::pet::__tpy_Base_Pet.
+# Tests that NamedPet base class inherits from the qualified ::tpy_user::pet::Pet.
 from pet import Pet
 from tpy import dynamic
 from typing import Protocol

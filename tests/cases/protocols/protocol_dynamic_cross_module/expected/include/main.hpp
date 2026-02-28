@@ -11,13 +11,13 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet(::tpy_user::pet::__tpy_Base_Pet& pet);
-::tpy_user::pet::__tpy_Base_Pet& echo(::tpy_user::pet::__tpy_Base_Pet& pet);
+void greet(::tpy_user::pet::Pet& pet);
+::tpy_user::pet::Pet& echo(::tpy_user::pet::Pet& pet);
 void main();
 
-// # Direct inheritance (C++ struct Dog : __tpy_Base_Pet)
+// # Direct inheritance (C++ struct Dog : Pet)
 // 5: class Dog(Pet):
-struct Dog : ::tpy_user::pet::__tpy_Base_Pet {
+struct Dog : ::tpy_user::pet::Pet {
 
 
     // 6:     def speak(self) -> str:

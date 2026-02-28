@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 14: def greet(pet: Pet) -> None:
-void greet(__tpy_Base_Pet& pet) {
+void greet(Pet& pet) {
     // 15:     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
@@ -14,7 +14,7 @@ void greet(__tpy_Base_Pet& pet) {
 void main() {
     // 18:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 19:     greet(pet)
     greet((*pet));
 }

@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 14: def greet(pet: Pet) -> None:
-void greet(::tpy_user::pet::__tpy_Base_Pet& pet) {
+void greet(::tpy_user::pet::Pet& pet) {
     // 15:     print(pet.speak())
     std::cout << pet.speak() << "\n";
 }
 
 // 17: def echo(pet: Pet) -> Pet:
-::tpy_user::pet::__tpy_Base_Pet& echo(::tpy_user::pet::__tpy_Base_Pet& pet) {
+::tpy_user::pet::Pet& echo(::tpy_user::pet::Pet& pet) {
     // 18:     return pet
     return pet;
 }
@@ -21,13 +21,13 @@ void main() {
     // 21:     # Local variable with direct inheritor
     // 22:     dog: Pet = Dog()
     Dog __slot_1{Dog()};
-    ::tpy_user::pet::__tpy_Base_Pet* dog = &__slot_1;
+    ::tpy_user::pet::Pet* dog = &__slot_1;
     // 23:     print(dog.speak())
     std::cout << dog->speak() << "\n";
     // 25:     # Local variable with structural conformance
     // 26:     cat: Pet = Cat()
-    ::tpy_user::pet::__tpy_Adapter_Pet<Cat> __slot_2{Cat()};
-    ::tpy_user::pet::__tpy_Base_Pet* cat = &__slot_2;
+    tpy::Adapter<::tpy_user::pet::Pet, Cat> __slot_2{Cat()};
+    ::tpy_user::pet::Pet* cat = &__slot_2;
     // 27:     print(cat.speak())
     std::cout << cat->speak() << "\n";
     // 29:     # Pass to function param
@@ -35,11 +35,11 @@ void main() {
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
     // 31:     greet(Cat())
-    ::tpy_user::pet::__tpy_Adapter_Pet<Cat> __tmp_2{Cat()};
+    tpy::Adapter<::tpy_user::pet::Pet, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
     // 33:     # Return type
     // 34:     p = echo(dog)
-    ::tpy_user::pet::__tpy_Base_Pet* p = &echo((*dog));
+    ::tpy_user::pet::Pet* p = &echo((*dog));
     // 35:     print(p.speak())
     std::cout << p->speak() << "\n";
 }

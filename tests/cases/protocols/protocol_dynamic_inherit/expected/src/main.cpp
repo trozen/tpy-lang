@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 15: def greet(pet: Pet) -> None:
-void greet(__tpy_Base_Pet& pet) {
+void greet(Pet& pet) {
     // 16:     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
@@ -29,7 +29,7 @@ void main() {
     use_dog(d);
     // 26:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 27:     print(pet.make_noise())  # virtual dispatch via pointer-local
     std::cout << pet->make_noise() << "\n";
 }

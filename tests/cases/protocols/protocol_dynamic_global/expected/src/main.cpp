@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 // # Global init + reassign
 // 23: pet: Pet = Dog()
-__tpy_Base_Pet* pet{};
+Pet* pet{};
 // # Global reassign inside loop
 // 35: i: Int32 = 0
 int32_t i{};
@@ -16,8 +16,8 @@ void __tpy_init() {
     initialized = true;
 
   static std::optional<Dog> __global_slot_1;
-  static std::optional<__tpy_Adapter_Pet<Cat>> __global_slot_2;
-  static std::optional<__tpy_Adapter_Pet<Parrot>> __global_slot_3;
+  static std::optional<tpy::Adapter<Pet, Cat>> __global_slot_2;
+  static std::optional<tpy::Adapter<Pet, Parrot>> __global_slot_3;
   static std::optional<Dog> __global_slot_4;
     // 22: # Global init + reassign
     // 23: pet: Pet = Dog()

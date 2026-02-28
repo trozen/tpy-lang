@@ -8,29 +8,33 @@ namespace tpy_user::pet {
 // @dynamic
 // 6: class Pet(Protocol):
 template<typename T>
-concept Pet = requires(T& t) {
+concept __Pet_Concept__ = requires(T& t) {
     { t.speak() } -> std::convertible_to<std::string>;
 };
 
-struct __tpy_Base_Pet {
+struct Pet {
     virtual std::string speak() = 0;
-    virtual ~__tpy_Base_Pet() = default;
+    virtual ~Pet() = default;
 };
 
-template<Pet T>
-struct __tpy_Adapter_Pet : __tpy_Base_Pet {
+} // namespace tpy_user::pet
+
+template<tpy_user::pet::__Pet_Concept__ T>
+struct tpy::Adapter<tpy_user::pet::Pet, T> : tpy_user::pet::Pet {
     T inner;
     template<typename... Args>
-    __tpy_Adapter_Pet(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string speak() override { return inner.speak(); }
 };
 
-template<Pet T>
-struct __tpy_RefAdapter_Pet : __tpy_Base_Pet {
+template<tpy_user::pet::__Pet_Concept__ T>
+struct tpy::RefAdapter<tpy_user::pet::Pet, T> : tpy_user::pet::Pet {
     T& inner;
-    __tpy_RefAdapter_Pet(T& ref) : inner(ref) {}
+    RefAdapter(T& ref) : inner(ref) {}
     std::string speak() override { return inner.speak(); }
 };
+
+namespace tpy_user::pet {
 
 inline constexpr std::string_view __name__ = "pet";
 

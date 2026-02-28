@@ -369,8 +369,7 @@ class StatementGenerator:
             slot_type = concrete_cpp
         else:
             # Structural conformance -- adapter wrapping
-            adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
-            slot_type = f"{adapter_name}<{concrete_cpp}>"
+            slot_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
 
         return (f"{indent}{slot_type} {init_slot}{{{init_expr}}};\n"
                 f"{indent}{base_type}* {name} = &{init_slot};\n")
@@ -397,8 +396,7 @@ class StatementGenerator:
         if self.protocols.directly_implements_dynamic(concrete_type, proto_name):
             slot_type = concrete_cpp
         else:
-            adapter_name = self.protocols.get_dynamic_adapter_name(proto_name)
-            slot_type = f"{adapter_name}<{concrete_cpp}>"
+            slot_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
 
         # Hoist slot to function scope (survives block scopes).
         # Global scope (__tpy_init) needs 'static' so slots outlive the function.

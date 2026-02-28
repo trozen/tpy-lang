@@ -14,40 +14,44 @@ concept HasName = requires(T& t) {
 // @dynamic
 // 9: class DynNamed(HasName, Protocol):
 template<typename T>
-concept DynNamed = requires(T& t) {
+concept __DynNamed_Concept__ = requires(T& t) {
     { t.name() } -> std::convertible_to<std::string>;
 };
 
-struct __tpy_Base_DynNamed {
+struct DynNamed {
     virtual std::string name() = 0;
-    virtual ~__tpy_Base_DynNamed() = default;
+    virtual ~DynNamed() = default;
 };
 
-template<DynNamed T>
-struct __tpy_Adapter_DynNamed : __tpy_Base_DynNamed {
+} // namespace tpy_user::main
+
+template<tpy_user::main::__DynNamed_Concept__ T>
+struct tpy::Adapter<tpy_user::main::DynNamed, T> : tpy_user::main::DynNamed {
     T inner;
     template<typename... Args>
-    __tpy_Adapter_DynNamed(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string name() override { return inner.name(); }
 };
 
-template<DynNamed T>
-struct __tpy_RefAdapter_DynNamed : __tpy_Base_DynNamed {
+template<tpy_user::main::__DynNamed_Concept__ T>
+struct tpy::RefAdapter<tpy_user::main::DynNamed, T> : tpy_user::main::DynNamed {
     T& inner;
-    __tpy_RefAdapter_DynNamed(T& ref) : inner(ref) {}
+    RefAdapter(T& ref) : inner(ref) {}
     std::string name() override { return inner.name(); }
 };
+
+namespace tpy_user::main {
 
 struct Dog;
 struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet(__tpy_Base_DynNamed& n);
+void greet(DynNamed& n);
 void main();
 
 // 12: class Dog(DynNamed):
-struct Dog : __tpy_Base_DynNamed {
+struct Dog : DynNamed {
 
 
     // 13:     def name(self) -> str:

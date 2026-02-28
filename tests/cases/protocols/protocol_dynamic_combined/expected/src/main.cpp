@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 27: def show_desc(d: Describable) -> None:
-void show_desc(__tpy_Base_Describable& d) {
+void show_desc(Describable& d) {
     // 28:     print(d.describe())
     std::cout << d.describe() << "\n";
 }
 
 // 30: def show_noise(n: Noise) -> None:
-void show_noise(__tpy_Base_Noise& n) {
+void show_noise(Noise& n) {
     // 31:     print(n.make_noise())
     std::cout << n.make_noise() << "\n";
 }
@@ -22,7 +22,7 @@ void main() {
   std::optional<Dog> __slot_4;
     // 34:     d: Describable = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Describable* d = &__slot_1;
+    Describable* d = &__slot_1;
     // 35:     show_desc(d)
     show_desc((*d));
     // 36:     d = Cat()
@@ -32,7 +32,7 @@ void main() {
     show_desc((*d));
     // 39:     n: Noise = Cat()
     Cat __slot_3{Cat()};
-    __tpy_Base_Noise* n = &__slot_3;
+    Noise* n = &__slot_3;
     // 40:     show_noise(n)
     show_noise((*n));
     // 41:     n = Dog()

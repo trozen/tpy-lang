@@ -8,37 +8,41 @@ namespace tpy_user::main {
 // @dynamic
 // 6: class Shape(Protocol):
 template<typename T>
-concept Shape = requires(T& t) {
+concept __Shape_Concept__ = requires(T& t) {
     { t.area() } -> std::convertible_to<double>;
     { t.name() } -> std::convertible_to<std::string>;
     { t.scale(std::declval<double>()) } -> std::convertible_to<void>;
 };
 
-struct __tpy_Base_Shape {
+struct Shape {
     virtual double area() = 0;
     virtual std::string name() = 0;
     virtual void scale(double factor) = 0;
-    virtual ~__tpy_Base_Shape() = default;
+    virtual ~Shape() = default;
 };
 
-template<Shape T>
-struct __tpy_Adapter_Shape : __tpy_Base_Shape {
+} // namespace tpy_user::main
+
+template<tpy_user::main::__Shape_Concept__ T>
+struct tpy::Adapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
     T inner;
     template<typename... Args>
-    __tpy_Adapter_Shape(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     double area() override { return inner.area(); }
     std::string name() override { return inner.name(); }
     void scale(double factor) override { inner.scale(factor); }
 };
 
-template<Shape T>
-struct __tpy_RefAdapter_Shape : __tpy_Base_Shape {
+template<tpy_user::main::__Shape_Concept__ T>
+struct tpy::RefAdapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
     T& inner;
-    __tpy_RefAdapter_Shape(T& ref) : inner(ref) {}
+    RefAdapter(T& ref) : inner(ref) {}
     double area() override { return inner.area(); }
     std::string name() override { return inner.name(); }
     void scale(double factor) override { inner.scale(factor); }
 };
+
+namespace tpy_user::main {
 
 struct Circle;
 
@@ -47,7 +51,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // 14: class Circle(Shape):
-struct Circle : __tpy_Base_Shape {
+struct Circle : Shape {
     // 15:     radius: float
     double radius;
 

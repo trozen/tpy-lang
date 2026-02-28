@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void main() {
     // 15:     pet: Pet = Dog()
     Dog __slot_1{Dog()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    Pet* pet = &__slot_1;
     // 16:     print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
 }

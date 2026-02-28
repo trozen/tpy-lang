@@ -15,6 +15,9 @@
 // Enum utility trait (primary template; specializations in generated code)
 #include "enum.hpp"
 
+// Dynamic protocol adapters (primary templates; specializations in generated code)
+#include "dynamic.hpp"
+
 // Formatting (no dependencies)
 #include "format.hpp"
 

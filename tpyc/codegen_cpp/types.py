@@ -217,7 +217,7 @@ class TypeResolver:
         For imported record types from user modules, generates fully qualified names
         like tpy_user::utils::Point or tpy_user::pkg::mod::Point for packages.
         Native records use their native C++ name directly (no namespace qualification).
-        @dynamic protocol types map to __tpy_Base_{Name}.
+        @dynamic protocol types map to the base class name.
         """
         if is_protocol_type(typ):
             protocol_info = self.ctx.analyzer.registry.get_protocol(typ.name)

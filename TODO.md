@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- tpy::BaseClass/Interface helpers, similar to EnumUtil? (instead of __tpy_* types)
 - argument default values
 - @dataclass
 - int/bool value provenance (e.g. assert i > 0, then cast to uint without check)
@@ -97,7 +96,6 @@
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - extract c++ compiler interface
 - analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
-- in future: __tpy_Pet_Base, adapters etc - how can we make the names better for c++ interop (__tpy prefix is for internal TPy stuff) (or __tpy_Base_Pet, __tpy_Adapter/__tpy_RefAdapter)
 - Own[T] -- warn when type is large (always? or only in hot-path? noalloc?)
 - sizeof() function
 - logging, stream object printing, to log instead of __str__

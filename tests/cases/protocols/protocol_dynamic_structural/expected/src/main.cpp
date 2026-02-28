@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 16: def greet(pet: Pet) -> None:
-void greet(__tpy_Base_Pet& pet) {
+void greet(Pet& pet) {
     // 17:     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
@@ -13,16 +13,16 @@ void greet(__tpy_Base_Pet& pet) {
 // 19: def main() -> None:
 void main() {
     // 20:     greet(Parrot())       # rvalue: owning adapter
-    __tpy_Adapter_Pet<Parrot> __tmp_1{Parrot()};
+    tpy::Adapter<Pet, Parrot> __tmp_1{Parrot()};
     greet(__tmp_1);
     // 21:     p = Parrot()
     Parrot p = Parrot();
     // 22:     greet(p)              # lvalue: ref adapter (zero-copy)
-    __tpy_RefAdapter_Pet<Parrot> __tmp_2{p};
+    tpy::RefAdapter<Pet, Parrot> __tmp_2{p};
     greet(__tmp_2);
     // 23:     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
-    __tpy_Adapter_Pet<Parrot> __slot_1{Parrot()};
-    __tpy_Base_Pet* pet = &__slot_1;
+    tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
+    Pet* pet = &__slot_1;
     // 24:     print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
 }
