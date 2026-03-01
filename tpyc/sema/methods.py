@@ -20,7 +20,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
-from .calls import arity_error_msg, resolve_kwargs
+from .calls import arity_error_msg, resolve_kwargs, validate_generic_defaults
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -98,18 +98,24 @@ class MethodAnalyzer:
             expr.args = resolve_kwargs(
                 expr.args, expr.kwargs, resolved_target.params, expr.method,
                 lambda msg: self.ctx.error(msg, expr),
+                call_loc=expr.loc,
             )
             expr.kwargs = {}
 
         if len(overloads) == 1:
-            resolved = (self.type_ops.substitute_method_type_params(overloads[0], type_subst)
-                        if type_subst else overloads[0])
+            unresolved = overloads[0]
+            resolved = (self.type_ops.substitute_method_type_params(unresolved, type_subst)
+                        if type_subst else unresolved)
             if len(expr.args) < resolved.min_args or len(expr.args) > resolved.max_args:
                 raise self.ctx.error(
                     arity_error_msg(expr.method, resolved.min_args, resolved.max_args, len(expr.args)),
                     expr)
             expr.resolved_function_info = resolved
             self._check_and_coerce_args(expr, resolved.params)
+            if type_subst:
+                validate_generic_defaults(
+                    expr.args, unresolved, type_subst, self.type_ops,
+                    lambda msg: self.ctx.error(msg, expr))
         else:
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
             resolved_overloads = [
@@ -129,6 +135,13 @@ class MethodAnalyzer:
                     f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
             expr.resolved_function_info = resolved
             self._check_and_coerce_args(expr, resolved.params, arg_types)
+            # Overloaded methods with generic defaults: find unresolved counterpart
+            if type_subst:
+                idx = resolved_overloads.index(resolved)
+                validate_generic_defaults(
+                    expr.args, overloads[idx], type_subst, self.type_ops,
+                    lambda msg: self.ctx.error(msg, expr))
+
         return resolved.return_type
 
     @staticmethod

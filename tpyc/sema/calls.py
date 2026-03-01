@@ -5,6 +5,7 @@ Function and constructor call analysis.
 """
 
 from __future__ import annotations
+from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING
 
 from ..typesys import (
@@ -55,11 +56,13 @@ def resolve_kwargs(
     params: list[ParamInfo],
     func_name: str,
     error_fn,
+    call_loc: 'SourceLocation | None' = None,
 ) -> list[TpyExpr]:
     """Resolve keyword arguments into a fully-positional argument list.
 
     Validates kwarg names, detects duplicate/missing args, and fills gaps
-    with default expressions from ParamInfo.
+    with default expressions from ParamInfo. Gap-filled defaults get the
+    call site's loc so errors point to the call, not the function definition.
     """
     if not expr_kwargs:
         return expr_args
@@ -91,7 +94,10 @@ def resolve_kwargs(
         elif params[i].name in expr_kwargs:
             result.append(expr_kwargs[params[i].name])
         elif params[i].has_default:
-            result.append(params[i].default_expr)
+            default = params[i].default_expr
+            if call_loc is not None:
+                default = dc_replace(default, loc=call_loc)
+            result.append(default)
         else:
             raise error_fn(f"'{func_name}' missing required argument: '{params[i].name}'")
 
@@ -104,13 +110,14 @@ def resolve_kwargs_init_params(
     init_params: list[tuple[str, 'TpyType', 'TpyExpr | None']],
     func_name: str,
     error_fn,
+    call_loc: 'SourceLocation | None' = None,
 ) -> list[TpyExpr]:
     """Resolve keyword arguments for record constructors using init_params format.
 
     Adapts init_params tuples to ParamInfo and delegates to resolve_kwargs.
     """
     params = [ParamInfo(name, ptype, default_expr=default) for name, ptype, default in init_params]
-    return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn)
+    return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn, call_loc=call_loc)
 
 
 def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
@@ -170,6 +177,27 @@ def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType)
             return True
 
 
+def validate_generic_defaults(
+    expr_args: list[TpyExpr],
+    func: FunctionInfo,
+    type_subst: dict[str, TpyType],
+    type_ops: 'TypeOperations',
+    error_fn,
+) -> None:
+    """Validate defaults for params not covered by explicit args after generic substitution."""
+    for i in range(len(expr_args), len(func.params)):
+        param = func.params[i]
+        if not param.has_default:
+            continue
+        resolved_type = type_ops.substitute_type_params(param.type, type_subst)
+        if isinstance(resolved_type, TypeParamRef):
+            continue
+        if not _default_compatible_with_type(param.default_expr, resolved_type):
+            raise error_fn(
+                f"Default value for '{param.name}' is incompatible with "
+                f"type '{resolved_type}' (resolved from generic '{func.name}')")
+
+
 class CallAnalyzer:
     """Function and constructor call analysis."""
 
@@ -200,6 +228,7 @@ class CallAnalyzer:
         expr.args = resolve_kwargs(
             expr.args, expr.kwargs, func.params, expr.func,
             lambda msg: self.ctx.error(msg, expr),
+            call_loc=expr.loc,
         )
         expr.kwargs = {}
 
@@ -212,6 +241,7 @@ class CallAnalyzer:
         expr.args = resolve_kwargs_init_params(
             expr.args, expr.kwargs, record.init_params, f"{record.name}()",
             lambda msg: self.ctx.error(msg, expr),
+            call_loc=expr.loc,
         )
         expr.kwargs = {}
 
@@ -1290,18 +1320,9 @@ class CallAnalyzer:
     def _validate_generic_defaults(self, expr: TpyCall, func: FunctionInfo,
                                     type_subst: dict[str, TpyType]) -> None:
         """Validate defaults for params not covered by explicit args."""
-        for i in range(len(expr.args), len(func.params)):
-            param = func.params[i]
-            if not param.has_default:
-                continue
-            resolved_type = self.type_ops.substitute_type_params(param.type, type_subst)
-            if isinstance(resolved_type, TypeParamRef):
-                continue
-            if not _default_compatible_with_type(param.default_expr, resolved_type):
-                raise self.ctx.error(
-                    f"Default value for '{param.name}' is incompatible with "
-                    f"type '{resolved_type}' (resolved from generic '{func.name}')",
-                    expr)
+        validate_generic_defaults(
+            expr.args, func, type_subst, self.type_ops,
+            lambda msg: self.ctx.error(msg, expr))
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""

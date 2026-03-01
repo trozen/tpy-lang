@@ -1,0 +1,1 @@
+main.py:8: error: Default value for 'b' is incompatible with type 'str' (resolved from generic 'f')
