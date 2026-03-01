@@ -21,7 +21,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A3 | Generic Optional codegen fix | M | Done | [I](#generic-optional-codegen-fix) |
 | A4 | String ownership (context-dependent str) | M | Done | [I](#string-ownership) |
 | A5 | Enums | M | Done | [I](#enums) |
-| A6 | Keyword args + default values | M | Not started | [VII](#keyword-arguments-and-default-values) |
+| A6 | Keyword args + default values | M | Partial (defaults done) | [VII](#keyword-arguments-and-default-values) |
+| A6b | Generic default values (`T()`, instantiation validation) | S | Not started | [VII](#generic-default-values) |
 | A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
@@ -1223,11 +1224,44 @@ connect("localhost", timeout=5.0)
 **Why it matters**: Extremely common Python pattern. Without defaults and kwargs, every
 function needs all arguments specified. Blocks many stdlib-like APIs.
 
-**Current state**: Not started.
+**Current state**: Default parameter values are done. Constant expressions (literals,
+`None`, fixed-int constructors like `Int32(5)`, negative literals). Maps to C++ default
+arguments in function signatures. Works for free functions, methods, and constructors.
+Keyword arguments at call sites are not yet supported.
 
 **Dependencies**: None.
 
-**Effort**: M (parser already has AST support via Python's ast module; sema + codegen needed)
+**Effort**: M (defaults done; kwargs remaining)
+
+---
+
+### Generic Default Values
+
+```python
+def first_or[T](items: list[T], fallback: T = T()) -> T:
+    if len(items) > 0:
+        return items[0]
+    return fallback
+```
+
+Two related improvements to defaults on generic type parameters:
+
+1. **`T()` default-construction syntax**: Allow `T()` as a default value when `T` is a type
+   parameter. Maps to `T{}` in C++ (value-initialization). Requires parser support for
+   type-param constructors in defaults, and codegen to emit `T{}`.
+
+2. **Instantiation-time validation**: When a generic function with defaults (e.g.,
+   `fallback: T = 0`) is instantiated with a concrete type, validate that the default
+   expression is compatible with that type. Currently, incompatible defaults (e.g., `T=str`
+   with `= 0`) produce a cryptic C++ compilation error instead of a clean TPy diagnostic.
+
+**Current state**: Not started. Defaults on generic params work when the concrete type
+happens to be compatible with the literal (e.g., `= 0` with `T=Int32`), but there is no
+validation at instantiation time.
+
+**Dependencies**: A6 (defaults done).
+
+**Effort**: S
 
 ---
 

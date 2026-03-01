@@ -553,7 +553,7 @@ class TypeOperations:
         If expected_return_type is provided, unresolved params are matched against the return type.
         If explicit_type_args is provided, pre-populates inferred with those (positional).
         """
-        if len(arg_types) != len(func.params):
+        if len(arg_types) < func.min_args or len(arg_types) > func.max_args:
             return None
 
         inferred: dict[str, TpyType] = {}
@@ -611,7 +611,8 @@ class TypeOperations:
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
         If expected_type is provided, unresolved params are matched against the record type pattern.
         """
-        if len(arg_types) != len(record.init_params):
+        min_args = sum(1 for _, _, default in record.init_params if default is None)
+        if len(arg_types) < min_args or len(arg_types) > len(record.init_params):
             return None
 
         inferred: dict[str, TpyType] = {}

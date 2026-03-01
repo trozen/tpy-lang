@@ -1,0 +1,1 @@
+main.py:7: error: 'add' expects 1 to 2 arguments, got 3

@@ -2152,7 +2152,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Typed parameters and return types
 - **Working**: Reassigning function parameters (const-ref params like `int`/`str` auto-emit by value when reassigned)
 - **Working**: C++ keyword escaping -- Python identifiers that clash with C++ reserved words (e.g., `default`, `class`, `namespace`) are automatically mangled in generated code
-- **Planned**: Default parameter values
+- **Working**: Default parameter values -- constant expressions (literals, `None`, fixed-int constructors). Maps to C++ default arguments. **Limitation**: defaults on generic type parameters (e.g., `def f[T](x: T = 0)`) are not validated against `T` -- if the function is instantiated with an incompatible type (e.g., `str`), the C++ compilation will fail.
 - **Open**: `*args` → variadic templates or fixed overloads
 - **Open**: `**kwargs` → if keys known at compile time
 

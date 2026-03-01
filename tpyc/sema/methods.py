@@ -20,6 +20,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
+from .calls import arity_error_msg
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -89,10 +90,10 @@ class MethodAnalyzer:
         if len(overloads) == 1:
             resolved = (self.type_ops.substitute_method_type_params(overloads[0], type_subst)
                         if type_subst else overloads[0])
-            if len(expr.args) != len(resolved.params):
+            if len(expr.args) < resolved.min_args or len(expr.args) > resolved.max_args:
                 raise self.ctx.error(
-                    f"Method '{expr.method}' expects {len(resolved.params)} arguments, "
-                    f"got {len(expr.args)}", expr)
+                    arity_error_msg(expr.method, resolved.min_args, resolved.max_args, len(expr.args)),
+                    expr)
             expr.resolved_function_info = resolved
             self._check_and_coerce_args(expr, resolved.params)
         else:

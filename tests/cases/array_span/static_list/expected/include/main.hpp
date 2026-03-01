@@ -21,8 +21,7 @@ struct Item {
     int32_t value;
 
     // 6:     def __init__(self, v: Int32 = 0):
-    Item() = default;
-    explicit Item(int32_t v) : value(v) {}
+    explicit Item(int32_t v = 0) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Item& obj) {

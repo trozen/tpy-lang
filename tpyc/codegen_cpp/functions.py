@@ -13,6 +13,10 @@ from ..typesys import (
     Int32Type, BoolType, FloatType, CharType, PtrType, StrType, is_any_str_type,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
+from ..parse.nodes import (
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
+    TpyNoneLiteral, TpyUnaryOp, TpyCall,
+)
 from ..namespace import Namespace
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name
 from .type_resolution import resolve_stmt_type_cascade
@@ -44,10 +48,53 @@ class FunctionGenerator:
         """Set statements generator (to break circular dependency)."""
         self.statements = statements
 
+    @staticmethod
+    def default_to_cpp(expr: TpyExpr, ptype: TpyType) -> str:
+        """Convert a constant default expression to its C++ representation."""
+        if isinstance(expr, TpyIntLiteral):
+            return str(expr.value)
+        if isinstance(expr, TpyFloatLiteral):
+            v = repr(expr.value)
+            if '.' not in v and 'e' not in v and 'E' not in v:
+                v += '.0'
+            return v
+        if isinstance(expr, TpyBoolLiteral):
+            return "true" if expr.value else "false"
+        if isinstance(expr, TpyStrLiteral):
+            if isinstance(ptype, CharType) and len(expr.value) == 1:
+                ch = expr.value[0]
+                if ch == "'":
+                    return "'\\''"
+                if ch == '\\':
+                    return "'\\\\'"
+                return f"'{ch}'"
+            escaped = (expr.value
+                       .replace('\\', '\\\\')
+                       .replace('"', '\\"')
+                       .replace('\n', '\\n')
+                       .replace('\r', '\\r')
+                       .replace('\t', '\\t'))
+            return f'"{escaped}"'
+        if isinstance(expr, TpyNoneLiteral):
+            if isinstance(ptype, OptionalType):
+                return "std::nullopt"
+            return "nullptr"
+        if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+            inner = FunctionGenerator.default_to_cpp(expr.operand, ptype)
+            return f"-{inner}"
+        if isinstance(expr, TpyCall):
+            # Int32(5) -> just the literal value
+            if expr.args:
+                return FunctionGenerator.default_to_cpp(expr.args[0], ptype)
+            return "0"
+        return "0"
+
     def gen_params(self, params: list[tuple[str, TpyType]],
                    func_type_params: list[str] | None = None,
                    *, const_params: bool = False,
-                   reassigned_params: set[str] | None = None) -> str:
+                   reassigned_params: set[str] | None = None,
+                   defaults: list | None = None,
+                   emit_defaults: bool = False) -> str:
         """Generate function parameter list.
 
         Own[T] uses T&& (forwarding ref) only when T is a function-level type
@@ -61,22 +108,28 @@ class FunctionGenerator:
         reassigned_params: params that are reassigned in the function body.
         Types normally passed as const ref (BigInt, str) get a renamed C++
         param (__param_X) so the body can shadow it with a mutable local copy.
+
+        defaults: list of TpyExpr | None aligned with params.
+        emit_defaults: if True, append ' = <value>' for params with defaults.
         """
         parts = []
-        for pname, ptype in params:
+        for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
             own = unwrap_readonly(ptype)
             if (isinstance(own, OwnType) and isinstance(own.wrapped, TypeParamRef)
                     and func_type_params and own.wrapped.name in func_type_params):
-                parts.append(f"{own.wrapped.name}&& {cpp_pname}")
+                part = f"{own.wrapped.name}&& {cpp_pname}"
             elif (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
-                parts.append(ptype.to_cpp_param(f"__param_{cpp_pname}"))
+                part = ptype.to_cpp_param(f"__param_{cpp_pname}")
             elif const_params:
-                parts.append(ptype.to_cpp_const_param(cpp_pname))
+                part = ptype.to_cpp_const_param(cpp_pname)
             else:
-                parts.append(ptype.to_cpp_param(cpp_pname))
+                part = ptype.to_cpp_param(cpp_pname)
+            if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+            parts.append(part)
         return ", ".join(parts)
 
     def gen_c_params(self, params: list[tuple[str, TpyType]]) -> str:
@@ -95,20 +148,22 @@ class FunctionGenerator:
         return ", ".join(parts)
 
     def gen_params_with_protocols(self, params: list[tuple[str, TpyType]],
-                                   func_type_params: list[str] | None = None) -> str:
+                                   func_type_params: list[str] | None = None,
+                                   *, defaults: list | None = None,
+                                   emit_defaults: bool = False) -> str:
         """Generate function parameter list, using template types for protocol params.
 
         Static protocols use template types (T_paramname).
         @dynamic protocols use concrete base class& reference params.
         """
         result = []
-        for pname, ptype in params:
+        for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
             # Resolve type in case it's a NamedType that's actually a protocol
             unwrapped = unwrap_readonly(ptype)
             if (isinstance(unwrapped, OwnType) and isinstance(unwrapped.wrapped, TypeParamRef)
                     and func_type_params and unwrapped.wrapped.name in func_type_params):
-                result.append(f"{unwrapped.wrapped.name}&& {cpp_pname}")
+                part = f"{unwrapped.wrapped.name}&& {cpp_pname}"
             else:
                 resolved = self.protocols.resolve_type_for_codegen(unwrapped)
                 if is_protocol_type(resolved):
@@ -116,16 +171,19 @@ class FunctionGenerator:
                     if protocol_info and protocol_info.is_dynamic:
                         base_type = self.protocols.get_dynamic_base_name(resolved.name)
                         if isinstance(ptype, ReadonlyType):
-                            result.append(f"const {base_type}& {cpp_pname}")
+                            part = f"const {base_type}& {cpp_pname}"
                         else:
-                            result.append(f"{base_type}& {cpp_pname}")
+                            part = f"{base_type}& {cpp_pname}"
                     else:
                         if isinstance(ptype, ReadonlyType):
-                            result.append(f"const T_{pname}& {cpp_pname}")
+                            part = f"const T_{pname}& {cpp_pname}"
                         else:
-                            result.append(f"T_{pname}& {cpp_pname}")
+                            part = f"T_{pname}& {cpp_pname}"
                 else:
-                    result.append(ptype.to_cpp_param(cpp_pname))
+                    part = ptype.to_cpp_param(cpp_pname)
+            if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+            result.append(part)
         return ", ".join(result)
 
     def _resolve_return_type(self, return_type: TpyType, *, const: bool = False) -> str:
@@ -186,19 +244,25 @@ class FunctionGenerator:
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
 
+        dfl = func.defaults if func.defaults else None
         if is_generic or protocol_params:
             out.write(self.protocols.gen_combined_template_header(
                 func.type_params, protocol_params, func.type_param_bounds
             ))
             ret_type = self._resolve_return_type(func.return_type)
-            params = (self.gen_params_with_protocols(func.params, func.type_params)
+            params = (self.gen_params_with_protocols(func.params, func.type_params,
+                                                     defaults=dfl, emit_defaults=True)
                       if protocol_params or has_dynamic
-                      else self.gen_params(func.params, func.type_params, reassigned_params=rp))
+                      else self.gen_params(func.params, func.type_params, reassigned_params=rp,
+                                           defaults=dfl, emit_defaults=True))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         else:
             ret_type = self._resolve_return_type(func.return_type)
-            params = (self.gen_params_with_protocols(func.params) if has_dynamic
-                      else self.gen_params(func.params, func.type_params, reassigned_params=rp))
+            params = (self.gen_params_with_protocols(func.params,
+                                                     defaults=dfl, emit_defaults=True)
+                      if has_dynamic
+                      else self.gen_params(func.params, func.type_params, reassigned_params=rp,
+                                           defaults=dfl, emit_defaults=True))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         return True
 
@@ -385,10 +449,13 @@ class FunctionGenerator:
     ) -> None:
         """Emit a single method overload (const or non-const)."""
         ret_type = self._resolve_return_type(cpp_return_type, const=const)
+        dfl = method.defaults if method.defaults else None
         if const:
-            params = self.gen_params(method.params, method.type_params, const_params=True)
+            params = self.gen_params(method.params, method.type_params, const_params=True,
+                                     defaults=dfl, emit_defaults=True)
         else:
-            params = self.gen_params(method.params, method.type_params)
+            params = self.gen_params(method.params, method.type_params,
+                                     defaults=dfl, emit_defaults=True)
         const_suffix = " const" if const else ""
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""

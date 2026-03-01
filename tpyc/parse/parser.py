@@ -1079,9 +1079,10 @@ class Parser:
             type_param_scope = merged_scope
 
         params = []
+        has_self = not is_staticmethod
         args_iter = iter(enumerate(node.args.args))
         for i, arg in args_iter:
-            if i == 0 and not is_staticmethod:
+            if i == 0 and has_self:
                 # Non-static methods must have 'self' as first parameter
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
@@ -1090,6 +1091,9 @@ class Parser:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
             param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))
+
+        # Parse default parameter values (skip_self for non-static methods)
+        defaults = self._parse_param_defaults(node, params, skip_self=has_self)
 
         # Get return type (default to Void for __init__)
         return_type = VOID
@@ -1117,6 +1121,7 @@ class Parser:
             native_name=native_name,
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,
+            defaults=defaults,
             loc=self._loc(node)
         )
 
@@ -1185,6 +1190,9 @@ class Parser:
             param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))
 
+        # Parse default parameter values
+        defaults = self._parse_param_defaults(node, params, skip_self=False)
+
         return_type = VOID
         if node.returns:
             return_type = self._parse_type_annotation(node.returns, type_param_scope)
@@ -1225,6 +1233,7 @@ class Parser:
             is_stub=is_stub,
             type_params=type_params,
             type_param_bounds=type_param_bounds,
+            defaults=defaults,
             loc=self._loc(node)
         )
 
@@ -1811,8 +1820,57 @@ class Parser:
             raise ParseError(f"Unsupported unary operator: {type(op).__name__}")
         return result
 
+    def _validate_const_default(self, expr: TpyExpr, node: ast.expr) -> None:
+        """Validate that a default value expression is a compile-time constant."""
+        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
+                             TpyStrLiteral, TpyNoneLiteral)):
+            return
+        if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+            if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
+                return
+        # Int32(5) etc. -- a fixed-int constructor wrapping a literal
+        if isinstance(expr, TpyCall) and expr.func in _FIXED_INT_MAP:
+            if not expr.args:
+                return  # Int32() -> 0
+            if len(expr.args) == 1:
+                self._validate_const_default(expr.args[0], node)
+                return
+        raise ParseError(
+            f"Default parameter value must be a constant expression "
+            f"(literal, None, or fixed-int constructor like Int32(5))", node)
+
+    def _parse_param_defaults(self, node: ast.FunctionDef, params: list,
+                              skip_self: bool = False) -> list['TpyExpr | None']:
+        """Parse default values from a function definition.
+
+        Returns a list aligned with params: None for params without defaults.
+        Python's ast.arguments.defaults is right-aligned with args, so we
+        left-pad with None.
+        """
+        ast_defaults = node.args.defaults
+        if not ast_defaults:
+            return [None] * len(params)
+
+        # In methods, self is skipped from params but still counted in node.args.args
+        num_ast_args = len(node.args.args)
+        # defaults are right-aligned with the full args list
+        num_no_default = num_ast_args - len(ast_defaults)
+
+        defaults: list[TpyExpr | None] = []
+        param_offset = 1 if skip_self else 0  # skip self in index mapping
+        for i in range(len(params)):
+            ast_idx = i + param_offset  # index into node.args.args
+            default_idx = ast_idx - num_no_default
+            if default_idx >= 0 and default_idx < len(ast_defaults):
+                expr = self._parse_expr(ast_defaults[default_idx])
+                self._validate_const_default(expr, ast_defaults[default_idx])
+                defaults.append(expr)
+            else:
+                defaults.append(None)
+        return defaults
+
     def _get_default_value(self, node: ast.expr) -> str:
-        """Get string representation of a default value for C++."""
+        """Convert a field default value AST node to a C++ literal string (for FieldInfo.default_value)."""
         if isinstance(node, ast.Constant):
             val = node.value
             if isinstance(val, bool):

@@ -293,8 +293,9 @@ class ProtocolChecker:
                 # Check return type (Own[T] in impl matches T in protocol)
                 if not self._protocol_type_matches(resolved.return_type, expected_return):
                     continue
-                # Check parameter count and types
-                if len(resolved.params) != len(expected_params):
+                # Check parameter count and types (account for defaults)
+                required_count = resolved.min_args
+                if not (required_count <= len(expected_params) <= len(resolved.params)):
                     continue
                 params_match = True
                 for (_, actual_ptype), expected_ptype in zip(resolved.params, expected_params):

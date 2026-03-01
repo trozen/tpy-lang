@@ -227,7 +227,8 @@ class TypeRegistrar:
 
         init_params = []
         if record.init_method:
-            for pname, ptype in record.init_method.params:
+            init_defaults = record.init_method.defaults
+            for i, (pname, ptype) in enumerate(record.init_method.params):
                 # Protocol types cannot be used in __init__ parameters
                 if is_protocol_type(ptype):
                     raise SemanticError(
@@ -235,7 +236,8 @@ class TypeRegistrar:
                         f"Protocols are only valid for free function parameters",
                         record.loc,
                     )
-                init_params.append((pname, ptype, None))
+                has_default = bool(init_defaults) and i < len(init_defaults) and init_defaults[i] is not None
+                init_params.append((pname, ptype, init_defaults[i] if has_default else None))
         elif is_native and record.fields:
             # Native records without __init__: synthesize init_params from fields
             for fld in record.fields:
@@ -267,9 +269,13 @@ class TypeRegistrar:
                 method.name in IMPLICIT_READONLY_METHODS and not method.readonly_opt_out
             )
             method.is_readonly = resolved_readonly
+            method_defaults = method.defaults if method.defaults else []
             methods[method.name] = [FunctionInfo(
                 name=method.name,
-                params=[ParamInfo(n, t) for n, t in method.params],
+                params=[
+                    ParamInfo(n, t, default_expr=method_defaults[i] if i < len(method_defaults) else None)
+                    for i, (n, t) in enumerate(method.params)
+                ],
                 return_type=method.return_type,
                 is_readonly=resolved_readonly,
                 is_method=True,
@@ -807,9 +813,13 @@ class TypeRegistrar:
         }
         fi_linkage = linkage_map[func.linkage.name]
 
+        func_defaults = func.defaults if func.defaults else []
         info = FunctionInfo(
             name=func.name,
-            params=[ParamInfo(n, t) for n, t in resolved_params],
+            params=[
+                ParamInfo(n, t, default_expr=func_defaults[i] if i < len(func_defaults) else None)
+                for i, (n, t) in enumerate(resolved_params)
+            ],
             return_type=resolved_return,
             is_noalloc=func.is_noalloc,
             is_readonly=func.is_readonly,

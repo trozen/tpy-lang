@@ -192,14 +192,19 @@ class RecordGenerator:
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
             self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
             if has_params:
-                # Generate default constructor for C++ compatibility
-                out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
+                init_defaults = record.init_method.defaults if record.init_method.defaults else None
+                has_required_params = not init_defaults or any(d is None for d in init_defaults)
+                if has_required_params:
+                    # Generate default constructor for C++ compatibility
+                    out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
                 cpp_params = self.functions.gen_params(
                     record.init_method.params,
                     record.init_method.type_params,
                     const_params=True,
+                    defaults=init_defaults,
+                    emit_defaults=True,
                 )
                 out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params})")
             else:

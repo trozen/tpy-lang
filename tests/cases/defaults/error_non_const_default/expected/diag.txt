@@ -1,0 +1,1 @@
+main.py:6: error: Default parameter value must be a constant expression (literal, None, or fixed-int constructor like Int32(5))

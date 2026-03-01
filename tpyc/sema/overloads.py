@@ -147,7 +147,7 @@ def resolve_overload(
     """
     # First pass: strict matching (exact types + protocols)
     for overload in overloads:
-        if len(overload.params) != len(arg_types):
+        if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
             continue
         if all(type_matches_strict(arg_t, ptype, protocol_checker)
                for arg_t, (_, ptype) in zip(arg_types, overload.params)):
@@ -157,7 +157,7 @@ def resolve_overload(
     # matches and fewest narrowing conversions (BigInt->Int32 is lossy).
     candidates: list[tuple[int, int, FunctionInfo]] = []
     for overload in overloads:
-        if len(overload.params) != len(arg_types):
+        if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
             continue
         if all(type_matches_with_coercion(arg_t, ptype, protocol_checker, deref_checker, subclass_checker)
                for arg_t, (_, ptype) in zip(arg_types, overload.params)):

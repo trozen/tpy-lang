@@ -1430,6 +1430,11 @@ class ParamInfo:
     type: TpyType
     requires_lvalue: bool = False
     requires_mutable: bool = False
+    default_expr: 'Any | None' = None  # TpyExpr from parser; None = required param
+
+    @property
+    def has_default(self) -> bool:
+        return self.default_expr is not None
 
     def __iter__(self):
         yield self.name
@@ -1500,6 +1505,16 @@ class FunctionInfo:
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""
         return bool(self.type_params)
+
+    @property
+    def min_args(self) -> int:
+        """Minimum number of arguments (params without defaults)."""
+        return sum(1 for p in self.params if not p.has_default)
+
+    @property
+    def max_args(self) -> int:
+        """Maximum number of arguments (all params)."""
+        return len(self.params)
 
 
 @dataclass

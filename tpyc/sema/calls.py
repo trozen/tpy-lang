@@ -33,6 +33,18 @@ from tpyc import modules as builtin_modules
 from tpyc.modules import MethodDef
 
 
+def arity_error_msg(name: str, min_args: int, max_args: int, got: int) -> str:
+    """Format an arity mismatch error message."""
+    if min_args == max_args:
+        return f"'{name}' expects {max_args} argument(s), got {got}"
+    return f"'{name}' expects {min_args} to {max_args} arguments, got {got}"
+
+
+def _init_params_min_args(init_params: list) -> int:
+    """Compute min args from init_params tuples (name, type, default)."""
+    return sum(1 for _, _, default in init_params if default is None)
+
+
 def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
     """Convert a MethodDef (module-level constructor) to FunctionInfo for resolved_function_info."""
     return FunctionInfo(
@@ -889,7 +901,7 @@ class CallAnalyzer:
 
         # For generic overloads, check for conflicting type parameter inference
         for overload in generic:
-            if len(arg_types) != len(overload.params):
+            if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
                 continue
             partial: dict[str, TpyType] = {}
             conflict_param = None
@@ -969,8 +981,9 @@ class CallAnalyzer:
             )
 
         expr.resolved_function_info = func
-        if len(expr.args) != len(func.params):
-            raise self.ctx.error(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}", expr)
+        if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
+            raise self.ctx.error(
+                arity_error_msg(expr.func, func.min_args, func.max_args, len(expr.args)), expr)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
@@ -1011,9 +1024,9 @@ class CallAnalyzer:
             raise self.ctx.error(expr.type_args_parse_error, expr)
 
         # Check argument count first
-        if len(expr.args) != len(func.params):
+        if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(
-                f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}",
+                arity_error_msg(expr.func, func.min_args, func.max_args, len(expr.args)),
                 expr
             )
 
@@ -1147,9 +1160,11 @@ class CallAnalyzer:
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
             if record.has_init:
                 # Type-check __init__ parameters
-                if len(expr.args) != len(record.init_params):
+                min_args = _init_params_min_args(record.init_params)
+                max_args = len(record.init_params)
+                if len(expr.args) < min_args or len(expr.args) > max_args:
                     raise self.ctx.error(
-                        f"{record.name}() takes {len(record.init_params)} argument(s), got {len(expr.args)}",
+                        arity_error_msg(f"{record.name}()", min_args, max_args, len(expr.args)),
                         expr
                     )
                 for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
@@ -1244,9 +1259,11 @@ class CallAnalyzer:
         # Non-generic record
         if record.has_init:
             # Type-check __init__ parameters
-            if len(expr.args) != len(record.init_params):
+            min_args = _init_params_min_args(record.init_params)
+            max_args = len(record.init_params)
+            if len(expr.args) < min_args or len(expr.args) > max_args:
                 raise self.ctx.error(
-                    f"{record.name}() takes {len(record.init_params)} argument(s), got {len(expr.args)}",
+                    arity_error_msg(f"{record.name}()", min_args, max_args, len(expr.args)),
                     expr
                 )
             for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
@@ -1265,8 +1282,9 @@ class CallAnalyzer:
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""
         expr.resolved_function_info = func
-        if len(expr.args) != len(func.params):
-            raise self.ctx.error(f"Function '{expr.func}' expects {len(func.params)} arguments, got {len(expr.args)}", expr)
+        if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
+            raise self.ctx.error(
+                arity_error_msg(expr.func, func.min_args, func.max_args, len(expr.args)), expr)
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
