@@ -146,6 +146,34 @@ class ExpressionGenerator:
             return f"std::move({gen_code})"
         return gen_code
 
+    def _gen_dynamic_protocol_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
+        """If ptype is a @dynamic protocol, return the wrapped arg expression. Otherwise None."""
+        unwrapped_ptype = unwrap_readonly(ptype)
+        if not is_protocol_type(unwrapped_ptype):
+            return None
+        protocol_info = self.ctx.analyzer.registry.get_protocol(unwrapped_ptype.name)
+        if not protocol_info or not protocol_info.is_dynamic:
+            return None
+        arg_type = self.ctx.get_expr_type(arg)
+        if is_protocol_type(arg_type):
+            return self.gen_expr_deref(arg, ptype)
+        elif self.protocols.directly_implements_dynamic(arg_type, unwrapped_ptype.name):
+            if self.ctx.is_temporary_expr(arg):
+                concrete_cpp = self.types.type_to_cpp(arg_type)
+                arg_expr = self.gen_expr(arg, arg_type)
+                return self.ctx.temps.create_typed(concrete_cpp, arg_expr, brace_init=True)
+            else:
+                return self.gen_call_arg(arg, ptype)
+        else:
+            concrete_cpp = self.types.type_to_cpp(arg_type)
+            proto_name = unwrapped_ptype.name
+            arg_expr = self.gen_expr_deref(arg, arg_type)
+            if self.ctx.is_temporary_expr(arg):
+                adapter_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
+            else:
+                adapter_type = self.protocols.get_dynamic_ref_adapter_type(proto_name, concrete_cpp)
+            return self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
+
     def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
                      target_type: TpyType | None | _Unset = _UNSET) -> str:
         """Generate a call argument with deref and auto-move for Own[T] params.
@@ -772,38 +800,10 @@ class ExpressionGenerator:
                     continue
 
                 # @dynamic protocol params: wrap concrete args in temp adapter
-                unwrapped_ptype = unwrap_readonly(resolved_ptype)
-                if is_protocol_type(unwrapped_ptype):
-                    protocol_info = self.ctx.analyzer.registry.get_protocol(unwrapped_ptype.name)
-                    if protocol_info and protocol_info.is_dynamic:
-                        arg_type = self.ctx.get_expr_type(arg)
-                        if is_protocol_type(arg_type):
-                            # Already erased (dynamic protocol var) -- dereference pointer-local
-                            gen_args.append(self.gen_expr_deref(arg, resolved_ptype))
-                        elif self.protocols.directly_implements_dynamic(arg_type, unwrapped_ptype.name):
-                            # Direct inheritance -- implicit upcast to Base&, no adapter
-                            if self.ctx.is_temporary_expr(arg):
-                                # Rvalue can't bind to non-const lvalue ref -- materialize
-                                concrete_cpp = self.types.type_to_cpp(arg_type)
-                                arg_expr = self.gen_expr(arg, arg_type)
-                                temp_name = self.ctx.temps.create_typed(concrete_cpp, arg_expr, brace_init=True)
-                                gen_args.append(temp_name)
-                            else:
-                                gen_args.append(self.gen_call_arg(arg, resolved_ptype))
-                        else:
-                            # Structural conformance -- wrap in adapter
-                            concrete_cpp = self.types.type_to_cpp(arg_type)
-                            proto_name = unwrapped_ptype.name
-                            arg_expr = self.gen_expr_deref(arg, arg_type)
-                            if self.ctx.is_temporary_expr(arg):
-                                # Rvalue: owning adapter (value must live in the temp)
-                                adapter_type = self.protocols.get_dynamic_adapter_type(proto_name, concrete_cpp)
-                            else:
-                                # Lvalue: ref adapter (zero-copy, mutations visible)
-                                adapter_type = self.protocols.get_dynamic_ref_adapter_type(proto_name, concrete_cpp)
-                            temp_name = self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
-                            gen_args.append(temp_name)
-                        continue
+                dynamic_arg = self._gen_dynamic_protocol_arg(arg, resolved_ptype)
+                if dynamic_arg is not None:
+                    gen_args.append(dynamic_arg)
+                    continue
 
                 # Optional non-value params are T* / const T* -- pass raw pointer
                 actual_ptype = unwrap_readonly(resolved_ptype)
@@ -924,6 +924,12 @@ class ExpressionGenerator:
                 if isinstance(a, TpyTypeParamConstruct) and ptype:
                     gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
                     continue
+                # @dynamic protocol params in constructor
+                if ptype is not None:
+                    dynamic_arg = self._gen_dynamic_protocol_arg(a, ptype)
+                    if dynamic_arg is not None:
+                        gen_args.append(dynamic_arg)
+                        continue
                 # Optional non-value params are T* / const T* -- same logic as function calls
                 actual_ptype = unwrap_readonly(ptype) if ptype else ptype
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
@@ -964,12 +970,18 @@ class ExpressionGenerator:
             params = expr.resolved_function_info.params
             gen_args = []
             for i, arg in enumerate(expr.args):
+                ptype = params[i].type if i < len(params) else None
                 if isinstance(arg, TpyTypeParamConstruct):
-                    ptype = params[i].type if i < len(params) else None
                     assert ptype is not None, f"No param type for TpyTypeParamConstruct at arg {i}"
                     gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
                 else:
-                    gen_args.append(self.gen_call_arg(arg, params[i].type if i < len(params) else None))
+                    # @dynamic protocol params in method calls
+                    if ptype is not None:
+                        dynamic_arg = self._gen_dynamic_protocol_arg(arg, ptype)
+                        if dynamic_arg is not None:
+                            gen_args.append(dynamic_arg)
+                            continue
+                    gen_args.append(self.gen_call_arg(arg, ptype))
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)

@@ -199,13 +199,32 @@ class RecordGenerator:
                     out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
-                cpp_params = self.functions.gen_params(
-                    record.init_method.params,
-                    record.init_method.type_params,
-                    const_params=True,
-                    defaults=init_defaults,
-                    emit_defaults=True,
-                )
+                protocol_params = self.functions.protocols.get_protocol_params(
+                    record.init_method.params)
+                has_dynamic = self.functions._has_dynamic_protocol_params(
+                    record.init_method.params)
+                if protocol_params or has_dynamic:
+                    cpp_params = self.functions.gen_params_with_protocols(
+                        record.init_method.params,
+                        record.init_method.type_params,
+                        const_params=True,
+                        defaults=init_defaults,
+                        emit_defaults=True,
+                    )
+                    if protocol_params:
+                        template_header = self.functions.protocols.gen_combined_template_header(
+                            record.init_method.type_params or [], protocol_params,
+                            record.type_param_bounds or None,
+                        )
+                        out.write(f"{INDENT}{template_header}")
+                else:
+                    cpp_params = self.functions.gen_params(
+                        record.init_method.params,
+                        record.init_method.type_params,
+                        const_params=True,
+                        defaults=init_defaults,
+                        emit_defaults=True,
+                    )
                 out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params})")
             else:
                 # No params: generate default constructor with body

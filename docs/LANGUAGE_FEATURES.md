@@ -1311,6 +1311,28 @@ use(BadReader(1))   # ERROR: BadReader does not conform to Readable
 
 Dunders in the implicit readonly set (`__bool__`, `__len__`, `__getitem__`, `__eq__`, arithmetic operators, etc.) are automatically treated as readonly in protocol signatures, matching the behavior for record methods. Use `@readonly(False)` to opt out.
 
+**Method and constructor parameters**: Protocol types work in method and constructor parameters, not just free functions. The compiler generates template headers on the method/constructor:
+
+```python
+class Container:
+    count: int
+    def __init__(self, items: Sized) -> None:
+        self.count = len(items)
+    def update(self, items: Sized) -> None:
+        self.count = len(items)
+```
+
+Generated C++ (constructor gets `const T&`, method gets `T&`):
+```cpp
+struct Container {
+    tpy::BigInt count;
+    template<tpy::Sized T_items>
+    explicit Container(const T_items& items) : count(tpy::BigInt(tpy::__len__(items))) {}
+    template<tpy::Sized T_items>
+    void update(T_items& items) { this->count = tpy::BigInt(tpy::__len__(items)); }
+};
+```
+
 #### Working: Protocol Inheritance
 
 Protocols can inherit from other protocols, creating combined protocols that require all methods from parent protocols:
@@ -1649,7 +1671,7 @@ def speak[T: Pet](animal: T) -> None:
     print(animal.make_noise())  # static dispatch via template
 ```
 
-**Dynamic dispatch** -- protocol-typed variables and function parameters use runtime polymorphism:
+**Dynamic dispatch** -- protocol-typed variables, function parameters, method parameters, and constructor parameters use runtime polymorphism:
 
 ```python
 @dynamic
@@ -1673,6 +1695,14 @@ def greet(pet: Pet) -> None:
 
 greet(Dog())        # implicit upcast (Dog inherits Pet base class)
 greet(pet)          # already-erased value passed directly
+
+# Method and constructor parameters
+class Recorder:
+    message: str
+    def __init__(self, pet: Pet) -> None:
+        self.message = pet.make_noise()
+    def update(self, pet: Pet) -> None:
+        self.message = pet.make_noise()
 ```
 
 **Three dispatch paths** -- the compiler chooses the optimal path based on how the type relates to the protocol:

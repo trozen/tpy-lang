@@ -1,0 +1,1 @@
+main.py:4: error: Protocol type 'Sized' cannot be used as a return type in 'BadRecord.get_sized'. Only @dynamic protocols can be used as return types

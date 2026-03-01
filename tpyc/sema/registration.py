@@ -191,7 +191,7 @@ class TypeRegistrar:
             if is_protocol_type(fld.type):
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
-                    f"Protocols are only valid for function parameters",
+                    f"Protocols are only valid as function and method parameters",
                     loc=fld.loc
                 )
             # StrView fields are a lifetime hazard -- use str or String instead
@@ -229,13 +229,6 @@ class TypeRegistrar:
         if record.init_method:
             init_defaults = record.init_method.defaults
             for i, (pname, ptype) in enumerate(record.init_method.params):
-                # Protocol types cannot be used in __init__ parameters
-                if is_protocol_type(ptype):
-                    raise SemanticError(
-                        f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.__init__'. "
-                        f"Protocols are only valid for free function parameters",
-                        record.loc,
-                    )
                 has_default = bool(init_defaults) and i < len(init_defaults) and init_defaults[i] is not None
                 init_params.append((pname, ptype, init_defaults[i] if has_default else None))
         elif is_native and record.fields:
@@ -249,22 +242,18 @@ class TypeRegistrar:
             for pname, ptype in method.params:
                 if not self.type_ops.is_type_param_ref(ptype):
                     self.type_ops.validate_type(ptype, allow_type_param_ref=is_generic, loc=record.loc)
-                # Protocol types cannot be used in method parameters
-                if is_protocol_type(ptype):
-                    raise SemanticError(
-                        f"Protocol type '{ptype.name}' cannot be used as a parameter type in '{record.name}.{method.name}'. "
-                        f"Protocols are only valid for free function parameters",
-                        record.loc,
-                    )
             if not self.type_ops.is_type_param_ref(method.return_type):
                 self.type_ops.validate_type(method.return_type, allow_type_param_ref=is_generic, loc=record.loc)
-            # Protocol types cannot be used as method return types
+            # Protocol types cannot be used as method return types.
+            # Exception: @dynamic protocols can be returned as Base& (same as free functions).
             if is_protocol_type(method.return_type):
-                raise SemanticError(
-                    f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
-                    f"Protocols are only valid for free function parameters",
-                    record.loc,
-                )
+                pi = self.ctx.registry.get_protocol(method.return_type.name)
+                if not (pi and pi.is_dynamic):
+                    raise SemanticError(
+                        f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
+                        f"Only @dynamic protocols can be used as return types",
+                        record.loc,
+                    )
             resolved_readonly = method.is_readonly or (
                 method.name in IMPLICIT_READONLY_METHODS and not method.readonly_opt_out
             )
@@ -804,7 +793,7 @@ class TypeRegistrar:
             if not (pi and pi.is_dynamic):
                 raise SemanticError(
                     f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
-                    f"Protocols are only valid for function parameters",
+                    f"Only @dynamic protocols can be used as return types",
                     func.loc
                 )
 

@@ -151,12 +151,15 @@ class FunctionGenerator:
 
     def gen_params_with_protocols(self, params: list[tuple[str, TpyType]],
                                    func_type_params: list[str] | None = None,
-                                   *, defaults: list | None = None,
+                                   *, const_params: bool = False,
+                                   defaults: list | None = None,
                                    emit_defaults: bool = False) -> str:
         """Generate function parameter list, using template types for protocol params.
 
         Static protocols use template types (T_paramname).
         @dynamic protocols use concrete base class& reference params.
+        const_params: emit const T_x& for static protocols, const Base& for @dynamic,
+        and to_cpp_const_param for non-protocol params.
         """
         result = []
         for i, (pname, ptype) in enumerate(params):
@@ -172,17 +175,22 @@ class FunctionGenerator:
                     protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                     if protocol_info and protocol_info.is_dynamic:
                         base_type = self.protocols.get_dynamic_base_name(resolved.name)
+                        # @dynamic: const only from explicit readonly[P], not from const_params
+                        # (virtual methods aren't const-qualified)
                         if isinstance(ptype, ReadonlyType):
                             part = f"const {base_type}& {cpp_pname}"
                         else:
                             part = f"{base_type}& {cpp_pname}"
                     else:
-                        if isinstance(ptype, ReadonlyType):
+                        if const_params or isinstance(ptype, ReadonlyType):
                             part = f"const T_{pname}& {cpp_pname}"
                         else:
                             part = f"T_{pname}& {cpp_pname}"
                 else:
-                    part = ptype.to_cpp_param(cpp_pname)
+                    if const_params:
+                        part = ptype.to_cpp_const_param(cpp_pname)
+                    else:
+                        part = ptype.to_cpp_param(cpp_pname)
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                 part += f" = {self.default_to_cpp(defaults[i], ptype)}"
             result.append(part)
@@ -456,18 +464,37 @@ class FunctionGenerator:
         """Emit a single method overload (const or non-const)."""
         ret_type = self._resolve_return_type(cpp_return_type, const=const)
         dfl = method.defaults if method.defaults else None
-        if const:
-            params = self.gen_params(method.params, method.type_params, const_params=True,
-                                     defaults=dfl, emit_defaults=True)
+
+        protocol_params = self.protocols.get_protocol_params(method.params)
+        has_dynamic = self._has_dynamic_protocol_params(method.params)
+        use_protocol_params = bool(protocol_params) or has_dynamic
+
+        if use_protocol_params:
+            if const:
+                params = self.gen_params_with_protocols(method.params, method.type_params,
+                                                        const_params=True,
+                                                        defaults=dfl, emit_defaults=True)
+            else:
+                params = self.gen_params_with_protocols(method.params, method.type_params,
+                                                        defaults=dfl, emit_defaults=True)
         else:
-            params = self.gen_params(method.params, method.type_params,
-                                     defaults=dfl, emit_defaults=True)
+            if const:
+                params = self.gen_params(method.params, method.type_params, const_params=True,
+                                         defaults=dfl, emit_defaults=True)
+            else:
+                params = self.gen_params(method.params, method.type_params,
+                                         defaults=dfl, emit_defaults=True)
         const_suffix = " const" if const else ""
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent=INDENT)
         self.ctx.emit_source_comment(out, method.loc, indent=INDENT)
+        if protocol_params:
+            template_header = self.protocols.gen_combined_template_header(
+                method.type_params or [], protocol_params, record_type_param_bounds
+            )
+            out.write(f"{INDENT}{template_header}")
         out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)

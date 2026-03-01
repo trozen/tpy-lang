@@ -1,1 +1,1 @@
-main.py:4: error: Protocol type 'Sized' cannot be used as a return type. Protocols are only valid for function parameters
+main.py:4: error: Protocol type 'Sized' cannot be used as a return type. Only @dynamic protocols can be used as return types

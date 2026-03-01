@@ -991,7 +991,7 @@ class CallAnalyzer:
             if is_protocol_type(type_arg):
                 raise self.ctx.error(
                     f"Protocol type '{type_arg.name}' cannot be used as a type argument. "
-                    f"Protocols are only valid for function parameters",
+                    f"Protocols are only valid as function and method parameters",
                     expr
                 )
             if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:

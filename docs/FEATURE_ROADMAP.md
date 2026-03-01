@@ -579,10 +579,10 @@ def greet(pet: Pet) -> None:      # dynamic dispatch via Pet&
 greet(Dog())                       # implicit upcast, zero cost
 ```
 
-Working: locals, function params, return types (provably long-lived), cross-module,
-`@dynamic` extending `@dynamic` (base class inheritance chain), direct C++ inheritance,
-structural conformance (adapter wrapping), conditional/loop reassignment (hoisted slots),
-`Optional[@dynamic]` rejection.
+Working: locals, function params, method params, constructor params, return types
+(provably long-lived), cross-module, `@dynamic` extending `@dynamic` (base class
+inheritance chain), direct C++ inheritance, structural conformance (adapter wrapping),
+conditional/loop reassignment (hoisted slots), `Optional[@dynamic]` rejection.
 
 Remaining (needs `Box[P]`): record fields typed as `@dynamic` protocol, `list[Box[P]]`
 heterogeneous containers, generic `@dynamic` protocols.

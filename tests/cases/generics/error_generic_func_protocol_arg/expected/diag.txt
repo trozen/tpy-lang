@@ -1,1 +1,1 @@
-main.py:14: error: Protocol type 'Printable' cannot be used as a type argument. Protocols are only valid for function parameters
+main.py:14: error: Protocol type 'Printable' cannot be used as a type argument. Protocols are only valid as function and method parameters

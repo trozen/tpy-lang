@@ -13,7 +13,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 5 | Direct C++ inheritance (`class Dog(Pet)` -> `struct Dog : Pet`) | Done |
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
 | 6 | Return types (provably long-lived values only) | Done |
-| 7 | `@dynamic` protocol params in record methods | Deferred |
+| 7 | `@dynamic` protocol params in record methods/constructors | Done |
 | 8 | `Optional[Pet]` sema rejection | Done |
 | 9 | Protocol field access through erased type | Future |
 | 10 | Cross-module `@dynamic` protocols | Done |
@@ -359,10 +359,6 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **Protocol fields on `@dynamic`** -- field access on protocol-typed variables fails
   in sema ("Cannot access field"). Virtual getters are generated in the base class but
   sema doesn't resolve field access through the erased type.
-- **Method params with `@dynamic` protocol type** -- sema rejects protocol types as
-  method parameters ("Protocols are only valid for free function parameters"). Keep
-  rejection for now; revisit when use cases arise.
-
 ## Future Extensions
 
 - **`Box[P]`** -- heap-owned dynamic value for fields, containers, returns. Requires
