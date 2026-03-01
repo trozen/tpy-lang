@@ -227,7 +227,8 @@ class RecordGenerator:
                     local_ns.bind_variable(pname, ptype)
                 self.functions.gen_body(out, non_init_stmts, record.init_method.params,
                                          record.init_method.return_type, record.init_method,
-                                         local_ns, indent_level=2, is_method=True)
+                                         local_ns, indent_level=2, is_method=True,
+                                         record_type_param_bounds=record.type_param_bounds or None)
                 out.write(f"{INDENT}}}\n")
             else:
                 out.write(" {}\n")
@@ -274,7 +275,8 @@ class RecordGenerator:
         for method in record.methods:
             if method.name in ("__init__", "__del__"):
                 continue
-            self.functions.gen_method_def(out, method, record.name, dynamic_overrides)
+            self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
+                                            record_type_param_bounds=record.type_param_bounds or None)
 
         # Generate const operator[] for subscript read syntax (obj[i])
         self._gen_subscript_operators(out, record)
@@ -284,6 +286,12 @@ class RecordGenerator:
 
         # Generate operator*() for types with __deref__ (C++ interop)
         self._gen_deref_operators(out, record)
+
+        # Synthesize __iter__() -> self for iterator types (has __next__ but no explicit __iter__)
+        has_next = any(m.name == "__next__" for m in record.methods)
+        has_iter = any(m.name == "__iter__" for m in record.methods)
+        if has_next and not has_iter:
+            out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
 
         out.write("};\n")
         self._gen_record_ostream(out, record)
@@ -432,7 +440,8 @@ class RecordGenerator:
             local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
             local_ns.bind_variable("self", NamedType(name))
             self.functions.gen_body(out, body_stmts, [], del_method.return_type,
-                                    del_method, local_ns, indent_level=2, is_method=True)
+                                    del_method, local_ns, indent_level=2, is_method=True,
+                                    record_type_param_bounds=record.type_param_bounds or None)
         out.write(f"{INDENT}}}\n")
 
     def _extract_base_init(self, init_method: TpyFunction, record: TpyRecord) -> str | None:

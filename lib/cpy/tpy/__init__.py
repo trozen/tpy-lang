@@ -555,3 +555,11 @@ class Representable(_Protocol):
 class ValueType(_Protocol):
     """Marker for types with value semantics (passed by value, copy on access)."""
     pass
+
+
+def try_next(it) -> object | None:
+    """Return next value from iterator, or None if exhausted."""
+    try:
+        return it.__next__()
+    except StopIteration:
+        return None

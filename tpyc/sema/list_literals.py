@@ -31,13 +31,13 @@ class IterableHelper:
         """Check if a type is iterable.
 
         A type is iterable if it:
-        - Is a NativeIterable[T] or OptIterator[T] protocol type
+        - Is a NativeIterable[T], OptIterator[T], Iterator[T], or Iterable[T] protocol type
         - Declares extends=["NativeIterable[T]"] or extends=["OptIterator[T]"]
         - Has __next_opt__() or __next__() (OptIterator conformance)
         - Has __iter__() returning an iterator type
         """
-        # NativeIterable[T] or OptIterator[T] protocol type
-        if is_protocol_type(typ) and typ.name in ("NativeIterable", "OptIterator"):
+        # NativeIterable[T], OptIterator[T], Iterator[T], or Iterable[T] protocol type
+        if is_protocol_type(typ) and typ.name in ("NativeIterable", "OptIterator", "Iterator", "Iterable"):
             return True
         # Check if type extends NativeIterable or OptIterator
         if record_extends_any(typ, "NativeIterable", self.ctx.registry):
@@ -62,6 +62,12 @@ class IterableHelper:
 
         # Handle OptIterator[T] protocol type
         if is_protocol_type(iterable_type) and iterable_type.name == "OptIterator":
+            if iterable_type.type_args:
+                return iterable_type.type_args[0]
+            return None
+
+        # Handle Iterator[T] and Iterable[T] protocol types
+        if is_protocol_type(iterable_type) and iterable_type.name in ("Iterator", "Iterable"):
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
             return None

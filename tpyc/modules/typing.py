@@ -5,7 +5,7 @@ Provides Protocol types matching Python's typing module.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef
-from tpyc.typesys import BOOL, INT32, VOID, TypeParamRef
+from tpyc.typesys import BOOL, INT32, VOID, SELF, TypeParamRef, NamedType, OptionalType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
@@ -47,6 +47,28 @@ def init_module() -> BuiltinModule:
             "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="tpy::__setitem__({self}, {0}, {1})"),
         },
         cpp_concept="tpy::MutableSequence",
+    )
+
+    # Iterator[T] -- Python-compatible iterator protocol
+    # Conformance checked against __next__ (return T) on records.
+    # The cpp template uses __next_opt__() since that's what C++ actually calls.
+    module.protocol("Iterator",
+        type_params=["T"],
+        methods={
+            "__next__": MethodDef(params=[], returns=T, cpp="{self}.__next_opt__()"),
+            "__iter__": MethodDef(params=[], returns=SELF, cpp="{self}.__iter__()"),
+        },
+        cpp_concept="tpy::Iterator",
+    )
+
+    # Iterable[T] -- types with __iter__() returning an Iterator[T]
+    module.protocol("Iterable",
+        type_params=["T"],
+        methods={
+            "__iter__": MethodDef(params=[], returns=NamedType("Iterator", (T,), is_protocol=True),
+                                  cpp="{self}.__iter__()"),
+        },
+        cpp_concept="tpy::Iterable",
     )
 
     # Protocol is recognized by the parser as the base class for user-defined protocols

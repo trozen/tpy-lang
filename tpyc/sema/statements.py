@@ -336,7 +336,13 @@ class StatementAnalyzer:
                 iterable_type = self.expr.analyze_expr(stmt.iterable)
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
                 inner_iterable_type = unwrap_readonly(iterable_type)
-                elem_type = self.iterable.get_iterable_element_type(inner_iterable_type, loc=stmt.loc)
+                # Resolve TypeParamRef to its bound for element type extraction
+                resolved_for_iter = inner_iterable_type
+                if isinstance(inner_iterable_type, TypeParamRef):
+                    bound = self.type_ops.get_type_param_bound(inner_iterable_type.name)
+                    if bound is not None and is_protocol_type(bound):
+                        resolved_for_iter = bound
+                elem_type = self.iterable.get_iterable_element_type(resolved_for_iter, loc=stmt.loc)
                 # Elements from a readonly iterable inherit readonly status
                 if is_readonly_iterable and not elem_type.is_value_type():
                     elem_type = ReadonlyType(unwrap_readonly(elem_type))
@@ -347,7 +353,8 @@ class StatementAnalyzer:
                     # OptIterator and __iter__-based types produce fresh values each iteration
                     is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                     is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                    if is_native_iterator or is_iter_based:
+                    is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.name in ("Iterator", "Iterable")
+                    if is_native_iterator or is_iter_based or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif self.compat.is_lvalue(stmt.iterable):
                         # For-each var references container's storage -- use container's depth.

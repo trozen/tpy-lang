@@ -1884,8 +1884,9 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 | 3. Range as NativeIterable | **Working** | `Range[T]` is an immutable container with `begin()`/`end()`, supports `list(range(...))` |
 | 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
 | 5. User-defined iterators | **Working** | `__iter__`/`__next__` compiled to `__next_opt__` under the hood |
-| 6. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
-| 7. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
+| 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()`, `try_next()` builtins |
+| 7. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
+| 8. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
 
@@ -1947,9 +1948,64 @@ class NumberRange:
 ```
 
 **Rules**:
-- Direct `obj.__next__()` calls are forbidden — use a for-loop or call `obj.__next_opt__()` instead
+- Direct `obj.__next__()` calls are forbidden -- use a for-loop or call `obj.__next_opt__()` instead
 - `raise StopIteration` is only allowed inside `__next__` methods
 - The `next()` builtin is not yet supported
+
+#### Working: `Iterator[T]` and `Iterable[T]` Protocols
+
+`Iterator[T]` and `Iterable[T]` are built-in protocols from the `typing` module, matching standard Python iterator protocol semantics.
+
+**Protocol definitions**:
+- `Iterator[T]`: has `__next__(self) -> T` and `__iter__(self) -> Self`
+- `Iterable[T]`: has `__iter__(self) -> Iterator[T]`
+
+```python
+from typing import Iterator, Iterable
+from tpy import Int32
+
+def sum_iter(it: Iterator[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in it:
+        total += x
+    return total
+
+def sum_all(items: Iterable[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in items:
+        total += x
+    return total
+```
+
+**`iter()` builtin**: Calls `x.__iter__()`, returns `Iterator[T]`. Works on any type with an `__iter__` method.
+
+```python
+it: Iterator[Int32] = iter(Counter(5))
+```
+
+**`try_next()` builtin**: Calls `it.__next_opt__()`, returns `T | None`. Provides a safe way to advance an iterator without exceptions.
+
+```python
+it = iter(Counter(5))
+val = try_next(it)  # Int32 | None
+```
+
+**Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
+
+**Bounded type parameters**: `Iterator[T]` and `Iterable[T]` can be used as type parameter bounds:
+
+```python
+from typing import Iterable
+from tpy import Int32
+
+def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
+    total: Int32 = 0
+    for x in items:
+        total += x
+    return total
+```
+
+**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (uses while-loop via `__next_opt__`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator).
 
 #### Working: `NativeContiguous[T]` (Span coercion)
 
@@ -1994,7 +2050,8 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
 - `for` loops work on `OptIterator[T]`-typed parameters ✓ (working)
 - Implicit coercion to `Span[T]` works on types extending `NativeContiguous[T]` ✓ (working)
-- `for` loops work on `Iterable[T]`-typed parameters (planned - Python-compatible)
+- `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
+- `for` loops work on `Iterable[T]`-typed parameters ✓ (working)
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 
@@ -2136,6 +2193,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `for i in range(n)`, `for i in range(start, end)`, `for i in range(start, end, step)`
 - **Working**: `for item in container` (for-each over list, Array, Span, str)
 - **Working**: `for x in iterator` (for-each over OptIterator types -- user-defined iterators)
+- **Working**: `for x in iter_param` (for-each over `Iterator[T]` and `Iterable[T]` protocol-typed parameters)
 - **Working**: `break`, `continue`
 - **Working**: Reassigning loop variables inside for-loop body (compiles as assignment, not redeclaration; note: affects iteration unlike Python)
 - **Open**: `for/else`, `while/else` → flag variable pattern
@@ -2361,6 +2419,8 @@ struct SortedContainer {
 - `Deref[T]` - has `__deref__() -> T` (auto-deref for field/method access)
 - `NativeIterable[T]` - supports C++ range-for iteration
 - `OptIterator[T]` - lazy iteration via `next() -> Optional[T]`
+- `Iterator[T]` - has `__next__` and `__iter__` (Python iterator protocol)
+- `Iterable[T]` - has `__iter__` returning `Iterator[T]` (Python iterable protocol)
 - User-defined protocols (including protocols with inheritance)
 
 **Protocol Inheritance with Bounds**: When using a child protocol as a bound (e.g., `T: PrintableAndSized`), methods from all ancestor protocols are available on `T`.
@@ -2996,6 +3056,8 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Open**: `str()`, `int(str)` → string conversion functions (see below)
+- **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
+- **Working**: `try_next(it)` → calls `it.__next_opt__()`, returns `T | None` (safe iterator advancement)
 - **Open**: `enumerate()` → returns OptIterator (see iterator roadmap)
 - **Open**: `zip()` → returns OptIterator (see iterator roadmap)
 

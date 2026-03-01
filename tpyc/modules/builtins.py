@@ -8,7 +8,7 @@ from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
-    NamedType, TypeParamRef, OwnType, ALL_FIXED_INTS, FixedIntType,
+    NamedType, TypeParamRef, OwnType, OptionalType, ALL_FIXED_INTS, FixedIntType,
 )
 
 # Shorthand for type parameter T
@@ -585,5 +585,24 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT), ParamDef("step", BIGINT)], returns=RANGE_BIGINT, cpp="tpy::Range<tpy::BigInt>({0}, {1}, {2})", is_readonly=True),
     ]
     module.function("range", overloads=range_overloads)
+
+    # iter(x) -- calls x.__iter__(), returns Iterator[T]
+    module.function("iter", overloads=[
+        MethodDef(
+            params=[ParamDef("x", NamedType("Iterable", (T,), is_protocol=True))],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="{0}.__iter__()",
+            is_readonly=True,
+        ),
+    ], type_params=["T"])
+
+    # try_next(it) -- calls it.__next_opt__(), returns T | None
+    module.function("try_next", overloads=[
+        MethodDef(
+            params=[ParamDef("it", NamedType("Iterator", (T,), is_protocol=True))],
+            returns=OptionalType(T),
+            cpp="{0}.__next_opt__()",
+        ),
+    ], type_params=["T"])
 
     return module

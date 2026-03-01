@@ -296,6 +296,21 @@ class TypeRegistrar:
                     is_method=True,
                 )]
 
+        # Auto-synthesize __iter__() -> Self on iterator types (has __next__ but no __iter__)
+        if ("__next__" in methods or "__next_opt__" in methods) and "__iter__" not in methods:
+            if record.type_params:
+                self_type = NamedType(record.name,
+                    tuple(TypeParamRef(tp) for tp in record.type_params))
+            else:
+                self_type = NamedType(record.name)
+            methods["__iter__"] = [FunctionInfo(
+                name="__iter__",
+                params=[],
+                return_type=self_type,
+                is_method=True,
+                is_readonly=False,
+            )]
+
         # Convert parsed bounds to NamedType (validate they are protocols)
         type_param_bounds: dict[str, NamedType] = {}
         for param_name, bound_type in record.type_param_bounds.items():

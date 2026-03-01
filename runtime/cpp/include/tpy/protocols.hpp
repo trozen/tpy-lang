@@ -46,8 +46,7 @@ concept Sequence = requires(const T& t, int32_t i) {
  *
  * A type is NativeIterable<ElemT> if it supports begin()/end() iteration
  * and dereferencing yields ElemT. This is the "native" C++ iteration pattern.
- *
- * Future: Iterable<T> will use Python's __iter__/__next__ protocol.
+ * Iterator<T> and Iterable<T> above use Python's __iter__/__next__ protocol.
  */
 template<typename T, typename ElemT>
 concept NativeIterable = requires(const T& t) {
@@ -66,6 +65,29 @@ concept NativeIterable = requires(const T& t) {
 template<typename T, typename ElemT>
 concept OptIterator = requires(T& t) {
     { t.__next_opt__() } -> std::same_as<std::optional<ElemT>>;
+};
+
+/**
+ * Iterator concept - types that produce values lazily via __next_opt__()
+ * and support __iter__() (returning self).
+ *
+ * Maps to Python's Iterator[T] protocol.
+ */
+template<typename T, typename ElemT>
+concept Iterator = requires(T& t) {
+    { t.__next_opt__() } -> std::same_as<std::optional<ElemT>>;
+    t.__iter__();
+};
+
+/**
+ * Iterable concept - types that support __iter__() returning an Iterator
+ *
+ * Maps to Python's Iterable[T] protocol.
+ */
+template<typename T, typename ElemT>
+concept Iterable = requires(T& t) {
+    t.__iter__();
+    requires Iterator<decltype(t.__iter__()), ElemT>;
 };
 
 /**

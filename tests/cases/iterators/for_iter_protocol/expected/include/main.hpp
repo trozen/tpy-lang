@@ -40,6 +40,8 @@ struct RangeIter {
     int32_t __next__() {
         tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
+
+    auto& __iter__() { return *this; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {

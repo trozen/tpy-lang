@@ -403,7 +403,8 @@ class FunctionGenerator:
         return result
 
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
-                       dynamic_overrides: dict[str, bool] | None = None) -> None:
+                       dynamic_overrides: dict[str, bool] | None = None,
+                       record_type_param_bounds: dict[str, TpyType] | None = None) -> None:
         """Generate a method definition inside a struct."""
         # __next__() -> T is emitted as __next_opt__() -> std::optional<T>
         is_dunder_next = method.name == "__next__"
@@ -426,14 +427,17 @@ class FunctionGenerator:
             # reference -- value-type returns are copies so const alone suffices.
             is_override = override_const is True  # base is const -> const overload overrides
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
-                                      const=True, override=is_override)
+                                      const=True, override=is_override,
+                                      record_type_param_bounds=record_type_param_bounds)
             needs_dual = not cpp_return_type.is_value_type() or isinstance(cpp_return_type, TypeParamRef)
             if needs_dual:
-                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False)
+                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
+                                          record_type_param_bounds=record_type_param_bounds)
         else:
             is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                      static=is_static, override=is_override)
+                                      static=is_static, override=is_override,
+                                      record_type_param_bounds=record_type_param_bounds)
 
         # Also emit a __next__() panic stub so direct calls compile but fail at runtime
         if is_dunder_next:
@@ -445,7 +449,7 @@ class FunctionGenerator:
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,
         cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
-        override: bool = False,
+        override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
     ) -> None:
         """Emit a single method overload (const or non-const)."""
         ret_type = self._resolve_return_type(cpp_return_type, const=const)
@@ -470,7 +474,8 @@ class FunctionGenerator:
         for pname, ptype in method.params:
             local_ns.bind_variable(pname, ptype)
         self.statements.gen_body(out, method.body, method.params, method.return_type,
-                                 method, local_ns, indent_level=2, is_method=True)
+                                 method, local_ns, indent_level=2, is_method=True,
+                                 record_type_param_bounds=record_type_param_bounds)
 
         out.write(f"{INDENT}}}\n")
 

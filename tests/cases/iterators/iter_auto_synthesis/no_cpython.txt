@@ -1,0 +1,1 @@
+Tests auto-synthesis of __iter__ which is a compiler feature (CPython requires explicit __iter__)

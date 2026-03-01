@@ -85,7 +85,8 @@ class StatementGenerator:
     def gen_body(self, out: TextIO, body: list[TpyStmt],
                  params: list[tuple[str, TpyType]], return_type: TpyType,
                  func: TpyFunction, local_ns: Namespace,
-                 indent_level: int = 1, is_method: bool = False) -> None:
+                 indent_level: int = 1, is_method: bool = False,
+                 record_type_param_bounds: dict[str, TpyType] | None = None) -> None:
         """Generate the body of a function or method.
 
         Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
@@ -128,6 +129,9 @@ class StatementGenerator:
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
+        self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
+        if func.type_param_bounds:
+            self.ctx.current_type_param_bounds.update(func.type_param_bounds)
         if is_method:
             self.ctx.in_method = True
 
@@ -1572,6 +1576,23 @@ class StatementGenerator:
 
         from tpyc.modules import get_native_iterator_element_type, get_iter_element_type
         iterable_type = self.types.get_resolved_type(stmt.iterable)
+
+        # Resolve TypeParamRef to its bound for protocol-based iteration
+        resolved_type = iterable_type
+        if isinstance(iterable_type, TypeParamRef):
+            bound = self.ctx.current_type_param_bounds.get(iterable_type.name)
+            if bound is not None and is_protocol_type(bound):
+                resolved_type = bound
+
+        # Handle protocol-typed iterables (Iterator[T], Iterable[T])
+        if is_protocol_type(resolved_type) and resolved_type.name in ("Iterator", "Iterable"):
+            elem_type = resolved_type.type_args[0]
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            if resolved_type.name == "Iterator":
+                self._gen_iterator_loop(out, stmt, indent, iterable, elem_type)
+            else:
+                self._gen_iter_protocol_loop(out, stmt, indent, iterable, elem_type)
+            return
 
         # Optimize range() calls to C-style counter loops (before protocol checks)
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":

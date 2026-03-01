@@ -25,7 +25,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A6b | Generic default values (`T()`, instantiation validation) | S | Not started | [VII](#generic-default-values) |
 | A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
-| A9 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
+| A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
 | A10 | Tuple type + unpacking | M-L | Not started | [I](#tuple-type) |
 | A10b | `@iter_range` / `__iter_range__` protocol | S-M | Not started | [I](#iter_range--__iter_range__-protocol-zero-cost-user-defined-iteration) |
 | A10c | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
@@ -58,6 +58,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | C3 | @noalloc enforcement | L | Parsed only | [IV](#noalloc-enforcement) |
 | C4 | Effect framework (@nothrow, @pure) | M-L | Not started | [IV](#effect-system-generalized) |
 | C5 | Cyclic dependency handling | L | Not started | [V](#cyclic-dependency-handling) |
+| C6 | `@exception_result` annotation | M | Not started | [III](#exception_result-annotation) |
 
 ### Phase D: Functional + Python Compat
 
@@ -458,11 +459,11 @@ No single-precision float type exists.
 
 ### Iterable[T] Protocol
 
-```python
-from typing import Protocol
+**Done.** `Iterator[T]` and `Iterable[T]` are now built-in protocols in the `tpy` module.
 
-class Iterable(Protocol[T]):
-    def __iter__(self) -> OptIterator[T]: ...
+```python
+from typing import Iterator, Iterable
+from tpy import Int32
 
 def sum_all(items: Iterable[Int32]) -> Int32:
     total: Int32 = 0
@@ -471,18 +472,14 @@ def sum_all(items: Iterable[Int32]) -> Int32:
     return total
 ```
 
-**Why it matters**: Currently `__iter__` support is structural (detected by
-`get_iter_element_type()`), not protocol-based. Can't write `def f(it: Iterable[T])`
-as a parameter type. This blocks generic iteration abstractions.
-
-**Current state**: Not started. Adding it requires
-return-type conformance checking in the protocol system -- currently protocol conformance
-only checks type equality on method signatures, not whether a return type *conforms to*
-another protocol.
-
-**Dependencies**: Protocol system (done), return-type conformance checking (not started).
-
-**Effort**: M (protocol definition + conformance extension + codegen)
+- `Iterator[T]`: protocol with `__next__(self) -> T` and `__iter__(self) -> Self`
+- `Iterable[T]`: protocol with `__iter__(self) -> Iterator[T]`
+- `iter(x)` builtin: calls `x.__iter__()`, returns `Iterator[T]`
+- `try_next(it)` builtin: calls `it.__next_opt__()`, returns `T | None`
+- Auto-synthesis of `__iter__` on types with `__next__` (returning self)
+- For-loop support for `Iterator[T]` and `Iterable[T]` parameter types
+- Bounded type parameters: `T: Iterable[Int32]`
+- Return-type protocol conformance checking in the protocol system
 
 ---
 
@@ -676,6 +673,41 @@ The hybrid approach fits TPy's philosophy (unconstrained by default, opt-in cons
 real-world programs. Interacts with `@noalloc` and effect system.
 
 **Effort**: L-XL (design + implementation + ownership cleanup paths)
+
+---
+
+### `@exception_result` Annotation
+
+Transforms `raise X` into Result-type returns for control-flow exceptions. Distinct from
+real exceptions (C1/C2) which use stack unwinding for error handling.
+
+```python
+@exception_result(StopIteration)
+def __next__(self) -> Int32:
+    if self.current < self.limit:
+        result = self.current
+        self.current += 1
+        return result
+    raise StopIteration
+```
+
+**Why it matters**: Some Python patterns use exceptions for normal control flow rather than
+error signaling (e.g. `StopIteration` in iterators). These are better compiled as
+`std::optional` or `std::expected` returns rather than C++ exception unwinding.
+`@exception_result` makes this transformation explicit and opt-in, separating the
+control-flow-exception pattern from the general exception model (C1/C2).
+
+`StopIteration` is the first and most common case -- the compiler already handles it
+specially in `__next__` methods today. `@exception_result` generalizes this to any
+exception type used for control flow.
+
+**Current state**: Not started. The `StopIteration` special case in `__next__` serves as
+the prototype for this feature.
+
+**Dependencies**: None for the basic annotation. Interacts with the general exception model
+(C1/C2) but can be implemented independently.
+
+**Effort**: M (annotation parsing + sema transformation + codegen)
 
 ---
 

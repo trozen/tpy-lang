@@ -44,6 +44,8 @@ struct StorageIter {
     T __next__() {
         tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
+
+    auto& __iter__() { return *this; }
 };
 
 template<typename T, std::size_t N>

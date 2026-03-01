@@ -320,18 +320,22 @@ class ProtocolChecker:
                         return field_type == expected_type
         return False
 
-    @staticmethod
-    def _protocol_type_matches(actual: TpyType, expected: TpyType) -> bool:
+    def _protocol_type_matches(self, actual: TpyType, expected: TpyType) -> bool:
         """Check if an actual method type matches the expected protocol type.
 
-        Exact match, Own[T] unwrapping, or protocol-safe coercion (e.g. StrView -> str).
+        Exact match, Own[T] unwrapping, protocol-safe coercion (e.g. StrView -> str),
+        or conformance to a protocol return type.
         """
         if actual == expected:
             return True
-        if isinstance(actual, OwnType) and actual.wrapped == expected:
+        unwrapped = actual.wrapped if isinstance(actual, OwnType) else actual
+        if unwrapped != actual and unwrapped == expected:
             return True
         if is_protocol_safe_coercion(actual, expected):
             return True
+        # If expected is a protocol, check if actual conforms to it
+        if is_protocol_type(expected) and isinstance(expected, NamedType):
+            return self.type_conforms_to_protocol(unwrapped, expected)
         return False
 
     def collect_protocol_methods(self, protocol_name: str, visited: set[str] | None = None) -> list[MethodSignature]:

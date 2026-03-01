@@ -447,6 +447,20 @@ class TypeOperations:
         if protocol_name == "OptIterator":
             elem_type = builtin_modules.get_native_iterator_element_type(
                 arg_type, registry=self.ctx.registry)
+        elif protocol_name in ("Iterator", "Iterable"):
+            # Direct protocol-to-protocol match (e.g., Iterator[Int32] matches Iterator[T])
+            if is_protocol_type(arg_type) and arg_type.name in ("Iterator", "Iterable") and arg_type.type_args:
+                elem_type = arg_type.type_args[0]
+            else:
+                # Iterator[T]: type has __next_opt__() -> Optional[T]
+                # Iterable[T]: type has __iter__() -> (something with __next_opt__())
+                elem_type = builtin_modules.get_native_iterator_element_type(
+                    arg_type, registry=self.ctx.registry)
+                if elem_type is None:
+                    elem_type = builtin_modules.get_iter_element_type(
+                        arg_type, registry=self.ctx.registry)
+                if elem_type is None:
+                    elem_type = self._get_iterable_element_type_or_none(arg_type)
         else:
             elem_type = self._get_iterable_element_type_or_none(arg_type)
             if elem_type is not None:
