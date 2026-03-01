@@ -1,0 +1,4 @@
+p1: (10, 20)
+p2: (1, 2)
+c1: localhost:8080 verbose=True
+c2: example.com:9090 verbose=False

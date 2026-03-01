@@ -2211,8 +2211,9 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Reassigning function parameters (const-ref params like `int`/`str` auto-emit by value when reassigned)
 - **Working**: C++ keyword escaping -- Python identifiers that clash with C++ reserved words (e.g., `default`, `class`, `namespace`) are automatically mangled in generated code
 - **Working**: Default parameter values -- constant expressions (literals, `None`, fixed-int constructors). Maps to C++ default arguments. **Limitation**: defaults on generic type parameters (e.g., `def f[T](x: T = 0)`) are not validated against `T` -- if the function is instantiated with an incompatible type (e.g., `str`), the C++ compilation will fail.
+- **Working**: Keyword arguments at call sites -- `f(name="World")`, `Point(y=1, x=2)`, mixed positional+kwargs. Resolved to positional at compile time. Supported for user functions, methods, constructors, and generic functions. Not supported for overloaded builtins (e.g., `range`, `len`).
 - **Open**: `*args` → variadic templates or fixed overloads
-- **Open**: `**kwargs` → if keys known at compile time
+- **Open**: `**kwargs` definition syntax → if keys known at compile time
 
 ### Decorators
 - **Working**: `@noalloc` (parsed and recognized, enforcement planned)
@@ -3034,6 +3035,7 @@ class Car(Vehicle, Printable, Measurable):
 ## Built-in Functions
 
 - **Working**: `print()`, `len()`, `range()`, `chr()`, `copy()`
+  - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`

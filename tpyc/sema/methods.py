@@ -20,7 +20,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
-from .calls import arity_error_msg
+from .calls import arity_error_msg, resolve_kwargs
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -87,6 +87,20 @@ class MethodAnalyzer:
 
         Sets expr.resolved_function_info. Returns the return type.
         """
+        # Resolve kwargs before arity check
+        if expr.kwargs:
+            if len(overloads) > 1:
+                raise self.ctx.error(
+                    f"Keyword arguments not supported for overloaded method '{expr.method}'", expr)
+            target = overloads[0]
+            resolved_target = (self.type_ops.substitute_method_type_params(target, type_subst)
+                               if type_subst else target)
+            expr.args = resolve_kwargs(
+                expr.args, expr.kwargs, resolved_target.params, expr.method,
+                lambda msg: self.ctx.error(msg, expr),
+            )
+            expr.kwargs = {}
+
         if len(overloads) == 1:
             resolved = (self.type_ops.substitute_method_type_params(overloads[0], type_subst)
                         if type_subst else overloads[0])
@@ -199,12 +213,15 @@ class MethodAnalyzer:
                 flat_obj = TpyName(name=dotted_name, loc=expr.obj.loc)
                 flat_expr = TpyMethodCall(
                     obj=flat_obj, method=expr.method, args=expr.args,
+                    kwargs=expr.kwargs,
                     type_args=expr.type_args,
                     type_args_parse_error=expr.type_args_parse_error,
                     loc=expr.loc,
                 )
                 result = self._analyze_module_method_call(flat_expr, module_name=dotted_name)
                 if result is not None:
+                    expr.args = flat_expr.args
+                    expr.kwargs = flat_expr.kwargs
                     expr.builtin_module_call = flat_expr.builtin_module_call
                     expr.user_module_call = flat_expr.user_module_call
                     expr.resolved_function_info = flat_expr.resolved_function_info
@@ -328,11 +345,13 @@ class MethodAnalyzer:
             type_param_bounds=dict(record_info.type_param_bounds),
         )
         temp_call = TpyCall(func=expr.method, args=expr.args,
+                            kwargs=expr.kwargs,
                             type_args=expr.type_args,
                             type_args_parse_error=expr.type_args_parse_error,
                             loc=expr.loc)
         result = self.calls._analyze_user_function_call(temp_call, virtual_func)
         expr.args = temp_call.args
+        expr.kwargs = temp_call.kwargs
         expr.resolved_function_info = temp_call.resolved_function_info
         expr.inferred_type_args = temp_call.inferred_type_args
         expr.is_static_call = True
@@ -359,6 +378,7 @@ class MethodAnalyzer:
             if module_info.is_builtin:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args,
+                                    kwargs=expr.kwargs,
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
@@ -366,6 +386,8 @@ class MethodAnalyzer:
                     result = self.calls._analyze_special_builtin(temp_call, overloads)
                 else:
                     result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
+                expr.args = temp_call.args
+                expr.kwargs = temp_call.kwargs
                 expr.resolved_function_info = temp_call.resolved_function_info
                 expr.inferred_type_args = temp_call.inferred_type_args
                 return result
@@ -373,10 +395,13 @@ class MethodAnalyzer:
                 func_info = overloads[0]
                 expr.user_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args,
+                                    kwargs=expr.kwargs,
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
                 result = self.calls._analyze_user_function_call(temp_call, func_info)
+                expr.args = temp_call.args
+                expr.kwargs = temp_call.kwargs
                 expr.resolved_function_info = temp_call.resolved_function_info
                 expr.inferred_type_args = temp_call.inferred_type_args
                 return result
@@ -385,8 +410,10 @@ class MethodAnalyzer:
         if record_info := self.ctx.registry.get_builtin_record(qname):
             if record_info.constructors and not record_info.type_params:
                 expr.builtin_module_call = module_name
-                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                 result = self.calls._check_builtin_constructor(temp_call, record_info)
+                expr.args = temp_call.args
+                expr.kwargs = temp_call.kwargs
                 expr.resolved_function_info = temp_call.resolved_function_info
                 return result
 

@@ -1,0 +1,1 @@
+main.py:7: error: **kwargs unpacking not supported

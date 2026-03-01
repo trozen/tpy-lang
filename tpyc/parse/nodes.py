@@ -161,6 +161,7 @@ class TpyMethodCall(TpyExpr):
     obj: TpyExpr
     method: str
     args: list[TpyExpr]
+    kwargs: dict[str, TpyExpr] = field(default_factory=dict)
     type_args: tuple[TpyType, ...] = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls

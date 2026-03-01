@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- Generic string inference: `first[T]("hello", "world")` deduces `T=str` (std::string) instead of `T=StrView` (std::string_view). String literals passed to generic functions create unnecessary copies. The inference should prefer StrView when the literal is only read.
 - Iterable[T] conformance for built-in containers: `list[T]`, `Array[T,N]`, `StaticList[T,N]`, `Span[T]`, `str` don't conform to `Iterable[T]` because their iteration is handled by NativeIterable codegen, not explicit `__iter__` methods. Protocol conformance checker needs to recognize these types as implicitly satisfying `Iterable[T]`.
 - int/bool value provenance (e.g. assert i > 0, then cast to uint without check)
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)

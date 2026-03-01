@@ -21,7 +21,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A3 | Generic Optional codegen fix | M | Done | [I](#generic-optional-codegen-fix) |
 | A4 | String ownership (context-dependent str) | M | Done | [I](#string-ownership) |
 | A5 | Enums | M | Done | [I](#enums) |
-| A6 | Keyword args + default values | M | Partial (defaults done) | [VII](#keyword-arguments-and-default-values) |
+| A6 | Keyword args + default values | M | Done | [VII](#keyword-arguments-and-default-values) |
 | A6b | Generic default values (`T()`, instantiation validation) | S | Not started | [VII](#generic-default-values) |
 | A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
@@ -1256,14 +1256,14 @@ connect("localhost", timeout=5.0)
 **Why it matters**: Extremely common Python pattern. Without defaults and kwargs, every
 function needs all arguments specified. Blocks many stdlib-like APIs.
 
-**Current state**: Default parameter values are done. Constant expressions (literals,
-`None`, fixed-int constructors like `Int32(5)`, negative literals). Maps to C++ default
-arguments in function signatures. Works for free functions, methods, and constructors.
-Keyword arguments at call sites are not yet supported.
+**Current state**: Done. Default parameter values and keyword arguments at call sites are
+both implemented. Kwargs are resolved to positional args at compile time in sema -- codegen
+sees only positional args. Supported for user functions, methods, constructors, and generic
+functions. Overloaded builtins (e.g., `range`, `len`) reject kwargs with a clear error.
 
 **Dependencies**: None.
 
-**Effort**: M (defaults done; kwargs remaining)
+**Effort**: M
 
 ---
 
@@ -1669,7 +1669,7 @@ Features needed for the compiler to compile itself, roughly by priority:
 | enum | 17 files | I |
 | exceptions (try/except) | 9 try/except blocks | III |
 | default arguments | pervasive | VII |
-| keyword arguments | pervasive | VII |
+| keyword arguments | pervasive | VII (done) |
 | list comprehensions | common | VI |
 | isinstance + narrowing | 824 calls, 35 files | I (ADTs replace) |
 | closures/lambda | moderate | VI |

@@ -15,7 +15,7 @@ from ..typesys import (
     UnionType, EnumType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type,
 )
-from ..parse import TpyCall, TpyStrLiteral, TpyName, TpyFunction
+from ..parse import TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import SemanticError
@@ -43,6 +43,70 @@ def arity_error_msg(name: str, min_args: int, max_args: int, got: int) -> str:
 def _init_params_min_args(init_params: list) -> int:
     """Compute min args from init_params tuples (name, type, default)."""
     return sum(1 for _, _, default in init_params if default is None)
+
+
+def resolve_kwargs(
+    expr_args: list[TpyExpr],
+    expr_kwargs: dict[str, TpyExpr],
+    params: list[ParamInfo],
+    func_name: str,
+    error_fn,
+) -> list[TpyExpr]:
+    """Resolve keyword arguments into a fully-positional argument list.
+
+    Validates kwarg names, detects duplicate/missing args, and fills gaps
+    with default expressions from ParamInfo.
+    """
+    if not expr_kwargs:
+        return expr_args
+
+    name_to_index = {p.name: i for i, p in enumerate(params)}
+
+    # Validate all kwarg names exist in params
+    for kw_name in expr_kwargs:
+        if kw_name not in name_to_index:
+            raise error_fn(f"'{func_name}' got unexpected keyword argument '{kw_name}'")
+
+    # Validate no kwarg overlaps with a positional arg
+    for param_name, idx in name_to_index.items():
+        if param_name in expr_kwargs and idx < len(expr_args):
+            raise error_fn(f"'{func_name}' got multiple values for argument '{param_name}'")
+
+    # Find the rightmost explicitly-provided index
+    rightmost = len(expr_args) - 1
+    for kw_name in expr_kwargs:
+        idx = name_to_index[kw_name]
+        if idx > rightmost:
+            rightmost = idx
+
+    # Build result list up to rightmost
+    result: list[TpyExpr] = []
+    for i in range(rightmost + 1):
+        if i < len(expr_args):
+            result.append(expr_args[i])
+        elif params[i].name in expr_kwargs:
+            result.append(expr_kwargs[params[i].name])
+        elif params[i].has_default:
+            result.append(params[i].default_expr)
+        else:
+            raise error_fn(f"'{func_name}' missing required argument: '{params[i].name}'")
+
+    return result
+
+
+def resolve_kwargs_init_params(
+    expr_args: list[TpyExpr],
+    expr_kwargs: dict[str, TpyExpr],
+    init_params: list[tuple[str, 'TpyType', 'TpyExpr | None']],
+    func_name: str,
+    error_fn,
+) -> list[TpyExpr]:
+    """Resolve keyword arguments for record constructors using init_params format.
+
+    Adapts init_params tuples to ParamInfo and delegates to resolve_kwargs.
+    """
+    params = [ParamInfo(name, ptype, default_expr=default) for name, ptype, default in init_params]
+    return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn)
 
 
 def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
@@ -97,6 +161,34 @@ class CallAnalyzer:
     def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
         """Wire circular dependencies (must be called before analyze_call)."""
         self.expr = expr
+
+    def _resolve_call_kwargs(self, expr: TpyCall, func: FunctionInfo) -> None:
+        """Resolve keyword arguments on a TpyCall into positional form."""
+        if not expr.kwargs:
+            return
+        expr.args = resolve_kwargs(
+            expr.args, expr.kwargs, func.params, expr.func,
+            lambda msg: self.ctx.error(msg, expr),
+        )
+        expr.kwargs = {}
+
+    def _resolve_call_kwargs_init(
+        self, expr: TpyCall, record: RecordInfo,
+    ) -> None:
+        """Resolve keyword arguments for record constructor calls."""
+        if not expr.kwargs:
+            return
+        expr.args = resolve_kwargs_init_params(
+            expr.args, expr.kwargs, record.init_params, f"{record.name}()",
+            lambda msg: self.ctx.error(msg, expr),
+        )
+        expr.kwargs = {}
+
+    def _reject_kwargs_for_builtin(self, expr: TpyCall, name: str) -> None:
+        """Reject kwargs on overloaded builtin functions."""
+        if expr.kwargs:
+            raise self.ctx.error(
+                f"Keyword arguments not supported for builtin '{name}'", expr)
 
     def _set_record_constructor_info(
         self,
@@ -155,6 +247,7 @@ class CallAnalyzer:
                 if record:
                     return self._analyze_record_constructor(expr, record)
                 # It's a builtin type instantiation -- validate constructor args
+                self._reject_kwargs_for_builtin(expr, expr.func)
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
                 if arg_types:
                     self._validate_generic_constructor(expr, arg_types)
@@ -211,6 +304,15 @@ class CallAnalyzer:
                     if qname == "builtins.isinstance":
                         return self._analyze_isinstance(expr)
                     if qname == "builtins.print":
+                        for kw_name in expr.kwargs:
+                            if kw_name != "end":
+                                raise self.ctx.error(
+                                    f"print() does not support keyword argument '{kw_name}'", expr)
+                        if "end" in expr.kwargs:
+                            if not isinstance(expr.kwargs["end"], TpyStrLiteral):
+                                raise self.ctx.error(
+                                    "print() 'end' argument must be a string literal", expr)
+                            self.expr.analyze_expr(expr.kwargs["end"])
                         for arg in expr.args:
                             self.expr.analyze_expr(arg)
                         expr.resolved_function_info = FunctionInfo(
@@ -366,6 +468,15 @@ class CallAnalyzer:
         if qname == "builtins.isinstance":
             return self._analyze_isinstance(expr)
         if qname == "builtins.print":
+            for kw_name in expr.kwargs:
+                if kw_name != "end":
+                    raise self.ctx.error(
+                        f"print() does not support keyword argument '{kw_name}'", expr)
+            if "end" in expr.kwargs:
+                if not isinstance(expr.kwargs["end"], TpyStrLiteral):
+                    raise self.ctx.error(
+                        "print() 'end' argument must be a string literal", expr)
+                self.expr.analyze_expr(expr.kwargs["end"])
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
             expr.resolved_function_info = FunctionInfo(
@@ -394,6 +505,7 @@ class CallAnalyzer:
         This is handled specially because the module system doesn't support
         truly generic functions yet.
         """
+        self._reject_kwargs_for_builtin(expr, "copy")
         if len(expr.args) != 1:
             raise self.ctx.error("copy() takes exactly 1 argument", expr)
         arg_type = self.expr.analyze_expr(expr.args[0])
@@ -420,6 +532,7 @@ class CallAnalyzer:
 
     def _analyze_tpy_try_parse(self, expr: TpyCall) -> TpyType:
         """Analyze try_parse(EnumType, str) -> Optional[EnumType]."""
+        self._reject_kwargs_for_builtin(expr, "try_parse")
         if len(expr.args) != 2:
             raise self.ctx.error(
                 "try_parse() takes exactly 2 arguments: try_parse(EnumType, name)",
@@ -487,11 +600,13 @@ class CallAnalyzer:
         """Analyze isinstance(x, T) for union type narrowing.
 
         Validates:
+        - No keyword arguments
         - Exactly 2 arguments
         - First argument is a simple name with a UnionType
         - Second argument is a type name that is a member of the union
         Sets isinstance_var and isinstance_type on the TpyCall node.
         """
+        self._reject_kwargs_for_builtin(expr, "isinstance")
         if len(expr.args) != 2:
             raise self.ctx.error(
                 f"isinstance() takes exactly 2 arguments, got {len(expr.args)}", expr
@@ -545,6 +660,7 @@ class CallAnalyzer:
 
     def _analyze_enum_from_value(self, expr: TpyCall, enum_type: EnumType) -> TpyType:
         """Analyze enum value lookup: Color(0) -> Color."""
+        self._reject_kwargs_for_builtin(expr, enum_type.name)
         if len(expr.args) != 1:
             raise self.ctx.error(
                 f"Enum '{enum_type.name}' constructor takes exactly 1 argument, "
@@ -736,6 +852,7 @@ class CallAnalyzer:
 
     def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
         """Check a builtin type constructor call using unified RecordInfo.constructors."""
+        self._reject_kwargs_for_builtin(expr, expr.func)
         type_name = expr.func
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
@@ -831,6 +948,7 @@ class CallAnalyzer:
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
         For generic overloads (with type_params), uses type inference.
         """
+        self._reject_kwargs_for_builtin(expr, overloads[0].name)
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
         protocol_checker = self.protocols.type_conforms_to_protocol
 
@@ -980,6 +1098,9 @@ class CallAnalyzer:
                 expr,
             )
 
+        # Resolve kwargs before arity check
+        self._resolve_call_kwargs(expr, func)
+
         expr.resolved_function_info = func
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(
@@ -1022,6 +1143,9 @@ class CallAnalyzer:
         # Check for invalid type arguments (e.g., first[123](x) or first[var](x))
         if expr.type_args_parse_error:
             raise self.ctx.error(expr.type_args_parse_error, expr)
+
+        # Resolve kwargs before arity check
+        self._resolve_call_kwargs(expr, func)
 
         # Check argument count first
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
@@ -1131,6 +1255,15 @@ class CallAnalyzer:
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
+        # Resolve kwargs for record constructors
+        if expr.kwargs:
+            if record.has_init:
+                self._resolve_call_kwargs_init(expr, record)
+            else:
+                first_kwarg = next(iter(expr.kwargs))
+                raise self.ctx.error(
+                    f"'{record.name}()' got unexpected keyword argument '{first_kwarg}'", expr)
+
         # Check if this is a generic record instantiation (e.g., Stack[Int32]())
         if expr.call_type is not None and isinstance(expr.call_type, NamedType) and expr.call_type.is_record:
             # Validate type arguments
@@ -1281,6 +1414,9 @@ class CallAnalyzer:
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""
+        # Resolve kwargs before arity check
+        self._resolve_call_kwargs(expr, func)
+
         expr.resolved_function_info = func
         if len(expr.args) < func.min_args or len(expr.args) > func.max_args:
             raise self.ctx.error(

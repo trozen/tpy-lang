@@ -517,6 +517,8 @@ def _collect_reads_expr(expr: TpyExpr) -> list[TpyName]:
         result = _collect_reads_expr(expr.obj)
         for arg in expr.args:
             result.extend(_collect_reads_expr(arg))
+        for kwarg in expr.kwargs.values():
+            result.extend(_collect_reads_expr(kwarg))
         return result
 
     elif isinstance(expr, TpyBinOp):

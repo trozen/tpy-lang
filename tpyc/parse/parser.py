@@ -1663,17 +1663,13 @@ class Parser:
             args = [self._parse_expr(a) for a in node.args]
             kwargs = {}
 
-            # Handle keyword arguments (limited support for print)
             if node.keywords:
-                func_name = node.func.id if isinstance(node.func, ast.Name) else None
-                if func_name == "print":
-                    for kw in node.keywords:
-                        if kw.arg == "end":
-                            kwargs["end"] = self._parse_expr(kw.value)
-                        else:
-                            raise ParseError(f"print() does not support keyword argument '{kw.arg}'", node)
-                else:
-                    raise ParseError("Keyword arguments not supported", node)
+                for kw in node.keywords:
+                    if kw.arg is None:
+                        raise ParseError("**kwargs unpacking not supported", node)
+                    if kw.arg in kwargs:
+                        raise ParseError(f"Keyword argument '{kw.arg}' repeated", node)
+                    kwargs[kw.arg] = self._parse_expr(kw.value)
 
             if isinstance(node.func, ast.Name):
                 return TpyCall(node.func.id, args, kwargs=kwargs, loc=loc)
@@ -1687,12 +1683,13 @@ class Parser:
                     if type_args or type_args_parse_error:
                         return TpyMethodCall(
                             TpyName(name, loc=loc), node.func.attr, args,
+                            kwargs=kwargs,
                             type_args=type_args, type_args_parse_error=type_args_parse_error,
                             loc=loc,
                         )
                     # No type args and no error: fall through (e.g., variable[index].method())
                 obj = self._parse_expr(node.func.value)
-                return TpyMethodCall(obj, node.func.attr, args, loc=loc)
+                return TpyMethodCall(obj, node.func.attr, args, kwargs=kwargs, loc=loc)
             elif isinstance(node.func, ast.Subscript):
                 # Could be generic type instantiation (Stack[Int32]()) or generic function call (First[Int32](x))
                 # Parse both call_type and type_args - sema decides which applies based on whether
@@ -1713,13 +1710,14 @@ class Parser:
                             # the type_args_parse_error; otherwise it's a function call
                             pass
                     return TpyCall(name, args, call_type=call_type, type_args=type_args,
-                                   type_args_parse_error=type_args_parse_error, loc=loc)
+                                   type_args_parse_error=type_args_parse_error, kwargs=kwargs, loc=loc)
                 elif isinstance(node.func.value, ast.Attribute):
                     # module.func[T](args) -- method call with explicit type args
                     obj = self._parse_expr(node.func.value.value)
                     method = node.func.value.attr
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
-                    return TpyMethodCall(obj, method, args, type_args=type_args,
+                    return TpyMethodCall(obj, method, args, kwargs=kwargs,
+                                         type_args=type_args,
                                          type_args_parse_error=type_args_parse_error, loc=loc)
                 raise ParseError("Unsupported generic call target", node)
             else:

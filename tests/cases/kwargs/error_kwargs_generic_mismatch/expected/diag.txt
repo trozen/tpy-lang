@@ -1,0 +1,1 @@
+main.py:7: error: Cannot infer type arguments for 'first'. Specify explicitly: first[T](...)

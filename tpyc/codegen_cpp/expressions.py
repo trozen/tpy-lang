@@ -994,7 +994,7 @@ class ExpressionGenerator:
             module_info = self.ctx.analyzer.registry.get_module(module_name)
             if module_info and expr.method in module_info.functions:
                 from ..parse import TpyCall
-                temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                 temp_call.resolved_function_info = expr.resolved_function_info
                 temp_call.inferred_type_args = expr.inferred_type_args
                 return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
@@ -1003,7 +1003,7 @@ class ExpressionGenerator:
             if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
                 if record_info.constructors and not record_info.type_params:
                     from ..parse import TpyCall
-                    temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                    temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                     return self.builtins.gen_builtin_constructor(temp_call, record_info)
 
         # Check for inherited builtin method with cpp_template first
@@ -1062,7 +1062,7 @@ class ExpressionGenerator:
                     if module_info and expr.method in module_info.functions:
                         # Create a temp call for code generation
                         from ..parse import TpyCall
-                        temp_call = TpyCall(func=expr.method, args=expr.args, loc=expr.loc)
+                        temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                         return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
         obj = self.gen_expr(expr.obj)
         obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
