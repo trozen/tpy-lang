@@ -1,0 +1,1 @@
+main.py:10: error: Default value for 'x' is incompatible with type 'Int32' (resolved from generic 'f')

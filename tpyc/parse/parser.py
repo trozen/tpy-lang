@@ -22,7 +22,7 @@ from .nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
-    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
@@ -1093,7 +1093,8 @@ class Parser:
             params.append((arg.arg, param_type))
 
         # Parse default parameter values (skip_self for non-static methods)
-        defaults = self._parse_param_defaults(node, params, skip_self=has_self)
+        defaults = self._parse_param_defaults(node, params, skip_self=has_self,
+                                              type_param_scope=type_param_scope)
 
         # Get return type (default to Void for __init__)
         return_type = VOID
@@ -1191,7 +1192,8 @@ class Parser:
             params.append((arg.arg, param_type))
 
         # Parse default parameter values
-        defaults = self._parse_param_defaults(node, params, skip_self=False)
+        defaults = self._parse_param_defaults(node, params, skip_self=False,
+                                              type_param_scope=type_param_scope)
 
         return_type = VOID
         if node.returns:
@@ -1821,7 +1823,7 @@ class Parser:
     def _validate_const_default(self, expr: TpyExpr, node: ast.expr) -> None:
         """Validate that a default value expression is a compile-time constant."""
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
-                             TpyStrLiteral, TpyNoneLiteral)):
+                             TpyStrLiteral, TpyNoneLiteral, TpyTypeParamConstruct)):
             return
         if isinstance(expr, TpyUnaryOp) and expr.op == "-":
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
@@ -1838,7 +1840,9 @@ class Parser:
             f"(literal, None, or fixed-int constructor like Int32(5))", node)
 
     def _parse_param_defaults(self, node: ast.FunctionDef, params: list,
-                              skip_self: bool = False) -> list['TpyExpr | None']:
+                              skip_self: bool = False,
+                              type_param_scope: dict | None = None,
+                              ) -> list['TpyExpr | None']:
         """Parse default values from a function definition.
 
         Returns a list aligned with params: None for params without defaults.
@@ -1861,6 +1865,10 @@ class Parser:
             default_idx = ast_idx - num_no_default
             if default_idx >= 0 and default_idx < len(ast_defaults):
                 expr = self._parse_expr(ast_defaults[default_idx])
+                # Detect T() where T is a type parameter
+                if (isinstance(expr, TpyCall) and not expr.args and not expr.kwargs
+                        and type_param_scope and expr.func in type_param_scope):
+                    expr = TpyTypeParamConstruct(expr.func, loc=expr.loc)
                 self._validate_const_default(expr, ast_defaults[default_idx])
                 defaults.append(expr)
             else:

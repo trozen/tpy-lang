@@ -15,7 +15,7 @@ from ..typesys import (
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
-    TpyNoneLiteral, TpyUnaryOp, TpyCall,
+    TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall,
 )
 from ..namespace import Namespace
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name
@@ -51,6 +51,8 @@ class FunctionGenerator:
     @staticmethod
     def default_to_cpp(expr: TpyExpr, ptype: TpyType) -> str:
         """Convert a constant default expression to its C++ representation."""
+        if isinstance(expr, TpyTypeParamConstruct):
+            return f"{expr.param_name}{{}}"
         if isinstance(expr, TpyIntLiteral):
             return str(expr.value)
         if isinstance(expr, TpyFloatLiteral):

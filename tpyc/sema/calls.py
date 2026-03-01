@@ -9,13 +9,17 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
-    IntLiteralType,
+    IntLiteralType, FloatType, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_const_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     UnionType, EnumType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type,
 )
-from ..parse import TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr
+from ..parse import (
+    TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
+    TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
+    TpyTypeParamConstruct,
+)
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import SemanticError
@@ -137,6 +141,33 @@ def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
     if any(_has_type_param_ref(p.type) for p in func.params):
         return True
     return _has_type_param_ref(func.return_type)
+
+
+_NUMERIC_TYPES = (FixedIntType, BigIntType, FloatType, IntLiteralType)
+
+
+def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType) -> bool:
+    """Check if a default expression is compatible with a resolved concrete type."""
+    match default_expr:
+        case TpyTypeParamConstruct():
+            return True
+        case TpyNoneLiteral():
+            return isinstance(resolved_type, OptionalType)
+        case TpyBoolLiteral():
+            return isinstance(resolved_type, (BoolType,) + _NUMERIC_TYPES)
+        case TpyIntLiteral():
+            return isinstance(resolved_type, _NUMERIC_TYPES) or isinstance(resolved_type, BoolType)
+        case TpyFloatLiteral():
+            return isinstance(resolved_type, FloatType)
+        case TpyStrLiteral():
+            return is_any_str_type(resolved_type) or isinstance(resolved_type, CharType)
+        case TpyUnaryOp(op="-"):
+            return _default_compatible_with_type(default_expr.operand, resolved_type)
+        case TpyCall():
+            return isinstance(resolved_type, _NUMERIC_TYPES)
+        case _:
+            # Unknown expression type: allow (parser ensures only const exprs reach here)
+            return True
 
 
 class CallAnalyzer:
@@ -1202,6 +1233,9 @@ class CallAnalyzer:
         # Store inferred type args for codegen
         expr.inferred_type_args = tuple(type_subst[p] for p in func.type_params)
 
+        # Validate defaults for generic params not covered by explicit args
+        self._validate_generic_defaults(expr, func, type_subst)
+
         # Resolve and check parameters
         resolved_func = self.type_ops.substitute_method_type_params(func, type_subst)
         expr.resolved_function_info = resolved_func
@@ -1252,6 +1286,22 @@ class CallAnalyzer:
                 )
 
         return resolved_return
+
+    def _validate_generic_defaults(self, expr: TpyCall, func: FunctionInfo,
+                                    type_subst: dict[str, TpyType]) -> None:
+        """Validate defaults for params not covered by explicit args."""
+        for i in range(len(expr.args), len(func.params)):
+            param = func.params[i]
+            if not param.has_default:
+                continue
+            resolved_type = self.type_ops.substitute_type_params(param.type, type_subst)
+            if isinstance(resolved_type, TypeParamRef):
+                continue
+            if not _default_compatible_with_type(param.default_expr, resolved_type):
+                raise self.ctx.error(
+                    f"Default value for '{param.name}' is incompatible with "
+                    f"type '{resolved_type}' (resolved from generic '{func.name}')",
+                    expr)
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""

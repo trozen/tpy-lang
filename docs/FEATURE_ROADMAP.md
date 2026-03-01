@@ -22,7 +22,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A4 | String ownership (context-dependent str) | M | Done | [I](#string-ownership) |
 | A5 | Enums | M | Done | [I](#enums) |
 | A6 | Keyword args + default values | M | Done | [VII](#keyword-arguments-and-default-values) |
-| A6b | Generic default values (`T()`, instantiation validation) | S | Not started | [VII](#generic-default-values) |
+| A6b | Generic default values (`T()`, instantiation validation) | S | Done | [VII](#generic-default-values) |
 | A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
@@ -1279,17 +1279,16 @@ def first_or[T](items: list[T], fallback: T = T()) -> T:
 Two related improvements to defaults on generic type parameters:
 
 1. **`T()` default-construction syntax**: Allow `T()` as a default value when `T` is a type
-   parameter. Maps to `T{}` in C++ (value-initialization). Requires parser support for
-   type-param constructors in defaults, and codegen to emit `T{}`.
+   parameter. Maps to `T{}` in C++ (value-initialization). Works for functions and methods
+   with class-level or method-level type params. Also works with kwargs gap-filling.
 
 2. **Instantiation-time validation**: When a generic function with defaults (e.g.,
-   `fallback: T = 0`) is instantiated with a concrete type, validate that the default
-   expression is compatible with that type. Currently, incompatible defaults (e.g., `T=str`
-   with `= 0`) produce a cryptic C++ compilation error instead of a clean TPy diagnostic.
+   `fallback: T = 0`) is instantiated with a concrete type, the compiler validates that the
+   default expression is compatible with that type. `f[str]()` with `= 0` produces a clear
+   sema error instead of a cryptic C++ compilation failure.
 
-**Current state**: Not started. Defaults on generic params work when the concrete type
-happens to be compatible with the literal (e.g., `= 0` with `T=Int32`), but there is no
-validation at instantiation time.
+**Current state**: Done. Both features implemented: `TpyTypeParamConstruct` AST node for
+`T()` defaults, and `_validate_generic_defaults` in sema for instantiation-time checking.
 
 **Dependencies**: A6 (defaults done).
 

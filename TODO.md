@@ -1,6 +1,8 @@
 # TODO
 
 ## Next
+- Generic default validation for methods: `_validate_generic_defaults` is only wired for free functions (`_analyze_generic_function_call`), not for method calls. A method like `def get(self, x: T = 0)` on `Container[str]` produces a C++ error instead of a sema diagnostic. Needs threading through `_resolve_and_check_args` in `methods.py`.
+- Kwargs-gap-filled default error location: when a default expr (e.g. `0`) is gap-filled by kwargs resolution and triggers a coercion error, the error loc points to the function definition (where the default was parsed), not the call site. Should point to the call expression.
 - Generic string inference: `first[T]("hello", "world")` deduces `T=str` (std::string) instead of `T=StrView` (std::string_view). String literals passed to generic functions create unnecessary copies. The inference should prefer StrView when the literal is only read.
 - Iterable[T] conformance for built-in containers: `list[T]`, `Array[T,N]`, `StaticList[T,N]`, `Span[T]`, `str` don't conform to `Iterable[T]` because their iteration is handled by NativeIterable codegen, not explicit `__iter__` methods. Protocol conformance checker needs to recognize these types as implicitly satisfying `Iterable[T]`.
 - int/bool value provenance (e.g. assert i > 0, then cast to uint without check)

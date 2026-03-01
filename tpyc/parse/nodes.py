@@ -134,6 +134,12 @@ class TpyUnaryOp(TpyExpr):
 
 
 @dataclass
+class TpyTypeParamConstruct(TpyExpr):
+    """Default-construction of a type parameter: T() in a default value."""
+    param_name: str
+
+
+@dataclass
 class TpyCall(TpyExpr):
     """Function or constructor call.
 

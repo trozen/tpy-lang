@@ -19,7 +19,8 @@ from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
-    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
+    TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..prescan import match_is_none
@@ -765,6 +766,11 @@ class ExpressionGenerator:
                 # Resolve TypeParamRef for generic functions
                 resolved_ptype = self.types.substitute_type_params(ptype, type_subst) if type_subst else ptype
 
+                # T() default-construction: emit ConcreteType{}
+                if isinstance(arg, TpyTypeParamConstruct):
+                    gen_args.append(f"{self.types.type_to_cpp(resolved_ptype)}{{}}")
+                    continue
+
                 # @dynamic protocol params: wrap concrete args in temp adapter
                 unwrapped_ptype = unwrap_readonly(resolved_ptype)
                 if is_protocol_type(unwrapped_ptype):
@@ -898,6 +904,9 @@ class ExpressionGenerator:
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
+                if isinstance(a, TpyTypeParamConstruct) and ptype:
+                    gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
+                    continue
                 # None literals need param type to decide nullptr vs std::nullopt
                 t_type = ptype if isinstance(a, TpyNoneLiteral) and ptype else expr.call_type
                 gen_args.append(self.gen_call_arg(a, ptype, target_type=t_type))
@@ -912,6 +921,9 @@ class ExpressionGenerator:
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
+                if isinstance(a, TpyTypeParamConstruct) and ptype:
+                    gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
+                    continue
                 # Optional non-value params are T* / const T* -- same logic as function calls
                 actual_ptype = unwrap_readonly(ptype) if ptype else ptype
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
@@ -950,8 +962,14 @@ class ExpressionGenerator:
         """Generate method call code."""
         if expr.resolved_function_info:
             params = expr.resolved_function_info.params
-            gen_args = [self.gen_call_arg(arg, params[i].type if i < len(params) else None)
-                        for i, arg in enumerate(expr.args)]
+            gen_args = []
+            for i, arg in enumerate(expr.args):
+                if isinstance(arg, TpyTypeParamConstruct):
+                    ptype = params[i].type if i < len(params) else None
+                    assert ptype is not None, f"No param type for TpyTypeParamConstruct at arg {i}"
+                    gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
+                else:
+                    gen_args.append(self.gen_call_arg(arg, params[i].type if i < len(params) else None))
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)

@@ -20,6 +20,7 @@ from .parse import (
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert,
     TpyExprStmt, TpyRaiseStopIteration,
     TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp,
+    TpyTypeParamConstruct,
     TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
     TpyCoerce,
 )
@@ -548,6 +549,9 @@ def _collect_reads_expr(expr: TpyExpr) -> list[TpyName]:
 
     elif isinstance(expr, TpyCoerce):
         return _collect_reads_expr(expr.expr)
+
+    elif isinstance(expr, TpyTypeParamConstruct):
+        return []
 
     # Literals (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     # TpyBoolLiteral, TpyNoneLiteral): no reads

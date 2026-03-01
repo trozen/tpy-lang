@@ -2210,7 +2210,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Typed parameters and return types
 - **Working**: Reassigning function parameters (const-ref params like `int`/`str` auto-emit by value when reassigned)
 - **Working**: C++ keyword escaping -- Python identifiers that clash with C++ reserved words (e.g., `default`, `class`, `namespace`) are automatically mangled in generated code
-- **Working**: Default parameter values -- constant expressions (literals, `None`, fixed-int constructors). Maps to C++ default arguments. **Limitation**: defaults on generic type parameters (e.g., `def f[T](x: T = 0)`) are not validated against `T` -- if the function is instantiated with an incompatible type (e.g., `str`), the C++ compilation will fail.
+- **Working**: Default parameter values -- constant expressions (literals, `None`, fixed-int constructors). Maps to C++ default arguments. Defaults on generic type parameters are validated at instantiation time: `def f[T](x: T = 0)` called as `f[str]()` produces a clear sema error. `T()` default-construction syntax is supported: `def f[T](x: T = T()) -> T` maps to `T{}` in C++.
 - **Working**: Keyword arguments at call sites -- `f(name="World")`, `Point(y=1, x=2)`, mixed positional+kwargs. Resolved to positional at compile time. Supported for user functions, methods, constructors, and generic functions. Not supported for overloaded builtins (e.g., `range`, `len`).
 - **Open**: `*args` → variadic templates or fixed overloads
 - **Open**: `**kwargs` definition syntax → if keys known at compile time

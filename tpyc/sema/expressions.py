@@ -20,7 +20,8 @@ from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
-    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
+    TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
@@ -102,6 +103,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_subscript(expr)
         elif isinstance(expr, TpyFString):
             typ = self._analyze_fstring(expr)
+        elif isinstance(expr, TpyTypeParamConstruct):
+            typ = TypeParamRef(expr.param_name)
         elif isinstance(expr, TpyCoerce):
             # Coercions are attached post-analysis; treat as the expected type.
             typ = expr.expected_type
@@ -119,6 +122,11 @@ class ExpressionAnalyzer:
         """
         if type_hint is None:
             return self.analyze_expr(expr)
+
+        # T() default-construction: resolves to whatever T maps to
+        if isinstance(expr, TpyTypeParamConstruct):
+            self.ctx.set_expr_type(expr, type_hint)
+            return type_hint
 
         # Check for generic type constructor (list(), Container[T](), etc.)
         is_generic_constructor = (isinstance(expr, TpyCall) and
