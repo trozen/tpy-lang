@@ -87,64 +87,39 @@ int32_t __len__(const T& x) {
 template<typename T>
 decltype(auto) __getitem__(const std::vector<T>& x, int32_t i) {
     auto idx = normalize_index(x, i, "list index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(x[idx]);
-    } else {
-        return (x[idx]);
-    }
+    return x[idx];
 }
 
 template<typename T>
 decltype(auto) __getitem__(std::vector<T>& x, int32_t i) {
     auto idx = normalize_index(x, i, "list index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(x[idx]);
-    } else {
-        return (x[idx]);
-    }
+    return x[idx];
 }
 
 // Overload: StaticList
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(const StaticList<T, N>& x, int32_t i) {
     auto idx = normalize_index(x, i, "StaticList index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(x[idx]);
-    } else {
-        return (x[idx]);
-    }
+    return x[idx];
 }
 
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(StaticList<T, N>& x, int32_t i) {
     auto idx = normalize_index(x, i, "StaticList index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(x[idx]);
-    } else {
-        return (x[idx]);
-    }
+    return x[idx];
 }
 
-// Overload: std::array (const)
+// Overload: std::array
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(const std::array<T, N>& x, int32_t i) {
     auto idx = normalize_index(x, i, "array index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(x[idx]);
-    } else {
-        return (x[idx]);
-    }
+    return x[idx];
 }
 
-// Overload: std::array (non-const, needed for &arr[i] -> T*)
 template<typename T, std::size_t N>
 decltype(auto) __getitem__(std::array<T, N>& x, int32_t i) {
     auto idx = normalize_index(x, i, "array index out of bounds");
-    if constexpr (is_value_type<T>::value) {
-        return T(x[idx]);
-    } else {
-        return (x[idx]);
-    }
+    return x[idx];
 }
 
 // Overload: std::span

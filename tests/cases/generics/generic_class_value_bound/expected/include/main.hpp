@@ -60,7 +60,7 @@ struct Ring {
     // 26:     def put(self, v: T) -> None:
     void put(tpy::param_val_or_ref_t<T> v) {
         // 27:         self.data[self.size] = v  # tpyc: ok
-        this->data[this->size] = v;
+        tpy::__setitem__(this->data, this->size, v);
         // 28:         self.size += 1
         this->size = tpy::add_check<int32_t>(this->size, 1);
     }
@@ -68,7 +68,7 @@ struct Ring {
     // 30:     def get(self, i: Int32) -> T:
     tpy::return_val_or_ref_t<T> get(int32_t i) {
         // 31:         return self.data[i]
-        return this->data[i];
+        return tpy::__getitem__(this->data, i);
     }
 };
 
