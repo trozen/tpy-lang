@@ -26,7 +26,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
 | A10 | Tuple type + unpacking | M-L | Not started | [I](#tuple-type) |
-| A10b | `__item_range__` protocol | S-M | Not started | [I](#__item_range__-protocol-zero-cost-user-defined-iteration) |
+| A10b | `@iter_range` / `__iter_range__` protocol | S-M | Not started | [I](#iter_range--__iter_range__-protocol-zero-cost-user-defined-iteration) |
+| A10c | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
 | A11 | dict type | L | Not started | [VII](#dict-type) |
 
 ### Phase B: Polymorphism Foundation
@@ -196,31 +197,59 @@ assignment. Dict iteration needs both tuple and dict.
 
 ---
 
-### `__item_range__` Protocol (Zero-Cost User-Defined Iteration)
+### `@iter_range` / `__iter_range__` Protocol (Zero-Cost User-Defined Iteration)
 
 ```python
+@iter_range
 class ArrayList[T, N: int]:
-    def __item_range__(self) -> tuple[Ptr[T], Ptr[T]]:
+    def __iter_range__(self) -> tuple[Ptr[T], Ptr[T]]:
         return (self._storage.ptr(UInt32(0)), self._storage.ptr(UInt32(self._size)))
 ```
 
-A dunder protocol for user-defined types to opt into zero-cost C++ range-based for loops.
-The method returns a `tuple[Ptr[T], Ptr[T]]` (begin/end pointers). The compiler recognizes
-this protocol and emits:
+A decorator + dunder protocol for user-defined types to opt into zero-cost iteration.
+The `__iter_range__` method returns a `tuple[Begin, End]` pair. The compiler dispatches
+based on the element type:
 
-```cpp
-auto [__begin, __end] = obj.__item_range__();
-for (auto* __it = __begin; __it != __end; ++__it) {
-    T& x = *__it;
-    // body
-}
+- **Pointer pair** (`tuple[Ptr[T], Ptr[T]]`): dereference to get elements.
+  ```cpp
+  auto [__begin, __end] = obj.__iter_range__();
+  for (auto* __it = __begin; __it != __end; ++__it) {
+      T& x = *__it;
+  }
+  ```
+- **Integer pair** (`tuple[Int32, Int32]`): value IS the element.
+  ```cpp
+  auto [__begin, __end] = obj.__iter_range__();
+  for (int32_t x = __begin; x != __end; ++x) { ... }
+  ```
+
+This generalizes beyond containers -- `range()` could return a type whose
+`__iter_range__` gives `(Int32(0), Int32(n))`, replacing the current special-case
+`range()` optimization in the compiler with a general mechanism.
+
+The `@iter_range` decorator also **synthesizes `__iter__`/`__next__`** from the range
+pair, so explicit `iter()` calls work without hand-written iterator classes. For
+`ArrayList`, this eliminates the need for a separate `ArrayListIter` class entirely.
+
+**CPython compatibility**: The `@iter_range` CPython stub (in `lib/cpy/`) ignores
+`__iter_range__` and generates `__iter__` from `__getitem__`/`__len__` instead:
+
+```python
+def iter_range(cls):
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+    cls.__iter__ = __iter__
+    return cls
 ```
+
+Users never write `__iter__`/`__next__` by hand -- the decorator handles both runtimes.
 
 **Why it matters**: Currently user-defined types can only iterate via `__iter__`/`__next__`,
 which allocates an iterator object and generates a while-loop with `__next_opt__()` calls.
 Builtin types use `NativeIterable[T]` for zero-cost C++ range-based for, but this protocol
-is not user-extensible. `__item_range__` bridges the gap -- any contiguous container can
-provide pointer-pair iteration with no overhead.
+is not user-extensible. `@iter_range` bridges the gap for any contiguous container or
+counter-based range with no overhead.
 
 This is the key missing piece for `ArrayList[T, N]` (tplib) to fully replace the builtin
 `StaticList[T, N]` with equivalent iteration performance.
@@ -229,7 +258,39 @@ This is the key missing piece for `ArrayList[T, N]` (tplib) to fully replace the
 
 **Dependencies**: Tuple type (for the return type). Ptr[T] (done).
 
-**Effort**: S-M (sema protocol detection + codegen for pointer-pair loop)
+**Effort**: S-M (sema protocol detection + codegen for begin/end loop + iterator synthesis)
+
+---
+
+### Lazy List Repeat (`[val]*N`)
+
+```python
+items = [0] * 10                       # deduces to list[Int32] (as today)
+a = ArrayList[Int32, 10]([0] * 10)     # no intermediate list -- iterates lazily
+fill_container(items=[1] * 100)        # items: Iterable[Int32] -- lazy
+```
+
+Make `[val]*N` produce a lazy `RepeatRange[T]` type instead of eagerly allocating a
+`list[T]`. The codegen already emits `tpy::repeat_range<T>(count, {val})` which is
+lazy -- the only change is in sema, which currently resolves `[val]*N` to `ListType(T)`
+immediately.
+
+With a lazy type that conforms to `Iterable[T]`:
+- **Assigned to `list[T]`** or untyped local: materializes to list (default, as today)
+- **Passed to `Iterable[T]` param**: stays lazy, consumer iterates without allocation
+- **Passed to `Span[T]` param**: materializes to contiguous storage
+
+**Why it matters**: Without this, `ArrayList[Int32, 10]([0]*10)` would first heap-allocate
+a `std::vector`, copy into the ArrayList's stack storage, then destroy the vector.
+With lazy repeat, the constructor iterates the range directly -- zero heap allocation.
+Benefits any container constructor that accepts `Iterable[T]`.
+
+**Current state**: Not started. Codegen (`tpy::repeat_range`) is already lazy; sema
+eagerly resolves to `ListType` which forces materialization.
+
+**Dependencies**: Iterable[T] protocol (A9) for the lazy type to conform to.
+
+**Effort**: S (sema type change + deferred materialization in codegen)
 
 ---
 

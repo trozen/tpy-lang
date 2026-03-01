@@ -5,9 +5,9 @@
 # - Constructor: accept Span[T] | Iterable[T] | None via union param + isinstance dispatch
 #   (needs: default param values, Iterable[T] protocol). Compiler can later flatten to
 #   separate C++ overloads via union dispatch flattening optimization.
-# - Iteration: add __item_range__() -> tuple[Ptr[T], Ptr[T]] for zero-cost C++ range-based
-#   for loops (needs: tuple type, __item_range__ protocol support in compiler).
-#   Until then, __iter__/__next__ works but allocates an iterator object per loop.
+# - Iteration: add @iter_range decorator + __iter_range__() -> tuple[Ptr[T], Ptr[T]] for
+#   zero-cost C++ range-based for loops (needs: tuple type, @iter_range protocol support
+#   in compiler). This also synthesizes __iter__/__next__, eliminating ArrayListIter.
 from __future__ import annotations
 from tpy import Int32, UInt32, Own, Ptr, copy
 from tpy.mem import UninitArrayStorage
