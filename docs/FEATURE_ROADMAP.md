@@ -84,6 +84,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | E7 | Error recovery / multi-error diagnostics | L | Not started | [VIII](#error-recovery--multi-error-diagnostics) |
 | E8a | Drop flag (`__tpy_owned_`) | S | Done | [IV](#move-safe-destructors) |
 | E8b | Sentinel field optimization (eliminate drop flag) | M | Not started | [IV](#move-safe-destructors) |
+| E9 | Integer range analysis / bounds check elision | M-L | Not started | [VIII](#integer-range-analysis--bounds-check-elision) |
 
 ### Phase F: Compile-Time Power
 
@@ -1320,19 +1321,63 @@ Things Python checks at runtime that TPy can verify statically.
 | `AttributeError: has no attribute` | Done (record field checking) |
 | `TypeError: takes N positional arguments` | Done (call checking) |
 | `UnboundLocalError: referenced before assignment` | Done (init_tracker) |
-| Bounds checks (`IndexError`) | Runtime (`tpy::get_item`) |
+| Bounds checks (`IndexError`) | Runtime (`normalize_index` in `__getitem__`) |
 
 ### Could Do
 
 | Python Runtime Check | TPy Opportunity |
 |---------------------|-----------------|
 | `RuntimeError: dict changed size during iteration` | Container mutation check (see IV) |
-| `IndexError: list index out of range` (some cases) | Static range analysis for `range(len(x))` patterns |
-| `OverflowError` for fixed-width ints | Compile-time range analysis for literal arithmetic |
+| `IndexError: list index out of range` (some cases) | Bounds check elision via integer range analysis (see below) |
+| `OverflowError` for fixed-width ints | Compile-time range analysis for literal arithmetic (see below) |
 | `RecursionError` | Detect unbounded recursion in simple cases |
 | `TypeError: unhashable type` | Compile-time `Hashable` protocol check for dict keys |
 | Use after `.close()` / resource lifecycle | Typestate analysis (see below) |
 | Missing match cases | Exhaustive pattern matching (see VI) |
+
+### Integer Range Analysis / Bounds Check Elision
+
+Track provable value ranges of integer variables to elide redundant runtime checks.
+
+```python
+i: Int32 = 0
+while i < len(arr):
+    x = arr[i]      # i is in [0, len(arr)) -- bounds check elided
+    i += 1
+
+for i in range(len(arr)):
+    x = arr[i]      # same -- i provably in bounds
+```
+
+**Why it matters**: Every `__getitem__` call goes through `normalize_index` (negative
+index normalization + OOB panic). In tight loops where the index is provably non-negative
+and in bounds, this is redundant overhead. The canonical `while i < len(arr)` and
+`for i in range(len(arr))` patterns are extremely common and always safe.
+
+This is a prerequisite for competitive performance with hand-written C++ in
+array-heavy code. Users can work around it today with `unchecked_get()`, but
+automatic elision is the goal.
+
+**Scope**: Integer range analysis is broader than just bounds elision:
+- **Bounds check elision**: skip `normalize_index` when index is provably in `[0, size)`
+- **Overflow check elision**: skip `add_check`/`mul_check` when result provably fits
+- **Negative index elision**: skip negative normalization when index is provably >= 0
+- **Static OOB detection**: error at compile time for provably-OOB access (e.g. `arr[10]`
+  on `Array[T, 3]`)
+
+**Approach**: Attach `[lo, hi]` interval to each integer variable, propagate through
+assignments, comparisons (branch narrowing), and arithmetic. Start with the simple
+case: loop counter bounded by `len()`. Full interval arithmetic is a larger effort.
+
+**Current state**: Not started. `unchecked_get()` on Array/Span/list provides a
+manual escape hatch.
+
+**Dependencies**: None for the basic loop pattern. Full interval arithmetic interacts
+with overflow checking.
+
+**Effort**: M for loop-bounded patterns, L for general interval arithmetic
+
+---
 
 ### Typestate (Object Lifecycle)
 

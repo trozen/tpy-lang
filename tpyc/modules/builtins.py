@@ -169,6 +169,12 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="{self}.clear()",
         )],
+        "unchecked_get": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="{self}[{0}]",
+            is_readonly=True,
+        )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
