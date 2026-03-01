@@ -26,6 +26,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Not started | [I](#iterablet-protocol) |
 | A10 | Tuple type + unpacking | M-L | Not started | [I](#tuple-type) |
+| A10b | `__item_range__` protocol | S-M | Not started | [I](#__item_range__-protocol-zero-cost-user-defined-iteration) |
 | A11 | dict type | L | Not started | [VII](#dict-type) |
 
 ### Phase B: Polymorphism Foundation
@@ -41,7 +42,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B7 | Float32 type | S | Not started | [I](#float32-type) |
 | B8 | Dataclasses | M | Not started | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
-| B10 | Function overloads (@overload) | M | Infra exists | [VII](#function-overloads-overload) |
+| B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
 | B12 | `Self` type | S | Not started | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Not started | [I](#bi-directional-type-inference) |
@@ -191,6 +192,43 @@ interaction with ownership (move each element on destructure?).
 assignment. Dict iteration needs both tuple and dict.
 
 **Effort**: M-L (type + codegen + destructuring)
+
+---
+
+### `__item_range__` Protocol (Zero-Cost User-Defined Iteration)
+
+```python
+class ArrayList[T, N: int]:
+    def __item_range__(self) -> tuple[Ptr[T], Ptr[T]]:
+        return (self._storage.ptr(UInt32(0)), self._storage.ptr(UInt32(self._size)))
+```
+
+A dunder protocol for user-defined types to opt into zero-cost C++ range-based for loops.
+The method returns a `tuple[Ptr[T], Ptr[T]]` (begin/end pointers). The compiler recognizes
+this protocol and emits:
+
+```cpp
+auto [__begin, __end] = obj.__item_range__();
+for (auto* __it = __begin; __it != __end; ++__it) {
+    T& x = *__it;
+    // body
+}
+```
+
+**Why it matters**: Currently user-defined types can only iterate via `__iter__`/`__next__`,
+which allocates an iterator object and generates a while-loop with `__next_opt__()` calls.
+Builtin types use `NativeIterable[T]` for zero-cost C++ range-based for, but this protocol
+is not user-extensible. `__item_range__` bridges the gap -- any contiguous container can
+provide pointer-pair iteration with no overhead.
+
+This is the key missing piece for `ArrayList[T, N]` (tplib) to fully replace the builtin
+`StaticList[T, N]` with equivalent iteration performance.
+
+**Current state**: Not started.
+
+**Dependencies**: Tuple type (for the return type). Ptr[T] (done).
+
+**Effort**: S-M (sema protocol detection + codegen for pointer-pair loop)
 
 ---
 
@@ -1153,29 +1191,49 @@ tuples), literal syntax, methods (`.get()`, `.items()`, `.keys()`, `.values()`).
 
 ---
 
-### Function Overloads (@overload)
+### Union Dispatch Flattening
 
 ```python
-@overload
-def process(x: Int32) -> Int32:
-    return x * 2
-
-@overload
-def process(x: str) -> str:
-    return x + x
+class ArrayList[T, N: int]:
+    def __init__(self, items: Span[T] | Iterable[T] | None = None) -> None:
+        self._storage = UninitArrayStorage[T, N]()
+        self._size = 0
+        if items is not None:
+            if isinstance(items, Span):
+                for i in range(len(items)):
+                    self.append(items[i])
+            else:
+                for item in items:
+                    self.append(item)
 ```
 
-Maps directly to C++ function overloads.
+Compiler optimization: detect functions/methods with union-typed parameters that dispatch
+via `isinstance`, and split them into separate C++ overloads. The source stays as one
+method (works in CPython as-is), but the compiler emits multiple C++ functions --
+eliminating the isinstance branch at call sites where the concrete type is known.
 
-**Why it matters**: Sema infrastructure for overload resolution already exists (used by
-builtins). User-facing `@overload` wiring is the remaining work. Each overload body is
-the real implementation (unlike CPython stubs).
+```cpp
+// Flattened by compiler:
+ArrayList(std::span<const T> items) { /* span path */ }
+ArrayList(Iterable auto&& items) { /* iterable path */ }
+ArrayList() { /* no-arg path (items=None) */ }
+```
 
-**Current state**: Infrastructure exists. User-facing wiring needed.
+**Why it matters**: This replaces `@overload` (dropped -- its CPython semantics are too
+different from what TPy would need). The union + isinstance pattern is idiomatic Python,
+works unchanged in CPython, and the compiler can optimize it to zero-overhead dispatch.
+Key use cases: constructor variants (`ArrayList` from span vs iterable), methods like
+`pop()` vs `pop(index)` via `index: Int32 | None = None`.
 
-**Dependencies**: None.
+An optional annotation (e.g. `@flatten_dispatch`) could explicitly request this
+optimization for library code where the performance gain matters.
 
-**Effort**: M
+**Current state**: Not started. The union + isinstance pattern works today (no optimization).
+
+**Dependencies**: Union types (partial), default parameter values (A6), isinstance
+narrowing (done).
+
+**Effort**: M (sema pattern detection + codegen splitting)
 
 ---
 

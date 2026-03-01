@@ -1,5 +1,13 @@
 # ArrayList[T, N] -- fixed-capacity list with stack-allocated uninitialized storage.
 # Elements are placement-constructed on append and explicitly destroyed on pop/clear/__del__.
+#
+# TODO: to fully replace builtin StaticList[T, N]:
+# - Constructor: accept Span[T] | Iterable[T] | None via union param + isinstance dispatch
+#   (needs: default param values, Iterable[T] protocol). Compiler can later flatten to
+#   separate C++ overloads via union dispatch flattening optimization.
+# - Iteration: add __item_range__() -> tuple[Ptr[T], Ptr[T]] for zero-cost C++ range-based
+#   for loops (needs: tuple type, __item_range__ protocol support in compiler).
+#   Until then, __iter__/__next__ works but allocates an iterator object per loop.
 from __future__ import annotations
 from tpy import Int32, UInt32, Own, Ptr, copy
 from tpy.mem import UninitArrayStorage
@@ -46,7 +54,7 @@ class ArrayList[T, N: int]:
         self._storage.init(UInt32(self._size), value)
         self._size += 1
 
-    # TODO: add pop(index) overload once per-method overloads are supported
+    # TODO: unify pop() and pop_at() via index: Int32 | None = None param
     def pop(self) -> Own[T]:
         self._size -= 1
         return self._storage.take(UInt32(self._size))
