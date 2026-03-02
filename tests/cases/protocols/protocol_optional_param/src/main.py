@@ -37,6 +37,16 @@ class MixedContainer:
         if extra is not None:
             self.count = self.count + len(extra)
 
+# Generic class with Optional[Protocol] constructor param
+class GenericContainer[T]:
+    count: int
+
+    def __init__(self, items: Optional[Sized] = None) -> None:
+        if items is not None:
+            self.count = len(items)
+        else:
+            self.count = 0
+
 # Generic Optional[Protocol] param: Optional[Sequence[int]]
 def sum_optional(items: Sequence[int], extra: Optional[Sequence[int]] = None) -> int:
     result: int = 0
@@ -95,6 +105,14 @@ def main() -> None:
     print(mc2.count)
     mc3 = MixedContainer(nums, None)
     print(mc3.count)
+
+    # Generic class with Optional[Protocol] constructor
+    gc = GenericContainer[int](nums)
+    print(gc.count)
+    gc2 = GenericContainer[int]()
+    print(gc2.count)
+    gc3 = GenericContainer[int](None)
+    print(gc3.count)
 
     # Generic Optional[Sequence[int]]
     print(sum_optional(nums))

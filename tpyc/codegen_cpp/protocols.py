@@ -188,42 +188,6 @@ class ProtocolGenerator:
             return f"{concept_name}<T_{pname}, {type_args_cpp}>"
         return f"{concept_name}<T_{pname}>"
 
-    def gen_template_header(self, protocol_params: list[tuple[str, NamedType, bool]],
-                             *, emit_defaults: bool = True) -> str:
-        """Generate template header with concept constraints for protocol params.
-
-        For non-generic protocols: template<tpy::Sized T_items>
-        For generic protocols: template<tpy::Sequence<int32_t> T_items>
-        Optional protocol params get typename T_pname = std::nullptr_t with a
-        requires clause instead of abbreviated concept syntax.
-
-        emit_defaults: if False, skip the '= std::nullptr_t' default (for definitions
-        when the forward declaration already has it).
-        """
-        if not protocol_params:
-            return ""
-        template_parts = []
-        requires_parts = []
-        for pname, ptype, is_optional in protocol_params:
-            concept_name = self.get_concept_name(ptype)
-
-            if is_optional:
-                default_part = " = std::nullptr_t" if emit_defaults else ""
-                template_parts.append(f"typename T_{pname}{default_part}")
-                constraint = self._concept_constraint(pname, ptype)
-                requires_parts.append(
-                    f"(std::same_as<T_{pname}, std::nullptr_t> || {constraint})")
-            else:
-                if ptype.type_args:
-                    type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
-                    template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
-                else:
-                    template_parts.append(f"{concept_name} T_{pname}")
-        result = f"template<{', '.join(template_parts)}>\n"
-        if requires_parts:
-            result += f"  requires {' && '.join(requires_parts)}\n"
-        return result
-
     def gen_combined_template_header(
         self,
         type_params: list[str],
