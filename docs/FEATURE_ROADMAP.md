@@ -1422,17 +1422,20 @@ for k, v in d.items():
     print(k, v)
 ```
 
-Maps to `std::unordered_map<K, V>`.
+Maps to a custom `tpy::ordered_map<K, V>` -- a hash map (`std::unordered_map<K, Node*>`)
+combined with an intrusive doubly-linked list to preserve Python 3.7+ insertion order.
 
 **Why it matters**: Used in 24 files of the compiler source. Most Python programs use dicts.
-Relatively straightforward type addition but needs: subscript codegen, iteration (produces
-tuples), literal syntax, methods (`.get()`, `.items()`, `.keys()`, `.values()`).
+Phased: Phase 1 covers literals, subscript, `len`, `in`, `for k in d`, `print`,
+`get`/`pop`/`clear`. Phase 2 adds `keys()`/`values()`/`update()`/`copy()`. Phase 3
+(needs Tuple) adds `.items()` iteration and dict comprehensions.
 
-**Current state**: Not started.
+**Current state**: Not started. Design document: `docs/DICT_DESIGN.md`.
 
-**Dependencies**: Tuple type (for `.items()` iteration). `Hashable` protocol (for keys).
+**Dependencies**: None for Phase 1. Tuple type (for `.items()` iteration in Phase 3).
+Key types restricted to primitives + Enum until `Hashable` protocol exists.
 
-**Effort**: L (type + literals + methods + iteration)
+**Effort**: L (type + literals + methods + iteration + `ordered_map` C++ runtime)
 
 ---
 
