@@ -1,6 +1,6 @@
 # Protocol types cannot be used as method return types
 from tpy import Sized
 
-class BadRecord:  # tpyc: error(/cannot be used as a return type/)
-    def get_sized(self) -> Sized:
+class BadRecord:
+    def get_sized(self) -> Sized:  # tpyc: error(/cannot be used as a return type/)
         x: int = 1

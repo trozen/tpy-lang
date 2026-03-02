@@ -252,7 +252,7 @@ class TypeRegistrar:
                     raise SemanticError(
                         f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                         f"Only @dynamic protocols can be used as return types",
-                        record.loc,
+                        method.loc or record.loc,
                     )
             resolved_readonly = method.is_readonly or (
                 method.name in IMPLICIT_READONLY_METHODS and not method.readonly_opt_out
