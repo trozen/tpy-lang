@@ -206,10 +206,11 @@ interaction with ownership (move each element on destructure?).
 - Reference types require `Own[T]`: `tuple[Int32, Own[Point]]`
 - Not yet supported: `Optional`/`Union` elements, ordering comparisons (`<`, `>`)
 - Tuple unpacking: `a, b = expr` with fresh vars, reassignment, and `_` discard
-- Nested unpacking (`a, (b, c) = ...`) and for-loop unpacking not yet supported
+- For-loop unpacking: `for a, b in items` (desugared at parse time)
+- Nested unpacking (`a, (b, c) = ...`) not yet supported
 
-**Remaining**: `Optional`/`Union` elements, reference elements without `Own[]` (needs
-lifetime tracking), nested unpacking, for-loop unpacking.
+**Remaining**: `Optional`/`Union` elements, reference elements without `Own[]` (design
+unresolved -- see below), nested unpacking.
 
 **Dependencies**: None (core tuple type and unpacking done). Dict iteration needs both
 tuple and dict.
@@ -224,31 +225,66 @@ Currently tuple elements must be value types or wrapped in `Own[T]`. This preven
 surprising implicit copies when returning objects from functions (e.g. changing
 `-> Point` to `-> tuple[Int32, Point]` would silently copy the Point).
 
-The goal is to support bare reference types in tuples, matching how standalone
-parameters work:
+The goal is to support bare reference types in tuples. The key observation is that
+TPy already has context-dependent semantics for `T`:
+
+| Context | `Point` means | C++ |
+|---------|---------------|-----|
+| Parameter | mutable reference | `Point&` |
+| Parameter (`@readonly`) | const reference | `const Point&` |
+| Return | mutable reference | `Point&` |
+| Field | owned | `Point` (member) |
+| List element | owned | `Point` (in vector) |
+
+`T` is reference in params/returns and owned in fields/containers -- no `Ref[T]` or
+`Own[T]` needed, the context decides. There is precedent for context-dependent type
+mapping: `str` resolves to `std::string` or `std::string_view` depending on context
+(`PendingStrType`).
+
+**Proposed approach: Context-dependent tuple elements** -- tuple elements follow the
+same context rules as standalone `T`:
 
 ```python
-# Current (v1): requires Own[]
-def get_pair(p: Point) -> tuple[Int32, Own[Point]]:
-    return (Int32(1), p)  # explicit copy
+# Return context: Point is reference (like -> Point)
+def find(items: list[Point], id: Int32) -> tuple[Point, bool]:
+    ...  # -> std::tuple<const Point&, bool>
 
-# Future (v2): reference semantics, no copy
-def get_pair(p: Point) -> tuple[Int32, Point]:
-    return (Int32(1), p)  # p stored by reference
+# Field context: Point is owned (like field: Point)
+class Cache:
+    last: tuple[Point, bool]  # std::tuple<Point, bool>
+
+# Container context: Point is owned (like list[Point])
+results: list[tuple[Point, bool]]  # std::vector<std::tuple<Point, bool>>
+
+# Own[T] still works for explicit ownership in returns
+def make(x: Int32) -> tuple[Own[Point], bool]:
+    return (Point(x, x), True)  # std::tuple<Point, bool>, owned copy
 ```
 
-C++ mapping would mirror function params: `tuple[Int32, Point]` ->
-`std::tuple<int32_t, Point&>`, `tuple[Int32, Own[Point]]` ->
-`std::tuple<int32_t, Point>`.
+This gives zero-copy tuple returns (consistent with `-> T`), works in containers
+and fields (consistent with `list[T]` and field declarations), and requires no new
+type annotations. `Own[T]` in tuples remains meaningful: it forces value semantics
+in a return context where the default would be reference.
 
-**Key challenge**: lifetime tracking. A `std::tuple<int32_t, Point&>` cannot outlive
-the referenced Point. Needs the same provenance/escape analysis that already applies
-to reference returns.
+**Implementation approach**: Similar to `PendingStrType`, reference-type tuple elements
+could use a pending representation that resolves during sema/codegen based on context.
+`TupleType.to_cpp()` would need context to choose between `const T&` (reference) and
+`T` (owned) for each element.
 
-**Dependencies**: Provenance tracking for tuple elements, possibly tied to broader
-lifetime/borrow analysis.
+**Open questions**:
+- Local variables: `t = (p, True)` -- reference or owned? Likely reference (like
+  assigning `p2 = p` which creates a reference, not a copy)
+- Function parameters: `f(data: tuple[Point, bool])` -- the tuple itself is passed
+  by const ref; elements follow the tuple's own representation (which depends on how
+  the tuple was created)
+- How does context propagate through generic code? `def f[T]() -> tuple[T, bool]` --
+  T's representation depends on instantiation
 
-**Effort**: M
+**Current state**: Design proposed, not implemented. `Own[T]` wrapping works as a stopgap.
+
+**Dependencies**: May benefit from broader ownership/lifetime model.
+
+**Effort**: M (implementation), design needs validation against edge cases
 
 ---
 
