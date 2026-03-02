@@ -39,21 +39,31 @@ class TypeOperations:
             # Check if this should have is_protocol set
             protocol_info = self.ctx.registry.get_protocol(typ.name)
             resolved_is_protocol = protocol_info is not None
+            resolved_is_dynamic = bool(protocol_info and protocol_info.is_dynamic)
+            needs_flag_update = (typ.is_protocol != resolved_is_protocol
+                                 or typ.is_dynamic_protocol != resolved_is_dynamic)
             # Recursively resolve type arguments
             if typ.type_args:
                 new_args = tuple(
                     self.resolve_type(arg) if isinstance(arg, TpyType) else arg
                     for arg in typ.type_args
                 )
-                if new_args != typ.type_args or typ.is_protocol != resolved_is_protocol:
-                    if typ.is_protocol != resolved_is_protocol:
+                # Identity check: NamedType.__eq__ excludes is_dynamic_protocol
+                # (compare=False), so == would miss flag-only changes.
+                args_changed = any(
+                    new is not old for new, old in zip(new_args, typ.type_args)
+                )
+                if args_changed or needs_flag_update:
+                    if needs_flag_update:
                         # Protocol flag changed -- only for user records/protocols
-                        return NamedType(typ.name, new_args, resolved_is_protocol, typ._module_qname)
+                        return NamedType(typ.name, new_args, resolved_is_protocol,
+                                         typ._module_qname, resolved_is_dynamic)
                     # Only type_args changed -- use with_inner_types to preserve subclass
                     new_inner = tuple(a for a in new_args if isinstance(a, TpyType))
                     return typ.with_inner_types(new_inner)
-            elif typ.is_protocol != resolved_is_protocol:
-                return typ.with_protocol_flag(resolved_is_protocol)
+            elif needs_flag_update:
+                return NamedType(typ.name, typ.type_args, resolved_is_protocol,
+                                 typ._module_qname, resolved_is_dynamic)
         elif isinstance(typ, PtrType):
             resolved_pointee = self.resolve_type(typ.pointee)
             if resolved_pointee != typ.pointee:

@@ -535,7 +535,8 @@ class SemanticAnalyzer:
                 local_ns.bind_variable("self", self_type)
 
             for i, (pname, ptype) in enumerate(method.params):
-                resolved_ptype = self._normalize_param_type(ptype, method.is_readonly)
+                resolved_ptype = self._normalize_param_type(
+                    self.type_ops.resolve_type(ptype), method.is_readonly)
                 # Propagate resolved types to AST so codegen sees ReadonlyType.
                 # Idempotent: _normalize_param_type is a no-op on already-wrapped types.
                 method.params[i] = (pname, resolved_ptype)

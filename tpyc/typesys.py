@@ -596,6 +596,7 @@ class NamedType(TpyType):
     type_args: tuple['TpyType | int', ...] = ()
     is_protocol: bool = False
     _module_qname: str | None = None
+    is_dynamic_protocol: bool = field(default=False, compare=False, hash=False)
 
     @property
     def is_record(self) -> bool:
@@ -619,11 +620,16 @@ class NamedType(TpyType):
         """Return a copy with is_protocol set."""
         if self.is_protocol == is_protocol:
             return self
-        return NamedType(self.name, self.type_args, is_protocol, self._module_qname)
+        return NamedType(self.name, self.type_args, is_protocol, self._module_qname,
+                         self.is_dynamic_protocol)
+
+    def to_cpp_base_name(self) -> str:
+        """Return the C++ name without type arguments."""
+        return _native_cpp_names.get(self.name, self.name)
 
     def to_cpp(self) -> str:
-        if self.is_protocol:
-            # Template parameter placeholder - actual type substituted at instantiation
+        if self.is_protocol and not self.is_dynamic_protocol:
+            # Structural protocol: template parameter placeholder
             return "T"
         # Check for native C++ name mapping (@native/@native_c records)
         cpp_name = _native_cpp_names.get(self.name, self.name)
@@ -678,7 +684,8 @@ class NamedType(TpyType):
                 new_args.append(next(type_iter))
             else:
                 new_args.append(arg)  # Keep integer as-is
-        return NamedType(self.name, tuple(new_args), self.is_protocol, self._module_qname)
+        return NamedType(self.name, tuple(new_args), self.is_protocol, self._module_qname,
+                         self.is_dynamic_protocol)
 
 
 @dataclass(frozen=True)

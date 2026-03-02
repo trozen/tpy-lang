@@ -166,7 +166,7 @@ class RecordGenerator:
         for fld in record.fields:
             self.ctx.emit_preceding_comments(out, fld.loc, indent=INDENT)
             self.ctx.emit_source_comment(out, fld.loc, indent=INDENT)
-            cpp_type = fld.type.to_cpp()
+            cpp_type = self.types.type_to_cpp(fld.type)
             default = ""
             if fld.default_value is not None:
                 default = f" = {fld.default_value}"

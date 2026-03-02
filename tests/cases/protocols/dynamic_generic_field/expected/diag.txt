@@ -1,0 +1,1 @@
+main.py:18: warning: copies Tagged[Greeter] into field; use copy() to make this explicit

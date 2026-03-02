@@ -257,5 +257,15 @@ class TypeResolver:
         # Resolve PendingStrType to its concrete type before codegen
         if isinstance(typ, PendingStrType):
             return self._resolve_pending_str(typ).to_cpp()
+        # For plain NamedType (not subclasses like ListType/ArrayType) with
+        # type_args, recursively resolve args to handle @dynamic protocols
+        if type(typ) is NamedType and typ.type_args:
+            base = typ.to_cpp_base_name()
+            args = ", ".join(
+                self.type_to_cpp(t) if isinstance(t, TpyType) else str(t)
+                for t in typ.type_args
+            )
+            return f"{base}<{args}>"
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()
+
