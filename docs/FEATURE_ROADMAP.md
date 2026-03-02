@@ -30,7 +30,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A10a | Reference elements in tuples | M | Not started | [I](#reference-elements-in-tuples) |
 | A10b | `@iter_range` / `__iter_range__` protocol | S-M | Not started | [I](#iter_range--__iter_range__-protocol-zero-cost-user-defined-iteration) |
 | A10c | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
-| A11 | dict type | L | Not started | [VII](#dict-type) |
+| A11 | dict type | L | Phase 1 done | [VII](#dict-type) |
 
 ### Phase B: Polymorphism Foundation
 
@@ -1430,9 +1430,14 @@ Phased: Phase 1 covers literals, subscript, `len`, `in`, `for k in d`, `print`,
 `get`/`pop`/`clear`. Phase 2 adds `keys()`/`values()`/`update()`/`copy()`. Phase 3
 (needs Tuple) adds `.items()` iteration and dict comprehensions.
 
-**Current state**: Not started. Design document: `docs/DICT_DESIGN.md`.
+**Current state**: Phase 1 done. Covers `DictType` in type system, dict literals `{k: v}`,
+subscript read/write `d[k]`/`d[k]=v`, `len(d)`, `k in d`, `for k in d` iteration,
+`print(d)`, methods `get()`/`pop()`/`clear()`, annotation hint propagation for nested
+dicts, dangling return detection. Runtime backed by `tpy::ordered_map<K,V>` with
+insertion-order preservation. 21 test cases. Design document: `docs/DICT_DESIGN.md`.
 
-**Dependencies**: None for Phase 1. Tuple type (for `.items()` iteration in Phase 3).
+**Dependencies**: Phase 2 (methods) has no blockers. Phase 3 (`.items()` iteration)
+unblocked now that Tuple (A10) is done.
 Key types restricted to primitives + Enum until `Hashable` protocol exists.
 
 **Effort**: L (type + literals + methods + iteration + `ordered_map` C++ runtime)
