@@ -195,15 +195,26 @@ class RecordGenerator:
             if has_params:
                 init_defaults = record.init_method.defaults if record.init_method.defaults else None
                 has_required_params = not init_defaults or any(d is None for d in init_defaults)
-                if has_required_params:
-                    # Generate default constructor for C++ compatibility
-                    out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
                 # Generate parameterized constructor from __init__
                 protocol_params = self.functions.protocols.get_protocol_params(
                     record.init_method.params)
                 has_dynamic = self.functions._has_dynamic_protocol_params(
                     record.init_method.params)
+
+                # Default constructor: when all params have defaults and every
+                # protocol param is optional, delegate to the template ctor with
+                # nullptr so the __init__ body executes (else branch runs via
+                # if constexpr). Otherwise use = default.
+                all_protocols_optional = (
+                    protocol_params
+                    and not has_required_params
+                    and all(is_opt for _, _, is_opt in protocol_params))
+                if has_required_params or protocol_params:
+                    if all_protocols_optional:
+                        out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
+                    else:
+                        out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
                 if protocol_params or has_dynamic:
                     cpp_params = self.functions.gen_params_with_protocols(
                         record.init_method.params,

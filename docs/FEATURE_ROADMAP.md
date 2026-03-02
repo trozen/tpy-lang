@@ -49,7 +49,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
 | B12 | `Self` type | S | Not started | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Not started | [I](#bi-directional-type-inference) |
-| B14 | `Optional[StaticProtocol]` codegen | S | Not started | [II](#optionalstaticprotocol-codegen) |
+| B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
 | B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Not started | [II](#isinstance-on-static-protocols) |
 
 ### Phase C: Error Handling + Effects
@@ -708,35 +708,20 @@ is non-trivial.
 
 ### Optional[StaticProtocol] Codegen
 
-`Iterable[T] | None` as a parameter should generate `std::optional<Items>` where
-`Items` is a template parameter constrained by `tpy::Iterable<T>`.
+**Done.** `Optional[Protocol]` parameters use pointer repr (`const T*`) with a default
+template argument of `std::nullptr_t` and a `requires` clause for the concept constraint.
+Narrowing (`if items is not None:`) uses `!= nullptr`, and protocol operations inside
+narrowing bodies are wrapped in `if constexpr (!std::same_as<T, std::nullptr_t>)` to
+prevent instantiation when the argument is omitted or `None`.
 
-```python
-def __init__(self, items: Iterable[T] | None = None) -> None:
-    if items is not None:
-        for item in items:
-            self.append(item)
-```
+All call patterns work: concrete values (`f(nums)` -> `&nums`), explicit `None`
+(`f(None)` -> typed nullptr), and omitted optional args (template defaults to
+`std::nullptr_t`). Works for constructors, methods, and free functions, including
+generic protocols like `Optional[Sequence[int]]`.
 
-Expected C++:
-```cpp
-template<tpy::Iterable<T> Items>
-explicit ArrayList(std::optional<Items> items = std::nullopt)
-```
+**Dependencies**: Protocol params in methods (done). Optional narrowing (done).
 
-Currently `get_protocol_params()` in `codegen_cpp/protocols.py` only inspects the
-top-level type -- it doesn't unwrap `OptionalType` to find the protocol inside. The
-fix: unwrap Optional in `get_protocol_params`, and emit `std::optional<TemplateParam>`
-in `gen_params_with_protocols`.
-
-Sema gate is already fixed (only rejects `Optional[@dynamic]`, not static protocols).
-
-**Current state**: Not started. Sema gate done, codegen not handled.
-
-**Dependencies**: Protocol params in methods (done). Optional narrowing (done for
-`T | None`).
-
-**Effort**: S
+**Effort**: S (done)
 
 ---
 

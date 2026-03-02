@@ -1,0 +1,4 @@
+main.py:11: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
+main.py:13: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
+main.py:38: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
+main.py:50: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.

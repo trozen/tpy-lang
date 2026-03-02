@@ -28,6 +28,7 @@ from ..parse import (
 from ..namespace import Namespace
 from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
+from ..prescan import match_is_none
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -345,6 +346,23 @@ class StatementGenerator:
             return False
         protocol_info = self.ctx.analyzer.registry.get_protocol(target_type.name)
         return protocol_info is not None and protocol_info.is_dynamic
+
+    def _get_nullproto_constexpr_guards(self, condition: TpyExpr) -> list[str]:
+        """Get param names that need if constexpr guards for Optional[StaticProtocol].
+
+        When an Optional[StaticProtocol] param is narrowed (e.g. `if items is not None:`),
+        the narrowing body must be wrapped in `if constexpr (!std::same_as<T_X, std::nullptr_t>)`
+        to prevent instantiation of protocol operations on nullptr_t.
+        """
+        guards = []
+        match = match_is_none(condition)
+        if match is not None:
+            var_name, is_not_none = match
+            if is_not_none and '.' not in var_name:
+                declared = self.ctx.current_func_params.get(var_name)
+                if declared and self.protocols.is_optional_static_protocol(unwrap_readonly(declared)):
+                    guards.append(var_name)
+        return guards
 
     def _gen_dynamic_protocol_init(self, name: str, target_type: NamedType,
                                     init: 'TpyExpr', indent: str) -> str:
@@ -1135,10 +1153,23 @@ class StatementGenerator:
 
             then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
 
+            # Optional[StaticProtocol] narrowing: wrap body in if constexpr to
+            # prevent instantiation of protocol operations when T = nullptr_t
+            constexpr_guards = self._get_nullproto_constexpr_guards(node.condition)
+
             self.ctx.indent_level += 1
+            if constexpr_guards:
+                inner_indent = self.ctx.indent()
+                for gvar in constexpr_guards:
+                    out.write(f"{inner_indent}if constexpr (!std::same_as<T_{gvar}, std::nullptr_t>) {{\n")
+                    self.ctx.indent_level += 1
             for s in node.then_body:
                 self.gen_stmt(out, s)
             self.ctx.emit_block_trailing_comments(out, node.then_body, self.ctx.indent())
+            if constexpr_guards:
+                for _ in constexpr_guards:
+                    self.ctx.indent_level -= 1
+                    out.write(f"{self.ctx.indent()}}}\n")
             self.ctx.indent_level -= 1
 
             self._restore_narrowed_vars(then_saved)

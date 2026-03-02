@@ -79,7 +79,7 @@ class FunctionGenerator:
                        .replace('\t', '\\t'))
             return f'"{escaped}"'
         if isinstance(expr, TpyNoneLiteral):
-            if isinstance(ptype, OptionalType):
+            if isinstance(ptype, OptionalType) and not ptype.uses_pointer_repr():
                 return "std::nullopt"
             return "nullptr"
         if isinstance(expr, TpyUnaryOp) and expr.op == "-":
@@ -159,6 +159,7 @@ class FunctionGenerator:
 
         Static protocols use template types (T_paramname).
         @dynamic protocols use concrete base class& reference params.
+        Optional[Protocol] emits const T_paramname* (pointer repr with nullptr default).
         const_params: emit const T_x& for static protocols, const Base& for @dynamic,
         and to_cpp_const_param for non-protocol params.
         """
@@ -171,7 +172,9 @@ class FunctionGenerator:
                     and func_type_params and unwrapped.wrapped.name in func_type_params):
                 part = f"{unwrapped.wrapped.name}&& {cpp_pname}"
             else:
-                resolved = self.protocols.resolve_type_for_codegen(unwrapped)
+                is_optional = isinstance(unwrapped, OptionalType)
+                inner_unwrapped = unwrapped.inner if is_optional else unwrapped
+                resolved = self.protocols.resolve_type_for_codegen(inner_unwrapped)
                 if is_protocol_type(resolved):
                     protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                     if protocol_info and protocol_info.is_dynamic:
@@ -182,6 +185,8 @@ class FunctionGenerator:
                             part = f"const {base_type}& {cpp_pname}"
                         else:
                             part = f"{base_type}& {cpp_pname}"
+                    elif is_optional:
+                        part = f"const T_{pname}* {cpp_pname}"
                     else:
                         if const_params or isinstance(ptype, ReadonlyType):
                             part = f"const T_{pname}& {cpp_pname}"
@@ -224,6 +229,8 @@ class FunctionGenerator:
         """Check if any params are @dynamic protocol types (need Base& codegen)."""
         for _, ptype in params:
             unwrapped = unwrap_readonly(ptype)
+            if isinstance(unwrapped, OptionalType):
+                unwrapped = unwrapped.inner
             resolved = self.protocols.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved):
                 protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
@@ -372,8 +379,10 @@ class FunctionGenerator:
 
         if is_generic or protocol_params:
             # Generate combined template header for generic functions and/or protocol params
+            # Skip default template args -- already emitted in the forward declaration
             out.write(self.protocols.gen_combined_template_header(
-                func.type_params, protocol_params, func.type_param_bounds
+                func.type_params, protocol_params, func.type_param_bounds,
+                emit_defaults=False,
             ))
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)

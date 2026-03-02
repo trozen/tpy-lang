@@ -61,6 +61,17 @@ class ExpressionGenerator:
         # Wire up builtins to use our gen_expr methods
         self.builtins.set_expr_generator(self.gen_expr, self.gen_expr_deref, self.gen_call_arg)
 
+    def _nullptr_for_optional(self, ptype: TpyType) -> str:
+        """Generate the right nullptr expression for an Optional pointer-repr param.
+
+        For Optional[StaticProtocol], C++ can't deduce T from bare nullptr,
+        so we emit a typed null pointer: static_cast<std::nullptr_t*>(nullptr).
+        For regular Optional types, plain nullptr suffices.
+        """
+        if self.protocols.is_optional_static_protocol(unwrap_readonly(ptype)):
+            return "static_cast<std::nullptr_t*>(nullptr)"
+        return "nullptr"
+
     def gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression, dereferencing globals.
 
@@ -839,7 +850,7 @@ class ExpressionGenerator:
                 actual_ptype = unwrap_readonly(resolved_ptype)
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
                     if isinstance(arg, TpyNoneLiteral):
-                        gen_args.append("nullptr")
+                        gen_args.append(self._nullptr_for_optional(resolved_ptype))
                     elif self.ctx.is_indirect_name(arg):
                         # Already a T* pointer-local/global -- pass as-is
                         gen_args.append(self.gen_expr(arg, resolved_ptype))
@@ -968,7 +979,7 @@ class ExpressionGenerator:
                 actual_ptype = unwrap_readonly(ptype) if ptype else ptype
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
                     if isinstance(a, TpyNoneLiteral):
-                        gen_args.append("nullptr")
+                        gen_args.append(self._nullptr_for_optional(ptype))
                     elif self.ctx.is_indirect_name(a):
                         gen_args.append(self.gen_expr(a, ptype))
                     elif isinstance(self.ctx.get_expr_type(a), OptionalType):
@@ -1019,6 +1030,22 @@ class ExpressionGenerator:
                         if covariant_arg is not None:
                             gen_args.append(covariant_arg)
                             continue
+                    # Optional non-value params are T* / const T* -- pass raw pointer
+                    actual_ptype = unwrap_readonly(ptype) if ptype else ptype
+                    if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
+                        if isinstance(arg, TpyNoneLiteral):
+                            gen_args.append(self._nullptr_for_optional(ptype))
+                        elif self.ctx.is_indirect_name(arg):
+                            gen_args.append(self.gen_expr(arg, ptype))
+                        elif isinstance(self.ctx.get_expr_type(arg), OptionalType):
+                            arg_gen = self.gen_expr(arg, ptype)
+                            if isinstance(arg, TpyFieldAccess):
+                                gen_args.append(f"tpy::optional_to_ptr({arg_gen})")
+                            else:
+                                gen_args.append(arg_gen)
+                        else:
+                            gen_args.append(f"&({self.gen_expr(arg, ptype)})")
+                        continue
                     gen_args.append(self.gen_call_arg(arg, ptype))
             args = ", ".join(gen_args)
         else:
@@ -1179,9 +1206,25 @@ class ExpressionGenerator:
                                 gen_args.append(self.gen_expr_deref(arg))
                         else:
                             rptype = resolved_params[i].type if i < len(resolved_params) else ptype
-                            # None literals need target type to decide nullptr vs std::nullopt
-                            arg_target = rptype if isinstance(arg, TpyNoneLiteral) else None
-                            gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target))
+                            # Optional non-value params are T* / const T*
+                            actual_rptype = unwrap_readonly(rptype) if rptype else rptype
+                            if isinstance(actual_rptype, OptionalType) and actual_rptype.uses_pointer_repr():
+                                if isinstance(arg, TpyNoneLiteral):
+                                    gen_args.append(self._nullptr_for_optional(rptype))
+                                elif self.ctx.is_indirect_name(arg):
+                                    gen_args.append(self.gen_expr(arg, rptype))
+                                elif isinstance(self.ctx.get_expr_type(arg), OptionalType):
+                                    arg_gen = self.gen_expr(arg, rptype)
+                                    if isinstance(arg, TpyFieldAccess):
+                                        gen_args.append(f"tpy::optional_to_ptr({arg_gen})")
+                                    else:
+                                        gen_args.append(arg_gen)
+                                else:
+                                    gen_args.append(f"&({self.gen_expr(arg, rptype)})")
+                            else:
+                                # None literals need target type to decide nullptr vs std::nullopt
+                                arg_target = rptype if isinstance(arg, TpyNoneLiteral) else None
+                                gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target))
                     args = ", ".join(gen_args)
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions

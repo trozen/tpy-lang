@@ -1380,6 +1380,20 @@ struct Container {
 };
 ```
 
+**`Optional[Protocol]` parameters**: Parameters typed `Optional[Protocol]` (e.g., `items: Optional[Sized] = None`) use pointer repr (`const T*`) in C++ with a default template argument of `std::nullptr_t`. Narrowing (`if items is not None:`) uses `!= nullptr` and dereference (`(*items)`) works automatically. Protocol operations inside narrowing bodies are wrapped in `if constexpr (!std::same_as<T, std::nullptr_t>)` to prevent instantiation when the argument is omitted or `None`.
+
+```python
+class Container:
+    count: int
+    def __init__(self, items: Optional[Sized] = None) -> None:
+        if items is not None:
+            self.count = len(items)
+        else:
+            self.count = 0
+```
+
+All call patterns work: concrete values (`Container(nums)` -> `&nums`), explicit `None` (`Container(None)` -> typed nullptr), and omitted optional args (`Container()` -> delegates to template ctor with nullptr). This applies to constructors, methods, and free functions.
+
 #### Working: Protocol Inheritance
 
 Protocols can inherit from other protocols, creating combined protocols that require all methods from parent protocols:

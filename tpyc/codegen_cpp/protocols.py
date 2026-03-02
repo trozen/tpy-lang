@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType,
+    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, OptionalType,
     MethodSignature, is_protocol_type, unwrap_readonly,
 )
 from ..parse import TpyProtocol, TpyRecord
@@ -37,21 +37,39 @@ class ProtocolGenerator:
                 return typ.with_protocol_flag(is_protocol=True)
         return typ
 
-    def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType]]:
-        """Get list of static protocol-typed parameters (unwraps readonly[protocol]).
+    def is_optional_static_protocol(self, typ: TpyType) -> bool:
+        """Check if a type is Optional[StaticProtocol].
 
+        These use pointer repr (const T*) in codegen, with a nullptr_t default
+        template argument and requires clause for deduction.
+        """
+        if not isinstance(typ, OptionalType):
+            return False
+        resolved = self.resolve_type_for_codegen(typ.inner)
+        if not is_protocol_type(resolved):
+            return False
+        protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+        return not (protocol_info and protocol_info.is_dynamic)
+
+    def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType, bool]]:
+        """Get list of static protocol-typed parameters (unwraps readonly/Optional).
+
+        Returns (param_name, protocol_type, is_optional) tuples.
         Excludes @dynamic protocols -- those use concrete base class ref params
         instead of template parameters.
         """
         result = []
         for pname, ptype in params:
             unwrapped = unwrap_readonly(ptype)
+            is_optional = isinstance(unwrapped, OptionalType)
+            if is_optional:
+                unwrapped = unwrapped.inner
             resolved = self.resolve_type_for_codegen(unwrapped)
             if is_protocol_type(resolved):
                 protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                 if protocol_info and protocol_info.is_dynamic:
                     continue
-                result.append((pname, resolved))
+                result.append((pname, resolved, is_optional))
         return result
 
     def get_concept_name(self, protocol: NamedType) -> str:
@@ -159,32 +177,59 @@ class ProtocolGenerator:
                 template_parts.append(f"typename {tp}")
         return f"template<{', '.join(template_parts)}>"
 
-    def gen_template_header(self, protocol_params: list[tuple[str, NamedType]]) -> str:
+    def _concept_constraint(self, pname: str, ptype: NamedType) -> str:
+        """Build the concept constraint expression for a protocol template param.
+
+        Returns e.g. 'tpy::Sized<T_items>' or 'tpy::Sequence<T_items, int32_t>'.
+        """
+        concept_name = self.get_concept_name(ptype)
+        if ptype.type_args:
+            type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
+            return f"{concept_name}<T_{pname}, {type_args_cpp}>"
+        return f"{concept_name}<T_{pname}>"
+
+    def gen_template_header(self, protocol_params: list[tuple[str, NamedType, bool]],
+                             *, emit_defaults: bool = True) -> str:
         """Generate template header with concept constraints for protocol params.
 
         For non-generic protocols: template<tpy::Sized T_items>
         For generic protocols: template<tpy::Sequence<int32_t> T_items>
+        Optional protocol params get typename T_pname = std::nullptr_t with a
+        requires clause instead of abbreviated concept syntax.
+
+        emit_defaults: if False, skip the '= std::nullptr_t' default (for definitions
+        when the forward declaration already has it).
         """
         if not protocol_params:
             return ""
         template_parts = []
-        for pname, ptype in protocol_params:
-            # Look up protocol to get C++ concept name via unified registry
+        requires_parts = []
+        for pname, ptype, is_optional in protocol_params:
             concept_name = self.get_concept_name(ptype)
 
-            # For generic protocols, add type arguments
-            if ptype.type_args:
-                type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
-                template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
+            if is_optional:
+                default_part = " = std::nullptr_t" if emit_defaults else ""
+                template_parts.append(f"typename T_{pname}{default_part}")
+                constraint = self._concept_constraint(pname, ptype)
+                requires_parts.append(
+                    f"(std::same_as<T_{pname}, std::nullptr_t> || {constraint})")
             else:
-                template_parts.append(f"{concept_name} T_{pname}")
-        return f"template<{', '.join(template_parts)}>\n"
+                if ptype.type_args:
+                    type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
+                    template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
+                else:
+                    template_parts.append(f"{concept_name} T_{pname}")
+        result = f"template<{', '.join(template_parts)}>\n"
+        if requires_parts:
+            result += f"  requires {' && '.join(requires_parts)}\n"
+        return result
 
     def gen_combined_template_header(
         self,
         type_params: list[str],
-        protocol_params: list[tuple[str, NamedType]],
-        type_param_bounds: dict[str, NamedType] | None = None
+        protocol_params: list[tuple[str, NamedType, bool]],
+        type_param_bounds: dict[str, NamedType] | None = None,
+        *, emit_defaults: bool = True,
     ) -> str:
         """Generate template header combining type parameters and concept constraints.
 
@@ -208,18 +253,29 @@ class ProtocolGenerator:
                 template_parts.append(f"typename {tp}")
 
         # Add protocol params with concept constraints
-        for pname, ptype in protocol_params:
+        requires_parts = []
+        for pname, ptype, is_optional in protocol_params:
             concept_name = self.get_concept_name(ptype)
 
-            if ptype.type_args:
-                type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
-                template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
+            if is_optional:
+                default_part = " = std::nullptr_t" if emit_defaults else ""
+                template_parts.append(f"typename T_{pname}{default_part}")
+                constraint = self._concept_constraint(pname, ptype)
+                requires_parts.append(
+                    f"(std::same_as<T_{pname}, std::nullptr_t> || {constraint})")
             else:
-                template_parts.append(f"{concept_name} T_{pname}")
+                if ptype.type_args:
+                    type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
+                    template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
+                else:
+                    template_parts.append(f"{concept_name} T_{pname}")
 
         if not template_parts:
             return ""
-        return f"template<{', '.join(template_parts)}>\n"
+        result = f"template<{', '.join(template_parts)}>\n"
+        if requires_parts:
+            result += f"  requires {' && '.join(requires_parts)}\n"
+        return result
 
     def collect_concept_methods(self, protocol_name: str, visited: set[str] | None = None) -> list[MethodSignature]:
         """Collect methods from a protocol and all its parents for concept generation."""
