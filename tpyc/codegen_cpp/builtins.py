@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    ListType, ArrayType, SpanType, TupleType, is_protocol_type, unwrap_readonly, is_any_str_type,
+    ListType, DictType, ArrayType, SpanType, TupleType, is_protocol_type, unwrap_readonly, is_any_str_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -245,6 +245,9 @@ class BuiltinGenerator:
             elif is_any_str_type(arg_type):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))
+            elif isinstance(arg_type, DictType):
+                # Dict uses DictPrinter for {k: v, ...} formatting
+                parts.append(f'tpy::DictPrinter({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, (ListType, ArrayType, SpanType)) or (
                 isinstance(arg_type, NamedType) and arg_type.qualified_name() == "tpy.StaticList"
             ):

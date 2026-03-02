@@ -1,0 +1,1 @@
+main.py:3: error: Empty dict literal requires type annotation (e.g. d: dict[str, int] = {})

@@ -1703,7 +1703,7 @@ class StatementGenerator:
             else:
                 elem_type = None  # Will use auto
         else:
-            elem_type = iterable_type.get_element_type()
+            elem_type = iterable_type.get_iteration_element_type()
 
         # Resolve IntLiteralType to configured default integer type.
         if isinstance(elem_type, IntLiteralType):

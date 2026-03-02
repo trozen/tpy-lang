@@ -4,9 +4,9 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Core dict: `ordered_map` runtime, DictType, parser, sema, codegen, literals, subscript, `len`, `in`, `for k in d`, `print`, `get`/`pop`/`clear`, tests | Not started |
-| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`, `setdefault()` | Not started |
-| 3 | Tuple-dependent (A10): `.items()` iteration, `dict(pairs)` constructor, dict comprehensions | Not started |
+| 1 | Core dict: `ordered_map` runtime, DictType, parser, sema, codegen, literals, subscript, `len`, `in`, `for k in d`, `print`, `get`/`pop`/`clear`, tests | Done |
+| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`, `setdefault()`, `del d[k]` | Not started |
+| 3 | Tuple-dependent: `.items()` iteration, `dict(pairs)` constructor, dict comprehensions | Not started |
 
 ---
 
@@ -42,7 +42,7 @@ insertion order (matching Python 3.7+ dict semantics).
    custom `tpy::ordered_map` rather than `std::unordered_map`.
 
 2. **Key type safety**: Only types with well-defined C++ hash and equality are accepted
-   as keys (str, int, fixed-width ints, float, bool, Char, Enum). User records with
+   as keys (str, fixed-width ints, float, bool, Char, Enum). User records with
    `__hash__` and `__eq__` can be added later. Unhashable types (list, dict, Optional)
    are rejected at compile time.
 
@@ -53,6 +53,10 @@ insertion order (matching Python 3.7+ dict semantics).
 4. **No deferred resolution**: Unlike list literals (which may resolve to `Array` or
    `list`), dict literals always produce `dict[K, V]`. There is no immutable dict
    variant, so no `PendingDictType` is needed.
+
+5. **Dunder protocol**: Dict operations use the same `tpy::__getitem__` / `tpy::__setitem__`
+   / `tpy::__len__` / `tpy::__bool__` overload pattern as list (defined in `dunder.hpp`).
+   Dict-specific methods (`get`, `pop`) live in `dict_ops.hpp`.
 
 ---
 
@@ -82,72 +86,32 @@ Hash table (std::unordered_map<K, Node*>)
 - **Iteration**: Follows the linked list (insertion order)
 - **Memory**: One allocation per entry (the Node). Nodes are heap-allocated individually.
 
-### Interface
+### Two Iterator Types
+
+The map has two iterator families, matching Python's dict semantics:
+
+- **Key iterator** (default `begin()`/`end()`): Yields `const K&`. Used by `for k in d`,
+  making C++ range-for work generically with no special codegen.
+- **Items iterator** (`items_begin()`/`items_end()`): Yields proxy `pair<const K&, V&>`.
+  Used internally by `find()`, `DictPrinter`, and runtime helpers. Will be exposed to
+  user code via `.items()` in Phase 3.
+
+This split means `for k in d` uses the same generic range-for codegen path as lists
+and other containers -- no dict-specific branch in the codegen.
+
+### KeyArg Template Pattern
+
+Dict runtime functions use a separate `KeyArg` template parameter (deduced from the
+argument) to accept key-compatible types without requiring exact match. For example,
+`std::string_view` can be passed where `K=std::string`, with `K(key)` performing
+explicit conversion:
 
 ```cpp
-namespace tpy {
-
-template<typename K, typename V>
-class ordered_map {
-public:
-    // -- Construction --
-    ordered_map() = default;
-    ordered_map(std::initializer_list<std::pair<K, V>> init);
-    ordered_map(const ordered_map& other);
-    ordered_map(ordered_map&& other) noexcept;
-    ordered_map& operator=(const ordered_map& other);
-    ordered_map& operator=(ordered_map&& other) noexcept;
-    ~ordered_map();
-
-    // -- Element access --
-    V& operator[](const K& key);              // insert-or-access (for d[k] = v)
-    const V& at(const K& key) const;          // throws/panics on missing key
-
-    // -- Capacity --
-    int32_t size() const;
-    bool empty() const;
-
-    // -- Modifiers --
-    void insert_or_assign(const K& key, V value);
-    bool erase(const K& key);                 // returns true if found
-    void clear();
-
-    // -- Lookup --
-    bool contains(const K& key) const;
-    iterator find(const K& key);
-    const_iterator find(const K& key) const;
-
-    // -- Iteration (insertion order) --
-    iterator begin();
-    iterator end();
-    const_iterator begin() const;
-    const_iterator end() const;
-
-    // -- Comparison --
-    bool operator==(const ordered_map& other) const;
-    bool operator!=(const ordered_map& other) const;
-
-private:
-    struct Node {
-        K key;
-        V value;
-        Node* prev = nullptr;
-        Node* next = nullptr;
-    };
-
-    std::unordered_map<K, Node*> table_;   // hash lookup
-    Node* head_ = nullptr;                 // first inserted
-    Node* tail_ = nullptr;                 // last inserted
-};
-
-}  // namespace tpy
-```
-
-The iterator dereferences to `std::pair<const K&, V&>` (or a proxy), matching
-`std::unordered_map` iteration semantics so that structured bindings work:
-
-```cpp
-for (auto& [key, value] : d) { ... }
+template<typename K, typename V, typename KeyArg>
+V dict_pop(ordered_map<K, V>& m, const KeyArg& key) {
+    auto it = m.find(K(key));  // explicit conversion
+    ...
+}
 ```
 
 ### Equality
@@ -163,7 +127,7 @@ exists with the same value in `other`.
 
 ---
 
-## Phase 1: Core Dict
+## Phase 1: Core Dict (Done)
 
 ### 1. Type System
 
@@ -188,498 +152,110 @@ class DictType(NamedType):
     def to_cpp(self) -> str:
         return f"tpy::ordered_map<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
 
-    def __str__(self) -> str:
-        return f"dict[{self.key_type}, {self.value_type}]"
-
-    def qualified_name(self) -> str | None:
-        return "builtins.dict"
-
     def get_element_type(self) -> TpyType | None:
-        # Subscript result type: d[k] -> V
-        return self.value_type
+        return self.value_type       # d[k] -> V
 
     def get_iteration_element_type(self) -> TpyType | None:
-        # For-loop variable type: for k in d -> K
-        return self.key_type
-
-    def inner_types(self) -> tuple[TpyType, ...]:
-        return (self.key_type, self.value_type)
-
-    def with_inner_types(self, types: tuple[TpyType, ...]) -> TpyType:
-        return DictType(types[0], types[1])
+        return self.key_type         # for k in d -> K
 ```
 
-**Split element type methods**: `get_element_type()` returns the value type V
-(for subscript: `d[k] -> V`), while a new `get_iteration_element_type()` returns
-the key type K (for `for k in d`). For all existing types (list, Array, Span, str),
-`get_iteration_element_type()` defaults to `get_element_type()` (same type for both).
-This avoids a dict-specific branch in subscript analysis.
-
-The base `TpyType.get_iteration_element_type()` returns `self.get_element_type()`
-by default, so only `DictType` overrides it.
+**Split element type methods**: `get_element_type()` returns V (for subscript),
+`get_iteration_element_type()` returns K (for iteration). The base `TpyType`
+defaults `get_iteration_element_type()` to `get_element_type()`, so only `DictType`
+overrides it. No dict-specific branches needed in the generic for-each codegen.
 
 ### 2. Parser
 
-**New AST node in `tpyc/parse/nodes.py`**:
-
-```python
-@dataclass
-class TpyDictLiteral(TpyExpr):
-    """Dict literal: {key: value, key: value, ...}"""
-    keys: list[TpyExpr]
-    values: list[TpyExpr]
-```
-
-**Parser changes in `tpyc/parse/parser.py`**:
-
-1. Remove `"dict"` from `FORBIDDEN_CONSTRUCTS` (line 153)
-2. Add `ast.Dict` handling in `_parse_expr()` (near line 1732, after `ast.List`):
-
-```python
-elif isinstance(node, ast.Dict):
-    keys = [self._parse_expr(k) for k in node.keys]
-    values = [self._parse_expr(v) for v in node.values]
-    return TpyDictLiteral(keys=keys, values=values, loc=loc)
-```
-
-Note: Python's `ast.Dict` represents `{**other}` unpacking as `keys=[None]`. We
-reject this in Phase 1 -- all keys must be non-None expressions.
-
-**Type annotation support**: Dict type annotations (`dict[str, Int32]`) are already
-parsed as generic type subscripts. When `"dict"` is removed from `FORBIDDEN_CONSTRUCTS`,
-the existing `lookup_generic_type("dict")` path in the parser will find the registered
-builtin type and create the appropriate `DictType` via the type factory.
+**New AST node** `TpyDictLiteral` in `tpyc/parse/nodes.py` with `keys` and `values`
+lists. `ast.Dict` handling added in `parser.py`. `"dict"` removed from
+`FORBIDDEN_CONSTRUCTS`.
 
 ### 3. Module Registration
 
-**In `tpyc/modules/builtins.py`**, register the dict type alongside list:
-
-```python
-K = TypeParamRef("K", kind=TypeParamKind.TYPE)
-V = TypeParamRef("V", kind=TypeParamKind.TYPE)
-
-DICT_MUTATION_METHODS = frozenset({
-    "__setitem__", "pop", "clear", "update", "setdefault",
-})
-
-module.type("dict", cpp_type="tpy::ordered_map<{K}, {V}>",
-            type_params=["K", "V"],
-            param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
-            type_factory=lambda k, v: DictType(k, v),
-            methods={
-    "__len__": [MethodDef(
-        params=[],
-        returns=INT32,
-        cpp="{self}.size()",
-        is_readonly=True,
-    )],
-    "__getitem__": [MethodDef(
-        params=[ParamDef("key", K)],
-        returns=V,
-        cpp="tpy::dict_getitem({self}, {0})",
-        is_readonly=True,
-    )],
-    "__setitem__": [MethodDef(
-        params=[ParamDef("key", K), ParamDef("value", OwnType(V))],
-        returns=VOID,
-        cpp="tpy::dict_setitem({self}, {0}, {1})",
-    )],
-    "get": [
-        # get(key) -> V | None
-        MethodDef(
-            params=[ParamDef("key", K)],
-            returns=OptionalType(V),
-            cpp="tpy::dict_get({self}, {0})",
-            is_readonly=True,
-        ),
-        # get(key, default) -> V  (Phase 2: different return type per overload)
-    ],
-    "pop": [
-        # pop(key) -> V  (panics on missing)
-        MethodDef(
-            params=[ParamDef("key", K)],
-            returns=V,
-            cpp="tpy::dict_pop({self}, {0})",
-        ),
-        # pop(key, default) -> V
-        MethodDef(
-            params=[ParamDef("key", K), ParamDef("default", V)],
-            returns=V,
-            cpp="tpy::dict_pop_default({self}, {0}, {1})",
-        ),
-    ],
-    "clear": [MethodDef(
-        params=[],
-        returns=VOID,
-        cpp="{self}.clear()",
-    )],
-}, constructors=[
-    # dict() -> empty dict
-    MethodDef(
-        params=[],
-        returns=V,  # placeholder, sema handles
-        cpp="tpy::ordered_map<{K}, {V}>()",
-        is_readonly=True,
-    ),
-])
-```
-
-### 4. Sema: Dict Literal Analysis
-
-**In `tpyc/sema/expressions.py`**, add `_analyze_dict_literal()`:
-
-```python
-def _analyze_dict_literal(self, expr: TpyDictLiteral) -> TpyType:
-    if len(expr.keys) == 0:
-        raise self.ctx.error(
-            "Empty dict literal requires type annotation (e.g. d: dict[str, int] = {})",
-            expr,
-        )
-
-    # Analyze all keys and values
-    key_types = [self.analyze_expr(k) for k in expr.keys]
-    value_types = [self.analyze_expr(v) for v in expr.values]
-
-    # All keys must have the same type
-    key_type = key_types[0]
-    for i, kt in enumerate(key_types[1:], 1):
-        if kt != key_type:
-            raise self.ctx.error(
-                f"Dict key {i} has type {kt}, expected {key_type}", expr
-            )
-
-    # All values must have the same type
-    value_type = value_types[0]
-    for i, vt in enumerate(value_types[1:], 1):
-        if vt != value_type:
-            raise self.ctx.error(
-                f"Dict value {i} has type {vt}, expected {value_type}", expr
-            )
-
-    # Validate key type is hashable
-    _validate_dict_key_type(key_type, expr, self.ctx)
-
-    return DictType(key_type, value_type)
-```
-
-**Key type validation**: Check that the key type is one of the allowed hashable types.
-
-```python
-_HASHABLE_TYPES = (
-    Int32Type, BigIntType, FloatType, BoolType, CharType,
-    StrType, StringType, StrViewType, PendingStrType,
-)
-
-def _validate_dict_key_type(key_type: TpyType, expr, ctx) -> None:
-    if isinstance(key_type, _HASHABLE_TYPES):
-        return
-    if isinstance(key_type, FixedIntType):
-        return
-    if isinstance(key_type, (EnumType, IntEnumType)):
-        return
-    if isinstance(key_type, IntLiteralType):
-        return
-    raise ctx.error(
-        f"Type '{key_type}' cannot be used as a dict key (not hashable)",
-        expr,
-    )
-```
-
-**Empty dict with annotation**: When a dict literal `{}` has a target type from an
-annotation (`d: dict[str, Int32] = {}`), the empty literal should adopt that type.
-This mirrors how empty list literals work -- the annotation provides the element type.
-
-### 5. Sema: Subscript for Dict
-
-The current `_analyze_subscript()` (expressions.py:926) requires integer index types
-(line 949). Dict subscript uses non-integer keys. Add a dict-specific branch:
-
-```python
-# In _analyze_subscript, after analyzing obj_type and index_type:
-
-# Dict subscript: d[key] -> V (key type must match K)
-if isinstance(actual_type, DictType):
-    if not self._types_compatible_for_dict_key(index_type, actual_type.key_type):
-        raise self.ctx.error(
-            f"Dict key type mismatch: expected {actual_type.key_type}, "
-            f"got {index_type}",
-            expr,
-        )
-    return actual_type.value_type
-
-# Existing integer check (only for non-dict types):
-if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
-    raise self.ctx.error(...)
-```
-
-This branch must come **before** the integer type check.
-
-**Subscript assignment** (`d[k] = v`): The existing `_analyze_assign` path for
-subscript targets should work via the `__setitem__` method lookup. Verify that
-the subscript target analysis also handles dict (non-integer key).
-
-### 6. Sema: `in` Operator for Dict
-
-The `in` operator (expressions.py:434) checks that the right side is iterable and
-the left operand matches the element type. Since `get_element_type()` now returns V
-(the value type), dict needs a dedicated branch **before** the generic iterable check
-to validate against the key type:
-
-```python
-if isinstance(right_type, DictType):
-    if not types_compatible(left_type, right_type.key_type):
-        raise self.ctx.error(
-            f"Cannot check '{left_type}' membership in dict[{right_type.key_type}, ...]",
-            expr,
-        )
-    return BOOL
-```
-
-### 7. Sema: For-Each Iteration
-
-`for k in d` should iterate over keys. The sema path uses
-`get_iteration_element_type()` (new method, returns K for dict) to determine the
-loop variable type. The ordered_map's C++ iterator yields pairs, so codegen needs
-a dict-specific path to extract just the key (see codegen section).
-
-### 8. Codegen: Dict Literal
-
-**In `tpyc/codegen_cpp/expressions.py`**, add `_gen_dict_literal()`:
-
-```python
-def _gen_dict_literal(self, expr: TpyDictLiteral, target_type: TpyType | None) -> str:
-    dict_type = self.types.get_resolved_type(expr)
-    assert isinstance(dict_type, DictType)
-
-    cpp_key = dict_type.key_type.to_cpp()
-    cpp_val = dict_type.value_type.to_cpp()
-
-    if len(expr.keys) == 0:
-        # Empty dict: needs type from annotation
-        return f"tpy::ordered_map<{cpp_key}, {cpp_val}>()"
-
-    pairs = []
-    for k, v in zip(expr.keys, expr.values):
-        k_cpp = self.gen_expr(k)
-        v_cpp = self.gen_expr(v)
-        pairs.append(f"{{{k_cpp}, {v_cpp}}}")
-
-    return f"tpy::ordered_map<{cpp_key}, {cpp_val}>({{ {', '.join(pairs)} }})"
-```
-
-### 9. Codegen: Subscript, `in`, For-Each
-
-**Subscript read** (`d[k]`): The existing `_gen_subscript()` uses
-`get_type_method_template()` to find the `__getitem__` cpp template. This should
-work via the registered method: `tpy::dict_getitem({self}, {0})`.
-
-**Subscript write** (`d[k] = v`): Similarly uses `__setitem__` template. The key
-difference from list: the `gen_index_expr()` helper (which converts BigInt to int32)
-must NOT be called for dict keys. Add a dict check before index conversion.
-
-**`in` operator** (expressions.py:374): Currently generates `std::find()` for
-non-string collections. Add a dict-specific branch:
-
-```python
-if isinstance(right_resolved, DictType):
-    find_expr = f"({right}.contains({left}))"
-```
-
-This is more efficient than `std::find` and semantically correct (checks keys only).
-
-**For-each iteration**: The ordered_map iterator yields pairs. For `for k in d`, we
-need to extract just the key. Add a dict branch in `_gen_for_each()`:
-
-```python
-if isinstance(iterable_type, DictType):
-    iterable = self.expressions.gen_expr_deref(stmt.iterable)
-    cpp_var = escape_cpp_name(stmt.var)
-    key_type = iterable_type.key_type
-    cpp_type = key_type.to_cpp()
-    self.ctx.temps.flush(out, indent)
-    # Extract key from pair using structured binding
-    out.write(f"{indent}for (auto& [__k, __v] : {iterable}) {{\n")
-    out.write(f"{indent}    {cpp_type} {cpp_var} = __k;\n")
-    self.ctx.var_types[stmt.var] = key_type
-    self._gen_loop_body(out, stmt, indent, key_type)
-    return
-```
-
-Alternative: use `std::views::keys` from C++23:
-
-```python
-out.write(f"{indent}for ({cpp_type} {cpp_var} : {iterable} | std::views::keys) {{\n")
-```
-
-This is cleaner and avoids the extra variable declaration.
-
-### 10. Codegen: `print(d)`
-
-**Runtime `DictPrinter`** in `printing.hpp` (or `dict_ops.hpp`):
-
-```cpp
-template<typename K, typename V>
-struct DictPrinter {
-    const tpy::ordered_map<K, V>& value;
-    explicit DictPrinter(const tpy::ordered_map<K, V>& v) : value(v) {}
-};
-
-template<typename K, typename V>
-std::ostream& operator<<(std::ostream& os, const DictPrinter<K, V>& p) {
-    os << '{';
-    bool first = true;
-    for (auto& [k, v] : p.value) {
-        if (!first) os << ", ";
-        first = false;
-        detail::print_element(os, k);
-        os << ": ";
-        detail::print_element(os, v);
-    }
-    os << '}';
-    return os;
-}
-```
-
-**Codegen** (builtins.py `gen_print()`): Detect `DictType` and emit
-`tpy::DictPrinter(expr)`.
-
-### 11. Runtime: `dict_ops.hpp`
-
-New file `runtime/cpp/include/tpy/dict_ops.hpp`:
-
-```cpp
-#pragma once
-
-#include "ordered_map.hpp"
-#include "core.hpp"
-#include <optional>
-
-namespace tpy {
-
-// d[key] -- panics on missing key (KeyError)
-template<typename K, typename V>
-const V& dict_getitem(const ordered_map<K, V>& m, const K& key) {
-    auto it = m.find(key);
-    if (it == m.end()) {
-        tpy_panic("KeyError");
-    }
-    return (*it).second;
-}
-
-// Mutable version for augmented assignment (d[k] += v)
-template<typename K, typename V>
-V& dict_getitem(ordered_map<K, V>& m, const K& key) {
-    auto it = m.find(key);
-    if (it == m.end()) {
-        tpy_panic("KeyError");
-    }
-    return (*it).second;
-}
-
-// d[key] = value (insert or update)
-template<typename K, typename V>
-void dict_setitem(ordered_map<K, V>& m, const K& key, V value) {
-    m.insert_or_assign(key, std::move(value));
-}
-
-// d.get(key) -> Optional[V]
-template<typename K, typename V>
-std::optional<V> dict_get(const ordered_map<K, V>& m, const K& key) {
-    auto it = m.find(key);
-    if (it == m.end()) return std::nullopt;
-    return (*it).second;
-}
-
-// d.pop(key) -> V (panics on missing)
-template<typename K, typename V>
-V dict_pop(ordered_map<K, V>& m, const K& key) {
-    auto it = m.find(key);
-    if (it == m.end()) {
-        tpy_panic("KeyError");
-    }
-    V result = std::move((*it).second);
-    m.erase(key);
-    return result;
-}
-
-// d.pop(key, default) -> V
-template<typename K, typename V>
-V dict_pop_default(ordered_map<K, V>& m, const K& key, const V& def) {
-    auto it = m.find(key);
-    if (it == m.end()) return def;
-    V result = std::move((*it).second);
-    m.erase(key);
-    return result;
-}
-
-// __len__ overload
-template<typename K, typename V>
-int32_t __len__(const ordered_map<K, V>& m) {
-    return m.size();
-}
-
-// __bool__ overload
-template<typename K, typename V>
-bool __bool__(const ordered_map<K, V>& m) {
-    return !m.empty();
-}
-
-}  // namespace tpy
-```
-
-### 12. Runtime: `BigInt` Hash
-
-`BigInt` needs a `std::hash` specialization for use as a dict key. Add to `bigint.hpp`:
-
-```cpp
-namespace std {
-template<>
-struct hash<tpy::BigInt> {
-    size_t operator()(const tpy::BigInt& b) const noexcept {
-        // Use the internal representation for hashing
-        if (b.is_small()) {
-            return std::hash<int64_t>{}(b.small_value());
-        }
-        // For large values, hash the limbs
-        size_t h = 0;
-        for (auto limb : b.limbs()) {
-            h ^= std::hash<uint32_t>{}(limb) + 0x9e3779b9 + (h << 6) + (h >> 2);
-        }
-        return h;
-    }
-};
-}
-```
-
-If `BigInt`'s internal API doesn't expose `is_small()` / `small_value()` / `limbs()`,
-a simpler fallback is hashing `b.to_string()`. The exact implementation depends on
-what BigInt exposes -- the key point is that a `std::hash<BigInt>` must exist.
-
-Enum types already use `enum class` which has a default `std::hash` via the underlying
-integer type.
-
-### 13. CPython Stubs
-
-Dict is native to Python, so no CPython stubs are needed for the dict type itself.
-However, test files using TPy types (Int32, etc.) as values already have stubs in
-`lib/cpy/tpy/`. No new CPython stubs required for dict.
-
-### 14. Key Type Validation
-
-**Allowed key types** (Phase 1):
+**In `tpyc/modules/builtins.py`**, dict is registered with methods that use the
+standard dunder protocol:
+
+- `__getitem__`: `tpy::__getitem__({self}, {0})` (overload in `dunder.hpp`)
+- `__setitem__`: `tpy::__setitem__({self}, {0}, {1})` (overload in `dunder.hpp`)
+- `__len__`: `tpy::__len__({self})` (overload in `dunder.hpp`)
+- `get`: `tpy::dict_get({self}, {0})` (in `dict_ops.hpp`)
+- `pop`: `tpy::dict_pop({self}, {0})` / `tpy::dict_pop_default({self}, {0}, {1})`
+- `clear`: `{self}.clear()`
+
+### 4. Sema
+
+**Dict literal analysis** (`_analyze_dict_literal`):
+- Unifies key and value types across all entries
+- IntLiteralType is resolved using annotation context when available (via
+  `analyze_expr_with_hint`), falling back to `default_int_for_literal`
+- Validates key type is hashable
+
+**Annotation hint propagation**: When a dict literal has an annotation context
+(e.g. `d: dict[str, int] = {"a": 1}`), the expected key/value types are passed
+to `_analyze_dict_literal`, which uses `analyze_expr_with_hint` to analyze keys
+and values. This allows IntLiteralType to resolve to the annotated type (e.g.
+BigInt) instead of the default (Int32). Works for nested dicts too.
+
+**Subscript**: Dict branch before integer index check. Key type validated via
+`check_type_compatible`.
+
+**`in` operator**: Dict branch checks against `key_type` and generates
+`d.contains(key)`.
+
+**Dangling return check**: `TpyDictLiteral` recognized as a temporary in
+`is_dangling_return()`, giving a proper sema error when returning a dict literal
+without `Own[]`.
+
+**DictType compatibility**: Uses recursive `check_type_compatible` on key and
+value types (not exact match), so `dict[str, Int32]` is compatible with
+`dict[str, Int32]` even through coercion paths.
+
+### 5. Codegen
+
+**Dict literal**: `tpy::ordered_map<K, V>({{k1, v1}, {k2, v2}, ...})`
+
+**Subscript**: Uses registered `__getitem__`/`__setitem__` templates (same path
+as list).
+
+**`in` operator**: `({right}.contains({left}))` -- more efficient than `std::find`.
+
+**For-each iteration**: No dict-specific codegen. The generic range-for path uses
+`get_iteration_element_type()` to determine the loop variable type (K for dict).
+The key iterator makes `for (K k : d)` work directly.
+
+**Print**: `tpy::DictPrinter(expr)` using explicit `items_begin()`/`items_end()`
+iteration.
+
+### 6. Runtime
+
+**`dunder.hpp`**: `__getitem__`, `__setitem__`, `__len__`, `__bool__` overloads
+for `ordered_map`.
+
+**`dict_ops.hpp`**: Dict-specific methods not covered by dunder protocol:
+`dict_get` (returns `std::optional<V>`), `dict_pop`, `dict_pop_default`,
+`DictPrinter`.
+
+### 7. Key Type Validation
+
+**Allowed key types**:
 
 | Type | C++ `std::hash` | Notes |
 |------|-----------------|-------|
 | `str` / `String` / `StrView` | `std::hash<std::string>` / `std::hash<std::string_view>` | Works out of the box |
-| `int` (BigInt) | `std::hash<BigInt>` | Needs new specialization |
 | `Int8`..`Int64`, `UInt8`..`UInt64` | `std::hash<intN_t>` | Works out of the box |
 | `float` | `std::hash<double>` | Works out of the box |
 | `bool` | `std::hash<bool>` | Works out of the box |
 | `Char` | `std::hash<char>` | Works out of the box |
 | `Enum` / `IntEnum` | `std::hash<underlying_int>` | Works via `enum class` |
-| `IntLiteralType` | Resolves to concrete type | Validated after resolution |
 
-**Rejected key types**:
+**Not yet supported as keys**:
+
+| Type | Reason |
+|------|--------|
+| `int` (BigInt) | Sema accepts it, but `std::hash<BigInt>` is not implemented -- C++ compilation fails |
+| User records | Need `__hash__` + `__eq__` (future) |
+
+**Rejected key types** (compile-time error):
 
 | Type | Reason |
 |------|--------|
@@ -687,11 +263,10 @@ However, test files using TPy types (Int32, etc.) as values already have stubs i
 | `dict[K, V]` | Mutable, not hashable in Python |
 | `Optional[T]` | No natural hash for None+T combination |
 | `Ptr[T]` / `ReadOnlyPtr[T]` | Pointer identity is fragile |
-| User records | Need `__hash__` + `__eq__` (future) |
 
-### 15. Tests
+### 8. Tests
 
-Create test cases under `tests/cases/dict/`:
+21 test cases under `tests/cases/dict/`:
 
 | Test | What it covers |
 |------|---------------|
@@ -700,26 +275,29 @@ Create test cases under `tests/cases/dict/`:
 | `dict_in` | `key in d`, `key not in d` |
 | `dict_iteration` | `for k in d` iterates keys in insertion order |
 | `dict_empty` | Empty dict with annotation: `d: dict[str, Int32] = {}` |
-| `dict_constructor` | `dict[str, Int32]()` empty dict via constructor |
-| `dict_int_keys` | Int32 and BigInt as keys |
+| `dict_int_keys` | Int32 as keys |
+| `dict_int_annotation` | `dict[str, int]` annotation with bare int literals |
+| `dict_literal_ints` | Dict literal with bare integer literals (Int32 inference) |
 | `dict_overwrite` | `d[k] = v` overwrites existing key, preserves order |
-| `dict_bool_truthiness` | Empty dict is falsy, non-empty is truthy |
 | `dict_param_return` | Dict as function parameter and return type |
+| `dict_mutate_param` | Dict mutation through function parameter |
+| `dict_nested` | Nested `dict[str, dict[str, Int32]]` with annotation propagation |
 | `error_dict_empty_no_annotation` | `d = {}` without type annotation |
 | `error_dict_key_type` | List or other unhashable type as key |
 | `error_dict_key_mismatch` | Mixed key types in literal |
 | `error_dict_value_mismatch` | Mixed value types in literal |
-| `error_dict_subscript_type` | Wrong key type in subscript |
+| `error_dict_subscript_key_type` | Wrong key type in subscript |
+| `error_dict_in_key_type` | Wrong key type in `in` operator |
+| `error_dict_return_dangling` | Returning dict literal without `Own[]` |
 | `panic_dict_missing_key` | `d[missing_key]` panics |
 | `panic_dict_pop_missing` | `d.pop(missing_key)` panics |
-
-All tests should be CPython-compatible (no `no_cpython.txt`).
 
 ---
 
 ## Phase 2: Extended Methods
 
-Scope: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`, `setdefault()`.
+Scope: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`,
+`setdefault()`, `del d[k]`.
 
 ### `get(key, default)`
 
@@ -740,9 +318,6 @@ vs: list[Int32] = d.values()   # [1, 2]
 ```
 
 C++ implementation: iterate the ordered_map and collect into a `std::vector`.
-
-A future optimization could return lazy views (`std::views::keys` / `std::views::values`),
-but this requires new view types in the type system.
 
 ### `update()`
 
@@ -768,11 +343,20 @@ v = d.setdefault("key", 0)    # insert if missing, return value
 
 C++ implementation: `find` + conditional `insert_or_assign`, return reference.
 
+### `del d[k]`
+
+```python
+del d["key"]    # remove key-value pair
+```
+
+Requires `del` statement support (separate feature E3). C++ implementation:
+`m.erase(key)`.
+
 ---
 
 ## Phase 3: Tuple-Dependent Features
 
-**Blocked by Tuple type (A10).**
+Tuple type (A10) is now implemented. This phase is unblocked.
 
 ### `.items()` Iteration
 
@@ -782,9 +366,11 @@ for k, v in d.items():
 ```
 
 Returns an iterable of `tuple[K, V]`. Requires:
-- Tuple type in the type system
 - Tuple unpacking in for-loop (`for k, v in ...`)
-- `.items()` method returning `list[tuple[K, V]]` or a lazy view
+- `.items()` method using the existing `items_begin()`/`items_end()` iterators
+
+The `items_iterator` already yields proxy `pair<const K&, V&>` which can map
+to `tuple[K, V]`.
 
 ### `dict(pairs)` Constructor
 
@@ -806,17 +392,23 @@ Requires comprehension expression support (separate feature).
 
 ## Future Extensions
 
+- **BigInt keys**: Add `std::hash<BigInt>` specialization to `bigint.hpp`. Sema already
+  accepts BigInt as a key type, but C++ compilation fails without the hash.
 - **Lazy views for `keys()`/`values()`**: Return `std::views::keys` / `std::views::values`
   wrappers instead of allocating `list[K]`/`list[V]`. Needs new view types in the type system.
 - **User records as keys**: Allow user-defined types with `__hash__` + `__eq__` as dict keys.
   Needs `Hashable` protocol in the type system.
-- **`del d[k]`**: Requires `del` statement support (separate feature E3).
+- **Avoid string key copy in for-each**: `for k in d` where K=str generates
+  `for (std::string k : d)`, copying each key. The key iterator yields `const K&`, so
+  `const auto&` would avoid the copy, but this affects all for-each loops (not just dict)
+  and breaks cases where the loop body takes a mutable reference to the element.
+  See `TODO.md` for details.
 
 ---
 
 ## Dependencies
 
-**Blocked by**: Nothing for Phase 1. Phase 3 blocked by Tuple (A10).
+**Blocked by**: Nothing for Phase 1. Phase 3 unblocked (Tuple A10 is implemented).
 
 **Unlocks**:
 - Real-world programs using dicts
@@ -832,39 +424,43 @@ Requires comprehension expression support (separate feature).
 
 | File | Purpose |
 |------|---------|
-| `runtime/cpp/include/tpy/ordered_map.hpp` | `tpy::ordered_map<K,V>` implementation |
-| `runtime/cpp/include/tpy/dict_ops.hpp` | Dict runtime helpers + DictPrinter |
+| `runtime/cpp/include/tpy/ordered_map.hpp` | `tpy::ordered_map<K,V>` with key and items iterators |
+| `runtime/cpp/include/tpy/dict_ops.hpp` | `dict_get`, `dict_pop`, `dict_pop_default`, `DictPrinter` |
 
 ### Modified Files
 
 | File | Changes |
 |------|---------|
-| `tpyc/typesys.py` | Add `DictType` class |
-| `tpyc/parse/nodes.py` | Add `TpyDictLiteral` AST node |
+| `tpyc/typesys.py` | `DictType` class, `get_iteration_element_type()` on base `TpyType` |
+| `tpyc/parse/nodes.py` | `TpyDictLiteral` AST node |
 | `tpyc/parse/__init__.py` | Export `TpyDictLiteral` |
 | `tpyc/parse/parser.py` | Remove "dict" from FORBIDDEN_CONSTRUCTS, parse `ast.Dict` |
-| `tpyc/modules/builtins.py` | Register dict type with methods and constructors |
-| `tpyc/sema/expressions.py` | Dict literal analysis, subscript with non-integer key, `in` operator |
-| `tpyc/sema/statements.py` | Dict subscript assignment |
-| `tpyc/sema/list_literals.py` | Recognize DictType in `is_type_iterable()` |
-| `tpyc/codegen_cpp/expressions.py` | Dict literal codegen, `in` operator for dict, subscript |
-| `tpyc/codegen_cpp/statements.py` | Dict for-each iteration, subscript assignment |
-| `tpyc/codegen_cpp/builtins.py` | `print(d)` with DictPrinter |
-| `tpyc/codegen_cpp/types.py` | Handle DictType in type resolution |
+| `tpyc/modules/builtins.py` | Register dict type with dunder methods and constructors |
+| `tpyc/sema/expressions.py` | Dict literal analysis, annotation hint propagation, subscript, `in` operator, key validation |
+| `tpyc/sema/statements.py` | Empty dict with annotation, dict subscript assignment |
+| `tpyc/sema/compatibility.py` | `TpyDictLiteral` in dangling return check, DictType recursive compatibility |
+| `tpyc/sema/list_literals.py` | Use `get_iteration_element_type()` in fallback path |
+| `tpyc/codegen_cpp/expressions.py` | Dict literal codegen, `in` operator (`contains`), subscript |
+| `tpyc/codegen_cpp/statements.py` | Use `get_iteration_element_type()` for for-each element type |
+| `tpyc/codegen_cpp/builtins.py` | `print(d)` with `DictPrinter` |
+| `runtime/cpp/include/tpy/dunder.hpp` | `__getitem__`, `__setitem__`, `__len__`, `__bool__` overloads for `ordered_map` |
 | `runtime/cpp/include/tpy/tpy.hpp` | Include `ordered_map.hpp` and `dict_ops.hpp` |
-| `runtime/cpp/include/tpy/bigint.hpp` | Add `std::hash<BigInt>` specialization |
 | `docs/LANGUAGE_FEATURES.md` | Document dict[K,V] support |
 
 ---
 
 ## Notes
 
-- **Augmented assignment on subscript**: `d[k] += 1` uses the mutable `dict_getitem()`
-  overload (returns `V&`), so it compiles as `tpy::dict_getitem(d, k) += 1`. Panics
+- **Augmented assignment on subscript**: `d[k] += 1` uses the mutable `__getitem__`
+  overload (returns `V&`), so it compiles as `tpy::__getitem__(d, k) += 1`. Panics
   on missing key, matching Python's `KeyError`.
 
 - **Cross-module dict**: Works via standard header/source split. `ordered_map` is
   header-only.
 
-- **Generic functions with dict**: `def f(d: dict[str, T]) -> T` should work via
-  existing generic inference. Needs testing during implementation.
+- **Generic functions with dict**: `def f(d: dict[str, T]) -> T` works via existing
+  generic inference.
+
+- **`operator[]` on ordered_map**: Provided for standalone C++ use (inserts `V{}` on
+  missing key, like `std::map`). Not used by generated code -- codegen uses the dunder
+  `__getitem__` which panics on missing key (Python semantics).

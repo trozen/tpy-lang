@@ -23,7 +23,7 @@ from .nodes import (
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
@@ -150,7 +150,7 @@ class Parser:
     """Parser for TurboPython source code."""
 
     FORBIDDEN_CONSTRUCTS = {
-        "dict", "set",
+        "set",
         "try", "with", "async", "await",
         "lambda", "yield", "nonlocal",
     }
@@ -1789,6 +1789,13 @@ class Parser:
         elif isinstance(node, ast.List):
             elements = [self._parse_expr(elt) for elt in node.elts]
             return TpyArrayLiteral(elements=elements, loc=loc)
+
+        elif isinstance(node, ast.Dict):
+            if any(k is None for k in node.keys):
+                raise ParseError("Dict unpacking (**) is not supported", node)
+            keys = [self._parse_expr(k) for k in node.keys]
+            values = [self._parse_expr(v) for v in node.values]
+            return TpyDictLiteral(keys=keys, values=values, loc=loc)
 
         elif isinstance(node, ast.Subscript):
             # Subscript can be indexing (values[i]) or type annotation (Array[T, N])

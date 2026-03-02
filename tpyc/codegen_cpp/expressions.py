@@ -9,7 +9,7 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
+    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
@@ -21,7 +21,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -336,6 +336,9 @@ class ExpressionGenerator:
         elif isinstance(expr, TpyTupleLiteral):
             return self._gen_tuple_literal(expr, target_type)
 
+        elif isinstance(expr, TpyDictLiteral):
+            return self._gen_dict_literal(expr)
+
         elif isinstance(expr, TpyListRepeat):
             return self._gen_list_repeat(expr, target_type)
 
@@ -429,7 +432,10 @@ class ExpressionGenerator:
             if self.ctx.is_indirect_name(expr.right):
                 right = f"(*{right})"
             right_resolved = self.types.get_resolved_type(expr.right)
-            if is_any_str_type(right_resolved):
+            if isinstance(right_resolved, DictType):
+                # Dict membership: use .contains()
+                find_expr = f"({right}.contains({left}))"
+            elif is_any_str_type(right_resolved):
                 # String contains: use .find() (works for both std::string and string_view)
                 find_expr = f"({right}.find({left}) != std::string::npos)"
             else:
@@ -1368,6 +1374,23 @@ class ExpressionGenerator:
         if not expr.elements and target_type and target_type.get_element_type() is not None:
             return f"{target_type.to_cpp()}{literal}"
         return literal
+
+    def _gen_dict_literal(self, expr: TpyDictLiteral) -> str:
+        """Generate dict literal code: {k: v, ...} -> tpy::ordered_map<K, V>({{k, v}, ...})"""
+        dict_type = self.ctx.get_expr_type(expr)
+        assert isinstance(dict_type, DictType)
+        cpp_key = dict_type.key_type.to_cpp()
+        cpp_val = dict_type.value_type.to_cpp()
+
+        if not expr.keys:
+            return f"tpy::ordered_map<{cpp_key}, {cpp_val}>()"
+
+        pairs = []
+        for k, v in zip(expr.keys, expr.values):
+            k_cpp = self.gen_expr_deref(k, dict_type.key_type)
+            v_cpp = self.gen_expr_deref(v, dict_type.value_type)
+            pairs.append(f"{{{k_cpp}, {v_cpp}}}")
+        return f"tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
 
     def _gen_list_repeat(self, expr: TpyListRepeat, target_type: TpyType | None) -> str:
         """Generate list repeat code."""

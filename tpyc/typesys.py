@@ -151,6 +151,14 @@ class TpyType:
         """Return the element type for container types, or None for non-containers."""
         return None
 
+    def get_iteration_element_type(self) -> Optional['TpyType']:
+        """Return the element type for for-loop iteration.
+
+        For most containers this is the same as get_element_type().
+        Dict overrides: iteration yields keys (K), not values (V).
+        """
+        return self.get_element_type()
+
     def needs_explicit_element_target(self) -> bool:
         """Return True if array literals need explicit element type targeting.
 
@@ -1283,6 +1291,45 @@ class ListType(NamedType):
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
         return ListType(types[0])
+
+
+class DictType(NamedType):
+    """Dict type: dict[K, V] -> tpy::ordered_map<K, V>"""
+
+    def __init__(self, key_type: TpyType, value_type: TpyType):
+        NamedType.__init__(self, name="dict", type_args=(key_type, value_type),
+                           _module_qname="builtins.dict")
+
+    @property
+    def key_type(self) -> TpyType:
+        return self.type_args[0]
+
+    @property
+    def value_type(self) -> TpyType:
+        return self.type_args[1]
+
+    def to_cpp(self) -> str:
+        return f"tpy::ordered_map<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+
+    def __str__(self) -> str:
+        return f"dict[{self.key_type}, {self.value_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.dict"
+
+    def get_element_type(self) -> Optional[TpyType]:
+        # Subscript result type: d[k] -> V
+        return self.value_type
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        # For-loop variable type: for k in d -> K
+        return self.key_type
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.key_type, self.value_type)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return DictType(types[0], types[1])
 
 
 @dataclass(frozen=True)

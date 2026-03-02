@@ -86,8 +86,9 @@ class IterableHelper:
         if iter_elem is not None:
             return iter_elem
 
-        # Use get_element_type() for container types (list, Array, Span, etc.)
-        return iterable_type.get_element_type()
+        # Use get_iteration_element_type() for container types (list, Array, Span, dict, etc.)
+        # Dict overrides this to return K (key type) instead of V (value type).
+        return iterable_type.get_iteration_element_type()
 
     def get_iterable_element_type(
         self, iterable_type: TpyType, loc: SourceLocation | None = None,

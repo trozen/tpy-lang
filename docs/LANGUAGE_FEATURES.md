@@ -361,7 +361,11 @@ log(f"x={x}")
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
 - **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
-- **Planned**: `dict` - hash map (requires allocation)
+- **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
+  - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `len(d)`, `k in d`, `for k in d`
+  - Methods: `get(k)`, `pop(k)`, `pop(k, default)`, `clear()`
+  - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
+  - Return by value requires `Own[dict[K, V]]`
 - **Planned**: `set` - hash set (requires allocation)
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
 
@@ -3838,7 +3842,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 
 - **Working**: Binary/unary ops, calls, field access
 - **Open**: List comprehensions → unrolled loops for fixed size
-- **Open**: Dict comprehensions → if dict type exists
+- **Open**: Dict comprehensions
 - **Open**: Lambda → anonymous struct with `operator()` or inline
 - **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
 - **Open**: List slice `lst[start:end]` -> new `std::vector`

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
+    ListType, DictType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, StrVarInfo, PtrType, is_const_ptr, NoneType, OptionalType, UnionType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
@@ -20,7 +20,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyGlobal,
-    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyCoerce,
+    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyDictLiteral, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyFieldAccess, TpyFunction,
@@ -708,12 +708,23 @@ class StatementAnalyzer:
             # Handle empty list literal or generic type constructor with explicit type annotation
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
+            is_empty_dict_literal = isinstance(stmt.init, TpyDictLiteral) and not stmt.init.keys
             is_generic_constructor = (isinstance(stmt.init, TpyCall) and
                                       not stmt.init.args and
                                       stmt.init.call_type is None and
                                       builtin_modules.lookup_generic_type(stmt.init.func) is not None)
 
-            if (is_empty_literal or is_generic_constructor) and stmt.type:
+            # Empty dict literal with annotation: d: dict[K, V] = {}
+            if is_empty_dict_literal and stmt.type:
+                if isinstance(stmt.type, DictType):
+                    init_type = stmt.type
+                    self.ctx.set_expr_type(stmt.init, init_type)
+                else:
+                    raise self.ctx.error(
+                        f"Empty dict literal requires dict type annotation, got {stmt.type}",
+                        stmt,
+                    )
+            elif (is_empty_literal or is_generic_constructor) and stmt.type:
                 # Check if annotation matches the constructor's generic type
                 annotation_matches = False
                 if is_generic_constructor:
@@ -1170,12 +1181,14 @@ class StatementAnalyzer:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             if isinstance(obj_type, TupleType):
                 raise self.ctx.error("Tuples are immutable; cannot assign to tuple elements", stmt)
-            elem_type = obj_type.get_element_type()
-            if elem_type is not None:
-                # Check if type conforms to MutableSequence[elem_type]
-                mutable_seq = NamedType("MutableSequence", (elem_type,), is_protocol=True)
-                if not self.protocols.type_conforms_to_protocol(obj_type, mutable_seq):
-                    raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
+            # Dict subscript assignment is always allowed (no read-only dict variant)
+            if not isinstance(unwrap_readonly(obj_type), DictType):
+                elem_type = obj_type.get_element_type()
+                if elem_type is not None:
+                    # Check if type conforms to MutableSequence[elem_type]
+                    mutable_seq = NamedType("MutableSequence", (elem_type,), is_protocol=True)
+                    if not self.protocols.type_conforms_to_protocol(obj_type, mutable_seq):
+                        raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
 
         # Prevent assignment through read-only pointer
         if isinstance(stmt.target, TpyName):

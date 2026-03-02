@@ -20,6 +20,7 @@
 
 #include "static_list.hpp"
 #include "container_ops.hpp"
+#include "ordered_map.hpp"
 
 namespace tpy {
 
@@ -69,6 +70,12 @@ inline int32_t __len__(const char* x) {
 template<typename T, std::size_t N>
 int32_t __len__(const StaticList<T, N>& x) {
     return x.size();  // StaticList::size() already returns int32_t
+}
+
+// Overload: ordered_map (dict)
+template<typename K, typename V>
+int32_t __len__(const ordered_map<K, V>& x) {
+    return x.size();
 }
 
 // Default template: user types that define __len__() method
@@ -141,6 +148,21 @@ inline char __getitem__(std::string_view x, int32_t i) {
     return x[idx];
 }
 
+// Overload: ordered_map (dict) -- key can be any compatible type
+template<typename K, typename V, typename KeyArg>
+const V& __getitem__(const ordered_map<K, V>& m, const KeyArg& key) {
+    auto it = m.find(K(key));
+    if (it == m.items_end()) tpy_panic("KeyError");
+    return (*it).second;
+}
+
+template<typename K, typename V, typename KeyArg>
+V& __getitem__(ordered_map<K, V>& m, const KeyArg& key) {
+    auto it = m.find(K(key));
+    if (it == m.items_end()) tpy_panic("KeyError");
+    return (*it).second;
+}
+
 // Default template: user types that define __getitem__() method
 template<typename T>
     requires requires(const T& t, int32_t i) { t.__getitem__(i); }
@@ -179,6 +201,12 @@ void __setitem__(std::array<T, N>& x, int32_t i, V&& v) {
     x[idx] = std::forward<V>(v);
 }
 
+// Overload: ordered_map (dict)
+template<typename K, typename V, typename KeyArg>
+void __setitem__(ordered_map<K, V>& m, const KeyArg& key, V value) {
+    m.insert_or_assign(K(key), std::move(value));
+}
+
 // Default template: user types that define __setitem__() method
 template<typename T, typename V>
     requires requires(T& t, int32_t i, V&& val) { t.__setitem__(i, std::forward<V>(val)); }
@@ -189,6 +217,12 @@ void __setitem__(T& x, int32_t i, V&& v) {
 // =============================================
 // tpy::__bool__
 // =============================================
+
+// Overload: ordered_map (dict)
+template<typename K, typename V>
+bool __bool__(const ordered_map<K, V>& m) {
+    return !m.empty();
+}
 
 // Default template: user types that define __bool__() method
 template<typename T>

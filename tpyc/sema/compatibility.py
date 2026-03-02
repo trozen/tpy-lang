@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
-    TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
+    TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, DictType,
     PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
     OwnType, ReadonlyType, VoidType, PtrType, is_const_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
@@ -17,8 +17,9 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
-    TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp, TpyBinOp, TpyCoerce,
-    TpyNoneLiteral, TpyIntLiteral, TpyFunction, SourceLocation
+    TpyDictLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
+    TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyFunction,
+    SourceLocation
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR
 from .diagnostics import SemanticError
@@ -269,6 +270,13 @@ class TypeCompatibility:
             if isinstance(expected, ArrayType):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
                     return None
+
+        # DictType compatibility: key and value types must be compatible
+        if isinstance(actual, DictType) and isinstance(expected, DictType):
+            key_err = self.check_type_compatible(actual.key_type, expected.key_type, context, loc, source_expr)
+            val_err = self.check_type_compatible(actual.value_type, expected.value_type, context, loc, source_expr)
+            if key_err is None and val_err is None:
+                return None
 
         # Allow PendingStrType compatibility during first phase (before resolution)
         if isinstance(actual, PendingStrType):
@@ -576,8 +584,8 @@ class TypeCompatibility:
         """Check if returning this expression would create a dangling reference."""
         if isinstance(expr, TpyCoerce):
             return self.is_dangling_return(expr.expr)
-        # Array literal - creates temporary
-        if isinstance(expr, TpyArrayLiteral):
+        # Array/dict literal - creates temporary
+        if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral)):
             return True
 
         # List repeat - creates temporary

@@ -1,0 +1,1 @@
+main.py:3: error: Type 'PendingList[IntLiteral(1), 2]#0' cannot be used as a dict key (not hashable)

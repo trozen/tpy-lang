@@ -211,6 +211,13 @@ class TpyListRepeat(TpyExpr):
 
 
 @dataclass
+class TpyDictLiteral(TpyExpr):
+    """Dict literal: {key: value, key: value, ...}"""
+    keys: list[TpyExpr]
+    values: list[TpyExpr]
+
+
+@dataclass
 class TpySlice(TpyExpr):
     """Slice expression: lower:upper (step not yet supported)."""
     lower: TpyExpr | None = None

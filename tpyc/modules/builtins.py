@@ -8,7 +8,7 @@ from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
-    NamedType, TypeParamRef, OwnType, OptionalType, ALL_FIXED_INTS, FixedIntType,
+    DictType, NamedType, TypeParamRef, OwnType, OptionalType, ALL_FIXED_INTS, FixedIntType,
 )
 
 # Shorthand for type parameter T
@@ -31,6 +31,10 @@ NAME = "builtins"
 # Methods that mutate the list (used by sema to track list literal mutation)
 LIST_MUTATION_METHODS = frozenset({
     "append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__",
+})
+
+DICT_MUTATION_METHODS = frozenset({
+    "__setitem__", "pop", "clear",
 })
 
 
@@ -246,6 +250,57 @@ def init_module() -> BuiltinModule:
             is_readonly=True,
         ),
     ])
+
+    # dict[K, V]: Ordered hash map backed by tpy::ordered_map<K, V>
+    K = TypeParamRef("K")
+    V = TypeParamRef("V")
+    module.type("dict", cpp_type="tpy::ordered_map<{K}, {V}>",
+                type_params=["K", "V"],
+                param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
+                type_factory=lambda k, v: DictType(k, v),
+                extends=["NativeIterable[K]"],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="{self}.size()",
+            is_readonly=True,
+        )],
+        "__getitem__": [MethodDef(
+            params=[ParamDef("key", K)],
+            returns=V,
+            cpp="tpy::__getitem__({self}, {0})",
+            is_readonly=True,
+        )],
+        "__setitem__": [MethodDef(
+            params=[ParamDef("key", K), ParamDef("value", OwnType(V))],
+            returns=VOID,
+            cpp="tpy::__setitem__({self}, {0}, {1})",
+        )],
+        "get": [MethodDef(
+            params=[ParamDef("key", K)],
+            returns=OptionalType(V),
+            cpp="tpy::dict_get({self}, {0})",
+            is_readonly=True,
+        )],
+        "pop": [
+            MethodDef(
+                params=[ParamDef("key", K)],
+                returns=V,
+                cpp="tpy::dict_pop({self}, {0})",
+            ),
+            MethodDef(
+                params=[ParamDef("key", K), ParamDef("default", V)],
+                returns=V,
+                cpp="tpy::dict_pop_default({self}, {0}, {1})",
+            ),
+        ],
+        "clear": [MethodDef(
+            params=[],
+            returns=VOID,
+            cpp="{self}.clear()",
+        )],
+    })
 
     module.register_type(STR, cpp_type="std::string",
         extends=["NativeIterable[Char]"],

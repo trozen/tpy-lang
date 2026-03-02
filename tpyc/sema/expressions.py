@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, PendingListType, TupleType,
+    NamedType, PtrType, OwnType, ListType, DictType, PendingListType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType,
@@ -22,7 +22,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
 from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
@@ -99,6 +99,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_array_literal(expr)
         elif isinstance(expr, TpyTupleLiteral):
             typ = self._analyze_tuple_literal(expr)
+        elif isinstance(expr, TpyDictLiteral):
+            typ = self._analyze_dict_literal(expr)
         elif isinstance(expr, TpyListRepeat):
             typ = self._analyze_list_repeat(expr)
         elif isinstance(expr, TpySubscript):
@@ -211,6 +213,16 @@ class ExpressionAnalyzer:
                         info.explicit_type = inner_hint
                         if info.coerced_element_type is None:
                             info.coerced_element_type = inner_hint.element_type
+                self.ctx.set_expr_type(expr, result)
+                return result
+
+        # Non-empty dict literal with dict type hint
+        if isinstance(expr, TpyDictLiteral) and expr.keys:
+            inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
+            if isinstance(inner_hint, DictType):
+                result = self._analyze_dict_literal(expr, inner_hint.key_type, inner_hint.value_type)
                 self.ctx.set_expr_type(expr, result)
                 return result
 
@@ -477,6 +489,14 @@ class ExpressionAnalyzer:
 
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
+            # Dict membership checks key type
+            if isinstance(right_type, DictType):
+                self.compat.check_type_compatible(
+                    left_type, right_type.key_type,
+                    f"dict key (expected {right_type.key_type})",
+                    loc=expr.loc,
+                )
+                return BOOL
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
             from .list_literals import IterableHelper
             helper = IterableHelper(self.ctx)
@@ -940,6 +960,88 @@ class ExpressionAnalyzer:
 
         return PendingListType(first_type, size, literal_id)
 
+    # Types allowed as dict keys (have well-defined C++ hash + equality)
+    _HASHABLE_KEY_TYPES = (
+        Int32Type, BigIntType, FloatType, BoolType, CharType,
+        StrType, StringType, StrViewType, PendingStrType,
+        FixedIntType,
+    )
+
+    def _validate_dict_key_type(self, key_type: TpyType, expr: TpyExpr) -> None:
+        """Validate that a type can be used as a dict key."""
+        if isinstance(key_type, self._HASHABLE_KEY_TYPES):
+            return
+        if isinstance(key_type, (EnumType, IntEnumType)):
+            return
+        if isinstance(key_type, IntLiteralType):
+            return
+        raise self.ctx.error(
+            f"Type '{key_type}' cannot be used as a dict key (not hashable)", expr,
+        )
+
+    def _analyze_dict_literal(
+        self, expr: TpyDictLiteral,
+        expected_key: TpyType | None = None,
+        expected_value: TpyType | None = None,
+    ) -> TpyType:
+        """Analyze a dict literal {key: value, ...}"""
+        if not expr.keys:
+            # Empty dict needs type annotation (handled at assignment site)
+            raise self.ctx.error(
+                "Empty dict literal requires type annotation "
+                "(e.g. d: dict[str, int] = {})", expr,
+            )
+
+        if expected_key:
+            key_types = [self.analyze_expr_with_hint(k, expected_key) for k in expr.keys]
+        else:
+            key_types = [self.analyze_expr(k) for k in expr.keys]
+        if expected_value:
+            value_types = [self.analyze_expr_with_hint(v, expected_value) for v in expr.values]
+        else:
+            value_types = [self.analyze_expr(v) for v in expr.values]
+
+        # Unify key types
+        key_type = key_types[0]
+        for i, kt in enumerate(key_types[1:], 2):
+            if isinstance(key_type, IntLiteralType) and isinstance(kt, IntLiteralType):
+                continue
+            if isinstance(kt, IntLiteralType) and isinstance(key_type, (Int32Type, BigIntType)):
+                continue
+            if isinstance(key_type, IntLiteralType) and isinstance(kt, (Int32Type, BigIntType)):
+                key_type = kt
+                continue
+            if kt != key_type:
+                raise self.ctx.error(
+                    f"Dict has mixed key types: key {i} is {kt}, "
+                    f"but earlier keys are {key_type}", expr,
+                )
+
+        # Unify value types
+        value_type = value_types[0]
+        for i, vt in enumerate(value_types[1:], 2):
+            if isinstance(value_type, IntLiteralType) and isinstance(vt, IntLiteralType):
+                continue
+            if isinstance(vt, IntLiteralType) and isinstance(value_type, (Int32Type, BigIntType)):
+                continue
+            if isinstance(value_type, IntLiteralType) and isinstance(vt, (Int32Type, BigIntType)):
+                value_type = vt
+                continue
+            if vt != value_type:
+                raise self.ctx.error(
+                    f"Dict has mixed value types: value {i} is {vt}, "
+                    f"but earlier values are {value_type}", expr,
+                )
+
+        # Use annotation types when literal elements are IntLiteralType
+        if isinstance(key_type, IntLiteralType):
+            key_type = expected_key if expected_key else self.ctx.default_int_for_literal(key_type)
+        if isinstance(value_type, IntLiteralType):
+            value_type = expected_value if expected_value else self.ctx.default_int_for_literal(value_type)
+
+        self._validate_dict_key_type(key_type, expr)
+        return DictType(key_type, value_type)
+
     def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
         """Analyze a list repetition: [elements...] * count"""
         count_type = self.analyze_expr(expr.count)
@@ -1057,6 +1159,16 @@ class ExpressionAnalyzer:
             return self._analyze_slice(expr, obj_type)
 
         index_type = self.analyze_expr(expr.index)
+
+        # Dict subscript: d[key] -> V (key can be non-integer)
+        actual_obj = unwrap_readonly(obj_type)
+        if isinstance(actual_obj, DictType):
+            self.compat.check_type_compatible(
+                index_type, actual_obj.key_type,
+                f"dict key (expected {actual_obj.key_type})",
+                loc=expr.loc,
+            )
+            return actual_obj.value_type
 
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)

@@ -52,6 +52,12 @@
 // Collection printing (depends on static_list, bigint)
 #include "printing.hpp"
 
+// Ordered map (no runtime dependencies beyond standard library)
+#include "ordered_map.hpp"
+
+// Dict operations and printing (depends on ordered_map, core, printing)
+#include "dict_ops.hpp"
+
 // System utilities (depends on core)
 #include "system.hpp"
 
