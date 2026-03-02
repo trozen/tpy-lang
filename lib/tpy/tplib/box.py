@@ -25,4 +25,9 @@ class Box[T](Deref[T], Covariant[T]):
         unsafe_init(self._ptr, value)
 
     def clone(self) -> Own[Box[T]]:
-        return Box[T](self.get())
+        return Box(self.get())
+
+    # TODO: __repr__ -- print contained value instead of pointer address
+    # TODO: __str__ -- same, for str() conversion
+    # TODO: __eq__ -- delegate == to inner value
+    # TODO: take() -> Own[T] -- consume box, return owned value (needs invalidation strategy)
