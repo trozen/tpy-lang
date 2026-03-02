@@ -1,0 +1,1 @@
+main.py:6: error: Tuple index 2 out of range for tuple[Int32, str] (length 2)

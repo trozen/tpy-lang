@@ -1065,6 +1065,60 @@ class UnionType(TpyType):
         return make_union(*types)
 
 
+@dataclass(frozen=True)
+class TupleType(TpyType):
+    """Fixed-length tuple: tuple[T1, T2, ...] -> std::tuple<T1, T2, ...>."""
+    element_types: tuple[TpyType, ...]
+
+    def to_cpp(self) -> str:
+        args = ", ".join(t.to_cpp() for t in self.element_types)
+        return f"std::tuple<{args}>"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"const {self.to_cpp()}& {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"const {self.to_cpp()}& {name}"
+
+    def __str__(self) -> str:
+        parts = ", ".join(str(t) for t in self.element_types)
+        return f"tuple[{parts}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return self.element_types
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return TupleType(types)
+
+
+def resolve_int_literals(
+    typ: TpyType,
+    resolver: 'TpyType | Callable[[TpyType], TpyType]',
+) -> TpyType:
+    """Recursively resolve IntLiteralType inside composite types.
+
+    resolver can be a fixed type or a callable (e.g. default_int_for_literal)
+    that maps IntLiteralType -> concrete int type.
+    Handles TupleType, ArrayType, ListType at arbitrary nesting depth.
+    """
+    def _resolve(t: TpyType) -> TpyType:
+        if isinstance(t, IntLiteralType):
+            return resolver(t) if callable(resolver) else resolver
+        if isinstance(t, TupleType):
+            return t.map_inner_types(_resolve)
+        if isinstance(t, ArrayType) and isinstance(t.element_type, IntLiteralType):
+            elem = resolver(t.element_type) if callable(resolver) else resolver
+            return ArrayType(elem, t.size)
+        if isinstance(t, ListType) and isinstance(t.element_type, IntLiteralType):
+            elem = resolver(t.element_type) if callable(resolver) else resolver
+            return ListType(elem)
+        return t
+    return _resolve(typ)
+
+
 def make_union(*types: TpyType) -> TpyType:
     """Normalize a sequence of types into a canonical union form.
 

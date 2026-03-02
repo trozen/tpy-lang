@@ -149,7 +149,8 @@ tests/
 │   ├── readonly/             # @readonly decorator, readonly[T] type modifier
 │   ├── records/              # Class/record methods, dunder, staticmethod
 │   ├── returns/              # Return value semantics
-│   └── str/                  # str, Char, string operations
+│   ├── str/                  # str, Char, string operations
+│   └── tuple/                # Tuple types, access, generics
 │       ├── {name}/           # Success test
 │       ├── error_{name}/     # Compilation error test
 │       └── panic_{name}/     # Runtime panic test
@@ -217,7 +218,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
-| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ReadOnlyPtr, Own, Optional, List, Array, Span, StaticList) and TypeRegistry |
+| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ReadOnlyPtr, Own, Optional, List, Array, Span, StaticList, Tuple) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
@@ -338,7 +339,8 @@ Note: `@noalloc` is parsed but not yet enforced. See `docs/LANGUAGE_FEATURES.md`
 ## Current Limitations
 
 The compiler is a proof-of-concept. Not yet implemented:
-- `dict`, `set`, `tuple`
+- `dict`, `set`
+- Tuple unpacking (`a, b = f()`)
 - Exception handling (`try`/`except`/`raise`)
 - `async`/`await`, `lambda`, `yield`
 - List slicing (`items[1:3]`)
@@ -358,6 +360,7 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `Char` | `char` |
 | `None` | `void` (return type) |
 | `Optional[T]` | `std::optional<T>` |
+| `tuple[T1, T2, ...]` | `std::tuple<T1, T2, ...>` |
 | `list[T]` | `std::vector<T>` |
 | `Array[T, N]` | `std::array<T, N>` |
 | `Span[T]` | `std::span<const T>` |

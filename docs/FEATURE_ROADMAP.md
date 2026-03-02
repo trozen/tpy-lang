@@ -26,7 +26,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A8 | Constructor init-list: warn/error on branching field assignment | S | Done | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
-| A10 | Tuple type + unpacking | M-L | Not started | [I](#tuple-type) |
+| A10 | Tuple type + unpacking | M-L | Partial (type done, unpacking not started) | [I](#tuple-type) |
+| A10a | Reference elements in tuples | M | Not started | [I](#reference-elements-in-tuples) |
 | A10b | `@iter_range` / `__iter_range__` protocol | S-M | Not started | [I](#iter_range--__iter_range__-protocol-zero-cost-user-defined-iteration) |
 | A10c | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
 | A11 | dict type | L | Not started | [VII](#dict-type) |
@@ -193,12 +194,59 @@ is a core Python pattern. Also needed for dict iteration (`for k, v in d.items()
 Maps to `std::tuple<T...>` in C++. Design questions: variadic type params, named tuples,
 interaction with ownership (move each element on destructure?).
 
-**Current state**: Not started.
+**Current state**: Partial. Core tuple type is working:
+- `tuple[T1, T2, ...]` annotations and type inference
+- Tuple literals `(a, b)`, single-element `(a,)`, nested tuples
+- Compile-time element access `t[0]`, `t[-1]` via `std::get<N>`
+- Function parameters and return types
+- Generic type inference (`tuple[T, T]` infers `T`)
+- Equality comparison (`==`, `!=`) with element-wise type checking
+- Python-style printing `(1, 'hello')`, `(42,)` for single-element
+- Immutability enforced: `t[0] = x` is rejected by sema
+- Reference types require `Own[T]`: `tuple[Int32, Own[Point]]`
+- Not yet supported: `Optional`/`Union` elements, ordering comparisons (`<`, `>`)
 
-**Dependencies**: None for basic tuple. Destructuring needs sema support for multi-target
-assignment. Dict iteration needs both tuple and dict.
+**Remaining**: Tuple unpacking (`a, b = t`), destructuring in for-loops,
+`Optional`/`Union` elements, reference elements without `Own[]` (needs lifetime tracking).
 
-**Effort**: M-L (type + codegen + destructuring)
+**Dependencies**: None for basic tuple (done). Destructuring needs sema support for
+multi-target assignment. Dict iteration needs both tuple and dict.
+
+**Effort**: M-L (type + codegen done; destructuring remaining)
+
+---
+
+### Reference Elements in Tuples
+
+Currently tuple elements must be value types or wrapped in `Own[T]`. This prevents
+surprising implicit copies when returning objects from functions (e.g. changing
+`-> Point` to `-> tuple[Int32, Point]` would silently copy the Point).
+
+The goal is to support bare reference types in tuples, matching how standalone
+parameters work:
+
+```python
+# Current (v1): requires Own[]
+def get_pair(p: Point) -> tuple[Int32, Own[Point]]:
+    return (Int32(1), p)  # explicit copy
+
+# Future (v2): reference semantics, no copy
+def get_pair(p: Point) -> tuple[Int32, Point]:
+    return (Int32(1), p)  # p stored by reference
+```
+
+C++ mapping would mirror function params: `tuple[Int32, Point]` ->
+`std::tuple<int32_t, Point&>`, `tuple[Int32, Own[Point]]` ->
+`std::tuple<int32_t, Point>`.
+
+**Key challenge**: lifetime tracking. A `std::tuple<int32_t, Point&>` cannot outlive
+the referenced Point. Needs the same provenance/escape analysis that already applies
+to reference returns.
+
+**Dependencies**: Provenance tracking for tuple elements, possibly tied to broader
+lifetime/borrow analysis.
+
+**Effort**: M
 
 ---
 
@@ -1745,7 +1793,7 @@ Features needed for the compiler to compile itself, roughly by priority:
 | Feature | Compiler Usage | Section |
 |---------|---------------|---------|
 | dict | 24 files | VII |
-| tuple + unpacking | 44 files | I |
+| tuple + unpacking | 44 files | I (tuple done, unpacking not started) |
 | f-strings | 32 files | VII |
 | enum | 17 files | I |
 | exceptions (try/except) | 9 try/except blocks | III |

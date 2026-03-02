@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, is_const_ptr, OwnType, ReadonlyType,
     ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType, UnionType,
+    TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
 )
@@ -402,6 +403,17 @@ class TypeOperations:
                     param_type.element_type, arg_type.element_type, inferred
                 )
             return False
+
+        # TupleType with TypeParamRef elements (e.g., tuple[T, T])
+        if isinstance(param_type, TupleType):
+            if not isinstance(arg_type, TupleType):
+                return False
+            if len(param_type.element_types) != len(arg_type.element_types):
+                return False
+            return all(
+                self.match_type_with_inference(p, a, inferred)
+                for p, a in zip(param_type.element_types, arg_type.element_types)
+            )
 
         # ArrayType with TypeParamRef element or size (e.g., Array[T, N])
         if isinstance(param_type, ArrayType):

@@ -14,6 +14,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -168,6 +169,53 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
     } else {
         return os << p.value;
     }
+}
+
+// --- Tuple printing (Python-style: (a, b) or (a,) for single-element) ---
+
+namespace detail {
+
+// Forward declare so print_tuple_elements can find nested tuple overload
+template <typename... Ts>
+void print_element(std::ostream& os, const std::tuple<Ts...>& t);
+
+template <typename Tuple, std::size_t... Is>
+void print_tuple_elements(std::ostream& os, const Tuple& t, std::index_sequence<Is...>) {
+    ((Is == 0 ? (void)(os) : (void)(os << ", "),
+      print_element(os, std::get<Is>(t))), ...);
+}
+
+template <typename... Ts>
+void print_element(std::ostream& os, const std::tuple<Ts...>& t) {
+    os << '(';
+    print_tuple_elements(os, t, std::index_sequence_for<Ts...>{});
+    if constexpr (sizeof...(Ts) == 1) {
+        os << ',';
+    }
+    os << ')';
+}
+
+} // namespace detail
+
+template <typename... Ts>
+struct TuplePrinter {
+    const std::tuple<Ts...>& value;
+    explicit TuplePrinter(const std::tuple<Ts...>& v) : value(v) {}
+};
+
+// Deduction guide
+template <typename... Ts>
+TuplePrinter(const std::tuple<Ts...>&) -> TuplePrinter<Ts...>;
+
+template <typename... Ts>
+std::ostream& operator<<(std::ostream& os, const TuplePrinter<Ts...>& p) {
+    os << '(';
+    detail::print_tuple_elements(os, p.value, std::index_sequence_for<Ts...>{});
+    if constexpr (sizeof...(Ts) == 1) {
+        os << ',';
+    }
+    os << ')';
+    return os;
 }
 
 } // namespace tpy

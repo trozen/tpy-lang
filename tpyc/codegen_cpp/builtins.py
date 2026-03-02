@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    ListType, ArrayType, SpanType, is_protocol_type, unwrap_readonly, is_any_str_type,
+    ListType, ArrayType, SpanType, TupleType, is_protocol_type, unwrap_readonly, is_any_str_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -240,6 +240,8 @@ class BuiltinGenerator:
                     parts.append(f'tpy::print_optional_val<tpy::print_float, {inner_cpp}>({gen})')
                 else:
                     parts.append(f'tpy::print_optional_val({gen})')
+            elif isinstance(arg_type, TupleType):
+                parts.append(f'tpy::TuplePrinter({self._gen_expr_deref(arg)})')
             elif is_any_str_type(arg_type):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))

@@ -359,7 +359,7 @@ log(f"x={x}")
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
-- **Planned**: `Tuple[T1, T2, ...]`
+- **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
 - **Planned**: `dict` - hash map (requires allocation)
 - **Planned**: `set` - hash set (requires allocation)
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
@@ -499,6 +499,51 @@ Key features:
 - Standard Python `len()` and `[]` indexing work for both Array and Span (with bounds checking and negative index support)
 - `unchecked_get(index)` on Array and Span for raw unchecked access (no bounds check, no negative index normalization)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
+
+#### Tuples (Working)
+
+Fixed-length typed tuples with compile-time element access:
+
+```python
+from tpy import Int32
+
+# Type is inferred -- no annotation needed
+t = (Int32(1), "hello")
+print(t)           # (1, 'hello')
+
+# Explicit annotation also works
+t2: tuple[Int32, bool, str] = (Int32(42), True, "world")
+
+# Element access with compile-time integer index
+x = t[0]           # -> std::get<0>(t)
+s = t[1]           # -> std::get<1>(t)
+last = t[-1]       # negative indexing supported
+
+# Single-element tuple (trailing comma required, like Python)
+single = (Int32(42),)
+print(single)       # (42,)
+
+# Nested tuples
+nested = (Int32(10), ("inner", False))
+
+# Tuple as function parameter and return type
+def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
+    return (p[1], p[0])
+
+# Comparison (== and != only)
+a = (Int32(1), "hello")
+b = (Int32(1), "hello")
+print(a == b)       # True
+```
+
+Restrictions:
+- Index must be a compile-time integer literal (variable indexing is rejected)
+- Bare `tuple` without type arguments is rejected (must use `tuple[T1, T2, ...]`)
+- Reference types (records, lists, etc.) must be wrapped in `Own[T]` to be stored in a tuple (e.g. `tuple[Int32, Own[Point]]`). This makes the value copy explicit. A future phase will add reference-in-tuple support with lifetime tracking.
+- Tuple element assignment (`t[0] = x`) is rejected (tuples are immutable)
+- Tuple unpacking (`a, b = t`) is planned for a follow-up
+- `Optional[T]` / `Union` elements in tuples are not yet supported (codegen and printing need work)
+- Comparison (`==`, `!=`) requires element-wise type compatibility; `<`, `>`, `<=`, `>=` are not supported
 
 ### Pointers/References
 - **Working**: `Ptr[T]` -> `T*`

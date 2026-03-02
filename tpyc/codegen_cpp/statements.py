@@ -11,10 +11,10 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType,
     ArrayType, ListType, PendingListType, PendingStrType, OwnType, OptionalType,
-    NoneType, NamedType, StrType, StrViewType, STR,
+    NoneType, NamedType, StrType, StrViewType, STR, TupleType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
-    local_var_is_movable,
+    local_var_is_movable, resolve_int_literals,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
@@ -425,12 +425,8 @@ class StatementGenerator:
             target_type = unwrap_readonly(target_type)
             if isinstance(target_type, OwnType):
                 target_type = target_type.wrapped
-            if isinstance(target_type, IntLiteralType):
-                target_type = self.ctx.analyzer.ctx.default_int_for_literal(target_type)
-            elif isinstance(target_type, ArrayType) and isinstance(target_type.element_type, IntLiteralType):
-                elem = self.ctx.analyzer.ctx.default_int_for_literal(target_type.element_type)
-                target_type = ArrayType(elem, target_type.size)
-            elif isinstance(target_type, PendingListType):
+            target_type = resolve_int_literals(target_type, self.ctx.analyzer.ctx.default_int_for_literal)
+            if isinstance(target_type, PendingListType):
                 info = self.ctx.analyzer.ctx.list_literals.get(target_type.literal_id)
                 if info and info.resolved_type:
                     target_type = info.resolved_type
@@ -441,31 +437,20 @@ class StatementGenerator:
 
     def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
         """Normalize declaration type before C++ emission."""
-        if isinstance(var_type, IntLiteralType):
-            var_type = self.ctx.analyzer.ctx.default_int_for_literal(var_type)
-        elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
-            elem = self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type)
-            var_type = ArrayType(elem, var_type.size)
-        elif isinstance(var_type, PendingListType):
+        resolve_lit = self.ctx.analyzer.ctx.default_int_for_literal
+        if isinstance(var_type, PendingListType):
             info = self.ctx.analyzer.ctx.list_literals.get(var_type.literal_id)
             if info and info.resolved_type:
                 var_type = info.resolved_type
             else:
                 elem = var_type.element_type
                 if isinstance(elem, IntLiteralType):
-                    var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(elem))
-            # After resolving, normalize IntLiteralType in element types
-            if isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
-                elem = self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type)
-                var_type = ArrayType(elem, var_type.size)
-            elif isinstance(var_type, ListType) and isinstance(var_type.element_type, IntLiteralType):
-                var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type))
-        elif isinstance(var_type, ListType):
-            if isinstance(var_type.element_type, IntLiteralType):
-                var_type = ListType(self.ctx.analyzer.ctx.default_int_for_literal(var_type.element_type))
+                    var_type = ListType(resolve_lit(elem))
         elif isinstance(var_type, PendingStrType):
             info = self.ctx.analyzer.ctx.str_vars.get(var_type.str_var_id)
             var_type = info.resolved_type if info and info.resolved_type else STR
+        # Resolve IntLiteralType in all composite types (tuples, arrays, lists)
+        var_type = resolve_int_literals(var_type, resolve_lit)
         # Optional non-value types use inner type (pointer-local adds T*)
         if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
             var_type = var_type.inner

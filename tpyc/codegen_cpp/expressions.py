@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    EnumType, IntEnumType,
+    EnumType, IntEnumType, TupleType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
     ResolvedBinop, get_covariant_params,
 )
@@ -21,7 +21,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyTupleLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -305,6 +305,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyArrayLiteral):
             return self._gen_array_literal(expr, target_type)
+
+        elif isinstance(expr, TpyTupleLiteral):
+            return self._gen_tuple_literal(expr, target_type)
 
         elif isinstance(expr, TpyListRepeat):
             return self._gen_list_repeat(expr, target_type)
@@ -1355,6 +1358,22 @@ class ExpressionGenerator:
         cpp_type = result_type.to_cpp()
         return f"tpy::from_range<{cpp_type}>({range_expr})"
 
+    def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
+        """Generate tuple literal code."""
+        # When target type is a TupleType, use its element types to resolve literals
+        target_tuple = target_type if isinstance(target_type, TupleType) else None
+        resolved_elem_types = []
+        elem_strs = []
+        for i, elem in enumerate(expr.elements):
+            elem_target = target_tuple.element_types[i] if target_tuple and i < len(target_tuple.element_types) else None
+            resolved = self.types.get_resolved_type(elem, elem_target)
+            resolved_elem_types.append(resolved)
+            elem_strs.append(self.gen_expr_deref(elem, resolved))
+        # Build explicit std::tuple<T1,T2>{...} to avoid type deduction issues
+        resolved_tuple = TupleType(tuple(resolved_elem_types))
+        cpp_type = self.types.type_to_cpp(resolved_tuple)
+        return f"{cpp_type}{{{', '.join(elem_strs)}}}"
+
     def _gen_subscript(self, expr: TpySubscript) -> str:
         """Generate subscript code."""
         # Enum name lookup: Color["Red"] -> tpy::EnumUtil<Color>::from_name("Red")
@@ -1371,6 +1390,17 @@ class ExpressionGenerator:
             return self._gen_slice(subscript_obj, expr.index)
 
         obj_type = self.types.get_resolved_type(expr.obj)
+
+        # Tuple subscript: std::get<N>(obj)
+        if isinstance(unwrap_readonly(obj_type), TupleType):
+            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+            idx = self._extract_compile_time_index(expr.index)
+            tuple_type = unwrap_readonly(obj_type)
+            n = len(tuple_type.element_types)
+            if idx < 0:
+                idx += n
+            return f"std::get<{idx}>({subscript_obj})"
+
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
         # Dereference globals for subscript access
         subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
@@ -1405,6 +1435,15 @@ class ExpressionGenerator:
         if not self._is_int_constant(index) and self.types.is_runtime_bigint(index, index_type):
             index_expr = f"{index_expr}.to_fixed_check<int32_t>()"
         return index_expr
+
+    @staticmethod
+    def _extract_compile_time_index(index: TpyExpr) -> int:
+        """Extract compile-time integer index from an expression (validated by sema)."""
+        if isinstance(index, TpyIntLiteral):
+            return index.value
+        if isinstance(index, TpyUnaryOp) and index.op == "-" and isinstance(index.operand, TpyIntLiteral):
+            return -index.operand.value
+        raise RuntimeError(f"Expected compile-time integer index, got {type(index).__name__}")
 
     @staticmethod
     def _is_int_constant(expr: TpyExpr) -> bool:

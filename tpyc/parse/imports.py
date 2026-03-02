@@ -29,7 +29,7 @@ TPY_TYPES = {
 }
 
 # Python builtins -- always available without import
-PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None"})
+PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple"})
 
 # Names from typing that require explicit import
 TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Final"})

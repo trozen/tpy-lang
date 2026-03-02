@@ -1,0 +1,1 @@
+main.py:7: error: Tuple index must be a compile-time integer literal

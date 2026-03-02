@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, PendingListType,
+    NamedType, PtrType, OwnType, ListType, PendingListType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType,
@@ -22,7 +22,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyTupleLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
 )
 from ..namespace import BindingKind
 from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
@@ -97,6 +97,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_field_access(expr)
         elif isinstance(expr, TpyArrayLiteral):
             typ = self._analyze_array_literal(expr)
+        elif isinstance(expr, TpyTupleLiteral):
+            typ = self._analyze_tuple_literal(expr)
         elif isinstance(expr, TpyListRepeat):
             typ = self._analyze_list_repeat(expr)
         elif isinstance(expr, TpySubscript):
@@ -127,6 +129,14 @@ class ExpressionAnalyzer:
         if isinstance(expr, TpyTypeParamConstruct):
             self.ctx.set_expr_type(expr, type_hint)
             return type_hint
+
+        # Tuple literal with TupleType hint: pass per-element hints
+        if isinstance(expr, TpyTupleLiteral) and isinstance(type_hint, TupleType):
+            if len(expr.elements) == len(type_hint.element_types):
+                hints = list(type_hint.element_types)
+                typ = self._analyze_tuple_literal(expr, element_hints=hints)
+                self.ctx.set_expr_type(expr, typ)
+                return typ
 
         # Check for generic type constructor (list(), Container[T](), etc.)
         is_generic_constructor = (isinstance(expr, TpyCall) and
@@ -425,6 +435,41 @@ class ExpressionAnalyzer:
                     f"Operator '{expr.op}' not supported for enum type '{enum_name}'",
                     expr,
                 )
+
+        # Tuple comparison: == and != only, same length, element-wise compatible
+        if isinstance(left_effective, TupleType) or isinstance(right_effective, TupleType):
+            if expr.op in ("==", "!="):
+                if not (isinstance(left_effective, TupleType) and isinstance(right_effective, TupleType)):
+                    raise self.ctx.error(
+                        f"Cannot compare {left_effective} with {right_effective}",
+                        expr,
+                    )
+                if len(left_effective.element_types) != len(right_effective.element_types):
+                    raise self.ctx.error(
+                        f"Cannot compare tuples of different lengths: "
+                        f"{left_effective} vs {right_effective}",
+                        expr,
+                    )
+                for i, (lt, rt) in enumerate(zip(
+                    left_effective.element_types, right_effective.element_types
+                )):
+                    if lt != rt:
+                        try:
+                            self.compat.check_type_compatible(lt, rt, "tuple comparison", source_expr=expr)
+                        except SemanticError:
+                            try:
+                                self.compat.check_type_compatible(rt, lt, "tuple comparison", source_expr=expr)
+                            except SemanticError:
+                                raise self.ctx.error(
+                                    f"Cannot compare tuple element {i}: "
+                                    f"{lt} vs {rt}",
+                                    expr,
+                                )
+                return BOOL
+            raise self.ctx.error(
+                f"Operator '{expr.op}' is not supported for tuple types",
+                expr,
+            )
 
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
@@ -923,6 +968,68 @@ class ExpressionAnalyzer:
         # Keep IntLiteralType so it can coerce to annotated type (list[Int32] or list[int])
         return ListType(first_type)
 
+    def _analyze_tuple_literal(
+        self, expr: TpyTupleLiteral, element_hints: list[TpyType | None] | None = None
+    ) -> TupleType:
+        """Analyze a tuple literal (expr, expr, ...)."""
+        elem_types = []
+        for i, elem in enumerate(expr.elements):
+            hint = element_hints[i] if element_hints and i < len(element_hints) else None
+            if hint is not None:
+                analyzed = self.analyze_expr_with_hint(elem, hint)
+                # Preserve Own[] from hint when the analyzed type matches
+                if isinstance(hint, OwnType) and not isinstance(analyzed, OwnType):
+                    analyzed = OwnType(analyzed)
+                elem_types.append(analyzed)
+            else:
+                elem_types.append(self.analyze_expr(elem))
+        # Reject non-value types without Own[] wrapping
+        for i, et in enumerate(elem_types):
+            if isinstance(et, (TypeParamRef, OwnType)):
+                continue
+            if not et.is_value_type():
+                # Show user-friendly type name for pending types
+                if isinstance(et, PendingListType):
+                    display = f"list[{et.element_type}]"
+                else:
+                    display = str(et)
+                raise self.ctx.error(
+                    f"Tuple element {i} has type {display} which is a reference type; "
+                    f"use Own[{display}] to store by value",
+                    expr.elements[i],
+                )
+        return TupleType(tuple(elem_types))
+
+    def _analyze_tuple_subscript(self, expr: TpySubscript, tuple_type: TupleType) -> TpyType:
+        """Analyze tuple subscript: t[0], t[-1] with compile-time constant index."""
+        index = expr.index
+        n = len(tuple_type.element_types)
+        # Register index type for codegen
+        self.analyze_expr(index)
+        # Extract compile-time index
+        if isinstance(index, TpyIntLiteral):
+            idx = index.value
+        elif (isinstance(index, TpyUnaryOp) and index.op == "-"
+              and isinstance(index.operand, TpyIntLiteral)):
+            idx = -index.operand.value
+        else:
+            raise self.ctx.error(
+                "Tuple index must be a compile-time integer literal", expr
+            )
+        # Resolve negative index
+        original_idx = idx
+        if idx < 0:
+            idx += n
+        # Range check
+        if idx < 0 or idx >= n:
+            raise self.ctx.error(
+                f"Tuple index {original_idx} out of range for "
+                f"tuple[{', '.join(str(t) for t in tuple_type.element_types)}] "
+                f"(length {n})",
+                expr,
+            )
+        return tuple_type.element_types[idx]
+
     def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
         """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
         # Enum name lookup: Color["Red"] -> Color (panics on invalid)
@@ -939,6 +1046,11 @@ class ExpressionAnalyzer:
                 return binding.enum_type
 
         obj_type = self.analyze_expr(expr.obj)
+
+        # Tuple indexing: t[0], t[-1] -- compile-time constant index only
+        actual_for_tuple = unwrap_readonly(obj_type)
+        if isinstance(actual_for_tuple, TupleType):
+            return self._analyze_tuple_subscript(expr, actual_for_tuple)
 
         # Slice: obj[start:stop]
         if isinstance(expr.index, TpySlice):

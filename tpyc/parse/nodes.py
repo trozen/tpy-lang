@@ -198,6 +198,12 @@ class TpyArrayLiteral(TpyExpr):
 
 
 @dataclass
+class TpyTupleLiteral(TpyExpr):
+    """Tuple literal: (expr, expr, ...)"""
+    elements: list[TpyExpr]
+
+
+@dataclass
 class TpyListRepeat(TpyExpr):
     """List repetition: [elements...] * count -> sequence repeated count times"""
     elements: list[TpyExpr]

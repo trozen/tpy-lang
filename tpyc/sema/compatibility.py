@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType,
     PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
-    OwnType, ReadonlyType, VoidType, PtrType, is_const_ptr,
+    OwnType, ReadonlyType, VoidType, PtrType, is_const_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
     is_any_str_type, get_covariant_params,
@@ -198,6 +198,21 @@ class TypeCompatibility:
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
             return self.check_type_compatible(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx)
+
+        # Tuple-to-tuple: same length, element-wise compatible
+        if isinstance(actual, TupleType) and isinstance(expected, TupleType):
+            if len(actual.element_types) != len(expected.element_types):
+                raise SemanticError(
+                    f"Type mismatch in {context}: expected {expected}, got {actual} "
+                    f"(different tuple lengths)", loc
+                )
+            for i, (a, e) in enumerate(zip(actual.element_types, expected.element_types)):
+                self.check_type_compatible(
+                    a, e, f"{context} (tuple element {i})", loc,
+                    source_expr=source_expr, is_return=is_return,
+                    coercion_ctx=coercion_ctx
+                )
+            return None
 
         # IntLiteral can coerce to BigInt or stay unresolved
         if isinstance(actual, IntLiteralType):

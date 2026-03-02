@@ -12,7 +12,7 @@ from ..typesys import (
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, StrVarInfo, PtrType, is_const_ptr, NoneType, OptionalType, UnionType,
-    EnumType, unwrap_readonly, is_any_str_type,
+    EnumType, unwrap_readonly, is_any_str_type, TupleType,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
 from ..parse import (
@@ -1099,9 +1099,11 @@ class StatementAnalyzer:
             else:
                 self.ctx.rvalue_vars.add(stmt.target.name)
 
-        # Prevent assignment to read-only types via MutableSequence protocol check
+        # Tuples are immutable -- reject element assignment
         if isinstance(stmt.target, TpySubscript):
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
+            if isinstance(obj_type, TupleType):
+                raise self.ctx.error("Tuples are immutable; cannot assign to tuple elements", stmt)
             elem_type = obj_type.get_element_type()
             if elem_type is not None:
                 # Check if type conforms to MutableSequence[elem_type]

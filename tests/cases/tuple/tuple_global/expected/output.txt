@@ -1,0 +1,4 @@
+(1, 'hello')
+(42, True)
+1
+True

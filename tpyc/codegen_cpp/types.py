@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
     PendingListType, PendingStrType, ListType, ArrayType, TypeParamRef, NamedType,
-    UnionType, NoneType, VoidType, EnumType,
-    unwrap_readonly, is_protocol_type,
+    UnionType, NoneType, VoidType, EnumType, TupleType,
+    unwrap_readonly, is_protocol_type, resolve_int_literals,
     INT32, BIGINT, FLOAT, STR,
     _union_alias_names
 )
@@ -151,6 +151,29 @@ class TypeResolver:
         if isinstance(typ, ListType) and isinstance(typ.element_type, IntLiteralType):
             elem = self.ctx.analyzer.ctx.default_int_for_literal(typ.element_type)
             return ListType(elem)
+        # Resolve IntLiteralType in tuple element types (recursively for nesting)
+        if isinstance(typ, TupleType):
+            resolve_lit = self.ctx.analyzer.ctx.default_int_for_literal
+            resolved_elems = []
+            changed = False
+            for i, et in enumerate(typ.element_types):
+                if isinstance(et, IntLiteralType):
+                    # Use target_type's element if it's a FixedInt annotation
+                    tt_elem = None
+                    if isinstance(target_type, TupleType) and i < len(target_type.element_types):
+                        tt_elem = target_type.element_types[i]
+                    if isinstance(tt_elem, FixedIntType):
+                        resolved_elems.append(tt_elem)
+                    else:
+                        resolved_elems.append(resolve_lit(et))
+                    changed = True
+                else:
+                    resolved = resolve_int_literals(et, resolve_lit)
+                    if resolved is not et:
+                        changed = True
+                    resolved_elems.append(resolved)
+            if changed:
+                return TupleType(tuple(resolved_elems))
         return typ
 
     def _resolve_pending_str(self, typ: PendingStrType) -> TpyType:
@@ -244,6 +267,10 @@ class TypeResolver:
             if typ.name in self.ctx.user_imported_enums:
                 source_module, original_name = self.ctx.user_imported_enums[typ.name]
                 return qualified_cpp_name(source_module, original_name)
+        # Tuple types: qualify element types for imported members
+        if isinstance(typ, TupleType):
+            args = ", ".join(self.type_to_cpp(t) for t in typ.element_types)
+            return f"std::tuple<{args}>"
         # Union types: use alias name if registered, otherwise qualify member names
         if isinstance(typ, UnionType):
             alias = _union_alias_names.get(typ.members)

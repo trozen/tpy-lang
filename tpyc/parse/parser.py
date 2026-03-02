@@ -11,7 +11,7 @@ from typing import NoReturn, Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, FinalType,
-    TypeParamRef, OptionalType, VoidType, make_union, EnumType,
+    TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
@@ -23,7 +23,7 @@ from .nodes import (
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
@@ -150,7 +150,7 @@ class Parser:
     """Parser for TurboPython source code."""
 
     FORBIDDEN_CONSTRUCTS = {
-        "dict", "set", "tuple",
+        "dict", "set",
         "try", "with", "async", "await",
         "lambda", "yield", "nonlocal",
     }
@@ -226,6 +226,8 @@ class Parser:
             elif original == "bool": return BOOL
             elif original == "str": return STR
             elif original == "None": return VOID
+            elif original == "tuple":
+                raise ParseError("tuple requires type arguments: tuple[T1, T2, ...]", node)
         elif module == "tpy":
             if (fixed_int := _FIXED_INT_MAP.get(original)) is not None:
                 return fixed_int
@@ -317,7 +319,7 @@ class Parser:
 
     # Names that _parse_type_annotation resolves directly (not through registry)
     _BUILTIN_TYPE_NAMES = frozenset({
-        "int", "float", "bool", "str", "None",
+        "int", "float", "bool", "str", "None", "tuple",
     })
 
     def _is_type_name(self, name: str) -> bool:
@@ -1315,6 +1317,9 @@ class Parser:
                     elif original == "readonly":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return ReadonlyType(inner)
+                elif module == "builtins":
+                    if original == "tuple":
+                        return self._parse_tuple_type(node, type_param_scope)
                 elif module == "typing":
                     if original == "Optional":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
@@ -1473,6 +1478,25 @@ class Parser:
         except ParseError as e:
             return (), e.message
 
+    def _parse_tuple_type(self, node: ast.Subscript, type_param_scope: dict[str, TypeParamKind] | None = None) -> TupleType:
+        """Parse tuple[T1, T2, ...] type annotation."""
+        slices = _extract_subscript_slices(node)
+        if not slices:
+            raise ParseError("tuple requires at least one type argument: tuple[T1, T2, ...]", node)
+        element_types = tuple(
+            self._parse_type_annotation(s, type_param_scope) for s in slices
+        )
+        for i, et in enumerate(element_types):
+            if isinstance(et, (TypeParamRef, OwnType)):
+                continue
+            if not et.is_value_type():
+                raise ParseError(
+                    f"Tuple element {i} has type {et} which is a reference type; "
+                    f"use Own[{et}] to store by value",
+                    slices[i],
+                )
+        return TupleType(element_types)
+
     def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
         """Parse a module-defined generic type using its metadata."""
         param_kinds = type_def.param_kinds
@@ -1525,6 +1549,8 @@ class Parser:
             # Simple assignment: x = expr or x.field = expr
             if len(node.targets) != 1:
                 raise ParseError("Multiple assignment targets not supported", node)
+            if isinstance(node.targets[0], ast.Tuple):
+                raise ParseError("Tuple unpacking is not yet supported", node)
             target = self._parse_expr(node.targets[0])
             value = self._parse_expr(node.value)
             # Check if this is a variable declaration (unannotated)
@@ -1761,6 +1787,12 @@ class Parser:
             else:
                 index = self._parse_expr(node.slice)
             return TpySubscript(obj=obj, index=index, loc=loc)
+
+        elif isinstance(node, ast.Tuple):
+            if not node.elts:
+                raise ParseError("Empty tuple literal is not supported", node)
+            elements = [self._parse_expr(elt) for elt in node.elts]
+            return TpyTupleLiteral(elements=elements, loc=loc)
 
         elif isinstance(node, ast.JoinedStr):
             return self._parse_fstring(node, loc)

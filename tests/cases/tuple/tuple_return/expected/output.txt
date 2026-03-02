@@ -1,0 +1,7 @@
+(42, 'answer')
+42
+answer
+(True, 7, 'lucky')
+True
+7
+lucky

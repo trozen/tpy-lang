@@ -11,6 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, CharType, PtrType, StrType, is_any_str_type,
+    resolve_int_literals,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -525,12 +526,8 @@ class FunctionGenerator:
         # Optional non-value types use inner type (pointer-global adds T*)
         elif isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
             var_type = var_type.inner
-        # Normalize unresolved int literals to configured default integer type.
-        default_int = self.ctx.analyzer.ctx.default_int_type
-        if isinstance(var_type, ListType) and isinstance(var_type.element_type, IntLiteralType):
-            var_type = ListType(default_int)
-        elif isinstance(var_type, ArrayType) and isinstance(var_type.element_type, IntLiteralType):
-            var_type = ArrayType(default_int, var_type.size)
+        # Resolve IntLiteralType in all composite types (tuples, arrays, lists)
+        var_type = resolve_int_literals(var_type, self.ctx.analyzer.ctx.default_int_for_literal)
         return var_type
 
     def _global_cpp_type(self, var_type: TpyType) -> str:

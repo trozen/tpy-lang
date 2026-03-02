@@ -1,0 +1,1 @@
+main.py:13: error: Tuple element 1 has type Point which is a reference type; use Own[Point] to store by value

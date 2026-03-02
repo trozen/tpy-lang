@@ -1,0 +1,1 @@
+main.py:3: error: tuple requires type arguments: tuple[T1, T2, ...]
