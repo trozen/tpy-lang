@@ -245,6 +245,7 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 | `int + float` | `float` | Float is wider than int |
 | `float + Int32` | `float` | Float is wider than Int32 |
 | `int / int` | `float` | True division always returns float (panics on zero divisor) |
+| `Int32 / Int32` | `float` | Fixed-width true division: operands cast to double (panics on zero divisor) |
 
 For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), the target type is preserved - the right-hand side is converted to match:
 ```python

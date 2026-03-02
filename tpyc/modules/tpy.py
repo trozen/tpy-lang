@@ -60,6 +60,7 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
             "__add__": (f"tpy::add_check<{cpp_t}>({{self}}, {{0}})", typ),
             "__sub__": (f"tpy::sub_check<{cpp_t}>({{self}}, {{0}})", typ),
             "__mul__": (f"tpy::mul_check<{cpp_t}>({{self}}, {{0}})", typ),
+            "__truediv__": (f"tpy::truediv(static_cast<double>({{self}}), static_cast<double>({{0}}))", FLOAT),
             "__floordiv__": (f"tpy::div_check<{cpp_t}>({{self}}, {{0}})", typ),
             "__mod__": (f"tpy::mod_check<{cpp_t}>({{self}}, {{0}})", typ),
             "__pow__": (f"tpy::pow_check<{cpp_t}>({{self}}, {{0}})", typ),

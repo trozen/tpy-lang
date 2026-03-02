@@ -17,7 +17,6 @@
 ## Bugs
 - REPL: arr=[1,2,3]; arr[-4]
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
-- Fixed-width integer true division (`Int32 / Int32`) not supported: `__truediv__` is missing from fixed-width int type definitions in `tpyc/modules/tpy.py`. BigInt defines it (returns float via `tpy::truediv`), but Int8-64/UInt8-64 only have `__floordiv__`. Fix: add `__truediv__` to `_register_fixed_int()` casting both operands to double, returning float.
 
 ## Examples
 
