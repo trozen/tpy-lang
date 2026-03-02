@@ -48,6 +48,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
 | B12 | `Self` type | S | Not started | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Not started | [I](#bi-directional-type-inference) |
+| B14 | `Optional[StaticProtocol]` codegen | S | Not started | [II](#optionalstaticprotocol-codegen) |
+| B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Not started | [II](#isinstance-on-static-protocols) |
 
 ### Phase C: Error Handling + Effects
 
@@ -640,6 +642,73 @@ is non-trivial.
 field types.
 
 **Effort**: M (data-flow analysis of `__init__` + codegen restructuring)
+
+---
+
+### Optional[StaticProtocol] Codegen
+
+`Iterable[T] | None` as a parameter should generate `std::optional<Items>` where
+`Items` is a template parameter constrained by `tpy::Iterable<T>`.
+
+```python
+def __init__(self, items: Iterable[T] | None = None) -> None:
+    if items is not None:
+        for item in items:
+            self.append(item)
+```
+
+Expected C++:
+```cpp
+template<tpy::Iterable<T> Items>
+explicit ArrayList(std::optional<Items> items = std::nullopt)
+```
+
+Currently `get_protocol_params()` in `codegen_cpp/protocols.py` only inspects the
+top-level type -- it doesn't unwrap `OptionalType` to find the protocol inside. The
+fix: unwrap Optional in `get_protocol_params`, and emit `std::optional<TemplateParam>`
+in `gen_params_with_protocols`.
+
+Sema gate is already fixed (only rejects `Optional[@dynamic]`, not static protocols).
+
+**Current state**: Not started. Sema gate done, codegen not handled.
+
+**Dependencies**: Protocol params in methods (done). Optional narrowing (done for
+`T | None`).
+
+**Effort**: S
+
+---
+
+### isinstance on Static Protocols
+
+`isinstance(x, Sized)` where `Sized` is a static protocol should map to
+`if constexpr (tpy::Sized<decltype(x)>)` in C++. This is a compile-time capability
+check, not a runtime type test.
+
+```python
+def __init__(self, items: Iterable[T] | None = None) -> None:
+    if items is not None:
+        if isinstance(items, Sized):
+            # items is narrowed to Iterable[T] & Sized -- len() is available
+            pass
+        for item in items:
+            self.append(item)
+```
+
+Inside the `isinstance` branch, the variable is narrowed to also satisfy the checked
+protocol (protocol narrowing), enabling calls like `len(items)` that require `Sized`.
+
+**Why it matters**: This is the key pattern for ArrayList's constructor -- accept any
+`Iterable`, but optimize when the input is also `Sized` (Span, list, Array). Without
+this, the only options are separate overloads (needs union dispatch flattening B10) or
+losing the size information.
+
+**Current state**: Not started.
+
+**Dependencies**: `Optional[StaticProtocol]` codegen (B14). Protocol narrowing is new
+-- current narrowing only handles `Optional[T]` -> `T` via `is None` checks.
+
+**Effort**: M (isinstance mapping is S; protocol narrowing in branches is the bulk)
 
 ---
 

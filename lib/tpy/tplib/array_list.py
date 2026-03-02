@@ -2,14 +2,18 @@
 # Elements are placement-constructed on append and explicitly destroyed on pop/clear/__del__.
 #
 # TODO: to fully replace builtin StaticList[T, N]:
-# - Constructor: accept Span[T] | Iterable[T] | None via union param + isinstance dispatch
-#   (needs: default param values, Iterable[T] protocol). Compiler can later flatten to
-#   separate C++ overloads via union dispatch flattening optimization.
+# - Constructor: accept items: Iterable[T] | None = None. Inside the body, use
+#   isinstance(items, Sized) to detect sized inputs (Span, list) and preallocate.
+#   Needs: Optional[StaticProtocol] codegen (B14), isinstance on static protocols (B15).
+#   Future: with fixed-extent Span[T, N], the constructor could accept Span[T, N]
+#   (same N as the class) and deduce both T and N from the argument, enabling
+#   `ArrayList(span)` without explicit type args. Needs: Span[T, N] type, constructor
+#   type arg inference from arguments, int type param deduction.
 # - Iteration: add @iter_range decorator + __iter_range__() -> tuple[Ptr[T], Ptr[T]] for
 #   zero-cost C++ range-based for loops (needs: tuple type, @iter_range protocol support
 #   in compiler). This also synthesizes __iter__/__next__, eliminating ArrayListIter.
 from __future__ import annotations
-from tpy import Int32, UInt32, Own, Ptr, copy
+from tpy import Int32, UInt32, Own, Ptr, Span, copy
 from tpy.mem import UninitArrayStorage
 
 
@@ -36,9 +40,14 @@ class ArrayList[T, N: int]:
     _storage: UninitArrayStorage[T, N]
     _size: Int32
 
-    def __init__(self) -> None:
+    def __init__(self, items: Span[T] | None = None) -> None:
         self._storage = UninitArrayStorage[T, N]()
         self._size = 0
+        if items is not None:
+            src = items
+            for i in range(len(src)):
+                self._storage.init(UInt32(self._size), copy(src[i]))
+                self._size += 1
 
     def __del__(self) -> None:
         for i in range(self._size):
@@ -54,12 +63,10 @@ class ArrayList[T, N: int]:
         self._storage.init(UInt32(self._size), value)
         self._size += 1
 
-    # TODO: unify pop() and pop_at() via index: Int32 | None = None param
-    def pop(self) -> Own[T]:
-        self._size -= 1
-        return self._storage.take(UInt32(self._size))
-
-    def pop_at(self, index: Int32) -> Own[T]:
+    def pop(self, index: Int32 | None = None) -> Own[T]:
+        if index is None:
+            self._size -= 1
+            return self._storage.take(UInt32(self._size))
         result = self._storage.take(UInt32(index))
         i = index
         end = self._size - 1
@@ -91,7 +98,7 @@ class ArrayList[T, N: int]:
         return n
 
     def remove(self, value: T) -> None:
-        self.pop_at(self.index(value))
+        self.pop(self.index(value))
 
     def reverse(self) -> None:
         lo: Int32 = 0

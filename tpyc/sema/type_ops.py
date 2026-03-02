@@ -129,11 +129,13 @@ class TypeOperations:
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
             if is_protocol_type(typ.inner):
-                raise SemanticError(
-                    f"Optional[{typ.inner.name}] is not supported for @dynamic protocols. "
-                    f"Use a sentinel value or separate 'has' flag instead",
-                    loc,
-                )
+                proto_def = self.ctx.registry.get_protocol(typ.inner.name)
+                if proto_def and proto_def.is_dynamic:
+                    raise SemanticError(
+                        f"Optional[{typ.inner.name}] is not supported for @dynamic protocols. "
+                        f"Use a sentinel value or separate 'has' flag instead",
+                        loc,
+                    )
         elif isinstance(typ, UnionType):
             for member in typ.members:
                 self.validate_type(member, allow_type_param_ref, loc)

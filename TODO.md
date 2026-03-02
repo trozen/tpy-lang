@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- Array/list -> Optional[Span] coercion at call sites: `ArrayList[Int32, 8](arr)` where `arr: Array[Int32, 3]` fails because `Array -> Span -> Optional[Span]` requires two implicit conversions. The generic constructor codegen path (`call_type` branch in `_gen_call`) also passes `expr.call_type` (the record type) as `target_type` instead of the param type, confusing the deref logic. Fix: apply explicit `std::span<const T>(arg)` wrapping when the param is `Optional[Span[T]]` and the arg is a span-compatible type.
 - Method-level type params: `def transform[U](self, val: U) -> U` on classes (generic or non-generic) doesn't work -- sema rejects `U` as unknown. Needs support for type param scoping on methods independent of class-level type params, inference from method arguments, and explicit `obj.method[U](args)` call syntax.
 - Generic string inference: `first[T]("hello", "world")` deduces `T=str` (std::string) instead of `T=StrView` (std::string_view). String literals passed to generic functions create unnecessary copies. The inference should prefer StrView when the literal is only read.
 - Iterable[T] conformance for built-in containers: `list[T]`, `Array[T,N]`, `StaticList[T,N]`, `Span[T]`, `str` don't conform to `Iterable[T]` because their iteration is handled by NativeIterable codegen, not explicit `__iter__` methods. Protocol conformance checker needs to recognize these types as implicitly satisfying `Iterable[T]`.
