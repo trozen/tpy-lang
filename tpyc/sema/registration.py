@@ -34,6 +34,21 @@ class TypeRegistrar:
         self.type_ops = type_ops
         self.protocols = protocols
 
+    def _resolve_type_param_bounds(
+        self, raw_bounds: dict[str, TpyType], loc,
+    ) -> dict[str, NamedType]:
+        """Resolve parsed type parameter bounds, validating each is a protocol."""
+        resolved: dict[str, NamedType] = {}
+        for param_name, bound_type in raw_bounds.items():
+            resolved_bound = self.type_ops.resolve_type(bound_type)
+            if not is_protocol_type(resolved_bound):
+                raise SemanticError(
+                    f"Type parameter bound must be a protocol, got {resolved_bound}",
+                    loc,
+                )
+            resolved[param_name] = resolved_bound
+        return resolved
+
     def register_builtin_types(self) -> None:
         """Register builtin types as RecordInfo for unified method lookup.
 
@@ -239,11 +254,13 @@ class TypeRegistrar:
         # Register all methods
         methods = {}
         for method in record.methods:
+            method_has_type_params = bool(method.type_params)
+            allow_tpref = is_generic or method_has_type_params
             for pname, ptype in method.params:
                 if not self.type_ops.is_type_param_ref(ptype):
-                    self.type_ops.validate_type(ptype, allow_type_param_ref=is_generic, loc=record.loc)
+                    self.type_ops.validate_type(ptype, allow_type_param_ref=allow_tpref, loc=record.loc)
             if not self.type_ops.is_type_param_ref(method.return_type):
-                self.type_ops.validate_type(method.return_type, allow_type_param_ref=is_generic, loc=record.loc)
+                self.type_ops.validate_type(method.return_type, allow_type_param_ref=allow_tpref, loc=record.loc)
             # Protocol types cannot be used as method return types.
             # Exception: @dynamic protocols can be returned as Base& (same as free functions).
             if is_protocol_type(method.return_type):
@@ -258,6 +275,8 @@ class TypeRegistrar:
                 method.name in IMPLICIT_READONLY_METHODS and not method.readonly_opt_out
             )
             method.is_readonly = resolved_readonly
+            method_type_param_bounds = self._resolve_type_param_bounds(
+                method.type_param_bounds, method.loc or record.loc)
             method_defaults = method.defaults if method.defaults else []
             methods[method.name] = [FunctionInfo(
                 name=method.name,
@@ -271,7 +290,9 @@ class TypeRegistrar:
                 is_staticmethod=method.is_staticmethod,
                 linkage=method.linkage,
                 native_name=method.native_name,
-                cpp_template=DUNDER_CPP_TEMPLATES.get(method.name)
+                cpp_template=DUNDER_CPP_TEMPLATES.get(method.name),
+                type_params=list(method.type_params),
+                type_param_bounds=method_type_param_bounds,
             )]
 
         # __next__() -> T implies __next_opt__() -> Optional[T] for protocol conformance
@@ -797,16 +818,8 @@ class TypeRegistrar:
                     func.loc
                 )
 
-        # Convert parsed bounds to NamedType (validate they are protocols)
-        type_param_bounds: dict[str, NamedType] = {}
-        for param_name, bound_type in func.type_param_bounds.items():
-            resolved_bound = self.type_ops.resolve_type(bound_type)
-            if not is_protocol_type(resolved_bound):
-                raise SemanticError(
-                    f"Type parameter bound must be a protocol, got {resolved_bound}",
-                    func.loc
-                )
-            type_param_bounds[param_name] = resolved_bound
+        type_param_bounds = self._resolve_type_param_bounds(
+            func.type_param_bounds, func.loc)
 
         # Map TpyFunction linkage to FunctionInfo linkage
         linkage_map = {

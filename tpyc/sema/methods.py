@@ -20,7 +20,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
-from .calls import arity_error_msg, resolve_kwargs, validate_generic_defaults
+from .calls import arity_error_msg, resolve_kwargs, validate_generic_defaults, validate_type_param_bounds
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -321,6 +321,11 @@ class MethodAnalyzer:
         if record_info.is_generic():
             return self._analyze_generic_static_method_call(expr, record_info, overloads)
 
+        method = overloads[0]
+        if method.type_params:
+            # Non-generic class with method-level type params: type_args are for the method
+            return self._analyze_generic_static_method_call(expr, record_info, overloads)
+
         if expr.type_args or expr.type_args_parse_error:
             raise self.ctx.error(
                 f"'{record_info.name}' is not generic and does not accept type arguments",
@@ -334,28 +339,47 @@ class MethodAnalyzer:
     def _analyze_generic_static_method_call(
         self, expr: TpyMethodCall, record_info, overloads: list[FunctionInfo],
     ) -> TpyType:
-        """Resolve a static method call on a generic record (inference or explicit type args).
+        """Resolve a static method call on a generic record or a static method
+        with its own type parameters.
 
-        Creates a virtual FunctionInfo with the record's type params merged in,
-        then delegates to _analyze_user_function_call (same path as regular generic calls).
+        Creates a virtual FunctionInfo with class + method type params merged,
+        then delegates to _analyze_user_function_call (same path as free generic calls).
         """
-        # Type args on the class name must match the record's type param count exactly
-        # (no partial application -- these are class-level, not function-level)
-        if expr.type_args and len(expr.type_args) != len(record_info.type_params):
-            raise self.ctx.error(
-                f"'{record_info.name}' expects {len(record_info.type_params)} "
-                f"type arguments, got {len(expr.type_args)}",
-                expr,
-            )
         # NOTE: picks first overload. If overloaded static methods on generic
         # classes are added, this needs overload resolution per-candidate with
         # inference (similar to _analyze_builtin_function_overloads).
         method = overloads[0]
+        class_type_params = set(record_info.type_params) if record_info.type_params else set()
+        new_method_params = [tp for tp in (method.type_params or []) if tp not in class_type_params]
+
+        # Merge class type params + method's own type params into a single virtual FunctionInfo.
+        # The free function path handles inference, explicit args, and bound validation.
+        all_type_params = list(record_info.type_params) + new_method_params
+        all_bounds = dict(record_info.type_param_bounds)
+        all_bounds.update({k: v for k, v in method.type_param_bounds.items()
+                          if k in set(new_method_params)})
+
+        # Validate type arg count: must match either class params (method params inferred)
+        # or all params (class + method)
+        if expr.type_args:
+            n_class = len(record_info.type_params)
+            n_total = len(all_type_params)
+            n_given = len(expr.type_args)
+            if n_given != n_class and n_given != n_total:
+                if new_method_params:
+                    raise self.ctx.error(
+                        f"'{record_info.name}.{method.name}' expects {n_class} class type arguments "
+                        f"or {n_total} total (class + method), got {n_given}",
+                        expr)
+                raise self.ctx.error(
+                    f"'{record_info.name}' expects {n_class} type arguments, got {n_given}",
+                    expr)
+
         virtual_func = FunctionInfo(
             name=method.name, params=method.params, return_type=method.return_type,
             is_staticmethod=method.is_staticmethod,
-            type_params=list(record_info.type_params),
-            type_param_bounds=dict(record_info.type_param_bounds),
+            type_params=all_type_params,
+            type_param_bounds=all_bounds,
         )
         temp_call = TpyCall(func=expr.method, args=expr.args,
                             kwargs=expr.kwargs,
@@ -490,7 +514,111 @@ class MethodAnalyzer:
         else:
             type_subst = instance_subst
 
+        # Check if the method has its own type parameters (generic method).
+        # Generic methods don't support multiple overloads; user-defined methods
+        # always register a single overload per name (registration.py).
+        method_info = overloads[0]
+        if method_info.is_generic():
+            if len(overloads) > 1:
+                raise self.ctx.error(
+                    f"Overloaded generic methods are not supported for '{expr.method}'", expr)
+            return self._analyze_generic_method_call(
+                expr, method_info, record_info, type_subst)
+
         return self._resolve_and_check_args(expr, overloads, type_subst)
+
+    def _analyze_generic_method_call(
+        self, expr: TpyMethodCall, method_info: FunctionInfo,
+        record_info, class_subst: dict[str, TpyType | int],
+    ) -> TpyType:
+        """Analyze a call to a generic method (method with its own type parameters).
+
+        Handles two kinds of method type params:
+        - New params: type params not in the class (e.g. U on def transform[U])
+        - Constrained class params: class type params with an additional method-level bound
+        """
+        class_type_params = set(record_info.type_params) if record_info.type_params else set()
+        new_params = [tp for tp in method_info.type_params if tp not in class_type_params]
+        constrained_class_params = [tp for tp in method_info.type_params if tp in class_type_params]
+
+        # Validate per-method bounds on class type params: check that the concrete
+        # class type satisfies the method's bound. These are class-level type params,
+        # so they must be in class_subst for any fully-instantiated generic class.
+        for tp in constrained_class_params:
+            if tp not in class_subst:
+                raise self.ctx.error(
+                    f"Method '{method_info.name}' has bound on class type parameter '{tp}', "
+                    f"but the class is not instantiated with a concrete type for '{tp}'",
+                    expr)
+            if tp in method_info.type_param_bounds:
+                bound = method_info.type_param_bounds[tp]
+                concrete_type = class_subst[tp]
+                if isinstance(concrete_type, TpyType) and not self.protocols.type_conforms_to_protocol(
+                        concrete_type, bound):
+                    raise self.ctx.error(
+                        f"Method '{method_info.name}' requires type parameter '{tp}' to satisfy "
+                        f"'{bound}', but '{concrete_type}' does not conform",
+                        expr)
+
+        if not new_params:
+            # All method type params are constrained class params -- no inference needed.
+            # Single-element list: generic methods can't have multiple overloads (guarded above).
+            return self._resolve_and_check_args(expr, [method_info], class_subst)
+
+        # Build a partial FunctionInfo with only new params for inference
+        partial_func = FunctionInfo(
+            name=method_info.name,
+            params=method_info.params,
+            return_type=method_info.return_type,
+            type_params=new_params,
+            type_param_bounds={k: v for k, v in method_info.type_param_bounds.items()
+                               if k in new_params},
+        )
+
+        # Pre-substitute class params in the method signature so inference
+        # only needs to resolve new params
+        if class_subst:
+            partial_func = self.type_ops.substitute_method_type_params(partial_func, class_subst)
+
+        # Infer new params from arguments or explicit type args
+        if expr.type_args:
+            if len(expr.type_args) != len(new_params):
+                raise self.ctx.error(
+                    f"Method '{method_info.name}' expects {len(new_params)} type argument(s), "
+                    f"got {len(expr.type_args)}",
+                    expr)
+            method_subst = dict(zip(new_params, expr.type_args))
+        else:
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            method_subst = self.type_ops.infer_type_params_for_function(
+                partial_func, arg_types, self.protocols.type_conforms_to_protocol,
+                expected_return_type=self.ctx.expr_type_hint,
+            )
+            if method_subst is None:
+                raise self.ctx.error(
+                    f"Cannot infer type arguments for method '{method_info.name}'. "
+                    f"Specify explicitly: .{method_info.name}[{', '.join(new_params)}](...)",
+                    expr)
+
+        # Validate bounds for new params (inference checks bounds internally,
+        # but explicit type args bypass inference)
+        new_param_bounds = {k: v for k, v in method_info.type_param_bounds.items()
+                           if k in set(new_params)}
+        if new_param_bounds:
+            validate_type_param_bounds(
+                method_subst, new_param_bounds, method_info.name,
+                self.protocols.type_conforms_to_protocol,
+                lambda msg: self.ctx.error(msg, expr),
+            )
+
+        # Store inferred type args (new params only) for codegen
+        expr.inferred_type_args = tuple(method_subst[p] for p in new_params)
+
+        # Merge class subst + method subst for full substitution
+        full_subst = dict(class_subst) if class_subst else {}
+        full_subst.update(method_subst)
+
+        return self._resolve_and_check_args(expr, [method_info], full_subst)
 
     def _is_protocol_method_readonly(self, protocol_name: str, method_name: str) -> bool:
         """Check if a protocol method is readonly (per-method or protocol-level).
@@ -638,7 +766,16 @@ class MethodAnalyzer:
         # Build type substitution for generic parent (e.g., Container[Int32] -> {"T": Int32})
         type_subst = self.protocols._get_parent_type_subst(parent_type, parent_info)
 
-        return_type = self._resolve_and_check_args(expr, overloads, type_subst)
+        # Check if the method has its own type parameters (generic method)
+        method_info = overloads[0]
+        if method_info.is_generic():
+            if len(overloads) > 1:
+                raise self.ctx.error(
+                    f"Overloaded generic methods are not supported for '{expr.method}'", expr)
+            return_type = self._analyze_generic_method_call(
+                expr, method_info, parent_info, type_subst)
+        else:
+            return_type = self._resolve_and_check_args(expr, overloads, type_subst)
         if is_readonly_context and not expr.resolved_function_info.is_readonly:
             raise self.ctx.error(
                 f"Cannot call non-readonly method '{expr.method}' on readonly reference",

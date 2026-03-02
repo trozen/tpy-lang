@@ -40,7 +40,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B2 | Union types / ADTs | L | Partial | [I](#union-types--algebraic-data-types) |
 | B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
-| B5 | Per-method type parameter bounds | S-M | Not started | [I](#type-parameter-bounds----per-method) |
+| B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
 | B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
 | B7 | Float32 type | S | Not started | [I](#float32-type) |
 | B8 | Dataclasses | M | Not started | [VII](#dataclasses) |
@@ -412,13 +412,14 @@ need additional capabilities -- `append_default()` needs `T()`, a hypothetical `
 would need `Comparable`. Without per-method bounds, the choice is: constrain the whole
 class (wrong) or accept opaque C++ errors when the bound is violated (bad UX).
 
-**Current state**: Not started. Class/function-level bounds are working.
+**Current state**: Done. Methods can have their own type parameters (new params like
+`[U]` or per-method bounds on class params like `[T: Comparable]`). Sema infers
+method type args from arguments or accepts explicit `obj.method[U](args)` syntax.
+Codegen emits method-level `template<typename U>` headers and `requires` clauses
+for B5 bounds.
 
 **Dependencies**: Type bounds (done). Built-in trait protocols like `Default` (not yet
-defined).
-
-**Effort**: S-M (parser already handles method type params; sema needs to unify with
-class-level `T` and add the bound; codegen emits `requires` clause)
+defined -- needed for full use cases like `append_default`).
 
 ---
 

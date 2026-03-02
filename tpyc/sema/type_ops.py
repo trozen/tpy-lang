@@ -712,19 +712,29 @@ class TypeOperations:
     def substitute_method_type_params(
         self, method: FunctionInfo, type_subst: dict[str, TpyType]
     ) -> FunctionInfo:
-        """Substitute type parameters in a method signature."""
+        """Substitute type parameters in a method signature.
+
+        Method's own type params (e.g. U on def transform[U]) are preserved
+        as identity mappings (U -> TypeParamRef(U)).  This is needed because
+        substitute_type_params raises SemanticError for unknown params, and
+        method-level params aren't in the class substitution dict.
+        """
+        effective_subst = dict(type_subst)
+        for tp in method.type_params:
+            if tp not in effective_subst:
+                effective_subst[tp] = TypeParamRef(tp)
         substituted_params = [
-            ParamInfo(p.name, self.substitute_type_params(p.type, type_subst),
+            ParamInfo(p.name, self.substitute_type_params(p.type, effective_subst),
                       p.requires_lvalue, p.requires_mutable, default_expr=p.default_expr)
             for p in method.params
         ]
-        substituted_return = self.substitute_type_params(method.return_type, type_subst)
+        substituted_return = self.substitute_type_params(method.return_type, effective_subst)
 
         # Substitute type params in bounds
         substituted_bounds = {}
         if method.type_param_bounds:
             for param_name, bound in method.type_param_bounds.items():
-                substituted_bounds[param_name] = self.substitute_type_params(bound, type_subst)
+                substituted_bounds[param_name] = self.substitute_type_params(bound, effective_subst)
 
         return FunctionInfo(
             name=method.name,

@@ -198,6 +198,23 @@ def validate_generic_defaults(
                 f"type '{resolved_type}' (resolved from generic '{func.name}')")
 
 
+def validate_type_param_bounds(
+    type_subst: dict[str, TpyType],
+    bounds: dict[str, NamedType],
+    func_name: str,
+    type_conforms_to_protocol,
+    error_fn,
+) -> None:
+    """Validate that resolved type args satisfy their type parameter bounds."""
+    for param_name, type_arg in type_subst.items():
+        if param_name in bounds:
+            bound = bounds[param_name]
+            if not type_conforms_to_protocol(type_arg, bound):
+                raise error_fn(
+                    f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
+                    f"for type parameter '{param_name}' of '{func_name}'")
+
+
 class CallAnalyzer:
     """Function and constructor call analysis."""
 
@@ -1236,16 +1253,11 @@ class CallAnalyzer:
                         expr
                     )
 
-            # Validate type parameter bounds for all params (explicit + inferred)
-            for param_name, type_arg in type_subst.items():
-                if param_name in func.type_param_bounds:
-                    bound = func.type_param_bounds[param_name]
-                    if not self.protocols.type_conforms_to_protocol(type_arg, bound):
-                        raise self.ctx.error(
-                            f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
-                            f"for type parameter '{param_name}' of '{func.name}'",
-                            expr
-                        )
+            validate_type_param_bounds(
+                type_subst, func.type_param_bounds, func.name,
+                self.protocols.type_conforms_to_protocol,
+                lambda msg: self.ctx.error(msg, expr),
+            )
         else:
             # Infer from arguments
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]

@@ -479,6 +479,14 @@ class FunctionGenerator:
         has_dynamic = self._has_dynamic_protocol_params(method.params)
         use_protocol_params = bool(protocol_params) or has_dynamic
 
+        # Determine method-level type params (not in the class template)
+        record_info = self.ctx.analyzer.registry.get_record(record_name)
+        class_type_params = set(record_info.type_params) if record_info and record_info.type_params else set()
+        new_method_params = [tp for tp in (method.type_params or []) if tp not in class_type_params]
+        class_param_bounds = {tp: method.type_param_bounds[tp]
+                              for tp in (method.type_params or [])
+                              if tp in class_type_params and tp in method.type_param_bounds}
+
         if use_protocol_params:
             if const:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
@@ -497,15 +505,35 @@ class FunctionGenerator:
         const_suffix = " const" if const else ""
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
+
+        # Build requires clause for per-method bounds on class type params
+        requires_clause = ""
+        if class_param_bounds:
+            req_parts = []
+            for tp, bound in class_param_bounds.items():
+                concept_name = self.protocols.get_concept_name(bound)
+                if bound.type_args:
+                    type_args_cpp = ", ".join(t.to_cpp() for t in bound.type_args)
+                    req_parts.append(f"{concept_name}<{type_args_cpp}, {tp}>")
+                else:
+                    req_parts.append(f"{concept_name}<{tp}>")
+            requires_clause = f"\n{INDENT}  requires {' && '.join(req_parts)}"
+
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent=INDENT)
         self.ctx.emit_source_comment(out, method.loc, indent=INDENT)
-        if protocol_params:
+        if protocol_params or new_method_params:
+            # Bounds for new method type params only (class param bounds go on the requires clause)
+            bounds_for_header = dict(record_type_param_bounds) if record_type_param_bounds else {}
+            bounds_for_header.update(
+                {k: v for k, v in method.type_param_bounds.items()
+                 if k in set(new_method_params)}
+            )
             template_header = self.protocols.gen_combined_template_header(
-                method.type_params or [], protocol_params, record_type_param_bounds
+                new_method_params, protocol_params, bounds_for_header
             )
             out.write(f"{INDENT}{template_header}")
-        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix} {{\n")
+        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix}{requires_clause} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:

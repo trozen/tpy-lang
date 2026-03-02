@@ -2518,8 +2518,19 @@ struct SortedContainer {
 
 **Protocol Inheritance with Bounds**: When using a child protocol as a bound (e.g., `T: PrintableAndSized`), methods from all ancestor protocols are available on `T`.
 
-**Limitations**:
-- Generic methods on classes (methods with their own type params) not yet supported
+**Method-Level Type Parameters**: Methods can have their own type parameters, independent of the class:
+```python
+class Converter:
+    def identity[U](self, val: U) -> U:
+        return val
+```
+Supports inference from arguments (`c.identity(42)`) and explicit type args (`c.identity[Int32](42)`).
+
+**Per-Method Bounds**: Methods on generic classes can add extra bounds to class type params:
+```python
+class Container[T]:
+    def is_sorted[T: Comparable](self) -> bool: ...  # only when T is Comparable
+```
 
 ---
 
@@ -2531,6 +2542,8 @@ struct SortedContainer {
 - **Working**: Instance methods
 - **Working**: Generic classes (Python 3.12+ syntax)
 - **Working**: `@staticmethod` → static methods (including on generic classes with type inference)
+- **Working**: Method-level type parameters (`def transform[U](self, val: U) -> U`), including on `@staticmethod`
+- **Working**: Per-method type parameter bounds (`def is_sorted[T: Comparable](self) -> bool`)
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)

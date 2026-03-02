@@ -1112,13 +1112,20 @@ class ExpressionGenerator:
                 method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not an) or is_ptr_deref else obj
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
+        # Build explicit template args for generic method calls
+        method_targs = ""
+        if expr.inferred_type_args and not expr.user_module_call and not expr.is_static_call:
+            method_targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args) + ">"
+
         # Handle self.method() -> just method() (inside method, implicit this)
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
-            return f"{expr.method}({args})"
+            return f"{expr.method}{method_targs}({args})"
         # Handle super().method() -> ParentClass::method(args)
         if expr.super_parent_type is not None:
             parent_cpp = expr.super_parent_type.to_cpp()
-            return f"{parent_cpp}::{expr.method}({args})"
+            # C++ requires 'template' keyword before dependent template names
+            template_kw = "template " if method_targs else ""
+            return f"{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
         # Handle ClassName.staticmethod() -> ClassName::staticmethod()
         if expr.is_static_call and isinstance(expr.obj, TpyName):
             # For native records, use the C++ class and method names
@@ -1128,10 +1135,18 @@ class ExpressionGenerator:
                 cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
                 return f"{cpp_class}::{cpp_method}({args})"
             class_name = expr.obj.name
+            static_method_targs = ""
             if expr.inferred_type_args:
-                type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
-                class_name = f"{class_name}<{type_args_str}>"
-            return f"{class_name}::{expr.method}({args})"
+                # Split inferred type args into class-level and method-level
+                n_class = len(record_info.type_params) if record_info and record_info.type_params else 0
+                class_args = expr.inferred_type_args[:n_class]
+                method_args = expr.inferred_type_args[n_class:]
+                if class_args:
+                    type_args_str = ", ".join(self.types.type_to_cpp(t) for t in class_args)
+                    class_name = f"{class_name}<{type_args_str}>"
+                if method_args:
+                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in method_args) + ">"
+            return f"{class_name}::{expr.method}{static_method_targs}({args})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
         if isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.analyzer.imports:
@@ -1177,10 +1192,19 @@ class ExpressionGenerator:
                 method_info = record_info.get_method(expr.method)
                 if method_info:
                     # Build type substitution: {"T": Int32} for Box[Int32]
+                    # Also include method-level type args (e.g. U -> Int32 for transform[U])
+                    # so TypeParamRef params resolve to concrete types for temp decisions.
                     type_subst = {}
                     if record_info.type_params and obj_type.type_args:
                         for param_name, arg_type in zip(record_info.type_params, obj_type.type_args):
                             type_subst[param_name] = arg_type
+                    if expr.inferred_type_args and method_info.type_params:
+                        class_params = set(record_info.type_params) if record_info.type_params else set()
+                        for tp, ta in zip(
+                            [p for p in method_info.type_params if p not in class_params],
+                            expr.inferred_type_args,
+                        ):
+                            type_subst[tp] = ta
                     gen_args = []
                     resolved_params = expr.resolved_function_info.params if expr.resolved_function_info else []
                     for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, method_info.params)):
@@ -1213,26 +1237,26 @@ class ExpressionGenerator:
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.method}({args})"
+                return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.method}{method_targs}({args})"
             # For pointer-globals with wrapper storage, this yields raw `T*`.
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}({args})"
+            return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}{method_targs}({args})"
         # User-defined Deref: emit .__deref__() calls before method call
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         if deref_chain and obj_type and not obj_type.is_pointer():
             is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
             if is_indirect or is_optional_ptr:
-                return f"{obj}->{deref_chain[1:]}.{expr.method}({args})"
-            return f"{obj}{deref_chain}.{expr.method}({args})"
+                return f"{obj}->{deref_chain[1:]}.{expr.method}{method_targs}({args})"
+            return f"{obj}{deref_chain}.{expr.method}{method_targs}({args})"
         if obj_type and obj_type.is_pointer():
             if expr.ptr_non_null:
-                return f"{obj}->{expr.method}({args})"
-            return f"tpy::deref_check({obj}).{expr.method}({args})"
+                return f"{obj}->{expr.method}{method_targs}({args})"
+            return f"tpy::deref_check({obj}).{expr.method}{method_targs}({args})"
         use_arrow = (self.ctx.is_indirect_name(expr.obj) and not is_narrowed) or is_optional_ptr
         accessor = "->" if use_arrow else "."
         # Use native method name if available (for @native/@native_c class methods)
         cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
-        return f"{obj}{accessor}{cpp_method}({args})"
+        return f"{obj}{accessor}{cpp_method}{method_targs}({args})"
 
     def _apply_assign_narrowing(self, expr_obj: TpyExpr, obj_code: str) -> tuple[str, bool]:
         """Apply inline std::get wrapping for assignment-narrowed union vars.

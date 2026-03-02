@@ -1,0 +1,1 @@
+Static methods are not subscriptable in CPython (Utils.identity[Int32] fails)

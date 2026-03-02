@@ -1,0 +1,1 @@
+main.py:19: error: Method 'is_sorted' requires type parameter 'T' to satisfy 'Comparable', but 'Wrapper' does not conform

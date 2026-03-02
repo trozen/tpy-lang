@@ -1,0 +1,1 @@
+main.py:12: error: Cannot infer type arguments for method 'convert'. Specify explicitly: .convert[U](...)

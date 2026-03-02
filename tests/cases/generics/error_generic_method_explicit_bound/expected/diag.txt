@@ -1,0 +1,1 @@
+main.py:19: error: Type argument 'Wrapper' does not satisfy bound 'Comparable' for type parameter 'U' of 'compare'
