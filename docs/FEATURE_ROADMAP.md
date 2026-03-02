@@ -28,9 +28,9 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
 | A10 | Tuple type + unpacking | M-L | Done | [I](#tuple-type) |
 | A10a | Reference elements in tuples | M | Not started | [I](#reference-elements-in-tuples) |
-| A10b | `@iter_range` / `__iter_range__` protocol | S-M | Not started | [I](#iter_range--__iter_range__-protocol-zero-cost-user-defined-iteration) |
-| A10c | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
+| A10b | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
 | A11 | dict type | L | Phase 1 done | [VII](#dict-type) |
+| A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Not started | [I](#mutable-span--readonlyspan--__span__-protocol) |
 
 ### Phase B: Polymorphism Foundation
 
@@ -252,45 +252,60 @@ lifetime/borrow analysis.
 
 ---
 
-### `@iter_range` / `__iter_range__` Protocol (Zero-Cost User-Defined Iteration)
+### Mutable Span + ReadOnlySpan + `__span__` Protocol
+
+Three related changes that make Span consistent with the rest of the language and enable
+zero-cost user-defined iteration for contiguous containers.
+
+#### Part 1: Mutable `Span[T]` + `ReadOnlySpan[T]`
+
+Make `Span[T]` mutable by default, matching the language convention (everything is mutable
+by default). Add `ReadOnlySpan[T]` for explicit const views.
+
+| TPy | C++ | Consistent with |
+|-----|-----|-----------------|
+| `Span[T]` | `std::span<T>` | `Ptr[T]` -> `T*` |
+| `ReadOnlySpan[T]` | `std::span<const T>` | `ReadOnlyPtr[T]` -> `const T*` |
+
+Existing coercions (`list[T]` -> `Span[T]`, `Array[T,N]` -> `Span[T]`) continue to work.
+Functions that don't need to mutate elements use `@readonly` on the function, as with any
+other parameter type.
+
+**Breaking change**: Current `Span[T]` maps to `std::span<const T>`. All existing uses
+become mutable. Acceptable at POC stage -- test snapshots need updating.
+
+#### Part 2: `__span__` Protocol (Zero-Cost User-Defined Iteration)
 
 ```python
-@iter_range
 class ArrayList[T, N: int]:
-    def __iter_range__(self) -> tuple[Ptr[T], Ptr[T]]:
-        return (self._storage.ptr(UInt32(0)), self._storage.ptr(UInt32(self._size)))
+    @readonly
+    def __span__(self) -> ReadOnlySpan[T]:
+        return ReadOnlySpan(self._storage.ptr(UInt32(0)), self._size)
+
+    def __span__(self) -> Span[T]:
+        return Span(self._storage.mut_ptr(UInt32(0)), self._size)
 ```
 
-A decorator + dunder protocol for user-defined types to opt into zero-cost iteration.
-The `__iter_range__` method returns a `tuple[Begin, End]` pair. The compiler dispatches
-based on the element type:
+A dunder protocol for user-defined types to opt into zero-cost iteration via Span.
+The compiler detects `__span__` and uses it for:
 
-- **Pointer pair** (`tuple[Ptr[T], Ptr[T]]`): dereference to get elements.
+- **For-loops**: `for item in container` calls `__span__()`, then uses existing
+  `NativeIterable` codegen (C++ range-based for). The `@readonly` vs mutable overload
+  is selected based on context (same as `__getitem__`).
   ```cpp
-  auto [__begin, __end] = obj.__iter_range__();
-  for (auto* __it = __begin; __it != __end; ++__it) {
-      T& x = *__it;
-  }
+  auto __span = obj.__span__();
+  for (auto& x : __span) { ... }
   ```
-- **Integer pair** (`tuple[Int32, Int32]`): value IS the element.
-  ```cpp
-  auto [__begin, __end] = obj.__iter_range__();
-  for (int32_t x = __begin; x != __end; ++x) { ... }
-  ```
+- **Implicit coercion**: passing a type with `__span__` where `Span[T]` or
+  `ReadOnlySpan[T]` is expected calls the appropriate overload.
+- **Iterator synthesis**: the compiler can auto-generate `__iter__`/`__next__` from
+  `__span__`, eliminating hand-written iterator classes for contiguous containers.
 
-This generalizes beyond containers -- `range()` could return a type whose
-`__iter_range__` gives `(Int32(0), Int32(n))`, replacing the current special-case
-`range()` optimization in the compiler with a general mechanism.
-
-The `@iter_range` decorator also **synthesizes `__iter__`/`__next__`** from the range
-pair, so explicit `iter()` calls work without hand-written iterator classes. For
-`ArrayList`, this eliminates the need for a separate `ArrayListIter` class entirely.
-
-**CPython compatibility**: The `@iter_range` CPython stub (in `lib/cpy/`) ignores
-`__iter_range__` and generates `__iter__` from `__getitem__`/`__len__` instead:
+**CPython compatibility**: The `__span__` method is ignored by CPython. A CPython stub
+decorator generates `__iter__` from `__getitem__`/`__len__` instead:
 
 ```python
-def iter_range(cls):
+def spannable(cls):
     def __iter__(self):
         for i in range(len(self)):
             yield self[i]
@@ -298,22 +313,21 @@ def iter_range(cls):
     return cls
 ```
 
-Users never write `__iter__`/`__next__` by hand -- the decorator handles both runtimes.
-
 **Why it matters**: Currently user-defined types can only iterate via `__iter__`/`__next__`,
 which allocates an iterator object and generates a while-loop with `__next_opt__()` calls.
 Builtin types use `NativeIterable[T]` for zero-cost C++ range-based for, but this protocol
-is not user-extensible. `@iter_range` bridges the gap for any contiguous container or
-counter-based range with no overhead.
+is not user-extensible. `__span__` bridges the gap for any contiguous container with no
+overhead, and naturally composes with the existing Span ecosystem (len, indexing, slicing).
 
 This is the key missing piece for `ArrayList[T, N]` (tplib) to fully replace the builtin
 `StaticList[T, N]` with equivalent iteration performance.
 
 **Current state**: Not started.
 
-**Dependencies**: Tuple type (for the return type). Ptr[T] (done).
+**Dependencies**: None for Part 1 (standalone type system change). Part 2 needs Part 1.
 
-**Effort**: S-M (sema protocol detection + codegen for begin/end loop + iterator synthesis)
+**Effort**: M (Part 1: S -- type system + codegen + coercion updates + snapshot refresh.
+Part 2: S-M -- sema protocol detection + codegen dispatch + iterator synthesis)
 
 ---
 
