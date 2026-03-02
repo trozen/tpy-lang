@@ -531,10 +531,14 @@ nested = (Int32(10), ("inner", False))
 def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
     return (p[1], p[0])
 
+# Tuple unpacking (destructuring assignment)
+a, b = (Int32(1), "hello")  # fresh variables
+_, second = swap(t)          # _ discards a value
+
 # Comparison (== and != only)
-a = (Int32(1), "hello")
-b = (Int32(1), "hello")
-print(a == b)       # True
+a2 = (Int32(1), "hello")
+b2 = (Int32(1), "hello")
+print(a2 == b2)       # True
 ```
 
 Restrictions:
@@ -542,7 +546,7 @@ Restrictions:
 - Bare `tuple` without type arguments is rejected (must use `tuple[T1, T2, ...]`)
 - Reference types (records, lists, etc.) must be wrapped in `Own[T]` to be stored in a tuple (e.g. `tuple[Int32, Own[Point]]`). This makes the value copy explicit. A future phase will add reference-in-tuple support with lifetime tracking.
 - Tuple element assignment (`t[0] = x`) is rejected (tuples are immutable)
-- Tuple unpacking (`a, b = t`) is planned for a follow-up
+- Nested unpacking (`a, (b, c) = ...`) and for-loop unpacking (`for a, b in items`) are not yet supported
 - `Optional[T]` / `Union` elements in tuples are not yet supported (codegen and printing need work)
 - Comparison (`==`, `!=`) requires element-wise type compatibility; `<`, `>`, `<=`, `>=` are not supported
 

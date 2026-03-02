@@ -24,7 +24,7 @@ from .nodes import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
-    TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
@@ -1550,7 +1550,17 @@ class Parser:
             if len(node.targets) != 1:
                 raise ParseError("Multiple assignment targets not supported", node)
             if isinstance(node.targets[0], ast.Tuple):
-                raise ParseError("Tuple unpacking is not yet supported", node)
+                elts = node.targets[0].elts
+                if not elts:
+                    raise ParseError("Empty tuple unpacking", node)
+                targets: list[str | None] = []
+                for elt in elts:
+                    if not isinstance(elt, ast.Name):
+                        raise ParseError(
+                            "Tuple unpacking targets must be simple variable names", node)
+                    targets.append(None if elt.id == "_" else elt.id)
+                value = self._parse_expr(node.value)
+                return TpyTupleUnpack(targets=targets, value=value, loc=loc)
             target = self._parse_expr(node.targets[0])
             value = self._parse_expr(node.value)
             # Check if this is a variable declaration (unannotated)

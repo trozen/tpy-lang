@@ -16,7 +16,7 @@ and no longer constrains moves of the new h (detach-on-reassign).
 from __future__ import annotations
 
 from .parse import (
-    TpyStmt, TpyExpr, TpyVarDecl, TpyAssign, TpyAugAssign,
+    TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert,
     TpyExprStmt, TpyRaiseStopIteration,
     TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp,
@@ -223,6 +223,12 @@ def _analyze_stmt(
         # Kill: variable is (re)defined here
         live.discard(stmt.name)
 
+    elif isinstance(stmt, TpyTupleUnpack):
+        _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
+        for name in stmt.targets:
+            if name is not None:
+                live.discard(name)
+
     elif isinstance(stmt, TpyAssign):
         # Reads from the value
         _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
@@ -420,6 +426,13 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             for node in _collect_reads_expr(stmt.init):
                 live.add(node.name)
         live.discard(stmt.name)
+
+    elif isinstance(stmt, TpyTupleUnpack):
+        for node in _collect_reads_expr(stmt.value):
+            live.add(node.name)
+        for name in stmt.targets:
+            if name is not None:
+                live.discard(name)
 
     elif isinstance(stmt, TpyAssign):
         for node in _collect_reads_expr(stmt.value):

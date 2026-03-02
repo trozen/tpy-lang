@@ -26,7 +26,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
 | A8 | Constructor init-list: warn/error on branching field assignment | S | Done | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
-| A10 | Tuple type + unpacking | M-L | Partial (type done, unpacking not started) | [I](#tuple-type) |
+| A10 | Tuple type + unpacking | M-L | Done | [I](#tuple-type) |
 | A10a | Reference elements in tuples | M | Not started | [I](#reference-elements-in-tuples) |
 | A10b | `@iter_range` / `__iter_range__` protocol | S-M | Not started | [I](#iter_range--__iter_range__-protocol-zero-cost-user-defined-iteration) |
 | A10c | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
@@ -205,14 +205,16 @@ interaction with ownership (move each element on destructure?).
 - Immutability enforced: `t[0] = x` is rejected by sema
 - Reference types require `Own[T]`: `tuple[Int32, Own[Point]]`
 - Not yet supported: `Optional`/`Union` elements, ordering comparisons (`<`, `>`)
+- Tuple unpacking: `a, b = expr` with fresh vars, reassignment, and `_` discard
+- Nested unpacking (`a, (b, c) = ...`) and for-loop unpacking not yet supported
 
-**Remaining**: Tuple unpacking (`a, b = t`), destructuring in for-loops,
-`Optional`/`Union` elements, reference elements without `Own[]` (needs lifetime tracking).
+**Remaining**: `Optional`/`Union` elements, reference elements without `Own[]` (needs
+lifetime tracking), nested unpacking, for-loop unpacking.
 
-**Dependencies**: None for basic tuple (done). Destructuring needs sema support for
-multi-target assignment. Dict iteration needs both tuple and dict.
+**Dependencies**: None (core tuple type and unpacking done). Dict iteration needs both
+tuple and dict.
 
-**Effort**: M-L (type + codegen done; destructuring remaining)
+**Effort**: Done (core); S-M remaining for edge cases
 
 ---
 
@@ -1287,7 +1289,7 @@ state machine is stack-allocated.
 
 **Current state**: Not started. `yield` is in the parser's unsupported keyword list.
 
-**Dependencies**: Iterator protocol (done). Tuple unpacking (for `a, b = ...` pattern).
+**Dependencies**: Iterator protocol (done). Tuple unpacking (done).
 
 **Effort**: L-XL (state machine transformation is non-trivial)
 
@@ -1779,7 +1781,7 @@ Features needed for the compiler to compile itself, roughly by priority:
 | Feature | Compiler Usage | Section |
 |---------|---------------|---------|
 | dict | 24 files | VII |
-| tuple + unpacking | 44 files | I (tuple done, unpacking not started) |
+| tuple + unpacking | 44 files | I (done) |
 | f-strings | 32 files | VII |
 | enum | 17 files | I |
 | exceptions (try/except) | 9 try/except blocks | III |

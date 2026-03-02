@@ -269,6 +269,17 @@ class TpyVarDecl(TpyStmt):
 
 
 @dataclass
+class TpyTupleUnpack(TpyStmt):
+    """Tuple unpacking: a, b = expr. None in targets means discard (_)."""
+    targets: list[str | None]
+    value: TpyExpr
+    # Set by sema:
+    target_types: list[TpyType] = field(default_factory=list)
+    is_new: list[bool] = field(default_factory=list)
+    is_owned: list[bool] = field(default_factory=list)
+
+
+@dataclass
 class TpyAssign(TpyStmt):
     """Assignment to variable or field."""
     target: TpyExpr

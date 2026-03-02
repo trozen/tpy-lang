@@ -11,6 +11,7 @@ import io
 
 from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, ListType, ArrayType, IntLiteralType, PtrType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
+from ..parse.nodes import TpyTupleUnpack
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name
 from .types import TypeResolver
@@ -168,6 +169,17 @@ class CodeGenerator:
                         final_decls.append(stmt)
                     else:
                         global_decls.append(stmt)
+            elif isinstance(stmt, TpyTupleUnpack):
+                for i, name in enumerate(stmt.targets):
+                    if name is None or name in seen_globals:
+                        continue
+                    var_type = stmt.target_types[i]
+                    if isinstance(var_type, OwnType):
+                        var_type = var_type.wrapped
+                    seen_globals[name] = var_type
+                    synthetic = TpyVarDecl(
+                        name=name, type=var_type, init=None, loc=stmt.loc)
+                    global_decls.append(synthetic)
 
         # Track native global name mappings (Python name -> C/C++ name)
         self.ctx.native_global_names = {

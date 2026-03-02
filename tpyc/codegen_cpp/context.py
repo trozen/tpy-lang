@@ -261,6 +261,9 @@ class CodeGenContext:
     # --- Iterator loop counter ---
     iter_counter: int = 0
 
+    # --- Tuple unpacking counter ---
+    unpack_counter: int = 0
+
     # --- Cross-module import tracking ---
     user_module_imports: set[str] = field(default_factory=set)
     all_user_modules: set[str] = field(default_factory=set)
@@ -313,6 +316,7 @@ class CodeGenContext:
         self.narrowed_vars = {}
         self.assign_narrowed_types = {}
         self.iter_counter = 0
+        self.unpack_counter = 0
 
     def indent(self) -> str:
         """Get current indentation string."""

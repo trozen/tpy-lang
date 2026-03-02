@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr,
-    TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyCoerce,
@@ -72,6 +72,18 @@ class StatementAnalyzer:
     def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
+
+    def _warn_all_caps_without_final(self, name: str, type_hint: str, node: TpyStmt) -> None:
+        """Warn on ALL_CAPS module-level variables without Final annotation."""
+        if (not name.startswith("_")
+                and name.replace("_", "").isalpha()
+                and name == name.upper()
+                and len(name) >= 2):
+            self.ctx.warning(
+                f"ALL_CAPS variable '{name}' without Final annotation; "
+                f"use Final[{type_hint}] if this is a constant",
+                node
+            )
 
     def _warn_unnecessary_return_copy(self, value: TpyExpr) -> None:
         """Warn when return copy(x) is used but x is at last use (auto-move suffices)."""
@@ -178,6 +190,8 @@ class StatementAnalyzer:
         """Analyze a statement."""
         if isinstance(stmt, TpyVarDecl):
             self._analyze_var_decl(stmt)
+        elif isinstance(stmt, TpyTupleUnpack):
+            self._analyze_tuple_unpack(stmt)
         elif isinstance(stmt, TpyAssign):
             self._analyze_assign(stmt)
         elif isinstance(stmt, TpyAugAssign):
@@ -596,19 +610,9 @@ class StatementAnalyzer:
                 )
             self.ctx.analyzed_finals.add(stmt.name)
 
-        # Warn on ALL_CAPS module-level variables without Final
-        if (self.ctx.is_top_level
-                and not stmt.is_final
-                and not stmt.name.startswith("_")
-                and stmt.name.replace("_", "").isalpha()
-                and stmt.name == stmt.name.upper()
-                and len(stmt.name) >= 2):
+        if self.ctx.is_top_level and not stmt.is_final:
             type_hint = str(stmt.type) if stmt.type else "<type>"
-            self.ctx.warning(
-                f"ALL_CAPS variable '{stmt.name}' without Final annotation; "
-                f"use Final[{type_hint}] if this is a constant",
-                stmt
-            )
+            self._warn_all_caps_without_final(stmt.name, type_hint, stmt)
 
         # Protocol types can only be used for function parameters, not variables
         # Exception: @dynamic protocols can be used as variable types
@@ -1024,6 +1028,68 @@ class StatementAnalyzer:
         # Record declared type for test type-annotation validation.
         if stmt.loc:
             self.ctx.declared_var_types[(stmt.loc.line, stmt.name)] = var_type
+
+    def _analyze_tuple_unpack(self, stmt: TpyTupleUnpack) -> None:
+        """Analyze tuple unpacking: a, b = expr."""
+        rhs_type = self.expr.analyze_expr(stmt.value)
+
+        if not isinstance(rhs_type, TupleType):
+            raise self.ctx.error(
+                f"Cannot unpack non-tuple type {rhs_type}", stmt)
+
+        n_targets = len(stmt.targets)
+        n_elems = len(rhs_type.element_types)
+        if n_targets != n_elems:
+            raise self.ctx.error(
+                f"Cannot unpack tuple of {n_elems} elements into "
+                f"{n_targets} targets", stmt)
+
+        for i, name in enumerate(stmt.targets):
+            elem_type = rhs_type.element_types[i]
+            owned = isinstance(elem_type, OwnType)
+            stmt.is_owned.append(owned)
+            if owned:
+                elem_type = elem_type.wrapped
+
+            stmt.target_types.append(elem_type)
+
+            if name is None:
+                stmt.is_new.append(True)
+                continue
+
+            if self.ctx.is_top_level:
+                # At module level, targets become globals with namespace-scope
+                # definitions. Mark is_new=False so codegen emits assignment
+                # (the declaration is handled by gen_global_decl).
+                self.ctx.global_scope.define(name, elem_type)
+                self.ctx.current_scope.define(name, elem_type)
+                self.init.mark_assigned(name)
+                if self.ctx.current_ns:
+                    self.ctx.current_ns.bind_variable(name, elem_type)
+                decl_line = stmt.loc.line if stmt.loc else 0
+                if name not in self.ctx.top_level_decls:
+                    self.ctx.top_level_decls[name] = decl_line
+                self._warn_all_caps_without_final(name, str(elem_type), stmt)
+                stmt.is_new.append(False)
+                continue
+
+            existing = self.ctx.current_scope.lookup(name)
+            # Don't treat globals as existing unless explicitly declared
+            # with 'global' -- unpack should create locals by default
+            if (existing is not None
+                    and name not in self.ctx.global_declarations
+                    and name not in self.ctx.current_scope.bindings
+                    and name in self.ctx.global_scope.bindings):
+                existing = None
+            if existing is not None:
+                self._check_nonvalue_rebinding(name, stmt)
+                self.compat.check_type_compatible(
+                    elem_type, existing, "tuple unpacking", source_expr=stmt)
+                stmt.is_new.append(False)
+            else:
+                self.ctx.current_scope.define(name, elem_type)
+                self.init.mark_assigned(name)
+                stmt.is_new.append(True)
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""

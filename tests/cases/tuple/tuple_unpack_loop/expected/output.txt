@@ -1,0 +1,4 @@
+ten
+twenty
+thirty
+60

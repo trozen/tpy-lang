@@ -17,7 +17,7 @@ from ..typesys import (
     local_var_is_movable, resolve_int_literals,
 )
 from ..parse import (
-    TpyStmt, TpyVarDecl, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt, TpyRaiseStopIteration,
     TpyGlobal,
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
@@ -177,6 +177,9 @@ class StatementGenerator:
         elif isinstance(stmt, TpyAssert):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._gen_assert(out, stmt, indent)
+        elif isinstance(stmt, TpyTupleUnpack):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self._gen_tuple_unpack(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
@@ -1072,6 +1075,61 @@ class StatementGenerator:
                 self.ctx.narrowed_vars[var_name] = prev
             else:
                 self.ctx.narrowed_vars.pop(var_name, None)
+
+    def _gen_tuple_unpack(self, out: TextIO, stmt: TpyTupleUnpack, indent: str) -> None:
+        """Generate tuple unpacking: auto __tup_N = expr; T a = std::get<0>(...); ..."""
+        self.ctx.unpack_counter += 1
+        tmp = f"__tup_{self.ctx.unpack_counter}"
+
+        value_expr = self.expressions.gen_expr(stmt.value)
+        self.ctx.temps.flush(out, indent)
+        out.write(f"{indent}auto {tmp} = {value_expr};\n")
+
+        for i, name in enumerate(stmt.targets):
+            if name is None:
+                continue
+            target_type = stmt.target_types[i]
+            cpp_type = self.types.type_to_cpp(target_type)
+            cpp_name = escape_cpp_name(name)
+            get_expr = f"std::get<{i}>({tmp})"
+            if stmt.is_owned[i]:
+                get_expr = f"std::move({get_expr})"
+
+            if stmt.is_new[i]:
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                self.ctx.var_types[name] = target_type
+                out.write(f"{indent}{cpp_type} {cpp_name} = "
+                          f"{get_expr};\n")
+            else:
+                if name in self.ctx.pointer_locals:
+                    rebind_slot = self.ctx.rebind_slots.get(name)
+                    if rebind_slot:
+                        is_optional_slot = rebind_slot not in self.ctx.plain_rebind_slots
+                        deref = self._ptr_from_rvalue_slot(
+                            rebind_slot, get_expr, False, is_optional_slot)
+                        out.write(f"{indent}{cpp_name} = {deref};\n")
+                    else:
+                        slot = self.ctx.slots.next_slot()
+                        self.ctx.rebind_slots[name] = slot
+                        is_hoisted = name in self.ctx.hoisted_vars
+                        if is_hoisted:
+                            hoist_kw = "static " if self.ctx.slots.global_scope else ""
+                            slot_opt = f"std::optional<{cpp_type}>"
+                            self.ctx.pending_hoist_decls.append(
+                                f"  {hoist_kw}{slot_opt} {slot};\n")
+                            deref = self._ptr_from_rvalue_slot(
+                                slot, get_expr, False, True)
+                            out.write(f"{indent}{cpp_name} = {deref};\n")
+                        else:
+                            self.ctx.plain_rebind_slots.add(slot)
+                            static_kw = "static " if self.ctx.slots.global_scope else ""
+                            out.write(f"{indent}{static_kw}{cpp_type} {slot} = "
+                                      f"{get_expr};\n")
+                            out.write(f"{indent}{cpp_name} = &{slot};\n")
+                else:
+                    out.write(f"{indent}{cpp_name} = "
+                              f"{get_expr};\n")
 
     def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
         """Generate an assert statement with optional isinstance union narrowing."""

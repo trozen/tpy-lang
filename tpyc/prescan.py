@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .parse import (
-    TpyStmt, TpyExpr, TpyVarDecl, TpyAssign, TpyAugAssign,
+    TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyName, TpySubscript,
     TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -124,6 +124,16 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     result.rvalue_reassigned.add(stmt.target.name)
                 else:
                     result.lvalue_reassigned.add(stmt.target.name)
+        elif isinstance(stmt, TpyTupleUnpack):
+            for name in stmt.targets:
+                if name is None:
+                    continue
+                if name in declared:
+                    result.reassigned.add(name)
+                    # std::get<i>(tmp) is always an rvalue
+                    result.rvalue_reassigned.add(name)
+                else:
+                    declared.add(name)
         elif isinstance(stmt, TpyAugAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.aug_assigned.add(stmt.target.name)
