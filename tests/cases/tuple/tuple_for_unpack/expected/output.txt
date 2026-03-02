@@ -1,0 +1,6 @@
+1 one
+2 two
+10 True
+20 False
+Alice A
+Bob B

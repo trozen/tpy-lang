@@ -164,6 +164,7 @@ class Parser:
         self._module_aliases: dict[str, str] = {}
         self._bare_module_imports: set[str] = set()
         self._reverse_module_aliases: dict[str, str] = {}
+        self._for_unpack_counter: int = 0
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -1599,6 +1600,26 @@ class Parser:
             return TpyWhile(cond, body, loc=loc)
 
         elif isinstance(node, ast.For):
+            if isinstance(node.target, ast.Tuple):
+                for elt in node.target.elts:
+                    if not isinstance(elt, ast.Name):
+                        raise ParseError(
+                            "For loop unpacking targets must be simple variables", node
+                        )
+                targets: list[str | None] = [
+                    None if elt.id == "_" else elt.id  # type: ignore[union-attr]
+                    for elt in node.target.elts
+                ]
+                synth_var = f"__for_tup_{self._for_unpack_counter}"
+                self._for_unpack_counter += 1
+                iterable = self._parse_expr(node.iter)
+                body = [self._parse_stmt(s) for s in node.body]
+                unpack = TpyTupleUnpack(
+                    targets=targets,
+                    value=TpyName(synth_var, loc=loc),
+                    loc=loc,
+                )
+                return TpyForEach(synth_var, iterable, [unpack] + body, loc=loc)
             if not isinstance(node.target, ast.Name):
                 raise ParseError("For loop target must be a simple variable", node)
             var = node.target.id

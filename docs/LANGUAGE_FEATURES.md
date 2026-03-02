@@ -535,6 +535,11 @@ def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
 a, b = (Int32(1), "hello")  # fresh variables
 _, second = swap(t)          # _ discards a value
 
+# For-loop unpacking
+items: list[tuple[Int32, str]] = [(Int32(1), "one"), (Int32(2), "two")]
+for n, s in items:
+    print(n, s)
+
 # Comparison (== and != only)
 a2 = (Int32(1), "hello")
 b2 = (Int32(1), "hello")
@@ -546,7 +551,7 @@ Restrictions:
 - Bare `tuple` without type arguments is rejected (must use `tuple[T1, T2, ...]`)
 - Reference types (records, lists, etc.) must be wrapped in `Own[T]` to be stored in a tuple (e.g. `tuple[Int32, Own[Point]]`). This makes the value copy explicit. A future phase will add reference-in-tuple support with lifetime tracking.
 - Tuple element assignment (`t[0] = x`) is rejected (tuples are immutable)
-- Nested unpacking (`a, (b, c) = ...`) and for-loop unpacking (`for a, b in items`) are not yet supported
+- Nested unpacking (`a, (b, c) = ...`) is not yet supported
 - `Optional[T]` / `Union` elements in tuples are not yet supported (codegen and printing need work)
 - Comparison (`==`, `!=`) requires element-wise type compatibility; `<`, `>`, `<=`, `>=` are not supported
 

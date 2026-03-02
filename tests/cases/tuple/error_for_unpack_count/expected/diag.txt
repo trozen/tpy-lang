@@ -1,0 +1,1 @@
+main.py:6: error: Cannot unpack tuple of 2 elements into 3 targets
