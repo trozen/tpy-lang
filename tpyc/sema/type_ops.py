@@ -66,19 +66,19 @@ class TypeOperations:
                                  typ._module_qname, resolved_is_dynamic)
         elif isinstance(typ, PtrType):
             resolved_pointee = self.resolve_type(typ.pointee)
-            if resolved_pointee != typ.pointee:
+            if resolved_pointee is not typ.pointee:
                 return PtrType(resolved_pointee, is_const=typ.is_const)
         elif isinstance(typ, OwnType):
             resolved_wrapped = self.resolve_type(typ.wrapped)
-            if resolved_wrapped != typ.wrapped:
+            if resolved_wrapped is not typ.wrapped:
                 return OwnType(resolved_wrapped)
         elif isinstance(typ, ReadonlyType):
             resolved_wrapped = self.resolve_type(typ.wrapped)
-            if resolved_wrapped != typ.wrapped:
+            if resolved_wrapped is not typ.wrapped:
                 return ReadonlyType(resolved_wrapped)
         elif isinstance(typ, UnionType):
             resolved_members = tuple(self.resolve_type(m) for m in typ.members)
-            if resolved_members != typ.members:
+            if any(new is not old for new, old in zip(resolved_members, typ.members)):
                 return UnionType(resolved_members)
         return typ
 

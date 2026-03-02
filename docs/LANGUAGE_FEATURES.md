@@ -2449,6 +2449,7 @@ struct SortedContainer {
 - `Comparable` - has comparison operators (`<`, `<=`, `>`, `>=`, `==`, `!=`)
 - `Sequence[T]` - has `__len__()` and `__getitem__()`
 - `Deref[T]` - has `__deref__() -> T` (auto-deref for field/method access)
+- `Covariant[T]` - marker: type param T is covariant, enables `G[Child] -> G[Parent]` coercion
 - `NativeIterable[T]` - supports C++ range-for iteration
 - `OptIterator[T]` - lazy iteration via `next() -> Optional[T]`
 - `Iterator[T]` - has `__next__` and `__iter__` (Python iterator protocol)
@@ -3461,6 +3462,45 @@ print(b.get())    # 42
 b.set(100)
 print(b.get())    # 100
 c = b.clone()     # Explicit clone (Box is non-copyable)
+```
+
+**Covariant Box for @dynamic protocols**: `Box[T]` declares `Covariant[T]`, so
+`Box[Child]` can be passed where `Box[Parent]` is expected when `Child` implements
+a `@dynamic Parent` protocol. The compiler generates a converting move constructor
+on the C++ template:
+
+```python
+from tplib import Box
+from tpy import dynamic
+from typing import Protocol
+
+@dynamic
+class Shape(Protocol):
+    def area(self) -> float: ...
+
+class Circle(Shape):
+    _r: float
+    def __init__(self, r: float) -> None:
+        self._r = r
+    def area(self) -> float:
+        return 3.14 * self._r * self._r
+
+def print_area(b: Box[Shape]) -> None:
+    print(b.get().area())
+
+bc = Box(Circle(5.0))      # Box[Circle]
+print_area(bc)              # covariant coercion: Box[Circle] -> Box[Shape]
+```
+
+`Covariant[T]` is a marker protocol. Any user-defined generic type can declare it
+to opt into covariant coercion:
+
+```python
+from tpy import Ptr, Covariant
+
+class SmartPtr[T](Covariant[T]):
+    _ptr: Ptr[T]
+    ...
 ```
 
 **Available stdlib modules:**

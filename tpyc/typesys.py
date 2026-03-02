@@ -1351,6 +1351,17 @@ def is_protocol_type(typ: TpyType) -> bool:
     return isinstance(typ, NamedType) and typ.is_protocol
 
 
+def get_covariant_params(record_info: 'RecordInfo') -> set[str]:
+    """Get type param names marked covariant via Covariant[T] protocol."""
+    result: set[str] = set()
+    for proto in record_info.implemented_protocols:
+        if proto.name == "Covariant" and proto.type_args:
+            for arg in proto.type_args:
+                if isinstance(arg, TypeParamRef):
+                    result.add(arg.name)
+    return result
+
+
 @dataclass
 class FieldInfo:
     """Information about a record field."""

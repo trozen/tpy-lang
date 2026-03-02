@@ -528,6 +528,11 @@ class Deref(_Protocol[T]):
     def __deref__(self): ...
 
 
+class Covariant(_Protocol[T]):
+    """Marker: type param T is covariant (safe for G[Child] -> G[Parent])."""
+    pass
+
+
 @_runtime_checkable
 class Comparable(_Protocol):
     """Protocol for types supporting comparison with <."""

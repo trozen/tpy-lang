@@ -13,7 +13,7 @@ from ..typesys import (
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
-    ResolvedBinop
+    ResolvedBinop, get_covariant_params,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -173,6 +173,27 @@ class ExpressionGenerator:
             else:
                 adapter_type = self.protocols.get_dynamic_ref_adapter_type(proto_name, concrete_cpp)
             return self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
+
+    def _gen_covariant_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
+        """If ptype requires covariant conversion, return the wrapped arg. Otherwise None."""
+        if not isinstance(ptype, NamedType) or not ptype.is_user_record:
+            return None
+        arg_type = self.ctx.get_expr_type(arg)
+        if not isinstance(arg_type, NamedType) or not arg_type.is_user_record:
+            return None
+        if arg_type.name != ptype.name or arg_type.type_args == ptype.type_args:
+            return None
+        record_info = self.ctx.analyzer.registry.get_record(arg_type.name)
+        if not record_info:
+            return None
+        covariant = get_covariant_params(record_info)
+        if not covariant:
+            return None
+        # Create a named temp of the target type from the moved source
+        target_cpp = self.types.type_to_cpp(ptype)
+        arg_expr = self.gen_expr_deref(arg, arg_type)
+        arg_expr = self._maybe_move(arg, arg_expr)
+        return self.ctx.temps.create_typed(target_cpp, arg_expr)
 
     def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
                      target_type: TpyType | None | _Unset = _UNSET) -> str:
@@ -805,6 +826,12 @@ class ExpressionGenerator:
                     gen_args.append(dynamic_arg)
                     continue
 
+                # Covariant generic params: Box[Child] -> Box[Parent] via temp
+                covariant_arg = self._gen_covariant_arg(arg, resolved_ptype)
+                if covariant_arg is not None:
+                    gen_args.append(covariant_arg)
+                    continue
+
                 # Optional non-value params are T* / const T* -- pass raw pointer
                 actual_ptype = unwrap_readonly(resolved_ptype)
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
@@ -930,6 +957,10 @@ class ExpressionGenerator:
                     if dynamic_arg is not None:
                         gen_args.append(dynamic_arg)
                         continue
+                    covariant_arg = self._gen_covariant_arg(a, ptype)
+                    if covariant_arg is not None:
+                        gen_args.append(covariant_arg)
+                        continue
                 # Optional non-value params are T* / const T* -- same logic as function calls
                 actual_ptype = unwrap_readonly(ptype) if ptype else ptype
                 if isinstance(actual_ptype, OptionalType) and actual_ptype.uses_pointer_repr():
@@ -980,6 +1011,10 @@ class ExpressionGenerator:
                         dynamic_arg = self._gen_dynamic_protocol_arg(arg, ptype)
                         if dynamic_arg is not None:
                             gen_args.append(dynamic_arg)
+                            continue
+                        covariant_arg = self._gen_covariant_arg(arg, ptype)
+                        if covariant_arg is not None:
+                            gen_args.append(covariant_arg)
                             continue
                     gen_args.append(self.gen_call_arg(arg, ptype))
             args = ", ".join(gen_args)

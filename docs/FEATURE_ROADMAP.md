@@ -35,7 +35,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| B1 | Box[T] heap ownership | S-M | Partial | [II](#boxt----heap-ownership) |
+| B1 | Box[T] heap ownership | S-M | Done | [II](#boxt----heap-ownership) |
 | B2 | Union types / ADTs | L | Partial | [I](#union-types--algebraic-data-types) |
 | B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
@@ -554,29 +554,15 @@ Library-level `Box[T]` in `tplib` using unsafe primitives (`tpy.unsafe`). `@noco
 polymorphic containers (`list[Box[Shape]]`) and record fields typed as `@dynamic`
 protocols. Foundation for `Rc[T]`, `Arc[T]`.
 
-**Current state**: Partial. Library `tplib.Box[T]` works for concrete types (tested:
-`Box[Int32]`, `Box[str]`, deref chains, optional Box). Not yet working: `Box[T]` where
-`T` is a `@dynamic` protocol (e.g. `Box[Shape]`).
+**Current state**: Working. Library `tplib.Box[T]` works for both concrete types
+and `@dynamic` protocol types. `Covariant[T]` marker protocol enables
+`Box[Circle]` -> `Box[Shape]` coercion when Circle implements `@dynamic Shape`.
 
-**Remaining**: `Covariant[T]` marker protocol. The pattern for polymorphic Box:
-1. Construct with concrete type: `Box(Circle(5))` -- infers `Box[Circle]`, works today
-2. Coerce `Box[Circle]` to `Box[Shape]` when `Circle` implements `@dynamic Shape`
-3. Compiler auto-generates a converting move constructor for types marked `Covariant[T]`
+The compiler auto-generates a converting move constructor for types marked
+`Covariant[T]`, using C++ `std::is_base_of_v` constraint. Generalizes to
+`Rc[T]`, `Arc[T]`, and any user-defined smart pointer.
 
-```python
-class Box[T](Deref[T], Covariant[T]):
-    _ptr: Ptr[T]
-    ...
-```
-
-`Covariant[T]` tells the compiler: T only appears behind `Ptr[T]` (never by value),
-so `G[Sub]` -> `G[Super]` coercion is safe for `@dynamic` hierarchies. Generalizes
-to `Rc[T]`, `Arc[T]`, and any user-defined smart pointer.
-
-**Dependencies**: Prerequisites done (`@nocopy`, `Deref[T]`, auto-move, `__del__`
-drop flag). `Covariant[T]` protocol needed for `@dynamic` support.
-
-**Effort**: S-M (library Box done; remaining is `Covariant[T]` protocol + coercion codegen)
+**Effort**: Done
 
 ---
 
@@ -606,14 +592,10 @@ Working: locals, function params, method params, constructor params, return type
 inheritance chain), direct C++ inheritance, structural conformance (adapter wrapping),
 conditional/loop reassignment (hoisted slots), `Optional[@dynamic]` rejection.
 
-Remaining: record fields typed as `@dynamic` protocol (needs `Box[T]` +
-`Covariant[T]`), `list[Box[P]]` heterogeneous containers, generic `@dynamic`
-protocols.
+Remaining: `list[Box[P]]` heterogeneous containers, generic `@dynamic` protocols.
+Record fields typed as `@dynamic` protocol work via `Box[T]` + `Covariant[T]`.
 
 See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for full progress.
-
-**Dependencies**: `Box[T]` + `Covariant[T]` coercion needed for remaining items
-(record fields, containers).
 
 ---
 

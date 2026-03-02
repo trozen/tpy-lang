@@ -1,9 +1,9 @@
 # Box[T] -- heap-allocated owning container.
 from __future__ import annotations
-from tpy import Own, Ptr, Deref
+from tpy import Own, Ptr, Deref, Covariant
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
-class Box[T](Deref[T]):
+class Box[T](Deref[T], Covariant[T]):
     _ptr: Ptr[T]
 
     def __init__(self, value: Own[T]):

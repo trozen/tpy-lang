@@ -340,6 +340,14 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::ValueType",
     )
 
+    # Covariant[T] marker -- type parameter T is covariant, enabling
+    # G[Child] -> G[Parent] coercion for @dynamic protocol hierarchies.
+    module.protocol("Covariant",
+        type_params=["T"],
+        methods={},
+        cpp_concept="tpy::Covariant",
+    )
+
     # String: Explicit owned string type (std::string)
     module.register_type(STRING, cpp_type="std::string",
         extends=["NativeIterable[Char]"],

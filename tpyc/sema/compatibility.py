@@ -13,7 +13,7 @@ from ..typesys import (
     OwnType, ReadonlyType, VoidType, PtrType, is_const_ptr,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
-    is_any_str_type,
+    is_any_str_type, get_covariant_params,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -150,6 +150,22 @@ class TypeCompatibility:
                 if not actual.is_const or expected.is_const:
                     if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
                         return None
+
+        # Covariant generic coercion: Box[Child] -> Box[Parent]
+        # when Box extends Covariant[T] and Child conforms to @dynamic Parent.
+        # C++ converting move ctor handles the actual conversion.
+        if (isinstance(actual, NamedType) and actual.is_user_record
+                and isinstance(expected, NamedType) and expected.is_user_record
+                and actual.name == expected.name
+                and actual.type_args and expected.type_args
+                and actual.type_args != expected.type_args):
+            record_info = self.ctx.registry.get_record(actual.name)
+            if record_info and record_info.type_params:
+                covariant = get_covariant_params(record_info)
+                if covariant and self._check_covariant_args(
+                    record_info, covariant, actual, expected
+                ):
+                    return None
 
         # Allow T -> Own[T] coercion (ownership transfer)
         if isinstance(expected, OwnType):
@@ -388,6 +404,47 @@ class TypeCompatibility:
             return False
         bound = self.type_ops.get_type_param_bound(typ.name)
         return bound is not None and isinstance(bound, NamedType) and bound.name == "ValueType"
+
+    def _check_covariant_args(
+        self, record_info: 'RecordInfo', covariant: set[str],
+        actual: NamedType, expected: NamedType
+    ) -> bool:
+        """Check if all type args are compatible under covariance rules."""
+        for i, param_name in enumerate(record_info.type_params):
+            if i >= len(actual.type_args) or i >= len(expected.type_args):
+                return False
+            actual_arg = actual.type_args[i]
+            expected_arg = expected.type_args[i]
+            if actual_arg == expected_arg:
+                continue
+            if param_name not in covariant:
+                return False  # invariant position must match exactly
+            if not isinstance(actual_arg, TpyType) or not isinstance(expected_arg, TpyType):
+                return False
+            # Target must be a @dynamic protocol or class parent for C++ pointer upcast
+            if not self._is_covariant_target(actual_arg, expected_arg):
+                return False
+        return True
+
+    def _is_covariant_target(self, child: TpyType, parent: TpyType) -> bool:
+        """Check if child -> parent is valid for covariant conversion.
+
+        Requires C++ struct inheritance: @dynamic protocol implementation
+        or class inheritance.
+        """
+        if not isinstance(child, NamedType) or not isinstance(parent, NamedType):
+            return False
+        # @dynamic protocol: child implements parent
+        if is_protocol_type(parent):
+            proto_info = self.ctx.registry.get_protocol(parent.name)
+            if proto_info and proto_info.is_dynamic:
+                if self.protocols and self.protocols.type_conforms_to_protocol(child, parent):
+                    return True
+            return False
+        # Class inheritance
+        if child.is_user_record and parent.is_user_record:
+            return self.ctx.registry.is_subclass_of(child, parent)
+        return False
 
     def _is_local_shadow(self, name: str) -> bool:
         """Check if a name is bound in a local scope, shadowing a global."""

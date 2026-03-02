@@ -11,6 +11,7 @@ from ..typesys import (
     TpyType, NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo,
     ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
+    get_covariant_params,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -289,6 +290,9 @@ class RecordGenerator:
         # Generate destructor if __del__ is defined
         self._gen_move_and_destructor(out, record)
 
+        # Generate converting move constructor for covariant generics
+        self._gen_covariant_converting_ctor(out, record)
+
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
         for method in record.methods:
@@ -462,6 +466,71 @@ class RecordGenerator:
                                     del_method, local_ns, indent_level=2, is_method=True,
                                     record_type_param_bounds=record.type_param_bounds or None)
         out.write(f"{INDENT}}}\n")
+
+    def _gen_covariant_converting_ctor(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate converting move constructor for covariant generic types.
+
+        For Box[T] with Covariant[T], emits a template constructor that accepts
+        Box<U>&& when U inherits T, enabling Box[Child] -> Box[Parent] conversion.
+        """
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        if not record_info or not record_info.type_params:
+            return
+        covariant = get_covariant_params(record_info)
+        if not covariant:
+            return
+
+        cpp_name = escape_cpp_name(record.name)
+
+        # Build template params and requires clause
+        other_params = []
+        requires_parts = []
+        for i, tp in enumerate(record_info.type_params):
+            kind = (record_info.type_param_kinds[i]
+                    if record_info.type_param_kinds and i < len(record_info.type_param_kinds)
+                    else TypeParamKind.TYPE)
+            u_name = f"__CovU_{tp}"
+            if kind == TypeParamKind.INT:
+                other_params.append(f"std::size_t {u_name}")
+            else:
+                other_params.append(f"typename {u_name}")
+            if kind == TypeParamKind.TYPE:
+                if tp in covariant:
+                    requires_parts.append(f"std::is_base_of_v<{tp}, {u_name}>")
+                else:
+                    requires_parts.append(f"std::is_same_v<{tp}, {u_name}>")
+
+        if not requires_parts:
+            return
+
+        other_type_args = ", ".join(
+            f"__CovU_{tp}" for tp in record_info.type_params
+        )
+        template_str = ", ".join(other_params)
+        requires_str = " && ".join(requires_parts)
+
+        # Build member init list: transfer each field from __other
+        init_parts = []
+        if record_info.parent:
+            parent_cpp = self.types.type_to_cpp(record_info.parent)
+            init_parts.append(f"{parent_cpp}(std::move(__other))")
+        for fld in record.fields:
+            cpp_fld = escape_cpp_name(fld.name)
+            init_parts.append(f"{cpp_fld}(std::move(__other.{cpp_fld}))")
+        init_list = ""
+        if init_parts:
+            init_list = " : " + ", ".join(init_parts)
+
+        out.write(f"\n{INDENT}template<{template_str}>\n")
+        out.write(f"{INDENT}{INDENT}requires ({requires_str})\n")
+        out.write(f"{INDENT}{cpp_name}({cpp_name}<{other_type_args}>&& __other) noexcept{init_list} {{\n")
+        if record_info.has_del:
+            out.write(f"{INDENT}{INDENT}__other.__tpy_owned_ = false;\n")
+        out.write(f"{INDENT}}}\n")
+
+        # Friend declaration for cross-instantiation member access
+        friend_tparams = ", ".join("typename" for _ in record_info.type_params)
+        out.write(f"{INDENT}template<{friend_tparams}> friend struct {cpp_name};\n")
 
     def _extract_base_init(self, init_method: TpyFunction, record: TpyRecord) -> str | None:
         """Extract super().__init__() call and return base class initializer string.
