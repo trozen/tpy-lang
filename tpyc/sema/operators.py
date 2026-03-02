@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32, PendingStrType, StrType, PendingListType, ListType,
+    INT32, PendingListType, ListType,
 )
-from .overloads import type_matches_numeric
+from .overloads import type_matches_numeric, type_matches_strict
 from tpyc import modules as builtin_modules
 
 if TYPE_CHECKING:
@@ -118,9 +118,7 @@ class OperatorResolver:
                 _, param_type = method.params[0]
                 if type_subst:
                     param_type = _substitute_type_params(param_type, type_subst)
-                if type_matches_numeric(arg_type, param_type):
-                    return method
-                if isinstance(arg_type, PendingStrType) and isinstance(param_type, StrType):
+                if type_matches_strict(arg_type, param_type) or type_matches_numeric(arg_type, param_type):
                     return method
         return None
 

@@ -12,11 +12,8 @@
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - consider generating `__len__()` as `size()` member function for STL compatibility (`__len__`, `__getitem__`, `__setitem__` are already free functions in `dunder.hpp`)
-- refactor: `find_binop_overload` in `operators.py` uses `type_matches_numeric` directly instead of the unified matching in `overloads.py`; had to add a special-case for PendingStrType -- should delegate to `type_matches_strict` so new deferred types work automatically
-- coerce int32 -> uint32?
 
 ## Bugs
-- REPL: arr=[1,2,3]; arr[-4]
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
 
 ## Examples
