@@ -1,0 +1,1 @@
+main.py:10: warning: field 'total' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch

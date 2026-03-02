@@ -145,9 +145,9 @@ Auto-declaration only applies to top-level `self.field = expr` statements in `__
 
 **Chosen approach: Warn and keep current behavior. Extend later.**
 
-Keep the current split: top-level `self.field = value` assignments go to the C++ initializer list, everything else goes in the constructor body. Add a warning when a field is body-assigned (not init-list) and its type is `@nocopy` or non-trivially-default-constructible.
+Keep the current split: top-level `self.field = value` assignments go to the C++ initializer list, everything else goes in the constructor body. **Done**: sema now emits an error when a field assigned inside control flow has `@nocopy` or `__del__` (including inherited), and a warning for all other field types.
 
-This is simple and practical for now. Future extensions could include:
+Future extensions could include:
 - Ternary rewriting for simple if/else patterns assigning the same field
 - Lambda-in-init-list for complex conditional initialization
 - Analysis to determine which fields can be extracted even with control flow present

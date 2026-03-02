@@ -14,7 +14,9 @@ from ..typesys import (
 )
 from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
-from ..parse.nodes import TpyStrLiteral
+from ..parse.nodes import (
+    TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName,
+)
 
 from .diagnostics import Scope, Diagnostic, SemanticError
 from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
@@ -561,6 +563,10 @@ class SemanticAnalyzer:
             for stmt in method.body:
                 self.stmts.analyze_stmt(stmt)
 
+            # Check for field assignments inside control flow in __init__
+            if method.name == "__init__":
+                self._check_init_field_assignments(method, record)
+
             # Validate super().__init__() position in __init__ methods
             if method.name == "__init__" and self.ctx.super_init_call is not None:
                 # super().__init__() must be the first non-docstring statement
@@ -612,6 +618,98 @@ class SemanticAnalyzer:
             self.ctx.current_ns = None
 
         self.ctx.record_ctx = RecordContext()
+
+    def _check_init_field_assignments(self, method: TpyFunction, record: TpyRecord) -> None:
+        """Check for field assignments inside control flow in __init__.
+
+        Fields assigned inside branches bypass the C++ member initializer list
+        and get default-constructed then reassigned. For nocopy/del types this
+        is UB; for others it is fragile.
+        """
+        record_info = self.ctx.registry.get_record(record.name)
+        if record_info is None:
+            return
+        all_fields = self._collect_all_fields(record_info)
+        if not all_fields:
+            return
+
+        first_error: SemanticError | None = None
+
+        def walk(stmts: list[TpyStmt], depth: int) -> None:
+            nonlocal first_error
+            for stmt in stmts:
+                if isinstance(stmt, TpyAssign):
+                    target = stmt.target
+                    if (
+                        isinstance(target, TpyFieldAccess)
+                        and isinstance(target.obj, TpyName)
+                        and target.obj.name == "self"
+                        and target.field in all_fields
+                        and depth > 0
+                    ):
+                        field_name = target.field
+                        field_info = all_fields[field_name]
+                        field_type = field_info.type
+                        if self._type_has_del_or_nocopy(field_type):
+                            type_name = str(field_type)
+                            err = self._error(
+                                f"field '{field_name}' of type '{type_name}' assigned inside "
+                                f"control flow in __init__; '{type_name}' is not safely "
+                                f"default-constructible (move-only or has __del__). "
+                                f"Use a helper function or @staticmethod to compute the value",
+                                stmt
+                            )
+                            if first_error is None:
+                                first_error = err
+                        else:
+                            self._warning(
+                                f"field '{field_name}' assigned inside control flow in "
+                                f"__init__; this bypasses the C++ member initializer list. "
+                                f"Consider assigning unconditionally before the branch",
+                                stmt
+                            )
+                elif isinstance(stmt, TpyIf):
+                    walk(stmt.then_body, depth + 1)
+                    walk(stmt.else_body, depth + 1)
+                elif isinstance(stmt, (TpyWhile, TpyForEach)):
+                    walk(stmt.body, depth + 1)
+
+        walk(method.body, 0)
+        if first_error is not None:
+            raise first_error
+
+    def _collect_all_fields(self, record_info: RecordInfo) -> dict[str, FieldInfo]:
+        """Collect all fields from a record and its ancestors."""
+        result: dict[str, FieldInfo] = {}
+        parent = record_info.parent
+        if parent is not None:
+            parent_rec = self.ctx.registry.get_record_for_type(parent)
+            if parent_rec is not None:
+                result.update(self._collect_all_fields(parent_rec))
+        for f in record_info.fields:
+            result[f.name] = f
+        return result
+
+    def _type_has_del_or_nocopy(self, field_type: TpyType) -> bool:
+        """Check if a type (or any ancestor) has __del__ or is @nocopy."""
+        inner = field_type
+        if isinstance(inner, OwnType):
+            inner = inner.wrapped
+        inner = unwrap_readonly(inner)
+        rec = self.ctx.registry.get_record_for_type(inner)
+        if rec is None:
+            return False
+        if rec.is_nocopy or rec.has_del:
+            return True
+        parent = rec.parent
+        while parent is not None:
+            parent_rec = self.ctx.registry.get_record_for_type(parent)
+            if parent_rec is None:
+                break
+            if parent_rec.has_del or parent_rec.is_nocopy:
+                return True
+            parent = parent_rec.parent
+        return False
 
     def _analyze_top_level(self, stmts: list[TpyStmt]) -> None:
         """Analyze top-level statements (for generated main()).

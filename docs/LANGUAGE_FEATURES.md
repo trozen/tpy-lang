@@ -1188,6 +1188,7 @@ s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 ### User-Defined
 - **Working**: Classes -> C++ structs
 - **Working**: Auto-declare fields from `__init__`: `self.field = param` auto-declares a field using the parameter's type, no class-level annotation needed (CPython-compatible). Only direct parameter assignments at `__init__` top level; computed expressions and inheritance require explicit annotations. See `docs/CONSTRUCTOR_DESIGN.md`.
+- **Working**: Field assignment control flow check: assigning `self.field` inside control flow (`if`/`else`/`while`/`for`) in `__init__` bypasses the C++ member initializer list. For `@nocopy` or `__del__` types this is a compile error (UB from default-constructing non-trivial types); for other types it produces a warning. Fix: compute the value unconditionally before the branch (`self.x = a if cond else b`) or use a helper function.
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)

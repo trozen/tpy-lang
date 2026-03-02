@@ -1,0 +1,2 @@
+main.py:8: warning: field 'value' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
+main.py:10: warning: field 'value' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch

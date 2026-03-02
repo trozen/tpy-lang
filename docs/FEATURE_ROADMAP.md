@@ -24,7 +24,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A6 | Keyword args + default values | M | Done | [VII](#keyword-arguments-and-default-values) |
 | A6b | Generic default values (`T()`, instantiation validation) | S | Done | [VII](#generic-default-values) |
 | A7 | `__bool__` protocol | S | Done | [VII](#__bool__-protocol) |
-| A8 | Constructor init-list for branching `__init__` | M | Not started | [II](#constructor-init-list-for-branching-init) |
+| A8 | Constructor init-list: warn/error on branching field assignment | S | Done | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
 | A10 | Tuple type + unpacking | M-L | Not started | [I](#tuple-type) |
 | A10b | `@iter_range` / `__iter_range__` protocol | S-M | Not started | [I](#iter_range--__iter_range__-protocol-zero-cost-user-defined-iteration) |
@@ -127,6 +127,7 @@ don't get lost.
 | Final for non-primitive types | A1 | `Final[list[T]]` -- needs deep immutability |
 | Cross-module Final references | A1 | Use imported Finals in initializers |
 | Virtual methods in inheritance | B4 | `@dynamic` protocols cover the use case; class-based virtual dispatch is a distant future consideration |
+| IIFE init-list for branching `__init__` | A8 | Generate `field([&]{ if (...) return x; else return y; }())` in member init-list, removing the need for helper functions. Handles all types including `@nocopy`/const fields. |
 
 ---
 
@@ -595,7 +596,7 @@ See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for full progr
 
 ---
 
-### Constructor Init-List for Branching `__init__`
+### Constructor Init-List: Warn/Error on Branching Field Assignment
 
 When `__init__` has control flow (if/else, loops), field assignments inside branches
 fall back to C++ body-assignment instead of the member initializer list. The field is
@@ -616,32 +617,41 @@ Wrapper(std::optional<Point> p, int32_t tag) {
 ```
 
 This works for trivial types (`int32_t`, `double`, `bool`) but breaks for:
-- **Non-default-constructible types**: field has no `T()` -- C++ won't compile
-- **`@nocopy` (move-only) types**: default-construct + assign requires copy assignment
-- **`const` fields** (future): can only be set in initializer list
+- **`@nocopy` (move-only) types with `__del__`**: default-construct leaves fields
+  uninitialized, then move-assignment calls the destructor on garbage state (UB).
+- **`const` fields** (future `readonly[T]` on fields): can only be set in init-list.
 
-**Why it matters**: As more complex types become fields (e.g. `Box[T]`, `@nocopy`
-records), constructors with any branching will fail to compile in C++. This is a
-correctness bug that will surface more as the type system grows.
+**Approach**: Detect field assignments inside control flow in `__init__` during sema
+and report diagnostics:
+- **Error** when the field type would cause C++ compilation failure or UB (e.g.
+  `@nocopy` types with `__del__`, types without default constructors).
+- **Warning** otherwise (trivial types work but the pattern is fragile).
 
-Design options:
-- **(a) Lambda-in-initializer**: `: field([&]{ if (...) return x; else return y; }())`
-  -- keeps initializer list, moves branching into per-field lambdas. Works for all
-  types, generates unusual but correct C++.
-- **(b) Factored initializer**: analyze which fields are assigned on all paths and
-  extract them to the initializer list; only truly conditional fields use body
-  assignment. Requires data-flow analysis of `__init__`.
-- **(c) Deferred initialization**: wrap fields in `std::optional<T>` when init is
-  conditional, unwrap on first use. Overhead: extra byte per field + has_value checks.
+Users can refactor complex initialization into helper functions or `@staticmethod`
+factories:
+
+```python
+class Resource:
+    handle: Handle
+    def __init__(self, fd: Int32, wrap: bool):
+        self.handle = Handle.create(fd, wrap)  # simple top-level assignment
+
+class Handle:
+    @staticmethod
+    def create(fd: Int32, wrap: bool) -> Own[Handle]:
+        if wrap:
+            return Handle(fd)
+        else:
+            return Handle(Int32(-1))
+```
 
 **Current state**: Not started. Simple `self.field = param` at top level uses init-list
 correctly. The problem only manifests when `__init__` has branching and the field type
 is non-trivial.
 
-**Dependencies**: Interacts with `@nocopy`, `Box[T]`, and any non-trivially-constructible
-field types.
+**Dependencies**: None.
 
-**Effort**: M (data-flow analysis of `__init__` + codegen restructuring)
+**Effort**: S (AST walk of `__init__` body in sema + diagnostic emission)
 
 ---
 
