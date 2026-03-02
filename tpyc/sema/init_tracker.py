@@ -73,22 +73,23 @@ class InitTracker:
         before: FlowState,
         condition_type_facts: dict[str, TpyType] | None = None,
     ) -> None:
-        """Apply conservative flow facts at loop body entry.
+        """Apply flow facts at loop body entry.
 
-        We treat loop bodies as potentially revisited. To avoid stale
-        proofs across iterations, type narrowing facts are constrained
-        to condition-proven facts.
+        Restores the state from just before the loop (before[5]), so that
+        outer narrowing proven by enclosing if-blocks is preserved inside
+        the loop body. Any additional narrowing the loop condition itself
+        proves (e.g. ``while x is not None``) is layered on top.
         """
         self.ctx.definitely_assigned = set(before[0])
         self.ctx.init_terminated = False
         self.ctx.rvalue_vars = set(before[2])
         self.ctx.param_provenance_vars = set(before[3])
         self.ctx.non_null_ptr_vars = set(before[4])
+        # Restore outer narrowing from saved state, then layer on any
+        # narrowing the loop condition itself proves.
+        self.ctx.narrowed_types = dict(before[5])
         if condition_type_facts is not None:
-            self.ctx.narrowed_types = dict(condition_type_facts)
-        else:
-            # Restore from saved state (preserves narrowing proven before the loop)
-            self.ctx.narrowed_types = dict(before[5])
+            self.ctx.narrowed_types.update(condition_type_facts)
 
     def merge_branches(self, then_state: FlowState, else_state: FlowState) -> None:
         then_assigned, then_term, then_rvalue, then_prov, then_nn_ptr, then_narrowed = then_state
