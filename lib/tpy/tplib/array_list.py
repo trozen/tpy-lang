@@ -121,6 +121,15 @@ class ArrayList[T, N: int]:
         self._storage.drop(UInt32(index))
         self._storage.init(UInt32(index), value)
 
+    def __delitem__(self, index: Int32) -> None:
+        self._storage.drop(UInt32(index))
+        i = index
+        end = self._size - 1
+        while i < end:
+            self._storage.init(UInt32(i), self._storage.take(UInt32(i + 1)))
+            i += 1
+        self._size -= 1
+
     def __iter__(self) -> Own[ArrayListIter[T, N]]:
         return ArrayListIter[T, N](Ptr(self._storage), self._size)
 
