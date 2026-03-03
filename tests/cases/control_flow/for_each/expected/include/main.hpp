@@ -12,7 +12,7 @@ extern std::string text;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t sum_array();
-void print_span(std::span<const int32_t> data);
+void print_span(std::span<int32_t> data);
 int32_t nested_sum();
 
 void __tpy_init();

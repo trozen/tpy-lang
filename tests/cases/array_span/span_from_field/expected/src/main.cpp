@@ -11,7 +11,7 @@ void main() {
     // 11:     box: Box = Box(arr)
     Box box = Box(arr);
     // 12:     s: Span[Int32] = box.items
-    std::span<const int32_t> s = tpy::as_span(box.items);
+    std::span<int32_t> s = tpy::as_mut_span(box.items);
     // 13:     print(s[0])
     std::cout << tpy::__getitem__(s, 0) << "\n";
     // 14:     print(s[2])

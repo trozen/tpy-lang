@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, DictType, PendingListType, TupleType,
+    NamedType, PtrType, OwnType, ListType, DictType, PendingListType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
@@ -849,9 +849,11 @@ class ExpressionAnalyzer:
                     expr.ptr_non_null = True
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
-                # Ptr[T] fields become ReadOnlyPtr[T] (deep const semantics).
+                # Ptr[T] fields become ReadOnlyPtr[T], Span[T] -> ReadOnlySpan[T].
                 if is_readonly_obj:
-                    if isinstance(result, PtrType) and not result.is_const:
+                    if isinstance(result, PtrType) and not result.is_readonly:
+                        result = result.as_const()
+                    elif isinstance(result, SpanType) and not result.is_readonly:
                         result = result.as_const()
                     elif not result.is_value_type():
                         result = ReadonlyType(unwrap_readonly(result))

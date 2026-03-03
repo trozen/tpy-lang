@@ -47,7 +47,7 @@ void test_list_param() {
 
 // # Passed to Span param -> array (ArrayType)
 // 29: def takes_span(x: Span[Int32]) -> Int32:
-int32_t takes_span(std::span<const int32_t> x) {
+int32_t takes_span(std::span<int32_t> x) {
     // 30:     return x[0]
     return tpy::__getitem__(x, 0);
 }
@@ -57,7 +57,7 @@ int32_t test_span_param() {
     // 33:     data = [10, 20, 30]
     std::array<int32_t, 3> data = {10, 20, 30};
     // 34:     return takes_span(data)
-    return takes_span(tpy::as_span(data));
+    return takes_span(tpy::as_mut_span(data));
 }
 
 void __tpy_init() {

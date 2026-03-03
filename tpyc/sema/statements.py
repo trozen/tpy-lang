@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, StrVarInfo, PtrType, is_const_ptr, NoneType, OptionalType, UnionType,
+    ListLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
@@ -1198,7 +1198,7 @@ class StatementAnalyzer:
         else:
             if isinstance(stmt.target, TpyFieldAccess):
                 obj_type = self.ctx.get_expr_type(stmt.target.obj)
-                if is_const_ptr(obj_type):
+                if is_readonly_ptr(obj_type):
                     raise self.ctx.error("Cannot assign through read-only pointer", stmt)
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",

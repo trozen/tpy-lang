@@ -118,7 +118,7 @@ void main() {
     // 75:     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
     // 76:     s: Span[Int32] = arr
-    std::span<const int32_t> s = tpy::as_span(arr);
+    std::span<int32_t> s = tpy::as_mut_span(arr);
     // 77:     d = ArrayList[Int32, 8](s)
     ::tpy_user::tplib::ArrayList<int32_t, 8> d = ::tpy_user::tplib::ArrayList<int32_t, 8>(s);
     // 78:     print(len(d))               # 3

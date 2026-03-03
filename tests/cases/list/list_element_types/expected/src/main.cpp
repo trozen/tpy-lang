@@ -35,7 +35,7 @@ int32_t local_mixed() {
 
 // # Case 7: Passing to Span[Int32] param requires Int32 elements
 // 31: def sum_span(nums: Span[Int32]) -> Int32:
-int32_t sum_span(std::span<const int32_t> nums) {
+int32_t sum_span(std::span<int32_t> nums) {
     // 32:     total: Int32 = 0
     int32_t total = 0;
     // 33:     for n in nums:
@@ -53,12 +53,12 @@ int32_t test_local_span() {
     // 43:     local_data = [4, 5, 6]  # Inferred as Int32 when passed to Span[Int32]
     std::array<int32_t, 3> local_data = {4, 5, 6};
     // 44:     return sum_span(local_data)
-    return sum_span(tpy::as_span(local_data));
+    return sum_span(tpy::as_mut_span(local_data));
 }
 
 // # Case 9: Span[int] (BigInt span)
 // 49: def sum_span_bigint(nums: Span[int]) -> int:
-tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums) {
+tpy::BigInt sum_span_bigint(std::span<tpy::BigInt> nums) {
     // 50:     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
     // 51:     for n in nums:
@@ -112,14 +112,14 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_6 = {1, 2, 3};
     global_for_span = &__global_slot_6;
     // 39: print(sum_span(global_for_span))
-    std::cout << sum_span(tpy::as_span((*global_for_span))) << "\n";
+    std::cout << sum_span(tpy::as_mut_span((*global_for_span))) << "\n";
     // 46: print(test_local_span())
     std::cout << test_local_span() << "\n";
     // 55: bigint_list = [1000, 2000, 3000]
     static std::vector<tpy::BigInt> __global_slot_7 = {1000, 2000, 3000};
     bigint_list = &__global_slot_7;
     // 56: print(sum_span_bigint(bigint_list))
-    std::cout << sum_span_bigint(tpy::as_span((*bigint_list))) << "\n";
+    std::cout << sum_span_bigint(tpy::as_mut_span((*bigint_list))) << "\n";
 }
 
 } // namespace tpy_user::main

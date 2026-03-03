@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 15: def use_span(s: Span[Int32]) -> Int32:
-int32_t use_span(std::span<const int32_t> s) {
+int32_t use_span(std::span<int32_t> s) {
     // 16:     # Pass Span to Sequence-accepting function
     // 17:     return sum_all(s)
     return sum_all(s);
@@ -29,9 +29,9 @@ void main() {
     std::cout << sum_all(arr) << "\n";
     // 30:     # Test with Span[Int32]
     // 31:     print(use_span(arr))   # 60 (Span from Array)
-    std::cout << use_span(tpy::as_span(arr)) << "\n";
+    std::cout << use_span(tpy::as_mut_span(arr)) << "\n";
     // 32:     print(use_span(nums))  # 15 (Span from list)
-    std::cout << use_span(tpy::as_span(nums)) << "\n";
+    std::cout << use_span(tpy::as_mut_span(nums)) << "\n";
     // 34:     # Test with StaticList[Int32, N]
     // 35:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
     StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();

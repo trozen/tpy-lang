@@ -129,9 +129,16 @@ decltype(auto) __getitem__(std::array<T, N>& x, int32_t i) {
     return x[idx];
 }
 
-// Overload: std::span
+// Overload: std::span (const)
 template<typename T>
 decltype(auto) __getitem__(std::span<const T> x, int32_t i) {
+    auto idx = normalize_index(x, i, "span index out of bounds");
+    return x[idx];
+}
+
+// Overload: std::span (mutable)
+template<typename T>
+T& __getitem__(std::span<T> x, int32_t i) {
     auto idx = normalize_index(x, i, "span index out of bounds");
     return x[idx];
 }
@@ -198,6 +205,13 @@ void __setitem__(StaticList<T, N>& x, int32_t i, V&& v) {
 template<typename T, std::size_t N, typename V>
 void __setitem__(std::array<T, N>& x, int32_t i, V&& v) {
     auto idx = normalize_index(x, i, "array index out of bounds");
+    x[idx] = std::forward<V>(v);
+}
+
+// Overload: std::span (mutable)
+template<typename T, typename V>
+void __setitem__(std::span<T> x, int32_t i, V&& v) {
+    auto idx = normalize_index(x, i, "span index out of bounds");
     x[idx] = std::forward<V>(v);
 }
 

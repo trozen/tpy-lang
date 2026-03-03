@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s);
+int32_t take_span_nested(std::span<std::array<int32_t, 2>> s);
 void main();
 
 void __tpy_init();

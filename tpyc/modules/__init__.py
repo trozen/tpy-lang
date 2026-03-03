@@ -563,7 +563,7 @@ def _resolve_type_or_param(t: "TpyType", type_params: dict[str, "TpyType"]) -> "
     # Handle PtrType with TypeParamRef pointee
     if isinstance(t, PtrType):
         resolved_pointee = _resolve_type_or_param(t.pointee, type_params)
-        return PtrType(resolved_pointee, is_const=t.is_const)
+        return PtrType(resolved_pointee, is_readonly=t.is_readonly)
 
     # For other types, use map_inner_types for recursive substitution
     return t.map_inner_types(lambda inner: _resolve_type_or_param(inner, type_params))

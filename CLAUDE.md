@@ -365,7 +365,8 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `dict[K, V]` | `tpy::ordered_map<K, V>` |
 | `list[T]` | `std::vector<T>` |
 | `Array[T, N]` | `std::array<T, N>` |
-| `Span[T]` | `std::span<const T>` |
+| `Span[T]` | `std::span<T>` |
+| `ReadOnlySpan[T]` | `std::span<const T>` |
 | `StaticList[T, N]` | `StaticList<T, N>` |
 | `Ptr[T]` | `T*` |
 | `ReadOnlyPtr[T]` | `const T*` |

@@ -13,7 +13,7 @@ int32_t take_int32(int32_t n);
 void take_ptr(Point* p);
 int32_t take_const_ptr(const Point* p);
 int32_t take_point(Point& p);
-int32_t take_span(std::span<const int32_t> s);
+int32_t take_span(std::span<int32_t> s);
 int32_t return_bigint_as_int32();
 void test_bigint_to_int32();
 void test_record_to_ptr();

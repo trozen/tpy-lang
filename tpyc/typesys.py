@@ -747,24 +747,24 @@ class SuperType(TpyType):
 class PtrType(TpyType):
     """Pointer type: Ptr[T] -> T*, ReadOnlyPtr[T] -> const T*
 
-    When is_const=True, represents a read-only pointer (ReadOnlyPtr[T]).
+    When is_readonly=True, represents a read-only pointer (ReadOnlyPtr[T]).
     """
     pointee: TpyType
-    is_const: bool = False
+    is_readonly: bool = False
 
     def to_cpp(self) -> str:
-        if self.is_const:
+        if self.is_readonly:
             return f"const {self.pointee.to_cpp()}*"
         return f"{self.pointee.to_cpp()}*"
 
     def qualified_name(self) -> Optional[str]:
-        return "tpy.ReadOnlyPtr" if self.is_const else "tpy.Ptr"
+        return "tpy.ReadOnlyPtr" if self.is_readonly else "tpy.Ptr"
 
     def is_pointer(self) -> bool:
         return True
 
     def __str__(self) -> str:
-        if self.is_const:
+        if self.is_readonly:
             return f"ReadOnlyPtr[{self.pointee}]"
         return f"Ptr[{self.pointee}]"
 
@@ -778,24 +778,24 @@ class PtrType(TpyType):
         return (self.pointee,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return PtrType(types[0], is_const=self.is_const)
+        return PtrType(types[0], is_readonly=self.is_readonly)
 
     def as_const(self) -> 'PtrType':
         """Return a const version of this pointer."""
-        if self.is_const:
+        if self.is_readonly:
             return self
-        return PtrType(self.pointee, is_const=True)
+        return PtrType(self.pointee, is_readonly=True)
 
     def as_mutable(self) -> 'PtrType':
         """Return a mutable version of this pointer."""
-        if not self.is_const:
+        if not self.is_readonly:
             return self
-        return PtrType(self.pointee, is_const=False)
+        return PtrType(self.pointee, is_readonly=False)
 
 
-def is_const_ptr(typ: 'TpyType') -> bool:
+def is_readonly_ptr(typ: 'TpyType') -> bool:
     """Check if a type is a read-only pointer (ReadOnlyPtr[T])."""
-    return isinstance(typ, PtrType) and typ.is_const
+    return isinstance(typ, PtrType) and typ.is_readonly
 
 
 @dataclass(frozen=True)
@@ -1227,24 +1227,34 @@ class ArrayType(NamedType):
 
 
 class SpanType(NamedType):
-    """Non-owning read-only view: Span[T] -> std::span<const T>"""
+    """Non-owning view: Span[T] -> std::span<T>, ReadOnlySpan[T] -> std::span<const T>
 
-    def __init__(self, element_type: TpyType):
-        NamedType.__init__(self, name="Span", type_args=(element_type,),
-                           _module_qname="tpy.Span")
+    When is_readonly=True, represents a read-only span (ReadOnlySpan[T]).
+    """
+
+    def __init__(self, element_type: TpyType, is_readonly: bool = False):
+        name = "ReadOnlySpan" if is_readonly else "Span"
+        qname = "tpy.ReadOnlySpan" if is_readonly else "tpy.Span"
+        NamedType.__init__(self, name=name, type_args=(element_type,),
+                           _module_qname=qname)
+        object.__setattr__(self, 'is_readonly', is_readonly)
 
     @property
     def element_type(self) -> TpyType:
         return self.type_args[0]
 
     def to_cpp(self) -> str:
-        return f"std::span<const {self.element_type.to_cpp()}>"
+        if self.is_readonly:
+            return f"std::span<const {self.element_type.to_cpp()}>"
+        return f"std::span<{self.element_type.to_cpp()}>"
 
     def __str__(self) -> str:
+        if self.is_readonly:
+            return f"ReadOnlySpan[{self.element_type}]"
         return f"Span[{self.element_type}]"
 
     def qualified_name(self) -> Optional[str]:
-        return "tpy.Span"
+        return "tpy.ReadOnlySpan" if self.is_readonly else "tpy.Span"
 
     def is_value_type(self) -> bool:
         # Spans are lightweight views (ptr + size), passed/returned by value
@@ -1260,7 +1270,24 @@ class SpanType(NamedType):
         return (self.element_type,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return SpanType(types[0])
+        return SpanType(types[0], is_readonly=self.is_readonly)
+
+    def as_const(self) -> 'SpanType':
+        """Return a const (ReadOnlySpan) version of this span."""
+        if self.is_readonly:
+            return self
+        return SpanType(self.element_type, is_readonly=True)
+
+    def as_mutable(self) -> 'SpanType':
+        """Return a mutable (Span) version of this span."""
+        if not self.is_readonly:
+            return self
+        return SpanType(self.element_type, is_readonly=False)
+
+
+def is_readonly_span(typ: 'TpyType') -> bool:
+    """Check if a type is a read-only span (ReadOnlySpan[T])."""
+    return isinstance(typ, SpanType) and typ.is_readonly
 
 
 class ListType(NamedType):

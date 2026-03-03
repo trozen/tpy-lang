@@ -18,7 +18,7 @@ struct MyList : StaticList<int32_t, 10> {
 
     // 6:     def __init__(self, label: str, items: Span[Int32]) -> None:
     MyList() = default;
-    explicit MyList(std::string_view label, std::span<const int32_t> items) : StaticList<int32_t, 10>(items), label(label) {}
+    explicit MyList(std::string_view label, std::span<int32_t> items) : StaticList<int32_t, 10>(items), label(label) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {

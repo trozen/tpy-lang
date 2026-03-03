@@ -9,7 +9,7 @@ void main() {
     // 4:     data = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
     // 5:     s: Span[Int32] = data
-    std::span<const int32_t> s = tpy::as_span(data);
+    std::span<int32_t> s = tpy::as_mut_span(data);
     // 6:     print(s[0])
     std::cout << tpy::__getitem__(s, 0) << "\n";
     // 7:     print(s[2])

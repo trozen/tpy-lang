@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
     IntLiteralType, FloatType, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, is_const_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
+    PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     UnionType, EnumType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type,
 )
@@ -913,7 +913,7 @@ class CallAnalyzer:
         """
         assert isinstance(expr.call_type, PtrType)
         pointee = expr.call_type.pointee
-        kind = "read-only pointer" if expr.call_type.is_const else "pointer"
+        kind = "read-only pointer" if expr.call_type.is_readonly else "pointer"
 
         if len(expr.args) != 1:
             raise self.ctx.error(f"{kind} constructor takes 0 or 1 argument, got {len(expr.args)}", expr)
@@ -1068,8 +1068,8 @@ class CallAnalyzer:
                 # Catch ReadOnlyPtr-to-Ptr const-drop for unsafe_cast before
                 # the generic "type mismatch" at the assignment level.
                 if (overload.qualified_name == "tpy.unsafe.unsafe_cast"
-                        and is_const_ptr(resolved.return_type)
-                        and isinstance(self.ctx.expr_type_hint, PtrType) and not self.ctx.expr_type_hint.is_const):
+                        and is_readonly_ptr(resolved.return_type)
+                        and isinstance(self.ctx.expr_type_hint, PtrType) and not self.ctx.expr_type_hint.is_readonly):
                     raise self.ctx.error(
                         "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
                     )
@@ -1125,9 +1125,9 @@ class CallAnalyzer:
 
         # Check for ReadOnlyPtr passed at a position where all overloads expect Ptr
         for i, arg_t in enumerate(arg_types):
-            if is_const_ptr(arg_t):
+            if is_readonly_ptr(arg_t):
                 all_need_ptr_at_i = all(
-                    i < len(o.params) and isinstance(o.params[i].type, PtrType) and not o.params[i].type.is_const
+                    i < len(o.params) and isinstance(o.params[i].type, PtrType) and not o.params[i].type.is_readonly
                     for o in overloads
                 )
                 if all_need_ptr_at_i:
@@ -1152,7 +1152,7 @@ class CallAnalyzer:
                     raise self.ctx.error(
                         f"unsafe_cast() target must be a pointer type, got {raw_hint}", expr
                     )
-                if arg_t.is_const and not hint.is_const:
+                if arg_t.is_readonly and not hint.is_readonly:
                     raise self.ctx.error(
                         "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
                     )

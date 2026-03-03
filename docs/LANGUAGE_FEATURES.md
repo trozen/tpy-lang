@@ -24,7 +24,7 @@ Status legend:
 **Thread safety**: Unlike CPython (which relies on the GIL), TurboPython targets multi-threaded, high-performance environments. The compiler should produce thread-safe code by default where possible without sacrificing performance, and give the user explicit control where trade-offs exist. Compiler analyses (e.g. narrowing, aliasing) must be sound in the presence of concurrent access.
 
 **Pluggable backends**: The mapping from TurboPython to C++ should be configurable. Different projects have different needs:
-- `Span[T]` → `std::span<const T>` or a custom span type
+- `Span[T]` → `std::span<T>`, `ReadOnlySpan[T]` → `std::span<const T>`, or custom span types
 - `print()` → `std::cout` (default) or a logging framework
 - `str` → `std::string` or a custom string class
 
@@ -94,7 +94,8 @@ The mapping from TurboPython types/functions to C++ should be configurable via b
 
 ```python
 # tpy.backend.default - ships with tpyc
-Span[T]     → std::span<const T>
+Span[T]     → std::span<T>
+ReadOnlySpan[T] → std::span<const T>
 str         → std::string
 print(...)  → std::cout << ...
 list[T]     → std::vector<T>
@@ -359,7 +360,8 @@ log(f"x={x}")
 - **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
-- **Working**: `Span[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
+- **Working**: `Span[T]` - non-owning mutable view into contiguous memory → `std::span<T>`
+- **Working**: `ReadOnlySpan[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
 - **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
@@ -388,7 +390,7 @@ Context-dependent inference for Python-first semantics:
 | Function local, no mutation | `Array` | `std::array` | Stack performance, no heap allocation |
 | Function local + `.append()`/`.pop()`/etc | `list` | `std::vector` | Explicit mutation requires growable container |
 | Function local, passed to `list[T]` param | `list` | `std::vector` | Callee expects mutable list |
-| Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is read-only view, no mutation possible |
+| Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is a view, array stays on stack |
 | Function local, different-size reassignment | `list` | `std::vector` | `x = [1,2,3]; x = [4,5]` -- sizes differ, must be dynamic |
 | Function local, returned as `list[T]` | `list` | `std::vector` | Return type context propagates to local variable |
 | Function local, alias mutated | `list` | `std::vector` | `b = a; b.append(4)` -- both `a` and `b` become list |
@@ -439,7 +441,7 @@ def reader(items: Span[int]) -> int:
     return items[0]
 
 def caller2():
-    data = [1, 2, 3]       # → std::array<BigInt, 3> (Span is read-only)
+    data = [1, 2, 3]       # → std::array<BigInt, 3> (Span is a view)
     return reader(data)
 ```
 
@@ -452,59 +454,42 @@ empty: list[Int32 | None] = []
 
 Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to functions expecting mutable reference parameters works - the compiler generates temporary variables automatically.
 
-`Span[T]` is a non-owning read-only view that accepts any contiguous memory:
+`Span[T]` is a non-owning mutable view into contiguous memory. `ReadOnlySpan[T]` is the read-only variant. This follows the same pattern as `Ptr[T]`/`ReadOnlyPtr[T]`:
+
 ```python
-def sum_values(values: Span[Int32]) -> Int32:
+from tpy import Int32, Span, ReadOnlySpan, Array, StaticList
+
+# Mutable span -- can read and write elements
+def zero_first(values: Span[Int32]) -> None:
+    values[0] = 0
+
+# Read-only span -- can only read elements
+def sum_values(values: ReadOnlySpan[Int32]) -> Int32:
     total: Int32 = 0
-    i: Int32 = 0
-    while i < len(values):
-        total += values[i]
-        i += 1
+    for v in values:
+        total += v
     return total
 
-# All of these work:
-print(sum_values([1, 2, 3, 4, 5]))  # array literal passed directly
-nums = [10, 20, 30]
-print(sum_values(nums))             # array variable
-arr: Array[Int32, 3] = [100, 200, 300]
-print(sum_values(arr))              # explicit Array type
+# Any contiguous container coerces to Span or ReadOnlySpan:
+arr: Array[Int32, 3] = [10, 20, 30]
+zero_first(arr)                     # Array -> Span[Int32]
+print(sum_values(arr))              # Array -> ReadOnlySpan[Int32]
+print(sum_values([1, 2, 3, 4, 5])) # array literal -> ReadOnlySpan[Int32]
 
-# StaticList also converts to Span:
-items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-items.append(1000)
-items.append(2000)
-print(sum_values(items))
-```
+# Span[T] auto-coerces to ReadOnlySpan[T] (like Ptr -> ReadOnlyPtr):
+s: Span[Int32] = arr
+print(sum_values(s))                # Span -> ReadOnlySpan
 
-Generated C++:
-```cpp
-int32_t sum_values(std::span<const int32_t> values) {
-    int32_t total = 0;
-    int32_t i = 0;
-    while (i < static_cast<int32_t>(values.size())) {
-        total += values[i];
-        i += 1;
-    }
-    return total;
-}
-
-// Array literal passed directly creates temporary std::array
-std::printf("%d\n", sum_values(std::array<int32_t, 5>{1, 2, 3, 4, 5}));
-
-// Array variable
-std::array<int32_t, 3> nums = {10, 20, 30};
-sum_values(nums);  // implicit conversion to span
-
-// StaticList requires explicit span construction
-std::printf("%d\n", sum_values(std::span(items.data(), items.size())));
+# Through @readonly refs, Span[T] becomes ReadOnlySpan[T] automatically
 ```
 
 Key features:
-- Uses `std::span<const T>` (read-only) to allow conversion from temporaries
+- `Span[T]` maps to `std::span<T>` (mutable), `ReadOnlySpan[T]` maps to `std::span<const T>`
 - Requires C++23 (`-std=c++23`)
-- Standard Python `len()` and `[]` indexing work for both Array and Span (with bounds checking and negative index support)
-- `unchecked_get(index)` on Array and Span for raw unchecked access (no bounds check, no negative index normalization)
+- Standard Python `len()` and `[]` indexing work for both (with bounds checking and negative index support)
+- `unchecked_get(index)` for raw unchecked access (no bounds check, no negative index normalization)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
+- Constructors: `Span(Ptr[T], Int32)` and `ReadOnlySpan(ReadOnlyPtr[T], Int32)` for low-level span creation
 
 #### Tuples (Working)
 
@@ -584,7 +569,7 @@ Implicit conversions between records and pointers with safety checks:
 **Safety rules:**
 - Taking address requires an lvalue (variable, field, or subscript) - temporaries rejected
 - Return statements cannot convert local records to pointers (dangling pointer prevention)
-- Span/str elements cannot convert to `Ptr[T]` (read-only source)
+- `ReadOnlySpan`/str elements cannot convert to `Ptr[T]` (read-only source)
 - `Ptr[T]` → `T` includes runtime null check that panics if null
 
 #### Pointer Constructors (Working)

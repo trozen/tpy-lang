@@ -538,7 +538,8 @@ Automatic conversion between TPy types and C types at the FFI boundary:
 - `str` → `const char*` (already works for parameters)
 - `str` ← `const char*` (wrap returned C string — ownership question)
 - `list[T]` → `T*, size_t` (two-parameter expansion)
-- `Span[T]` → `const T*, size_t`
+- `Span[T]` → `T*, size_t` (mutable)
+- `ReadOnlySpan[T]` → `const T*, size_t`
 - `bytes` → `uint8_t*, size_t` (future, when `bytes` type exists)
 
 The compiler could automatically split a `list[Int32]` parameter into pointer + length when calling a C function that expects them:

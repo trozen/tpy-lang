@@ -33,7 +33,7 @@ int32_t sum_array() {
 
 // # Test for-each over Span parameter
 // 26: def print_span(data: Span[Int32]) -> None:
-void print_span(std::span<const int32_t> data) {
+void print_span(std::span<int32_t> data) {
     // 27:     for x in data:
     for (int32_t x : data) {
         // 28:         print(x)
@@ -92,7 +92,7 @@ void __tpy_init() {
     // 23: print(sum_array())  # 600
     std::cout << sum_array() << "\n";
     // 30: print_span([7, 8, 9])
-    print_span(tpy::as_span(std::array<int32_t, 3>{7, 8, 9}));
+    print_span(tpy::as_mut_span(std::array<int32_t, 3>{7, 8, 9}));
     // 32: # Test for-each over string
     // 33: text = "AB"
     text = "AB";

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, DictType,
     PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
-    OwnType, ReadonlyType, VoidType, PtrType, is_const_ptr, TupleType,
+    OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
     is_any_str_type, get_covariant_params,
@@ -148,7 +148,7 @@ class TypeCompatibility:
             if isinstance(expected, PtrType) and isinstance(expected.pointee, NamedType):
                 # Mutable Ptr can coerce to both Ptr and ReadOnlyPtr parent;
                 # ReadOnlyPtr can only coerce to ReadOnlyPtr parent
-                if not actual.is_const or expected.is_const:
+                if not actual.is_readonly or expected.is_readonly:
                     if self.ctx.registry.is_subclass_of(actual.pointee, expected.pointee):
                         return None
 
@@ -294,7 +294,7 @@ class TypeCompatibility:
                 if isinstance(expected, PtrType) and isinstance(expected.pointee, NamedType):
                     if self.ctx.registry.is_subclass_of(actual, expected.pointee):
                         coercion = UPCAST_TO_PTR
-                elif is_const_ptr(expected) and isinstance(expected.pointee, NamedType):
+                elif is_readonly_ptr(expected) and isinstance(expected.pointee, NamedType):
                     if self.ctx.registry.is_subclass_of(actual, expected.pointee):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
@@ -572,11 +572,13 @@ class TypeCompatibility:
         # Field access on a mutable lvalue is also mutable
         if isinstance(expr, TpyFieldAccess):
             return self.is_mutable_lvalue(expr.obj)
-        # Subscript: check if the base is a read-only type (Span, str)
+        # Subscript: check if the base is a read-only type (ReadOnlySpan, str)
         if isinstance(expr, TpySubscript):
             obj_type = self.ctx.get_expr_type(expr.obj)
-            if isinstance(obj_type, SpanType) or is_any_str_type(obj_type):
-                return False  # Span and str elements are read-only
+            if isinstance(obj_type, SpanType) and obj_type.is_readonly:
+                return False  # ReadOnlySpan elements are read-only
+            if is_any_str_type(obj_type):
+                return False
             return self.is_mutable_lvalue(expr.obj)
         return False
 

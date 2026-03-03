@@ -119,11 +119,52 @@ def init_module() -> BuiltinModule:
         )],
     })
 
-    # Span[T]: Non-owning read-only view
-    module.type("Span", cpp_type="std::span<const {T}>", type_params=["T"],
+    # Span[T]: Non-owning mutable view
+    module.type("Span", cpp_type="std::span<{T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: SpanType(t),
                 extends=["NativeIterable[T]", "NativeContiguous[T]"],
+                constructors=[
+                    MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
+                              returns=VOID,
+                              cpp="std::span<{T}>({0}, static_cast<size_t>({1}))"),
+                ],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="static_cast<int32_t>({self}.size())",
+            is_readonly=True,
+        )],
+        "unchecked_get": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="{self}[{0}]",
+            is_readonly=True,
+        )],
+        "__getitem__": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=T,
+            cpp="tpy::__getitem__({self}, {0})",
+            is_readonly=True,
+        )],
+        "__setitem__": [MethodDef(
+            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
+            returns=VOID,
+            cpp="tpy::__setitem__({self}, {0}, {1})",
+        )],
+    })
+
+    # ReadOnlySpan[T]: Non-owning read-only view
+    module.type("ReadOnlySpan", cpp_type="std::span<const {T}>", type_params=["T"],
+                param_kinds=[TypeParamKind.TYPE],
+                type_factory=lambda t: SpanType(t, is_readonly=True),
+                extends=["NativeIterable[T]", "NativeContiguous[T]"],
+                constructors=[
+                    MethodDef(params=[ParamDef("ptr", PtrType(T, is_readonly=True)), ParamDef("length", INT32)],
+                              returns=VOID,
+                              cpp="std::span<const {T}>({0}, static_cast<size_t>({1}))"),
+                ],
                 methods={
         "__len__": [MethodDef(
             params=[],
@@ -161,7 +202,7 @@ def init_module() -> BuiltinModule:
     # ReadOnlyPtr[T]: Read-only pointer
     module.type("ReadOnlyPtr", cpp_type="const {T}*", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: PtrType(t, is_const=True),
+                type_factory=lambda t: PtrType(t, is_readonly=True),
                 extends=["Deref[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp="nullptr"),
@@ -178,7 +219,7 @@ def init_module() -> BuiltinModule:
                 extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp=""),
-                    MethodDef(params=[ParamDef("items", SpanType(T))], returns=VOID, cpp="{0}"),
+                    MethodDef(params=[ParamDef("items", SpanType(T, is_readonly=True))], returns=VOID, cpp="{0}"),
                 ],
                 methods={
         "__len__": [MethodDef(

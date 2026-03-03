@@ -8,8 +8,8 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
-    NamedType, PtrType, is_const_ptr, CharType, StrType, StringType, StrViewType,
-    SpanType, PendingListType, TypeParamRef, TypeParamKind,
+    NamedType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
+    SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind,
 )
 
 
@@ -45,8 +45,11 @@ def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
 
 
 def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
-    """Check if actual type (extending NativeContiguous[T]) can coerce to Span[T]."""
+    """Check if actual type (extending NativeContiguous[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
     if not isinstance(expected, SpanType):
+        return False
+    # ReadOnlySpan cannot coerce to mutable Span (const violation)
+    if isinstance(actual, SpanType) and actual.is_readonly and not expected.is_readonly:
         return False
     actual_elem = actual.get_element_type()
     if actual_elem is None:
@@ -251,7 +254,7 @@ COERCIONS: list[Coercion] = [
         from_type=NamedType,
         to_type=PtrType,
         type_match=lambda rec, ptr: (
-            rec.is_user_record and is_const_ptr(ptr) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
+            rec.is_user_record and is_readonly_ptr(ptr) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
         forbid_return_local=True,
@@ -261,7 +264,13 @@ COERCIONS: list[Coercion] = [
         name="ptr_to_const_ptr",
         from_type=PtrType,
         to_type=PtrType,
-        type_match=lambda p1, p2: isinstance(p1, PtrType) and not p1.is_const and is_const_ptr(p2) and p1.pointee == p2.pointee,
+        type_match=lambda p1, p2: isinstance(p1, PtrType) and not p1.is_readonly and is_readonly_ptr(p2) and p1.pointee == p2.pointee,
+    ),
+    Coercion(
+        name="span_to_readonly_span",
+        from_type=SpanType,
+        to_type=SpanType,
+        type_match=lambda s1, s2: isinstance(s1, SpanType) and not s1.is_readonly and is_readonly_span(s2) and s1.element_type == s2.element_type,
     ),
     # Span coercions: any NativeContiguous[T] type can coerce to Span[T]
     # Arg context allows temporaries

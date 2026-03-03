@@ -23,7 +23,7 @@ def init_module() -> BuiltinModule:
         # str -> ReadOnlyPtr[Char] (non-generic; str is string_view, need .data())
         MethodDef(
             params=[ParamDef("s", STR)],
-            returns=PtrType(CHAR, is_const=True),
+            returns=PtrType(CHAR, is_readonly=True),
             cpp="{0}.data()",
         ),
         # Array[T, N] -> Ptr[T]
@@ -48,7 +48,7 @@ def init_module() -> BuiltinModule:
             cpp="{0}[{1}]",
         ),
         MethodDef(
-            params=[ParamDef("p", PtrType(T, is_const=True)), ParamDef("offset", UINT32)],
+            params=[ParamDef("p", PtrType(T, is_readonly=True)), ParamDef("offset", UINT32)],
             returns=T,
             cpp="{0}[{1}]",
         ),
@@ -81,7 +81,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[
                 ParamDef("dest", PtrType(T)),
-                ParamDef("src", PtrType(T, is_const=True)),
+                ParamDef("src", PtrType(T, is_readonly=True)),
                 ParamDef("count", UINT32),
             ],
             returns=VOID,
@@ -92,7 +92,7 @@ def init_module() -> BuiltinModule:
     # unsafe_const_cast: remove const from a pointer (ReadOnlyPtr[T] -> Ptr[T])
     module.function("unsafe_const_cast", type_params=["T"], overloads=[
         MethodDef(
-            params=[ParamDef("p", PtrType(T, is_const=True))],
+            params=[ParamDef("p", PtrType(T, is_readonly=True))],
             returns=PtrType(T),
             cpp="const_cast<{T}*>({0})",
         ),
@@ -106,8 +106,8 @@ def init_module() -> BuiltinModule:
             cpp="({0} + {1})",
         ),
         MethodDef(
-            params=[ParamDef("p", PtrType(T, is_const=True)), ParamDef("delta", INT64)],
-            returns=PtrType(T, is_const=True),
+            params=[ParamDef("p", PtrType(T, is_readonly=True)), ParamDef("delta", INT64)],
+            returns=PtrType(T, is_readonly=True),
             cpp="({0} + {1})",
         ),
     ])
@@ -123,7 +123,7 @@ def init_module() -> BuiltinModule:
             cpp="static_cast<int64_t>({0} - {1})",
         ),
         MethodDef(
-            params=[ParamDef("p1", PtrType(T, is_const=True)), ParamDef("p2", PtrType(T, is_const=True))],
+            params=[ParamDef("p1", PtrType(T, is_readonly=True)), ParamDef("p2", PtrType(T, is_readonly=True))],
             returns=INT64,
             cpp="static_cast<int64_t>({0} - {1})",
         ),
@@ -142,8 +142,8 @@ def init_module() -> BuiltinModule:
         ),
         # ReadOnlyPtr[U] -> ReadOnlyPtr[T]
         MethodDef(
-            params=[ParamDef("p", PtrType(U, is_const=True))],
-            returns=PtrType(T, is_const=True),
+            params=[ParamDef("p", PtrType(U, is_readonly=True))],
+            returns=PtrType(T, is_readonly=True),
             cpp="reinterpret_cast<const {T}*>({0})",
         ),
     ])
@@ -203,7 +203,7 @@ def init_module() -> BuiltinModule:
             cpp="std::string_view({0}, {1})",
         ),
         MethodDef(
-            params=[ParamDef("p", PtrType(CHAR, is_const=True)), ParamDef("size", UINT32)],
+            params=[ParamDef("p", PtrType(CHAR, is_readonly=True)), ParamDef("size", UINT32)],
             returns=STRVIEW,
             cpp="std::string_view({0}, {1})",
         ),

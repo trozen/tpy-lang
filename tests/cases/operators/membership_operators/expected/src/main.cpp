@@ -64,7 +64,7 @@ void test_array_membership() {
 }
 
 // 39: def check_span_contains(data: Span[Int32], value: Int32) -> bool:
-bool check_span_contains(std::span<const int32_t> data, int32_t value) {
+bool check_span_contains(std::span<int32_t> data, int32_t value) {
     // 41:     return value in data
     return (std::find(data.begin(), data.end(), value) != data.end());
 }
@@ -74,12 +74,12 @@ void test_span_membership() {
     // 45:     nums: Array[Int32, 5] = [100, 200, 300, 400, 500]
     std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
     // 47:     if check_span_contains(nums, 300):
-    if (check_span_contains(tpy::as_span(nums), 300)) {
+    if (check_span_contains(tpy::as_mut_span(nums), 300)) {
         // 48:         print("300 in span: yes")
         std::cout << "300 in span: yes" << "\n";
     }
     // 49:     if check_span_contains(nums, 999):
-    if (check_span_contains(tpy::as_span(nums), 999)) {
+    if (check_span_contains(tpy::as_mut_span(nums), 999)) {
         // 50:         print("999 in span: yes")
         std::cout << "999 in span: yes" << "\n";
     } else {

@@ -9,7 +9,7 @@ void main() {
     // 4:     matrix: Array[Array[Int32, 2], 2] = [[1, 2], [3, 4]]
     std::array<std::array<int32_t, 2>, 2> matrix = {{{1, 2}, {3, 4}}};
     // 5:     s: Span[Int32] = matrix[1]
-    std::span<const int32_t> s = tpy::as_span(tpy::__getitem__(matrix, 1));
+    std::span<int32_t> s = tpy::as_mut_span(tpy::__getitem__(matrix, 1));
     // 6:     print(s[0])
     std::cout << tpy::__getitem__(s, 0) << "\n";
     // 7:     print(s[1])

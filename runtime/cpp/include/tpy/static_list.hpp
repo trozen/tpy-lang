@@ -157,4 +157,38 @@ inline std::span<const T> as_span(std::span<const T> span) {
     return span;
 }
 
+// Mutable span to const span (implicit const conversion)
+template <typename T>
+inline std::span<const T> as_span(std::span<T> span) {
+    return span;
+}
+
+// --- Mutable span helpers ---
+
+template <typename T, std::size_t N>
+inline std::span<T> as_mut_span(std::array<T, N>& arr) {
+    return std::span<T>(arr);
+}
+
+// Rvalue overload: safe when span is consumed within the full-expression (ARG context)
+template <typename T, std::size_t N>
+inline std::span<T> as_mut_span(std::array<T, N>&& arr) {
+    return std::span<T>(arr.data(), arr.size());
+}
+
+template <typename T, std::size_t N>
+inline std::span<T> as_mut_span(StaticList<T, N>& list) {
+    return std::span<T>(list.data(), list.size());
+}
+
+template <typename T>
+inline std::span<T> as_mut_span(std::vector<T>& vec) {
+    return std::span<T>(vec.data(), vec.size());
+}
+
+template <typename T>
+inline std::span<T> as_mut_span(std::span<T> span) {
+    return span;
+}
+
 } // namespace tpy

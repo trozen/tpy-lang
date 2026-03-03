@@ -1,4 +1,4 @@
-from tpy import Int32, Ptr, Span
+from tpy import Int32, Ptr, ReadOnlySpan
 
 class Point:
     x: Int32
@@ -8,5 +8,5 @@ class Point:
 def modify(p: Ptr[Point]) -> None:
     p.x = 999
 
-def bad(span: Span[Point]) -> None:
+def bad(span: ReadOnlySpan[Point]) -> None:
     modify(span[0])  # tpyc: error(/Cannot take mutable pointer to read-only/)

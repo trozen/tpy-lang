@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::span<const int32_t> get_span(std::array<int32_t, 4>& arr);
+std::span<int32_t> get_span(std::array<int32_t, 4>& arr);
 void main();
 
 void __tpy_init();

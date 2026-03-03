@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 8: def take_span_nested(s: Span[Array[Int32, 2]]) -> Int32:
-int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s) {
+int32_t take_span_nested(std::span<std::array<int32_t, 2>> s) {
     // 9:     return s[0][0] + s[1][1]
     return (tpy::add_check<int32_t>(tpy::__getitem__(tpy::__getitem__(s, 0), 0), tpy::__getitem__(tpy::__getitem__(s, 1), 1)));
 }
@@ -14,7 +14,7 @@ int32_t take_span_nested(std::span<const std::array<int32_t, 2>> s) {
 void main() {
     // 12:     # Inline nested array constructor passed to Span parameter
     // 13:     result: Int32 = take_span_nested(Array[Array[Int32, 2], 2]([[1, 2], [3, 4]]))
-    int32_t result = take_span_nested(tpy::as_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
+    int32_t result = take_span_nested(tpy::as_mut_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
     // 14:     print(result)  # 1 + 4 = 5
     std::cout << result << "\n";
 }

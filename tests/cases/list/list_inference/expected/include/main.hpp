@@ -13,7 +13,7 @@ int32_t test_no_mutation();
 int32_t test_mutation();
 void takes_list(std::vector<int32_t>& x);
 void test_list_param();
-int32_t takes_span(std::span<const int32_t> x);
+int32_t takes_span(std::span<int32_t> x);
 int32_t test_span_param();
 
 void __tpy_init();

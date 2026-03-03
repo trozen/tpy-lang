@@ -15,7 +15,7 @@ std::vector<int32_t>* nums{};
 
 // # Span methods (via function parameter)
 // 22: def span_ops(sp: Span[Int32]) -> None:
-void span_ops(std::span<const int32_t> sp) {
+void span_ops(std::span<int32_t> sp) {
     // 23:     print(len(sp))
     std::cout << tpy::__len__(sp) << "\n";
     // 24:     print(sp[0])
@@ -60,7 +60,7 @@ void __tpy_init() {
     // 19: print(arr[1])
     std::cout << tpy::__getitem__((*arr), 1) << "\n";
     // 27: span_ops(arr)
-    span_ops(tpy::as_span((*arr)));
+    span_ops(tpy::as_mut_span((*arr)));
     // 29: # list methods
     // 30: nums: list[Int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};

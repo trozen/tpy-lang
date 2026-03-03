@@ -116,7 +116,7 @@ def type_matches_with_coercion(
         if isinstance(arg_inner, PtrType) and isinstance(arg_inner.pointee, NamedType):
             if isinstance(param_type, PtrType) and isinstance(param_type.pointee, NamedType):
                 # ReadOnlyPtr cannot coerce to mutable Ptr (would drop const)
-                if not (arg_inner.is_const and not param_type.is_const):
+                if not (arg_inner.is_readonly and not param_type.is_readonly):
                     if subclass_checker(arg_inner.pointee, param_type.pointee):
                         return True
     return False

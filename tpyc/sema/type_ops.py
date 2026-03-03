@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NamedType, PtrType, is_const_ptr, OwnType, ReadonlyType,
+    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType,
     ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
@@ -68,7 +68,7 @@ class TypeOperations:
         elif isinstance(typ, PtrType):
             resolved_pointee = self.resolve_type(typ.pointee)
             if resolved_pointee is not typ.pointee:
-                return PtrType(resolved_pointee, is_const=typ.is_const)
+                return PtrType(resolved_pointee, is_readonly=typ.is_readonly)
         elif isinstance(typ, OwnType):
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped is not typ.wrapped:
@@ -428,7 +428,7 @@ class TypeOperations:
             if isinstance(arg_type, PtrType):
                 # Mutable Ptr param only matches mutable Ptr arg;
                 # ReadOnlyPtr param matches both ReadOnlyPtr and Ptr args
-                if not param_type.is_const and arg_type.is_const:
+                if not param_type.is_readonly and arg_type.is_readonly:
                     return False
                 return self.match_type_with_inference(
                     param_type.pointee, arg_type.pointee, inferred
@@ -770,7 +770,7 @@ class TypeOperations:
         Like get_deref_target_type() but excludes ReadOnlyPtr -- record params
         are T& (mutable ref) but deref_check(const T*) returns const T&.
         """
-        if is_const_ptr(typ):
+        if is_readonly_ptr(typ):
             return None
         return self.get_deref_target_type(typ)
 

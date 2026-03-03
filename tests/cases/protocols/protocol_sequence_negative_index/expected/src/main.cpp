@@ -13,7 +13,7 @@ void main() {
     // 15:     print(seq_at(a, Int32(0)))
     std::cout << seq_at(a, 0) << "\n";
     // 17:     sp: Span[Int32] = a
-    std::span<const int32_t> sp = tpy::as_span(a);
+    std::span<int32_t> sp = tpy::as_mut_span(a);
     // 18:     print(seq_at(sp, Int32(-1)))
     std::cout << seq_at(sp, -1) << "\n";
     // 19:     print(seq_at(sp, Int32(-2)))

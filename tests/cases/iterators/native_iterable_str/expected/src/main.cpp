@@ -22,7 +22,7 @@ void main() {
     // 35:     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     // 36:     sp: Span[Int32] = nums
-    std::span<const int32_t> sp = tpy::as_span(nums);
+    std::span<int32_t> sp = tpy::as_mut_span(nums);
     // 37:     print(sum_span(sp))  # 60
     std::cout << sum_span(sp) << "\n";
 }

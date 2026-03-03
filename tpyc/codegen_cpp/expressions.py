@@ -976,9 +976,14 @@ class ExpressionGenerator:
                 if opt_arg is not None:
                     gen_args.append(opt_arg)
                     continue
-                # None literals need param type to decide nullptr vs std::nullopt
-                t_type = ptype if isinstance(a, TpyNoneLiteral) and ptype else expr.call_type
-                gen_args.append(self.gen_call_arg(a, ptype, target_type=t_type))
+                # None literals need param type for nullptr vs std::nullopt;
+                # array literals need call_type for nested brace generation.
+                if isinstance(a, TpyNoneLiteral) and ptype:
+                    gen_args.append(self.gen_call_arg(a, ptype, target_type=ptype))
+                elif isinstance(a, TpyArrayLiteral):
+                    gen_args.append(self.gen_call_arg(a, ptype, target_type=expr.call_type))
+                else:
+                    gen_args.append(self.gen_call_arg(a, ptype))
             args = ", ".join(gen_args)
             # Use qualified type name for imported records
             type_cpp = self.types.type_to_cpp(expr.call_type)
@@ -1575,14 +1580,19 @@ class ExpressionGenerator:
 
     def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
         """Generate std::span conversion for supported container types."""
+        # Span -> ReadOnlySpan: C++ implicit conversion, no helper needed
+        actual_type = self.ctx.get_expr_type(expr)
+        if isinstance(actual_type, SpanType):
+            return gen_inner
+        helper = "tpy::as_span" if span_type.is_readonly else "tpy::as_mut_span"
         if isinstance(expr, TpyArrayLiteral):
             expected_array_type = ArrayType(span_type.element_type, len(expr.elements))
             array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"
-            return f"tpy::as_span({array_expr})"
+            return f"{helper}({array_expr})"
         # gen_inner already generated, need to check if source was global
         if self.ctx.is_indirect_name(expr):
             gen_inner = f"(*{gen_inner})"
-        return f"tpy::as_span({gen_inner})"
+        return f"{helper}({gen_inner})"
 
     def _convert_to_fixed_int_arg(self, gen_expr: str, actual_type: TpyType, expected_type: TpyType, expr: TpyExpr) -> str:
         """Convert to the target FixedIntType when a runtime BigInt may be present."""

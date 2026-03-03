@@ -9,7 +9,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void test_list_membership();
 void test_array_membership();
-bool check_span_contains(std::span<const int32_t> data, int32_t value);
+bool check_span_contains(std::span<int32_t> data, int32_t value);
 void test_span_membership();
 void test_string_membership();
 void test_membership_in_conditions();

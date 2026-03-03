@@ -19,7 +19,7 @@ void __tpy_init() {
 
     // 18: # Separate lines: Inner[int] explicit, then Outer inferred
     // 19: inner = Inner[int](42)
-    static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(42);
+    static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(tpy::BigInt(42));
     inner = &__global_slot_1;
     // 20: outer = Outer(inner)
     static Outer<Inner<tpy::BigInt>> __global_slot_2 = Outer<Inner<tpy::BigInt>>((*inner));

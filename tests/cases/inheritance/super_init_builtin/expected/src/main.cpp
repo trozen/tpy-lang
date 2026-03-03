@@ -17,7 +17,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums = &__global_slot_1;
     // 11: m = MyList("test", nums)
-    static MyList __global_slot_2 = MyList("test", tpy::as_span((*nums)));
+    static MyList __global_slot_2 = MyList("test", tpy::as_mut_span((*nums)));
     m = &__global_slot_2;
     // 12: print(m[0])
     std::cout << (*m)[0] << "\n";

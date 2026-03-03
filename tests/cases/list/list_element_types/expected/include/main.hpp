@@ -15,9 +15,9 @@ extern std::vector<tpy::BigInt>* bigint_list;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t local_mixed();
-int32_t sum_span(std::span<const int32_t> nums);
+int32_t sum_span(std::span<int32_t> nums);
 int32_t test_local_span();
-tpy::BigInt sum_span_bigint(std::span<const tpy::BigInt> nums);
+tpy::BigInt sum_span_bigint(std::span<tpy::BigInt> nums);
 
 void __tpy_init();
 } // namespace tpy_user::main

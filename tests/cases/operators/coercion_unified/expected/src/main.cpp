@@ -30,7 +30,7 @@ int32_t take_point(Point& p) {
 }
 
 // 36: def take_span(s: Span[Int32]) -> Int32:
-int32_t take_span(std::span<const int32_t> s) {
+int32_t take_span(std::span<int32_t> s) {
     // 37:     result: Int32 = 0
     int32_t result = 0;
     // 38:     i: Int32 = 0
@@ -237,7 +237,7 @@ void test_staticlist_to_span() {
     sl.push_back(3);
     // 188:     # Function argument
     // 189:     print(take_span(sl))  # 6
-    std::cout << take_span(tpy::as_span(sl)) << "\n";
+    std::cout << take_span(tpy::as_mut_span(sl)) << "\n";
 }
 
 // # --- Array -> Span coercion ---
@@ -249,7 +249,7 @@ void test_array_to_span() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     // 199:     # Function argument
     // 200:     print(take_span(arr))  # 60
-    std::cout << take_span(tpy::as_span(arr)) << "\n";
+    std::cout << take_span(tpy::as_mut_span(arr)) << "\n";
 }
 
 // # --- List -> Span coercion ---
@@ -261,7 +261,7 @@ void test_list_to_span() {
     std::vector<int32_t> lst = {100, 200, 300};
     // 210:     # Function argument
     // 211:     print(take_span(lst))  # 600
-    std::cout << take_span(tpy::as_span(lst)) << "\n";
+    std::cout << take_span(tpy::as_mut_span(lst)) << "\n";
 }
 
 // # --- Chained coercions: subscript -> Ptr ---
