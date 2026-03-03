@@ -9,7 +9,8 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, PendingListType,
+    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, DictKeysViewType,
+    PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
@@ -438,6 +439,9 @@ class ExpressionGenerator:
             right_resolved = self.types.get_resolved_type(expr.right)
             if isinstance(right_resolved, DictType):
                 # Dict membership: use .contains()
+                find_expr = f"({right}.contains({left}))"
+            elif isinstance(right_resolved, DictKeysViewType):
+                # Keys view membership: O(1) via underlying map's hash lookup
                 find_expr = f"({right}.contains({left}))"
             elif is_any_str_type(right_resolved):
                 # String contains: use .find() (works for both std::string and string_view)

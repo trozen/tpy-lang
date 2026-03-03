@@ -5,8 +5,8 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Core dict: `ordered_map` runtime, DictType, parser, sema, codegen, literals, subscript, `len`, `in`, `for k in d`, `print`, `get`/`pop`/`clear`, tests | Done |
-| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`, `setdefault()`, `del d[k]` | In progress |
-| 3 | Tuple-dependent: `.items()` iteration, `dict(pairs)` constructor, dict comprehensions | Not started |
+| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `items()`, `update()`, `copy()`, `setdefault()`, `del d[k]` | In progress |
+| 3 | Dict comprehensions, `dict(pairs)` constructor | Not started |
 
 ---
 
@@ -308,18 +308,26 @@ one-arg overload `get(key) -> V | None`. This kind of return-type-varying overlo
 is not currently supported for user types. Deferred to Phase 2 to design the
 overload resolution properly.
 
-### `keys()` and `values()`
+### `keys()`, `values()`, `items()` (Done)
 
-Return `list[K]` and `list[V]` respectively (allocating copies). This is simpler
-than returning lazy views and matches the most common usage pattern (iterating once).
+Return zero-allocation view objects that hold a const pointer to the underlying
+`ordered_map` and provide `begin()`/`end()` for range-for iteration. Matches
+CPython's lazy view semantics.
 
 ```python
 d = {"a": 1, "b": 2}
-ks: list[str] = d.keys()       # ["a", "b"]
-vs: list[Int32] = d.values()   # [1, 2]
+for k in d.keys(): ...          # iterate keys
+for v in d.values(): ...        # iterate values
+for k, v in d.items(): ...     # iterate key-value pairs (tuple unpacking)
+len(d.keys())                   # 2
+"a" in d.keys()                 # True
 ```
 
-C++ implementation: iterate the ordered_map and collect into a `std::vector`.
+C++ implementation: `dict_keys_view`, `dict_values_view`, `dict_items_view` structs
+in `dict_ops.hpp` wrapping a `const ordered_map<K,V>*`. Items view yields
+`std::tuple<K,V>` by value for compatibility with tuple unpacking codegen.
+Type system: `DictKeysViewType`, `DictValuesViewType`, `DictItemsViewType` in
+`typesys.py` with appropriate `get_iteration_element_type()` (K, V, tuple[K,V]).
 
 ### `update()`
 

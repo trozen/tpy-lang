@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 
@@ -85,10 +86,62 @@ public:
         bool operator!=(const items_iterator_impl& o) const { return node_ != o.node_; }
     };
 
+    // -- Value iterator (for .values()) -------------------------------------
+
+    template<bool IsConst>
+    class value_iterator_impl {
+        friend class ordered_map;
+        using NodePtr = std::conditional_t<IsConst, const Node*, Node*>;
+        NodePtr node_;
+
+        explicit value_iterator_impl(NodePtr n) : node_(n) {}
+
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = V;
+        using reference = std::conditional_t<IsConst, const V&, V&>;
+
+        reference operator*() const { return node_->value; }
+
+        value_iterator_impl& operator++() { node_ = node_->next; return *this; }
+        value_iterator_impl operator++(int) { auto tmp = *this; node_ = node_->next; return tmp; }
+
+        bool operator==(const value_iterator_impl& o) const { return node_ == o.node_; }
+        bool operator!=(const value_iterator_impl& o) const { return node_ != o.node_; }
+    };
+
+    // -- Tuple-items iterator (yields std::tuple<K,V> for tuple unpacking) ---
+
+    template<bool IsConst>
+    class tuple_items_iterator_impl {
+        friend class ordered_map;
+        using NodePtr = std::conditional_t<IsConst, const Node*, Node*>;
+        NodePtr node_;
+
+        explicit tuple_items_iterator_impl(NodePtr n) : node_(n) {}
+
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = std::tuple<K, V>;
+        using reference = value_type;
+
+        value_type operator*() const { return {node_->key, node_->value}; }
+
+        tuple_items_iterator_impl& operator++() { node_ = node_->next; return *this; }
+        tuple_items_iterator_impl operator++(int) { auto tmp = *this; node_ = node_->next; return tmp; }
+
+        bool operator==(const tuple_items_iterator_impl& o) const { return node_ == o.node_; }
+        bool operator!=(const tuple_items_iterator_impl& o) const { return node_ != o.node_; }
+    };
+
     using iterator = key_iterator_impl<false>;
     using const_iterator = key_iterator_impl<true>;
     using items_iterator = items_iterator_impl<false>;
     using const_items_iterator = items_iterator_impl<true>;
+    using const_value_iterator = value_iterator_impl<true>;
+    using const_tuple_items_iterator = tuple_items_iterator_impl<true>;
 
     // -- Construction -------------------------------------------------------
 
@@ -234,6 +287,14 @@ public:
     items_iterator items_end() { return items_iterator(nullptr); }
     const_items_iterator items_begin() const { return const_items_iterator(head_); }
     const_items_iterator items_end() const { return const_items_iterator(nullptr); }
+
+    // Values: iterate values only (for .values())
+    const_value_iterator values_begin() const { return const_value_iterator(head_); }
+    const_value_iterator values_end() const { return const_value_iterator(nullptr); }
+
+    // Tuple-items: iterate as std::tuple<K,V> (for Python-style `for k, v in d.items()`)
+    const_tuple_items_iterator tuple_items_begin() const { return const_tuple_items_iterator(head_); }
+    const_tuple_items_iterator tuple_items_end() const { return const_tuple_items_iterator(nullptr); }
 
     // -- Comparison (order-independent, matching Python) --------------------
 

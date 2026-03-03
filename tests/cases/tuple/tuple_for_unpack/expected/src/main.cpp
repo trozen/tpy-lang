@@ -12,7 +12,7 @@ void main() {
     // 7:     for n, s in items:
     for (std::tuple<int32_t, std::string> __for_tup_0 : items) {
         // 7:     for n, s in items:
-        auto __tup_1 = __for_tup_0;
+        const auto& __tup_1 = __for_tup_0;
         int32_t n = std::get<0>(__tup_1);
         std::string s = std::get<1>(__tup_1);
         // 8:         print(n, s)
@@ -24,7 +24,7 @@ void main() {
     // 12:     for n, flag in pairs:
     for (std::tuple<int32_t, bool> __for_tup_1 : pairs) {
         // 12:     for n, flag in pairs:
-        auto __tup_2 = __for_tup_1;
+        const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
         bool flag = std::get<1>(__tup_2);
         // 13:         print(n, flag)
@@ -36,7 +36,7 @@ void main() {
     // 17:     for full, initial in names:
     for (std::tuple<std::string, std::string> __for_tup_2 : names) {
         // 17:     for full, initial in names:
-        auto __tup_3 = __for_tup_2;
+        const auto& __tup_3 = __for_tup_2;
         std::string full = std::get<0>(__tup_3);
         std::string initial = std::get<1>(__tup_3);
         // 18:         print(full, initial)

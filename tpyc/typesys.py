@@ -1332,6 +1332,108 @@ class DictType(NamedType):
         return DictType(types[0], types[1])
 
 
+class DictKeysViewType(NamedType):
+    """Dict keys view: d.keys() -> tpy::dict_keys_view<K, V>"""
+
+    def __init__(self, key_type: TpyType, value_type: TpyType):
+        NamedType.__init__(self, name="dict_keys", type_args=(key_type, value_type),
+                           _module_qname="builtins.dict_keys")
+
+    @property
+    def key_type(self) -> TpyType:
+        return self.type_args[0]
+
+    @property
+    def value_type(self) -> TpyType:
+        return self.type_args[1]
+
+    def to_cpp(self) -> str:
+        return f"tpy::dict_keys_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.key_type
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return f"dict_keys[{self.key_type}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.key_type, self.value_type)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return DictKeysViewType(types[0], types[1])
+
+
+class DictValuesViewType(NamedType):
+    """Dict values view: d.values() -> tpy::dict_values_view<K, V>"""
+
+    def __init__(self, key_type: TpyType, value_type: TpyType):
+        NamedType.__init__(self, name="dict_values", type_args=(key_type, value_type),
+                           _module_qname="builtins.dict_values")
+
+    @property
+    def key_type(self) -> TpyType:
+        return self.type_args[0]
+
+    @property
+    def value_type(self) -> TpyType:
+        return self.type_args[1]
+
+    def to_cpp(self) -> str:
+        return f"tpy::dict_values_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.value_type
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return f"dict_values[{self.value_type}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.key_type, self.value_type)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return DictValuesViewType(types[0], types[1])
+
+
+class DictItemsViewType(NamedType):
+    """Dict items view: d.items() -> tpy::dict_items_view<K, V>"""
+
+    def __init__(self, key_type: TpyType, value_type: TpyType):
+        NamedType.__init__(self, name="dict_items", type_args=(key_type, value_type),
+                           _module_qname="builtins.dict_items")
+
+    @property
+    def key_type(self) -> TpyType:
+        return self.type_args[0]
+
+    @property
+    def value_type(self) -> TpyType:
+        return self.type_args[1]
+
+    def to_cpp(self) -> str:
+        return f"tpy::dict_items_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return TupleType((self.key_type, self.value_type))
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return f"dict_items[{self.key_type}, {self.value_type}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.key_type, self.value_type)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return DictItemsViewType(types[0], types[1])
+
+
 @dataclass(frozen=True)
 class PendingListType(TpyType):
     """Unresolved list literal type - becomes Array or list based on usage.

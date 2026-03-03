@@ -1101,12 +1101,17 @@ class StatementGenerator:
 
     def _gen_tuple_unpack(self, out: TextIO, stmt: TpyTupleUnpack, indent: str) -> None:
         """Generate tuple unpacking: auto __tup_N = expr; T a = std::get<0>(...); ..."""
-        self.ctx.unpack_counter += 1
-        tmp = f"__tup_{self.ctx.unpack_counter}"
-
         value_expr = self.expressions.gen_expr(stmt.value)
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}auto {tmp} = {value_expr};\n")
+
+        self.ctx.unpack_counter += 1
+        tmp = f"__tup_{self.ctx.unpack_counter}"
+        # When value is a named variable and no elements need move semantics,
+        # bind by const ref to avoid copying the tuple
+        if isinstance(stmt.value, TpyName) and not any(stmt.is_owned):
+            out.write(f"{indent}const auto& {tmp} = {value_expr};\n")
+        else:
+            out.write(f"{indent}auto {tmp} = {value_expr};\n")
 
         for i, name in enumerate(stmt.targets):
             if name is None:

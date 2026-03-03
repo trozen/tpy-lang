@@ -8,7 +8,8 @@ from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
-    DictType, NamedType, TypeParamRef, OwnType, OptionalType, ALL_FIXED_INTS, FixedIntType,
+    DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
+    NamedType, TypeParamRef, OwnType, OptionalType, ALL_FIXED_INTS, FixedIntType,
 )
 
 # Shorthand for type parameter T
@@ -310,6 +311,69 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=VOID,
             cpp="{self}.clear()",
+        )],
+        "keys": [MethodDef(
+            params=[],
+            returns=DictKeysViewType(K, V),
+            cpp="tpy::dict_keys({self})",
+            is_readonly=True,
+        )],
+        "values": [MethodDef(
+            params=[],
+            returns=DictValuesViewType(K, V),
+            cpp="tpy::dict_values({self})",
+            is_readonly=True,
+        )],
+        "items": [MethodDef(
+            params=[],
+            returns=DictItemsViewType(K, V),
+            cpp="tpy::dict_items({self})",
+            is_readonly=True,
+        )],
+    })
+
+    # dict_keys[K, V]: Keys view backed by tpy::dict_keys_view<K, V>
+    module.type("dict_keys", cpp_type="tpy::dict_keys_view<{K}, {V}>",
+                type_params=["K", "V"],
+                param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
+                type_factory=lambda k, v: DictKeysViewType(k, v),
+                extends=["NativeIterable[K]"],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="tpy::__len__({self})",
+            is_readonly=True,
+        )],
+    })
+
+    # dict_values[K, V]: Values view backed by tpy::dict_values_view<K, V>
+    module.type("dict_values", cpp_type="tpy::dict_values_view<{K}, {V}>",
+                type_params=["K", "V"],
+                param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
+                type_factory=lambda k, v: DictValuesViewType(k, v),
+                extends=["NativeIterable[V]"],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="tpy::__len__({self})",
+            is_readonly=True,
+        )],
+    })
+
+    # dict_items[K, V]: Items view backed by tpy::dict_items_view<K, V>
+    module.type("dict_items", cpp_type="tpy::dict_items_view<{K}, {V}>",
+                type_params=["K", "V"],
+                param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
+                type_factory=lambda k, v: DictItemsViewType(k, v),
+                extends=["NativeIterable[tuple[K, V]]"],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="tpy::__len__({self})",
+            is_readonly=True,
         )],
     })
 

@@ -11,7 +11,7 @@ void main() {
     // 6:     for _, name in items:
     for (std::tuple<int32_t, std::string> __for_tup_0 : items) {
         // 6:     for _, name in items:
-        auto __tup_1 = __for_tup_0;
+        const auto& __tup_1 = __for_tup_0;
         std::string name = std::get<1>(__tup_1);
         // 7:         print(name)
         std::cout << name << "\n";

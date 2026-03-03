@@ -51,6 +51,49 @@ V dict_pop_default(ordered_map<K, V>& m, const KeyArg& key, V def) {
     return result;
 }
 
+// -- Views (zero-allocation wrappers for keys/values/items iteration) -------
+
+template<typename K, typename V>
+struct dict_keys_view {
+    const ordered_map<K, V>* map_;
+    auto begin() const { return map_->begin(); }
+    auto end() const { return map_->end(); }
+    int32_t size() const { return map_->size(); }
+    bool contains(const K& key) const { return map_->contains(key); }
+};
+
+template<typename K, typename V>
+struct dict_values_view {
+    const ordered_map<K, V>* map_;
+    auto begin() const { return map_->values_begin(); }
+    auto end() const { return map_->values_end(); }
+    int32_t size() const { return map_->size(); }
+};
+
+template<typename K, typename V>
+struct dict_items_view {
+    const ordered_map<K, V>* map_;
+    auto begin() const { return map_->tuple_items_begin(); }
+    auto end() const { return map_->tuple_items_end(); }
+    int32_t size() const { return map_->size(); }
+};
+
+template<typename K, typename V>
+dict_keys_view<K, V> dict_keys(const ordered_map<K, V>& m) { return {&m}; }
+template<typename K, typename V>
+dict_values_view<K, V> dict_values(const ordered_map<K, V>& m) { return {&m}; }
+template<typename K, typename V>
+dict_items_view<K, V> dict_items(const ordered_map<K, V>& m) { return {&m}; }
+
+// -- View __len__ -----------------------------------------------------------
+
+template<typename K, typename V>
+int32_t __len__(const dict_keys_view<K, V>& v) { return v.size(); }
+template<typename K, typename V>
+int32_t __len__(const dict_values_view<K, V>& v) { return v.size(); }
+template<typename K, typename V>
+int32_t __len__(const dict_items_view<K, V>& v) { return v.size(); }
+
 // -- Printing ---------------------------------------------------------------
 
 namespace detail {
@@ -78,6 +121,49 @@ std::ostream& operator<<(std::ostream& os, const DictPrinter<K, V>& p) {
     }
     os << '}';
     return os;
+}
+
+// -- View printing ----------------------------------------------------------
+
+template<typename K, typename V>
+std::ostream& operator<<(std::ostream& os, const dict_keys_view<K, V>& v) {
+    os << "dict_keys([";
+    bool first = true;
+    for (auto it = v.begin(); it != v.end(); ++it) {
+        if (!first) os << ", ";
+        first = false;
+        detail::print_element(os, *it);
+    }
+    return os << "])";
+}
+
+template<typename K, typename V>
+std::ostream& operator<<(std::ostream& os, const dict_values_view<K, V>& v) {
+    os << "dict_values([";
+    bool first = true;
+    for (auto it = v.begin(); it != v.end(); ++it) {
+        if (!first) os << ", ";
+        first = false;
+        detail::print_element(os, *it);
+    }
+    return os << "])";
+}
+
+template<typename K, typename V>
+std::ostream& operator<<(std::ostream& os, const dict_items_view<K, V>& v) {
+    os << "dict_items([";
+    bool first = true;
+    for (auto it = v.begin(); it != v.end(); ++it) {
+        if (!first) os << ", ";
+        first = false;
+        auto&& [k, val] = *it;
+        os << '(';
+        detail::print_element(os, k);
+        os << ", ";
+        detail::print_element(os, val);
+        os << ')';
+    }
+    return os << "])";
 }
 
 }  // namespace tpy
