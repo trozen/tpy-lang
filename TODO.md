@@ -101,6 +101,7 @@
 - Destructor drop flag shadowing in inheritance: when both parent and child have `__del__`, each class emits its own `bool __tpy_owned_ = true` field. The child's shadows the parent's, creating two independent flags that must stay in sync. Currently correct (each move op/destructor operates on its own class's flag), but fragile. Fix: emit `__tpy_owned_` only on the root class that introduces `__del__`; children inherit it without shadowing.
 - Functions don't currently support INT type params (only TYPE)
 - `readonly[T]` field type is silently ignored: `name: readonly[str]` emits `std::string` (no `const`), and sema does not reject mutation of the field. The syntax is accepted but has no effect.
+- Union isinstance narrowing in ternary: `x if isinstance(x, str) else ...` where `x: str | int` would need `std::get<T>()` extraction, which requires statement-level codegen (variable declaration for the extracted value).
 
 ## ShedSkin examples
 - score4

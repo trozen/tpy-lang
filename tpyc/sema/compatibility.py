@@ -19,7 +19,7 @@ from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyFunction,
-    SourceLocation
+    TpyIfExpr, SourceLocation
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR
 from .diagnostics import SemanticError
@@ -654,6 +654,11 @@ class TypeCompatibility:
         # Method call - assume safe (callee's responsibility)
         if isinstance(expr, TpyMethodCall):
             return False
+
+        # Ternary - dangles if either branch dangles
+        if isinstance(expr, TpyIfExpr):
+            return (self.is_dangling_return(expr.then_expr)
+                    or self.is_dangling_return(expr.else_expr))
 
         # Unary/Binary ops - might create temporaries, be conservative
         if isinstance(expr, (TpyUnaryOp, TpyBinOp)):
