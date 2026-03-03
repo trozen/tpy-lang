@@ -24,6 +24,7 @@ from .nodes import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyIfExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
@@ -1853,6 +1854,13 @@ class Parser:
 
         elif isinstance(node, ast.JoinedStr):
             return self._parse_fstring(node, loc)
+
+        elif isinstance(node, ast.IfExp):
+            condition = self._parse_expr(node.test)
+            then_expr = self._parse_expr(node.body)
+            else_expr = self._parse_expr(node.orelse)
+            return TpyIfExpr(condition=condition, then_expr=then_expr,
+                             else_expr=else_expr, loc=loc)
 
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)

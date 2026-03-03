@@ -21,7 +21,8 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyIfExpr,
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -347,6 +348,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyFString):
             return self._gen_fstring(expr)
+
+        elif isinstance(expr, TpyIfExpr):
+            return self._gen_if_expr(expr, target_type)
 
         return "/* unknown expr */"
 
@@ -1651,3 +1655,77 @@ class ExpressionGenerator:
         fmt_str = "".join(fmt_parts)
         args_str = ", ".join(args)
         return f'std::format("{fmt_str}", {args_str})'
+
+    def _gen_if_expr(self, expr: TpyIfExpr,
+                     target_type: TpyType | None = None) -> str:
+        """Generate C++ ternary: (cond) ? (then_expr) : (else_expr)."""
+        result_type = self.types.get_resolved_type(expr)
+        is_ptr_optional = (
+            isinstance(result_type, OptionalType) and result_type.uses_pointer_repr()
+        )
+        cond = self.gen_truthy_expr(expr.condition)
+
+        # Use the result type as the branch target so that:
+        # - None literals get OptionalType target -> generate std::nullopt
+        # - Narrowed Optional vars get non-Optional target -> gen_expr_deref unwraps
+        branch_target = result_type or target_type
+
+        # For pointer-repr Optional, use gen_expr (keeps raw T*) instead of
+        # gen_expr_deref (which dereferences pointer_locals to (*var)).
+        gen_branch = self.gen_expr if is_ptr_optional else self.gen_expr_deref
+
+        # Then-branch: apply Union isinstance narrowing from condition
+        then_facts = self._collect_inline_isinstance_facts(
+            expr.condition, true_branch=True)
+        saved_then: dict[str, str | None] = {}
+        for var_name, inline_expr in then_facts.items():
+            saved_then[var_name] = self.ctx.narrowed_vars.get(var_name)
+            self.ctx.narrowed_vars[var_name] = inline_expr
+        then_code = gen_branch(expr.then_expr, branch_target)
+        for var_name, prev in saved_then.items():
+            if prev is not None:
+                self.ctx.narrowed_vars[var_name] = prev
+            else:
+                self.ctx.narrowed_vars.pop(var_name, None)
+
+        # Else-branch: apply negated narrowing from condition
+        else_facts = self._collect_inline_isinstance_facts(
+            expr.condition, true_branch=False)
+        saved_else: dict[str, str | None] = {}
+        for var_name, inline_expr in else_facts.items():
+            saved_else[var_name] = self.ctx.narrowed_vars.get(var_name)
+            self.ctx.narrowed_vars[var_name] = inline_expr
+        else_code = gen_branch(expr.else_expr, branch_target)
+        for var_name, prev in saved_else.items():
+            if prev is not None:
+                self.ctx.narrowed_vars[var_name] = prev
+            else:
+                self.ctx.narrowed_vars.pop(var_name, None)
+
+        # C++ ternary requires both branches to have the same type.
+        if isinstance(result_type, OptionalType):
+            if is_ptr_optional:
+                # Pointer-repr Optional (T*): produce T* for each branch.
+                # None -> nullptr; non-pointer lvalue -> &(expr).
+                then_code = self._ptr_optional_branch(
+                    expr.then_expr, then_code)
+                else_code = self._ptr_optional_branch(
+                    expr.else_expr, else_code)
+            else:
+                # Value-repr Optional (std::optional<T>): branches may have
+                # mismatched types (std::nullopt vs T) -- wrap each in
+                # explicit Optional for C++ ternary type deduction.
+                cpp_type = self.types.type_to_cpp(result_type)
+                then_code = f"{cpp_type}({then_code})"
+                else_code = f"{cpp_type}({else_code})"
+
+        return f"(({cond}) ? ({then_code}) : ({else_code}))"
+
+    def _ptr_optional_branch(self, branch_expr: TpyExpr, code: str) -> str:
+        """Convert a ternary branch to T* for pointer-repr Optional results."""
+        if isinstance(branch_expr, TpyNoneLiteral):
+            return "nullptr"
+        branch_type = self.ctx.get_expr_type(branch_expr)
+        if isinstance(branch_type, (OptionalType, PtrType)):
+            return code
+        return f"&({code})"

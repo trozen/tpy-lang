@@ -1,0 +1,1 @@
+main.py:3: error: Incompatible types in ternary expression: 'str' and 'Int32'

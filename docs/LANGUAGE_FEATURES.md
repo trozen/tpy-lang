@@ -2290,7 +2290,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Conditionals
 - **Working**: `if`, `elif`, `else`
-- **Open**: Ternary `x if cond else y` → C++ ternary
+- **Working**: Ternary `x if cond else y` -- same-type branches, numeric widening, `T`+`None` to `Optional[T]`, Optional narrowing (`is not None` / truthy)
 
 ### Loops
 - **Working**: `while`
@@ -3842,6 +3842,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 ## Expressions
 
 - **Working**: Binary/unary ops, calls, field access
+- **Working**: Ternary `x if cond else y` (see [Conditionals](#conditionals))
 - **Open**: List comprehensions → unrolled loops for fixed size
 - **Open**: Dict comprehensions
 - **Open**: Lambda → anonymous struct with `operator()` or inline

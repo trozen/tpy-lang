@@ -247,6 +247,14 @@ class TpyCoerce(TpyExpr):
 
 
 @dataclass
+class TpyIfExpr(TpyExpr):
+    """Ternary conditional expression: then_expr if condition else else_expr."""
+    condition: TpyExpr
+    then_expr: TpyExpr
+    else_expr: TpyExpr
+
+
+@dataclass
 class TpyStmt:
     """Base class for statements."""
     loc: SourceLocation | None = field(default=None, kw_only=True)

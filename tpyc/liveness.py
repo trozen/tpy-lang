@@ -22,7 +22,7 @@ from .parse import (
     TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp,
     TpyTypeParamConstruct,
     TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
-    TpyCoerce,
+    TpyCoerce, TpyIfExpr,
 )
 
 # source_name -> set[alias_name] reverse map
@@ -562,6 +562,14 @@ def _collect_reads_expr(expr: TpyExpr) -> list[TpyName]:
 
     elif isinstance(expr, TpyCoerce):
         return _collect_reads_expr(expr.expr)
+
+    elif isinstance(expr, TpyIfExpr):
+        # Flat collection: a var in both branches counts >= 2 -> no move
+        # (conservative but correct; only one branch evaluates at runtime).
+        result = _collect_reads_expr(expr.condition)
+        result.extend(_collect_reads_expr(expr.then_expr))
+        result.extend(_collect_reads_expr(expr.else_expr))
+        return result
 
     elif isinstance(expr, TpyTypeParamConstruct):
         return []

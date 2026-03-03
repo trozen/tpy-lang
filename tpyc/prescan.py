@@ -14,7 +14,7 @@ from .parse import (
     TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
-    TpyCoerce, TpyFieldAccess,
+    TpyCoerce, TpyFieldAccess, TpyIfExpr,
 )
 
 
@@ -98,7 +98,8 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
         return is_scan_rvalue(expr.obj)
     return isinstance(expr, (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
                              TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                             TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat))
+                             TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
+                             TpyIfExpr))
 
 
 def _scan_stmts(stmts: list[TpyStmt], declared: set[str],

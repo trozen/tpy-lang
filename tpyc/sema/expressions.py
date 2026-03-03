@@ -12,7 +12,7 @@ from ..typesys import (
     NamedType, PtrType, OwnType, ListType, DictType, PendingListType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
-    FixedIntType, StringType, StrViewType,
+    FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
 )
@@ -22,11 +22,14 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce
+    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyIfExpr,
 )
 from ..namespace import BindingKind
+from ..coercions import CoercionContext
 from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .narrowing import NarrowingTracker
+from .numeric_lattice import widen_numeric_types
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -109,6 +112,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_fstring(expr)
         elif isinstance(expr, TpyTypeParamConstruct):
             typ = TypeParamRef(expr.param_name)
+        elif isinstance(expr, TpyIfExpr):
+            typ = self._analyze_if_expr(expr)
         elif isinstance(expr, TpyCoerce):
             # Coercions are attached post-analysis; treat as the expected type.
             typ = expr.expected_type
@@ -126,6 +131,12 @@ class ExpressionAnalyzer:
         """
         if type_hint is None:
             return self.analyze_expr(expr)
+
+        # Ternary expression: propagate hint to both branches
+        if isinstance(expr, TpyIfExpr):
+            typ = self._analyze_if_expr(expr, type_hint=type_hint)
+            self.ctx.set_expr_type(expr, typ)
+            return typ
 
         # T() default-construction: resolves to whatever T maps to
         if isinstance(expr, TpyTypeParamConstruct):
@@ -977,6 +988,96 @@ class ExpressionAnalyzer:
             return
         raise self.ctx.error(
             f"Type '{key_type}' cannot be used as a dict key (not hashable)", expr,
+        )
+
+    # -- Ternary expression analysis ------------------------------------------
+
+    def _analyze_if_expr(
+        self, expr: TpyIfExpr, type_hint: TpyType | None = None,
+    ) -> TpyType:
+        """Analyze a ternary conditional: then_expr if condition else else_expr."""
+        self.analyze_expr(expr.condition)
+        self.narrowing.warn_truthy_value_optionals(expr.condition)
+
+        then_facts, else_facts = self.narrowing.condition_type_facts(
+            expr.condition)
+
+        # Save narrowed_types (ternary doesn't create vars, so we only
+        # need to save/restore narrowing, not the full InitTracker state).
+        saved_narrowed = dict(self.ctx.narrowed_types)
+
+        self.ctx.narrowed_types.update(then_facts)
+        if type_hint is not None:
+            then_type = self.analyze_expr_with_hint(expr.then_expr, type_hint)
+        else:
+            then_type = self.analyze_expr(expr.then_expr)
+
+        self.ctx.narrowed_types = dict(saved_narrowed)
+        self.ctx.narrowed_types.update(else_facts)
+        if type_hint is not None:
+            else_type = self.analyze_expr_with_hint(expr.else_expr, type_hint)
+        else:
+            else_type = self.analyze_expr(expr.else_expr)
+
+        self.ctx.narrowed_types = saved_narrowed
+
+        common = self._ternary_common_type(expr, then_type, else_type,
+                                           widen_numeric_types)
+
+        # Coerce branches to the common type so C++ ternary has
+        # matching branch types (e.g. None -> std::optional<T>).
+        if then_type != common:
+            expr.then_expr = self.compat.coerce_expr(
+                expr.then_expr, then_type, common,
+                "ternary branch", coercion_ctx=CoercionContext.INIT)
+        if else_type != common:
+            expr.else_expr = self.compat.coerce_expr(
+                expr.else_expr, else_type, common,
+                "ternary branch", coercion_ctx=CoercionContext.INIT)
+
+        return common
+
+    def _ternary_common_type(
+        self, expr: TpyIfExpr,
+        then_type: TpyType, else_type: TpyType,
+        widen_numeric_types: object,
+    ) -> TpyType:
+        """Compute the common result type of a ternary expression's branches."""
+        if then_type == else_type:
+            return then_type
+
+        t, e = then_type, else_type
+
+        # IntLiteral resolution
+        if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
+            return self.ctx.default_int_for_literal(t, expr.then_expr)
+        if isinstance(t, IntLiteralType):
+            if isinstance(e, (FixedIntType, BigIntType, FloatType)):
+                return e
+            t = self.ctx.default_int_for_literal(t, expr.then_expr)
+        if isinstance(e, IntLiteralType):
+            if isinstance(t, (FixedIntType, BigIntType, FloatType)):
+                return t
+            e = self.ctx.default_int_for_literal(e, expr.else_expr)
+
+        if t == e:
+            return t
+
+        # Numeric widening (Int32 + Int64 -> Int64, etc.)
+        widened = widen_numeric_types(t, e)
+        if widened is not None:
+            return widened
+
+        # T + None / None + T -> Optional[T]
+        if isinstance(e, NoneType):
+            return make_union(t, NoneType())
+        if isinstance(t, NoneType):
+            return make_union(e, NoneType())
+
+        raise self.ctx.error(
+            f"Incompatible types in ternary expression: "
+            f"'{t}' and '{e}'",
+            expr,
         )
 
     def _analyze_dict_literal(

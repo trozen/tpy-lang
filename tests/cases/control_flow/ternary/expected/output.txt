@@ -1,0 +1,13 @@
+5
+3
+20
+30
+0
+5
+10
+Good day
+Hey
+positive
+non-positive
+7
+100

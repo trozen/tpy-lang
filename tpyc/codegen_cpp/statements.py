@@ -23,7 +23,7 @@ from ..parse import (
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral,
     TpyFieldAccess, TpyMethodCall,
-    TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce,
+    TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
 )
 from ..namespace import Namespace
 from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
@@ -229,6 +229,9 @@ class StatementGenerator:
                     ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
                     if self.ctx.is_indirect_name(stmt.value):
                         # Already a pointer -- return as-is
+                        return f"{indent}return {ret_expr};\n"
+                    if isinstance(stmt.value, TpyIfExpr):
+                        # Ternary already produces T* via _ptr_optional_branch
                         return f"{indent}return {ret_expr};\n"
                     # Field access with non-value Optional produces std::optional<T>, convert to T*
                     if isinstance(stmt.value, TpyFieldAccess):
