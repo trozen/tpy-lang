@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, DictType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
+    ListType, DictType, ArrayType, SpanType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, StrVarInfo, PtrType, is_const_ptr, NoneType, OptionalType, UnionType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
 )
 from ..parse import (
     TpyExpr,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyDictLiteral, TpyCoerce,
@@ -196,6 +196,8 @@ class StatementAnalyzer:
             self._analyze_assign(stmt)
         elif isinstance(stmt, TpyAugAssign):
             self._analyze_aug_assign(stmt)
+        elif isinstance(stmt, TpyDelItem):
+            self._analyze_del_item(stmt)
         elif isinstance(stmt, TpyExprStmt):
             self.expr.analyze_expr(stmt.expr)
         elif isinstance(stmt, TpyReturn):
@@ -1240,6 +1242,39 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyName):
             self.init.mark_assigned(stmt.target.name)
             self.narrowing.update_after_write(stmt.target.name, target_type, value_type, stmt.value)
+
+    def _analyze_del_item(self, stmt: TpyDelItem) -> None:
+        """Analyze del obj[key] statement."""
+        for subscript in stmt.targets:
+            # Analyze obj and index separately to avoid triggering __getitem__
+            # validation (del doesn't read the element, only deletes it).
+            self.expr.analyze_expr(subscript.obj)
+            self._enforce_readonly_assignment_target(subscript)
+            obj_type = self.ctx.get_expr_type(subscript.obj)
+            actual = unwrap_readonly(obj_type)
+            # Reject known-immutable/fixed-size types before analyzing the index
+            if isinstance(actual, TupleType):
+                raise self.ctx.error(
+                    "Tuples are immutable; cannot delete tuple elements", stmt)
+            if isinstance(actual, ArrayType):
+                raise self.ctx.error(
+                    "Arrays are fixed-size; cannot delete array elements", stmt)
+            if isinstance(actual, SpanType):
+                raise self.ctx.error(
+                    "Spans are read-only views; cannot delete span elements", stmt)
+            # Check that the type has __delitem__
+            record_info = self.ctx.registry.get_record_for_type(actual)
+            if record_info:
+                overloads = record_info.get_method_overloads("__delitem__")
+                if not overloads:
+                    raise self.ctx.error(
+                        f"'del' is not supported for type {actual}; "
+                        f"define __delitem__ to enable element deletion", stmt)
+            else:
+                raise self.ctx.error(
+                    f"'del' is not supported for type {actual}", stmt)
+            # Analyze the index expression only after confirming __delitem__ exists
+            self.expr.analyze_expr(subscript.index)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""

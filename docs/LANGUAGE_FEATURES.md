@@ -355,14 +355,14 @@ log(f"x={x}")
 
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
-- **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place
+- **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place, `del lst[i]` element removal
 - **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
 - **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
-  - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `len(d)`, `k in d`, `for k in d`
+  - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
   - Methods: `get(k)`, `pop(k)`, `pop(k, default)`, `clear()`
   - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
   - Return by value requires `Own[dict[K, V]]`
@@ -2304,6 +2304,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Other
 - **Working**: `return`, `pass`
+- **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
 - **Open**: `match`/`case` → switch or if/else chain
 
 ---

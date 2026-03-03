@@ -300,7 +300,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |
 | `ordered_map.hpp` | `tpy::ordered_map<K,V>` insertion-order-preserving hash map |
 | `dict_ops.hpp` | Dict helpers: `dict_get`, `dict_pop`, `DictPrinter` |
-| `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`) |
+| `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`, `__delitem__`) |
 | `protocols.hpp` | `Sized`, `Sequence` concepts |
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
 | `uninit_array_storage.hpp` | `UninitArrayStorage<T, N>` inline uninitialized storage |

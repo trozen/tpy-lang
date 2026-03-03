@@ -5,7 +5,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Core dict: `ordered_map` runtime, DictType, parser, sema, codegen, literals, subscript, `len`, `in`, `for k in d`, `print`, `get`/`pop`/`clear`, tests | Done |
-| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`, `setdefault()`, `del d[k]` | Not started |
+| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`, `setdefault()`, `del d[k]` | In progress |
 | 3 | Tuple-dependent: `.items()` iteration, `dict(pairs)` constructor, dict comprehensions | Not started |
 
 ---
@@ -266,7 +266,7 @@ for `ordered_map`.
 
 ### 8. Tests
 
-21 test cases under `tests/cases/dict/`:
+23 test cases under `tests/cases/dict/`:
 
 | Test | What it covers |
 |------|---------------|
@@ -282,6 +282,7 @@ for `ordered_map`.
 | `dict_param_return` | Dict as function parameter and return type |
 | `dict_mutate_param` | Dict mutation through function parameter |
 | `dict_nested` | Nested `dict[str, dict[str, Int32]]` with annotation propagation |
+| `dict_del` | `del d[k]`, multi-target del, del-then-insert |
 | `error_dict_empty_no_annotation` | `d = {}` without type annotation |
 | `error_dict_key_type` | List or other unhashable type as key |
 | `error_dict_key_mismatch` | Mixed key types in literal |
@@ -291,6 +292,7 @@ for `ordered_map`.
 | `error_dict_return_dangling` | Returning dict literal without `Own[]` |
 | `panic_dict_missing_key` | `d[missing_key]` panics |
 | `panic_dict_pop_missing` | `d.pop(missing_key)` panics |
+| `panic_dict_del_missing` | `del d[missing_key]` panics |
 
 ---
 
@@ -343,14 +345,16 @@ v = d.setdefault("key", 0)    # insert if missing, return value
 
 C++ implementation: `find` + conditional `insert_or_assign`, return reference.
 
-### `del d[k]`
+### `del d[k]` (Done)
 
 ```python
 del d["key"]    # remove key-value pair
 ```
 
-Requires `del` statement support (separate feature E3). C++ implementation:
-`m.erase(key)`.
+Implemented via `__delitem__` dunder protocol. Parser handles `ast.Delete` with
+`Subscript` targets, sema validates container type has `__delitem__`, codegen emits
+`tpy::__delitem__(d, key)`. Panics on missing key (matches Python's KeyError).
+Also works for `del lst[i]` (list) and user types with `__delitem__`.
 
 ---
 
@@ -432,18 +436,18 @@ Requires comprehension expression support (separate feature).
 | File | Changes |
 |------|---------|
 | `tpyc/typesys.py` | `DictType` class, `get_iteration_element_type()` on base `TpyType` |
-| `tpyc/parse/nodes.py` | `TpyDictLiteral` AST node |
-| `tpyc/parse/__init__.py` | Export `TpyDictLiteral` |
-| `tpyc/parse/parser.py` | Remove "dict" from FORBIDDEN_CONSTRUCTS, parse `ast.Dict` |
-| `tpyc/modules/builtins.py` | Register dict type with dunder methods and constructors |
+| `tpyc/parse/nodes.py` | `TpyDictLiteral` AST node, `TpyDelItem` statement node |
+| `tpyc/parse/__init__.py` | Export `TpyDictLiteral`, `TpyDelItem` |
+| `tpyc/parse/parser.py` | Remove "dict" from FORBIDDEN_CONSTRUCTS, parse `ast.Dict`, parse `ast.Delete` |
+| `tpyc/modules/builtins.py` | Register dict type with dunder methods and constructors, `__delitem__` for dict and list |
 | `tpyc/sema/expressions.py` | Dict literal analysis, annotation hint propagation, subscript, `in` operator, key validation |
-| `tpyc/sema/statements.py` | Empty dict with annotation, dict subscript assignment |
+| `tpyc/sema/statements.py` | Empty dict with annotation, dict subscript assignment, `del` statement validation |
 | `tpyc/sema/compatibility.py` | `TpyDictLiteral` in dangling return check, DictType recursive compatibility |
 | `tpyc/sema/list_literals.py` | Use `get_iteration_element_type()` in fallback path |
 | `tpyc/codegen_cpp/expressions.py` | Dict literal codegen, `in` operator (`contains`), subscript |
-| `tpyc/codegen_cpp/statements.py` | Use `get_iteration_element_type()` for for-each element type |
+| `tpyc/codegen_cpp/statements.py` | Use `get_iteration_element_type()` for for-each element type, `del` codegen |
 | `tpyc/codegen_cpp/builtins.py` | `print(d)` with `DictPrinter` |
-| `runtime/cpp/include/tpy/dunder.hpp` | `__getitem__`, `__setitem__`, `__len__`, `__bool__` overloads for `ordered_map` |
+| `runtime/cpp/include/tpy/dunder.hpp` | `__getitem__`, `__setitem__`, `__delitem__`, `__len__`, `__bool__` overloads for `ordered_map` |
 | `runtime/cpp/include/tpy/tpy.hpp` | Include `ordered_map.hpp` and `dict_ops.hpp` |
 | `docs/LANGUAGE_FEATURES.md` | Document dict[K,V] support |
 

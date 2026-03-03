@@ -24,7 +24,7 @@ from .nodes import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
@@ -1642,6 +1642,9 @@ class Parser:
         elif isinstance(node, ast.Raise):
             return self._parse_raise(node, loc)
 
+        elif isinstance(node, ast.Delete):
+            return self._parse_delete(node, loc)
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
@@ -1659,6 +1662,22 @@ class Parser:
                 raise ParseError("'raise StopIteration' does not accept arguments", node)
             return TpyRaiseStopIteration(loc=loc)
         raise ParseError("Only 'raise StopIteration' is supported", node)
+
+    def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:
+        """Parse a del statement. Only subscript targets are supported."""
+        subscripts: list[TpySubscript] = []
+        for target in node.targets:
+            if isinstance(target, ast.Subscript):
+                obj = self._parse_expr(target.value)
+                index = self._parse_expr(target.slice)
+                subscripts.append(TpySubscript(obj, index, loc=loc))
+            elif isinstance(target, ast.Name):
+                raise ParseError("'del' on variables is not supported", node)
+            elif isinstance(target, ast.Attribute):
+                raise ParseError("'del' on attributes is not supported", node)
+            else:
+                raise ParseError(f"Unsupported del target: {type(target).__name__}", node)
+        return TpyDelItem(subscripts, loc=loc)
 
     def _parse_expr(self, node: ast.expr) -> TpyExpr:
         """Parse an expression."""

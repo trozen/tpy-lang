@@ -1,0 +1,1 @@
+main.py:7: error: 'del' is not supported for type StaticList[Int32, 5]; define __delitem__ to enable element deletion

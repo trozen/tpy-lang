@@ -1,0 +1,1 @@
+main.py:6: error: Tuples are immutable; cannot delete tuple elements

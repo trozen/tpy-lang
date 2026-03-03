@@ -17,7 +17,7 @@ from ..typesys import (
     local_var_is_movable, resolve_int_literals,
 )
 from ..parse import (
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt, TpyRaiseStopIteration,
     TpyGlobal,
     TpyImport, TpySubscript, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
@@ -207,6 +207,8 @@ class StatementGenerator:
             return self._gen_assign_code(stmt, indent)
         elif isinstance(stmt, TpyAugAssign):
             return self._gen_aug_assign_code(stmt, indent)
+        elif isinstance(stmt, TpyDelItem):
+            return self._gen_del_item_code(stmt, indent)
         elif isinstance(stmt, TpyExprStmt):
             if isinstance(stmt.expr, TpyStrLiteral):
                 return None  # Skip docstrings
@@ -921,6 +923,24 @@ class StatementGenerator:
         value = self.expressions.gen_expr_deref(stmt.value, target_type)
         value = self.expressions._maybe_move(stmt.value, value)
         return f"{indent}{target} = {value};\n"
+
+    def _gen_del_item_code(self, stmt: TpyDelItem, indent: str) -> str:
+        """Generate code for del obj[key] statement."""
+        parts: list[str] = []
+        for subscript in stmt.targets:
+            obj = self.expressions.gen_expr(subscript.obj)
+            obj_type = self.ctx.get_expr_type(subscript.obj)
+            index_type = self.ctx.analyzer.get_expr_type(subscript.index)
+            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(subscript.obj) else obj
+            index_expr = self.expressions.gen_index_expr(subscript.index, index_type)
+
+            cpp_template = self.builtins.get_type_method_template(obj_type, "__delitem__")
+            if cpp_template:
+                code = expand_cpp_template(cpp_template, subscript_obj, index_expr)
+                parts.append(f"{indent}{code};\n")
+            else:
+                parts.append(f"{indent}tpy::__delitem__({subscript_obj}, {index_expr});\n")
+        return "".join(parts)
 
     def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:
         """Generate code for an augmented assignment. Returns code to write."""

@@ -304,6 +304,12 @@ class TpyAugAssign(TpyStmt):
 
 
 @dataclass
+class TpyDelItem(TpyStmt):
+    """Delete statement: del obj[key], obj2[key2], ..."""
+    targets: list[TpySubscript]
+
+
+@dataclass
 class TpyExprStmt(TpyStmt):
     """Expression statement (e.g., function call)."""
     expr: TpyExpr

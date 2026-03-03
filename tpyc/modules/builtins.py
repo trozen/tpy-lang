@@ -30,11 +30,12 @@ NAME = "builtins"
 
 # Methods that mutate the list (used by sema to track list literal mutation)
 LIST_MUTATION_METHODS = frozenset({
-    "append", "pop", "insert", "remove", "clear", "extend", "reverse", "__setitem__",
+    "append", "pop", "insert", "remove", "clear", "extend", "reverse",
+    "__setitem__", "__delitem__",
 })
 
 DICT_MUTATION_METHODS = frozenset({
-    "__setitem__", "pop", "clear",
+    "__setitem__", "__delitem__", "pop", "clear",
 })
 
 
@@ -190,6 +191,11 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="tpy::__setitem__({self}, {0}, {1})",
         )],
+        "__delitem__": [MethodDef(
+            params=[ParamDef("index", INT32)],
+            returns=VOID,
+            cpp="tpy::__delitem__({self}, {0})",
+        )],
         "insert": [MethodDef(
             params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
             returns=VOID,
@@ -276,6 +282,11 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("key", K), ParamDef("value", OwnType(V))],
             returns=VOID,
             cpp="tpy::__setitem__({self}, {0}, {1})",
+        )],
+        "__delitem__": [MethodDef(
+            params=[ParamDef("key", K)],
+            returns=VOID,
+            cpp="tpy::__delitem__({self}, {0})",
         )],
         "get": [MethodDef(
             params=[ParamDef("key", K)],

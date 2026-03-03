@@ -31,6 +31,7 @@
 (see FEATURE_ROADMAP.md for tracked hard problems)
 
 ## Python features
+- `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.
 - list/StaticList operator (+=, *, +, in), sort
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)

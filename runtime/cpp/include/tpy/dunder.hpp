@@ -215,6 +215,32 @@ void __setitem__(T& x, int32_t i, V&& v) {
 }
 
 // =============================================
+// tpy::__delitem__
+// =============================================
+
+// Overload: std::vector (list)
+template<typename T>
+void __delitem__(std::vector<T>& x, int32_t i) {
+    auto idx = normalize_index(x, i, "list index out of bounds");
+    x.erase(x.begin() + static_cast<std::ptrdiff_t>(idx));
+}
+
+// Overload: ordered_map (dict) -- panics on missing key
+template<typename K, typename V, typename KeyArg>
+void __delitem__(ordered_map<K, V>& m, const KeyArg& key) {
+    if (!m.erase(K(key))) {
+        tpy_panic("KeyError");
+    }
+}
+
+// Default template: user types that define __delitem__() method
+template<typename T>
+    requires requires(T& t, int32_t i) { t.__delitem__(i); }
+void __delitem__(T& x, int32_t i) {
+    x.__delitem__(i);
+}
+
+// =============================================
 // tpy::__bool__
 // =============================================
 
