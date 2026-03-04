@@ -11,7 +11,7 @@ void main() {
     // 6:     a, b = t
     const auto& __tup_1 = t;
     int32_t a = std::get<0>(__tup_1);
-    std::string b = std::get<1>(__tup_1);
+    std::string_view b = std::get<1>(__tup_1);
     // 7:     print(a)
     std::cout << a << "\n";
     // 8:     print(b)

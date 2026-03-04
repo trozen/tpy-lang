@@ -14,7 +14,7 @@ void main() {
         // 7:     for n, s in items:
         const auto& __tup_1 = __for_tup_0;
         int32_t n = std::get<0>(__tup_1);
-        std::string s = std::get<1>(__tup_1);
+        std::string_view s = std::get<1>(__tup_1);
         // 8:         print(n, s)
         std::cout << n << " " << s << "\n";
     }
@@ -37,8 +37,8 @@ void main() {
     for (std::tuple<std::string, std::string> __for_tup_2 : names) {
         // 17:     for full, initial in names:
         const auto& __tup_3 = __for_tup_2;
-        std::string full = std::get<0>(__tup_3);
-        std::string initial = std::get<1>(__tup_3);
+        std::string_view full = std::get<0>(__tup_3);
+        std::string_view initial = std::get<1>(__tup_3);
         // 18:         print(full, initial)
         std::cout << full << " " << initial << "\n";
     }

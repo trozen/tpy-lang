@@ -22,7 +22,7 @@ void main() {
     std::cout << tpy::__len__(items) << "\n";
     // 15:     k, v = items[0]
     auto __tup_1 = tpy::__getitem__(items, 0);
-    std::string k = std::get<0>(__tup_1);
+    std::string_view k = std::get<0>(__tup_1);
     int32_t v = std::get<1>(__tup_1);
     // 16:     print(k, v)
     std::cout << k << " " << v << "\n";

@@ -23,7 +23,7 @@ void main() {
     std::cout << tpy::__getitem__(words, 3) << "\n";
     // 11:     # Iterate over list of strings
     // 12:     for w in words:
-    for (std::string w : words) {
+    for (std::string_view w : words) {
         // 13:         print(w)
         std::cout << w << "\n";
     }

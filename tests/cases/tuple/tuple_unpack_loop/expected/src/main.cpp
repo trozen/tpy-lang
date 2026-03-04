@@ -28,7 +28,7 @@ void main() {
         // 15:         n, s = make_pair(Int32(i))
         auto __tup_1 = make_pair(i);
         int32_t n = std::get<0>(__tup_1);
-        std::string s = std::get<1>(__tup_1);
+        std::string_view s = std::get<1>(__tup_1);
         // 16:         print(s)
         std::cout << s << "\n";
         // 17:         total = total + n

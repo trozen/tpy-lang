@@ -181,6 +181,22 @@ class TypeResolver:
         sv_info = self.ctx.analyzer.ctx.str_vars.get(typ.str_var_id)
         return sv_info.resolved_type if sv_info and sv_info.resolved_type else STR
 
+    def resolve_type(self, typ: TpyType) -> TpyType:
+        """Resolve deferred types (PendingStrType, PendingListType) to concrete C++ types."""
+        if isinstance(typ, PendingStrType):
+            return self._resolve_pending_str(typ)
+        if isinstance(typ, PendingListType):
+            literal_id = typ.literal_id
+            if literal_id in self.ctx.analyzer.list_literals:
+                info = self.ctx.analyzer.list_literals[literal_id]
+                if info.resolved_type:
+                    return info.resolved_type
+            elem_type = typ.element_type
+            if isinstance(elem_type, IntLiteralType):
+                elem_type = self.ctx.analyzer.ctx.default_int_for_literal(elem_type)
+            return ListType(elem_type)
+        return typ
+
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
         """Substitute type parameters with concrete types for codegen.
 

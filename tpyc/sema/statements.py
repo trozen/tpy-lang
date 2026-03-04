@@ -467,6 +467,11 @@ class StatementAnalyzer:
                 # Elements from a readonly iterable inherit readonly status
                 if is_readonly_iterable and not elem_type.is_value_type():
                     elem_type = ReadonlyType(unwrap_readonly(elem_type))
+                elem_type = self._infer_new_local_type(
+                    stmt.var, elem_type, None, None,
+                    line=(stmt.loc.line if stmt.loc else None),
+                )
+                stmt.elem_type = elem_type
                 before = self.init.save()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
@@ -616,6 +621,56 @@ class StatementAnalyzer:
                 f"Cannot reassign global variable '{name}' of non-value type '{existing_type}'",
                 node
             )
+
+    def _infer_new_local_type(
+        self, name: str, var_type: TpyType,
+        init_expr: TpyExpr | None, init_type: TpyType | None,
+        line: int | None,
+    ) -> TpyType:
+        """Apply deferred type inference for a new local variable.
+
+        Handles StrType -> PendingStrType, PendingStrType alias, and
+        PendingListType alias logic.  Skipped at module top-level.
+
+        When init_expr is None (for-loop var, tuple unpack), the source is
+        considered view-compatible (initialized_from_owned=False) because
+        the container outlives the loop/unpack scope.
+        """
+        if self.ctx.is_top_level:
+            return var_type
+
+        if isinstance(var_type, StrType):
+            str_var_id = self.ctx.str_var_counter
+            self.ctx.str_var_counter += 1
+            if init_expr is not None:
+                is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
+            else:
+                is_owned = False
+            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=name,
+                                decl_line=line,
+                                initialized_from_owned=is_owned)
+            self.ctx.str_vars[str_var_id] = sv_info
+            self.ctx.variable_to_str_var[name] = str_var_id
+            self.ctx.pending_str_resolutions.append(str_var_id)
+            return PendingStrType(str_var_id)
+        elif isinstance(var_type, PendingStrType):
+            str_var_id = self.ctx.str_var_counter
+            self.ctx.str_var_counter += 1
+            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=name,
+                                decl_line=line,
+                                source_str_var_id=var_type.str_var_id)
+            self.ctx.str_vars[str_var_id] = sv_info
+            self.ctx.variable_to_str_var[name] = str_var_id
+            self.ctx.pending_str_resolutions.append(str_var_id)
+            return PendingStrType(str_var_id)
+        elif (isinstance(var_type, PendingListType)
+                and init_expr is not None and isinstance(init_expr, TpyName)):
+            return self.deduction.register_list_alias(
+                name, var_type,
+                decl_line=line,
+            )
+
+        return var_type
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
@@ -819,6 +874,7 @@ class StatementAnalyzer:
         if existing_type is not None:
             self._check_nonvalue_rebinding(stmt.name, stmt)
 
+        init_type: TpyType | None = None
         if stmt.init:
             # Handle empty list literal or generic type constructor with explicit type annotation
             # Note: [] * N is collapsed to [] in the parser
@@ -1033,45 +1089,11 @@ class StatementAnalyzer:
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
-        # String variable PendingStrType inference (function-local only, new vars)
-        if (isinstance(var_type, StrType) and stmt.init is not None
-                and not self.ctx.is_top_level and not is_global_declared
-                and existing_type is None):
-            str_var_id = self.ctx.str_var_counter
-            self.ctx.str_var_counter += 1
-            is_owned = not self.deduction.is_view_compatible_source(stmt.init, init_type)
-            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=stmt.name,
-                                decl_line=stmt.loc.line if stmt.loc else None,
-                                initialized_from_owned=is_owned)
-            self.ctx.str_vars[str_var_id] = sv_info
-            self.ctx.variable_to_str_var[stmt.name] = str_var_id
-            self.ctx.pending_str_resolutions.append(str_var_id)
-            var_type = PendingStrType(str_var_id)
-        # Alias: new var initialized from an existing PendingStrType local.
-        # Gets its own ID with source tracking; if the source later resolves
-        # to str, this alias is retroactively promoted during resolution.
-        elif (isinstance(var_type, PendingStrType) and stmt.init is not None
-                and not self.ctx.is_top_level and not is_global_declared
-                and existing_type is None):
-            str_var_id = self.ctx.str_var_counter
-            self.ctx.str_var_counter += 1
-            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=stmt.name,
-                                decl_line=stmt.loc.line if stmt.loc else None,
-                                source_str_var_id=var_type.str_var_id)
-            self.ctx.str_vars[str_var_id] = sv_info
-            self.ctx.variable_to_str_var[stmt.name] = str_var_id
-            self.ctx.pending_str_resolutions.append(str_var_id)
-            var_type = PendingStrType(str_var_id)
-        # Alias: new var initialized from an existing PendingListType local (b = a).
-        # Gets its own literal info with source tracking; if either side later
-        # resolves to list, the other is retroactively promoted during resolution.
-        elif (isinstance(var_type, PendingListType) and stmt.init is not None
-                and isinstance(stmt.init, TpyName)
-                and not self.ctx.is_top_level and not is_global_declared
-                and existing_type is None):
-            var_type = self.deduction.register_list_alias(
-                stmt.name, var_type,
-                decl_line=(stmt.loc.line if stmt.loc else None),
+        # Deferred type inference for new locals (PendingStrType, list alias, etc.)
+        if not is_global_declared and existing_type is None:
+            var_type = self._infer_new_local_type(
+                stmt.name, var_type, stmt.init, init_type,
+                line=(stmt.loc.line if stmt.loc else None),
             )
 
         if is_global_declared:
@@ -1219,6 +1241,11 @@ class StatementAnalyzer:
                     elem_type, existing, "tuple unpacking", source_expr=stmt)
                 stmt.is_new.append(False)
             else:
+                elem_type = self._infer_new_local_type(
+                    name, elem_type, None, None,
+                    line=(stmt.loc.line if stmt.loc else None),
+                )
+                stmt.target_types[i] = elem_type
                 self.ctx.current_scope.define(name, elem_type)
                 self.init.mark_assigned(name)
                 stmt.is_new.append(True)

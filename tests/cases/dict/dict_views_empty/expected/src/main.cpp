@@ -10,7 +10,7 @@ void main() {
     // 3:     d: dict[str, int] = {}
     tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>();
     // 5:     for k in d.keys():
-    for (std::string k : tpy::dict_keys(d)) {
+    for (std::string_view k : tpy::dict_keys(d)) {
         // 6:         print(k)
         std::cout << k << "\n";
     }
@@ -23,7 +23,7 @@ void main() {
     for (std::tuple<std::string, tpy::BigInt> __for_tup_0 : tpy::dict_items(d)) {
         // 11:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
-        std::string k = std::get<0>(__tup_1);
+        std::string_view k = std::get<0>(__tup_1);
         tpy::BigInt v = std::get<1>(__tup_1);
         // 12:         print(k, v)
         std::cout << k << " " << v << "\n";

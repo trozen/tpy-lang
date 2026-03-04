@@ -21,7 +21,7 @@ void main() {
     // 11:     a, b = get_pair()
     auto __tup_1 = get_pair();
     int32_t a = std::get<0>(__tup_1);
-    std::string b = std::get<1>(__tup_1);
+    std::string_view b = std::get<1>(__tup_1);
     // 12:     print(a)
     std::cout << a << "\n";
     // 13:     print(b)
@@ -30,7 +30,7 @@ void main() {
     auto __tup_2 = get_triple();
     bool x = std::get<0>(__tup_2);
     int32_t y = std::get<1>(__tup_2);
-    std::string z = std::get<2>(__tup_2);
+    std::string_view z = std::get<2>(__tup_2);
     // 16:     print(x)
     std::cout << tpy::print_bool(x) << "\n";
     // 17:     print(y)

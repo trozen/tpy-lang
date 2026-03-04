@@ -376,6 +376,7 @@ class TpyForEach(TpyStmt):
     iterable: TpyExpr
     body: list[TpyStmt]
     enum_iterable: 'EnumType | None' = None  # set by sema when iterating over enum type
+    elem_type: 'TpyType | None' = None  # set by sema: resolved element type for codegen
 
 
 @dataclass

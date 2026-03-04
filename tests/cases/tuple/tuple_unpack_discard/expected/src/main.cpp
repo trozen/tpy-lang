@@ -14,7 +14,7 @@ std::tuple<int32_t, std::string, bool> get_triple() {
 void main() {
     // 8:     _, b, _ = get_triple()
     auto __tup_1 = get_triple();
-    std::string b = std::get<1>(__tup_1);
+    std::string_view b = std::get<1>(__tup_1);
     // 9:     print(b)
     std::cout << b << "\n";
     // 11:     a, _, c = get_triple()

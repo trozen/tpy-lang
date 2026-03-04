@@ -16,7 +16,7 @@ void main() {
     // 6:     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
     // 7:     for k in d:
-    for (std::string k : d) {
+    for (std::string_view k : d) {
         // 8:         print(k)
         std::cout << k << "\n";
     }

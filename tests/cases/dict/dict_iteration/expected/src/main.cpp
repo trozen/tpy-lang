@@ -10,7 +10,7 @@ void main() {
     // 3:     d = {"alpha": 1, "beta": 2, "gamma": 3}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"alpha", 1}, {"beta", 2}, {"gamma", 3}});
     // 4:     for k in d:
-    for (std::string k : d) {
+    for (std::string_view k : d) {
         // 5:         print(k, d[k])
         std::cout << k << " " << tpy::__getitem__(d, k) << "\n";
     }

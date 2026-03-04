@@ -13,7 +13,7 @@ void main() {
     for (std::tuple<std::string, int32_t> __for_tup_0 : tpy::dict_items(d)) {
         // 5:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
-        std::string k = std::get<0>(__tup_1);
+        std::string_view k = std::get<0>(__tup_1);
         int32_t v = std::get<1>(__tup_1);
         // 6:         print(k, v)
         std::cout << k << " " << v << "\n";

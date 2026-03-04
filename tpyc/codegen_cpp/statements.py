@@ -1736,6 +1736,9 @@ class StatementGenerator:
         from tpyc.modules import get_native_iterator_element_type, get_iter_element_type, get_span_element_type
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
+        # Resolve sema-stored elem_type (handles PendingStrType -> concrete)
+        sema_elem = self.types.resolve_type(stmt.elem_type) if stmt.elem_type else None
+
         # Resolve TypeParamRef to its bound for protocol-based iteration
         resolved_type = iterable_type
         if isinstance(iterable_type, TypeParamRef):
@@ -1745,7 +1748,7 @@ class StatementGenerator:
 
         # Handle protocol-typed iterables (Iterator[T], Iterable[T])
         if is_protocol_type(resolved_type) and resolved_type.name in ("Iterator", "Iterable"):
-            elem_type = resolved_type.type_args[0]
+            elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             if resolved_type.name == "Iterator":
                 self._gen_iterator_loop(out, stmt, indent, iterable, elem_type)
@@ -1755,14 +1758,14 @@ class StatementGenerator:
 
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses tpy::as_span)
         if is_protocol_type(resolved_type) and resolved_type.name == "ReadOnlySpanLike":
-            elem_type = resolved_type.type_args[0]
+            elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_span_loop(out, stmt, indent, iterable, elem_type, use_as_span=True)
             return
 
         # Optimize range() calls to C-style counter loops (before protocol checks)
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
-            elem_type = iterable_type.get_element_type()
+            elem_type = sema_elem or iterable_type.get_element_type()
             if elem_type and self._gen_range_counter_loop(out, stmt, indent, elem_type):
                 return
 
@@ -1770,21 +1773,21 @@ class StatementGenerator:
         iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_iterator_loop(out, stmt, indent, iterable, iter_elem)
+            self._gen_iterator_loop(out, stmt, indent, iterable, sema_elem or iter_elem)
             return
 
         # Check for __span__()-based types (zero-cost range-based for via span)
         span_elem = get_span_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if span_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_span_loop(out, stmt, indent, iterable, span_elem)
+            self._gen_span_loop(out, stmt, indent, iterable, sema_elem or span_elem)
             return
 
         # Check for __iter__()-based types (container -> separate iterator)
         iter_elem = get_iter_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_iter_protocol_loop(out, stmt, indent, iterable, iter_elem)
+            self._gen_iter_protocol_loop(out, stmt, indent, iterable, sema_elem or iter_elem)
             return
 
         iterable = self.expressions.gen_expr_deref(stmt.iterable)
@@ -1794,9 +1797,10 @@ class StatementGenerator:
         if isinstance(stmt.iterable, TpyStrLiteral):
             iterable = f"std::string_view({iterable})"
 
-        # Determine element type for the loop variable
-        # Handle protocol types (e.g., NativeIterable[T])
-        if is_protocol_type(iterable_type):
+        # Use sema-resolved elem_type if available, otherwise derive from iterable
+        if sema_elem is not None:
+            elem_type = sema_elem
+        elif is_protocol_type(iterable_type):
             if iterable_type.name == "NativeIterable" and iterable_type.type_args:
                 elem_type = iterable_type.type_args[0]
             else:
@@ -1818,7 +1822,7 @@ class StatementGenerator:
             if not elem_type.is_value_type():
                 out.write(f"{indent}for (auto& {cpp_var} : {iterable}) {{\n")
             else:
-                cpp_type = elem_type.to_cpp()
+                cpp_type = self.types.type_to_cpp(elem_type)
                 out.write(f"{indent}for ({cpp_type} {cpp_var} : {iterable}) {{\n")
             # Track the loop variable's type for use in body expressions
             self.ctx.var_types[stmt.var] = elem_type
