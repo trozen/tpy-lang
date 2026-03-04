@@ -52,7 +52,7 @@
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- support more dunder methods: `__hash__`, etc.
+- support more dunder methods: `__eq__`, `__ne__`, `__contains__`, etc.
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - better class operator<< tests (but missing str formatting/concatenation)

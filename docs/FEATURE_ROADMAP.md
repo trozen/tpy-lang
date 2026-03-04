@@ -37,7 +37,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
 | B1 | Box[T] heap ownership | S-M | Done | [II](#boxt----heap-ownership) |
-| B2 | Union types / ADTs | L | Partial | [I](#union-types--algebraic-data-types) |
+| B2 | Union types / ADTs | L | Done | [I](#union-types--algebraic-data-types) |
 | B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
@@ -139,20 +139,13 @@ don't get lost.
 Tagged unions: `A | B` as a first-class type (beyond `T | None`).
 
 ```python
-@sealed
-class Expr:
-    pass
-class Lit(Expr):
-    value: int
-class Add(Expr):
-    left: Expr
-    right: Expr
+Shape = Circle | Rect
 
-def eval(e: Expr) -> int:
-    match e:
-        case Lit(v):   return v
-        case Add(l,r): return eval(l) + eval(r)
-        # compile error: non-exhaustive match
+def area(s: Shape) -> float:
+    if isinstance(s, Circle):
+        return 3.14159 * s.radius * s.radius
+    elif isinstance(s, Rect):
+        return s.width * s.height
 ```
 
 **Why it matters**: Two polymorphism models -- ADTs for closed hierarchies (stack-allocated,
@@ -162,17 +155,20 @@ vtable-based). Most languages pick one; having both is powerful.
 The TPy compiler itself has 824 `isinstance` calls across 35 files. ADTs with exhaustive
 match are the natural replacement, and a prerequisite for self-hosting via tag dispatch.
 
-Maps to `std::variant` or manual tag+union in C++. No heap allocation, no vtable.
-Compatible with `@noalloc`.
+Maps to `std::variant` in C++. No heap allocation, no vtable. Compatible with `@noalloc`.
 
-**Current state**: Basic union types working (`A | B` annotations, `isinstance` narrowing,
-`assert isinstance`, while-loop narrowing, assignment narrowing, type aliases). Maps to
-`std::variant`. Missing: `@sealed`, match/case, exhaustiveness checking.
+**Current state**: Done (core). `A | B | C` annotations, `isinstance` narrowing (if/elif/else
+chains with negative narrowing), `assert isinstance`, while-loop narrowing, assignment
+narrowing, type aliases, `A | B | None` with `std::monostate`. Maps to `std::variant`.
+See `docs/UNION_TYPES_DESIGN.md` for full phase list and future extensions.
 
-**Dependencies**: Enums (simpler case, good stepping stone). Match/case (consumer of unions).
-Interacts with generic Optional codegen (union is a generalization of Optional).
+Remaining extensions (not blocking "Done" status): equality on unions, `isinstance(x, (A, B))`
+tuple form, common-method dispatch, generic unions, recursive unions. Match/case and
+exhaustiveness checking are tracked separately (B3).
 
-**Effort**: L (type system + sema + codegen + exhaustiveness checker)
+**Dependencies**: Enums (done). Match/case (B3, consumer of unions).
+
+**Effort**: L (done for core; future extensions are incremental)
 
 ---
 

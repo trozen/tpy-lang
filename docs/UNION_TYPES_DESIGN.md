@@ -42,15 +42,20 @@ def area(s: Shape) -> float:
 | **Phase 11** | `assert isinstance(x, T)` codegen for unions | **Done** |
 | **Phase 12** | Assignment narrowing: `v: A \| B = Rect(...)` narrows `v` to `Rect` for field/method access | **Done** |
 | **Phase 13** | While-loop isinstance narrowing: `while isinstance(v, T)` extracts inside loop body | **Done** |
-| **Later** | Deferred union init: `x: A \| B` without initializer, assigned in branches | Not designed |
-| **Later** | `isinstance(x, (A, B))` tuple form (narrow to subset of union) | Design only |
-| **Later** | Exhaustiveness checking (isinstance chains + match/case) | Design only |
-| **Later** | isinstance on non-name expressions (`x.field`, `x[i]`) | Not designed |
-| **Later** | Common-method dispatch (call shared method without narrowing) | Design only |
-| **Later** | Copy/nocopy enforcement for unions with `@nocopy` members | Not designed |
-| **Later** | Generic unions (`Union[T, U]` in generic context) | Not designed |
-| **Later** | `match`/`case` structural pattern matching | Design only |
-| **Later** | Recursive unions / ADT patterns | Design only |
+
+### Future Extensions
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Equality `==`/`!=` on unions | Not designed | Phase 9 above; requires all members to support it |
+| Deferred union init | Not designed | `x: A \| B` without initializer, assigned in branches |
+| `isinstance(x, (A, B))` tuple form | Design only | Narrow to subset of union |
+| Exhaustiveness checking | Design only | isinstance chains + match/case (B3) |
+| isinstance on non-name expressions | Not designed | `x.field`, `x[i]` |
+| Common-method dispatch | Design only | Call shared method without narrowing |
+| Copy/nocopy enforcement | Not designed | Unions with `@nocopy` members |
+| Generic unions | Not designed | `Union[T, U]` in generic context |
+| Recursive unions / ADT patterns | Design only | Needs `Box[T]` for indirection |
 
 ## Known Semantic Gaps
 
