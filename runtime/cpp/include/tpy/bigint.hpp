@@ -28,6 +28,7 @@
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -551,6 +552,40 @@ public:
         }
 
         return from_sign_mag(negative ? -1 : 1, std::move(mag));
+    }
+
+    std::tuple<BigInt, BigInt> floor_divmod(const BigInt& rhs) const {
+        if (rhs.signum() == 0) {
+            tpy_panic("Division by zero");
+        }
+        if (signum() == 0) {
+            return {BigInt(0), BigInt(0)};
+        }
+
+        int a_sign = signum();
+        int b_sign = rhs.signum();
+        std::vector<uint64_t> a = abs_limbs();
+        std::vector<uint64_t> b = rhs.abs_limbs();
+
+        std::vector<uint64_t> q_abs;
+        std::vector<uint64_t> r_abs;
+        divmod_mag(a, b, q_abs, r_abs);
+
+        if (r_abs.empty()) {
+            int q_sign = (a_sign == b_sign) ? 1 : -1;
+            return {from_sign_mag(q_sign, std::move(q_abs)), BigInt(0)};
+        }
+
+        if (a_sign == b_sign) {
+            return {from_sign_mag(1, std::move(q_abs)),
+                    from_sign_mag(b_sign, std::move(r_abs))};
+        }
+
+        // Different signs: q = -(|q|+1), r = |b| - |r|
+        add_small_inplace(q_abs, 1);
+        std::vector<uint64_t> adjusted = sub_mag(b, r_abs);
+        return {from_sign_mag(-1, std::move(q_abs)),
+                from_sign_mag(b_sign, std::move(adjusted))};
     }
 
 private:

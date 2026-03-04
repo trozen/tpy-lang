@@ -9,7 +9,7 @@ from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
     DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
-    NamedType, TypeParamRef, OwnType, OptionalType, ALL_FIXED_INTS, FixedIntType,
+    NamedType, TypeParamRef, OwnType, OptionalType, TupleType, ALL_FIXED_INTS, FixedIntType,
 )
 
 # Shorthand for type parameter T
@@ -76,6 +76,76 @@ def init_module() -> BuiltinModule:
             is_readonly=True,
         ),
     ])
+
+    module.function("ord", overloads=[
+        MethodDef(
+            params=[ParamDef("c", CHAR)],
+            returns=INT32,
+            cpp="static_cast<int32_t>(static_cast<unsigned char>({0}))",
+            is_readonly=True,
+        ),
+    ])
+
+    pow_overloads = [
+        MethodDef(params=[ParamDef("x", BIGINT), ParamDef("y", BIGINT)],
+                  returns=BIGINT, cpp="({0}).pow({1})", is_readonly=True),
+        MethodDef(params=[ParamDef("x", FLOAT), ParamDef("y", FLOAT)],
+                  returns=FLOAT, cpp="std::pow({0}, {1})", is_readonly=True),
+    ]
+    for t in ALL_FIXED_INTS:
+        cpp_t = t.to_cpp()
+        pow_overloads.append(MethodDef(
+            params=[ParamDef("x", t), ParamDef("y", t)],
+            returns=t, cpp=f"tpy::pow_check<{cpp_t}>({{0}}, {{1}})", is_readonly=True,
+        ))
+    module.function("pow", overloads=pow_overloads)
+
+    # round(): generic round[T](float)->T with default T=default_int_type,
+    # identity for integer types, and ndigits variants
+    round_overloads = [
+        # float -> T (generic, defaults to default_int_type)
+        MethodDef(
+            params=[ParamDef("x", FLOAT)],
+            returns=T, cpp="tpy::round_to<{T}>({0})", is_readonly=True,
+        ),
+        # float, ndigits -> float
+        MethodDef(
+            params=[ParamDef("x", FLOAT), ParamDef("ndigits", INT32)],
+            returns=FLOAT, cpp="tpy::round_float({0}, {1})", is_readonly=True,
+        ),
+    ]
+    for t in ALL_FIXED_INTS:
+        cpp_t = t.to_cpp()
+        round_overloads.append(MethodDef(
+            params=[ParamDef("x", t)], returns=t, cpp="({0})", is_readonly=True))
+        round_overloads.append(MethodDef(
+            params=[ParamDef("x", t), ParamDef("ndigits", INT32)],
+            returns=t, cpp=f"tpy::round_fixed<{cpp_t}>({{0}}, {{1}})", is_readonly=True))
+    round_overloads.append(MethodDef(
+        params=[ParamDef("x", BIGINT)], returns=BIGINT, cpp="({0})", is_readonly=True))
+    round_overloads.append(MethodDef(
+        params=[ParamDef("x", BIGINT), ParamDef("ndigits", INT32)],
+        returns=BIGINT, cpp="tpy::round_bigint({0}, {1})", is_readonly=True))
+    module.function("round", overloads=round_overloads,
+                    type_params=["T"], type_param_defaults={"T": "DEFAULT_INT"})
+
+    # divmod(a, b) -> tuple[T, T]
+    divmod_overloads = [
+        MethodDef(params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
+                  returns=TupleType((BIGINT, BIGINT)),
+                  cpp="tpy::divmod_bigint({0}, {1})", is_readonly=True),
+        MethodDef(params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
+                  returns=TupleType((FLOAT, FLOAT)),
+                  cpp="tpy::divmod_float({0}, {1})", is_readonly=True),
+    ]
+    for t in ALL_FIXED_INTS:
+        cpp_t = t.to_cpp()
+        divmod_overloads.append(MethodDef(
+            params=[ParamDef("a", t), ParamDef("b", t)],
+            returns=TupleType((t, t)),
+            cpp=f"tpy::divmod_fixed<{cpp_t}>({{0}}, {{1}})", is_readonly=True,
+        ))
+    module.function("divmod", overloads=divmod_overloads)
 
     module.function("abs", overloads=[
         MethodDef(

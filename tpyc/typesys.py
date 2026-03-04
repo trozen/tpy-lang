@@ -1715,6 +1715,7 @@ class FunctionInfo:
     native_name: Optional[str] = None
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
+    type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "DEFAULT_INT"}
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially

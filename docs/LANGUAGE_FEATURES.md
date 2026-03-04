@@ -3140,7 +3140,7 @@ class Car(Vehicle, Printable, Measurable):
 
 ## Built-in Functions
 
-- **Working**: `print()`, `len()`, `range()`, `chr()`, `copy()`
+- **Working**: `print()`, `len()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `copy()`
   - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
@@ -3155,7 +3155,10 @@ class Car(Vehicle, Printable, Measurable):
   - Single-element: uses efficient fill constructor
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
-- **Working**: `abs()`, `min()`, `max()` for numeric types
+- **Working**: `abs()`, `min()`, `max()`, `ord()`, `pow()`, `round()`, `divmod()` for numeric types
+  - `round(x)` uses banker's rounding (round half to even, matching Python)
+  - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
+  - `divmod(a, b)` returns `tuple[T, T]` with Python floor-division semantics
 - **Working**: String slicing: `s[1:3]`, `s[:3]`, `s[1:]`, `s[:-1]` -- returns `StrView`, Python clamping semantics, no step yet
 - **Planned**: List slicing: `items[1:3]`
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)

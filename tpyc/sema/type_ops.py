@@ -623,6 +623,16 @@ class TypeOperations:
                     elem_type = self.ctx.default_int_for_literal(elem_type)
                 inferred[k] = ListType(elem_type)
 
+        # Fill in defaults for unresolved type params
+        if func.type_param_defaults:
+            for tp in func.type_params:
+                if tp not in inferred and tp in func.type_param_defaults:
+                    sentinel = func.type_param_defaults[tp]
+                    if sentinel == "DEFAULT_INT":
+                        inferred[tp] = self.ctx.default_int_type
+                    else:
+                        raise ValueError(f"Unknown type_param_default sentinel: {sentinel!r}")
+
         # Check all type params were inferred
         for tp in func.type_params:
             if tp not in inferred:

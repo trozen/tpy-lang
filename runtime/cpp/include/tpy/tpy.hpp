@@ -43,6 +43,9 @@
 // BigInt arbitrary precision (depends on core, fixed_int, type_traits)
 #include "bigint.hpp"
 
+// Builtin function helpers (depends on core, fixed_int, bigint)
+#include "builtins.hpp"
+
 // Container operations (depends on core, type_traits, static_list)
 #include "container_ops.hpp"
 
