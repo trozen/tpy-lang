@@ -1,0 +1,1 @@
+main.py:21: error: Method 'make_new' requires type parameter 'T' to satisfy 'Default', but 'Opaque' does not conform

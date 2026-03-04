@@ -1,0 +1,1 @@
+main.py:23: error: Method 'smaller' requires type parameter 'T' to satisfy 'Comparable', but 'Opaque' does not conform
