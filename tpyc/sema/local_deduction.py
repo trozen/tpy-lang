@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction
-from ..parse.nodes import TpyFieldAccess, TpyStrLiteral, TpySubscript
+from ..parse.nodes import TpyStrLiteral, TpySubscript
 from ..typesys import (
     ArrayType,
     BigIntType,
@@ -430,8 +430,7 @@ class LocalTypeDeduction:
         - Another PendingStrType or StrViewType local
         - A Final[str] constant (constexpr string_view)
         - A function returning StrView
-        - Subscript on lvalue tuple/array (stable element storage)
-        - Field access on lvalue record
+        - Subscript on lvalue tuple (immutable, stable element storage)
         """
         if not isinstance(init_type, (StrType, StrViewType, PendingStrType)):
             return False
@@ -467,16 +466,14 @@ class LocalTypeDeduction:
             if isinstance(init_type, StrViewType):
                 return True
 
-        # Subscript on lvalue tuple/array -- stable element storage
-        # (list/dict excluded: reallocation can invalidate views)
+        # Subscript on lvalue tuple -- immutable, so element storage is stable.
+        # TODO: extend to Array and record field access once source-mutation
+        # tracking is implemented (arr[0]="new" or p.name="x" would
+        # invalidate a view taken before the mutation).
         if isinstance(init_expr, TpySubscript) and self.compat.is_lvalue(init_expr):
             obj_type = self.ctx.get_expr_type(init_expr.obj)
-            if isinstance(obj_type, (TupleType, ArrayType)):
+            if isinstance(obj_type, TupleType):
                 return True
-
-        # Field access on lvalue record
-        if isinstance(init_expr, TpyFieldAccess) and self.compat.is_lvalue(init_expr):
-            return True
 
         return False
 
