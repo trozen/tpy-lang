@@ -9,7 +9,7 @@ from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, UINT64, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
     DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
-    NamedType, TypeParamRef, OwnType, OptionalType, TupleType, ALL_FIXED_INTS, FixedIntType,
+    NamedType, TypeParamRef, OwnType, OptionalType, TupleType, SpanType, ALL_FIXED_INTS, FixedIntType,
 )
 
 # Shorthand for type parameter T
@@ -323,6 +323,10 @@ def init_module() -> BuiltinModule:
             returns=ListType(T),
             cpp="tpy::list_concat({self}, {0})",
             is_readonly=True,
+        )],
+        "__span__": [MethodDef(
+            params=[], returns=SpanType(T, is_readonly=True),
+            cpp="tpy::as_span({self})", is_readonly=True,
         )],
     }, constructors=[
         # list(iterable) - create list from any iterable, inferring element type
@@ -685,6 +689,7 @@ def init_module() -> BuiltinModule:
         "__neg__": [MethodDef(params=[], returns=BIGINT, cpp="-({self})")],
         "__invert__": [MethodDef(params=[], returns=BIGINT, cpp="~({self})")],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
+        "__lt__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)],
     }, extends=["Comparable"])
 
     # float: 64-bit IEEE 754 double precision floating point
@@ -773,6 +778,7 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::pow(static_cast<double>({0}), {self})"),
         ],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
+        "__lt__": [MethodDef(params=[ParamDef("other", FLOAT)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)],
     }, extends=["Comparable"])
 
     # bool: Boolean type

@@ -110,9 +110,12 @@ class ProtocolChecker:
                 return True
             return self._check_record_extends(actual, protocol)
 
-        # Check extends_protocols for builtin types (e.g. NativeIterable[T])
+        # Check extends_protocols for builtin types (e.g. NativeIterable[T]).
+        # For marker protocols this is the only check; for protocols with methods
+        # we fall through to the structural check below.
         if self._check_builtin_extends(actual, protocol):
-            return True
+            if not protocol_info.methods:
+                return True
 
         # Build type substitution map
         type_subst: dict[str, TpyType] = {"Self": actual}

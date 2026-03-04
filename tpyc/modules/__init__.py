@@ -530,8 +530,8 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     Note: Only type parameters that are themselves types are extracted.
     Integer parameters like N in Container[T, N] are not included.
     """
-    from tpyc.typesys import PtrType, DictType
-    if isinstance(tpy_type, DictType):
+    from tpyc.typesys import PtrType, DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType
+    if isinstance(tpy_type, (DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType)):
         return {"K": tpy_type.key_type, "V": tpy_type.value_type}
     # Pointer types store their type param as pointee (not via get_element_type,
     # since pointers are not containers)

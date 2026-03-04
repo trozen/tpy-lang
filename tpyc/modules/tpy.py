@@ -78,6 +78,7 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
         methods["__neg__"] = [MethodDef(params=[], returns=typ, cpp=f"tpy::neg_check<{cpp_t}>({{self}})")]
 
     methods["__hash__"] = [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)]
+    methods["__lt__"] = [MethodDef(params=[ParamDef("other", typ)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)]
 
     module.register_type(typ, cpp_type=cpp_t, constructors=constructors, methods=methods, extends=["Comparable"])
 
@@ -119,6 +120,10 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="tpy::__setitem__({self}, {0}, {1})",
         )],
+        "__span__": [MethodDef(
+            params=[], returns=SpanType(T, is_readonly=True),
+            cpp="tpy::as_span({self})", is_readonly=True,
+        )],
     })
 
     # Span[T]: Non-owning mutable view
@@ -155,6 +160,10 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="tpy::__setitem__({self}, {0}, {1})",
         )],
+        "__span__": [MethodDef(
+            params=[], returns=SpanType(T, is_readonly=True),
+            cpp="tpy::as_span({self})", is_readonly=True,
+        )],
     })
 
     # ReadOnlySpan[T]: Non-owning read-only view
@@ -185,6 +194,10 @@ def init_module() -> BuiltinModule:
             returns=T,
             cpp="tpy::__getitem__({self}, {0})",
             is_readonly=True,
+        )],
+        "__span__": [MethodDef(
+            params=[], returns=SpanType(T, is_readonly=True),
+            cpp="tpy::as_span({self})", is_readonly=True,
         )],
     })
 
@@ -310,6 +323,10 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=VOID,
             cpp="tpy::staticlist_reverse({self})",
+        )],
+        "__span__": [MethodDef(
+            params=[], returns=SpanType(T, is_readonly=True),
+            cpp="tpy::as_span({self})", is_readonly=True,
         )],
     })
 

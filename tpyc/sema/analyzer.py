@@ -123,6 +123,7 @@ class SemanticAnalyzer:
         self.registrar.register_builtin_types()
         self.registrar.register_builtin_functions()
         self.registrar.register_builtin_modules()
+        self._validate_builtin_extends()
 
         # Populate builtins_ns with Python builtins (always available without import)
         # These are like CPython's builtins module - int, str, list, len, print, etc.
@@ -172,6 +173,57 @@ class SemanticAnalyzer:
     def _warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
         """Record a warning diagnostic."""
         self.ctx.warning(message, node)
+
+    def _validate_builtin_extends(self) -> None:
+        """Validate that builtin types conform to their declared extends protocols.
+
+        Uses the same conformance checker as user classes (type_conforms_to_protocol).
+        Marker protocols (no methods) are skipped -- the extends declaration is
+        the entire conformance for those.
+        """
+        import re
+        from ..typesys import TypeParamRef, TypeParamKind
+        for module in builtin_modules.get_all_modules():
+            for qname, type_def in module.types.items():
+                if not type_def.extends:
+                    continue
+                simple_name = qname.split(".")[-1]
+
+                # Build a TpyType for this builtin (with TypeParamRef args for generics)
+                if type_def.type_obj is not None:
+                    actual_type = type_def.type_obj
+                elif type_def.type_factory and type_def.type_params:
+                    args = []
+                    for tp, kind in zip(type_def.type_params, type_def.param_kinds):
+                        if kind == TypeParamKind.INT:
+                            args.append(1)  # placeholder int value
+                        else:
+                            args.append(TypeParamRef(tp))
+                    actual_type = type_def.type_factory(*args)
+                else:
+                    continue
+
+                for ext_str in type_def.extends:
+                    match = re.match(r"(\w+)(?:\[(.+)\])?", ext_str)
+                    if not match:
+                        continue
+                    proto_name = match.group(1)
+                    proto_info = self.ctx.registry.get_protocol(proto_name)
+                    if proto_info is None or proto_info.is_marker:
+                        continue
+                    # Build protocol NamedType with matching type args
+                    proto_args = tuple(
+                        TypeParamRef(a.strip()) for a in match.group(2).split(",")
+                    ) if match.group(2) else ()
+                    protocol = NamedType(proto_name, proto_args, is_protocol=True)
+
+                    if not self.protocols.type_conforms_to_protocol(actual_type, protocol):
+                        missing = self.protocols.get_missing_protocol_methods(actual_type, protocol)
+                        methods_str = ", ".join(missing) if missing else "unknown"
+                        raise ValueError(
+                            f"Builtin type '{simple_name}' extends '{proto_name}' "
+                            f"but does not conform: missing {methods_str}"
+                        )
 
     def _register_python_builtins(self) -> None:
         """Register Python builtins in builtins_ns (always available without import).
