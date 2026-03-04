@@ -7,7 +7,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, BIGINT, FLOAT, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
+    INT32, UINT64, BIGINT, FLOAT, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
     ArrayType, SpanType, ListType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType,
 )
@@ -76,6 +76,8 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
     # Negation only for signed types
     if typ.signed:
         methods["__neg__"] = [MethodDef(params=[], returns=typ, cpp=f"tpy::neg_check<{cpp_t}>({{self}})")]
+
+    methods["__hash__"] = [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)]
 
     module.register_type(typ, cpp_type=cpp_t, constructors=constructors, methods=methods, extends=["Comparable"])
 
@@ -351,6 +353,13 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::Comparable",
     )
 
+    # Hashable protocol: types that support hash() via __hash__()
+    module.protocol("Hashable",
+        methods={"__hash__": MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})")},
+        cpp_concept="tpy::Hashable",
+        is_readonly=True,
+    )
+
     # OptIterator[T] protocol
     module.protocol("OptIterator",
         type_params=["T"],
@@ -561,6 +570,7 @@ def init_module() -> BuiltinModule:
             params=[], returns=ListType(STR),
             cpp="tpy::str_splitlines({self})", is_readonly=True,
         )],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
     })
 
     # StrView: Explicit string view type (std::string_view)
@@ -714,6 +724,7 @@ def init_module() -> BuiltinModule:
             params=[], returns=ListType(STR),
             cpp="tpy::str_splitlines({self})", is_readonly=True,
         )],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
     })
 
     # copy() - explicit copy for ownership transfer

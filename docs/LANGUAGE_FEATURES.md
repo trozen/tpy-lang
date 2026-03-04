@@ -1327,6 +1327,21 @@ Generated C++ uses `tpy::__bool__()` free function dispatch, with a default temp
 
 Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it. Built-in containers (`list`, `str`, `Array`, `Span`, `StaticList`) use `__len__() != 0` for truthiness, matching Python semantics where empty containers are falsy.
 
+#### Working: Built-in `Hashable` Protocol
+
+The built-in `Hashable` protocol is available from the `tpy` module. Types that implement `__hash__() -> UInt64` conform to `Hashable`. The `hash()` builtin dispatches to `tpy::__hash__()`:
+
+```python
+h = hash("hello")    # UInt64
+h = hash(42)          # UInt64
+h = hash(3.14)        # UInt64
+h = hash(True)        # UInt64
+```
+
+All primitive types (str, int, fixed-width ints, float, bool, Char) and Enum types are hashable. Dict key validation uses the `Hashable` protocol -- only hashable types can be used as dict keys.
+
+Generated C++ uses `tpy::__hash__()` free function dispatch with overloads for built-in types (`std::integral`, `double`, strings, `BigInt`, enums) and a default template forwarding to user-defined `__hash__()` methods.
+
 #### Working: User-Defined Protocols
 
 You can define your own protocols, but **prefer using existing CPython protocols** (like `Sized` from `typing`) when possible. This ensures compatibility with both CPython and TurboPython, and avoids duplicating standard definitions.
@@ -3256,7 +3271,7 @@ class Car(Vehicle, Printable, Measurable):
 
 ## Built-in Functions
 
-- **Working**: `print()`, `len()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `copy()`
+- **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `copy()`
   - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
@@ -3271,6 +3286,7 @@ class Car(Vehicle, Printable, Measurable):
   - Single-element: uses efficient fill constructor
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
+- **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
 - **Working**: `abs()`, `min()`, `max()`, `ord()`, `pow()`, `round()`, `divmod()` for numeric types
   - `round(x)` uses banker's rounding (round half to even, matching Python)
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context

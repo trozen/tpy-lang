@@ -178,4 +178,15 @@ concept Representable = requires(const T& t) {
     { std::string(tpy::__repr__(t)) };
 };
 
+/**
+ * Hashable concept - types that support tpy::__hash__()
+ *
+ * A type is Hashable if tpy::__hash__(x) is valid and returns uint64_t.
+ * Used for dict key validation and the hash() builtin.
+ */
+template<typename T>
+concept Hashable = requires(const T& t) {
+    { tpy::__hash__(t) } -> std::convertible_to<uint64_t>;
+};
+
 } // namespace tpy

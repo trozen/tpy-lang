@@ -979,20 +979,23 @@ class ExpressionAnalyzer:
 
         return PendingListType(first_type, size, literal_id)
 
-    # Types allowed as dict keys (have well-defined C++ hash + equality)
-    _HASHABLE_KEY_TYPES = (
-        Int32Type, BigIntType, FloatType, BoolType, CharType,
-        StrType, StringType, StrViewType, PendingStrType,
-        FixedIntType,
-    )
+    _HASHABLE = NamedType("Hashable", is_protocol=True)
 
     def _validate_dict_key_type(self, key_type: TpyType, expr: TpyExpr) -> None:
         """Validate that a type can be used as a dict key."""
-        if isinstance(key_type, self._HASHABLE_KEY_TYPES):
+        if isinstance(key_type, IntLiteralType):
             return
         if isinstance(key_type, (EnumType, IntEnumType)):
             return
-        if isinstance(key_type, IntLiteralType):
+        if isinstance(key_type, PendingStrType):
+            return
+        # User records: even with __hash__, codegen doesn't emit std::hash<T>/operator==
+        if isinstance(key_type, NamedType) and key_type.is_user_record:
+            raise self.ctx.error(
+                f"Type '{key_type}' cannot be used as a dict key "
+                f"(user-defined types as dict keys are not yet supported)", expr,
+            )
+        if self.protocols.type_conforms_to_protocol(key_type, self._HASHABLE):
             return
         raise self.ctx.error(
             f"Type '{key_type}' cannot be used as a dict key (not hashable)", expr,

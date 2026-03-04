@@ -242,7 +242,7 @@ class NamedType(TpyType):
 | `NativeRangeConstructible[T]` | (marker) | range construction | ✅ Working |
 | `Iterable[T]` | `__iter__` | user-extensible iteration | Phase 8 |
 | `Iterator[T]` | `__next__` | iteration | Phase 8 |
-| `Hashable` | `__hash__` | dict keys | Planned |
+| `Hashable` | `__hash__` | `hash()`, dict keys | Working |
 | `SupportsInt` | `__int__` | `int()` coercion | Planned |
 | `SupportsIndex` | `__index__` | indexing | Planned |
 

@@ -630,6 +630,11 @@ class Default(_Protocol):
     pass
 
 
+class Hashable(_Protocol):
+    """Protocol for types supporting hash() via __hash__."""
+    def __hash__(self) -> int: ...
+
+
 class _MakeDefault:
     """Callable that constructs a default value of type T.
 

@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <functional>
 #include <iomanip>
 #include <limits>
 #include <ostream>
@@ -460,6 +461,19 @@ public:
     // Check if value is zero (useful for conditionals)
     explicit operator bool() const {
         return signum() != 0;
+    }
+
+    uint64_t hash() const noexcept {
+        if (is_small()) {
+            return std::hash<int64_t>{}(small_value());
+        }
+        const HeapBig* p = heap_ptr();
+        uint64_t h = 0;
+        h ^= std::hash<int8_t>{}(p->sign) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        for (uint32_t i = 0; i < p->len; ++i) {
+            h ^= std::hash<uint64_t>{}(p->limbs[i]) + 0x9e3779b97f4a7c15ULL + (h << 6) + (h >> 2);
+        }
+        return h;
     }
 
     // Static factory methods for conversions
@@ -1208,4 +1222,15 @@ inline std::ostream& operator<<(std::ostream& os, const BigInt& val) {
     return os << val.to_string();
 }
 
+inline uint64_t __hash__(const BigInt& val) {
+    return val.hash();
+}
+
 } // namespace tpy
+
+template<>
+struct std::hash<tpy::BigInt> {
+    size_t operator()(const tpy::BigInt& val) const noexcept {
+        return static_cast<size_t>(val.hash());
+    }
+};

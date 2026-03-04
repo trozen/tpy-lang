@@ -7,7 +7,7 @@ Defines functions like chr, print, len, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
+    INT32, UINT64, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
     DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
     NamedType, TypeParamRef, OwnType, OptionalType, TupleType, ALL_FIXED_INTS, FixedIntType,
 )
@@ -26,6 +26,9 @@ STRINGABLE = NamedType("Stringable", is_protocol=True)
 
 # Representable protocol type for repr() parameter
 REPRESENTABLE = NamedType("Representable", is_protocol=True)
+
+# Hashable protocol type for hash() parameter
+HASHABLE = NamedType("Hashable", is_protocol=True)
 
 NAME = "builtins"
 
@@ -59,6 +62,15 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", REPRESENTABLE)],
             returns=STR,
             cpp="std::string(tpy::__repr__({0}))",
+            is_readonly=True,
+        ),
+    ])
+
+    module.function("hash", overloads=[
+        MethodDef(
+            params=[ParamDef("x", HASHABLE)],
+            returns=UINT64,
+            cpp="tpy::__hash__({0})",
             is_readonly=True,
         ),
     ])
@@ -640,6 +652,7 @@ def init_module() -> BuiltinModule:
             params=[], returns=ListType(STR),
             cpp="tpy::str_splitlines({self})", is_readonly=True,
         )],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
     })
 
     # int: arbitrary precision integer (BigInt)
@@ -671,6 +684,7 @@ def init_module() -> BuiltinModule:
         }, self_type=BIGINT),
         "__neg__": [MethodDef(params=[], returns=BIGINT, cpp="-({self})")],
         "__invert__": [MethodDef(params=[], returns=BIGINT, cpp="~({self})")],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
     }, extends=["Comparable"])
 
     # float: 64-bit IEEE 754 double precision floating point
@@ -758,6 +772,7 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT, cpp="std::pow(static_cast<double>({0}), {self})"),
             MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT, cpp="std::pow(static_cast<double>({0}), {self})"),
         ],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
     }, extends=["Comparable"])
 
     # bool: Boolean type
@@ -769,14 +784,18 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", FLOAT)], returns=BOOL, cpp="({0} != 0.0)"),
         MethodDef(params=[ParamDef("x", STR)], returns=BOOL, cpp="(std::string_view({0}).size() != 0)"),
         MethodDef(params=[ParamDef("x", TRUTHY)], returns=BOOL, cpp="tpy::__bool__({0})", is_readonly=True),
-    ], methods={})
+    ], methods={
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
+    })
 
     # Char: Single character type
     module.register_type(CHAR, cpp_type="char", constructors=[
         MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
         MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())"),
-    ], methods={})
+    ], methods={
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
+    })
 
     # None: Void type (used for function returns)
     module.register_type(VOID, cpp_type="void", methods={})

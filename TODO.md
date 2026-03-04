@@ -85,6 +85,11 @@
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
 - make a doc with TPy vs Python differences
 
+## Code Review Items (2026-03-04)
+- Hashable protocol params generate non-const refs (`T_x&` instead of `const T_x&`) in non-`@readonly` functions. Pre-existing issue for all readonly protocols used in non-readonly functions.
+- `Hashable` (and other protocols like `Sized`, `Comparable`) are usable as type annotations without `from tpy import Hashable`. Undocumented implicit availability.
+- User records as dict keys: sema now blocks them, but the complete feature needs codegen to emit `std::hash<T>` specialization and `operator==` for records with `__hash__`/`__eq__`.
+
 ## Code Review Items (2026-01-27)
 - Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
 - `list.extend` lacks type validation: element type mismatch not checked when types are related but not identical (e.g. `list[Int32].extend(list[int])` passes sema, fails C++)

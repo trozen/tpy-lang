@@ -13,7 +13,8 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, BoolType, StrType, StringType, StrViewType, CharType,
-    ListType, DictType, ArrayType, TupleType, SpanType, OptionalType,
+    ListType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, BIGINT,
+    EnumType, IntEnumType,
 )
 from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
 
@@ -71,6 +72,15 @@ class ProtocolChecker:
         - e.g., checking Int32 against Addable with __add__(Self) -> Self
           expects __add__(Int32) -> Int32
         """
+        # IntLiteralType: check if default int type conforms
+        if isinstance(actual, IntLiteralType):
+            return self.type_conforms_to_protocol(BIGINT, protocol)
+
+        # Enum/IntEnum: hashable and comparable at C++ level
+        if isinstance(actual, (EnumType, IntEnumType)):
+            if protocol.name in ("Hashable", "Comparable"):
+                return True
+
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(actual.name)

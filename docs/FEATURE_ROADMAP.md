@@ -1489,7 +1489,7 @@ annotation hint propagation for nested dicts, dangling return detection. Runtime
 by `tpy::ordered_map<K,V>` with insertion-order preservation.
 Design document: `docs/DICT_DESIGN.md`.
 
-**Dependencies**: Key types restricted to primitives + Enum until `Hashable` protocol exists.
+**Dependencies**: Key validation uses `Hashable` protocol. User records as keys need user-defined `__hash__` + `__eq__`.
 
 **Effort**: L (type + literals + methods + iteration + `ordered_map` C++ runtime)
 
@@ -1692,7 +1692,7 @@ Things Python checks at runtime that TPy can verify statically.
 | `IndexError: list index out of range` (some cases) | Bounds check elision via integer range analysis (see below) |
 | `OverflowError` for fixed-width ints | Compile-time range analysis for literal arithmetic (see below) |
 | `RecursionError` | Detect unbounded recursion in simple cases |
-| `TypeError: unhashable type` | Compile-time `Hashable` protocol check for dict keys |
+| `TypeError: unhashable type` | Working -- `Hashable` protocol check for dict keys and `hash()` |
 | Use after `.close()` / resource lifecycle | Typestate analysis (see below) |
 | Missing match cases | Exhaustive pattern matching (see VI) |
 

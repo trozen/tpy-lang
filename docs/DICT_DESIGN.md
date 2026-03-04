@@ -18,8 +18,7 @@
 | `popitem()` | Remove and return last (k, v) pair |
 | `dict.fromkeys(keys, value)` | Class method / static constructor |
 | `reversed(d)` | Reversed iteration over keys |
-| BigInt keys | Needs `std::hash<BigInt>` |
-| User records as keys | Needs `Hashable` protocol (`__hash__` + `__eq__`) |
+| User records as keys | Needs user-defined `__hash__` + `__eq__` on records |
 | String copy avoidance in for-each | `PendingStrType` approach (see TODO) |
 | `copy()` | Redundant with value semantics, but Python compat |
 | `__repr__` / `repr()` | String representation protocol |
@@ -66,10 +65,10 @@ insertion order (matching Python 3.7+ dict semantics).
    Iteration, printing, and equality all reflect insertion order. This is achieved via a
    custom `tpy::ordered_map` rather than `std::unordered_map`.
 
-2. **Key type safety**: Only types with well-defined C++ hash and equality are accepted
-   as keys (str, fixed-width ints, float, bool, Char, Enum). User records with
-   `__hash__` and `__eq__` can be added later. Unhashable types (list, dict, Optional)
-   are rejected at compile time.
+2. **Key type safety**: Types must conform to the `Hashable` protocol (have `__hash__`)
+   to be used as dict keys. All primitive types (str, int, fixed-width ints, float, bool,
+   Char) and Enum types are hashable. Unhashable types (list, dict, Optional) are rejected
+   at compile time.
 
 3. **Familiar API**: Phase 1 covers the most common dict operations: literals, subscript,
    `len()`, `in`, iteration, `get()`, `pop()`, `clear()`. Less common methods follow
@@ -262,23 +261,26 @@ for `ordered_map`.
 
 ### 7. Key Type Validation
 
-**Allowed key types**:
+Key types must conform to the `Hashable` protocol (have `__hash__` method returning
+`UInt64`). Validation uses `type_conforms_to_protocol` instead of a hardcoded whitelist.
 
-| Type | C++ `std::hash` | Notes |
-|------|-----------------|-------|
-| `str` / `String` / `StrView` | `std::hash<std::string>` / `std::hash<std::string_view>` | Works out of the box |
-| `Int8`..`Int64`, `UInt8`..`UInt64` | `std::hash<intN_t>` | Works out of the box |
-| `float` | `std::hash<double>` | Works out of the box |
-| `bool` | `std::hash<bool>` | Works out of the box |
-| `Char` | `std::hash<char>` | Works out of the box |
-| `Enum` / `IntEnum` | `std::hash<underlying_int>` | Works via `enum class` |
+**Allowed key types** (conform to `Hashable`):
+
+| Type | C++ `tpy::__hash__` dispatch | Notes |
+|------|------------------------------|-------|
+| `str` / `String` / `StrView` | `std::hash<std::string>` / `std::hash<std::string_view>` | |
+| `int` (BigInt) | `BigInt::hash()` with `std::hash<BigInt>` specialization | |
+| `Int8`..`Int64`, `UInt8`..`UInt64` | `std::hash<intN_t>` via `std::integral` constraint | |
+| `float` | `std::hash<double>` | |
+| `bool` | `std::hash<bool>` | |
+| `Char` | `std::hash<char>` | |
+| `Enum` / `IntEnum` | `std::hash<underlying_int>` via `std::is_enum_v` constraint | |
 
 **Not yet supported as keys**:
 
 | Type | Reason |
 |------|--------|
-| `int` (BigInt) | Sema accepts it, but `std::hash<BigInt>` is not implemented -- C++ compilation fails |
-| User records | Need `__hash__` + `__eq__` (future) |
+| User records | Need user-defined `__hash__` + `__eq__` on records |
 
 **Rejected key types** (compile-time error):
 

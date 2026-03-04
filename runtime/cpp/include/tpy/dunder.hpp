@@ -12,6 +12,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -299,6 +300,48 @@ template<typename T>
     requires requires(const T& t) { t.__repr__(); }
 auto __repr__(const T& x) {
     return x.__repr__();
+}
+
+// =============================================
+// tpy::__hash__
+// =============================================
+
+// Integral types (int8_t through uint64_t, bool, char)
+template<typename T>
+    requires std::integral<T>
+uint64_t __hash__(T x) {
+    return static_cast<uint64_t>(std::hash<T>{}(x));
+}
+
+// Floating-point
+inline uint64_t __hash__(double x) {
+    return static_cast<uint64_t>(std::hash<double>{}(x));
+}
+
+// Strings
+inline uint64_t __hash__(const std::string& x) {
+    return static_cast<uint64_t>(std::hash<std::string>{}(x));
+}
+inline uint64_t __hash__(std::string_view x) {
+    return static_cast<uint64_t>(std::hash<std::string_view>{}(x));
+}
+inline uint64_t __hash__(const char* x) {
+    return static_cast<uint64_t>(std::hash<std::string_view>{}(std::string_view(x)));
+}
+
+// Enum types
+template<typename T>
+    requires std::is_enum_v<T>
+uint64_t __hash__(T x) {
+    return static_cast<uint64_t>(std::hash<std::underlying_type_t<T>>{}(
+        static_cast<std::underlying_type_t<T>>(x)));
+}
+
+// Default: user types with __hash__() method
+template<typename T>
+    requires requires(const T& t) { { t.__hash__() } -> std::convertible_to<uint64_t>; }
+uint64_t __hash__(const T& x) {
+    return x.__hash__();
 }
 
 } // namespace tpy
