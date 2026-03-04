@@ -721,4 +721,13 @@ def init_module() -> BuiltinModule:
     # try_parse(EnumType, str) -> Optional[EnumType]
     module.function("try_parse", overloads=[], special_handling=True)
 
+    # try_next(it) -- calls it.__next_opt__(), returns T | None
+    module.function("try_next", overloads=[
+        MethodDef(
+            params=[ParamDef("it", NamedType("Iterator", (T,), is_protocol=True))],
+            returns=OptionalType(T),
+            cpp="{0}.__next_opt__()",
+        ),
+    ], type_params=["T"])
+
     return module
