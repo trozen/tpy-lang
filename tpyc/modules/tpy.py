@@ -197,6 +197,9 @@ def init_module() -> BuiltinModule:
                 ],
                 methods={
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
+                    "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(T),
+                                       cpp="std::span({self}, static_cast<size_t>({0}))",
+                                       is_readonly=True)],
                 })
 
     # ReadOnlyPtr[T]: Read-only pointer
@@ -210,6 +213,9 @@ def init_module() -> BuiltinModule:
                 ],
                 methods={
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
+                    "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(T, is_readonly=True),
+                                       cpp="std::span({self}, static_cast<size_t>({0}))",
+                                       is_readonly=True)],
                 })
 
     # StaticList[T, N]: Fixed-capacity container

@@ -1,0 +1,1 @@
+CPython Ptr wraps a value, not an array reference -- span() cannot reconstruct a view.
