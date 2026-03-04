@@ -7,7 +7,7 @@ Defines functions like chr, print, len, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, UINT64, BIGINT, FLOAT, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
+    INT32, UINT64, BIGINT, FLOAT, FLOAT32, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
     DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
     NamedType, TypeParamRef, OwnType, OptionalType, TupleType, SpanType, ALL_FIXED_INTS, FixedIntType,
 )
@@ -509,6 +509,7 @@ def init_module() -> BuiltinModule:
               for t in ALL_FIXED_INTS],
             MethodDef(params=[ParamDef("x", BIGINT)], returns=STR, cpp="({0}).to_string()"),
             MethodDef(params=[ParamDef("x", FLOAT)], returns=STR, cpp="tpy::float_to_str({0})"),
+            MethodDef(params=[ParamDef("x", FLOAT32)], returns=STR, cpp="tpy::float_to_str(static_cast<double>({0}))"),
             MethodDef(params=[ParamDef("x", STRINGABLE)], returns=STR,
                       cpp="std::string(tpy::__str__({0}))", is_readonly=True),
             MethodDef(params=[ParamDef("x", REPRESENTABLE)], returns=STR,
@@ -699,6 +700,7 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", INT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=FLOAT, cpp="static_cast<double>({0})"),
         MethodDef(params=[ParamDef("x", BOOL)], returns=FLOAT, cpp="static_cast<double>({0})"),
+        MethodDef(params=[ParamDef("x", FLOAT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
         MethodDef(params=[ParamDef("x", STR)], returns=FLOAT, cpp="tpy::float_from_str({0})"),
     ], methods={
         # Binary arithmetic operators (float, float)
@@ -788,6 +790,7 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", INT32)], returns=BOOL, cpp="({0} != 0)"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=BOOL, cpp="({0} != 0)"),
         MethodDef(params=[ParamDef("x", FLOAT)], returns=BOOL, cpp="({0} != 0.0)"),
+        MethodDef(params=[ParamDef("x", FLOAT32)], returns=BOOL, cpp="({0} != 0.0f)"),
         MethodDef(params=[ParamDef("x", STR)], returns=BOOL, cpp="(std::string_view({0}).size() != 0)"),
         MethodDef(params=[ParamDef("x", TRUTHY)], returns=BOOL, cpp="tpy::__bool__({0})", is_readonly=True),
     ], methods={

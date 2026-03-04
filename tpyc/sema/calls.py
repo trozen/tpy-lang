@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
-    IntLiteralType, FloatType, BoolType,
+    IntLiteralType, FloatType, Float32Type, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
@@ -150,7 +150,7 @@ def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
     return _has_type_param_ref(func.return_type)
 
 
-_NUMERIC_TYPES = (FixedIntType, BigIntType, FloatType, IntLiteralType)
+_NUMERIC_TYPES = (FixedIntType, BigIntType, FloatType, Float32Type, IntLiteralType)
 
 
 def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType) -> bool:
@@ -165,7 +165,7 @@ def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType)
         case TpyIntLiteral():
             return isinstance(resolved_type, _NUMERIC_TYPES) or isinstance(resolved_type, BoolType)
         case TpyFloatLiteral():
-            return isinstance(resolved_type, FloatType)
+            return isinstance(resolved_type, (FloatType, Float32Type))
         case TpyStrLiteral():
             return is_any_str_type(resolved_type) or isinstance(resolved_type, CharType)
         case TpyUnaryOp(op="-"):

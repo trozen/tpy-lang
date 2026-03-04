@@ -624,6 +624,16 @@ inline double float_from_str(std::string_view s) {
 }
 
 /**
+ * float32_from_str - Convert string to float (32-bit).
+ * Same as float_from_str but narrows to single precision.
+ * Out-of-range values produce +/-inf (matching Python behavior).
+ */
+inline float float32_from_str(std::string_view s) {
+    double d = float_from_str(s);
+    return static_cast<float>(d);
+}
+
+/**
  * print_optional_val - Print a std::optional<T> as Python would.
  *
  * Prints "None" for empty optional, otherwise prints the value.

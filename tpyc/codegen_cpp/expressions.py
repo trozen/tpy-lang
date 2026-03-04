@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, DictKeysViewType,
     PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
@@ -249,8 +249,16 @@ class ExpressionGenerator:
             return self._gen_int_literal_value(expr.value, target_type)
 
         elif isinstance(expr, TpyFloatLiteral):
-            # C++ accepts Python-style float literals directly
-            return repr(expr.value)
+            val = repr(expr.value)
+            if isinstance(target_type, Float32Type):
+                if val == "inf":
+                    return "std::numeric_limits<float>::infinity()"
+                if val == "-inf":
+                    return "(-std::numeric_limits<float>::infinity())"
+                if val == "nan":
+                    return "std::numeric_limits<float>::quiet_NaN()"
+                return val + "f"
+            return val
 
         elif isinstance(expr, TpyBoolLiteral):
             return "true" if expr.value else "false"
@@ -562,10 +570,10 @@ class ExpressionGenerator:
             # Python's int-to-float promotion for comparisons).
             left_cmp = left_target if left_target is not None else left_type
             right_cmp = right_target if right_target is not None else right_type
-            if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, FloatType):
-                left = f"static_cast<double>({left})"
-            elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, FloatType):
-                right = f"static_cast<double>({right})"
+            if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, (FloatType, Float32Type)):
+                left = f"static_cast<{right_cmp.to_cpp()}>({left})"
+            elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, (FloatType, Float32Type)):
+                right = f"static_cast<{left_cmp.to_cpp()}>({right})"
 
             # IntEnum coercion: cast enum operand(s) to underlying type
             if expr.int_enum_coercion:
@@ -1718,6 +1726,8 @@ class ExpressionGenerator:
                         gen_arg = f"tpy::bool_to_str({gen_arg})"
                 elif isinstance(arg_type, FloatType) and not has_spec:
                     gen_arg = f"tpy::float_to_str({gen_arg})"
+                elif isinstance(arg_type, Float32Type) and not has_spec:
+                    gen_arg = f"tpy::float_to_str(static_cast<double>({gen_arg}))"
                 elif self.types.is_runtime_bigint(part.expr, arg_type) and not has_spec:
                     gen_arg = f"({gen_arg}).to_string()"
                 elif isinstance(arg_type, FixedIntType) and arg_type.bits == 8:

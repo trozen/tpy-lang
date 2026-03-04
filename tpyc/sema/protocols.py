@@ -12,7 +12,7 @@ import re
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
-    FixedIntType, BigIntType, FloatType, BoolType, StrType, StringType, StrViewType, CharType,
+    FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
     ListType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, BIGINT,
     EnumType, IntEnumType,
 )
@@ -206,7 +206,7 @@ class ProtocolChecker:
     def _is_default_constructible(self, actual: TpyType) -> bool:
         """Check if a type supports default construction (zero-arg init)."""
         # All primitive value types are default-constructible
-        if isinstance(actual, (FixedIntType, BigIntType, FloatType, BoolType,
+        if isinstance(actual, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType,
                                StrType, StringType, StrViewType, CharType)):
             return True
         # Empty containers are default-constructible

@@ -23,6 +23,7 @@ SPECIAL_MODULES = {"tpy", "__future__", "typing", "builtins", "enum"}
 TPY_TYPES = {
     "Int8", "Int16", "Int32", "Int64",  # Signed fixed-width integers
     "UInt8", "UInt16", "UInt32", "UInt64",  # Unsigned fixed-width integers
+    "Float32", "Float64",  # Explicit-width float types
     "Char",  # Character type
     "Span", "Array", "StaticList",  # Container types
     "Ptr", "ReadOnlyPtr", "Own",  # Pointer types

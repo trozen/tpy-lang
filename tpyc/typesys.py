@@ -380,6 +380,23 @@ class FloatType(TpyType):
 
 
 @dataclass(frozen=True)
+class Float32Type(TpyType):
+    """32-bit floating point type (IEEE 754 single precision)."""
+
+    def to_cpp(self) -> str:
+        return "float"
+
+    def __str__(self) -> str:
+        return "Float32"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.Float32"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class BigIntType(TpyType):
     """Arbitrary precision integer: int -> tpy::BigInt"""
 
@@ -929,7 +946,7 @@ def is_constexpr_eligible(typ: 'TpyType') -> bool:
     Non-constexpr (needs const): BigInt (non-trivial constructor), String (std::string).
     Note: StrType uses std::string_view for Final[str] (overridden in codegen).
     """
-    return isinstance(typ, (FixedIntType, FloatType, BoolType, CharType, StrType, StrViewType))
+    return isinstance(typ, (FixedIntType, FloatType, Float32Type, BoolType, CharType, StrType, StrViewType))
 
 
 def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
@@ -1587,6 +1604,7 @@ STRVIEW = StrViewType()
 CHAR = CharType()
 BOOL = BoolType()
 FLOAT = FloatType()
+FLOAT32 = Float32Type()
 BIGINT = BigIntType()
 NONE = NoneType()
 RANGE = RangeType(INT32)

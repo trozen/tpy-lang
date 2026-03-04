@@ -353,7 +353,8 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `int` | `tpy::BigInt` (arbitrary precision) |
 | `Int8/16/32/64` | `int8_t/int16_t/int32_t/int64_t` |
 | `UInt8/16/32/64` | `uint8_t/uint16_t/uint32_t/uint64_t` |
-| `float` | `double` (IEEE 754) |
+| `float` / `Float64` | `double` (IEEE 754) |
+| `Float32` | `float` (IEEE 754 single precision) |
 | `bool` | `bool` |
 | `str` | `std::string` (parameters: `std::string_view`) |
 | `String` | `std::string` (parameters: `const std::string&`) |

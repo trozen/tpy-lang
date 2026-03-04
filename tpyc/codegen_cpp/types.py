@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
     PendingListType, PendingStrType, ListType, ArrayType, TypeParamRef, NamedType,
     UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
@@ -68,14 +68,13 @@ class TypeResolver:
             left_is_literal = isinstance(left_analyzer_type, IntLiteralType) and not isinstance(expr.left, TpyName)
             right_is_literal = isinstance(right_analyzer_type, IntLiteralType) and not isinstance(expr.right, TpyName)
 
-            # If either operand is float, result is float (float takes precedence)
-            if isinstance(left_raw, FloatType) or isinstance(right_raw, FloatType):
-                # True division always returns float
-                if expr.op == "div":
-                    return FLOAT
-                # Most arithmetic ops with float return float
-                if expr.op in ("+", "-", "*", "//", "%", "**"):
-                    return FLOAT
+            # If either operand is float-family, result is float (float takes precedence)
+            if isinstance(left_raw, (FloatType, Float32Type)) or isinstance(right_raw, (FloatType, Float32Type)):
+                if expr.op == "div" or expr.op in ("+", "-", "*", "//", "%", "**"):
+                    # Float64 wins over Float32
+                    if isinstance(left_raw, FloatType) or isinstance(right_raw, FloatType):
+                        return FLOAT
+                    return left_raw if isinstance(left_raw, Float32Type) else right_raw
 
             # True division always returns float
             if expr.op == "div":

@@ -7,7 +7,7 @@ Defines types like Array, Span, StaticList, Int32, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, UINT64, BIGINT, FLOAT, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
+    INT32, UINT64, BIGINT, FLOAT, FLOAT32, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
     ArrayType, SpanType, ListType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType,
 )
@@ -36,6 +36,7 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
     constructors += [
         MethodDef(params=[ParamDef("x", BIGINT)], returns=typ, cpp="({0}).to_fixed_check<" + cpp_t + ">()"),
         MethodDef(params=[ParamDef("x", FLOAT)], returns=typ, cpp="tpy::from_float_check<" + cpp_t + ">({0})"),
+        MethodDef(params=[ParamDef("x", FLOAT32)], returns=typ, cpp="tpy::from_float_check<" + cpp_t + ">(static_cast<double>({0}))"),
         MethodDef(params=[ParamDef("x", STR)], returns=typ, cpp="tpy::from_str_check<" + cpp_t + ">({0})"),
         MethodDef(params=[ParamDef("x", BOOL)], returns=typ, cpp="static_cast<" + cpp_t + ">({0})"),
     ]
@@ -90,6 +91,112 @@ def init_module() -> BuiltinModule:
     # Register all fixed-width integer types
     for fixed_type in ALL_FIXED_INTS:
         _register_fixed_int(module, fixed_type)
+
+    # Float32: 32-bit IEEE 754 single precision floating point
+    _f32_constructors = [
+        MethodDef(params=[], returns=FLOAT32, cpp="0.0f"),
+        MethodDef(params=[ParamDef("x", FLOAT32)], returns=FLOAT32, cpp="{0}"),
+        MethodDef(params=[ParamDef("x", FLOAT)], returns=FLOAT32, cpp="static_cast<float>({0})"),
+        MethodDef(params=[ParamDef("x", BIGINT)], returns=FLOAT32, cpp="static_cast<float>({0})"),
+        MethodDef(params=[ParamDef("x", BOOL)], returns=FLOAT32, cpp="static_cast<float>({0})"),
+        MethodDef(params=[ParamDef("x", STR)], returns=FLOAT32, cpp="tpy::float32_from_str({0})"),
+    ]
+    for _fit in ALL_FIXED_INTS:
+        _f32_constructors.append(
+            MethodDef(params=[ParamDef("x", _fit)], returns=FLOAT32,
+                      cpp="static_cast<float>({0})")
+        )
+    module.register_type(FLOAT32, cpp_type="float", constructors=_f32_constructors, methods={
+        # Float32 + Float32 -> Float32
+        "__add__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="({self}) + ({0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="static_cast<double>({self}) + ({0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="({self}) + static_cast<float>({0})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="({self}) + static_cast<float>({0})"),
+        ],
+        "__sub__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="({self}) - ({0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="static_cast<double>({self}) - ({0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="({self}) - static_cast<float>({0})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="({self}) - static_cast<float>({0})"),
+        ],
+        "__mul__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="({self}) * ({0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="static_cast<double>({self}) * ({0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="({self}) * static_cast<float>({0})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="({self}) * static_cast<float>({0})"),
+        ],
+        "__truediv__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="tpy::truediv_f32({self}, {0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::truediv(static_cast<double>({self}), {0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="tpy::truediv_f32({self}, static_cast<float>({0}))"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="tpy::truediv_f32({self}, static_cast<float>({0}))"),
+        ],
+        "__floordiv__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="tpy::floordiv_f32({self}, {0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::floordiv(static_cast<double>({self}), {0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="tpy::floordiv_f32({self}, static_cast<float>({0}))"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="tpy::floordiv_f32({self}, static_cast<float>({0}))"),
+        ],
+        "__mod__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="tpy::fmod_f32({self}, {0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::fmod(static_cast<double>({self}), {0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="tpy::fmod_f32({self}, static_cast<float>({0}))"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="tpy::fmod_f32({self}, static_cast<float>({0}))"),
+        ],
+        "__pow__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="std::pow({self}, {0})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::pow(static_cast<double>({self}), {0})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="std::pow({self}, static_cast<float>({0}))"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="std::pow({self}, static_cast<float>({0}))"),
+        ],
+        "__neg__": [MethodDef(params=[], returns=FLOAT32, cpp="-({self})")],
+        # Reverse operators (for int + Float32 -> Float32, float + Float32 -> float)
+        "__radd__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="({0}) + ({self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="({0}) + static_cast<double>({self})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="static_cast<float>({0}) + ({self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="static_cast<float>({0}) + ({self})"),
+        ],
+        "__rsub__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="({0}) - ({self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="({0}) - static_cast<double>({self})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="static_cast<float>({0}) - ({self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="static_cast<float>({0}) - ({self})"),
+        ],
+        "__rmul__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="({0}) * ({self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="({0}) * static_cast<double>({self})"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="static_cast<float>({0}) * ({self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="static_cast<float>({0}) * ({self})"),
+        ],
+        "__rtruediv__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="tpy::truediv_f32({0}, {self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::truediv({0}, static_cast<double>({self}))"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="tpy::truediv_f32(static_cast<float>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="tpy::truediv_f32(static_cast<float>({0}), {self})"),
+        ],
+        "__rfloordiv__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="tpy::floordiv_f32({0}, {self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::floordiv({0}, static_cast<double>({self}))"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="tpy::floordiv_f32(static_cast<float>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="tpy::floordiv_f32(static_cast<float>({0}), {self})"),
+        ],
+        "__rmod__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="tpy::fmod_f32({0}, {self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="tpy::fmod({0}, static_cast<double>({self}))"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="tpy::fmod_f32(static_cast<float>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="tpy::fmod_f32(static_cast<float>({0}), {self})"),
+        ],
+        "__rpow__": [
+            MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="std::pow({0}, {self})"),
+            MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="std::pow({0}, static_cast<double>({self}))"),
+            MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="std::pow(static_cast<float>({0}), {self})"),
+            MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="std::pow(static_cast<float>({0}), {self})"),
+        ],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
+        "__lt__": [MethodDef(params=[ParamDef("other", FLOAT32)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)],
+    }, extends=["Comparable"])
 
     # Array[T, N]: Fixed-size array
     module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
@@ -459,6 +566,7 @@ def init_module() -> BuiltinModule:
               for t in ALL_FIXED_INTS],
             MethodDef(params=[ParamDef("x", BIGINT)], returns=STRING, cpp="({0}).to_string()"),
             MethodDef(params=[ParamDef("x", FLOAT)], returns=STRING, cpp="tpy::float_to_str({0})"),
+            MethodDef(params=[ParamDef("x", FLOAT32)], returns=STRING, cpp="tpy::float_to_str(static_cast<double>({0}))"),
         ],
         methods={
         "__len__": [MethodDef(
@@ -785,5 +893,28 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[], returns=OwnType(T), cpp="{T}{{}}"),
     ], type_params=["T"],
        type_param_bounds={"T": NamedType("Default", (), is_protocol=True)})
+
+    # Float64: alias for float (double precision) with its own constructor overloads.
+    from tpyc.modules import BuiltinTypeDef
+    _f64_constructors = [
+        MethodDef(params=[], returns=FLOAT, cpp="0.0"),
+        MethodDef(params=[ParamDef("x", FLOAT)], returns=FLOAT, cpp="static_cast<double>({0})"),
+        MethodDef(params=[ParamDef("x", FLOAT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
+        MethodDef(params=[ParamDef("x", BIGINT)], returns=FLOAT, cpp="static_cast<double>({0})"),
+        MethodDef(params=[ParamDef("x", BOOL)], returns=FLOAT, cpp="static_cast<double>({0})"),
+        MethodDef(params=[ParamDef("x", STR)], returns=FLOAT, cpp="tpy::float_from_str({0})"),
+    ]
+    for _fit in ALL_FIXED_INTS:
+        _f64_constructors.append(
+            MethodDef(params=[ParamDef("x", _fit)], returns=FLOAT,
+                      cpp=f"static_cast<double>({{0}})")
+        )
+    module.types["tpy.Float64"] = BuiltinTypeDef(
+        type_obj=FLOAT,
+        cpp_type="double",
+        constructors=_f64_constructors,
+        methods={},
+        extends=["Comparable"],
+    )
 
     return module

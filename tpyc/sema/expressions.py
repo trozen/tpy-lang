@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, ListType, DictType, PendingListType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
@@ -384,7 +384,7 @@ class ExpressionAnalyzer:
 
         # Helper to check if type is any numeric type
         def is_numeric_type(t: TpyType) -> bool:
-            return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType))
+            return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type))
 
         # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
@@ -715,7 +715,7 @@ class ExpressionAnalyzer:
 
         # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
         if expr.op == "!":
-            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, IntLiteralType, OptionalType, EnumType)):
+            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, Float32Type, IntLiteralType, OptionalType, EnumType)):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
             if record and (record.get_method_overloads("__bool__")
@@ -723,13 +723,12 @@ class ExpressionAnalyzer:
                 return BOOL
             raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
 
-        # FloatType supports unary negation
-        if isinstance(effective_type, FloatType):
+        # Float types support unary negation
+        if isinstance(effective_type, (FloatType, Float32Type)):
             if expr.op == "-":
-                # Still resolve for codegen
                 if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
-                return FLOAT
+                return effective_type
 
         # IntEnum: unary negation returns the underlying integer type
         if isinstance(effective_type, IntEnumType) and expr.op == "-":
@@ -1063,11 +1062,11 @@ class ExpressionAnalyzer:
         if isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType):
             return self.ctx.default_int_for_literal(t, expr.then_expr)
         if isinstance(t, IntLiteralType):
-            if isinstance(e, (FixedIntType, BigIntType, FloatType)):
+            if isinstance(e, (FixedIntType, BigIntType, FloatType, Float32Type)):
                 return e
             t = self.ctx.default_int_for_literal(t, expr.then_expr)
         if isinstance(e, IntLiteralType):
-            if isinstance(t, (FixedIntType, BigIntType, FloatType)):
+            if isinstance(t, (FixedIntType, BigIntType, FloatType, Float32Type)):
                 return t
             e = self.ctx.default_int_for_literal(e, expr.else_expr)
 
@@ -1330,7 +1329,7 @@ class ExpressionAnalyzer:
         return STRVIEW
 
     _FORMATTABLE_TYPES = (
-        FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType,
+        FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType,
         StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,
     )
 

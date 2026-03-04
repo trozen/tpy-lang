@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, CharType, PtrType, StrType, is_any_str_type, SpanType,
+    Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
     resolve_int_literals,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -611,7 +611,7 @@ class FunctionGenerator:
         cpp_type = self._global_cpp_type(var_type)
         if var_type.is_value_type():
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
-            init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, CharType, PtrType)) else ""
+            init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType)) else ""
             out.write(f"{cpp_type} {stmt.name}{init};\n")
         else:
             out.write(f"{cpp_type}* {stmt.name}{{}};\n")

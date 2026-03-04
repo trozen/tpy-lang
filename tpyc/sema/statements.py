@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, OwnType, ReadonlyType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType,
@@ -757,7 +757,7 @@ class StatementAnalyzer:
                     stmt
                 )
             inner = stmt.type
-            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, BoolType, StrViewType, CharType)):
+            if not isinstance(inner, (FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrViewType, CharType)):
                 raise self.ctx.error(
                     f"Final[{inner}] is not supported; "
                     f"only primitive types (int, float, bool, str, StrView, Char, IntN) are allowed",
@@ -1454,7 +1454,7 @@ class StatementAnalyzer:
             )
         # Target must be numeric, owned string, or list (for +=).
         # StrView is excluded -- it's non-owning, so += would dangle.
-        is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType))
+        is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type))
         is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
         is_list_target = isinstance(target_type, ListType)
         # PendingStrType += promotes to owned str
@@ -1479,7 +1479,7 @@ class StatementAnalyzer:
                 f"Augmented assignment target must be a numeric or string type, got {target_type}",
                 stmt,
             )
-        if is_numeric_target and not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType)):
+        if is_numeric_target and not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type)):
             raise self.ctx.error(
                 f"Augmented assignment value must be a numeric type, got {value_type}",
                 stmt,

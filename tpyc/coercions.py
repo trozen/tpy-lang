@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Callable, Optional
 
 from .typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
     NamedType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
     SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind,
 )
@@ -170,6 +170,40 @@ COERCIONS: list[Coercion] = [
         from_type=BigIntType,
         to_type=FloatType,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
+    ),
+
+    # Float32 coercions (widening to Float32)
+    Coercion(
+        name="int_literal_to_float32",
+        from_type=IntLiteralType,
+        to_type=Float32Type,
+        codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
+    ),
+    Coercion(
+        name="fixed_int_to_float32",
+        from_type=FixedIntType,
+        to_type=Float32Type,
+        codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
+    ),
+    Coercion(
+        name="bigint_to_float32",
+        from_type=BigIntType,
+        to_type=Float32Type,
+        codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
+    ),
+    # Float32 -> float (widening, lossless)
+    Coercion(
+        name="float32_to_float",
+        from_type=Float32Type,
+        to_type=FloatType,
+        codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
+    ),
+    # float -> Float32 (narrowing, but allowed for convenience -- matches C++ behavior)
+    Coercion(
+        name="float_to_float32",
+        from_type=FloatType,
+        to_type=Float32Type,
+        codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
     ),
 
     # Char to str coercion

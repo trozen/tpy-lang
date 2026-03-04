@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, ReadonlyType,
+    TpyType, NamedType, StrType, BoolType, FloatType, Float32Type, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType,
     ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
     get_covariant_params,
@@ -387,7 +387,7 @@ class RecordGenerator:
                     inner_cpp = inner.to_cpp()
                     if isinstance(inner, BoolType):
                         out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{cpp_fld})')
-                    elif isinstance(inner, FloatType):
+                    elif isinstance(inner, (FloatType, Float32Type)):
                         out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{cpp_fld})')
                     elif is_any_str_type(inner):
                         # Quoted string: None or "value"
@@ -404,6 +404,8 @@ class RecordGenerator:
                     out.write(f' << tpy::print_bool(obj.{cpp_fld})')
                 elif isinstance(fld.type, FloatType):
                     out.write(f' << tpy::print_float(obj.{cpp_fld})')
+                elif isinstance(fld.type, Float32Type):
+                    out.write(f' << tpy::print_float(static_cast<double>(obj.{cpp_fld}))')
                 elif isinstance(fld.type, TypeParamRef):
                     # Type parameter - use ValuePrinter which handles both scalars and containers
                     out.write(f' << tpy::ValuePrinter(obj.{cpp_fld})')

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, BoolType, StrType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     ListType, DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
     ArrayType, SpanType, TupleType, is_protocol_type, unwrap_readonly, is_any_str_type,
@@ -218,8 +218,9 @@ class BuiltinGenerator:
                 # BigInt has operator<< for std::ostream, no .to_string() needed
                 parts.append(self._gen_expr_deref(arg))
             elif isinstance(arg_type, FloatType):
-                # Float uses Python-style formatting via tpy::print_float
                 parts.append(f'tpy::print_float({self._gen_expr_deref(arg)})')
+            elif isinstance(arg_type, Float32Type):
+                parts.append(f'tpy::print_float(static_cast<double>({self._gen_expr_deref(arg)}))')
             elif isinstance(arg_type, BoolType):
                 # Bool uses Python-style formatting via tpy::print_bool
                 parts.append(f'tpy::print_bool({self._gen_expr_deref(arg)})')
@@ -237,7 +238,7 @@ class BuiltinGenerator:
                 inner_cpp = inner.to_cpp()
                 if isinstance(inner, BoolType):
                     parts.append(f'tpy::print_optional_val<tpy::print_bool, {inner_cpp}>({gen})')
-                elif isinstance(inner, FloatType):
+                elif isinstance(inner, (FloatType, Float32Type)):
                     parts.append(f'tpy::print_optional_val<tpy::print_float, {inner_cpp}>({gen})')
                 else:
                     parts.append(f'tpy::print_optional_val({gen})')

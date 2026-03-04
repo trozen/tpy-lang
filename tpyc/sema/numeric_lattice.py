@@ -10,8 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..typesys import (
-    TpyType, IntLiteralType, FixedIntType, BigIntType, FloatType, BoolType,
-    BIGINT, FLOAT,
+    TpyType, IntLiteralType, FixedIntType, BigIntType, FloatType, Float32Type, BoolType,
+    BIGINT, FLOAT, FLOAT32,
 )
 
 
@@ -31,6 +31,8 @@ def numeric_info(typ: TpyType) -> NumericTypeInfo | None:
         return NumericTypeInfo("int", typ.bits // 8 + 6)
     if isinstance(typ, BigIntType):
         return NumericTypeInfo("int", 100)
+    if isinstance(typ, Float32Type):
+        return NumericTypeInfo("float", 190)
     if isinstance(typ, FloatType):
         return NumericTypeInfo("float", 200)
     if isinstance(typ, BoolType):
@@ -66,6 +68,8 @@ def merge_literal_seed_target(
         return existing_type
     if isinstance(init_type, BigIntType):
         return BIGINT
+    if isinstance(init_type, Float32Type):
+        return FLOAT32
     if isinstance(init_type, FloatType):
         return FLOAT
     # bool is intentionally separate and should not merge with numeric literals.
@@ -94,14 +98,17 @@ def widen_numeric_types(a: TpyType, b: TpyType) -> TpyType | None:
     if info_a.family == "int_literal" or info_b.family == "int_literal":
         return None
 
-    # Both Float -> same type, no widening
-    if isinstance(a, FloatType) and isinstance(b, FloatType):
-        return None
+    # Both float-family -> widen to the higher-rank float
+    if isinstance(a, (FloatType, Float32Type)) and isinstance(b, (FloatType, Float32Type)):
+        if type(a) is type(b):
+            return None
+        # Float64 wins over Float32
+        return a if isinstance(a, FloatType) else b
 
-    # Either is Float -> Float wins
-    if isinstance(a, FloatType):
+    # Either is float-family -> float-family wins over int
+    if isinstance(a, (FloatType, Float32Type)):
         return a
-    if isinstance(b, FloatType):
+    if isinstance(b, (FloatType, Float32Type)):
         return b
 
     # Both BigInt -> same type, no widening

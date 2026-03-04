@@ -42,7 +42,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
 | B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
-| B7 | Float32 type | S | Not started | [I](#float32-type) |
+| B7 | Float32 type | S | Done | [I](#float32-type) |
 | B8 | Dataclasses | M | Not started | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
 | B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
@@ -544,7 +544,11 @@ No single-precision float type exists.
 **Why it matters**: GPU programming, graphics, and memory-sensitive applications need
 32-bit floats. Also useful for C interop where APIs expect `float` rather than `double`.
 
-**Current state**: Not started. Not tracked elsewhere.
+**Current state**: Done. Float32 type and Float64 alias implemented. Float32 maps to C++
+`float` (single precision). Float64 is an alias for `float` (C++ `double`). Mixed arithmetic:
+Float32 + Float32 -> Float32, Float32 + float -> float (widening), Float32 + int -> Float32.
+Implicit coercion from int/float literals to Float32. Full operator support, print, f-string,
+str/bool/float conversions.
 
 **Dependencies**: None. Mirrors existing fixed-width int registration pattern.
 
