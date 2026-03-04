@@ -163,7 +163,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged<T, N>& obj) {
        << ", "
        << "_tag=" << tpy::ValuePrinter(obj._tag)
        << ", "
-       << "_owned=" << obj._owned
+       << "_owned=" << tpy::print_bool(obj._owned)
        << ")";
     return os;
 }

@@ -1,0 +1,2 @@
+Config(flag=True, ratio=3.14, items=[1, 2], tags={'a': 10}, pair=(7, 'ok'))
+Config(flag=False, ratio=1.0, items=[], tags={}, pair=(0, ''))

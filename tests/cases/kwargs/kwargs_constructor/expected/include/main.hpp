@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
        << ", "
        << "port=" << obj.port
        << ", "
-       << "verbose=" << obj.verbose
+       << "verbose=" << tpy::print_bool(obj.verbose)
        << ")";
     return os;
 }

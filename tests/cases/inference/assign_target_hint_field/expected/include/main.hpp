@@ -63,7 +63,7 @@ struct WithStaticList {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithStaticList<T>& obj) {
     os << "WithStaticList("
-       << "buf=" << "<StaticList[T, 4]>"
+       << "buf=" << tpy::ListPrinter(obj.buf)
        << ")";
     return os;
 }

@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, StrType, BoolType, FloatType, OptionalType, OwnType, ReadonlyType,
-    TypeParamRef, TypeParamKind, RecordInfo,
+    TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType,
     ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
     get_covariant_params,
 )
@@ -392,13 +392,28 @@ class RecordGenerator:
                     elif is_any_str_type(inner):
                         # Quoted string: None or "value"
                         out.write(f' << (obj.{cpp_fld}.has_value() ? std::string("\\"") + std::string(obj.{cpp_fld}.value()) + "\\"" : std::string("None"))')
+                    elif isinstance(inner, TupleType):
+                        out.write(f';\n{INDENT}if (obj.{cpp_fld}.has_value()) os << tpy::TuplePrinter(obj.{cpp_fld}.value()); else os << "None";\n{INDENT}os')
+                    elif isinstance(inner, DictType):
+                        out.write(f';\n{INDENT}if (obj.{cpp_fld}.has_value()) os << tpy::DictPrinter(obj.{cpp_fld}.value()); else os << "None";\n{INDENT}os')
+                    elif isinstance(inner, (ListType, ArrayType, SpanType)):
+                        out.write(f';\n{INDENT}if (obj.{cpp_fld}.has_value()) os << tpy::ListPrinter(obj.{cpp_fld}.value()); else os << "None";\n{INDENT}os')
                     else:
                         out.write(f' << tpy::print_optional_val(obj.{cpp_fld})')
+                elif isinstance(fld.type, BoolType):
+                    out.write(f' << tpy::print_bool(obj.{cpp_fld})')
+                elif isinstance(fld.type, FloatType):
+                    out.write(f' << tpy::print_float(obj.{cpp_fld})')
                 elif isinstance(fld.type, TypeParamRef):
                     # Type parameter - use ValuePrinter which handles both scalars and containers
                     out.write(f' << tpy::ValuePrinter(obj.{cpp_fld})')
-                elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
-                    # Known iterable container type - use ListPrinter
+                elif isinstance(fld.type, TupleType):
+                    out.write(f' << tpy::TuplePrinter(obj.{cpp_fld})')
+                elif isinstance(fld.type, DictType):
+                    out.write(f' << tpy::DictPrinter(obj.{cpp_fld})')
+                elif isinstance(fld.type, (ListType, ArrayType, SpanType)) or (
+                    isinstance(fld.type, NamedType) and fld.type.qualified_name() == "tpy.StaticList"
+                ):
                     out.write(f' << tpy::ListPrinter(obj.{cpp_fld})')
                 elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
                     # Module-defined types may not be printable -- use placeholder
