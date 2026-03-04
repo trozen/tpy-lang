@@ -21,9 +21,9 @@ from ..parse import (
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyDictLiteral, TpyCoerce,
-    TpySubscript, TpyStrLiteral, TpyName,
+    TpySubscript, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
-    TpyFieldAccess, TpyFunction,
+    TpyFieldAccess, TpyFunction, TupleElemCapture,
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
@@ -99,6 +99,122 @@ class StatementAnalyzer:
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
                 value,
             )
+
+    def _check_own_lvalue_return(self, own_type: OwnType, expr: TpyExpr, context: str) -> None:
+        """Check that an lvalue returned as Own[T] has explicit copy() or is auto-moved.
+
+        Args:
+            own_type: The Own[T] type being returned into.
+            expr: The expression being returned.
+            context: Description for error messages, e.g. "return type" or "tuple element 1".
+        """
+        if self.compat.is_copy_call(expr):
+            return
+        if not self.compat.is_lvalue(expr):
+            return
+        is_auto_moved = (isinstance(expr, TpyName)
+                         and id(expr) in self.ctx.all_last_uses
+                         and self.compat._is_movable_var(expr.name))
+        if is_auto_moved:
+            return
+        expr_type = self.ctx.get_expr_type(expr)
+        is_nocopy = expr_type is not None and self.ctx.is_type_nocopy(expr_type)
+        if is_nocopy:
+            reason = self.ctx.nocopy_reason(expr_type)
+            is_movable = (isinstance(expr, TpyName)
+                          and self.compat._is_movable_var(expr.name))
+            if is_movable:
+                raise self.ctx.error(
+                    f"{reason} is used after this point "
+                    f"and cannot be moved into {context} Own[{own_type.wrapped}]. "
+                    f"Remove later uses or restructure the code.",
+                    expr
+                )
+            raise self.ctx.error(
+                f"{reason} cannot be returned as "
+                f"{context} Own[{own_type.wrapped}]. "
+                f"Only the original owner can be moved at its last use.",
+                expr
+            )
+        raise self.ctx.error(
+            f"Cannot return lvalue as {context} Own[{own_type.wrapped}] without explicit copy(). "
+            f"Use 'copy(...)' instead.",
+            expr
+        )
+
+    def _is_in_constructor(self) -> bool:
+        """Check if currently analyzing an __init__ method body."""
+        func = self.ctx.current_function
+        return (func is not None
+                and getattr(func, 'name', None) == "__init__"
+                and getattr(func, 'is_method', False))
+
+    def _annotate_tuple_elem_capture(
+        self, literal: TpyTupleLiteral, tuple_type: TupleType,
+        *, is_return: bool = False, is_field: bool = False
+    ) -> None:
+        """Annotate each element of a tuple literal with its capture mode.
+
+        Args:
+            literal: The tuple literal AST node to annotate.
+            tuple_type: The resolved TupleType for the literal.
+            is_return: True if this literal is in a return statement.
+            is_field: True if this literal is assigned to a class field.
+        """
+        V = TupleElemCapture.VALUE
+        R = TupleElemCapture.REF
+        CR = TupleElemCapture.CONST_REF
+
+        is_readonly = (self.ctx.current_function is not None
+                       and getattr(self.ctx.current_function, 'is_readonly', False))
+
+        literal.elem_capture = []
+        for i, et in enumerate(tuple_type.element_types):
+            if i >= len(literal.elements):
+                literal.elem_capture.append(V)
+                continue
+            elem = literal.elements[i]
+
+            # Value types, Own[T], and TypeParamRef are always VALUE
+            if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
+                literal.elem_capture.append(V)
+                continue
+
+            # Field context: all reference-type elements are owned (VALUE)
+            if is_field:
+                literal.elem_capture.append(V)
+                continue
+
+            # Return context
+            if is_return:
+                if self.compat.is_dangling_return(elem):
+                    # Will error separately in check_dangling_reference
+                    literal.elem_capture.append(V)
+                elif self.compat.is_const_ref_source(elem):
+                    if is_readonly:
+                        literal.elem_capture.append(CR)
+                    else:
+                        raise self.ctx.error(
+                            f"Cannot return readonly source as tuple element {i}. "
+                            f"Type '{et}' would be returned by mutable reference, "
+                            f"but the source is readonly. "
+                            f"Use Own[{et}] with copy() to return by value.",
+                            elem
+                        )
+                elif is_readonly:
+                    literal.elem_capture.append(CR)
+                else:
+                    literal.elem_capture.append(R)
+                continue
+
+            # Local context: is_const_ref_source handles ReadonlyType
+            # (including constructor params which are typed as ReadonlyType)
+            if not self.compat.is_lvalue(elem):
+                literal.elem_capture.append(V)
+            elif self.compat.is_const_ref_source(elem):
+                literal.elem_capture.append(CR)
+            else:
+                literal.elem_capture.append(R)
 
     def _save_ns_var_types(self) -> dict[str, TpyType]:
         """Save namespace variable types for later restoration."""
@@ -212,36 +328,18 @@ class StatementAnalyzer:
                 if isinstance(expected, OwnType):
                     if self.compat.is_copy_call(stmt.value):
                         self._warn_unnecessary_return_copy(stmt.value)
-                    elif self.compat.is_lvalue(stmt.value):
-                        is_auto_moved = (isinstance(stmt.value, TpyName)
-                                         and id(stmt.value) in self.ctx.all_last_uses
-                                         and self.compat._is_movable_var(stmt.value.name))
-                        if not is_auto_moved:
-                            ret_type_inner = self.ctx.get_expr_type(stmt.value) if stmt.value else None
-                            is_nocopy = (ret_type_inner is not None
-                                         and self.ctx.is_type_nocopy(ret_type_inner))
-                            if is_nocopy:
-                                reason = self.ctx.nocopy_reason(ret_type_inner)
-                                is_movable = (isinstance(stmt.value, TpyName)
-                                              and self.compat._is_movable_var(stmt.value.name))
-                                if is_movable:
-                                    raise self.ctx.error(
-                                        f"{reason} is used after this point "
-                                        f"and cannot be moved into return type Own[{expected.wrapped}]. "
-                                        f"Remove later uses or restructure the code.",
-                                        stmt.value
-                                    )
-                                raise self.ctx.error(
-                                    f"{reason} cannot be returned as "
-                                    f"Own[{expected.wrapped}]. "
-                                    f"Only the original owner can be moved at its last use.",
-                                    stmt.value
-                                )
-                            raise self.ctx.error(
-                                f"Cannot return lvalue as Own[{expected.wrapped}] without explicit copy(). "
-                                f"Use 'return copy(...)' instead.",
-                                stmt.value
-                            )
+                    else:
+                        self._check_own_lvalue_return(expected, stmt.value, "return type")
+                # Check Own[T] elements in tuple literals
+                if (isinstance(expected, TupleType)
+                        and isinstance(stmt.value, TpyTupleLiteral)):
+                    for i, et in enumerate(expected.element_types):
+                        if isinstance(et, OwnType) and i < len(stmt.value.elements):
+                            self._check_own_lvalue_return(et, stmt.value.elements[i],
+                                                          f"tuple element {i}")
+                    # Annotate per-element capture mode (ref/value/const_ref)
+                    self._annotate_tuple_elem_capture(
+                        stmt.value, expected, is_return=True)
                 # Check for dangling reference (returning local/temporary as reference)
                 self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
             self.init.mark_terminated()
@@ -898,6 +996,9 @@ class StatementAnalyzer:
                     var_type = init_type
             # Track inferred writes for potential future retro-validation.
             self.deduction.record_write(stmt.name, stmt.init, init_type)
+            # Annotate tuple literal element capture modes (local context)
+            if isinstance(stmt.init, TpyTupleLiteral) and isinstance(var_type, TupleType):
+                self._annotate_tuple_elem_capture(stmt.init, var_type)
         elif stmt.type:
             if isinstance(stmt.type, OptionalType):
                 # Optional without initializer is allowed (defaults to None/nullptr)
@@ -1063,6 +1164,9 @@ class StatementAnalyzer:
             stmt.is_owned.append(owned)
             if owned:
                 elem_type = elem_type.wrapped
+            is_ref = (not owned and not elem_type.is_value_type()
+                      and not isinstance(elem_type, TypeParamRef))
+            stmt.is_ref.append(is_ref)
 
             stmt.target_types.append(elem_type)
 
@@ -1203,6 +1307,13 @@ class StatementAnalyzer:
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
+        # Annotate tuple literal element capture modes
+        if isinstance(stmt.value, TpyTupleLiteral) and isinstance(target_type, TupleType):
+            is_field = (isinstance(stmt.target, TpyFieldAccess)
+                        and isinstance(stmt.target.obj, TpyName)
+                        and stmt.target.obj.name == "self")
+            self._annotate_tuple_elem_capture(
+                stmt.value, target_type, is_field=is_field)
         if isinstance(stmt.target, TpyFieldAccess):
             if self.compat.needs_copy_warning(stmt.value, target_type):
                 if isinstance(target_type, TypeParamRef):

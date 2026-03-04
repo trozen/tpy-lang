@@ -1,0 +1,1 @@
+main.py:12: error: Cannot return lvalue as tuple element 1 Own[Point] without explicit copy(). Use 'copy(...)' instead.

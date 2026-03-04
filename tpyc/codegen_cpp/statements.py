@@ -240,7 +240,8 @@ class StatementGenerator:
                             return f"{indent}return tpy::optional_to_ptr({ret_expr});\n"
                     # Take address of lvalue
                     return f"{indent}return &({ret_expr});\n"
-                ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
+                ret_expr = self.expressions.gen_expr(
+                    stmt.value, ret_type)
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
                 if self.ctx.is_indirect_name(stmt.value):
                     ret_expr = f"(*{ret_expr})"
@@ -486,6 +487,8 @@ class StatementGenerator:
         """Return C++ declaration type name for a normalized semantic type."""
         normalized = self._normalize_decl_type_for_cpp(var_type)
         if self.ctx.contains_protocol_type(normalized):
+            return "auto"
+        if isinstance(normalized, TupleType) and normalized.has_ref_elements():
             return "auto"
         return self.types.type_to_cpp(normalized)
 
@@ -1127,8 +1130,17 @@ class StatementGenerator:
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = target_type
-                out.write(f"{indent}{cpp_type} {cpp_name} = "
-                          f"{get_expr};\n")
+                if stmt.is_ref[i]:
+                    if name in self.ctx.reassigned_vars or name in self.ctx.hoisted_vars:
+                        self.ctx.pointer_locals.add(name)
+                        out.write(f"{indent}{cpp_type}* {cpp_name} = "
+                                  f"&{get_expr};\n")
+                    else:
+                        out.write(f"{indent}{cpp_type}& {cpp_name} = "
+                                  f"{get_expr};\n")
+                else:
+                    out.write(f"{indent}{cpp_type} {cpp_name} = "
+                              f"{get_expr};\n")
             else:
                 if name in self.ctx.pointer_locals:
                     rebind_slot = self.ctx.rebind_slots.get(name)

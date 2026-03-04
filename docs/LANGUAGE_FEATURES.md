@@ -537,10 +537,46 @@ b2 = (Int32(1), "hello")
 print(a2 == b2)       # True
 ```
 
+Reference types in tuples follow context-dependent semantics (same rules as standalone `T`):
+
+```python
+from tpy import Int32, Own
+
+class Point:
+    x: Int32
+    y: Int32
+    def __init__(self, x: Int32, y: Int32) -> None:
+        self.x = x
+        self.y = y
+
+# Return context: Point is returned by reference (like -> Point)
+def find(p: Point) -> tuple[Point, bool]:
+    return (p, True)  # -> std::tuple<Point&, bool>
+
+# Own[T] forces value/copy semantics in return context
+def make(x: Int32) -> tuple[Own[Point], bool]:
+    return (Point(x, x), True)  # -> std::tuple<Point, bool>
+
+# Local tuple: lvalue elements captured by reference
+p = Point(Int32(1), Int32(2))
+t = (p, True)     # std::tuple<Point&, bool>, p.x mutation visible through t
+
+# Tuple unpacking: reference elements bind as T&
+pt, found = find(p)  # pt is Point&, found is bool
+```
+
+| Context | `tuple[Int32, Point]` C++ | Rationale |
+|---------|--------------------------|-----------|
+| Return | `std::tuple<int32_t, Point&>` | Same as `-> Point` = `Point&` |
+| Return (`@readonly`) | `std::tuple<int32_t, const Point&>` | Same as readonly `-> Point` |
+| Field | `std::tuple<int32_t, Point>` | Same as `field: Point` = owned |
+| Container (`list[...]`) | `std::tuple<int32_t, Point>` | Same as `list[Point]` = owned |
+| Local variable | `auto` (deduced from RHS) | Same as `p2 = p` = reference |
+
 Restrictions:
 - Index must be a compile-time integer literal (variable indexing is rejected)
 - Bare `tuple` without type arguments is rejected (must use `tuple[T1, T2, ...]`)
-- Reference types (records, lists, etc.) must be wrapped in `Own[T]` to be stored in a tuple (e.g. `tuple[Int32, Own[Point]]`). This makes the value copy explicit. A future phase will add reference-in-tuple support with lifetime tracking.
+- Returning a reference to a local or temporary as a tuple element is rejected (dangling reference check). Use `Own[T]` to return by value.
 - Tuple element assignment (`t[0] = x`) is rejected (tuples are immutable)
 - Nested unpacking (`a, (b, c) = ...`) is not yet supported
 - `Optional[T]` / `Union` elements in tuples are not yet supported (codegen and printing need work)

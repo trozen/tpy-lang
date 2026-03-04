@@ -1,0 +1,3 @@
+Point(x=10, y=20)
+True
+Point(x=99, y=20)

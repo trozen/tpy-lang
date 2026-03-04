@@ -1,5 +1,5 @@
 # Tuple with Own[T] wrapping for reference types
-from tpy import Int32, Own
+from tpy import Int32, Own, copy
 
 class Point:
     x: Int32
@@ -7,9 +7,11 @@ class Point:
     def __init__(self, x: Int32, y: Int32) -> None:
         self.x = x
         self.y = y
+    def __repr__(self) -> str:
+        return "Point(x=" + str(self.x) + ", y=" + str(self.y) + ")"
 
 def make_pair(p: Point) -> tuple[Int32, Own[Point]]:
-    return (Int32(42), p)
+    return (Int32(42), copy(p))
 
 def main() -> None:
     p = Point(Int32(1), Int32(2))

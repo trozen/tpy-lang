@@ -187,7 +187,11 @@ class RecordGenerator:
         if record.init_method:
             has_params = bool(record.init_method.params)
             base_init = self._extract_base_init(record.init_method, record)
+            saved_func_params = self.ctx.current_func_params
+            self.ctx.current_func_params = {
+                pname: ptype for pname, ptype in record.init_method.params}
             inits = self._extract_field_inits(record.init_method, record)
+            self.ctx.current_func_params = saved_func_params
             non_init_stmts = self._get_non_init_stmts(record.init_method, record)
 
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)

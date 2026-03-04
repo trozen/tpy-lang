@@ -22,7 +22,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
 from ..prescan import match_is_none
@@ -1446,7 +1446,6 @@ class ExpressionGenerator:
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""
-        # When target type is a TupleType, use its element types to resolve literals
         target_tuple = target_type if isinstance(target_type, TupleType) else None
         resolved_elem_types = []
         elem_strs = []
@@ -1455,10 +1454,45 @@ class ExpressionGenerator:
             resolved = self.types.get_resolved_type(elem, elem_target)
             resolved_elem_types.append(resolved)
             elem_strs.append(self.gen_expr_deref(elem, resolved))
-        # Build explicit std::tuple<T1,T2>{...} to avoid type deduction issues
-        resolved_tuple = TupleType(tuple(resolved_elem_types))
-        cpp_type = self.types.type_to_cpp(resolved_tuple)
+        has_ref_elements = any(
+            (i < len(expr.elem_capture) and expr.elem_capture[i] != TupleElemCapture.VALUE)
+            or isinstance(resolved_elem_types[i], TypeParamRef)
+            or (not expr.elem_capture and not resolved_elem_types[i].is_value_type()
+                and not isinstance(resolved_elem_types[i], OwnType))
+            for i in range(len(resolved_elem_types))
+        )
+        if has_ref_elements:
+            cpp_type = self._tuple_literal_cpp_type(resolved_elem_types, expr)
+        else:
+            cpp_type = self.types.type_to_cpp(TupleType(tuple(resolved_elem_types)))
         return f"{cpp_type}{{{', '.join(elem_strs)}}}"
+
+    def _tuple_literal_cpp_type(
+        self,
+        resolved_elem_types: list[TpyType],
+        expr: TpyTupleLiteral,
+    ) -> str:
+        """Build C++ tuple type for a literal, using sema-annotated elem_capture."""
+        cpp_parts: list[str] = []
+        for i, et in enumerate(resolved_elem_types):
+            base = self.types.type_to_cpp(et)
+            if i < len(expr.elem_capture):
+                mode = expr.elem_capture[i]
+            elif not et.is_value_type() and not isinstance(et, OwnType):
+                # No sema annotation (e.g. call argument) -- derive from type
+                mode = TupleElemCapture.REF
+            else:
+                mode = TupleElemCapture.VALUE
+            if mode == TupleElemCapture.REF:
+                cpp_parts.append(f"{base}&")
+            elif mode == TupleElemCapture.CONST_REF:
+                cpp_parts.append(f"const {base}&")
+            elif isinstance(et, TypeParamRef):
+                # Defer value-vs-ref to C++ instantiation time
+                cpp_parts.append(f"tpy::return_val_or_ref_t<{base}>")
+            else:
+                cpp_parts.append(base)
+        return f"std::tuple<{', '.join(cpp_parts)}>"
 
     def _gen_subscript(self, expr: TpySubscript) -> str:
         """Generate subscript code."""

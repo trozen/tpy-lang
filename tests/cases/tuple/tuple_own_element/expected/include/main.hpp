@@ -22,14 +22,16 @@ struct Point {
     // 7:     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
+
+    // 10:     def __repr__(self) -> str:
+    std::string __repr__() const {
+        // 11:         return "Point(x=" + str(self.x) + ", y=" + str(self.y) + ")"
+        return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("Point(x=", tpy::fixed_to_str<int32_t>(this->x))), ", y=")), tpy::fixed_to_str<int32_t>(this->y))), ")"));
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

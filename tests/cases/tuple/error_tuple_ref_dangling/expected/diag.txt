@@ -1,0 +1,1 @@
+main.py:13: error: Cannot return local or temporary as tuple element 1. Type 'Point' is returned by reference. Use Own[Point] to return by value.

@@ -1,1 +1,1 @@
-main.py:9: error: Cannot return lvalue as Own[Box] without explicit copy(). Use 'return copy(...)' instead.
+main.py:9: error: Cannot return lvalue as return type Own[Box] without explicit copy(). Use 'copy(...)' instead.

@@ -27,7 +27,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A8 | Constructor init-list: warn/error on branching field assignment | S | Done | [II](#constructor-init-list-for-branching-init) |
 | A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
 | A10 | Tuple type + unpacking | M-L | Done | [I](#tuple-type) |
-| A10a | Reference elements in tuples | M | Not started | [I](#reference-elements-in-tuples) |
+| A10a | Reference elements in tuples | M | Done | [I](#reference-elements-in-tuples) |
 | A10b | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
 | A11 | dict type | L | Phase 2 done | [VII](#dict-type) |
 | A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Not started | [I](#mutable-span--readonlyspan--__span__-protocol) |
@@ -271,20 +271,21 @@ could use a pending representation that resolves during sema/codegen based on co
 `TupleType.to_cpp()` would need context to choose between `const T&` (reference) and
 `T` (owned) for each element.
 
-**Open questions**:
-- Local variables: `t = (p, True)` -- reference or owned? Likely reference (like
-  assigning `p2 = p` which creates a reference, not a copy)
-- Function parameters: `f(data: tuple[Point, bool])` -- the tuple itself is passed
-  by const ref; elements follow the tuple's own representation (which depends on how
-  the tuple was created)
-- How does context propagate through generic code? `def f[T]() -> tuple[T, bool]` --
-  T's representation depends on instantiation
+**Resolved design questions**:
+- Local variables: `t = (p, True)` -- reference (like `p2 = p`). Declaration uses `auto`,
+  tuple literal captures lvalue record elements by reference, rvalue elements by value.
+- Function parameters: `f(data: tuple[Point, bool])` -- tuple passed by const ref;
+  elements follow the tuple's own representation (determined when the tuple was created).
+- Generic code: `def f[T]() -> tuple[T, bool]` -- uses `tpy::return_val_or_ref_t<T>`
+  trait that resolves at C++ instantiation time.
+- Dangling references: per-element dangling check on tuple return literals prevents
+  returning references to locals/temporaries.
+- Readonly methods: `@readonly` methods returning tuple with reference elements use
+  `const T&` for reference elements (matching the const method semantics).
 
-**Current state**: Design proposed, not implemented. `Own[T]` wrapping works as a stopgap.
+**Current state**: Implemented. Context-dependent tuple element semantics are fully working.
 
-**Dependencies**: May benefit from broader ownership/lifetime model.
-
-**Effort**: M (implementation), design needs validation against edge cases
+**Effort**: M (completed)
 
 ---
 

@@ -8,7 +8,7 @@ No parsing logic lives here.
 from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Optional, TYPE_CHECKING
 
 from ..typesys import (
@@ -197,10 +197,19 @@ class TpyArrayLiteral(TpyExpr):
     elements: list[TpyExpr]
 
 
+class TupleElemCapture(IntEnum):
+    """How a tuple literal element captures its value."""
+    VALUE = 0       # T -- owned copy
+    REF = 1         # T& -- mutable reference
+    CONST_REF = 2   # const T& -- immutable reference
+
+
 @dataclass
 class TpyTupleLiteral(TpyExpr):
     """Tuple literal: (expr, expr, ...)"""
     elements: list[TpyExpr]
+    # Set by sema: per-element capture mode
+    elem_capture: list[TupleElemCapture] = field(default_factory=list)
 
 
 @dataclass
@@ -292,6 +301,7 @@ class TpyTupleUnpack(TpyStmt):
     target_types: list[TpyType] = field(default_factory=list)
     is_new: list[bool] = field(default_factory=list)
     is_owned: list[bool] = field(default_factory=list)
+    is_ref: list[bool] = field(default_factory=list)
 
 
 @dataclass

@@ -1194,21 +1194,6 @@ class ExpressionAnalyzer:
                 elem_types.append(analyzed)
             else:
                 elem_types.append(self.analyze_expr(elem))
-        # Reject non-value types without Own[] wrapping
-        for i, et in enumerate(elem_types):
-            if isinstance(et, (TypeParamRef, OwnType)):
-                continue
-            if not et.is_value_type():
-                # Show user-friendly type name for pending types
-                if isinstance(et, PendingListType):
-                    display = f"list[{et.element_type}]"
-                else:
-                    display = str(et)
-                raise self.ctx.error(
-                    f"Tuple element {i} has type {display} which is a reference type; "
-                    f"use Own[{display}] to store by value",
-                    expr.elements[i],
-                )
         return TupleType(tuple(elem_types))
 
     def _analyze_tuple_subscript(self, expr: TpySubscript, tuple_type: TupleType) -> TpyType:

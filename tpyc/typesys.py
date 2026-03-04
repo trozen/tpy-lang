@@ -1085,11 +1085,27 @@ class TupleType(TpyType):
     def is_value_type(self) -> bool:
         return True
 
+    def to_cpp_return(self) -> str:
+        args = ", ".join(t.to_cpp_return() for t in self.element_types)
+        return f"std::tuple<{args}>"
+
+    def to_cpp_return_const(self) -> str:
+        args = ", ".join(t.to_cpp_return_const() for t in self.element_types)
+        return f"std::tuple<{args}>"
+
+    def has_ref_elements(self) -> bool:
+        return any(
+            not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
+            for et in self.element_types
+        )
+
     def to_cpp_param(self, name: str) -> str:
-        return f"const {self.to_cpp()}& {name}"
+        args = ", ".join(t.to_cpp_return() for t in self.element_types)
+        return f"const std::tuple<{args}>& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
-        return f"const {self.to_cpp()}& {name}"
+        args = ", ".join(t.to_cpp_return_const() for t in self.element_types)
+        return f"const std::tuple<{args}>& {name}"
 
     def __str__(self) -> str:
         parts = ", ".join(str(t) for t in self.element_types)

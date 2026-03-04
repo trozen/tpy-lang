@@ -1488,15 +1488,6 @@ class Parser:
         element_types = tuple(
             self._parse_type_annotation(s, type_param_scope) for s in slices
         )
-        for i, et in enumerate(element_types):
-            if isinstance(et, (TypeParamRef, OwnType)):
-                continue
-            if not et.is_value_type():
-                raise ParseError(
-                    f"Tuple element {i} has type {et} which is a reference type; "
-                    f"use Own[{et}] to store by value",
-                    slices[i],
-                )
         return TupleType(element_types)
 
     def _parse_generic_type(self, node: ast.Subscript, name: str, type_def: BuiltinTypeDef, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:

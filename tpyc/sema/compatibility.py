@@ -19,7 +19,7 @@ from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyFunction,
-    TpyIfExpr, SourceLocation
+    TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR
 from .diagnostics import SemanticError
@@ -407,6 +407,32 @@ class TypeCompatibility:
         # Everything else (calls, literals, operators) are rvalues
         return False
 
+    def is_const_ref_source(self, expr: TpyExpr) -> bool:
+        """Check if expression provides a const reference (can't be captured as T&).
+
+        Returns True for sources that are inherently const in C++:
+        - Field access / subscript through a readonly-typed object
+        """
+        if isinstance(expr, TpyCoerce):
+            return self.is_const_ref_source(expr.expr)
+        if isinstance(expr, TpySubscript):
+            obj_type = self.ctx.get_expr_type(expr.obj)
+            if obj_type is not None:
+                unwrapped = unwrap_readonly(obj_type)
+                if isinstance(unwrapped, SpanType) and unwrapped.is_readonly:
+                    return True
+            return self.is_const_ref_source(expr.obj)
+        if isinstance(expr, TpyFieldAccess):
+            obj_type = self.ctx.get_expr_type(expr.obj)
+            if obj_type is not None and isinstance(obj_type, ReadonlyType):
+                return True
+            return self.is_const_ref_source(expr.obj)
+        if isinstance(expr, TpyName):
+            expr_type = self.ctx.get_expr_type(expr)
+            if expr_type is not None and isinstance(expr_type, ReadonlyType):
+                return True
+        return False
+
     def is_copy_call(self, expr: TpyExpr) -> bool:
         """Check if expression is a copy() call from the tpy module."""
         if isinstance(expr, TpyCoerce):
@@ -704,6 +730,19 @@ class TypeCompatibility:
                     "use str or String to return an owned copy",
                     expr
                 )
+            return
+        if isinstance(return_type, TupleType):
+            if isinstance(expr, TpyTupleLiteral):
+                for i, et in enumerate(return_type.element_types):
+                    if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
+                            and i < len(expr.elements)):
+                        if self.is_dangling_return(expr.elements[i]):
+                            raise self.ctx.error(
+                                f"Cannot return local or temporary as tuple element {i}. "
+                                f"Type '{et}' is returned by reference. "
+                                f"Use Own[{et}] to return by value.",
+                                expr.elements[i]
+                            )
             return
         if return_type.is_value_type() or isinstance(return_type, (VoidType, OwnType)):
             return
