@@ -12,7 +12,7 @@ void main() {
     // 8:     a = t[0]
     int32_t a = std::get<0>(t);
     // 9:     b = t[1]
-    std::string b = std::get<1>(t);
+    std::string_view b = std::get<1>(t);
     // 10:     c = t[2]
     bool c = std::get<2>(t);
     // 11:     print(a)

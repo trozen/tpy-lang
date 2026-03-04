@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction
-from ..parse.nodes import TpyStrLiteral
+from ..parse.nodes import TpyFieldAccess, TpyStrLiteral, TpySubscript
 from ..typesys import (
     ArrayType,
     BigIntType,
@@ -29,6 +29,7 @@ from ..typesys import (
     StringType,
     StrViewType,
     TpyType,
+    TupleType,
     STR,
     STRVIEW,
 )
@@ -429,7 +430,12 @@ class LocalTypeDeduction:
         - Another PendingStrType or StrViewType local
         - A Final[str] constant (constexpr string_view)
         - A function returning StrView
+        - Subscript on lvalue tuple/array (stable element storage)
+        - Field access on lvalue record
         """
+        if not isinstance(init_type, (StrType, StrViewType, PendingStrType)):
+            return False
+
         if isinstance(init_expr, TpyCoerce):
             init_expr = init_expr.expr
 
@@ -460,6 +466,17 @@ class LocalTypeDeduction:
         if isinstance(init_expr, (TpyCall, TpyMethodCall)):
             if isinstance(init_type, StrViewType):
                 return True
+
+        # Subscript on lvalue tuple/array -- stable element storage
+        # (list/dict excluded: reallocation can invalidate views)
+        if isinstance(init_expr, TpySubscript) and self.compat.is_lvalue(init_expr):
+            obj_type = self.ctx.get_expr_type(init_expr.obj)
+            if isinstance(obj_type, (TupleType, ArrayType)):
+                return True
+
+        # Field access on lvalue record
+        if isinstance(init_expr, TpyFieldAccess) and self.compat.is_lvalue(init_expr):
+            return True
 
         return False
 
