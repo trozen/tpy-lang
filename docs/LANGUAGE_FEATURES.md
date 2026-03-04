@@ -331,6 +331,7 @@ Bool and float use Python-compatible wrappers for default format (no spec):
 - `!r` conversion: applies `repr()` / `__repr__()`
 - User types with `__str__()`: `f"{obj}"` dispatches to `__str__()`
 - User types with only `__repr__()`: `f"{obj}"`, `str(obj)`, `print(obj)` fall back to `__repr__()` (matches Python)
+- Containers (tuple, list, dict, Array, Span): `f"{container}"`, `f"{container!s}"`, `f"{container!r}"` all stringify using runtime to_str helpers (matches `print()` output)
 - `__str__() -> StrView` is accepted (zero-copy; protocol-safe coercion to `str`)
 
 **Not yet supported:**
@@ -3274,6 +3275,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `copy()`
   - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
+- **Working**: `str()`, `repr()`, f-strings on containers (tuple, list, dict, Array, Span) -- uses runtime to_str helpers matching `print()` format
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
@@ -3298,7 +3300,8 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from NativeIterable containers, `list(range(...))`, `list(iterator)` from OptIterator
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
-- **Open**: `str()`, `int(str)` → string conversion functions (see below)
+- **Working**: `str()` → string conversions for scalars, containers, and Stringable/Representable types (see below)
+- **Open**: `int(str)` → string-to-int parsing
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `try_next(it)` → calls `it.__next_opt__()`, returns `T | None` (safe iterator advancement)
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
@@ -3420,6 +3423,12 @@ s = str(c)        # → single-char string from Char
 # Numeric conversions
 s = str(42)       # → "42" - safe (str is owned std::string)
 s = str(3.14)     # → "3.14"
+
+# Container conversions (matches print() output)
+s = str([1, 2, 3])           # → "[1, 2, 3]"
+s = str((1, "hello"))        # → "(1, 'hello')"
+s = str({"a": 1, "b": 2})   # → "{'a': 1, 'b': 2}"
+s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 ```
 
 ---
