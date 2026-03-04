@@ -6,10 +6,10 @@
 namespace tpy_user::main {
 
 struct Point;
-struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+std::tuple<int32_t, Point&> make_pair(int32_t n, Point& p);
 void main();
 
 // 4: class Point:
@@ -30,27 +30,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
        << ", "
        << "y=" << obj.y
        << ")";
-    return os;
-}
-
-// 11: class Container:
-struct Container {
-    // 12:     data: tuple[Point, Int32]
-    std::tuple<Point, int32_t> data;
-
-    // 13:     def __init__(self, p: Point, n: Int32) -> None:
-    Container() = default;
-    explicit Container(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{p, n}) {}
-
-    // 15:     def __repr__(self) -> str:
-    std::string __repr__() const {
-        // 16:         return "Container"
-        return "Container";
-    }
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-    os << obj.__repr__();
     return os;
 }
 

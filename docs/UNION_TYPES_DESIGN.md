@@ -52,6 +52,12 @@ def area(s: Shape) -> float:
 | **Later** | `match`/`case` structural pattern matching | Design only |
 | **Later** | Recursive unions / ADT patterns | Design only |
 
+## Known Semantic Gaps
+
+| Issue | Description | Params | Returns |
+|-------|-------------|--------|---------|
+| Return copies non-value members | `f() -> A \| B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++, unlike `std::tuple<A&, int>`. | OK (`&` for non-value unions) | Copies |
+
 ## Design Principles
 
 1. **Python-compatible syntax**: `A | B | C` uses standard Python 3.10+ type
