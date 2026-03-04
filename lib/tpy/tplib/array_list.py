@@ -13,7 +13,7 @@
 #   zero-cost C++ range-based for loops (needs: tuple type, @iter_range protocol support
 #   in compiler). This also synthesizes __iter__/__next__, eliminating ArrayListIter.
 from __future__ import annotations
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, copy
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, copy, Default, make_default
 from tpy.mem import UninitArrayStorage
 
 
@@ -61,6 +61,10 @@ class ArrayList[T, N: int]:
 
     def append(self, value: Own[T]) -> None:
         self._storage.init(UInt32(self._size), value)
+        self._size += 1
+
+    def append_default[T: Default](self) -> None:
+        self._storage.init(UInt32(self._size), make_default())
         self._size += 1
 
     def pop(self, index: Int32 | None = None) -> Own[T]:

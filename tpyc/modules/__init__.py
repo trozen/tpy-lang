@@ -45,6 +45,7 @@ class BuiltinFunctionDef:
     special_handling: bool = False  # True if sema/codegen handle this specially (skip overload matching)
     type_params: list[str] = field(default_factory=list)  # Generic type params (e.g., ["T"])
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "DEFAULT_INT"}
+    type_param_bounds: dict[str, NamedType] = field(default_factory=dict)  # e.g. {"T": Default}
 
 
 @dataclass
@@ -96,7 +97,8 @@ class BuiltinModule:
 
     def function(self, name: str, overloads: list[MethodDef], special_handling: bool = False,
                  type_params: list[str] | None = None,
-                 type_param_defaults: dict[str, str] | None = None):
+                 type_param_defaults: dict[str, str] | None = None,
+                 type_param_bounds: dict[str, NamedType] | None = None):
         """Register a built-in function.
 
         Args:
@@ -105,11 +107,13 @@ class BuiltinModule:
             special_handling: If True, sema/codegen handle this specially (skip overload matching)
             type_params: Generic type parameter names (e.g., ["T"])
             type_param_defaults: Default values for type params (e.g., {"T": "DEFAULT_INT"})
+            type_param_bounds: Bounds for type params (e.g., {"T": Default})
         """
         self.functions[name] = BuiltinFunctionDef(
             name=name, overloads=overloads, special_handling=special_handling,
             type_params=type_params or [],
             type_param_defaults=type_param_defaults or {},
+            type_param_bounds=type_param_bounds or {},
         )
 
     def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str,
@@ -402,6 +406,7 @@ def builtin_function_to_info(fn_def: BuiltinFunctionDef, module_name: str = "") 
             special_handling=fn_def.special_handling,
             type_params=fn_def.type_params,
             type_param_defaults=fn_def.type_param_defaults,
+            type_param_bounds=fn_def.type_param_bounds,
             qualified_name=qname,
         ))
     return result

@@ -625,6 +625,31 @@ class ValueType(_Protocol):
     pass
 
 
+class Default(_Protocol):
+    """Marker for types that support default construction."""
+    pass
+
+
+class _MakeDefault:
+    _type = None
+
+    def __call__(self):
+        if self._type is None:
+            raise NotImplementedError(
+                "make_default() requires an explicit type argument in CPython: make_default[T]()")
+        t = self._type
+        self._type = None
+        return t()
+
+    def __getitem__(self, t):
+        bound = _MakeDefault()
+        bound._type = t
+        return bound
+
+
+make_default = _MakeDefault()
+
+
 def try_next(it) -> object | None:
     """Return next value from iterator, or None if exhausted."""
     try:

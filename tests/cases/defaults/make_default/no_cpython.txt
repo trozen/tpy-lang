@@ -1,0 +1,1 @@
+make_default() with inferred T requires compiler type inference

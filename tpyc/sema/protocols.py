@@ -12,6 +12,8 @@ import re
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
+    FixedIntType, BigIntType, FloatType, BoolType, StrType, StringType, StrViewType, CharType,
+    ListType, DictType, ArrayType, TupleType, SpanType, OptionalType,
 )
 from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
 
@@ -92,6 +94,9 @@ class ProtocolChecker:
         if protocol_info.is_marker:
             # ValueType: any type with value semantics conforms implicitly
             if protocol.name == "ValueType" and actual.is_value_type():
+                return True
+            # Default: types that support default construction
+            if protocol.name == "Default" and self._is_default_constructible(actual):
                 return True
             return self._check_record_extends(actual, protocol)
 
@@ -183,6 +188,45 @@ class ProtocolChecker:
                         return True
             elif ext == protocol.name and not protocol.type_args:
                 return True
+        return False
+
+    def _is_default_constructible(self, actual: TpyType) -> bool:
+        """Check if a type supports default construction (zero-arg init)."""
+        # All primitive value types are default-constructible
+        if isinstance(actual, (FixedIntType, BigIntType, FloatType, BoolType,
+                               StrType, StringType, StrViewType, CharType)):
+            return True
+        # Empty containers are default-constructible
+        if isinstance(actual, (ListType, DictType, SpanType)):
+            return True
+        # Optional[T] is default-constructible (std::nullopt)
+        if isinstance(actual, OptionalType):
+            return True
+        # Array[T, N] is default-constructible if element T is
+        if isinstance(actual, ArrayType):
+            elem = actual.get_element_type()
+            if elem is not None:
+                default_proto = NamedType("Default", (), is_protocol=True)
+                return self.type_conforms_to_protocol(elem, default_proto)
+            return False
+        # Tuple types: default-constructible if all element types are
+        if isinstance(actual, TupleType):
+            default_proto = NamedType("Default", (), is_protocol=True)
+            return all(
+                self.type_conforms_to_protocol(et, default_proto)
+                for et in actual.element_types
+            )
+        # User records: default-constructible if __init__ has no required params
+        if isinstance(actual, NamedType) and actual.is_user_record:
+            record = self.ctx.registry.get_record(actual.name)
+            if record is None:
+                return False
+            if not record.has_init:
+                return True
+            required = sum(1 for _, _, default in record.init_params if default is None)
+            return required == 0
+        # TypeParamRef: only if it has an explicit Default bound (checked via
+        # the standard bound-propagation path in type_conforms_to_protocol)
         return False
 
     def type_extends_any_protocol(self, actual: TpyType, protocol_name: str) -> bool:

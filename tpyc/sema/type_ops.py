@@ -754,6 +754,7 @@ class TypeOperations:
             is_readonly=method.is_readonly,
             is_method=method.is_method,
             is_staticmethod=method.is_staticmethod,
+            is_builtin_function=method.is_builtin_function,
             type_params=method.type_params,
             type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,
             cpp_template=method.cpp_template,  # Preserve cpp_template for codegen

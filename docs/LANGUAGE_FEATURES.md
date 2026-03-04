@@ -1870,6 +1870,47 @@ class Box[T: ValueType]:
 
 **Implicit conformance:** Built-in value types (Int32, bool, float, etc.) implicitly conform to `ValueType`, so they can be used as arguments for `T: ValueType` bounded type params without explicit declaration.
 
+#### Working: `Default` Marker Protocol and `make_default()`
+
+The `Default` marker protocol declares that a type supports zero-argument default construction. It maps to the C++20 `std::default_initializable` concept.
+
+**Implicit conformance** -- the following types conform to `Default` without explicit declaration:
+- All primitives: fixed-width integers, `float`, `bool`, `str`, `String`, `StrView`, `Char`, `int`
+- `list[T]`, `dict[K, V]`, `Span[T]` (empty container is default)
+- `Optional[T]` (`None` is default)
+- `Array[T, N]` if element `T` satisfies `Default`
+- `tuple[T1, T2, ...]` if all element types satisfy `Default`
+- User records whose `__init__` has no required parameters (all params have defaults or no `__init__`)
+
+**`make_default()`** is a portable function for default-constructing generic types:
+
+```python
+from tpy import Int32, make_default
+
+# Explicit type argument
+x = make_default[Int32]()    # -> Int32(0)
+
+# Inferred from context
+y: str = make_default()      # -> ""
+
+# With type parameter bounds
+def create[T: Default]() -> T:
+    return make_default()    # T inferred from return type
+```
+
+`make_default[T]()` compiles to `T{}` in C++. Unlike `T()` (which also works in TPy but is not valid CPython), `make_default()` is portable -- it works in both TPy and CPython via the `lib/cpy/tpy/` stubs.
+
+**Per-method bounds:** Methods on generic classes can add bounds to inherited type params. This enables methods that require `Default` without restricting the entire class:
+
+```python
+class ArrayList[T, N: int]:
+    def append_default[T: Default](self) -> None:
+        self._storage.init(UInt32(self._size), make_default())
+        self._size += 1
+```
+
+**`T()` deprecation warning:** Using `T()` for default construction of type parameters emits a warning recommending `make_default()` instead, since `T()` is not supported in CPython.
+
 #### Working: `NativeIterable[T]` (C++ range-for iteration)
 
 `NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol.
@@ -3169,6 +3210,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Open**: `str()`, `int(str)` → string conversion functions (see below)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `try_next(it)` → calls `it.__next_opt__()`, returns `T | None` (safe iterator advancement)
+- **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
 - **Open**: `enumerate()` → returns OptIterator (see iterator roadmap)
 - **Open**: `zip()` → returns OptIterator (see iterator roadmap)
 

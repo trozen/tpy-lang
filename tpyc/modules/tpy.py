@@ -388,6 +388,13 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::ValueType",
     )
 
+    # Default protocol -- marker for types that support default construction
+    module.protocol("Default",
+        type_params=[],
+        methods={},
+        cpp_concept="std::default_initializable",
+    )
+
     # Covariant[T] marker -- type parameter T is covariant, enabling
     # G[Child] -> G[Parent] coercion for @dynamic protocol hierarchies.
     module.protocol("Covariant",
@@ -729,5 +736,11 @@ def init_module() -> BuiltinModule:
             cpp="{0}.__next_opt__()",
         ),
     ], type_params=["T"])
+
+    # make_default() -- portable default construction for generic T
+    module.function("make_default", overloads=[
+        MethodDef(params=[], returns=OwnType(T), cpp="{T}{{}}"),
+    ], type_params=["T"],
+       type_param_bounds={"T": NamedType("Default", (), is_protocol=True)})
 
     return module

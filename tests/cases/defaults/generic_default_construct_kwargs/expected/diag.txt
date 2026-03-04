@@ -1,0 +1,1 @@
+main.py:10: warning: T() default-construction syntax is not supported in CPython; use make_default() from tpy instead

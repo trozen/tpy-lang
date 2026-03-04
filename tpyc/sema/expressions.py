@@ -111,6 +111,9 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyFString):
             typ = self._analyze_fstring(expr)
         elif isinstance(expr, TpyTypeParamConstruct):
+            self.ctx.warning(
+                "T() default-construction syntax is not supported in CPython; "
+                "use make_default() from tpy instead", expr)
             typ = TypeParamRef(expr.param_name)
         elif isinstance(expr, TpyIfExpr):
             typ = self._analyze_if_expr(expr)
@@ -140,6 +143,9 @@ class ExpressionAnalyzer:
 
         # T() default-construction: resolves to whatever T maps to
         if isinstance(expr, TpyTypeParamConstruct):
+            self.ctx.warning(
+                "T() default-construction syntax is not supported in CPython; "
+                "use make_default() from tpy instead", expr)
             self.ctx.set_expr_type(expr, type_hint)
             return type_hint
 

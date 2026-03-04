@@ -352,9 +352,16 @@ class CallAnalyzer:
             # Otherwise fall through to function handling (type_args will be used)
 
         # Check registry for built-in functions (global builtins like chr)
-        if overloads := self.ctx.registry.get_builtin_function_overloads(expr.func):
-            if not overloads[0].special_handling:
-                return self._analyze_builtin_function_overloads(expr, overloads)
+        # Skip if namespace has a user-defined (non-builtin) function binding.
+        # Codegen has a parallel check via resolved_function_info.is_builtin_function
+        # (see codegen_cpp/expressions.py gen_call).
+        ns_binding = self.ctx.current_ns.lookup(expr.func) if self.ctx.current_ns else None
+        has_user_fn = (ns_binding is not None and ns_binding.kind == BindingKind.FUNCTION
+                       and ns_binding.func_info is not None and not ns_binding.func_info.is_builtin_function)
+        if not has_user_fn:
+            if overloads := self.ctx.registry.get_builtin_function_overloads(expr.func):
+                if not overloads[0].special_handling:
+                    return self._analyze_builtin_function_overloads(expr, overloads)
 
         # Track if we found an imported generic type (allows fallthrough to generic handling)
         # Stores the original name (not alias) for lookup_generic_type
@@ -1160,6 +1167,30 @@ class CallAnalyzer:
                 "unsafe_cast() requires a type argument or target type annotation "
                 "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr
             )
+
+        # Check for bound violations on generic overloads (give specific error)
+        for overload in generic:
+            if not overload.type_param_bounds:
+                continue
+            inferred: dict[str, TpyType] = {}
+            if explicit:
+                for tp, ta in zip(overload.type_params, explicit):
+                    inferred[tp] = ta
+            for (_, ptype), arg_t in zip(overload.params, arg_types):
+                self.type_ops.match_type_with_inference(ptype, arg_t, inferred)
+            if self.ctx.expr_type_hint and not inferred:
+                ret = overload.return_type.wrapped if isinstance(overload.return_type, OwnType) else overload.return_type
+                exp = self.ctx.expr_type_hint.wrapped if isinstance(self.ctx.expr_type_hint, OwnType) else self.ctx.expr_type_hint
+                self.type_ops.match_type_with_inference(ret, exp, inferred)
+            for param_name, type_arg in inferred.items():
+                if param_name in overload.type_param_bounds:
+                    bound = overload.type_param_bounds[param_name]
+                    if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                        raise self.ctx.error(
+                            f"Type '{type_arg}' does not satisfy '{bound}' "
+                            f"required by '{expr.func}'",
+                            expr,
+                        )
 
         raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
 

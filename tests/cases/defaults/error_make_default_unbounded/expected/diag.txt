@@ -1,0 +1,1 @@
+main.py:5: error: Type 'T' does not satisfy 'Default' required by 'make_default'

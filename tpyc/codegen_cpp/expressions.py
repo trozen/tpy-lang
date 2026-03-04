@@ -819,7 +819,12 @@ class ExpressionGenerator:
         # Check registry for built-in functions
         if overloads := self.ctx.analyzer.registry.get_builtin_function_overloads(expr.func):
             if not overloads[0].special_handling:
-                return self.builtins.gen_builtin_function_overloads(expr, overloads)
+                # Skip builtin codegen if sema resolved to a non-builtin function
+                # (user functions shadow builtins). Sema has a parallel check via
+                # namespace lookup (see sema/calls.py analyze_call).
+                fi = expr.resolved_function_info
+                if fi is None or fi.is_builtin_function:
+                    return self.builtins.gen_builtin_function_overloads(expr, overloads)
         # Check for imported function (from X import Y -> Y())
         # Only if not shadowed by a variable, user-defined function, or record
         if expr.func in self.ctx.analyzer.imported_names:
