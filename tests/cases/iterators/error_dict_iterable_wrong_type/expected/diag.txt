@@ -1,0 +1,1 @@
+main.py:15: error: Type dict[str, Int32] does not conform to protocol Iterable[Int32] in argument 'items'

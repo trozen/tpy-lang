@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Callable
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import TypeParamRef, NamedType, PtrType, ProtocolInfo, MethodSignature, TypeParamKind, ParamInfo
+from tpyc.typesys import TypeParamRef, NamedType, PtrType, ProtocolInfo, MethodSignature, TypeParamKind, ParamInfo, TupleType
 
 
 @dataclass
@@ -467,6 +467,36 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
     return type_map.get(name)
 
 
+def _resolve_extends_type_arg(type_str: str, type_params: dict[str, "TpyType"]) -> "TpyType | None":
+    """Resolve an extends type arg string to a TpyType.
+
+    Handles:
+    - Simple type param refs: "K", "V", "T"
+    - Concrete type names: "Char", "Int32"
+    - Tuple types: "tuple[K, V]"
+    """
+    # Handle tuple[...] pattern
+    tuple_match = re.match(r"tuple\[(.+)\]$", type_str)
+    if tuple_match:
+        inner = tuple_match.group(1)
+        parts = [p.strip() for p in inner.split(",")]
+        resolved = []
+        for part in parts:
+            if part in type_params:
+                resolved.append(type_params[part])
+            else:
+                concrete = _resolve_concrete_type_name(part)
+                if concrete is None:
+                    return None
+                resolved.append(concrete)
+        return TupleType(tuple(resolved))
+
+    # Simple name: type param or concrete type
+    if type_str in type_params:
+        return type_params[type_str]
+    return _resolve_concrete_type_name(type_str)
+
+
 def lookup_type(type_or_name: "TpyType | str") -> BuiltinTypeDef | None:
     """Lookup a type by type object or qualified name string."""
     if isinstance(type_or_name, str):
@@ -629,6 +659,14 @@ UNARYOP_TO_METHOD = {
     "-": "__neg__",
     "~": "__invert__",
 }
+
+
+def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
+    """Check if type extends NativeIterable (uses range-based for in C++)."""
+    record = registry.get_record_for_type(tpy_type)
+    if record and record.extends_protocols:
+        return any(ext.startswith("NativeIterable") for ext in record.extends_protocols)
+    return False
 
 
 def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistry | None" = None) -> "TpyType | None":

@@ -5,6 +5,7 @@ Main orchestrator that wires all components together.
 """
 
 from __future__ import annotations
+import re
 from typing import Optional
 
 from ..typesys import (
@@ -37,6 +38,22 @@ from .statements import StatementAnalyzer
 from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from tpyc import modules as builtin_modules
+from ..typesys import TypeParamRef, TupleType
+
+
+def _parse_extends_type_args(args_str: str) -> tuple[TpyType, ...]:
+    """Parse extends type arg string into TpyType instances.
+
+    Handles simple names ("K") and tuple types ("tuple[K, V]").
+    """
+    args_str = args_str.strip()
+    tuple_match = re.match(r"tuple\[(.+)\]$", args_str)
+    if tuple_match:
+        inner = tuple_match.group(1)
+        parts = [p.strip() for p in inner.split(",")]
+        return (TupleType(tuple(TypeParamRef(p) for p in parts)),)
+    # Simple comma-separated type param refs
+    return tuple(TypeParamRef(a.strip()) for a in args_str.split(","))
 
 
 class SemanticAnalyzer:
@@ -181,8 +198,7 @@ class SemanticAnalyzer:
         Marker protocols (no methods) are skipped -- the extends declaration is
         the entire conformance for those.
         """
-        import re
-        from ..typesys import TypeParamRef, TypeParamKind
+        from ..typesys import TypeParamKind
         for module in builtin_modules.get_all_modules():
             for qname, type_def in module.types.items():
                 if not type_def.extends:
@@ -212,9 +228,7 @@ class SemanticAnalyzer:
                     if proto_info is None or proto_info.is_marker:
                         continue
                     # Build protocol NamedType with matching type args
-                    proto_args = tuple(
-                        TypeParamRef(a.strip()) for a in match.group(2).split(",")
-                    ) if match.group(2) else ()
+                    proto_args = _parse_extends_type_args(match.group(2)) if match.group(2) else ()
                     protocol = NamedType(proto_name, proto_args, is_protocol=True)
 
                     if not self.protocols.type_conforms_to_protocol(actual_type, protocol):

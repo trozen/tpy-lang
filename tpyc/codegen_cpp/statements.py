@@ -1733,7 +1733,7 @@ class StatementGenerator:
             self._gen_loop_body(out, stmt, indent, enum_type)
             return
 
-        from tpyc.modules import get_native_iterator_element_type, get_iter_element_type, get_span_element_type
+        from tpyc.modules import get_native_iterator_element_type, get_iter_element_type, get_span_element_type, is_native_iterable
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
         # Resolve sema-stored elem_type (handles PendingStrType -> concrete)
@@ -1784,7 +1784,11 @@ class StatementGenerator:
             return
 
         # Check for __iter__()-based types (container -> separate iterator)
-        iter_elem = get_iter_element_type(iterable_type, registry=self.ctx.analyzer.registry)
+        # Skip if NativeIterable -- those use faster range-based for below
+        if is_native_iterable(iterable_type, self.ctx.analyzer.registry):
+            iter_elem = None
+        else:
+            iter_elem = get_iter_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_iter_protocol_loop(out, stmt, indent, iterable, sema_elem or iter_elem)

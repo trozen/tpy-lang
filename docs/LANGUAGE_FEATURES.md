@@ -369,6 +369,7 @@ log(f"x={x}")
   - Constructor: `dict(iterable)` from any iterable of `tuple[K, V]` (list of tuples, `.items()` view, etc.)
   - Methods: `get(k)`, `get(k, default)`, `pop(k)`, `pop(k, default)`, `clear()`, `update(other)`, `setdefault(k, default)`, `keys()`, `values()`, `items()`
   - Views: `d.keys()`, `d.values()`, `d.items()` return zero-allocation views with `for`-loop, `len()`, `in`
+  - `Iterable[T]` conformance: `dict[K,V]` and views conform to `Iterable` (`d` is `Iterable[K]`, `d.keys()` is `Iterable[K]`, `d.values()` is `Iterable[V]`, `d.items()` is `Iterable[tuple[K, V]]`) and can be passed to generic functions accepting `Iterable[T]`
   - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
   - Return by value requires `Own[dict[K, V]]`
 - **Planned**: `set` - hash set (requires allocation)
@@ -2217,6 +2218,8 @@ val = try_next(it)  # Int32 | None
 ```
 
 **Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
+
+**Built-in `Iterable[T]` conformance**: `dict[K,V]`, `dict_keys`, `dict_values`, `dict_items` conform to `Iterable[T]` for their respective element types. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`); the `Iterable[T]` conformance enables passing them to generic functions.
 
 #### Working: `__span__` Protocol (Zero-Cost User-Defined Iteration)
 

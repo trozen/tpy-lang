@@ -305,6 +305,11 @@ public:
     const_tuple_items_iterator tuple_items_begin() const { return const_tuple_items_iterator(head_); }
     const_tuple_items_iterator tuple_items_end() const { return const_tuple_items_iterator(nullptr); }
 
+    // -- Python __iter__() support (returns native_iterator for Iterable[K]) -
+
+    // Defined in dict_ops.hpp (needs native_iterator template)
+    inline auto __iter__() const;
+
     // -- Comparison (order-independent, matching Python) --------------------
 
     bool operator==(const ordered_map& other) const {

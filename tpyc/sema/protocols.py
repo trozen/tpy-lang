@@ -39,7 +39,7 @@ def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegis
         if impl_proto.name == protocol_name:
             return True
     for ext in record_info.extends_protocols:
-        match = re.match(r"(\w+)(?:\[\w+\])?", ext)
+        match = re.match(r"(\w+)(?:\[.+\])?$", ext)
         if match and match.group(1) == protocol_name:
             return True
     return False
@@ -184,17 +184,14 @@ class ProtocolChecker:
             return False
         type_params = builtin_modules.extract_type_params(actual)
         for ext in record_info.extends_protocols:
-            match = re.match(r"(\w+)\[(\w+)\]", ext)
+            match = re.match(r"(\w+)\[(.+)\]$", ext)
             if match:
                 ext_protocol = match.group(1)
-                ext_type_name = match.group(2)
+                ext_type_str = match.group(2)
                 if ext_protocol == protocol.name and len(protocol.type_args) == 1:
-                    if ext_type_name in type_params:
-                        actual_type_arg = type_params[ext_type_name]
-                    else:
-                        actual_type_arg = builtin_modules._resolve_concrete_type_name(ext_type_name)
-                        if actual_type_arg is None:
-                            continue
+                    actual_type_arg = builtin_modules._resolve_extends_type_arg(ext_type_str, type_params)
+                    if actual_type_arg is None:
+                        continue
                     if actual_type_arg == protocol.type_args[0]:
                         return True
                     if resolve_coercion(actual_type_arg, protocol.type_args[0], CoercionContext.RETURN) is not None:
@@ -259,7 +256,7 @@ class ProtocolChecker:
 
         # Builtin types: check extends_protocols strings
         for ext in record_info.extends_protocols:
-            match = re.match(r"(\w+)(?:\[\w+\])?", ext)
+            match = re.match(r"(\w+)(?:\[.+\])?$", ext)
             if match and match.group(1) == protocol_name:
                 return True
 

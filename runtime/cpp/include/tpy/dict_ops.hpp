@@ -22,6 +22,21 @@
 
 namespace tpy {
 
+// -- native_iterator: wraps C++ begin/end into Python-style __next_opt__() --
+
+template<typename Iter, typename T>
+struct native_iterator {
+    Iter current_;
+    Iter end_;
+
+    std::optional<T> __next_opt__() {
+        if (current_ == end_) return std::nullopt;
+        return std::optional<T>{*current_++};
+    }
+
+    native_iterator& __iter__() { return *this; }
+};
+
 // -- Constructors -----------------------------------------------------------
 
 // dict(native_iterable) -- construct from range of tuples
@@ -112,6 +127,10 @@ struct dict_keys_view {
     auto end() const { return map_->end(); }
     int32_t size() const { return map_->size(); }
     bool contains(const K& key) const { return map_->contains(key); }
+
+    auto __iter__() const {
+        return native_iterator<decltype(begin()), K>{begin(), end()};
+    }
 };
 
 template<typename K, typename V>
@@ -120,6 +139,10 @@ struct dict_values_view {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
+
+    auto __iter__() const {
+        return native_iterator<decltype(begin()), V>{begin(), end()};
+    }
 };
 
 template<typename K, typename V>
@@ -128,6 +151,10 @@ struct dict_items_view {
     auto begin() const { return map_->tuple_items_begin(); }
     auto end() const { return map_->tuple_items_end(); }
     int32_t size() const { return map_->size(); }
+
+    auto __iter__() const {
+        return native_iterator<decltype(begin()), std::tuple<K, V>>{begin(), end()};
+    }
 };
 
 template<typename K, typename V>
@@ -136,6 +163,13 @@ template<typename K, typename V>
 dict_values_view<K, V> dict_values(const ordered_map<K, V>& m) { return {&m}; }
 template<typename K, typename V>
 dict_items_view<K, V> dict_items(const ordered_map<K, V>& m) { return {&m}; }
+
+// -- ordered_map::__iter__() definition (deferred -- needs native_iterator) -
+
+template<typename K, typename V>
+auto ordered_map<K, V>::__iter__() const {
+    return native_iterator<const_iterator, K>{begin(), end()};
+}
 
 // -- View __len__ -----------------------------------------------------------
 

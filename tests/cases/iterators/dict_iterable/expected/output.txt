@@ -1,0 +1,16 @@
+keys via dict:
+a
+b
+c
+keys via keys():
+a
+b
+c
+values via values():
+1
+2
+3
+items via items():
+a 1
+b 2
+c 3

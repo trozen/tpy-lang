@@ -352,12 +352,18 @@ def init_module() -> BuiltinModule:
                 type_params=["K", "V"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
                 type_factory=lambda k, v: DictType(k, v),
-                extends=["NativeIterable[K]"],
+                extends=["NativeIterable[K]", "Iterable[K]"],
                 methods={
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="{self}.size()",
+            is_readonly=True,
+        )],
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (K,), is_protocol=True),
+            cpp="{self}.__iter__()",
             is_readonly=True,
         )],
         "__getitem__": [MethodDef(
@@ -457,12 +463,18 @@ def init_module() -> BuiltinModule:
                 type_params=["K", "V"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
                 type_factory=lambda k, v: DictKeysViewType(k, v),
-                extends=["NativeIterable[K]"],
+                extends=["NativeIterable[K]", "Iterable[K]"],
                 methods={
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="tpy::__len__({self})",
+            is_readonly=True,
+        )],
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (K,), is_protocol=True),
+            cpp="{self}.__iter__()",
             is_readonly=True,
         )],
     })
@@ -472,12 +484,18 @@ def init_module() -> BuiltinModule:
                 type_params=["K", "V"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
                 type_factory=lambda k, v: DictValuesViewType(k, v),
-                extends=["NativeIterable[V]"],
+                extends=["NativeIterable[V]", "Iterable[V]"],
                 methods={
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="tpy::__len__({self})",
+            is_readonly=True,
+        )],
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (V,), is_protocol=True),
+            cpp="{self}.__iter__()",
             is_readonly=True,
         )],
     })
@@ -487,12 +505,18 @@ def init_module() -> BuiltinModule:
                 type_params=["K", "V"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.TYPE],
                 type_factory=lambda k, v: DictItemsViewType(k, v),
-                extends=["NativeIterable[tuple[K, V]]"],
+                extends=["NativeIterable[tuple[K, V]]", "Iterable[tuple[K, V]]"],
                 methods={
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="tpy::__len__({self})",
+            is_readonly=True,
+        )],
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (TupleType((K, V)),), is_protocol=True),
+            cpp="{self}.__iter__()",
             is_readonly=True,
         )],
     })
