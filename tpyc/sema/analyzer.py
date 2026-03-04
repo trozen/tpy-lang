@@ -182,7 +182,7 @@ class SemanticAnalyzer:
         # These are registered as IMPORTED_NAME from "builtins" module
         # Generic types (list) are also registered - they're handled by generic type
         # inference code but need namespace entry to distinguish from tpy types
-        python_builtin_types = ["int", "str", "bool", "float", "list"]
+        python_builtin_types = ["int", "str", "bool", "float", "list", "dict"]
         for name in python_builtin_types:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
 

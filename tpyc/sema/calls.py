@@ -493,12 +493,15 @@ class CallAnalyzer:
                         inferred_params = self.type_ops.match_generic_constructor(ctor.params, arg_types)
                         if inferred_params is not None:
                             # Use type_factory to create the result type
-                            elem_type = inferred_params.get("T")
-                            if elem_type and type_def.type_factory:
-                                # Resolve IntLiteralType using configured default.
-                                if isinstance(elem_type, IntLiteralType):
-                                    elem_type = self.ctx.default_int_for_literal(elem_type)
-                                result_type = type_def.type_factory(elem_type)
+                            if (all(p in inferred_params for p in type_def.type_params)
+                                    and type_def.type_factory):
+                                factory_args = []
+                                for p in type_def.type_params:
+                                    t = inferred_params[p]
+                                    if isinstance(t, IntLiteralType):
+                                        t = self.ctx.default_int_for_literal(t)
+                                    factory_args.append(t)
+                                result_type = type_def.type_factory(*factory_args)
                                 expr.call_type = result_type
                                 if isinstance(result_type, PtrType):
                                     self._validate_ptr_constructor(expr)
@@ -1185,7 +1188,7 @@ class CallAnalyzer:
             for param_name, type_arg in inferred.items():
                 if param_name in overload.type_param_bounds:
                     bound = overload.type_param_bounds[param_name]
-                    if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                    if not protocol_checker(type_arg, bound):
                         raise self.ctx.error(
                             f"Type '{type_arg}' does not satisfy '{bound}' "
                             f"required by '{expr.func}'",

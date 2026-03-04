@@ -1,0 +1,1 @@
+main.py:3: error: Cannot infer element type for dict(); use dict[K, V](), provide a type annotation, or pass an iterable

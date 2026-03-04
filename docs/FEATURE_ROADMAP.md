@@ -29,7 +29,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A10 | Tuple type + unpacking | M-L | Done | [I](#tuple-type) |
 | A10a | Reference elements in tuples | M | Done | [I](#reference-elements-in-tuples) |
 | A10b | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
-| A11 | dict type | L | Phase 2 done | [VII](#dict-type) |
+| A11 | dict type | L | Done | [VII](#dict-type) |
 | A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Not started | [I](#mutable-span--readonlyspan--__span__-protocol) |
 
 ### Phase B: Polymorphism Foundation
@@ -1480,16 +1480,16 @@ Phased: Phase 1 covers literals, subscript, `len`, `in`, `for k in d`, `print`,
 `get`/`pop`/`clear`. Phase 2 adds `get(key, default)`, `keys()`/`values()`/`items()`,
 `update()`, `setdefault()`, `del d[k]`. Phase 3 adds `dict(pairs)` constructor.
 
-**Current state**: Phase 2 done. Covers `DictType` in type system, dict literals `{k: v}`,
+**Current state**: Phase 3 done. Covers `DictType` in type system, dict literals `{k: v}`,
 subscript read/write `d[k]`/`d[k]=v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
 iteration, `print(d)`, methods `get()`/`get(key, default)`/`pop()`/`clear()`/`update()`/
 `setdefault()`, views `keys()`/`values()`/`items()` with zero-allocation iteration,
+`dict(pairs)` constructor from `Iterable[tuple[K, V]]`,
 annotation hint propagation for nested dicts, dangling return detection. Runtime backed
-by `tpy::ordered_map<K,V>` with insertion-order preservation. 33 test cases.
+by `tpy::ordered_map<K,V>` with insertion-order preservation.
 Design document: `docs/DICT_DESIGN.md`.
 
-**Dependencies**: Phase 3 (`dict(pairs)` constructor) has no blockers.
-Key types restricted to primitives + Enum until `Hashable` protocol exists.
+**Dependencies**: Key types restricted to primitives + Enum until `Hashable` protocol exists.
 
 **Effort**: L (type + literals + methods + iteration + `ordered_map` C++ runtime)
 

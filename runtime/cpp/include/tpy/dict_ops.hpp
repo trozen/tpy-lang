@@ -13,11 +13,35 @@
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <ranges>
+#include <tuple>
 
 #include "core.hpp"
 #include "ordered_map.hpp"
 
 namespace tpy {
+
+// -- Constructors -----------------------------------------------------------
+
+// dict(native_iterable) -- construct from range of tuples
+template<typename K, typename V, std::ranges::input_range R>
+ordered_map<K, V> dict_from_pairs(R&& range) {
+    ordered_map<K, V> result;
+    for (auto&& elem : range) {
+        result.insert_or_assign(std::get<0>(elem), std::get<1>(elem));
+    }
+    return result;
+}
+
+// dict(opt_iterator) -- construct from user-defined iterator of tuples
+template<typename K, typename V, typename Iter>
+ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
+    ordered_map<K, V> result;
+    while (auto opt = iter.__next_opt__()) {
+        result.insert_or_assign(std::get<0>(*opt), std::get<1>(*opt));
+    }
+    return result;
+}
 
 // -- Methods ----------------------------------------------------------------
 

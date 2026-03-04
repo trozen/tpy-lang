@@ -45,6 +45,9 @@ public:
         explicit key_iterator_impl(NodePtr n) : node_(n) {}
 
     public:
+        // Required by std::forward_iterator (std::default_initializable)
+        key_iterator_impl() : node_(nullptr) {}
+
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = K;
@@ -97,6 +100,9 @@ public:
         explicit value_iterator_impl(NodePtr n) : node_(n) {}
 
     public:
+        // Required by std::forward_iterator (std::default_initializable)
+        value_iterator_impl() : node_(nullptr) {}
+
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = V;
@@ -122,6 +128,9 @@ public:
         explicit tuple_items_iterator_impl(NodePtr n) : node_(n) {}
 
     public:
+        // Required by std::forward_iterator (std::default_initializable)
+        tuple_items_iterator_impl() : node_(nullptr) {}
+
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
         using value_type = std::tuple<K, V>;

@@ -419,7 +419,22 @@ def init_module() -> BuiltinModule:
             cpp="tpy::dict_items({self})",
             is_readonly=True,
         )],
-    })
+    }, constructors=[
+        # dict(iterable) - create dict from iterable of tuple[K, V]
+        MethodDef(
+            params=[ParamDef("x", NamedType("NativeIterable", (TupleType((K, V)),), is_protocol=True))],
+            returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
+            cpp="tpy::dict_from_pairs<{K}, {V}>({0})",
+            is_readonly=True,
+        ),
+        # dict(iterator) - create dict from OptIterator of tuple[K, V]
+        MethodDef(
+            params=[ParamDef("x", NamedType("OptIterator", (TupleType((K, V)),), is_protocol=True))],
+            returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
+            cpp="tpy::dict_collect_pairs<{K}, {V}>({0})",
+            is_readonly=True,
+        ),
+    ])
 
     # dict_keys[K, V]: Keys view backed by tpy::dict_keys_view<K, V>
     module.type("dict_keys", cpp_type="tpy::dict_keys_view<{K}, {V}>",

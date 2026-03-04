@@ -24,6 +24,21 @@ if TYPE_CHECKING:
     from tpyc import modules as builtin_modules
 
 
+def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
+    """Check if any type in the tuple contains a TypeParamRef (directly or nested).
+
+    Handles TypeParamRef at top level and inside TupleType (e.g., tuple[K, V]).
+    Extend if other compound types are used in protocol type_args.
+    """
+    for t in types:
+        if isinstance(t, TypeParamRef):
+            return True
+        if isinstance(t, TupleType):
+            if _contains_type_param_ref(t.element_types):
+                return True
+    return False
+
+
 class TypeOperations:
     """Type validation, substitution, and inference operations."""
 
@@ -390,10 +405,10 @@ class TypeOperations:
             inferred[param_type.name] = arg_type
             return True
 
-        # Protocol with TypeParamRef in type_args (e.g., NativeIterable[T])
+        # Protocol with TypeParamRef in type_args (e.g., NativeIterable[T],
+        # NativeIterable[tuple[K, V]]) -- TypeParamRefs may be nested
         if is_protocol_type(param_type) and param_type.type_args:
-            has_type_param = any(isinstance(ta, TypeParamRef) for ta in param_type.type_args)
-            if has_type_param:
+            if _contains_type_param_ref(param_type.type_args):
                 return self._match_protocol_type_args_with_inference(param_type, arg_type, inferred)
 
         # ListType with nested TypeParamRef (e.g., list[T])
@@ -492,6 +507,10 @@ class TypeOperations:
                     elem_type = None
         if elem_type is None:
             return False
+        # Single type_arg: use recursive matching to handle compound types
+        # like NativeIterable[tuple[K, V]] where the type_arg is a TupleType
+        if len(param_type.type_args) == 1:
+            return self.match_type_with_inference(param_type.type_args[0], elem_type, inferred)
         for ta in param_type.type_args:
             if isinstance(ta, TypeParamRef):
                 if ta.name in inferred:
@@ -803,5 +822,9 @@ class TypeOperations:
         if is_any_str_type(iterable_type):
             return CHAR
 
-        # Use get_element_type() for container types (list, Array, Span, etc.)
+        # Use iteration element type for NativeIterable protocol matching
+        # (dict_items yields tuple[K,V] via get_iteration_element_type, not get_element_type)
+        iter_elem = iterable_type.get_iteration_element_type()
+        if iter_elem is not None:
+            return iter_elem
         return iterable_type.get_element_type()

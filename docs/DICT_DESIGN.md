@@ -6,7 +6,7 @@
 |-------|-------------|--------|
 | 1 | Core dict: `ordered_map` runtime, DictType, parser, sema, codegen, literals, subscript, `len`, `in`, `for k in d`, `print`, `get`/`pop`/`clear`, tests | Done |
 | 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `items()`, `update()`, `setdefault()`, `del d[k]` | Done |
-| 3 | `dict(pairs)` constructor | Not started |
+| 3 | `dict(pairs)` constructor | Done |
 
 ### Future Extensions
 
@@ -23,6 +23,7 @@
 | String copy avoidance in for-each | `PendingStrType` approach (see TODO) |
 | `copy()` | Redundant with value semantics, but Python compat |
 | `__repr__` / `repr()` | String representation protocol |
+| `dict[K,V](inline_literal)` | `dict[str, Int32]([("a", 1), ("b", 2)])` fails: IntLiterals in tuples don't unify in list literal analysis. Workaround: typed intermediate variable. Needs tuple-aware IntLiteral unification in list_literals.py |
 | Set operations on views | `d.keys() & other`, `d.keys() \| other`, etc. |
 
 ### Known Limitations
@@ -404,31 +405,29 @@ Also works for `del lst[i]` (list) and user types with `__delitem__`.
 
 ---
 
-## Phase 3: Tuple-Dependent Features
+## Phase 3: Tuple-Dependent Features (Done)
 
-Tuple type (A10) is now implemented. This phase is unblocked.
+Tuple type (A10) is now implemented. `.items()` was implemented in Phase 2.
 
-### `.items()` Iteration
-
-```python
-for k, v in d.items():
-    print(k, v)
-```
-
-Returns an iterable of `tuple[K, V]`. Requires:
-- Tuple unpacking in for-loop (`for k, v in ...`)
-- `.items()` method using the existing `items_begin()`/`items_end()` iterators
-
-The `items_iterator` already yields proxy `pair<const K&, V&>` which can map
-to `tuple[K, V]`.
-
-### `dict(pairs)` Constructor
+### `dict(pairs)` Constructor (Done)
 
 ```python
-d = dict([(k, v) for k, v in pairs])
+pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2)]
+d = dict(pairs)              # from list of tuples
+d2 = dict(other.items())     # from items view
 ```
 
-Requires iterable of tuples.
+Accepts any `NativeIterable[tuple[K, V]]` or `OptIterator[tuple[K, V]]`.
+K and V are inferred from the element type of the iterable.
+
+C++ implementation: `dict_from_pairs` (range-based) and `dict_collect_pairs`
+(OptIterator-based) in `dict_ops.hpp`. Uses `std::get<0>`/`std::get<1>` to
+destructure tuples, then `insert_or_assign` into the target `ordered_map`.
+
+Sema changes: `match_type_with_inference` now handles compound protocol type_args
+(e.g., `NativeIterable[tuple[K, V]]`) by recursively matching through TupleType.
+Generic constructor inference generalized from single type param (T) to multiple
+(K, V) using `type_def.type_params`.
 
 ### Dict Comprehension
 

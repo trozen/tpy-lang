@@ -631,6 +631,10 @@ class Default(_Protocol):
 
 
 class _MakeDefault:
+    """Callable that constructs a default value of type T.
+
+    Supports both make_default[T]() and make_default() (with type inferred from annotation).
+    """
     _type = None
 
     def __call__(self):
