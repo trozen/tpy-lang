@@ -27,9 +27,7 @@ unsafe_cast[UInt32](p)               # T explicit, U from arg (partial type args
 | Phase | Scope | Status |
 |-------|-------|--------|
 | **Phase 1** | Return-type inference fallback for assignment + return context (exact/generic matches only) | **Done** |
-| **Phase 1b** | Coercion-aware return-type matching (numeric widening etc.); (optional, may be postponed) | Planned |
 | **Phase 2** | Nested call context + partial explicit type args + unsafe_cast cleanup | **Done** |
-| **Phase 3** | Overload filtering by expected return type | Planned |
 
 ## Design Principles
 
@@ -163,16 +161,9 @@ Usage patterns:
 
 ---
 
-## Phase 3: Overload Filtering by Return Type (Planned)
+## Future Extensions
 
-When multiple overloads match arguments, use expected return type as a filter:
-
-1. Build candidate set from name/arity
-2. Argument-based viability check (existing)
-3. If expected type exists, filter by return type compatibility
-4. If one remains, resolve; if zero, error with context mention; if multiple,
-   require explicit disambiguation
-
-Expected type is a filter, not a scoring bonus. No heuristic tie-breakers.
-
----
+| Extension | Description |
+|-----------|-------------|
+| Coercion-aware return-type matching | Allow numeric widening when matching return type against expected type. No practical use case found -- type param inference always produces exact matches. |
+| Overload filtering by return type | When multiple overloads match arguments, use expected return type as a filter. No practical use case exists yet -- overloads are distinguished by argument types today. |

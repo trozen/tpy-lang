@@ -48,7 +48,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
 | B12 | `Self` type | S | Not started | [I](#self-type) |
-| B13 | Bi-directional type inference | M | Not started | [I](#bi-directional-type-inference) |
+| B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
 | B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Not started | [II](#isinstance-on-static-protocols) |
 
@@ -620,12 +620,16 @@ like `connect("localhost", Int32(8080))` can't infer that `8080` should be `Int3
 the parameter type. Bi-directional inference enables coercion-aware argument matching
 and return-type-based overload filtering.
 
-**Current state**: Not started. Design document exists with phased approach
-(Phase 1b: coercion-aware matching, Phase 3: overload filtering by return type).
+**Current state**: Done (core). Return-type inference fallback (Phase 1), nested call
+context propagation, and partial explicit type args (Phase 2) are all working. See
+`docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` for details.
 
-**Dependencies**: None for Phase 1b. Overloads (B10) for Phase 3.
+Remaining extensions tracked in the design doc (no practical use case found for either):
+coercion-aware return-type matching, overload filtering by return type.
 
-**Effort**: M (phased implementation, touches sema call resolution)
+**Dependencies**: None.
+
+**Effort**: M (done for core; future extensions are incremental)
 
 ---
 
