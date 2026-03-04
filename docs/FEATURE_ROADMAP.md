@@ -358,12 +358,11 @@ overhead, and naturally composes with the existing Span ecosystem (len, indexing
 This is the key missing piece for `ArrayList[T, N]` (tplib) to fully replace the builtin
 `StaticList[T, N]` with equivalent iteration performance.
 
-**Current state**: Not started.
+**Current state**: Part 1 done. Part 2 (A12) in progress.
 
-**Dependencies**: None for Part 1 (standalone type system change). Part 2 needs Part 1.
+**Dependencies**: Part 2 needs Part 1 (done).
 
-**Effort**: M (Part 1: S -- type system + codegen + coercion updates + snapshot refresh.
-Part 2: S-M -- sema protocol detection + codegen dispatch + iterator synthesis)
+**Effort**: Part 2: S-M (sema protocol detection + codegen dispatch + iterator synthesis)
 
 ---
 
