@@ -51,6 +51,33 @@ V dict_pop_default(ordered_map<K, V>& m, const KeyArg& key, V def) {
     return result;
 }
 
+// d.get(key, default) -> V
+template<typename K, typename V, typename KeyArg>
+V dict_get_default(const ordered_map<K, V>& m, const KeyArg& key, V def) {
+    auto it = m.find(K(key));
+    if (it == m.items_end()) return def;
+    return (*it).second;
+}
+
+// d.update(other)
+template<typename K, typename V>
+void dict_update(ordered_map<K, V>& m, const ordered_map<K, V>& other) {
+    for (auto it = other.items_begin(); it != other.items_end(); ++it) {
+        auto&& [k, v] = *it;
+        m.insert_or_assign(k, v);
+    }
+}
+
+// d.setdefault(key, default) -> V
+template<typename K, typename V, typename KeyArg>
+V dict_setdefault(ordered_map<K, V>& m, const KeyArg& key, V def) {
+    K k(key);
+    auto it = m.find(k);
+    if (it != m.items_end()) return (*it).second;
+    m.insert_or_assign(k, std::move(def));
+    return (*m.find(k)).second;
+}
+
 // -- Views (zero-allocation wrappers for keys/values/items iteration) -------
 
 template<typename K, typename V>

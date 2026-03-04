@@ -29,7 +29,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A10 | Tuple type + unpacking | M-L | Done | [I](#tuple-type) |
 | A10a | Reference elements in tuples | M | Not started | [I](#reference-elements-in-tuples) |
 | A10b | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
-| A11 | dict type | L | Phase 1 done | [VII](#dict-type) |
+| A11 | dict type | L | Phase 2 done | [VII](#dict-type) |
 | A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Not started | [I](#mutable-span--readonlyspan--__span__-protocol) |
 
 ### Phase B: Polymorphism Foundation
@@ -1476,17 +1476,18 @@ combined with an intrusive doubly-linked list to preserve Python 3.7+ insertion 
 
 **Why it matters**: Used in 24 files of the compiler source. Most Python programs use dicts.
 Phased: Phase 1 covers literals, subscript, `len`, `in`, `for k in d`, `print`,
-`get`/`pop`/`clear`. Phase 2 adds `keys()`/`values()`/`update()`/`copy()`. Phase 3
-(needs Tuple) adds `.items()` iteration and dict comprehensions.
+`get`/`pop`/`clear`. Phase 2 adds `get(key, default)`, `keys()`/`values()`/`items()`,
+`update()`, `setdefault()`, `del d[k]`. Phase 3 adds `dict(pairs)` constructor.
 
-**Current state**: Phase 1 done. Covers `DictType` in type system, dict literals `{k: v}`,
-subscript read/write `d[k]`/`d[k]=v`, `len(d)`, `k in d`, `for k in d` iteration,
-`print(d)`, methods `get()`/`pop()`/`clear()`, annotation hint propagation for nested
-dicts, dangling return detection. Runtime backed by `tpy::ordered_map<K,V>` with
-insertion-order preservation. 21 test cases. Design document: `docs/DICT_DESIGN.md`.
+**Current state**: Phase 2 done. Covers `DictType` in type system, dict literals `{k: v}`,
+subscript read/write `d[k]`/`d[k]=v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
+iteration, `print(d)`, methods `get()`/`get(key, default)`/`pop()`/`clear()`/`update()`/
+`setdefault()`, views `keys()`/`values()`/`items()` with zero-allocation iteration,
+annotation hint propagation for nested dicts, dangling return detection. Runtime backed
+by `tpy::ordered_map<K,V>` with insertion-order preservation. 33 test cases.
+Design document: `docs/DICT_DESIGN.md`.
 
-**Dependencies**: Phase 2 (methods) has no blockers. Phase 3 (`.items()` iteration)
-unblocked now that Tuple (A10) is done.
+**Dependencies**: Phase 3 (`dict(pairs)` constructor) has no blockers.
 Key types restricted to primitives + Enum until `Hashable` protocol exists.
 
 **Effort**: L (type + literals + methods + iteration + `ordered_map` C++ runtime)

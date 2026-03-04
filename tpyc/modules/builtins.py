@@ -35,8 +35,9 @@ LIST_MUTATION_METHODS = frozenset({
     "__setitem__", "__delitem__",
 })
 
+# Reserved for future dict literal type deduction (cf. LIST_MUTATION_METHODS)
 DICT_MUTATION_METHODS = frozenset({
-    "__setitem__", "__delitem__", "pop", "clear",
+    "__setitem__", "__delitem__", "pop", "clear", "update", "setdefault",
 })
 
 
@@ -359,12 +360,20 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="tpy::__delitem__({self}, {0})",
         )],
-        "get": [MethodDef(
-            params=[ParamDef("key", K)],
-            returns=OptionalType(V),
-            cpp="tpy::dict_get({self}, {0})",
-            is_readonly=True,
-        )],
+        "get": [
+            MethodDef(
+                params=[ParamDef("key", K)],
+                returns=OptionalType(V),
+                cpp="tpy::dict_get({self}, {0})",
+                is_readonly=True,
+            ),
+            MethodDef(
+                params=[ParamDef("key", K), ParamDef("default", V)],
+                returns=V,
+                cpp="tpy::dict_get_default({self}, {0}, {1})",
+                is_readonly=True,
+            ),
+        ],
         "pop": [
             MethodDef(
                 params=[ParamDef("key", K)],
@@ -381,6 +390,16 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=VOID,
             cpp="{self}.clear()",
+        )],
+        "update": [MethodDef(
+            params=[ParamDef("other", DictType(K, V))],
+            returns=VOID,
+            cpp="tpy::dict_update({self}, {0})",
+        )],
+        "setdefault": [MethodDef(
+            params=[ParamDef("key", K), ParamDef("default", OwnType(V))],
+            returns=V,
+            cpp="tpy::dict_setdefault({self}, {0}, {1})",
         )],
         "keys": [MethodDef(
             params=[],

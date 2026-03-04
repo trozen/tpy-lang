@@ -5,8 +5,32 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Core dict: `ordered_map` runtime, DictType, parser, sema, codegen, literals, subscript, `len`, `in`, `for k in d`, `print`, `get`/`pop`/`clear`, tests | Done |
-| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `items()`, `update()`, `copy()`, `setdefault()`, `del d[k]` | In progress |
-| 3 | Dict comprehensions, `dict(pairs)` constructor | Not started |
+| 2 | Extended methods: `get(key, default)`, `keys()`, `values()`, `items()`, `update()`, `setdefault()`, `del d[k]` | Done |
+| 3 | `dict(pairs)` constructor | Not started |
+
+### Future Extensions
+
+| Feature | Notes |
+|---------|-------|
+| `setdefault(key)` | 1-arg form; needs type bound `V: Optional` |
+| Dict comprehension | `{k: v for k, v in items}` |
+| `d \| other` / `d \|= other` | PEP 584 merge operators |
+| `popitem()` | Remove and return last (k, v) pair |
+| `dict.fromkeys(keys, value)` | Class method / static constructor |
+| `reversed(d)` | Reversed iteration over keys |
+| BigInt keys | Needs `std::hash<BigInt>` |
+| User records as keys | Needs `Hashable` protocol (`__hash__` + `__eq__`) |
+| String copy avoidance in for-each | `PendingStrType` approach (see TODO) |
+| `copy()` | Redundant with value semantics, but Python compat |
+| `__repr__` / `repr()` | String representation protocol |
+| Set operations on views | `d.keys() & other`, `d.keys() \| other`, etc. |
+
+### Known Limitations
+
+| Area | Detail |
+|------|--------|
+| `get(key, default)` default by value | Default is always constructed even on hit (C++ pass-by-value). Pre-existing pattern shared with `pop(key, default)`. |
+| `setdefault` default ownership | Uses `OwnType(V)` for sema-level move enforcement; `get` uses plain `V` since it never inserts. Intentional asymmetry. |
 
 ---
 
@@ -266,7 +290,7 @@ for `ordered_map`.
 
 ### 8. Tests
 
-23 test cases under `tests/cases/dict/`:
+33 test cases under `tests/cases/dict/`:
 
 | Test | What it covers |
 |------|---------------|
@@ -283,6 +307,14 @@ for `ordered_map`.
 | `dict_mutate_param` | Dict mutation through function parameter |
 | `dict_nested` | Nested `dict[str, dict[str, Int32]]` with annotation propagation |
 | `dict_del` | `del d[k]`, multi-target del, del-then-insert |
+| `dict_keys` | `d.keys()` iteration and `len()` |
+| `dict_values` | `d.values()` iteration and `len()` |
+| `dict_items` | `d.items()` iteration with tuple unpacking |
+| `dict_views_empty` | Views on empty dict |
+| `dict_views_print` | View `print()` output format |
+| `dict_get_default` | `get(key, default)` -- returns value or default |
+| `dict_update` | `update(other)` -- merge, overwrite, preserve order |
+| `dict_setdefault` | `setdefault(key, default)` -- insert-if-absent |
 | `error_dict_empty_no_annotation` | `d = {}` without type annotation |
 | `error_dict_key_type` | List or other unhashable type as key |
 | `error_dict_key_mismatch` | Mixed key types in literal |
@@ -290,23 +322,32 @@ for `ordered_map`.
 | `error_dict_subscript_key_type` | Wrong key type in subscript |
 | `error_dict_in_key_type` | Wrong key type in `in` operator |
 | `error_dict_return_dangling` | Returning dict literal without `Own[]` |
+| `error_dict_get_default_type` | Wrong default type in `get(key, default)` |
+| `error_dict_update_type` | Wrong dict type in `update(other)` |
 | `panic_dict_missing_key` | `d[missing_key]` panics |
 | `panic_dict_pop_missing` | `d.pop(missing_key)` panics |
 | `panic_dict_del_missing` | `del d[missing_key]` panics |
 
 ---
 
-## Phase 2: Extended Methods
+## Phase 2: Extended Methods (Done)
 
-Scope: `get(key, default)`, `keys()`, `values()`, `update()`, `copy()`,
-`setdefault()`, `del d[k]`.
+All Phase 2 methods are implemented. `copy()` is unnecessary since TPy dicts have
+value semantics (`d2 = d` already copies).
 
-### `get(key, default)`
+### `get(key, default)` (Done)
 
-The two-arg overload `get(key, default) -> V` returns a different type than the
-one-arg overload `get(key) -> V | None`. This kind of return-type-varying overload
-is not currently supported for user types. Deferred to Phase 2 to design the
-overload resolution properly.
+Two-arg overload `get(key, default) -> V` returns a concrete V (not Optional),
+while one-arg `get(key) -> V | None` returns Optional. Both are registered as
+overloads in builtins.
+
+```python
+d = {"a": 1, "b": 2}
+print(d.get("a", 99))   # 1
+print(d.get("z", 99))   # 99
+```
+
+C++ implementation: `dict_get_default` in `dict_ops.hpp`.
 
 ### `keys()`, `values()`, `items()` (Done)
 
@@ -329,29 +370,26 @@ in `dict_ops.hpp` wrapping a `const ordered_map<K,V>*`. Items view yields
 Type system: `DictKeysViewType`, `DictValuesViewType`, `DictItemsViewType` in
 `typesys.py` with appropriate `get_iteration_element_type()` (K, V, tuple[K,V]).
 
-### `update()`
+### `update()` (Done)
 
 ```python
 d.update(other)    # merge other dict into d
 ```
 
-C++ implementation: iterate other, `insert_or_assign` each pair into self.
+C++ implementation: `dict_update` in `dict_ops.hpp` -- iterates other,
+`insert_or_assign` each pair into self.
 
-### `copy()`
+### `setdefault()` (Done)
 
-```python
-d2 = d.copy()    # shallow copy
-```
-
-C++ implementation: copy constructor.
-
-### `setdefault()`
+Only the 2-arg form `setdefault(key, default)` is supported. Python's 1-arg form
+uses `None` as default, which requires `V` to be `Optional` -- not practical in TPy.
 
 ```python
 v = d.setdefault("key", 0)    # insert if missing, return value
 ```
 
-C++ implementation: `find` + conditional `insert_or_assign`, return reference.
+C++ implementation: `dict_setdefault` in `dict_ops.hpp` -- `find` + conditional
+`insert_or_assign`, return value.
 
 ### `del d[k]` (Done)
 
@@ -402,22 +440,6 @@ Requires comprehension expression support (separate feature).
 
 ---
 
-## Future Extensions
-
-- **BigInt keys**: Add `std::hash<BigInt>` specialization to `bigint.hpp`. Sema already
-  accepts BigInt as a key type, but C++ compilation fails without the hash.
-- **Lazy views for `keys()`/`values()`**: Return `std::views::keys` / `std::views::values`
-  wrappers instead of allocating `list[K]`/`list[V]`. Needs new view types in the type system.
-- **User records as keys**: Allow user-defined types with `__hash__` + `__eq__` as dict keys.
-  Needs `Hashable` protocol in the type system.
-- **Avoid string key copy in for-each**: `for k in d` where K=str generates
-  `for (std::string k : d)`, copying each key. The key iterator yields `const K&`, so
-  `const auto&` would avoid the copy, but this affects all for-each loops (not just dict)
-  and breaks cases where the loop body takes a mutable reference to the element.
-  See `TODO.md` for details.
-
----
-
 ## Dependencies
 
 **Blocked by**: Nothing for Phase 1. Phase 3 unblocked (Tuple A10 is implemented).
@@ -437,7 +459,7 @@ Requires comprehension expression support (separate feature).
 | File | Purpose |
 |------|---------|
 | `runtime/cpp/include/tpy/ordered_map.hpp` | `tpy::ordered_map<K,V>` with key and items iterators |
-| `runtime/cpp/include/tpy/dict_ops.hpp` | `dict_get`, `dict_pop`, `dict_pop_default`, `DictPrinter` |
+| `runtime/cpp/include/tpy/dict_ops.hpp` | `dict_get`, `dict_get_default`, `dict_pop`, `dict_pop_default`, `dict_update`, `dict_setdefault`, view types, `DictPrinter` |
 
 ### Modified Files
 
