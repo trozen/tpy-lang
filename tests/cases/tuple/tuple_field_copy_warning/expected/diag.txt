@@ -1,0 +1,1 @@
+main.py:14: warning: copies Point into field (tuple element 0); use copy() to make this explicit

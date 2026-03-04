@@ -1,5 +1,5 @@
 # Tuple literal assigned to self.field uses VALUE capture (owned copies).
-from tpy import Int32
+from tpy import Int32, copy
 
 class Point:
     x: Int32
@@ -11,7 +11,7 @@ class Point:
 class Container:
     data: tuple[Point, Int32]
     def __init__(self, p: Point, n: Int32) -> None:
-        self.data = (p, n)
+        self.data = (copy(p), n)
     def __repr__(self) -> str:
         return "Container"
 

@@ -1,1 +1,0 @@
-TPy field assignment uses VALUE capture (copies), CPython tuples hold references.

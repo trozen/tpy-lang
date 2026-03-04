@@ -181,7 +181,14 @@ class StatementAnalyzer:
                 continue
 
             # Field context: all reference-type elements are owned (VALUE)
+            # Warn if not an explicit copy() -- same as scalar field assignment
             if is_field:
+                if self.compat.needs_copy_warning(elem, et):
+                    self.ctx.warning(
+                        f"copies {et} into field (tuple element {i}); "
+                        f"use copy() to make this explicit",
+                        elem
+                    )
                 literal.elem_capture.append(V)
                 continue
 
@@ -1309,9 +1316,7 @@ class StatementAnalyzer:
                                               coercion_ctx=CoercionContext.ASSIGN)
         # Annotate tuple literal element capture modes
         if isinstance(stmt.value, TpyTupleLiteral) and isinstance(target_type, TupleType):
-            is_field = (isinstance(stmt.target, TpyFieldAccess)
-                        and isinstance(stmt.target.obj, TpyName)
-                        and stmt.target.obj.name == "self")
+            is_field = isinstance(stmt.target, TpyFieldAccess)
             self._annotate_tuple_elem_capture(
                 stmt.value, target_type, is_field=is_field)
         if isinstance(stmt.target, TpyFieldAccess):
