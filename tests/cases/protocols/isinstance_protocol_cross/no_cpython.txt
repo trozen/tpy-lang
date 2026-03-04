@@ -1,0 +1,1 @@
+tpy.Hashable is not @runtime_checkable in CPython

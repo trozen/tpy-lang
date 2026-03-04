@@ -685,13 +685,13 @@ class CallAnalyzer:
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
     def _analyze_isinstance(self, expr: TpyCall) -> TpyType:
-        """Analyze isinstance(x, T) for union type narrowing.
+        """Analyze isinstance(x, T) for union type narrowing or protocol checks.
 
-        Validates:
-        - No keyword arguments
-        - Exactly 2 arguments
-        - First argument is a simple name with a UnionType
-        - Second argument is a type name that is a member of the union
+        Supports two modes:
+        1. Union narrowing: isinstance(x, MemberType) where x has a union type
+        2. Protocol check: isinstance(x, Protocol) where x is a protocol-typed
+           template parameter -- compiles to if constexpr (Concept<T_x>)
+
         Sets isinstance_var and isinstance_type on the TpyCall node.
         """
         self._reject_kwargs_for_builtin(expr, "isinstance")
@@ -707,6 +707,15 @@ class CallAnalyzer:
             )
 
         self.expr.analyze_expr(first_arg)
+
+        # Check if second arg is a static protocol name
+        second_arg = expr.args[1]
+        if isinstance(second_arg, TpyName):
+            protocol_info = self.ctx.registry.get_protocol(second_arg.name)
+            if protocol_info is not None and not protocol_info.is_dynamic:
+                return self._analyze_isinstance_protocol(
+                    expr, first_arg, second_arg.name, protocol_info
+                )
 
         effective_type = self.expr.narrowing.effective_union_type(first_arg.name)
 
@@ -735,7 +744,44 @@ class CallAnalyzer:
 
         expr.isinstance_var = first_arg.name
         expr.isinstance_type = resolved_type
-        expr.resolved_function_info = FunctionInfo(
+        expr.resolved_function_info = self._isinstance_function_info()
+        return BOOL
+
+    def _analyze_isinstance_protocol(
+        self, expr: TpyCall, first_arg: TpyName, protocol_name: str,
+        protocol_info: 'ProtocolInfo',
+    ) -> TpyType:
+        """Analyze isinstance(x, Protocol) for compile-time protocol checks.
+
+        Validates that the first argument is a protocol-typed parameter (template
+        param in C++). Generates if constexpr (Concept<T_x>) at codegen time.
+        """
+        var_type = self.ctx.get_expr_type(first_arg)
+        if var_type is not None:
+            var_type = unwrap_readonly(var_type)
+        if var_type is None:
+            raise self.ctx.error(
+                "isinstance() with a protocol requires a protocol-typed parameter, "
+                "but the variable type could not be resolved",
+                expr
+            )
+        if not is_protocol_type(var_type):
+            raise self.ctx.error(
+                f"isinstance() with a protocol requires a protocol-typed parameter, "
+                f"got '{var_type}'",
+                expr
+            )
+
+        protocol_type = NamedType(protocol_name, is_protocol=True)
+        expr.isinstance_var = first_arg.name
+        expr.isinstance_type = protocol_type
+        expr.isinstance_is_protocol = True
+        expr.resolved_function_info = self._isinstance_function_info()
+        return BOOL
+
+    @staticmethod
+    def _isinstance_function_info() -> FunctionInfo:
+        return FunctionInfo(
             name="isinstance",
             params=[],
             return_type=BOOL,
@@ -744,7 +790,6 @@ class CallAnalyzer:
             special_handling=True,
             qualified_name="builtins.isinstance",
         )
-        return BOOL
 
     def _analyze_enum_from_value(self, expr: TpyCall, enum_type: EnumType) -> TpyType:
         """Analyze enum value lookup: Color(0) -> Color."""

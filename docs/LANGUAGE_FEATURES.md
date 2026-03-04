@@ -2351,7 +2351,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Emits C++ `using Shape = std::variant<Circle, Rect>;` in the header
   - `isinstance(x, Shape)` where `Shape` is a type alias is not yet supported; isinstance on concrete member types only
   - Type aliases can be imported cross-module: `from shapes import Shape`
-  - **Not yet supported**: `isinstance(x, (A, B))` tuple form, pattern matching on variants
+  - **Not yet supported**: `isinstance(x, (A, B))` tuple form, pattern matching on variants, `isinstance(x, Protocol)` on concrete-typed variables
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - `x is None` / `x is not None` for null checks
@@ -3335,6 +3335,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: String slicing: `s[1:3]`, `s[:3]`, `s[1:]`, `s[:-1]` -- returns `StrView`, Python clamping semantics, no step yet
 - **Planned**: List slicing: `items[1:3]`
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
+- **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
 - **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from NativeIterable containers, `list(range(...))`, `list(iterator)` from OptIterator
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity

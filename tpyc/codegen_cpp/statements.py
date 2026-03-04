@@ -373,6 +373,14 @@ class StatementGenerator:
                     guards.append(var_name)
         return guards
 
+    def _is_protocol_isinstance_condition(self, condition: 'TpyExpr') -> bool:
+        """Check if condition is isinstance(x, Protocol) requiring if constexpr."""
+        if isinstance(condition, TpyCall) and condition.isinstance_is_protocol:
+            return True
+        if isinstance(condition, TpyUnaryOp) and condition.op == "!":
+            return self._is_protocol_isinstance_condition(condition.operand)
+        return False
+
     def _gen_dynamic_protocol_init(self, name: str, target_type: NamedType,
                                     init: 'TpyExpr', indent: str) -> str:
         """Generate slot + pointer-local for a @dynamic protocol variable.
@@ -1231,11 +1239,14 @@ class StatementGenerator:
         # Emit if / else if / else chain
         for i, node in enumerate(chain):
             cond = self.expressions.gen_truthy_expr(node.condition)
+            is_constexpr = self._is_protocol_isinstance_condition(node.condition)
+            if_kw = "if constexpr" if is_constexpr else "if"
             if i == 0:
                 self.ctx.temps.flush(out, indent)
-                out.write(f"{indent}if ({cond}) {{\n")
+                out.write(f"{indent}{if_kw} ({cond}) {{\n")
             elif not self.ctx.temps._pending:
-                out.write(f"{indent}}} else if ({cond}) {{\n")
+                else_kw = "else if constexpr" if is_constexpr else "else if"
+                out.write(f"{indent}}} {else_kw} ({cond}) {{\n")
             else:
                 # Elif condition produced temp vars -- can't use flat
                 # else-if (no statements allowed between } and else).

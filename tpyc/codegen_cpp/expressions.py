@@ -737,6 +737,9 @@ class ExpressionGenerator:
     ) -> None:
         """Walk expression tree to collect isinstance type facts."""
         if isinstance(expr, TpyCall) and expr.isinstance_var and expr.isinstance_type:
+            # Protocol isinstance uses if constexpr -- no extraction needed
+            if expr.isinstance_is_protocol:
+                return
             if true_branch:
                 facts[expr.isinstance_var] = expr.isinstance_type
             else:
@@ -781,6 +784,10 @@ class ExpressionGenerator:
 
     def _gen_call(self, expr: TpyCall) -> str:
         """Generate function call code."""
+        # isinstance(x, Protocol) -> Concept<T_x>  (compile-time)
+        if expr.isinstance_var is not None and expr.isinstance_is_protocol and expr.isinstance_type is not None:
+            concept = self.protocols.get_concept_name(expr.isinstance_type)
+            return f"{concept}<T_{expr.isinstance_var}>"
         # isinstance(x, T) -> std::holds_alternative<CppT>(x)
         if expr.isinstance_var is not None and expr.isinstance_type is not None:
             cpp_type = self.types.type_to_cpp(expr.isinstance_type)
