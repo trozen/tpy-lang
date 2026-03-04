@@ -1,0 +1,1 @@
+main.py:5: error: Self type cannot be used as a return type. Self is only valid in class or protocol method signatures

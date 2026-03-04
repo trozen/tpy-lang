@@ -1,0 +1,1 @@
+main.py:12: error: Self type cannot be used in @staticmethod 'Foo.bad_param' parameter 'x'

@@ -26,6 +26,27 @@ if TYPE_CHECKING:
 from tpyc import modules as builtin_modules
 
 
+def _contains_self_type(typ: TpyType) -> bool:
+    """Check if a type contains SelfType anywhere in its structure."""
+    if isinstance(typ, SelfType):
+        return True
+    return any(_contains_self_type(inner) for inner in typ.inner_types())
+
+
+def build_record_self_type(record: TpyRecord) -> NamedType:
+    """Build a NamedType representing Self for a record, preserving type param kinds."""
+    if record.type_params:
+        type_args = tuple(
+            TypeParamRef(
+                name=tp,
+                kind=record.type_param_kinds[i] if i < len(record.type_param_kinds) else TypeParamKind.TYPE,
+            )
+            for i, tp in enumerate(record.type_params)
+        )
+        return NamedType(record.name, type_args)
+    return NamedType(record.name)
+
+
 class TypeRegistrar:
     """Registers builtin types, records, protocols, and functions."""
 
@@ -216,6 +237,12 @@ class TypeRegistrar:
                     f"Use 'str' or 'String' for owned string fields",
                     loc=fld.loc
                 )
+            # Self cannot be used as a field type (infinite size or broken codegen)
+            if _contains_self_type(fld.type):
+                raise SemanticError(
+                    f"Self cannot be used as a field type in '{record.name}'",
+                    loc=fld.loc
+                )
 
         del_method = record.del_method
         if del_method:
@@ -251,23 +278,49 @@ class TypeRegistrar:
             for fld in record.fields:
                 init_params.append((fld.name, fld.type, fld.default_value))
 
+        # Build the Self type for this record (used to substitute SelfType in methods)
+        record_self_type = build_record_self_type(record)
+
         # Register all methods
         methods = {}
         for method in record.methods:
             method_has_type_params = bool(method.type_params)
             allow_tpref = is_generic or method_has_type_params
-            for pname, ptype in method.params:
+
+            # Validate Self usage: not allowed in @staticmethod
+            if method.is_staticmethod:
+                for pname, ptype in method.params:
+                    if _contains_self_type(ptype):
+                        raise SemanticError(
+                            f"Self type cannot be used in @staticmethod '{record.name}.{method.name}' "
+                            f"parameter '{pname}'",
+                            method.loc or record.loc,
+                        )
+                if _contains_self_type(method.return_type):
+                    raise SemanticError(
+                        f"Self type cannot be used as return type of "
+                        f"@staticmethod '{record.name}.{method.name}'",
+                        method.loc or record.loc,
+                    )
+            # Substitute Self -> record type in method signatures
+            method_params = [
+                (n, self.type_ops.substitute_self(t, record_self_type))
+                for n, t in method.params
+            ]
+            method_return = self.type_ops.substitute_self(method.return_type, record_self_type)
+
+            for pname, ptype in method_params:
                 if not self.type_ops.is_type_param_ref(ptype):
                     self.type_ops.validate_type(ptype, allow_type_param_ref=allow_tpref, loc=record.loc)
-            if not self.type_ops.is_type_param_ref(method.return_type):
-                self.type_ops.validate_type(method.return_type, allow_type_param_ref=allow_tpref, loc=record.loc)
+            if not self.type_ops.is_type_param_ref(method_return):
+                self.type_ops.validate_type(method_return, allow_type_param_ref=allow_tpref, loc=record.loc)
             # Protocol types cannot be used as method return types.
             # Exception: @dynamic protocols can be returned as Base& (same as free functions).
-            if is_protocol_type(method.return_type):
-                pi = self.ctx.registry.get_protocol(method.return_type.name)
+            if is_protocol_type(method_return):
+                pi = self.ctx.registry.get_protocol(method_return.name)
                 if not (pi and pi.is_dynamic):
                     raise SemanticError(
-                        f"Protocol type '{method.return_type.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
+                        f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                         f"Only @dynamic protocols can be used as return types",
                         method.loc or record.loc,
                     )
@@ -278,13 +331,16 @@ class TypeRegistrar:
             method_type_param_bounds = self._resolve_type_param_bounds(
                 method.type_param_bounds, method.loc or record.loc)
             method_defaults = method.defaults if method.defaults else []
+            # Propagate resolved types back to AST so analyzer/codegen see concrete types
+            method.params = method_params
+            method.return_type = method_return
             methods[method.name] = [FunctionInfo(
                 name=method.name,
                 params=[
                     ParamInfo(n, t, default_expr=method_defaults[i] if i < len(method_defaults) else None)
-                    for i, (n, t) in enumerate(method.params)
+                    for i, (n, t) in enumerate(method_params)
                 ],
-                return_type=method.return_type,
+                return_type=method_return,
                 is_readonly=resolved_readonly,
                 is_method=True,
                 is_staticmethod=method.is_staticmethod,
@@ -308,15 +364,10 @@ class TypeRegistrar:
 
         # Auto-synthesize __iter__() -> Self on iterator types (has __next__ but no __iter__)
         if ("__next__" in methods or "__next_opt__" in methods) and "__iter__" not in methods:
-            if record.type_params:
-                self_type = NamedType(record.name,
-                    tuple(TypeParamRef(tp) for tp in record.type_params))
-            else:
-                self_type = NamedType(record.name)
             methods["__iter__"] = [FunctionInfo(
                 name="__iter__",
                 params=[],
-                return_type=self_type,
+                return_type=record_self_type,
                 is_method=True,
                 is_readonly=False,
             )]
@@ -714,11 +765,6 @@ class TypeRegistrar:
                 protocol.loc
             )
 
-        def _contains_self_type(typ: TpyType) -> bool:
-            if isinstance(typ, SelfType):
-                return True
-            return any(_contains_self_type(inner) for inner in typ.inner_types())
-
         for msig in all_methods:
             if _contains_self_type(msig.return_type):
                 raise SemanticError(
@@ -784,7 +830,6 @@ class TypeRegistrar:
 
     def register_function(self, func: TpyFunction) -> None:
         """Register a function."""
-        from ..typesys import SelfType
         # Allow TypeParamRef in params/return for generic functions
         is_generic = bool(func.type_params)
 
@@ -796,11 +841,10 @@ class TypeRegistrar:
                 self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
             except SemanticError as e:
                 raise self.ctx.error(str(e), func)
-            # Self type can only be used in protocol method signatures
-            if isinstance(resolved_ptype, SelfType):
+            if _contains_self_type(resolved_ptype):
                 raise SemanticError(
                     f"Self type cannot be used in function parameter '{pname}'. "
-                    f"Self is only valid in protocol method signatures",
+                    f"Self is only valid in class or protocol method signatures",
                     func.loc
                 )
             resolved_params.append((pname, resolved_ptype))
@@ -811,11 +855,10 @@ class TypeRegistrar:
         except SemanticError as e:
             raise self.ctx.error(str(e), func)
 
-        # Self type can only be used in protocol method signatures
-        if isinstance(resolved_return, SelfType):
+        if _contains_self_type(resolved_return):
             raise SemanticError(
                 f"Self type cannot be used as a return type. "
-                f"Self is only valid in protocol method signatures",
+                f"Self is only valid in class or protocol method signatures",
                 func.loc
             )
 

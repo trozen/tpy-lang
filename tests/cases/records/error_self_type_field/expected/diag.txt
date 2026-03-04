@@ -1,0 +1,1 @@
+main.py:6: error: Self cannot be used as a field type in 'Node'

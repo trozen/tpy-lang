@@ -47,7 +47,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B9 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
 | B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
-| B12 | `Self` type | S | Not started | [I](#self-type) |
+| B12 | `Self` type | S | Done | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
 | B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Not started | [II](#isinstance-on-static-protocols) |
@@ -590,22 +590,26 @@ class Builder:
     def set_name(self, name: str) -> Self:
         self.name = name
         return self
+
+    def with_offset(self, other: Self) -> Int32:
+        return self.value + other.value
 ```
 
-`Self` refers to the type of the current class, enabling method chaining and builder
-patterns. In subclasses, `Self` narrows to the subclass type.
+`Self` refers to the type of the current class. Enables method chaining, builder
+patterns, and self-referential parameter types without repeating the class name.
 
-Maps to C++ CRTP or deduced `this` (C++23).
+**Current state**: Done. `Self` works in return types and parameter types of record
+methods (instance methods, not `@staticmethod`). Also works in protocol method
+signatures (existing). For generic classes, `Self` resolves to the full generic type
+(e.g. `Stack[T]`). `Self` is substituted to `NamedType(record.name, type_args)` at
+registration time -- no codegen changes needed.
 
-**Why it matters**: Common pattern for fluent APIs and builder classes. Without `Self`,
-return type must be the concrete class name (breaks in subclasses) or use a type
-parameter (verbose).
-
-**Current state**: Not started.
+Remaining: `self: Own[Self]` for consuming methods (tracked in TODO.md).
+Inheritance narrowing (Self returning subclass type) would require CRTP -- deferred.
 
 **Dependencies**: None.
 
-**Effort**: S (type alias in sema, codegen mapping)
+**Effort**: S (done)
 
 ---
 

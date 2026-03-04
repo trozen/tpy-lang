@@ -1625,7 +1625,46 @@ class Point:
 
 `Point` conforms to `Addable` because `Point.__add__(Point) -> Own[Point]` matches `__add__(Self) -> Own[Self]` after substituting `Self` with `Point`.
 
-**Note**: `Self` can only be used within protocol method signatures. Using `Self` in regular functions or class methods produces an error.
+#### Working: Self Type in Record Methods
+
+`Self` can be used in return types and parameter types of record (class) methods. It resolves to the current class type, enabling method chaining and builder patterns:
+
+```python
+from typing import Self
+from tpy import Int32
+
+class Builder:
+    name: str
+    value: Int32
+
+    def set_name(self, name: str) -> Self:
+        self.name = name
+        return self
+
+    def with_offset(self, other: Self) -> Int32:
+        return self.value + other.value
+
+b = Builder("start", Int32(0))
+b.set_name("hello").set_value(Int32(42))  # method chaining
+```
+
+For generic classes, `Self` resolves to the full parameterized type:
+
+```python
+class Stack[T]:
+    def push(self, item: T) -> Self:   # -> Stack[T]
+        self.items.append(item)
+        return self
+```
+
+**Restrictions**:
+- `Self` cannot be used as a field type (would create infinite-size struct)
+- `Self` cannot be used in `@staticmethod` methods (no `self` to refer to)
+- `Self` cannot be used in free functions (must be inside a class)
+- `Self` in `@dynamic` protocols is not allowed (vtable dispatch can't vary return types)
+- `self: Own[Self]` (consuming methods) is not yet supported
+
+**Inheritance note**: `Self` resolves to the class that *defines* the method, matching C++ static dispatch semantics. A parent method returning `Self` returns the parent type, not the subclass type.
 
 #### Working: Regular Method Calls on Protocol Types
 

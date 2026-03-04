@@ -1,0 +1,7 @@
+hello
+42
+52
+hello
+not found
+3
+my_stack

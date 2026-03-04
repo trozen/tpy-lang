@@ -698,11 +698,15 @@ class NamedType(TpyType):
 
 @dataclass(frozen=True)
 class SelfType(TpyType):
-    """Self type for protocol method signatures.
+    """Self type for method signatures.
 
-    Represents the implementing type in protocol method signatures.
+    In protocol method signatures, Self represents the implementing type.
     When checking if Int32 conforms to a protocol with Self, Self is
     substituted with Int32.
+
+    In record method signatures, Self represents the record's own type
+    (e.g. Self in class Foo -> NamedType("Foo")). Substituted at
+    registration time so it never reaches codegen for record methods.
     """
 
     def to_cpp(self) -> str:
