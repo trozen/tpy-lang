@@ -94,18 +94,16 @@ void main() {
     c.append(3);
     // 64:     for x in c:
     auto& __obj_0 = c;
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto __span_0 = __obj_0.__span__();
+    for (int32_t x : __span_0) {
         // 65:         print(x)
         std::cout << x << "\n";
     }
     // 66:     # iterate again (fresh iterator each time)
     // 67:     for x in c:
     auto& __obj_1 = c;
-    auto __iter_1 = __obj_1.__iter__();
-    while (auto __opt_1 = __iter_1.__next_opt__()) {
-        int32_t x = *__opt_1;
+    auto __span_1 = __obj_1.__span__();
+    for (int32_t x : __span_1) {
         // 68:         print(x)
         std::cout << x << "\n";
     }

@@ -2054,8 +2054,9 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 | 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
 | 5. User-defined iterators | **Working** | `__iter__`/`__next__` compiled to `__next_opt__` under the hood |
 | 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()`, `try_next()` builtins |
-| 7. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
-| 8. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
+| 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for zero-cost range-based for, implicit Span coercion |
+| 8. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
+| 9. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
 
@@ -2160,6 +2161,43 @@ val = try_next(it)  # Int32 | None
 ```
 
 **Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
+
+#### Working: `__span__` Protocol (Zero-Cost User-Defined Iteration)
+
+Types that define `__span__(self) -> Span[T]` or `__span__(self) -> ReadOnlySpan[T]` get zero-cost
+C++ range-based for iteration, avoiding iterator object allocation:
+
+```python
+from tpy import Int32, Span
+
+class IntBuffer:
+    _data: list[Int32]
+
+    def __init__(self) -> None:
+        self._data = [10, 20, 30]
+
+    def __span__(self) -> Span[Int32]:
+        return self._data
+
+buf = IntBuffer()
+for x in buf:       # compiles to: for (int32_t x : buf.__span__()) { ... }
+    print(x)
+```
+
+**Dual overloads**: When `__span__` returns mutable `Span[T]`, the compiler generates two C++
+overloads -- a non-const overload returning `std::span<T>` (user's body) and a const overload
+returning `std::span<const T>` (thin wrapper). This enables correct iteration on both mutable
+and `@readonly` references. When `__span__` returns `ReadOnlySpan[T]`, only a single const
+overload is generated.
+
+**Priority**: `__span__` takes precedence over `__iter__` when both are defined. The compiler
+emits a warning if both are present on the same type.
+
+**Implicit coercion**: A type with `__span__()` coerces to `Span[T]` or `ReadOnlySpan[T]`
+when passed as a function argument. `ReadOnlySpan[T]` return cannot coerce to mutable `Span[T]`.
+
+**CPython compatibility**: `__span__` is not meaningful in CPython. Keep `__iter__` in CPython
+stubs (`lib/cpy/`) for tests that need to run under both runtimes.
 
 **Bounded type parameters**: `Iterator[T]` and `Iterable[T]` can be used as type parameter bounds:
 

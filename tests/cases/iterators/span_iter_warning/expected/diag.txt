@@ -1,0 +1,1 @@
+main.py:16: warning: Type defines both __span__ and __iter__; __span__ takes precedence for iteration

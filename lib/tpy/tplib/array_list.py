@@ -9,31 +9,9 @@
 #   (same N as the class) and deduce both T and N from the argument, enabling
 #   `ArrayList(span)` without explicit type args. Needs: Span[T, N] type, constructor
 #   type arg inference from arguments, int type param deduction.
-# - Iteration: add @iter_range decorator + __iter_range__() -> tuple[Ptr[T], Ptr[T]] for
-#   zero-cost C++ range-based for loops (needs: tuple type, @iter_range protocol support
-#   in compiler). This also synthesizes __iter__/__next__, eliminating ArrayListIter.
 from __future__ import annotations
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, copy, Default, make_default
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, copy, Default, make_default
 from tpy.mem import UninitArrayStorage
-
-
-# TODO: optimize to store Ptr[T] current + Ptr[T] end instead of storage + size + index
-class ArrayListIter[T, N: int]:
-    _storage: Ptr[UninitArrayStorage[T, N]]
-    _size: Int32
-    _index: Int32
-
-    def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: Int32) -> None:
-        self._storage = storage
-        self._size = size
-        self._index = 0
-
-    def __next__(self) -> Own[T]:
-        if self._index < self._size:
-            val = self._storage.load(UInt32(self._index))
-            self._index += 1
-            return val
-        raise StopIteration
 
 
 class ArrayList[T, N: int]:
@@ -134,8 +112,8 @@ class ArrayList[T, N: int]:
             i += 1
         self._size -= 1
 
-    def __iter__(self) -> Own[ArrayListIter[T, N]]:
-        return ArrayListIter[T, N](Ptr(self._storage), self._size)
+    def __span__(self) -> Span[T]:
+        return Span[T](self._storage.ptr(), self._size)
 
     def clear(self) -> None:
         for i in range(self._size):

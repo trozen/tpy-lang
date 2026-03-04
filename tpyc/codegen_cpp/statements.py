@@ -1492,6 +1492,36 @@ class StatementGenerator:
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
+    def _gen_span_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                        iterable_expr: str, elem_type: TpyType) -> None:
+        """Generate range-based for via __span__().
+
+        Produces:
+            auto& __obj_N = container;            // lvalue ref
+            auto  __span_N = __obj_N.__span__();
+            for (ElemT x : __span_N) { ... }      // value types by copy
+            for (auto& x : __span_N) { ... }      // non-value types by ref
+        """
+        n = self.ctx.iter_counter
+        self.ctx.iter_counter += 1
+        obj_name = f"__obj_{n}"
+        span_name = f"__span_{n}"
+
+        obj_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+
+        self.ctx.temps.flush(out, indent)
+        out.write(f"{indent}{obj_binding} {obj_name} = {iterable_expr};\n")
+        out.write(f"{indent}auto {span_name} = {obj_name}.__span__();\n")
+
+        cpp_var = escape_cpp_name(stmt.var)
+        if elem_type.is_value_type():
+            cpp_elem = elem_type.to_cpp()
+            out.write(f"{indent}for ({cpp_elem} {cpp_var} : {span_name}) {{\n")
+        else:
+            out.write(f"{indent}for (auto& {cpp_var} : {span_name}) {{\n")
+
+        self._gen_loop_body(out, stmt, indent, elem_type)
+
     @staticmethod
     def _unwrap_coerce(expr: TpyExpr) -> TpyExpr:
         """Unwrap TpyCoerce nodes to get the underlying expression."""
@@ -1688,7 +1718,7 @@ class StatementGenerator:
             self._gen_loop_body(out, stmt, indent, enum_type)
             return
 
-        from tpyc.modules import get_native_iterator_element_type, get_iter_element_type
+        from tpyc.modules import get_native_iterator_element_type, get_iter_element_type, get_span_element_type
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
         # Resolve TypeParamRef to its bound for protocol-based iteration
@@ -1719,6 +1749,13 @@ class StatementGenerator:
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_iterator_loop(out, stmt, indent, iterable, iter_elem)
+            return
+
+        # Check for __span__()-based types (zero-cost range-based for via span)
+        span_elem = get_span_element_type(iterable_type, registry=self.ctx.analyzer.registry)
+        if span_elem is not None:
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            self._gen_span_loop(out, stmt, indent, iterable, span_elem)
             return
 
         # Check for __iter__()-based types (container -> separate iterator)

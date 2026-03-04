@@ -345,6 +345,24 @@ UPCAST_TO_PTR = Coercion(
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 
+# Pre-built coercion for types with __span__() -> Span[T] coercing to Span[T]/ReadOnlySpan[T].
+# Codegen is handled in expressions.py _gen_span_coercion (emits obj.__span__()).
+# Arg context: temporaries allowed.
+SPAN_METHOD_TO_SPAN_ARG = Coercion(
+    name="span_method_to_span_arg",
+    from_type=NamedType,
+    to_type=SpanType,
+)
+
+# Non-arg contexts: lvalue required, no returning locals.
+SPAN_METHOD_TO_SPAN = Coercion(
+    name="span_method_to_span",
+    from_type=NamedType,
+    to_type=SpanType,
+    requires_lvalue=True,
+    forbid_return_local=True,
+)
+
 UPCAST_TO_CONST_PTR = Coercion(
     name="upcast_to_const_ptr",
     from_type=NamedType,

@@ -1623,6 +1623,12 @@ class ExpressionGenerator:
         actual_type = self.ctx.get_expr_type(expr)
         if isinstance(actual_type, SpanType):
             return gen_inner
+        # User type with __span__() method: call it directly
+        if isinstance(actual_type, NamedType) and actual_type.is_user_record:
+            if builtin_modules.get_span_element_type(actual_type, registry=self.ctx.analyzer.registry) is not None:
+                if self.ctx.is_indirect_name(expr):
+                    gen_inner = f"(*{gen_inner})"
+                return f"{gen_inner}.__span__()"
         helper = "tpy::as_span" if span_type.is_readonly else "tpy::as_mut_span"
         if isinstance(expr, TpyArrayLiteral):
             expected_array_type = ArrayType(span_type.element_type, len(expr.elements))

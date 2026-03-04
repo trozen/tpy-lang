@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    Int32Type, BoolType, FloatType, CharType, PtrType, StrType, is_any_str_type,
+    Int32Type, BoolType, FloatType, CharType, PtrType, StrType, is_any_str_type, SpanType,
     resolve_int_literals,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -453,6 +453,23 @@ class FunctionGenerator:
             if needs_dual:
                 self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
                                           record_type_param_bounds=record_type_param_bounds)
+        elif (method.name == "__span__" and not is_static
+              and isinstance(cpp_return_type, SpanType) and not method.readonly_opt_out):
+            if cpp_return_type.is_readonly:
+                # __span__() -> ReadOnlySpan[T]: single const overload.
+                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=True,
+                                          record_type_param_bounds=record_type_param_bounds)
+            else:
+                # __span__() -> Span[T]: dual overload (non-const + const).
+                # Non-const returns Span[T] (user body), const delegates via ReadOnlySpan[T].
+                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
+                                          record_type_param_bounds=record_type_param_bounds)
+                const_return = cpp_return_type.as_const()
+                const_ret_cpp = const_return.to_cpp()
+                record_cpp = escape_cpp_name(record_name)
+                out.write(f"\n{INDENT}{const_ret_cpp} __span__() const {{\n")
+                out.write(f"{INDENT}{INDENT}return const_cast<{record_cpp}&>(*this).__span__();\n")
+                out.write(f"{INDENT}}}\n")
         else:
             is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,

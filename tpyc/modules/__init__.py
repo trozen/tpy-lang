@@ -763,6 +763,63 @@ def _find_iter_method_element_type(
     return None
 
 
+def get_span_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+    """If type has __span__() -> Span[T] or ReadOnlySpan[T], return element type T."""
+    span_type = get_span_return_type(tpy_type, registry)
+    if span_type is not None:
+        return span_type.element_type
+    return None
+
+
+def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "SpanType | None":
+    """If type has __span__() -> Span[T] or ReadOnlySpan[T], return the full SpanType."""
+    from tpyc.typesys import NamedType, SpanType, TypeParamRef
+
+    if not (isinstance(tpy_type, NamedType) and tpy_type.is_user_record):
+        return None
+    record = registry.get_record(tpy_type.name)
+    if record is None:
+        return None
+    type_subst: dict[str, "TpyType"] = {}
+    if record.type_params and tpy_type.type_args:
+        type_subst = dict(zip(record.type_params, tpy_type.type_args))
+    return _find_span_method_return_type(record, type_subst, registry)
+
+
+def _find_span_method_return_type(
+    record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
+) -> "SpanType | None":
+    """Check if record has __span__() returning Span[T]/ReadOnlySpan[T], and return the SpanType."""
+    from tpyc.typesys import NamedType, SpanType, TypeParamRef
+
+    for method in record.get_method_overloads("__span__"):
+        if len(method.params) != 0:
+            continue
+        ret = method.return_type
+        if isinstance(ret, TypeParamRef) and ret.name in type_subst:
+            ret = type_subst[ret.name]
+        if isinstance(ret, SpanType):
+            elem = ret.element_type
+            if isinstance(elem, TypeParamRef) and elem.name in type_subst:
+                elem = type_subst[elem.name]
+            return SpanType(elem, is_readonly=ret.is_readonly)
+
+    # Walk parent chain
+    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
+        parent_info = registry.get_record(record.parent.name)
+        if parent_info:
+            parent_subst = dict(type_subst)
+            if record.parent.type_args and parent_info.type_params:
+                for param_name, arg in zip(parent_info.type_params, record.parent.type_args):
+                    if isinstance(arg, TypeParamRef) and arg.name in type_subst:
+                        parent_subst[param_name] = type_subst[arg.name]
+                    else:
+                        parent_subst[param_name] = arg
+            return _find_span_method_return_type(parent_info, parent_subst, registry)
+
+    return None
+
+
 def _type_matches_param(arg_type: "TpyType", param_type: "TpyType") -> bool:
     """Check if an argument type matches a parameter type.
 

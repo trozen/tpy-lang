@@ -359,7 +359,7 @@ overhead, and naturally composes with the existing Span ecosystem (len, indexing
 This is the key missing piece for `ArrayList[T, N]` (tplib) to fully replace the builtin
 `StaticList[T, N]` with equivalent iteration performance.
 
-**Current state**: Part 1 done. Part 2 (A12) in progress.
+**Current state**: Part 1 done. Part 2 done.
 
 **Dependencies**: Part 2 needs Part 1 (done).
 

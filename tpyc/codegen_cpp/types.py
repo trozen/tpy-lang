@@ -49,7 +49,7 @@ class TypeResolver:
         """
         # Check for codegen-overridden types (e.g., loop variables)
         if isinstance(expr, TpyName) and expr.name in self.ctx.var_types:
-            return self.ctx.var_types[expr.name]
+            return unwrap_readonly(self.ctx.var_types[expr.name])
         if isinstance(expr, TpyCoerce):
             return expr.expected_type
 

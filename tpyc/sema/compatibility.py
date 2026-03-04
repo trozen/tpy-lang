@@ -21,7 +21,7 @@ from ..parse import (
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyFunction,
     TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
-from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR
+from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
@@ -297,6 +297,18 @@ class TypeCompatibility:
                 elif is_readonly_ptr(expected) and isinstance(expected.pointee, NamedType):
                     if self.ctx.registry.is_subclass_of(actual, expected.pointee):
                         coercion = UPCAST_TO_CONST_PTR
+        if coercion is None:
+            # __span__() method coercion: user type with __span__() -> Span[T] coerces to Span/ReadOnlySpan
+            if isinstance(actual, NamedType) and actual.is_user_record and isinstance(expected, SpanType):
+                from tpyc.modules import get_span_return_type
+                span_ret = get_span_return_type(actual, registry=self.ctx.registry)
+                if span_ret is not None and span_ret.element_type == expected.element_type:
+                    # ReadOnlySpan cannot coerce to mutable Span
+                    if not span_ret.is_readonly or expected.is_readonly:
+                        if ctx == CoercionContext.ARG:
+                            coercion = SPAN_METHOD_TO_SPAN_ARG
+                        else:
+                            coercion = SPAN_METHOD_TO_SPAN
         if coercion is None:
             # Generic deref coercion: any type with __deref__() -> T coerces to T
             if self.type_ops:
