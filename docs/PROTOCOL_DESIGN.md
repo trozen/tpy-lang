@@ -240,6 +240,7 @@ class NamedType(TpyType):
 | `NativeIterable[T]` | (marker) | `for` loops | ✅ Working |
 | `NativeContiguous[T]` | (marker) | `Span[T]` coercion | ✅ Working |
 | `NativeRangeConstructible[T]` | (marker) | range construction | ✅ Working |
+| `ReadOnlySpanLike[T]` | `__span__` | `for` loops, `ReadOnlySpan[T]` coercion | ✅ Working |
 | `Iterable[T]` | `__iter__` | user-extensible iteration | Phase 8 |
 | `Iterator[T]` | `__next__` | iteration | Phase 8 |
 | `Hashable` | `__hash__` | `hash()`, dict keys | Working |

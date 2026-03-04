@@ -102,6 +102,18 @@ concept NativeContiguous = std::ranges::contiguous_range<T> &&
     std::convertible_to<std::ranges::range_reference_t<T>, ElemT>;
 
 /**
+ * ReadOnlySpanLike concept - types that expose contiguous storage as a readonly span
+ *
+ * A type is ReadOnlySpanLike<ElemT> if tpy::as_span(t) yields something convertible
+ * to std::span<const ElemT>. This covers both builtin types (vector, array,
+ * StaticList, ReadOnlySpan) via as_span overloads and user types via __span__() const.
+ */
+template<typename T, typename ElemT>
+concept ReadOnlySpanLike = requires(const T& t) {
+    { tpy::as_span(t) } -> std::convertible_to<std::span<const ElemT>>;
+};
+
+/**
  * MutableSequence concept - types that support len(), read indexing, and write indexing
  *
  * A type is MutableSequence<ElemT> if it satisfies Sequence<ElemT> and additionally

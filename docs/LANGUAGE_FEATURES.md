@@ -2110,6 +2110,7 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 | 5. User-defined iterators | **Working** | `__iter__`/`__next__` compiled to `__next_opt__` under the hood |
 | 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()`, `try_next()` builtins |
 | 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for zero-cost range-based for, implicit Span coercion |
+| 7b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 8. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
 | 9. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
@@ -2253,6 +2254,43 @@ when passed as a function argument. `ReadOnlySpan[T]` return cannot coerce to mu
 
 **CPython compatibility**: `__span__` is not meaningful in CPython. Keep `__iter__` in CPython
 stubs (`lib/cpy/`) for tests that need to run under both runtimes.
+
+#### Working: `ReadOnlySpanLike[T]` Protocol
+
+`ReadOnlySpanLike[T]` is a readonly protocol for types that expose contiguous storage via
+`__span__()`. It enables writing generic functions that accept any span-producing type:
+
+```python
+from tpy import Int32, Span, ReadOnlySpanLike
+
+class Buffer:
+    _data: list[Int32]
+    def __init__(self) -> None:
+        self._data = [1, 2, 3]
+    def __span__(self) -> Span[Int32]:
+        return self._data
+
+def sum_all(c: ReadOnlySpanLike[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in c:
+        total += x
+    return total
+
+# Works with user types, list, Array, Span, ReadOnlySpan, StaticList
+print(sum_all(Buffer()))           # 6
+data: list[Int32] = [10, 20, 30]
+print(sum_all(data))               # 60
+```
+
+**Conformance**: Any type with `__span__() -> Span[T]` or `__span__() -> ReadOnlySpan[T]`
+structurally conforms. Builtins (list, Array, Span, ReadOnlySpan, StaticList) also conform
+via explicit `extends` declarations. User types implementing `__span__() -> Span[T]` satisfy
+the readonly protocol via covariant return (the compiler auto-generates a const overload).
+
+**Coercion**: `ReadOnlySpanLike[T]` values coerce to `ReadOnlySpan[T]` (not mutable `Span[T]`).
+
+**CPython mixin**: In CPython stubs, `ReadOnlySpanLike` is a base class that auto-generates
+`__iter__` from `__span__()`. User types inheriting it get iteration for free in CPython.
 
 **Bounded type parameters**: `Iterator[T]` and `Iterable[T]` can be used as type parameter bounds:
 

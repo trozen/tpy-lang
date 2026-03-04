@@ -10,11 +10,12 @@
 #   `ArrayList(span)` without explicit type args. Needs: Span[T, N] type, constructor
 #   type arg inference from arguments, int type param deduction.
 from __future__ import annotations
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, copy, Default, make_default
+from typing import MutableSequence
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, make_default
 from tpy.mem import UninitArrayStorage
 
 
-class ArrayList[T, N: int]:
+class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     _storage: UninitArrayStorage[T, N]
     _size: Int32
 
@@ -113,7 +114,7 @@ class ArrayList[T, N: int]:
         self._size -= 1
 
     def __span__(self) -> Span[T]:
-        return Span[T](self._storage.ptr(), self._size)
+        return self._storage.ptr().span(self._size)
 
     def clear(self) -> None:
         for i in range(self._size):

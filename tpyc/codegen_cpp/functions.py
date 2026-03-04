@@ -461,15 +461,16 @@ class FunctionGenerator:
                                           record_type_param_bounds=record_type_param_bounds)
             else:
                 # __span__() -> Span[T]: dual overload (non-const + const).
-                # Non-const returns Span[T] (user body), const delegates via ReadOnlySpan[T].
+                # Non-const returns Span[T] (user body), const returns ReadOnlySpan[T].
+                # The const overload re-generates the body with force_readonly_span
+                # so that coercions (e.g. list -> span) pick as_span instead of as_mut_span.
                 self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
                                           record_type_param_bounds=record_type_param_bounds)
-                const_return = cpp_return_type.as_const()
-                const_ret_cpp = const_return.to_cpp()
-                record_cpp = escape_cpp_name(record_name)
-                out.write(f"\n{INDENT}{const_ret_cpp} __span__() const {{\n")
-                out.write(f"{INDENT}{INDENT}return const_cast<{record_cpp}&>(*this).__span__();\n")
-                out.write(f"{INDENT}}}\n")
+                self.ctx.force_readonly_span = True
+                self._gen_method_overload(out, method, record_name, cpp_name,
+                                          cpp_return_type.as_const(), const=True,
+                                          record_type_param_bounds=record_type_param_bounds)
+                self.ctx.force_readonly_span = False
         else:
             is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,

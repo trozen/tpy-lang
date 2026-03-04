@@ -94,7 +94,7 @@ def init_module() -> BuiltinModule:
     module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
                 type_factory=lambda t, n: ArrayType(t, n),
-                extends=["NativeIterable[T]", "NativeContiguous[T]"],
+                extends=["NativeIterable[T]", "NativeContiguous[T]", "ReadOnlySpanLike[T]"],
                 methods={
         "__len__": [MethodDef(
             params=[],
@@ -125,7 +125,7 @@ def init_module() -> BuiltinModule:
     module.type("Span", cpp_type="std::span<{T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: SpanType(t),
-                extends=["NativeIterable[T]", "NativeContiguous[T]"],
+                extends=["NativeIterable[T]", "NativeContiguous[T]", "ReadOnlySpanLike[T]"],
                 constructors=[
                     MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
                               returns=VOID,
@@ -161,7 +161,7 @@ def init_module() -> BuiltinModule:
     module.type("ReadOnlySpan", cpp_type="std::span<const {T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: SpanType(t, is_readonly=True),
-                extends=["NativeIterable[T]", "NativeContiguous[T]"],
+                extends=["NativeIterable[T]", "NativeContiguous[T]", "ReadOnlySpanLike[T]"],
                 constructors=[
                     MethodDef(params=[ParamDef("ptr", PtrType(T, is_readonly=True)), ParamDef("length", INT32)],
                               returns=VOID,
@@ -224,7 +224,7 @@ def init_module() -> BuiltinModule:
     module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
                 type_factory=lambda t, n: NamedType("StaticList", (t, n), _module_qname="tpy.StaticList"),
-                extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]"],
+                extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp=""),
                     MethodDef(params=[ParamDef("items", SpanType(T, is_readonly=True))], returns=VOID, cpp="{0}"),
@@ -367,6 +367,21 @@ def init_module() -> BuiltinModule:
             "__next_opt__": MethodDef(params=[], returns=OptionalType(T), cpp="{self}.__next_opt__()"),
         },
         cpp_concept="tpy::OptIterator",
+    )
+
+    # ReadOnlySpanLike[T] protocol -- types exposing contiguous storage via __span__()
+    # Returns ReadOnlySpan[T]. User types typically implement __span__() -> Span[T] (mutable),
+    # and the compiler generates a const overload automatically; the covariant return
+    # (Span -> ReadOnlySpan, marked protocol_safe) satisfies this protocol.
+    module.protocol("ReadOnlySpanLike",
+        type_params=["T"],
+        methods={
+            # cpp template unused for ReadOnlySpanLike; codegen uses tpy::as_span()
+            "__span__": MethodDef(params=[], returns=SpanType(T, is_readonly=True),
+                                  cpp="{self}.__span__()"),
+        },
+        cpp_concept="tpy::ReadOnlySpanLike",
+        is_readonly=True,
     )
 
     # NativeIterable[T] protocol

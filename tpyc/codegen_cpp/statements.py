@@ -1504,14 +1504,15 @@ class StatementGenerator:
         self._gen_loop_body(out, stmt, indent, elem_type)
 
     def _gen_span_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
-                        iterable_expr: str, elem_type: TpyType) -> None:
-        """Generate range-based for via __span__().
+                        iterable_expr: str, elem_type: TpyType,
+                        use_as_span: bool = False) -> None:
+        """Generate range-based for via __span__() or tpy::as_span().
 
         Produces:
-            auto& __obj_N = container;            // lvalue ref
-            auto  __span_N = __obj_N.__span__();
-            for (ElemT x : __span_N) { ... }      // value types by copy
-            for (auto& x : __span_N) { ... }      // non-value types by ref
+            auto& __obj_N = container;              // lvalue ref
+            auto  __span_N = __obj_N.__span__();    // or tpy::as_span(__obj_N)
+            for (ElemT x : __span_N) { ... }        // value types by copy
+            for (auto& x : __span_N) { ... }        // non-value types by ref
         """
         n = self.ctx.iter_counter
         self.ctx.iter_counter += 1
@@ -1522,7 +1523,10 @@ class StatementGenerator:
 
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{obj_binding} {obj_name} = {iterable_expr};\n")
-        out.write(f"{indent}auto {span_name} = {obj_name}.__span__();\n")
+        if use_as_span:
+            out.write(f"{indent}auto {span_name} = tpy::as_span({obj_name});\n")
+        else:
+            out.write(f"{indent}auto {span_name} = {obj_name}.__span__();\n")
 
         cpp_var = escape_cpp_name(stmt.var)
         if elem_type.is_value_type():
@@ -1747,6 +1751,13 @@ class StatementGenerator:
                 self._gen_iterator_loop(out, stmt, indent, iterable, elem_type)
             else:
                 self._gen_iter_protocol_loop(out, stmt, indent, iterable, elem_type)
+            return
+
+        # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses tpy::as_span)
+        if is_protocol_type(resolved_type) and resolved_type.name == "ReadOnlySpanLike":
+            elem_type = resolved_type.type_args[0]
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            self._gen_span_loop(out, stmt, indent, iterable, elem_type, use_as_span=True)
             return
 
         # Optimize range() calls to C-style counter loops (before protocol checks)

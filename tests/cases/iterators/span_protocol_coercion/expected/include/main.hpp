@@ -49,8 +49,10 @@ struct MutBuffer {
         return tpy::as_mut_span(this->_data);
     }
 
+    // 20:     def __span__(self) -> Span[Int32]:
     std::span<const int32_t> __span__() const {
-        return const_cast<MutBuffer&>(*this).__span__();
+        // 21:         return self._data
+        return tpy::as_span(this->_data);
     }
 };
 

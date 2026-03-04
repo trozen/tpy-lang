@@ -271,6 +271,7 @@ COERCIONS: list[Coercion] = [
         from_type=SpanType,
         to_type=SpanType,
         type_match=lambda s1, s2: isinstance(s1, SpanType) and not s1.is_readonly and is_readonly_span(s2) and s1.element_type == s2.element_type,
+        protocol_safe=True,
     ),
     # Span coercions: any NativeContiguous[T] type can coerce to Span[T]
     # Arg context allows temporaries
@@ -345,19 +346,20 @@ UPCAST_TO_PTR = Coercion(
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 
-# Pre-built coercion for types with __span__() -> Span[T] coercing to Span[T]/ReadOnlySpan[T].
-# Codegen is handled in expressions.py _gen_span_coercion (emits obj.__span__()).
+# Pre-built coercions for __span__() and ReadOnlySpanLike[T] protocol coercion to ReadOnlySpan.
+# Used directly by compatibility.py (not in COERCIONS list); from_type is not consulted.
+# Codegen is handled in expressions.py _gen_span_coercion.
 # Arg context: temporaries allowed.
 SPAN_METHOD_TO_SPAN_ARG = Coercion(
     name="span_method_to_span_arg",
-    from_type=NamedType,
+    from_type=TpyType,
     to_type=SpanType,
 )
 
 # Non-arg contexts: lvalue required, no returning locals.
 SPAN_METHOD_TO_SPAN = Coercion(
     name="span_method_to_span",
-    from_type=NamedType,
+    from_type=TpyType,
     to_type=SpanType,
     requires_lvalue=True,
     forbid_return_local=True,

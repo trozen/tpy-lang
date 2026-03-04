@@ -476,7 +476,8 @@ class StatementAnalyzer:
                     is_span_based = builtin_modules.get_span_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                     is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                     is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.name in ("Iterator", "Iterable")
-                    if is_span_based:
+                    is_protocol_span = is_protocol_type(resolved_for_iter) and resolved_for_iter.name == "ReadOnlySpanLike"
+                    if is_span_based or is_protocol_span:
                         # __span__ returns a view into the container's storage
                         if self.compat.is_lvalue(stmt.iterable):
                             iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)

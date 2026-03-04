@@ -1,0 +1,1 @@
+main.py:15: error: Type NoSpan does not conform to protocol ReadOnlySpanLike[Int32] in argument 'c'

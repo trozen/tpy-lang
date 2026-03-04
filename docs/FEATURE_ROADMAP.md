@@ -30,7 +30,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A10a | Reference elements in tuples | M | Done | [I](#reference-elements-in-tuples) |
 | A10b | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
 | A11 | dict type | L | Done | [VII](#dict-type) |
-| A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Not started | [I](#mutable-span--readonlyspan--__span__-protocol) |
+| A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Done | [I](#mutable-span--readonlyspan--__span__-protocol) |
 
 ### Phase B: Polymorphism Foundation
 
@@ -311,51 +311,46 @@ become mutable. Acceptable at POC stage -- test snapshots need updating.
 
 ```python
 class ArrayList[T, N: int]:
-    @readonly
-    def __span__(self) -> ReadOnlySpan[T]:
-        return ReadOnlySpan(self._storage.ptr(UInt32(0)), self._size)
-
     def __span__(self) -> Span[T]:
-        return Span(self._storage.mut_ptr(UInt32(0)), self._size)
+        return Span[T](self._storage.ptr(), self._size)
 ```
 
 A dunder protocol for user-defined types to opt into zero-cost iteration via Span.
-The compiler detects `__span__` and uses it for:
+The user writes a single `__span__` method. The compiler detects it and uses it for:
 
-- **For-loops**: `for item in container` calls `__span__()`, then uses existing
-  `NativeIterable` codegen (C++ range-based for). The `@readonly` vs mutable overload
-  is selected based on context (same as `__getitem__`).
+- **For-loops**: `for item in container` calls `__span__()`, then iterates via C++
+  range-based for. `__span__` takes precedence over `__iter__` (warning emitted if both).
   ```cpp
-  auto __span = obj.__span__();
+  auto& __obj = container;
+  auto __span = __obj.__span__();
   for (auto& x : __span) { ... }
   ```
 - **Implicit coercion**: passing a type with `__span__` where `Span[T]` or
-  `ReadOnlySpan[T]` is expected calls the appropriate overload.
-- **Iterator synthesis**: the compiler can auto-generate `__iter__`/`__next__` from
-  `__span__`, eliminating hand-written iterator classes for contiguous containers.
+  `ReadOnlySpan[T]` is expected calls `__span__()`. `ReadOnlySpan` return cannot
+  coerce to mutable `Span`.
+- **Dual overloads**: When `__span__` returns mutable `Span[T]`, the compiler generates
+  two C++ overloads -- non-const (user body, returns `span<T>`) and const (thin wrapper,
+  returns `span<const T>`). When returning `ReadOnlySpan[T]`, only a const overload is
+  generated. This follows the `__getitem__` dual-overload pattern.
 
-**CPython compatibility**: The `__span__` method is ignored by CPython. A CPython stub
-decorator generates `__iter__` from `__getitem__`/`__len__` instead:
+**CPython compatibility**: `__span__` is not meaningful in CPython. The `ReadOnlySpanLike[T]`
+protocol doubles as a CPython mixin base class that auto-generates `__iter__` from `__span__()`.
+User types inheriting `ReadOnlySpanLike` get iteration for free in both runtimes.
 
-```python
-def spannable(cls):
-    def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
-    cls.__iter__ = __iter__
-    return cls
-```
+**`ReadOnlySpanLike[T]` protocol**: Readonly protocol for types with `__span__()`. Enables
+generic functions accepting any span-producing type
+(`def sum_all(c: ReadOnlySpanLike[Int32])`). Builtins (list, Array, Span, ReadOnlySpan,
+StaticList) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
+satisfies the readonly protocol via covariant return. `ReadOnlySpanLike[T]` values coerce to
+`ReadOnlySpan[T]` and support for-loop iteration.
 
-**Why it matters**: Currently user-defined types can only iterate via `__iter__`/`__next__`,
+**Why it matters**: Previously user-defined types could only iterate via `__iter__`/`__next__`,
 which allocates an iterator object and generates a while-loop with `__next_opt__()` calls.
 Builtin types use `NativeIterable[T]` for zero-cost C++ range-based for, but this protocol
-is not user-extensible. `__span__` bridges the gap for any contiguous container with no
-overhead, and naturally composes with the existing Span ecosystem (len, indexing, slicing).
+was not user-extensible. `__span__` bridges the gap for any contiguous container with no
+overhead. `ArrayList[T, N]` now uses `__span__` instead of `__iter__`/`ArrayListIter`.
 
-This is the key missing piece for `ArrayList[T, N]` (tplib) to fully replace the builtin
-`StaticList[T, N]` with equivalent iteration performance.
-
-**Current state**: Part 1 done. Part 2 done.
+**Current state**: Part 1 done. Part 2 done. ReadOnlySpanLike[T] protocol done.
 
 **Dependencies**: Part 2 needs Part 1 (done).
 

@@ -310,6 +310,15 @@ class TypeCompatibility:
                         else:
                             coercion = SPAN_METHOD_TO_SPAN
         if coercion is None:
+            # ReadOnlySpanLike[T] protocol -> ReadOnlySpan[T] coercion via __span__()
+            if (is_protocol_type(actual) and actual.name == "ReadOnlySpanLike"
+                    and actual.type_args and isinstance(expected, SpanType)
+                    and expected.is_readonly and actual.type_args[0] == expected.element_type):
+                if ctx == CoercionContext.ARG:
+                    coercion = SPAN_METHOD_TO_SPAN_ARG
+                else:
+                    coercion = SPAN_METHOD_TO_SPAN
+        if coercion is None:
             # Generic deref coercion: any type with __deref__() -> T coerces to T
             if self.type_ops:
                 deref_target = self.type_ops.get_deref_coercion_target(actual)

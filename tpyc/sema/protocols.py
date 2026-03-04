@@ -341,9 +341,14 @@ class ProtocolChecker:
             # Check if any overload matches the expected signature
             for method in overloads:
                 resolved = self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
-                # Check readonly requirement
+                # Check readonly requirement.
+                # Allow non-readonly methods when the return type has a protocol-safe
+                # coercion to the expected return (e.g. __span__() -> Span[T] satisfies
+                # a readonly protocol expecting ReadOnlySpan[T], since the compiler
+                # auto-generates a const overload).
                 if require_readonly and not resolved.is_readonly:
-                    continue
+                    if not is_protocol_safe_coercion(resolved.return_type, expected_return):
+                        continue
                 # Check return type (Own[T] in impl matches T in protocol)
                 if not self._protocol_type_matches(resolved.return_type, expected_return):
                     continue

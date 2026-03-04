@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- Protocol methods not callable on builtin types: `l.__span__()` on `list[int]` fails with "Cannot call method '__span__'". `lookup_record_method_overloads()` in `sema/protocols.py` only checks own methods and parent class -- it doesn't search `extends_protocols`. Affects all protocol methods on builtins declared via `extends` (e.g. `__span__` from `ReadOnlySpanLike[T]`). Fix needs: (1) sema: extend method lookup to search extended protocols, (2) codegen: map builtin protocol method calls to the correct C++ (e.g. `obj.__span__()` -> `tpy::as_span(obj)`).
 - `Own[Self]` consuming methods: `def build(self: Own[Self]) -> Product` -- method takes ownership of self (pass by value, caller moves). Needs parser support for `self` type annotations, new calling convention in codegen, and init tracker integration. See B12 in FEATURE_ROADMAP.md.
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - Array/list -> Optional[Span] coercion at call sites: `ArrayList[Int32, 8](arr)` where `arr: Array[Int32, 3]` fails because `Array -> Span -> Optional[Span]` requires two implicit conversions. The generic constructor codegen path (`call_type` branch in `_gen_call`) also passes `expr.call_type` (the record type) as `target_type` instead of the param type, confusing the deref logic. Fix: apply explicit `std::span<const T>(arg)` wrapping when the param is `Optional[Span[T]]` and the arg is a span-compatible type.
@@ -20,6 +21,7 @@
 ## Examples
 
 ## Investigate
+- Readonly type unification: consider replacing `ReadOnlySpan[T]`/`ReadOnlyPtr[T]`/`ReadOnlySpanLike[T]` with parameterized `Span[readonly[T]]`/`Ptr[readonly[T]]`/`SpanLike[readonly[T]]`. Would simplify the type system (fewer distinct types), make readonly composable, and align naming. Design questions: how does `readonly[T]` interact with generic type params, protocol conformance, and coercion rules? Does `Span[readonly[T]]` mean the span itself is const or the elements are? (Rust distinguishes `&[T]` vs `&mut [T]` at the reference level, not the element level.)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - zig language: what it is, how is it different from C, what useful patterns can we learn
 

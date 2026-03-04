@@ -635,6 +635,19 @@ class Hashable(_Protocol):
     def __hash__(self) -> int: ...
 
 
+class ReadOnlySpanLike(_Protocol[T]):
+    """Protocol for types exposing contiguous storage via __span__() (readonly).
+
+    In CPython, provides __iter__ automatically from __span__().
+    In tpyc, used as a protocol constraint for generic/parameter typing.
+    """
+    def __span__(self):
+        raise NotImplementedError
+
+    def __iter__(self):
+        return iter(self.__span__())
+
+
 class _MakeDefault:
     """Callable that constructs a default value of type T.
 
