@@ -10,7 +10,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::return_val_or_ref_t<T> first_val(std::vector<T> items);
+tpy::val_or_ref_t<T> first_val(std::vector<T> items);
 template<typename T>
 void consume_list(std::vector<T> items);
 template<typename T>
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // 10: def first_val[T](items: Own[list[T]]) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> first_val(std::vector<T> items) {
+tpy::val_or_ref_t<T> first_val(std::vector<T> items) {
     // 11:     return items[0]
     return items[0];
 }

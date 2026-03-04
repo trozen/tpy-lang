@@ -45,7 +45,7 @@ struct Box {
     explicit Box(const T& value) : _value(value) {}
 
     // 14:     def __deref__(self) -> T:
-    tpy::return_val_or_ref_t<T> __deref__() {
+    tpy::val_or_ref_t<T> __deref__() {
         // 15:         return self._value
         return this->_value;
     }

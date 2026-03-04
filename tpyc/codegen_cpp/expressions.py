@@ -1489,7 +1489,7 @@ class ExpressionGenerator:
                 cpp_parts.append(f"const {base}&")
             elif isinstance(et, TypeParamRef):
                 # Defer value-vs-ref to C++ instantiation time
-                cpp_parts.append(f"tpy::return_val_or_ref_t<{base}>")
+                cpp_parts.append(f"tpy::val_or_ref_t<{base}>")
             else:
                 cpp_parts.append(base)
         return f"std::tuple<{', '.join(cpp_parts)}>"

@@ -8,16 +8,16 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::return_val_or_ref_t<T> first_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback = 0);
+tpy::val_or_ref_t<T> first_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback = 0);
 template<typename T>
-tpy::return_val_or_ref_t<T> fallback_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback = 0);
+tpy::val_or_ref_t<T> fallback_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback = 0);
 template<typename T>
-tpy::return_val_or_ref_t<T> pick(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b, bool use_first = true);
+tpy::val_or_ref_t<T> pick(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b, bool use_first = true);
 void main();
 
 // 4: def first_or[T](items: list[T], fallback: T = Int32(0)) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> first_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback) {
+tpy::val_or_ref_t<T> first_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback) {
     // 5:     if len(items) > 0:
     if ((tpy::__len__(items) > 0)) {
         // 6:         return items[0]
@@ -28,7 +28,7 @@ tpy::return_val_or_ref_t<T> first_or(std::vector<T>& items, tpy::param_val_or_re
 }
 // 9: def fallback_or[T](items: list[T], fallback: T = 0) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> fallback_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback) {
+tpy::val_or_ref_t<T> fallback_or(std::vector<T>& items, tpy::param_val_or_ref_t<T> fallback) {
     // 10:     if len(items) > 0:
     if ((tpy::__len__(items) > 0)) {
         // 11:         return items[0]
@@ -39,7 +39,7 @@ tpy::return_val_or_ref_t<T> fallback_or(std::vector<T>& items, tpy::param_val_or
 }
 // 14: def pick[T](a: T, b: T, use_first: bool = True) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> pick(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b, bool use_first) {
+tpy::val_or_ref_t<T> pick(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b, bool use_first) {
     // 15:     if use_first:
     if (use_first) {
         // 16:         return a

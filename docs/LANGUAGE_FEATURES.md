@@ -2511,7 +2511,7 @@ y: Int32 = identity(42)  # T inferred as Int32 from annotation
 Generated C++ (template functions):
 ```cpp
 template<typename T>
-tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
+tpy::val_or_ref_t<T> first(std::vector<T>& items) {
     return tpy::get_item(items, 0);
 }
 

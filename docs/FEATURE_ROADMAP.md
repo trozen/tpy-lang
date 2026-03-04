@@ -276,7 +276,7 @@ could use a pending representation that resolves during sema/codegen based on co
   tuple literal captures lvalue record elements by reference, rvalue elements by value.
 - Function parameters: `f(data: tuple[Point, bool])` -- tuple passed by const ref;
   elements follow the tuple's own representation (determined when the tuple was created).
-- Generic code: `def f[T]() -> tuple[T, bool]` -- uses `tpy::return_val_or_ref_t<T>`
+- Generic code: `def f[T]() -> tuple[T, bool]` -- uses `tpy::val_or_ref_t<T>`
   trait that resolves at C++ instantiation time.
 - Dangling references: per-element dangling check on tuple return literals prevents
   returning references to locals/temporaries.

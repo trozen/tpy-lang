@@ -8,12 +8,12 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sized T>
-tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item);
+tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item);
 void main();
 
 // 5: def identity[T: Sized](item: T) -> T:
 template<tpy::Sized T>
-tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item) {
+tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item) {
     // 6:     return item
     return item;
 }

@@ -24,13 +24,13 @@ struct Pair {
     explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 
     // 11:     def get_first(self) -> A:
-    tpy::return_val_or_ref_t<A> get_first() {
+    tpy::val_or_ref_t<A> get_first() {
         // 12:         return self.first
         return this->first;
     }
 
     // 14:     def get_second(self) -> B:
-    tpy::return_val_or_ref_t<B> get_second() {
+    tpy::val_or_ref_t<B> get_second() {
         // 15:         return self.second
         return this->second;
     }

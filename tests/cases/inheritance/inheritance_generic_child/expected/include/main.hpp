@@ -44,7 +44,7 @@ struct Container {
     explicit Container(const T& value) : value(value) {}
 
     // 22:     def get(self) -> T:
-    tpy::return_val_or_ref_t<T> get() {
+    tpy::val_or_ref_t<T> get() {
         // 23:         return self.value
         return this->value;
     }
@@ -72,7 +72,7 @@ struct Box : Animal {
     }
 
     // 14:     def get(self) -> T:
-    tpy::return_val_or_ref_t<T> get() {
+    tpy::val_or_ref_t<T> get() {
         // 15:         return self.value
         return this->value;
     }

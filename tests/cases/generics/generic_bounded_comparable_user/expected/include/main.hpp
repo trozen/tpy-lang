@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<tpy::Comparable T>
 bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
 template<tpy::Comparable T>
-tpy::return_val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+tpy::val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
 void main();
 
 // 6: class MyInt:
@@ -60,7 +60,7 @@ bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
 }
 // 23: def find_min[T: Comparable](a: T, b: T) -> T:
 template<tpy::Comparable T>
-tpy::return_val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+tpy::val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
     // 24:     if a < b:
     if ((a < b)) {
         // 25:         return a

@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 Container<T> make_box();
 template<typename T>
-tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
+tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
 Container<int32_t> get_box();
 void main();
 
@@ -64,7 +64,7 @@ Container<T> make_box() {
 }
 // 17: def identity[T](x: T) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
+tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
     // 18:     return x
     return x;
 }

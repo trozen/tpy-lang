@@ -27,7 +27,7 @@ struct Stack {
     }
 
     // 12:     def pop(self) -> T:
-    tpy::return_val_or_ref_t<T> pop() {
+    tpy::val_or_ref_t<T> pop() {
         // 13:         return self.items.pop()
         return tpy::pop_back(this->items);
     }

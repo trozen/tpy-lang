@@ -24,7 +24,7 @@ struct Container {
     explicit Container(const T& value) : value(value) {}
 
     // 9:     def get_value(self) -> T:
-    tpy::return_val_or_ref_t<T> get_value() {
+    tpy::val_or_ref_t<T> get_value() {
         // 10:         return self.value
         return this->value;
     }

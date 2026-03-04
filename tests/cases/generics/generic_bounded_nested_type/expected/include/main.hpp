@@ -53,7 +53,7 @@ struct Wrapper {
     explicit Wrapper(const V& holder) : holder(holder) {}
 
     // 25:     def get_holder(self) -> V:
-    tpy::return_val_or_ref_t<V> get_holder() {
+    tpy::val_or_ref_t<V> get_holder() {
         // 26:         return self.holder
         return this->holder;
     }

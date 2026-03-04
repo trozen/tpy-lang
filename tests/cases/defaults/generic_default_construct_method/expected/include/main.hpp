@@ -22,7 +22,7 @@ struct Container {
     explicit Container(const T& val) : val(val) {}
 
     // 10:     def get_or_default(self, fallback: T = T()) -> T:
-    tpy::return_val_or_ref_t<T> get_or_default(tpy::param_val_or_ref_t<T> fallback = T{}) {
+    tpy::val_or_ref_t<T> get_or_default(tpy::param_val_or_ref_t<T> fallback = T{}) {
         // 11:         return fallback
         return fallback;
     }

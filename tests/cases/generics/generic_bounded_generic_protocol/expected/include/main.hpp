@@ -53,7 +53,7 @@ struct Holder {
     explicit Holder(const V& item) : item(item) {}
 
     // 25:     def get_item(self) -> V:
-    tpy::return_val_or_ref_t<V> get_item() {
+    tpy::val_or_ref_t<V> get_item() {
         // 26:         return self.item
         return this->item;
     }

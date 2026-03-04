@@ -24,7 +24,7 @@ struct Base {
 
     // 10:     def transform[U](self, other: U) -> U:
     template<typename U>
-    tpy::return_val_or_ref_t<U> transform(tpy::param_val_or_ref_t<U> other) {
+    tpy::val_or_ref_t<U> transform(tpy::param_val_or_ref_t<U> other) {
         // 11:         return other
         return other;
     }
@@ -48,7 +48,7 @@ struct Child : Base<T> {
 
     // 17:     def wrap[U](self, other: U) -> U:
     template<typename U>
-    tpy::return_val_or_ref_t<U> wrap(tpy::param_val_or_ref_t<U> other) {
+    tpy::val_or_ref_t<U> wrap(tpy::param_val_or_ref_t<U> other) {
         // 18:         return super().transform(other)
         return Base<T>::template transform<U>(other);
     }

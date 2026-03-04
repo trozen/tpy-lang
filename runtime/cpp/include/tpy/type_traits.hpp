@@ -50,14 +50,14 @@ concept ValueType = is_value_type<T>::value;
  * Return type helpers for generic code.
  *
  * These pick value or reference return types based on is_value_type trait:
- * - return_val_or_ref_t<T>: T for value types, T& for object types (mutable)
- * - return_val_or_cref_t<T>: T for value types, const T& for object types (const)
+ * - val_or_ref_t<T>: T for value types, T& for object types (mutable)
+ * - val_or_cref_t<T>: T for value types, const T& for object types (const)
  */
 template<typename T>
-using return_val_or_ref_t = std::conditional_t<is_value_type<T>::value, T, T&>;
+using val_or_ref_t = std::conditional_t<is_value_type<T>::value, T, T&>;
 
 template<typename T>
-using return_val_or_cref_t = std::conditional_t<is_value_type<T>::value, T, const T&>;
+using val_or_cref_t = std::conditional_t<is_value_type<T>::value, T, const T&>;
 
 /**
  * Parameter type helper for generic code.

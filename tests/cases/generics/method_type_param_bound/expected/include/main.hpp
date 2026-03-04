@@ -24,7 +24,7 @@ struct Pair {
     explicit Pair(T a, T b) : a(std::move(a)), b(std::move(b)) {}
 
     // 12:     def min_val[T: Comparable](self) -> T:
-    tpy::return_val_or_ref_t<T> min_val()
+    tpy::val_or_ref_t<T> min_val()
       requires tpy::Comparable<T> {
         // 13:         if self.a < self.b:
         if ((this->a < this->b)) {
@@ -36,7 +36,7 @@ struct Pair {
     }
 
     // 17:     def with_default[T: Default](self) -> T:
-    tpy::return_val_or_ref_t<T> with_default()
+    tpy::val_or_ref_t<T> with_default()
       requires std::default_initializable<T> {
         // 18:         return make_default()
         return T{};

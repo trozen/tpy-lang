@@ -8,12 +8,12 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::return_val_or_ref_t<T> make_default(tpy::param_val_or_ref_t<T> x = T{});
+tpy::val_or_ref_t<T> make_default(tpy::param_val_or_ref_t<T> x = T{});
 void main();
 
 // 4: def make_default[T](x: T = T()) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> make_default(tpy::param_val_or_ref_t<T> x) {
+tpy::val_or_ref_t<T> make_default(tpy::param_val_or_ref_t<T> x) {
     // 5:     return x
     return x;
 }

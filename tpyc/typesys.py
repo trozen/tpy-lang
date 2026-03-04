@@ -527,10 +527,10 @@ class TypeParamRef(TpyType):
       - Parameters: Use `tpy::param_val_or_ref_t<T>` which resolves to:
         - `const T&` for value types (immutable, compiler optimizes small types)
         - `T&` for object types (allows mutation per Python semantics)
-      - Returns: Use `tpy::return_val_or_ref_t<T>` which resolves to:
+      - Returns: Use `tpy::val_or_ref_t<T>` which resolves to:
         - `T` for value types (return by value)
         - `T&` for object types (mutable reference, Python semantics)
-      - Const returns: Use `tpy::return_val_or_cref_t<T>` which resolves to:
+      - Const returns: Use `tpy::val_or_cref_t<T>` which resolves to:
         - `T` for value types
         - `const T&` for object types
 
@@ -574,13 +574,13 @@ class TypeParamRef(TpyType):
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
         # Use trait-based return type: T for value types, T& for object types
-        return f"tpy::return_val_or_ref_t<{self.name}>"
+        return f"tpy::val_or_ref_t<{self.name}>"
 
     def to_cpp_return_const(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
         # Use trait-based return type: T for value types, const T& for object types
-        return f"tpy::return_val_or_cref_t<{self.name}>"
+        return f"tpy::val_or_cref_t<{self.name}>"
 
 
 @dataclass(frozen=True)

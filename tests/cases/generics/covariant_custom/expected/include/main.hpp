@@ -144,13 +144,13 @@ struct Tagged {
     template<typename, typename> friend struct Tagged;
 
     // 36:     def get(self) -> T:
-    tpy::return_val_or_ref_t<T> get() {
+    tpy::val_or_ref_t<T> get() {
         // 37:         return self._ptr
         return tpy::deref_check(this->_ptr);
     }
 
     // 38:     def tag(self) -> N:
-    tpy::return_val_or_ref_t<N> tag() {
+    tpy::val_or_ref_t<N> tag() {
         // 39:         return self._tag
         return this->_tag;
     }

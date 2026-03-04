@@ -12,11 +12,11 @@ extern tpy::BigInt result2;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::return_val_or_ref_t<T> first(std::vector<T>& items);
+tpy::val_or_ref_t<T> first(std::vector<T>& items);
 
 // 5: def first[T](items: list[T]) -> T:
 template<typename T>
-tpy::return_val_or_ref_t<T> first(std::vector<T>& items) {
+tpy::val_or_ref_t<T> first(std::vector<T>& items) {
     // 6:     return items[0]
     return tpy::__getitem__(items, 0);
 }

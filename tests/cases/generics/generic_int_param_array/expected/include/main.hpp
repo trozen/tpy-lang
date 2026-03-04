@@ -29,7 +29,7 @@ struct Buffer {
     }
 
     // 13:     def get(self, idx: Int32) -> T:
-    tpy::return_val_or_ref_t<T> get(int32_t idx) {
+    tpy::val_or_ref_t<T> get(int32_t idx) {
         // 14:         return self.data[idx]
         return tpy::__getitem__(this->data, idx);
     }

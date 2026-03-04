@@ -31,13 +31,13 @@ struct Base {
     }
 
     // 23:     def get_first(self) -> T:
-    tpy::return_val_or_ref_t<T> get_first() {
+    tpy::val_or_ref_t<T> get_first() {
         // 24:         return self.first
         return this->first;
     }
 
     // 26:     def get_second(self) -> U:
-    tpy::return_val_or_ref_t<U> get_second() {
+    tpy::val_or_ref_t<U> get_second() {
         // 27:         return self.second
         return this->second;
     }

@@ -22,7 +22,7 @@ struct Box {
     explicit Box(const T& value) : value(value) {}
 
     // 9:     def get(self) -> T:
-    tpy::return_val_or_ref_t<T> get() {
+    tpy::val_or_ref_t<T> get() {
         // 10:         return self.value
         return this->value;
     }

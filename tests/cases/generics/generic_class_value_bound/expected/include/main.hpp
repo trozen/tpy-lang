@@ -11,7 +11,7 @@ template<tpy::ValueType T> struct Ring;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::ValueType T>
-tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v);
+tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v);
 void main();
 
 // 5: class Box[T: ValueType]:
@@ -25,7 +25,7 @@ struct Box {
     explicit Box(const T& value) : value(value) {}
 
     // 11:     def get(self) -> T:
-    tpy::return_val_or_ref_t<T> get() {
+    tpy::val_or_ref_t<T> get() {
         // 12:         return self.value
         return this->value;
     }
@@ -66,7 +66,7 @@ struct Ring {
     }
 
     // 30:     def get(self, i: Int32) -> T:
-    tpy::return_val_or_ref_t<T> get(int32_t i) {
+    tpy::val_or_ref_t<T> get(int32_t i) {
         // 31:         return self.data[i]
         return tpy::__getitem__(this->data, i);
     }
@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
 
 // 34: def identity[T: ValueType](v: T) -> T:
 template<tpy::ValueType T>
-tpy::return_val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v) {
+tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v) {
     // 35:     return v
     return v;
 }
