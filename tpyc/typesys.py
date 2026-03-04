@@ -1597,6 +1597,19 @@ def is_protocol_type(typ: TpyType) -> bool:
     return isinstance(typ, NamedType) and typ.is_protocol
 
 
+def container_to_str_template(typ: TpyType) -> str | None:
+    """Return the C++ to_str template for a container type, or None."""
+    if isinstance(typ, TupleType):
+        return "tpy::tuple_to_str({0})"
+    if isinstance(typ, (ListType, ArrayType, SpanType)):
+        return "tpy::list_to_str({0})"
+    if isinstance(typ, NamedType) and typ.qualified_name() == "tpy.StaticList":
+        return "tpy::list_to_str({0})"
+    if isinstance(typ, DictType):
+        return "tpy::dict_to_str({0})"
+    return None
+
+
 def get_covariant_params(record_info: 'RecordInfo') -> set[str]:
     """Get type param names marked covariant via Covariant[T] protocol."""
     result: set[str] = set()

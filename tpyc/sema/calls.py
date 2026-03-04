@@ -13,8 +13,8 @@ from ..typesys import (
     IntLiteralType, FloatType, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
-    UnionType, EnumType, VOID, BIGINT, BOOL, is_protocol_type, unwrap_readonly, unwrap_optional_own,
-    is_any_str_type,
+    UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
+    is_any_str_type, container_to_str_template,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
@@ -989,6 +989,21 @@ class CallAnalyzer:
                     )
                     return BOOL
 
+        # str(container) fallback: containers have runtime to_str helpers
+        if record_info.name == "str" and len(arg_types) == 1:
+            tmpl = container_to_str_template(unwrap_readonly(arg_types[0]))
+            if tmpl is not None:
+                # is_builtin_function not needed: str() routes via gen_builtin_constructor
+                # which checks cpp_template directly
+                expr.resolved_function_info = FunctionInfo(
+                    name="str",
+                    params=[ParamInfo("x", arg_types[0])],
+                    return_type=STR,
+                    cpp_template=tmpl,
+                    is_readonly=True,
+                )
+                return STR
+
         # No matching overload found
         if not record_info.constructors:
             raise self.ctx.error(f"{type_name}() is not callable", expr)
@@ -1101,6 +1116,20 @@ class CallAnalyzer:
                             expr,
                         )
                 return resolved.return_type
+
+        # repr(container) fallback: containers have runtime to_str helpers
+        if expr.func == "repr" and len(arg_types) == 1:
+            tmpl = container_to_str_template(unwrap_readonly(arg_types[0]))
+            if tmpl is not None:
+                expr.resolved_function_info = FunctionInfo(
+                    name="repr",
+                    params=[ParamInfo("x", arg_types[0])],
+                    return_type=STR,
+                    cpp_template=tmpl,
+                    is_readonly=True,
+                    is_builtin_function=True,
+                )
+                return STR
 
         # No matching overload found - try to give a helpful error
         arg_type_strs = ", ".join(str(t) for t in arg_types)

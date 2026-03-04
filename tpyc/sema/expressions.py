@@ -14,7 +14,7 @@ from ..typesys import (
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo,
-    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type,
+    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type, container_to_str_template,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -1345,7 +1345,9 @@ class ExpressionAnalyzer:
                 resolved = unwrap_readonly(part_type)
                 conv = part.conversion
 
-                if conv == FSTRING_CONV_REPR:
+                if container_to_str_template(resolved) is not None:
+                    pass  # containers have runtime to_str
+                elif conv == FSTRING_CONV_REPR:
                     if not self.protocols.type_conforms_to_protocol(resolved, self._REPRESENTABLE):
                         raise self.ctx.error(
                             f"Type {part_type} cannot use !r conversion (no __repr__ method)",

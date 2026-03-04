@@ -14,6 +14,7 @@
 #include <iostream>
 #include <optional>
 #include <ranges>
+#include <sstream>
 #include <tuple>
 
 #include "core.hpp"
@@ -172,6 +173,13 @@ std::ostream& operator<<(std::ostream& os, const DictPrinter<K, V>& p) {
     }
     os << '}';
     return os;
+}
+
+template<typename K, typename V>
+std::string dict_to_str(const ordered_map<K, V>& m) {
+    std::ostringstream oss;
+    oss << DictPrinter<K, V>(m);
+    return oss.str();
 }
 
 // -- View printing ----------------------------------------------------------

@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType,
-    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, container_to_str_template,
     ResolvedBinop, get_covariant_params,
 )
 from ..parse import (
@@ -1652,6 +1652,14 @@ class ExpressionGenerator:
                 return gen_expr
         return gen_expr
 
+    @staticmethod
+    def _container_to_str(arg_type: TpyType, gen_arg: str) -> str | None:
+        """Return a to_str call for container types, or None."""
+        tmpl = container_to_str_template(arg_type)
+        if tmpl is not None:
+            return tmpl.replace("{0}", gen_arg)
+        return None
+
     def _gen_fstring(self, expr: TpyFString) -> str:
         """Generate std::format(...) for an f-string."""
         fmt_parts: list[str] = []
@@ -1682,8 +1690,12 @@ class ExpressionGenerator:
                     or isinstance(arg_type, TypeParamRef)
                 )
 
+                container_str = self._container_to_str(arg_type, gen_arg)
+
                 # !r conversion: always wrap with __repr__
-                if conv == FSTRING_CONV_REPR:
+                if container_str is not None:
+                    gen_arg = container_str
+                elif conv == FSTRING_CONV_REPR:
                     gen_arg = f"tpy::__repr__({gen_arg})"
                 # !s conversion on user types: wrap with __str__
                 elif conv == FSTRING_CONV_STR and is_user_type:

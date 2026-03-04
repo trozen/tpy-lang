@@ -12,6 +12,7 @@
 #include <iostream>
 #include <ranges>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -37,6 +38,10 @@ namespace detail {
 // Forward declare for recursive nested container support
 template <typename Iter>
 void print_list_contents(std::ostream& os, Iter begin, Iter end);
+
+// Forward declare tuple overload so nested containers (e.g. list[tuple]) resolve correctly
+template <typename... Ts>
+void print_element(std::ostream& os, const std::tuple<Ts...>& t);
 
 template <typename T>
 void print_element(std::ostream& os, const T& elem) {
@@ -175,10 +180,6 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
 
 namespace detail {
 
-// Forward declare so print_tuple_elements can find nested tuple overload
-template <typename... Ts>
-void print_element(std::ostream& os, const std::tuple<Ts...>& t);
-
 template <typename Tuple, std::size_t... Is>
 void print_tuple_elements(std::ostream& os, const Tuple& t, std::index_sequence<Is...>) {
     ((Is == 0 ? (void)(os) : (void)(os << ", "),
@@ -216,6 +217,22 @@ std::ostream& operator<<(std::ostream& os, const TuplePrinter<Ts...>& p) {
     }
     os << ')';
     return os;
+}
+
+// --- to_str helpers for str()/repr()/f-string on containers ---
+
+template <typename T>
+std::string list_to_str(const T& c) {
+    std::ostringstream oss;
+    oss << ListPrinter(c);
+    return oss.str();
+}
+
+template <typename... Ts>
+std::string tuple_to_str(const std::tuple<Ts...>& t) {
+    std::ostringstream oss;
+    oss << TuplePrinter(t);
+    return oss.str();
 }
 
 } // namespace tpy
