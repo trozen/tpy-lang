@@ -9,16 +9,16 @@ inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items>
   requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-void describe(T_items& items);
+void describe(const T_items& items);
 template<typename T_items>
   requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt get_value(T_items& items);
+tpy::BigInt get_value(const T_items& items);
 void main();
 
 // 5: def describe(items: Sized | Sequence[int]) -> None:
 template<typename T_items>
   requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-void describe(T_items& items) {
+void describe(const T_items& items) {
     // 6:     if isinstance(items, Sequence):
     if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
         // 7:         print(items[0])
@@ -31,7 +31,7 @@ void describe(T_items& items) {
 // 11: def get_value(items: Sized | Sequence[int]) -> int:
 template<typename T_items>
   requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt get_value(T_items& items) {
+tpy::BigInt get_value(const T_items& items) {
     // 12:     if isinstance(items, Sequence):
     if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
         // 13:         return items[0]

@@ -13,13 +13,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sized T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || tpy::Sized<T_extra>)
-tpy::BigInt count_items(T_items& items, const T_extra* extra = nullptr);
+tpy::BigInt count_items(const T_items& items, const T_extra* extra = nullptr);
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
 tpy::BigInt only_optional(const T_items* items = nullptr);
 template<tpy::Sequence<tpy::BigInt> T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || tpy::Sequence<T_extra, tpy::BigInt>)
-tpy::BigInt sum_optional(T_items& items, const T_extra* extra = nullptr);
+tpy::BigInt sum_optional(const T_items& items, const T_extra* extra = nullptr);
 void main();
 
 // 6: class Container:
@@ -45,7 +45,7 @@ struct Container {
     // 15:     def update(self, items: Sized, extra: Optional[Sized] = None) -> None:
     template<tpy::Sized T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || tpy::Sized<T_extra>)
-    void update(T_items& items, const T_extra* extra = nullptr) {
+    void update(const T_items& items, const T_extra* extra = nullptr) {
         // 16:         self.count = len(items)
         this->count = tpy::BigInt(tpy::__len__(items));
         // 17:         if extra is not None:
@@ -123,7 +123,7 @@ inline std::ostream& operator<<(std::ostream& os, const GenericContainer<T>& obj
 // 20: def count_items(items: Sized, extra: Optional[Sized] = None) -> int:
 template<tpy::Sized T_items, typename T_extra>
   requires (std::same_as<T_extra, std::nullptr_t> || tpy::Sized<T_extra>)
-tpy::BigInt count_items(T_items& items, const T_extra* extra) {
+tpy::BigInt count_items(const T_items& items, const T_extra* extra) {
     // 21:     result: int = len(items)
     tpy::BigInt result = tpy::BigInt(tpy::__len__(items));
     // 22:     if extra is not None:
@@ -150,7 +150,7 @@ tpy::BigInt only_optional(const T_items* items) {
 // 51: def sum_optional(items: Sequence[int], extra: Optional[Sequence[int]] = None) -> int:
 template<tpy::Sequence<tpy::BigInt> T_items, typename T_extra>
   requires (std::same_as<T_extra, std::nullptr_t> || tpy::Sequence<T_extra, tpy::BigInt>)
-tpy::BigInt sum_optional(T_items& items, const T_extra* extra) {
+tpy::BigInt sum_optional(const T_items& items, const T_extra* extra) {
     // 52:     result: int = 0
     tpy::BigInt result = tpy::BigInt(0);
     // 53:     i: int = 0

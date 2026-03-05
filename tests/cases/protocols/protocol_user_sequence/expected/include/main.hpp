@@ -10,9 +10,9 @@ struct IntWrapper;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sequence<int32_t> T_s>
-int32_t sum_seq(T_s& s);
+int32_t sum_seq(const T_s& s);
 template<tpy::Sequence<int32_t> T_s>
-int32_t first(T_s& s);
+int32_t first(const T_s& s);
 void main();
 
 // 4: class IntWrapper:
@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
 
 // 16: def sum_seq(s: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
-int32_t sum_seq(T_s& s) {
+int32_t sum_seq(const T_s& s) {
     // 17:     total: Int32 = 0
     int32_t total = 0;
     // 18:     i: Int32 = 0
@@ -67,7 +67,7 @@ int32_t sum_seq(T_s& s) {
 }
 // 24: def first(s: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
-int32_t first(T_s& s) {
+int32_t first(const T_s& s) {
     // 25:     return s[0]
     return tpy::__getitem__(s, 0);
 }

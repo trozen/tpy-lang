@@ -8,14 +8,14 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sized T_items>
-void describe(T_items& items);
+void describe(const T_items& items);
 template<tpy::Sized T_items>
-void check_not(T_items& items);
+void check_not(const T_items& items);
 void main();
 
 // 5: def describe(items: Sized) -> None:
 template<tpy::Sized T_items>
-void describe(T_items& items) {
+void describe(const T_items& items) {
     // 6:     if isinstance(items, Sized):
     if constexpr (tpy::Sized<T_items>) {
         // 7:         print("sized:", len(items))
@@ -27,7 +27,7 @@ void describe(T_items& items) {
 }
 // 11: def check_not(items: Sized) -> None:
 template<tpy::Sized T_items>
-void check_not(T_items& items) {
+void check_not(const T_items& items) {
     // 12:     if not isinstance(items, Sized):
     if constexpr ((!(tpy::Sized<T_items>))) {
         // 13:         print("not sized")

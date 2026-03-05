@@ -8,21 +8,21 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sequence<int32_t> T_items>
-int32_t first(T_items& items);
+int32_t first(const T_items& items);
 template<tpy::Sequence<int32_t> T_items>
-int32_t sum_all(T_items& items);
+int32_t sum_all(const T_items& items);
 int32_t use_span(std::span<int32_t> s);
 void main();
 
 // 4: def first(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>
-int32_t first(T_items& items) {
+int32_t first(const T_items& items) {
     // 5:     return items[0]
     return tpy::__getitem__(items, 0);
 }
 // 7: def sum_all(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>
-int32_t sum_all(T_items& items) {
+int32_t sum_all(const T_items& items) {
     // 8:     total: Int32 = 0
     int32_t total = 0;
     // 9:     i: Int32 = 0

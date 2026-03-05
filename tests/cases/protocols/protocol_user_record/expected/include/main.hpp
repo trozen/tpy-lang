@@ -10,7 +10,7 @@ struct MyContainer;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Sized T_items>
-int32_t count(T_items& items);
+int32_t count(const T_items& items);
 void main();
 
 // 4: class MyContainer:
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
 
 // 13: def count(items: Sized) -> Int32:
 template<tpy::Sized T_items>
-int32_t count(T_items& items) {
+int32_t count(const T_items& items) {
     // 14:     return len(items)
     return tpy::__len__(items);
 }

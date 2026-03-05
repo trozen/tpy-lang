@@ -17,7 +17,7 @@ extern GoodReader* g;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<Readable T_r>
-int32_t use_readable(T_r& r);
+int32_t use_readable(const T_r& r);
 
 // 13: class GoodReader:
 struct GoodReader {
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
 
 // 24: def use_readable(r: Readable) -> Int32:
 template<Readable T_r>
-int32_t use_readable(T_r& r) {
+int32_t use_readable(const T_r& r) {
     // 25:     return r.read()
     return r.read();
 }

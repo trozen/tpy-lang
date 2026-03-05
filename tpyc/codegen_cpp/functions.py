@@ -25,7 +25,7 @@ from .type_resolution import resolve_stmt_type_cascade
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
-    from .protocols import ProtocolGenerator
+    from .protocols import ProtocolGenerator, ProtocolParamInfo
     from .statements import StatementGenerator
 
 
@@ -175,7 +175,7 @@ class FunctionGenerator:
                 info = self._find_protocol_param_info(pname, ptype)
                 if info and info.has_none:
                     part = f"const T_{pname}* {cpp_pname}"
-                elif const_params or isinstance(ptype, ReadonlyType):
+                elif const_params or isinstance(ptype, ReadonlyType) or self._all_protocols_readonly(info):
                     part = f"const T_{pname}& {cpp_pname}"
                 else:
                     part = f"T_{pname}& {cpp_pname}"
@@ -202,6 +202,12 @@ class FunctionGenerator:
         """Find ProtocolParamInfo for a single param (helper for gen_params_with_protocols)."""
         infos = self.protocols.get_all_protocol_params([(pname, ptype)])
         return infos[0] if infos else None
+
+    def _all_protocols_readonly(self, info: ProtocolParamInfo | None) -> bool:
+        """Check if all protocols in a ProtocolParamInfo are functionally const."""
+        if info is None or not info.protocols:
+            return False
+        return all(self.protocols.is_protocol_const(p.name) for p in info.protocols)
 
     def _resolve_return_type(self, return_type: TpyType, *, const: bool = False) -> str:
         """Map a return type to C++, using Base& for @dynamic protocols."""

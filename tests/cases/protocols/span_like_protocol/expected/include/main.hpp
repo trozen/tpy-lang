@@ -10,10 +10,10 @@ struct Buffer;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::ReadOnlySpanLike<int32_t> T_c>
-int32_t sum_span(T_c& c);
+int32_t sum_span(const T_c& c);
 int32_t accept_ro(std::span<const int32_t> s);
 template<tpy::ReadOnlySpanLike<int32_t> T_c>
-int32_t test_pass_to_ro_span(T_c& c);
+int32_t test_pass_to_ro_span(const T_c& c);
 void main();
 
 // 4: class Buffer:
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 // 13: def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_c>
-int32_t sum_span(T_c& c) {
+int32_t sum_span(const T_c& c) {
     // 14:     total: Int32 = 0
     int32_t total = 0;
     // 15:     for x in c:
@@ -61,7 +61,7 @@ int32_t sum_span(T_c& c) {
 }
 // 25: def test_pass_to_ro_span(c: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_c>
-int32_t test_pass_to_ro_span(T_c& c) {
+int32_t test_pass_to_ro_span(const T_c& c) {
     // 27:     return accept_ro(c)
     return accept_ro(tpy::as_span(c));
 }

@@ -318,6 +318,20 @@ class ProtocolGenerator:
 
         return list(methods_by_name.values())
 
+    def is_protocol_const(self, protocol_name: str) -> bool:
+        """Check if a protocol is functionally const (all methods are readonly).
+
+        True when the protocol-level is_readonly flag is set, or when every
+        method (including inherited ones) is individually @readonly.
+        """
+        pi = self.ctx.analyzer.registry.get_protocol(protocol_name)
+        if pi is None:
+            return False
+        if pi.is_readonly:
+            return True
+        all_methods = self.collect_concept_methods(protocol_name)
+        return bool(all_methods) and all(m.is_readonly for m in all_methods)
+
     def collect_concept_fields(self, protocol_name: str, visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
         """Collect fields from a protocol and all its parents for concept generation."""
         if visited is None:
@@ -370,17 +384,11 @@ class ProtocolGenerator:
         # Collect all methods including inherited ones
         all_methods = self.collect_concept_methods(protocol.name)
 
-        # Use const T& unless any method is non-readonly
-        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
-        has_mutable_method = any(
-            not m.is_readonly and not (protocol_info is not None and protocol_info.is_readonly)
-            for m in all_methods
-        )
         # @dynamic protocols use __{Name}_Concept__ so the clean name is
         # free for the base class struct
         concept_name = (f"__{protocol.name}_Concept__"
                         if protocol.is_dynamic else protocol.name)
-        if not has_mutable_method:
+        if self.is_protocol_const(protocol.name):
             out.write(f"concept {concept_name} = requires(const T& t) {{\n")
         else:
             out.write(f"concept {concept_name} = requires(T& t) {{\n")

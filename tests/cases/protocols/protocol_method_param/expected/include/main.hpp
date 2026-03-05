@@ -79,7 +79,7 @@ struct Container {
 
     // 32:     def update(self, items: HasLength) -> None:
     template<HasLength T_items>
-    void update(T_items& items) {
+    void update(const T_items& items) {
         // 33:         self.count = items.length()
         this->count = items.length();
     }
