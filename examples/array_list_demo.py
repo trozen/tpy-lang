@@ -78,6 +78,13 @@ def main() -> None:
     print(len(from_span))            # 3
     print(from_span[0])              # 10
     print(from_span[2])              # 30
+    
+    # --- Construct from dict
+    d = dict([("one", Int32(1)), ("two", Int32(2)), ("three", Int32(3))])
+    from_dict = ArrayList[tuple[str, Int32], 16](d.items())
+    for p in from_dict:
+        print(p)
+    print(from_dict)
 
 
 main()

@@ -1472,7 +1472,7 @@ class StatementGenerator:
             auto __end_N = __obj_N.end();
             for (; __beg_N != __end_N; ++__beg_N) {
                 T var = *__beg_N;            // value types: typed copy
-                auto& var = *__beg_N;        // non-value types: ref
+                auto&& var = *__beg_N;       // non-value types: forwarding ref
                 // body
             }
 
@@ -1500,7 +1500,7 @@ class StatementGenerator:
             cpp_elem = elem_type.to_cpp()
             out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{beg_name};\n")
         else:
-            out.write(f"{inner_indent}auto& {cpp_var} = *{beg_name};\n")
+            out.write(f"{inner_indent}auto&& {cpp_var} = *{beg_name};\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 

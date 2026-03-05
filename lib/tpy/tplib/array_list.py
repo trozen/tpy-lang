@@ -9,8 +9,11 @@
 #   (same N as the class) and deduce both T and N from the argument, enabling
 #   `ArrayList(span)` without explicit type args. Needs: Span[T, N] type, constructor
 #   type arg inference from arguments, int type param deduction.
+# TODO: __str__/__repr__?
+# TODO: bounds checks for append, insert, __init__
+# TODO: emptiness check for pop
 from __future__ import annotations
-from typing import MutableSequence
+from typing import MutableSequence, Iterable
 from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, make_default
 from tpy.mem import UninitArrayStorage
 
@@ -19,13 +22,22 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     _storage: UninitArrayStorage[T, N]
     _size: Int32
 
-    def __init__(self, items: ReadOnlySpan[T] | None = None) -> None:
+    # TODO: error: Iterable used without importing
+    def __init__(self, items: ReadOnlySpanLike[T] | Iterable[T] | None = None) -> None:
         self._storage = UninitArrayStorage[T, N]()
         self._size = 0
-        if items is not None:
-            src = items
-            for i in range(len(src)):
-                self._storage.init(UInt32(self._size), copy(src[i]))
+        if isinstance(items, ReadOnlySpanLike):
+            # TODO: memcpy for primitive/trivial types
+            # TODO: span() method?
+            span = items.__span__()
+            # TODO: call len on items?
+            size = len(span)
+            for i in range(size):
+                self._storage.init(UInt32(i), copy(span[i]))
+            self._size = size
+        elif isinstance(items, Iterable):
+            for item in items:
+                self._storage.init(UInt32(self._size), copy(item))
                 self._size += 1
 
     def __del__(self) -> None:
