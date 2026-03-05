@@ -102,7 +102,12 @@ class ExpressionGenerator:
                 if isinstance(arg, TpyFieldAccess):
                     return f"tpy::optional_to_ptr({arg_gen})"
                 return arg_gen
-            return f"&({self.gen_expr(arg, ptype)})"
+            gen = self.gen_expr(arg, ptype)
+            if self.ctx.is_temporary_expr(arg):
+                arg_type = self.ctx.get_expr_type(arg)
+                tmp = self.ctx.temps.create(arg_type, gen) if arg_type else self.ctx.temps.create_typed("auto", gen)
+                return f"&({tmp})"
+            return f"&({gen})"
         # Required multi-protocol union: pass by reference, template deduction works.
         return self.gen_expr(arg)
 
@@ -406,7 +411,19 @@ class ExpressionGenerator:
         For Optional value types, truthiness means "has value and contained value is truthy".
         """
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            operand_truthy = self.gen_truthy_expr(expr.operand)
+            # Avoid double negation for `not isinstance(x, Proto)` on Optional protocol params.
+            # The positive form already emits `!std::same_as<T_x, std::nullptr_t>`, so negating
+            # that should yield `std::same_as<T_x, std::nullptr_t>` directly.
+            operand = expr.operand
+            if (isinstance(operand, TpyCall) and operand.isinstance_var is not None
+                    and operand.isinstance_is_protocol and operand.isinstance_type is not None):
+                var_name = operand.isinstance_var
+                declared = self.ctx.current_func_params.get(var_name)
+                if declared is not None:
+                    infos = self.protocols.get_all_protocol_params([(var_name, declared)])
+                    if infos and infos[0].has_none and len(infos[0].protocols) == 1:
+                        return f"std::same_as<T_{var_name}, std::nullptr_t>"
+            operand_truthy = self.gen_truthy_expr(operand)
             return f"(!({operand_truthy}))"
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
             left = self.gen_truthy_expr(expr.left)
@@ -852,6 +869,16 @@ class ExpressionGenerator:
         """Generate function call code."""
         # isinstance(x, Protocol) -> Concept<T_x>  (compile-time)
         if expr.isinstance_var is not None and expr.isinstance_is_protocol and expr.isinstance_type is not None:
+            var_name = expr.isinstance_var
+            # For Optional[Protocol] params (single protocol + None), use
+            # !same_as<nullptr_t> guard instead of concept check because some
+            # concepts (e.g. Sized) accidentally match nullptr_t via char* conversion.
+            # Protocol unions with None still need concept checks to differentiate members.
+            declared = self.ctx.current_func_params.get(var_name)
+            if declared is not None:
+                infos = self.protocols.get_all_protocol_params([(var_name, declared)])
+                if infos and infos[0].has_none and len(infos[0].protocols) == 1:
+                    return f"!std::same_as<T_{var_name}, std::nullptr_t>"
             return self.protocols._concept_constraint(expr.isinstance_var, expr.isinstance_type)
         # isinstance(x, T) -> std::holds_alternative<CppT>(x)
         if expr.isinstance_var is not None and expr.isinstance_type is not None:

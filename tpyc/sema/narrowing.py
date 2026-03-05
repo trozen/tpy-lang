@@ -216,6 +216,11 @@ class NarrowingTracker:
                 else:
                     false_type = check_type
                 return {name: check_type}, {name: false_type}
+            # Optional[Protocol] isinstance narrows to the inner protocol type
+            if self._is_optional_type(effective):
+                inner = self._optional_inner_type(effective)
+                if is_protocol_type(inner):
+                    return {name: inner}, {}
 
         # is None / is not None on union or optional types
         match = match_is_none(expr)

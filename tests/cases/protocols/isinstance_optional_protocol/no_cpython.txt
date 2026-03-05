@@ -1,0 +1,1 @@
+isinstance on tpyc static protocols (ReadOnlySpanLike) is compile-time only

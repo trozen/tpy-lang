@@ -638,13 +638,15 @@ class MethodAnalyzer:
 
     def _build_protocol_method_info(self, protocol_name: str, method_name: str,
                                      raw_params: list[tuple[str, TpyType]],
-                                     return_type: TpyType) -> FunctionInfo:
+                                     return_type: TpyType,
+                                     cpp_template: str | None = None) -> FunctionInfo:
         """Build a FunctionInfo for a protocol method signature."""
         params = [ParamInfo(n, t) for n, t in raw_params]
         return FunctionInfo(
             name=method_name, params=params, return_type=return_type,
             is_method=True,
             is_readonly=self._is_protocol_method_readonly(protocol_name, method_name),
+            cpp_template=cpp_template,
         )
 
     def _analyze_protocol_or_bound_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
@@ -653,8 +655,8 @@ class MethodAnalyzer:
             method_sig = self.protocols.get_protocol_method_signature(obj_type, expr.method)
             if method_sig is None:
                 raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
-            raw_params, return_type = method_sig
-            fi = self._build_protocol_method_info(obj_type.name, expr.method, raw_params, return_type)
+            raw_params, return_type, cpp_template = method_sig
+            fi = self._build_protocol_method_info(obj_type.name, expr.method, raw_params, return_type, cpp_template)
             return self._resolve_and_check_args(expr, [fi], {})
 
         if isinstance(obj_type, TypeParamRef):
@@ -663,8 +665,8 @@ class MethodAnalyzer:
                 method_sig = self.protocols.get_protocol_method_signature(bound, expr.method, self_type=obj_type)
                 if method_sig is None:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
-                raw_params, return_type = method_sig
-                fi = self._build_protocol_method_info(bound.name, expr.method, raw_params, return_type)
+                raw_params, return_type, cpp_template = method_sig
+                fi = self._build_protocol_method_info(bound.name, expr.method, raw_params, return_type, cpp_template)
                 return self._resolve_and_check_args(expr, [fi], {})
 
         return None

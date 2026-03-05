@@ -47,16 +47,19 @@ class Diagnostic:
 
 class SemanticError(Exception):
     """Error during semantic analysis."""
-    def __init__(self, message: str, loc: SourceLocation | None = None):
+    def __init__(self, message: str, loc: SourceLocation | None = None,
+                 filename: str | None = None):
         self.message = message
         self.loc = loc
+        self.filename = filename
         super().__init__(message)
 
     def format(self, filename: str = "<unknown>") -> str:
         """Format error with file:line prefix."""
+        name = self.filename or filename
         if self.loc:
-            return f"{filename}:{self.loc.line}: error: {self.message}"
-        return f"{filename}: error: {self.message}"
+            return f"{name}:{self.loc.line}: error: {self.message}"
+        return f"{name}: error: {self.message}"
 
 
 @dataclass

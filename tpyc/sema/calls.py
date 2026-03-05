@@ -767,9 +767,14 @@ class CallAnalyzer:
                 expr
             )
 
+        # Unwrap Optional[Protocol] -> Protocol (isinstance narrows away None)
+        if isinstance(var_type, OptionalType) and is_protocol_type(var_type.inner):
+            var_type = var_type.inner
+
         # Accept both plain protocol params and protocol union params
         if is_protocol_type(var_type):
-            protocol_type = NamedType(protocol_name, is_protocol=True)
+            type_args = var_type.type_args if isinstance(var_type, NamedType) and var_type.name == protocol_name else None
+            protocol_type = NamedType(protocol_name, is_protocol=True, type_args=type_args)
         elif is_protocol_union(var_type):
             # Find the matching member in the union, preserving type_args
             members = protocol_union_protocols(var_type)

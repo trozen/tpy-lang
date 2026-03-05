@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 import argparse
+import os
 import subprocess
 import sys
 import tempfile
@@ -166,7 +167,7 @@ def main() -> int:
         compiled_modules = compiler.compile()
 
         for compiled in compiled_modules:
-            source_name = "<stdin>" if reading_from_stdin else str(compiled.path)
+            source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
             if args.verbose:
                 print(f"Compiling {source_name}...")
                 print(f"  Parsed {len(compiled.ast.records)} records, {len(compiled.ast.functions)} functions")
@@ -180,14 +181,24 @@ def main() -> int:
                 print("  Semantic analysis passed")
 
             if args.dump_code:
-                hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
+                try:
+                    hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
+                except CodeGenError as e:
+                    if e.filename is None and not compiled.is_entry_point:
+                        e.filename = source_name
+                    raise
                 print(f"// === include/{compiled.name}.hpp ===")
                 print(hpp_code)
                 print(f"// === src/{compiled.name}.cpp ===")
                 print(cpp_code)
                 continue
 
-            hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
+            try:
+                hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
+            except CodeGenError as e:
+                if e.filename is None and not compiled.is_entry_point:
+                    e.filename = source_name
+                raise
             all_cpp_paths.append(cpp_path)
 
             if args.verbose or not (args.build or args.exec):

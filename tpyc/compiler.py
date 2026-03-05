@@ -640,10 +640,15 @@ class Compiler:
         module_name = "__main__" if compiled.is_entry_point else compiled.name
 
         # Analyze the module
-        analyzer.analyze(
-            compiled.ast,
-            module_name=module_name,
-        )
+        try:
+            analyzer.analyze(
+                compiled.ast,
+                module_name=module_name,
+            )
+        except SemanticError as e:
+            if e.filename is None and not compiled.is_entry_point:
+                e.filename = os.path.relpath(compiled.path)
+            raise
 
         # Emit warnings for shadowed builtins imported by this module
         for shadowed_name, importers in self.shadowed_builtins.items():

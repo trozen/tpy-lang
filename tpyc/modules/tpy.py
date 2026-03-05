@@ -506,9 +506,8 @@ def init_module() -> BuiltinModule:
     module.protocol("ReadOnlySpanLike",
         type_params=["T"],
         methods={
-            # cpp template unused for ReadOnlySpanLike; codegen uses tpy::as_span()
             "__span__": MethodDef(params=[], returns=SpanType(T, is_readonly=True),
-                                  cpp="{self}.__span__()"),
+                                  cpp="tpy::as_span({self})"),
         },
         cpp_concept="tpy::ReadOnlySpanLike",
         is_readonly=True,

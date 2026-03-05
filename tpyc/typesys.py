@@ -1890,6 +1890,7 @@ class MethodSignature:
     return_type: TpyType
     is_readonly: bool = False
     readonly_opt_out: bool = False
+    cpp_template: str | None = None
 
 
 @dataclass

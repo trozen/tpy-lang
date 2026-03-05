@@ -16,6 +16,9 @@
 
 ## Bugs
 - Generic Optional with non-value type instantiation: `Container[Point].get()` returns `std::optional<Point>` (correct in template) but caller generates `Point* vp = ...` (pointer repr for concrete record). After type substitution TypeParamRef is gone, so codegen doesn't know the type came from a generic context. Needs representation tracking across generic instantiation boundaries.
+- `_gen_optional_ptr_arg` rvalue temp materialization: `&(rvalue_expr)` takes address of a temporary, which is invalid C++. Same fix as `_gen_protocol_arg` -- materialize into a temp variable first. Affects non-protocol Optional pointer-repr params receiving rvalue arguments.
+- `isinstance(x, WrongProto)` on `Optional[Protocol]`: sema doesn't validate that the isinstance target protocol matches the declared protocol. E.g. `x: Sized | None` allows `isinstance(x, Printable)` without error, and codegen emits `!std::same_as<nullptr_t>` (null guard) instead of a concept check. Should either error or generate correct concept constraint.
+- NativeIterable for-loop `auto&` binding: range-based for with `auto&` fails for iterators that yield rvalues (e.g. `dict.items()` yields tuple copies). Needs `const auto&` or `auto&&` binding for non-value element types when the iterator yields temporaries.
 
 ## Examples
 

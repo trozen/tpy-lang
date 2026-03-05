@@ -318,6 +318,7 @@ def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
         methods.append(MethodSignature(
             name=name, params=params, return_type=method_def.returns,
             is_readonly=method_readonly,
+            cpp_template=method_def.cpp,
         ))
 
     return ProtocolInfo(

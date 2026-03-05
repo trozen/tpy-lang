@@ -477,10 +477,10 @@ class ProtocolChecker:
         protocol: NamedType,
         method_name: str,
         self_type: TpyType | None = None,
-    ) -> tuple[list[tuple[str, TpyType]], TpyType] | None:
+    ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None] | None:
         """Get a method's signature from a protocol.
 
-        Returns (params, return_type) with Self substituted, or None if not found.
+        Returns (params, return_type, cpp_template) with Self substituted, or None if not found.
         Searches the protocol and all its parent protocols.
 
         Args:
@@ -513,7 +513,7 @@ class ProtocolChecker:
                     for pname, ptype in method_sig.params
                 ]
                 return_type = self.type_ops.substitute_types(method_sig.return_type, type_subst)
-                return (params, return_type)
+                return (params, return_type, method_sig.cpp_template)
 
         return None
 
