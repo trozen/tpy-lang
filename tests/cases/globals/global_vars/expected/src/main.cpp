@@ -137,7 +137,11 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_4 = {7, 8};
     nums = &__global_slot_4;
     // 46: for x in nums:
-    for (int32_t x : (*nums)) {
+    auto& __obj_2 = (*nums);
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        int32_t x = *__beg_2;
         // 47:     print(x)
         std::cout << x << "\n";
     }

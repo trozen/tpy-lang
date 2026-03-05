@@ -7,7 +7,11 @@ namespace tpy_user::main {
 // 5: def find(items: list[Int32], target: Int32, default: Optional[Int32] = None) -> Optional[Int32]:
 std::optional<int32_t> find(std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_) {
     // 6:     for item in items:
-    for (int32_t item : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t item = *__beg_0;
         // 7:         if item == target:
         if ((item == target)) {
             // 8:             return item

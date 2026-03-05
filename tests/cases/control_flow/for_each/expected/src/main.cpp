@@ -23,7 +23,11 @@ int32_t sum_array() {
     // 18:     result: Int32 = 0
     int32_t result = 0;
     // 19:     for n in nums:
-    for (int32_t n : nums) {
+    auto& __obj_0 = nums;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t n = *__beg_0;
         // 20:         result += n
         result = tpy::add_check<int32_t>(result, n);
     }
@@ -35,7 +39,11 @@ int32_t sum_array() {
 // 26: def print_span(data: Span[Int32]) -> None:
 void print_span(std::span<int32_t> data) {
     // 27:     for x in data:
-    for (int32_t x : data) {
+    auto& __obj_0 = data;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 28:         print(x)
         std::cout << x << "\n";
     }
@@ -51,9 +59,17 @@ int32_t nested_sum() {
     // 41:     total: Int32 = 0
     int32_t total = 0;
     // 42:     for a in outer:
-    for (int32_t a : outer) {
+    auto& __obj_0 = outer;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t a = *__beg_0;
         // 43:         for b in inner:
-        for (int32_t b : inner) {
+        auto& __obj_1 = inner;
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            int32_t b = *__beg_1;
             // 44:             total += a * b
             total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(a, b)));
         }
@@ -74,7 +90,11 @@ void __tpy_init() {
     // 5: total: Int32 = 0
     total = 0;
     // 6: for x in items:
-    for (int32_t x : (*items)) {
+    auto& __obj_0 = (*items);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 7:     total += x
         total = tpy::add_check<int32_t>(total, x);
     }
@@ -85,7 +105,11 @@ void __tpy_init() {
     static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
     arr = &__global_slot_2;
     // 12: for val in arr:
-    for (int32_t val : (*arr)) {
+    auto& __obj_1 = (*arr);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t val = *__beg_1;
         // 13:     print(val)
         std::cout << val << "\n";
     }
@@ -97,7 +121,11 @@ void __tpy_init() {
     // 33: text = "AB"
     text = "AB";
     // 34: for c in text:
-    for (char c : text) {
+    auto& __obj_2 = text;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        char c = *__beg_2;
         // 35:     print(c)
         std::cout << c << "\n";
     }

@@ -27,7 +27,11 @@ void main() {
     std::vector<int32_t> __tmp_1 = {4, 5, 6};
     box_list.set(__tmp_1);
     // 31:     for x in box_list.get():
-    for (int32_t x : box_list.get()) {
+    auto& __obj_0 = box_list.get();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 32:         print(x)
         std::cout << x << "\n";
     }
@@ -37,7 +41,11 @@ void main() {
     // 36:     modify_list(nums)
     modify_list(nums);
     // 37:     for x in nums:
-    for (int32_t x : nums) {
+    auto& __obj_1 = nums;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 38:         print(x)
         std::cout << x << "\n";
     }

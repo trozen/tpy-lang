@@ -93,17 +93,23 @@ void main() {
     // 63:     c.append(3)
     c.append(3);
     // 64:     for x in c:
-    auto& __obj_0 = c;
-    auto __span_0 = __obj_0.__span__();
-    for (int32_t x : __span_0) {
+    auto& __src_0 = c;
+    auto __obj_0 = __src_0.__span__();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 65:         print(x)
         std::cout << x << "\n";
     }
     // 66:     # iterate again (fresh iterator each time)
     // 67:     for x in c:
-    auto& __obj_1 = c;
-    auto __span_1 = __obj_1.__span__();
-    for (int32_t x : __span_1) {
+    auto& __src_1 = c;
+    auto __obj_1 = __src_1.__span__();
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 68:         print(x)
         std::cout << x << "\n";
     }

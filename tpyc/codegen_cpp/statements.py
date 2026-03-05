@@ -1435,7 +1435,7 @@ class StatementGenerator:
                         elem_type: TpyType | None) -> None:
         """Generate loop body statements with namespace/scope tracking.
 
-        Shared by _gen_iterator_loop, _gen_range_counter_loop, and _gen_for_each.
+        Shared by _gen_begin_end_loop, _gen_range_counter_loop, and _gen_for_each.
         Writes the body statements, the closing brace, and cleans up the loop
         variable from var_types.
         """
@@ -1461,109 +1461,96 @@ class StatementGenerator:
         if stmt.var in self.ctx.var_types:
             del self.ctx.var_types[stmt.var]
 
-    def _gen_iterator_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
-                           iterable_expr: str, elem_type: TpyType) -> None:
-        """Generate a while-loop for OptIterator types.
+    def _gen_begin_end_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                            iterable_expr: str, elem_type: TpyType,
+                            is_lvalue: bool | None = None) -> None:
+        """Generate the canonical begin/end iterator loop.
 
         Produces:
-            auto& __iter_N = <iterable>;   // variable -- reference for consumption
-            auto  __iter_N = <iterable>;   // temporary -- copy/move for ownership
-            while (auto __opt_N = __iter_N.__next_opt__()) {
-                int32_t var = *__opt_N;
+            auto& __obj_N = <lvalue_expr>;   // or: auto __obj_N = <rvalue_expr>;
+            auto __beg_N = __obj_N.begin();
+            auto __end_N = __obj_N.end();
+            for (; __beg_N != __end_N; ++__beg_N) {
+                T var = *__beg_N;            // value types: typed copy
+                auto& var = *__beg_N;        // non-value types: ref
                 // body
             }
-        """
-        n = self.ctx.iter_counter
-        self.ctx.iter_counter += 1
-        iter_name = f"__iter_{n}"
-        opt_name = f"__opt_{n}"
 
-        binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
-
-        self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}{binding} {iter_name} = {iterable_expr};\n")
-        out.write(f"{indent}while (auto {opt_name} = {iter_name}.__next_opt__()) {{\n")
-
-        # Declare loop variable inside the while body
-        inner_indent = indent + INDENT
-        cpp_var = escape_cpp_name(stmt.var)
-        if elem_type.is_value_type():
-            cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{opt_name};\n")
-        else:
-            out.write(f"{inner_indent}auto& {cpp_var} = *{opt_name};\n")
-
-        self._gen_loop_body(out, stmt, indent, elem_type)
-
-    def _gen_iter_protocol_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
-                                iterable_expr: str, elem_type: TpyType) -> None:
-        """Generate a while-loop for types with __iter__() returning an iterator.
-
-        Produces:
-            auto& __obj_N = container;              // variable -- reference
-            auto  __obj_N = Container(args);        // temporary -- own it
-            auto  __iter_N = __obj_N.__iter__();    // always own the iterator
-            while (auto __opt_N = __iter_N.__next_opt__()) {
-                T x = *__opt_N;
-                // body
-            }
+        If is_lvalue is None, it's determined from stmt.iterable.
         """
         n = self.ctx.iter_counter
         self.ctx.iter_counter += 1
         obj_name = f"__obj_{n}"
-        iter_name = f"__iter_{n}"
-        opt_name = f"__opt_{n}"
+        beg_name = f"__beg_{n}"
+        end_name = f"__end_{n}"
 
-        obj_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+        if is_lvalue is None:
+            is_lvalue = self._is_lvalue_iterable(stmt.iterable)
+        obj_binding = "auto&" if is_lvalue else "auto"
 
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{obj_binding} {obj_name} = {iterable_expr};\n")
-        out.write(f"{indent}auto {iter_name} = {obj_name}.__iter__();\n")
-        out.write(f"{indent}while (auto {opt_name} = {iter_name}.__next_opt__()) {{\n")
+        out.write(f"{indent}auto {beg_name} = {obj_name}.begin();\n")
+        out.write(f"{indent}auto {end_name} = {obj_name}.end();\n")
+        out.write(f"{indent}for (; {beg_name} != {end_name}; ++{beg_name}) {{\n")
 
         inner_indent = indent + INDENT
         cpp_var = escape_cpp_name(stmt.var)
         if elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{opt_name};\n")
+            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{beg_name};\n")
         else:
-            out.write(f"{inner_indent}auto& {cpp_var} = *{opt_name};\n")
+            out.write(f"{inner_indent}auto& {cpp_var} = *{beg_name};\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
-    def _gen_span_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
-                        iterable_expr: str, elem_type: TpyType,
-                        use_as_span: bool = False) -> None:
-        """Generate range-based for via __span__() or tpy::as_span().
+    def _gen_adapted_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                          iterable_expr: str, elem_type: TpyType,
+                          adapter: str) -> None:
+        """Generate begin/end loop with an iter_adapt wrapper.
+
+        Captures the original iterable first (to keep it alive), then wraps
+        it with tpy::iter_adapt or tpy::iter_adapt_container, then delegates
+        to _gen_begin_end_loop.
 
         Produces:
-            auto& __obj_N = container;              // lvalue ref
-            auto  __span_N = __obj_N.__span__();    // or tpy::as_span(__obj_N)
-            for (ElemT x : __span_N) { ... }        // value types by copy
-            for (auto& x : __span_N) { ... }        // non-value types by ref
+            auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
+            auto __obj_N = tpy::<adapter>(__src_N);
+            auto __beg_N = __obj_N.begin();
+            ...
         """
         n = self.ctx.iter_counter
-        self.ctx.iter_counter += 1
-        obj_name = f"__obj_{n}"
-        span_name = f"__span_{n}"
-
-        obj_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+        # Don't increment -- _gen_begin_end_loop will allocate its own counter
+        src_name = f"__src_{n}"
+        src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
 
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}{obj_binding} {obj_name} = {iterable_expr};\n")
-        if use_as_span:
-            out.write(f"{indent}auto {span_name} = tpy::as_span({obj_name});\n")
-        else:
-            out.write(f"{indent}auto {span_name} = {obj_name}.__span__();\n")
+        out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
+        adapted_expr = f"tpy::{adapter}({src_name})"
+        self._gen_begin_end_loop(out, stmt, indent, adapted_expr, elem_type, is_lvalue=False)
 
-        cpp_var = escape_cpp_name(stmt.var)
-        if elem_type.is_value_type():
-            cpp_elem = elem_type.to_cpp()
-            out.write(f"{indent}for ({cpp_elem} {cpp_var} : {span_name}) {{\n")
-        else:
-            out.write(f"{indent}for (auto& {cpp_var} : {span_name}) {{\n")
+    def _gen_captured_call_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                                iterable_expr: str, elem_type: TpyType,
+                                make_call: "Callable[[str], str]") -> None:
+        """Capture iterable, apply a method/function call, then begin/end loop.
 
-        self._gen_loop_body(out, stmt, indent, elem_type)
+        Used for __span__() and tpy::as_span() where the container must stay
+        alive for the span to remain valid.
+
+        Produces:
+            auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
+            auto __obj_N = __src_N.__span__();  // (or tpy::as_span(__src_N))
+            auto __beg_N = __obj_N.begin();
+            ...
+        """
+        n = self.ctx.iter_counter
+        src_name = f"__src_{n}"
+        src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+
+        self.ctx.temps.flush(out, indent)
+        out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
+        call_expr = make_call(src_name)
+        self._gen_begin_end_loop(out, stmt, indent, call_expr, elem_type, is_lvalue=False)
 
     @staticmethod
     def _unwrap_coerce(expr: TpyExpr) -> TpyExpr:
@@ -1751,14 +1738,26 @@ class StatementGenerator:
             out.write(f"{indent}tpy::range_check_overflow<{cpp_t}>({start_expr}, {stop_expr}, {step_expr});\n")
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
-        """Generate a for-each loop over a collection or iterator."""
+        """Generate a for-each loop over a collection or iterator.
+
+        All iteration uses a single canonical begin/end loop shape.
+        The iterable expression is wrapped with an adapter if needed:
+        - Native C++ ranges (list, dict, str, etc.): expr directly
+        - range(): counter optimization first, else tpy::Range<T>(args...)
+        - Enum: tpy::EnumUtil<E>::members
+        - __span__()-based types: expr.__span__() or tpy::as_span(expr)
+        - OptIterator types: tpy::iter_adapt(expr)
+        - __iter__()-based types: tpy::iter_adapt_container(expr)
+        - Protocol Iterator[T]: tpy::iter_adapt(expr)
+        - Protocol Iterable[T]: tpy::iter_adapt_container(expr)
+        - Protocol ReadOnlySpanLike[T]: tpy::as_span(expr)
+        """
         # Enum iteration: `for c in Color` -> range over EnumUtil<Color>::members
         if stmt.enum_iterable is not None:
             enum_type = stmt.enum_iterable
             cpp_type = enum_type.to_cpp()
-            out.write(f"{indent}for ({cpp_type} {stmt.var} : tpy::EnumUtil<{cpp_type}>::members) {{\n")
-            self.ctx.var_types[stmt.var] = enum_type
-            self._gen_loop_body(out, stmt, indent, enum_type)
+            iterable = f"tpy::EnumUtil<{cpp_type}>::members"
+            self._gen_begin_end_loop(out, stmt, indent, iterable, enum_type)
             return
 
         from tpyc.modules import get_native_iterator_element_type, get_iter_element_type, get_span_element_type, is_native_iterable
@@ -1779,64 +1778,71 @@ class StatementGenerator:
             elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             if resolved_type.name == "Iterator":
-                self._gen_iterator_loop(out, stmt, indent, iterable, elem_type)
+                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt")
             else:
-                self._gen_iter_protocol_loop(out, stmt, indent, iterable, elem_type)
+                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt_container")
             return
 
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses tpy::as_span)
         if is_protocol_type(resolved_type) and resolved_type.name == "ReadOnlySpanLike":
             elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_span_loop(out, stmt, indent, iterable, elem_type, use_as_span=True)
+            self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
+                                         lambda src: f"tpy::as_span({src})")
             return
 
-        # Optimize range() calls to C-style counter loops (before protocol checks)
+        # Optimize range() calls to C-style counter loops
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
             elem_type = sema_elem or iterable_type.get_element_type()
             if elem_type and self._gen_range_counter_loop(out, stmt, indent, elem_type):
                 return
+            # Counter optimization didn't apply; fall back to Range<T> begin/end
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            if elem_type:
+                self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type, is_lvalue=False)
+                return
 
-        # Check for OptIterator types -- these use while-loop codegen
+        # Check for OptIterator types -- wrap with iter_adapt
         iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_iterator_loop(out, stmt, indent, iterable, sema_elem or iter_elem)
+            self._gen_adapted_loop(out, stmt, indent, iterable, sema_elem or iter_elem, "iter_adapt")
             return
 
-        # Check for __span__()-based types (zero-cost range-based for via span)
+        # Check for __span__()-based types (iterate via span's begin/end)
         span_elem = get_span_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if span_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_span_loop(out, stmt, indent, iterable, sema_elem or span_elem)
+            self._gen_captured_call_loop(out, stmt, indent, iterable, sema_elem or span_elem,
+                                         lambda src: f"{src}.__span__()")
             return
 
         # Check for __iter__()-based types (container -> separate iterator)
-        # Skip if NativeIterable -- those use faster range-based for below
+        # Skip if NativeIterable -- those are native C++ ranges with begin/end
         if is_native_iterable(iterable_type, self.ctx.analyzer.registry):
             iter_elem = None
         else:
             iter_elem = get_iter_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_iter_protocol_loop(out, stmt, indent, iterable, sema_elem or iter_elem)
+            self._gen_adapted_loop(out, stmt, indent, iterable, sema_elem or iter_elem, "iter_adapt_container")
             return
 
+        # Native C++ range fallback (list, dict, str, Array, Span, etc.)
         iterable = self.expressions.gen_expr_deref(stmt.iterable)
 
-        # C string literals include the null terminator in range-based for,
-        # so wrap them in std::string_view to iterate only the characters.
+        # C string literals include the null terminator, so wrap in string_view
         if isinstance(stmt.iterable, TpyStrLiteral):
             iterable = f"std::string_view({iterable})"
 
-        # Use sema-resolved elem_type if available, otherwise derive from iterable
+        # Determine element type
         if sema_elem is not None:
             elem_type = sema_elem
         elif is_protocol_type(iterable_type):
             if iterable_type.name == "NativeIterable" and iterable_type.type_args:
                 elem_type = iterable_type.type_args[0]
             else:
-                elem_type = None  # Will use auto
+                elem_type = None
         else:
             elem_type = iterable_type.get_iteration_element_type()
 
@@ -1844,22 +1850,21 @@ class StatementGenerator:
         if isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
 
-        # Flush any pending temps before for loop header
-        self.ctx.temps.flush(out, indent)
-
-        # Generate C++ range-based for loop
-        # Non-value element types use auto& (reference into container, not pointer-local)
-        cpp_var = escape_cpp_name(stmt.var)
         if elem_type:
-            if not elem_type.is_value_type():
-                out.write(f"{indent}for (auto& {cpp_var} : {iterable}) {{\n")
-            else:
-                cpp_type = self.types.type_to_cpp(elem_type)
-                out.write(f"{indent}for ({cpp_type} {cpp_var} : {iterable}) {{\n")
-            # Track the loop variable's type for use in body expressions
-            self.ctx.var_types[stmt.var] = elem_type
+            self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type)
         else:
-            # Fallback: use auto
-            out.write(f"{indent}for (auto {cpp_var} : {iterable}) {{\n")
-
-        self._gen_loop_body(out, stmt, indent, elem_type)
+            # Fallback: use auto with begin/end
+            n = self.ctx.iter_counter
+            self.ctx.iter_counter += 1
+            obj_name = f"__obj_{n}"
+            beg_name = f"__beg_{n}"
+            end_name = f"__end_{n}"
+            obj_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+            self.ctx.temps.flush(out, indent)
+            cpp_var = escape_cpp_name(stmt.var)
+            out.write(f"{indent}{obj_binding} {obj_name} = {iterable};\n")
+            out.write(f"{indent}auto {beg_name} = {obj_name}.begin();\n")
+            out.write(f"{indent}auto {end_name} = {obj_name}.end();\n")
+            out.write(f"{indent}for (; {beg_name} != {end_name}; ++{beg_name}) {{\n")
+            out.write(f"{indent}{INDENT}auto {cpp_var} = *{beg_name};\n")
+            self._gen_loop_body(out, stmt, indent, elem_type)

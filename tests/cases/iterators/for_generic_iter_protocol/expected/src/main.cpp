@@ -15,19 +15,23 @@ void main() {
     // 48:     s.add(30)
     s.add(30);
     // 50:     for x in s:
-    auto& __obj_0 = s;
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto& __src_0 = s;
+    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 51:         print(x)
         std::cout << x << "\n";
     }
     // 53:     # iterate again
     // 54:     for x in s:
-    auto& __obj_1 = s;
-    auto __iter_1 = __obj_1.__iter__();
-    while (auto __opt_1 = __iter_1.__next_opt__()) {
-        int32_t x = *__opt_1;
+    auto& __src_1 = s;
+    auto __obj_1 = tpy::iter_adapt_container(__src_1);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 55:         print(x)
         std::cout << x << "\n";
     }

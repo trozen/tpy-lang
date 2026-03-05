@@ -89,10 +89,12 @@ int32_t sum_items(T_items& items) {
     // 32:     total: Int32 = 0
     int32_t total = 0;
     // 33:     for x in items:
-    auto& __obj_0 = items;
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto& __src_0 = items;
+    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 34:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }

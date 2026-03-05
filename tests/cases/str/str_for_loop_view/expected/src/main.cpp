@@ -11,7 +11,11 @@ void main() {
     std::vector<std::string> words = {"hello", "world", "foo"};
     // 5:     # Read-only iteration -> string_view
     // 6:     for w in words:
-    for (std::string_view w : words) {
+    auto& __obj_0 = words;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view w = *__beg_0;
         // 7:         print(w)
         std::cout << w << "\n";
     }
@@ -19,13 +23,21 @@ void main() {
     // 10:     d: dict[str, int] = {"a": 1, "b": 2}
     tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>({{"a", tpy::BigInt(1)}, {"b", tpy::BigInt(2)}});
     // 11:     for k in d:
-    for (std::string_view k : d) {
+    auto& __obj_1 = d;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        std::string_view k = *__beg_1;
         // 12:         print(k)
         std::cout << k << "\n";
     }
     // 14:     # Dict items -> tuple unpack, str key is string_view
     // 15:     for k, v in d.items():
-    for (std::tuple<std::string, tpy::BigInt> __for_tup_0 : tpy::dict_items(d)) {
+    auto __obj_2 = tpy::dict_items(d);
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        std::tuple<std::string, tpy::BigInt> __for_tup_0 = *__beg_2;
         // 14:     # Dict items -> tuple unpack, str key is string_view
         // 15:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;

@@ -14,10 +14,12 @@ void __tpy_init() {
 
     // 29: # 1. Container with __iter__ in for-loop
     // 30: for x in NumberRange(0, 5):
-    auto __obj_0 = NumberRange(0, 5);
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto __src_0 = NumberRange(0, 5);
+    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 31:     print(x)
         std::cout << x << "\n";
     }
@@ -26,18 +28,22 @@ void __tpy_init() {
     static NumberRange __global_slot_1 = NumberRange(10, 13);
     nums = &__global_slot_1;
     // 35: for x in nums:
-    auto& __obj_1 = (*nums);
-    auto __iter_1 = __obj_1.__iter__();
-    while (auto __opt_1 = __iter_1.__next_opt__()) {
-        int32_t x = *__opt_1;
+    auto& __src_1 = (*nums);
+    auto __obj_1 = tpy::iter_adapt_container(__src_1);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 36:     print(x)
         std::cout << x << "\n";
     }
     // 37: for x in nums:
-    auto& __obj_2 = (*nums);
-    auto __iter_2 = __obj_2.__iter__();
-    while (auto __opt_2 = __iter_2.__next_opt__()) {
-        int32_t x = *__opt_2;
+    auto& __src_2 = (*nums);
+    auto __obj_2 = tpy::iter_adapt_container(__src_2);
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        int32_t x = *__beg_2;
         // 38:     print(x)
         std::cout << x << "\n";
     }

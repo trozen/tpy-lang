@@ -11,9 +11,12 @@ void __tpy_init() {
 
     // 18: # 1. Direct use in for-loop (structural detection)
     // 19: for x in Counter(5):
-    auto __iter_0 = Counter(5);
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto __src_0 = Counter(5);
+    auto __obj_0 = tpy::iter_adapt(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 20:     print(x)
         std::cout << x << "\n";
     }
@@ -22,9 +25,12 @@ void __tpy_init() {
     std::cout << sum_iter(__tmp_1) << "\n";
     // 31: # 3. Empty iterator
     // 32: for x in Counter(0):
-    auto __iter_1 = Counter(0);
-    while (auto __opt_1 = __iter_1.__next_opt__()) {
-        int32_t x = *__opt_1;
+    auto __src_1 = Counter(0);
+    auto __obj_1 = tpy::iter_adapt(__src_1);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 33:     print(x)
         std::cout << x << "\n";
     }

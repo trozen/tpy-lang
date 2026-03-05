@@ -10,7 +10,11 @@ void main() {
     // 3:     d = {"x": 10, "y": 20, "z": 30}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     // 5:     for v in d.values():
-    for (int32_t v : tpy::dict_values(d)) {
+    auto __obj_0 = tpy::dict_values(d);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t v = *__beg_0;
         // 6:         print(v)
         std::cout << v << "\n";
     }

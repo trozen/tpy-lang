@@ -17,7 +17,11 @@ void main() {
     // 9:     print(Int32(99) in d)
     std::cout << tpy::print_bool((d.contains(99))) << "\n";
     // 10:     for k in d:
-    for (int32_t k : d) {
+    auto& __obj_0 = d;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t k = *__beg_0;
         // 11:         print(k, d[k])
         std::cout << k << " " << tpy::__getitem__(d, k) << "\n";
     }

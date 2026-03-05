@@ -10,7 +10,11 @@ void main() {
     // 6:     items: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> items = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
     // 7:     for n, s in items:
-    for (std::tuple<int32_t, std::string> __for_tup_0 : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::tuple<int32_t, std::string> __for_tup_0 = *__beg_0;
         // 7:     for n, s in items:
         const auto& __tup_1 = __for_tup_0;
         int32_t n = std::get<0>(__tup_1);
@@ -22,7 +26,11 @@ void main() {
     // 11:     pairs = [(Int32(10), True), (Int32(20), False)]
     std::array<std::tuple<int32_t, bool>, 2> pairs = {std::tuple<int32_t, bool>{10, true}, std::tuple<int32_t, bool>{20, false}};
     // 12:     for n, flag in pairs:
-    for (std::tuple<int32_t, bool> __for_tup_1 : pairs) {
+    auto& __obj_1 = pairs;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        std::tuple<int32_t, bool> __for_tup_1 = *__beg_1;
         // 12:     for n, flag in pairs:
         const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
@@ -34,7 +42,11 @@ void main() {
     // 16:     names = [("Alice", "A"), ("Bob", "B")]
     std::array<std::tuple<std::string, std::string>, 2> names = {std::tuple<std::string, std::string>{"Alice", "A"}, std::tuple<std::string, std::string>{"Bob", "B"}};
     // 17:     for full, initial in names:
-    for (std::tuple<std::string, std::string> __for_tup_2 : names) {
+    auto& __obj_2 = names;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        std::tuple<std::string, std::string> __for_tup_2 = *__beg_2;
         // 17:     for full, initial in names:
         const auto& __tup_3 = __for_tup_2;
         std::string_view full = std::get<0>(__tup_3);

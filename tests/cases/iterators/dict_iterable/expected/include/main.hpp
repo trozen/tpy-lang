@@ -19,10 +19,12 @@ void main();
 template<tpy::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
     // 6:     for x in items:
-    auto& __obj_0 = items;
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        std::string_view x = *__opt_0;
+    auto& __src_0 = items;
+    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view x = *__beg_0;
         // 7:         print(x)
         std::cout << x << "\n";
     }
@@ -31,10 +33,12 @@ void collect_items(T_items& items) {
 template<tpy::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
     // 10:     for x in items:
-    auto& __obj_0 = items;
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto& __src_0 = items;
+    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 11:         print(x)
         std::cout << x << "\n";
     }
@@ -43,10 +47,12 @@ void collect_ints(T_items& items) {
 template<tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
     // 14:     for pair in items:
-    auto& __obj_0 = items;
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        std::tuple<std::string, int32_t> pair = *__opt_0;
+    auto& __src_0 = items;
+    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::tuple<std::string, int32_t> pair = *__beg_0;
         // 15:         k, v = pair
         const auto& __tup_1 = pair;
         std::string_view k = std::get<0>(__tup_1);

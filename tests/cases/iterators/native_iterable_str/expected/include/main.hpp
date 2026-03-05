@@ -21,7 +21,11 @@ int32_t count_chars(T_text& text) {
     // 6:     count: Int32 = 0
     int32_t count = 0;
     // 7:     for c in text:
-    for (char c : text) {
+    auto& __obj_0 = text;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        char c = *__beg_0;
         // 8:         count += 1
         count = tpy::add_check<int32_t>(count, 1);
     }
@@ -32,7 +36,11 @@ int32_t count_chars(T_text& text) {
 template<tpy::NativeIterable<char> T_text>
 char first_char(T_text& text) {
     // 13:     for c in text:
-    for (char c : text) {
+    auto& __obj_0 = text;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        char c = *__beg_0;
         // 14:         return c
         return c;
     }
@@ -45,7 +53,11 @@ int32_t sum_span(T_items& items) {
     // 19:     total: Int32 = 0
     int32_t total = 0;
     // 20:     for x in items:
-    for (int32_t x : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 21:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }

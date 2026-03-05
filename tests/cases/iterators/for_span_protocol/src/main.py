@@ -46,8 +46,16 @@ def test_readonly_param(buf: readonly[MutBuffer]) -> None:
         total += x
     print(total)
 
+def test_rvalue_span() -> None:
+    # Iterate over a temporary -- the container must stay alive for the span
+    total: Int32 = 0
+    for x in MutBuffer():
+        total += x
+    print(total)
+
 test_mut()
 test_ro()
 test_iterate_twice()
 test_readonly_param(MutBuffer())
+test_rvalue_span()
 print("done")

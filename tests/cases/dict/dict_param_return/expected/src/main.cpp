@@ -17,7 +17,11 @@ int32_t sum_values(tpy::ordered_map<std::string, int32_t>& d) {
     // 9:     total = 0
     int32_t total = 0;
     // 10:     for k in d:
-    for (std::string_view k : d) {
+    auto& __obj_0 = d;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view k = *__beg_0;
         // 11:         total = total + d[k]
         total = (tpy::add_check<int32_t>(total, tpy::__getitem__(d, k)));
     }

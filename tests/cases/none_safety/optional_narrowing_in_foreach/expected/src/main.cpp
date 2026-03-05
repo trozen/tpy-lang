@@ -12,7 +12,11 @@ int32_t sum_items(std::vector<int32_t>& items, std::optional<int32_t> bonus) {
     if ((bonus.has_value())) {
         // 7:         # bonus narrowed to Int32 here
         // 8:         for item in items:
-        for (int32_t item : items) {
+        auto& __obj_0 = items;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t item = *__beg_0;
             // 9:             total = total + item + bonus
             total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*bonus)));
         }
@@ -20,7 +24,11 @@ int32_t sum_items(std::vector<int32_t>& items, std::optional<int32_t> bonus) {
         return total;
     }
     // 11:     for item in items:
-    for (int32_t item : items) {
+    auto& __obj_1 = items;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t item = *__beg_1;
         // 12:         total = total + item
         total = (tpy::add_check<int32_t>(total, item));
     }
@@ -35,7 +43,11 @@ int32_t assert_then_loop(std::optional<int32_t> x, std::vector<int32_t>& items) 
     // 20:     total: Int32 = 0
     int32_t total = 0;
     // 21:     for item in items:
-    for (int32_t item : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t item = *__beg_0;
         // 22:         total = total + item + x
         total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*x)));
     }

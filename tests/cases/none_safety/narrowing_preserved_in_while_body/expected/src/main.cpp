@@ -79,7 +79,11 @@ int32_t for_loop_variant(std::optional<int32_t> x, std::vector<int32_t>& items) 
     // 43:     if x is not None:
     if ((x.has_value())) {
         // 44:         for item in items:
-        for (int32_t item : items) {
+        auto& __obj_0 = items;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t item = *__beg_0;
             // 45:             total = total + item + x  # tpyc: ok
             total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*x)));
         }

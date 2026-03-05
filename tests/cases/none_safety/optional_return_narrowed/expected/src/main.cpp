@@ -18,7 +18,11 @@ tpy::BigInt unwrap_or(std::optional<tpy::BigInt> x, const tpy::BigInt& fallback)
 // 9: def first_positive(nums: list[int]) -> Optional[int]:
 std::optional<tpy::BigInt> first_positive(std::vector<tpy::BigInt>& nums) {
     // 10:     for n in nums:
-    for (tpy::BigInt n : nums) {
+    auto& __obj_0 = nums;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        tpy::BigInt n = *__beg_0;
         // 11:         if n > 0:
         if ((n > 0)) {
             // 12:             return n

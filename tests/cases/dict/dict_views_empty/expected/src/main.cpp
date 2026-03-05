@@ -10,17 +10,29 @@ void main() {
     // 3:     d: dict[str, int] = {}
     tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>();
     // 5:     for k in d.keys():
-    for (std::string_view k : tpy::dict_keys(d)) {
+    auto __obj_0 = tpy::dict_keys(d);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view k = *__beg_0;
         // 6:         print(k)
         std::cout << k << "\n";
     }
     // 8:     for v in d.values():
-    for (tpy::BigInt v : tpy::dict_values(d)) {
+    auto __obj_1 = tpy::dict_values(d);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        tpy::BigInt v = *__beg_1;
         // 9:         print(v)
         std::cout << v << "\n";
     }
     // 11:     for k, v in d.items():
-    for (std::tuple<std::string, tpy::BigInt> __for_tup_0 : tpy::dict_items(d)) {
+    auto __obj_2 = tpy::dict_items(d);
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        std::tuple<std::string, tpy::BigInt> __for_tup_0 = *__beg_2;
         // 11:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);

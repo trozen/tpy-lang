@@ -21,7 +21,11 @@ void main() {
     // 26:     c.append(40)
     c.push_back(40);
     // 27:     for x in c:
-    for (int32_t x : c) {
+    auto& __obj_0 = c;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 28:         print(x)
         std::cout << x << "\n";
     }

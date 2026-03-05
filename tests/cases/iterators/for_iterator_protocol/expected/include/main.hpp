@@ -65,9 +65,12 @@ int32_t sum_iter(T_it& it) {
     // 25:     total: Int32 = 0
     int32_t total = 0;
     // 26:     for x in it:
-    auto& __iter_0 = it;
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto& __src_0 = it;
+    auto __obj_0 = tpy::iter_adapt(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 27:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }

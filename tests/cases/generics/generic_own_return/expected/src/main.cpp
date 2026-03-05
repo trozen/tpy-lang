@@ -19,7 +19,11 @@ void main() {
     // 25:     taken: list[Int32] = box_list.take()
     std::vector<int32_t> taken = box_list.take();
     // 26:     for x in taken:
-    for (int32_t x : taken) {
+    auto& __obj_0 = taken;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 27:         print(x)
         std::cout << x << "\n";
     }
@@ -32,7 +36,11 @@ void main() {
     // 34:     c.append(4)
     c.push_back(4);
     // 35:     for x in c:
-    for (int32_t x : c) {
+    auto& __obj_1 = c;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 36:         print(x)
         std::cout << x << "\n";
     }

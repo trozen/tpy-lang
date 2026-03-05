@@ -16,7 +16,11 @@ void main() {
     // 6:     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
     // 7:     for k in d:
-    for (std::string_view k : d) {
+    auto& __obj_0 = d;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view k = *__beg_0;
         // 8:         print(k)
         std::cout << k << "\n";
     }

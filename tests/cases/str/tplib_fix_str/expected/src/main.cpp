@@ -48,19 +48,23 @@ void main() {
     // 33:     s.append(y)
     s.append(y);
     // 34:     for c in s:
-    auto& __obj_0 = s;
-    auto __iter_0 = __obj_0.__iter__();
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        char c = *__opt_0;
+    auto& __src_0 = s;
+    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        char c = *__beg_0;
         // 35:         print(c)                # h e y
         std::cout << c << "\n";
     }
     // 37:     # iterate again
     // 38:     for c in s:
-    auto& __obj_1 = s;
-    auto __iter_1 = __obj_1.__iter__();
-    while (auto __opt_1 = __iter_1.__next_opt__()) {
-        char c = *__opt_1;
+    auto& __src_1 = s;
+    auto __obj_1 = tpy::iter_adapt_container(__src_1);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        char c = *__beg_1;
         // 39:         print(c)                # h e y
         std::cout << c << "\n";
     }

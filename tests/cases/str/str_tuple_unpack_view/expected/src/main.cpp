@@ -26,7 +26,11 @@ void main() {
     // 12:     d: dict[str, str] = {"key1": "val1", "key2": "val2"}
     tpy::ordered_map<std::string, std::string> d = tpy::ordered_map<std::string, std::string>({{"key1", "val1"}, {"key2", "val2"}});
     // 13:     for k, v in d.items():
-    for (std::tuple<std::string, std::string> __for_tup_0 : tpy::dict_items(d)) {
+    auto __obj_0 = tpy::dict_items(d);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::tuple<std::string, std::string> __for_tup_0 = *__beg_0;
         // 13:     for k, v in d.items():
         const auto& __tup_2 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_2);

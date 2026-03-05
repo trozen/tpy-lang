@@ -68,7 +68,11 @@ void test_foreach_mutation() {
     // 41:     points: list[Point] = [Point(1, 10), Point(2, 20), Point(3, 30)]
     std::vector<Point> points = {Point(1, 10), Point(2, 20), Point(3, 30)};
     // 42:     for p in points:
-    for (auto& p : points) {
+    auto& __obj_0 = points;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& p = *__beg_0;
         // 43:         p.x += 1
         p.x = tpy::add_check<int32_t>(p.x, 1);
     }
@@ -213,7 +217,11 @@ void test_foreach_value_from_pointer_local() {
     // 125:     total: Int32 = 0
     int32_t total = 0;
     // 126:     for n in nums:
-    for (int32_t n : nums) {
+    auto& __obj_0 = nums;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t n = *__beg_0;
         // 127:         total = total + n
         total = (tpy::add_check<int32_t>(total, n));
     }

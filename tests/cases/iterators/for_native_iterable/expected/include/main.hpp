@@ -25,7 +25,11 @@ int32_t sum_iter(T_items& items) {
     // 4:     total: Int32 = 0
     int32_t total = 0;
     // 5:     for x in items:
-    for (int32_t x : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 6:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
@@ -36,7 +40,11 @@ int32_t sum_iter(T_items& items) {
 template<tpy::NativeIterable<int32_t> T_items>
 void print_all(T_items& items) {
     // 10:     for x in items:
-    for (int32_t x : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 11:         print(x)
         std::cout << x << "\n";
     }
@@ -57,9 +65,17 @@ int32_t nested_iteration(T_outer& outer, T_inner& inner) {
     // 20:     total: Int32 = 0
     int32_t total = 0;
     // 21:     for x in outer:
-    for (int32_t x : outer) {
+    auto& __obj_0 = outer;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 22:         for y in inner:
-        for (int32_t y : inner) {
+        auto& __obj_1 = inner;
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            int32_t y = *__beg_1;
             // 23:             total += x * y
             total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(x, y)));
         }

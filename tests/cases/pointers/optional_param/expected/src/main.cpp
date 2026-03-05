@@ -22,7 +22,11 @@ int32_t describe(Point* p) {
 // 22: def find(points: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
     // 23:     for p in points:
-    for (auto& p : points) {
+    auto& __obj_0 = points;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& p = *__beg_0;
         // 24:         if p.x == target:
         if ((p.x == target)) {
             // 25:             return p

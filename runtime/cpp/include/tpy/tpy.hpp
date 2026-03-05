@@ -52,6 +52,9 @@
 // Protocols and concepts (depends on static_list, ranges)
 #include "protocols.hpp"
 
+// Iterator adapter: __next_opt__() -> C++ begin/end (depends on <optional>)
+#include "iter_adapt.hpp"
+
 // Collection printing (depends on static_list, bigint)
 #include "printing.hpp"
 

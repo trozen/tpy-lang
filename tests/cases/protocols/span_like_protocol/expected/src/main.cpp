@@ -9,7 +9,11 @@ int32_t accept_ro(std::span<const int32_t> s) {
     // 20:     total: Int32 = 0
     int32_t total = 0;
     // 21:     for x in s:
-    for (int32_t x : s) {
+    auto& __obj_0 = s;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 22:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }

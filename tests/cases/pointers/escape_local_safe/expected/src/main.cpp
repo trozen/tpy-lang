@@ -47,7 +47,11 @@ void foreach_outer_container() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // 29:     for p in items:
-    for (auto& p : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& p = *__beg_0;
         // 30:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -88,7 +92,11 @@ void foreach_shadow_safe() {
         // 49:         pass
     }
     // 50:     for p in items:
-    for (auto& p : items) {
+    auto& __obj_1 = items;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        auto& p = *__beg_1;
         // 51:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -106,7 +114,11 @@ void param_reused_as_loop_var(Point& p) {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // 59:     for p in items:
-    for (auto& p : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& p = *__beg_0;
         // 60:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -130,11 +142,19 @@ void sequential_loops_same_var() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // 72:     for p in items1:
-    for (auto& p : items1) {
+    auto& __obj_0 = items1;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& p = *__beg_0;
         // 73:         pass
     }
     // 74:     for p in items2:
-    for (auto& p : items2) {
+    auto& __obj_1 = items2;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        auto& p = *__beg_1;
         // 75:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -163,7 +183,11 @@ void lvalue_init_rvalue_rebind() {
     std::optional<Point> __slot_1;
     Point* best = &(tpy::__getitem__(items, 0));
     // 89:     for p in items:
-    for (auto& p : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& p = *__beg_0;
         // 90:         if p.x > best.x:
         if ((p.x > best->x)) {
             // 91:             best = copy(p)  # tpyc: ok

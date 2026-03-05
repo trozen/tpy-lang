@@ -17,7 +17,11 @@ int32_t use_without_check(Point* p) {
 // 25: def find(pts: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& pts, int32_t target) {
     // 26:     for pt in pts:
-    for (auto& pt : pts) {
+    auto& __obj_0 = pts;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& pt = *__beg_0;
         // 27:         if pt.x == target:
         if ((pt.x == target)) {
             // 28:             return pt

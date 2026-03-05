@@ -10,7 +10,11 @@ void __tpy_init() {
     initialized = true;
 
     // 3: for i in range(1, 10, 0):
-    for (int32_t i : tpy::Range<int32_t>(1, 10, 0)) {
+    auto __obj_0 = tpy::Range<int32_t>(1, 10, 0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t i = *__beg_0;
         // 4:     print(i)
         std::cout << i << "\n";
     }

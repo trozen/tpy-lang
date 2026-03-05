@@ -11,7 +11,11 @@ Point* result{};
 // 13: def find(points: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
     // 14:     for p in points:
-    for (auto& p : points) {
+    auto& __obj_0 = points;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto& p = *__beg_0;
         // 15:         if p.x == target:
         if ((p.x == target)) {
             // 16:             return p

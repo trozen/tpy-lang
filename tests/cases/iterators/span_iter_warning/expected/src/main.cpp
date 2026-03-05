@@ -9,9 +9,12 @@ void main() {
     // 26:     d = Dual()
     Dual d = Dual();
     // 27:     for x in d:
-    auto& __obj_0 = d;
-    auto __span_0 = __obj_0.__span__();
-    for (int32_t x : __span_0) {
+    auto& __src_0 = d;
+    auto __obj_0 = __src_0.__span__();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 28:         print(x)
         std::cout << x << "\n";
     }

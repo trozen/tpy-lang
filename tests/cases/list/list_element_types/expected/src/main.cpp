@@ -39,7 +39,11 @@ int32_t sum_span(std::span<int32_t> nums) {
     // 32:     total: Int32 = 0
     int32_t total = 0;
     // 33:     for n in nums:
-    for (int32_t n : nums) {
+    auto& __obj_0 = nums;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t n = *__beg_0;
         // 34:         total += n
         total = tpy::add_check<int32_t>(total, n);
     }
@@ -62,7 +66,11 @@ tpy::BigInt sum_span_bigint(std::span<tpy::BigInt> nums) {
     // 50:     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
     // 51:     for n in nums:
-    for (tpy::BigInt n : nums) {
+    auto& __obj_0 = nums;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        tpy::BigInt n = *__beg_0;
         // 52:         total += n
         total = (total) + (n);
     }

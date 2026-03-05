@@ -18,7 +18,11 @@ void main() {
     box.get().push_back(5);
     // 22:     # Verify the mutations persisted
     // 23:     for x in box.get():
-    for (int32_t x : box.get()) {
+    auto& __obj_0 = box.get();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 24:         print(x)
         std::cout << x << "\n";
     }

@@ -39,7 +39,11 @@ int32_t sum_span(const T_items* items) {
         // 14:         total: Int32 = 0
         int32_t total = 0;
         // 15:         for x in items:
-        for (int32_t x : (*items)) {
+        auto& __obj_0 = (*items);
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t x = *__beg_0;
             // 16:             total += x
             total = tpy::add_check<int32_t>(total, x);
         }

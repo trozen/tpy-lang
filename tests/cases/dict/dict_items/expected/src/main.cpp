@@ -10,7 +10,11 @@ void main() {
     // 3:     d = {"one": 1, "two": 2, "three": 3}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"one", 1}, {"two", 2}, {"three", 3}});
     // 5:     for k, v in d.items():
-    for (std::tuple<std::string, int32_t> __for_tup_0 : tpy::dict_items(d)) {
+    auto __obj_0 = tpy::dict_items(d);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::tuple<std::string, int32_t> __for_tup_0 = *__beg_0;
         // 5:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);

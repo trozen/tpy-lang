@@ -11,9 +11,12 @@ void __tpy_init() {
 
     // 27: # 1. for-loop over child inheriting next() from parent
     // 28: for x in DoubleCounter(3):
-    auto __iter_0 = DoubleCounter(3);
-    while (auto __opt_0 = __iter_0.__next_opt__()) {
-        int32_t x = *__opt_0;
+    auto __src_0 = DoubleCounter(3);
+    auto __obj_0 = tpy::iter_adapt(__src_0);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 29:     print(x)
         std::cout << x << "\n";
     }
@@ -22,9 +25,12 @@ void __tpy_init() {
     std::cout << sum_iter(__tmp_1) << "\n";
     // 40: # 3. Multi-level: for-loop + protocol param
     // 41: for x in GrandChild(2):
-    auto __iter_1 = GrandChild(2);
-    while (auto __opt_1 = __iter_1.__next_opt__()) {
-        int32_t x = *__opt_1;
+    auto __src_1 = GrandChild(2);
+    auto __obj_1 = tpy::iter_adapt(__src_1);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 42:     print(x)
         std::cout << x << "\n";
     }

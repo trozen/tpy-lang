@@ -28,7 +28,11 @@ void main() {
     // 27:     b.append(100)
     b.push_back(100);
     // 28:     for x in b:
-    for (int32_t x : b) {
+    auto& __obj_0 = b;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         // 29:         print(x)
         std::cout << x << "\n";
     }
@@ -38,7 +42,11 @@ void main() {
     // 33:     c.append(100)
     c.push_back(100);
     // 34:     for x in c:
-    for (int32_t x : c) {
+    auto& __obj_1 = c;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t x = *__beg_1;
         // 35:         print(x)
         std::cout << x << "\n";
     }

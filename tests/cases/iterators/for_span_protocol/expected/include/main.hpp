@@ -14,6 +14,7 @@ void test_mut();
 void test_ro();
 void test_iterate_twice();
 void test_readonly_param(const MutBuffer& buf);
+void test_rvalue_span();
 
 // 6: class MutBuffer:
 struct MutBuffer {

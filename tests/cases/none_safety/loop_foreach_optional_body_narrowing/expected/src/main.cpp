@@ -11,7 +11,11 @@ int32_t sum_non_none(std::vector<std::optional<int32_t>>& items) {
     // 5:     total: Int32 = 0
     int32_t total = 0;
     // 6:     for item in items:
-    for (std::optional<int32_t> item : items) {
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::optional<int32_t> item = *__beg_0;
         // 7:         if item is None:
         if ((!item.has_value())) {
             // 8:             continue
