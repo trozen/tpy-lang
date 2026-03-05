@@ -2310,9 +2310,9 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
 
 **For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (uses while-loop via `__next_opt__`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator).
 
-#### Working: `NativeContiguous[T]` (Span coercion)
+#### Working: Span coercion via `ReadOnlySpanLike[T]`
 
-`NativeContiguous[T]` is a **marker protocol** for types with elements laid out contiguously in memory. Types extending `NativeContiguous[T]` can be implicitly coerced to `Span[T]`.
+Types extending `ReadOnlySpanLike[T]` (which provides `__span__() -> ReadOnlySpan[T]`) can be implicitly coerced to `Span[T]`. This unifies span coercion with the `ReadOnlySpanLike` protocol -- no separate marker protocol is needed.
 
 ```python
 from tpy import Int32, Span, Array, StaticList
@@ -2323,7 +2323,7 @@ def sum_span(values: Span[Int32]) -> Int32:
         total += v
     return total
 
-# All these work - Array, StaticList, list extend NativeContiguous[T]
+# All these work - Array, StaticList, list extend ReadOnlySpanLike[T]
 arr: Array[Int32, 3] = [1, 2, 3]
 sum_span(arr)  # OK
 
@@ -2333,16 +2333,15 @@ sum_span(sl)  # OK
 lst: list[Int32] = [4, 5, 6]
 sum_span(lst)  # OK
 
-# str does NOT extend NativeContiguous - this is an error
+# str does NOT extend ReadOnlySpanLike - this is an error
 # s: str = "hello"
-# takes_span(s)  # ERROR: str does not extend NativeContiguous
+# takes_span(s)  # ERROR: str does not extend ReadOnlySpanLike
 ```
 
 **Key points:**
-- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `NativeContiguous[T]`
-- **str excluded**: `str` iterates over `Char` but doesn't extend `NativeContiguous` (design choice)
+- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `ReadOnlySpanLike[T]`
+- **str excluded**: `str` iterates over `Char` but doesn't extend `ReadOnlySpanLike` (design choice)
 - **Zero overhead**: Uses C++ `std::span` implicit construction from contiguous ranges
-- **C++ concept**: Maps to `std::ranges::contiguous_range`
 
 #### Compiler Traits Summary
 
@@ -2352,7 +2351,7 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
 - `for` loops work on `OptIterator[T]`-typed parameters ✓ (working)
-- Implicit coercion to `Span[T]` works on types extending `NativeContiguous[T]` ✓ (working)
+- Implicit coercion to `Span[T]` works on types extending `ReadOnlySpanLike[T]` ✓ (working)
 - `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters ✓ (working)
 

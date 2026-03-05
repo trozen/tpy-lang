@@ -9,7 +9,7 @@
 | **Phase 3** | Generic protocols (`Sequence[T]`), type param substitution | Done |
 | **Phase 4** | `NativeIterable[T]` marker protocol, `extends` declaration | Done |
 | **Phase 5** | `Self` type in protocols, recursive substitution | Done |
-| **Phase 6** | Compiler trait protocols (`NativeContiguous`, `MutableSequence`, `NativeRangeConstructible`) | Done |
+| **Phase 6** | Compiler trait protocols (`MutableSequence`, `NativeRangeConstructible`, `ReadOnlySpanLike`) | Done |
 | **Phase 7** | User-defined protocols (moved to Phase 1) | Done |
 | **Phase 8** | Python-compatible `Iterable[T]`/`Iterator[T]` with `__iter__`/`__next__` | Planned |
 | **Phase 9** | Dynamic protocol dispatch (`@dynamic`, vtables, zero-allocation stack dispatch). See `DYNAMIC_PROTOCOL_DESIGN.md` | Partial (steps 1-5; return types pending) |
@@ -238,9 +238,8 @@ class NamedType(TpyType):
 | `Sequence[T]` | `__len__`, `__getitem__` | indexing | ✅ Working |
 | `MutableSequence[T]` | `__len__`, `__getitem__`, `__setitem__` | subscript assignment validation | ✅ Working |
 | `NativeIterable[T]` | (marker) | `for` loops | ✅ Working |
-| `NativeContiguous[T]` | (marker) | `Span[T]` coercion | ✅ Working |
 | `NativeRangeConstructible[T]` | (marker) | range construction | ✅ Working |
-| `ReadOnlySpanLike[T]` | `__span__` | `for` loops, `ReadOnlySpan[T]` coercion | ✅ Working |
+| `ReadOnlySpanLike[T]` | `__span__` | `for` loops, `Span[T]`/`ReadOnlySpan[T]` coercion | ✅ Working |
 | `Iterable[T]` | `__iter__` | user-extensible iteration | Phase 8 |
 | `Iterator[T]` | `__next__` | iteration | Phase 8 |
 | `Hashable` | `__hash__` | `hash()`, dict keys | Working |
@@ -265,10 +264,6 @@ class HasLength(Protocol):
 class Iterable(Protocol[T]):
     """Types that can be iterated over."""
     def __iter__(self) -> Iterator[T]: ...
-
-class NativeContiguous(Protocol[T]):
-    """Types with contiguous memory layout, coercible to Span[T]."""
-    # Marker protocol - no methods, uses extends declaration
 
 class ConstructibleFromRange(Protocol[T]):
     """Types that can be constructed from a range/iterator."""
@@ -318,9 +313,9 @@ class StaticList(Generic[T, N]):
 **2. Explicit extends** - for marker protocols with no methods:
 ```python
 # In module system, types declare protocol conformance
-module.type("StaticList", ..., extends=["NativeIterable[T]", "NativeContiguous[T]"])
-module.type("list", ..., extends=["NativeIterable[T]", "NativeContiguous[T]"])
-module.register_type(STR, ..., extends=["NativeIterable[Char]"])  # str is not NativeContiguous
+module.type("StaticList", ..., extends=["NativeIterable[T]", "ReadOnlySpanLike[T]"])
+module.type("list", ..., extends=["NativeIterable[T]", "ReadOnlySpanLike[T]"])
+module.register_type(STR, ..., extends=["NativeIterable[Char]"])  # str is not ReadOnlySpanLike
 ```
 
 This design allows:
@@ -336,13 +331,13 @@ Implicit coercions are driven by protocol conformance:
 def takes_span(s: Span[Int32]) -> None: ...
 
 arr: Array[Int32, 3] = [1, 2, 3]
-takes_span(arr)  # OK: Array extends NativeContiguous[Int32]
+takes_span(arr)  # OK: Array extends ReadOnlySpanLike[Int32]
 
 lst: list[Int32] = [1, 2, 3]
-takes_span(lst)  # OK: list extends NativeContiguous[Int32]
+takes_span(lst)  # OK: list extends ReadOnlySpanLike[Int32]
 
 s: str = "hello"
-takes_span(s)  # ERROR: str does not extend NativeContiguous
+takes_span(s)  # ERROR: str does not extend ReadOnlySpanLike
 ```
 
 Generated C++:
@@ -401,7 +396,8 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Validation: `Self` only allowed in protocol contexts
    - Regular (non-dunder) method calls on protocol-typed values
 6. **Phase 6**: Compiler trait protocols ✅ **COMPLETE**
-   - `NativeContiguous[T]` - types with contiguous memory layout, coercible to `Span[T]`
+   - `ReadOnlySpanLike[T]` handles `Span[T]` coercion -- types extending this protocol
+     can be implicitly coerced to `Span[T]` and `ReadOnlySpan[T]`
    - `MutableSequence[T]` - types that support `__len__`, `__getitem__`, and `__setitem__`
      - Used by sema to validate subscript assignment (Span, str don't conform → read-only)
      - C++20 concept `tpy::MutableSequence<ElemT>`

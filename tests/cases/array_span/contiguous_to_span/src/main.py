@@ -1,8 +1,8 @@
-"""Tests that NativeContiguous[T] types can coerce to Span[T]."""
+"""Tests that ReadOnlySpanLike[T] types can coerce to Span[T]."""
 from tpy import Int32, Span, Array, StaticList
 
 def sum_span(values: Span[Int32]) -> Int32:
-    """Function accepting Span - any NativeContiguous[Int32] should work."""
+    """Function accepting Span - any ReadOnlySpanLike[Int32] should work."""
     total: Int32 = 0
     for v in values:
         total += v

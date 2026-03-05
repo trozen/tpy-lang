@@ -228,7 +228,7 @@ def init_module() -> BuiltinModule:
     module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: ListType(t),
-                extends=["NativeIterable[T]", "NativeContiguous[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]"],
+                extends=["NativeIterable[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]"],
                 methods={
         "__len__": [MethodDef(
             params=[],

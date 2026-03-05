@@ -44,8 +44,8 @@ def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
     return False
 
 
-def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
-    """Check if actual type (extending NativeContiguous[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
+def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
+    """Check if actual type (extending ReadOnlySpanLike[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
     if not isinstance(expected, SpanType):
         return False
     # ReadOnlySpan cannot coerce to mutable Span (const violation)
@@ -56,7 +56,7 @@ def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
         return False
     expected_elem = expected.element_type
 
-    # PendingListType is an internal compiler type that resolves to list (which extends NativeContiguous).
+    # PendingListType is an internal compiler type that resolves to list (which extends ReadOnlySpanLike).
     # Handle it directly since it's not in the module system.
     if isinstance(actual, PendingListType):
         if actual_elem == expected_elem:
@@ -66,17 +66,17 @@ def _contiguous_to_span_match(actual: TpyType, expected: TpyType) -> bool:
             return True
         return False
 
-    # Check if actual extends NativeContiguous[T] with matching element type.
+    # Check if actual extends ReadOnlySpanLike[T] with matching element type.
     # Inline check via BuiltinTypeDef.extends (no registry needed -- Span coercion
     # only applies to builtin types).
     from tpyc.modules import lookup_type, extract_type_params
     type_def = lookup_type(actual)
     if type_def is None:
         return False
-    has_contiguous = any(
-        ext.startswith("NativeContiguous[") for ext in type_def.extends
+    has_spanlike = any(
+        ext.startswith("ReadOnlySpanLike[") for ext in type_def.extends
     )
-    if not has_contiguous:
+    if not has_spanlike:
         return False
     if actual_elem == expected_elem:
         return True
@@ -307,21 +307,21 @@ COERCIONS: list[Coercion] = [
         type_match=lambda s1, s2: isinstance(s1, SpanType) and not s1.is_readonly and is_readonly_span(s2) and s1.element_type == s2.element_type,
         protocol_safe=True,
     ),
-    # Span coercions: any NativeContiguous[T] type can coerce to Span[T]
+    # Span coercions: any ReadOnlySpanLike[T] type can coerce to Span[T]
     # Arg context allows temporaries
     Coercion(
-        name="contiguous_to_span_arg",
-        from_type=TpyType,  # Matches any type; _contiguous_to_span_match filters by protocol
+        name="spanlike_to_span_arg",
+        from_type=TpyType,  # Matches any type; _spanlike_to_span_match filters by protocol
         to_type=SpanType,
-        type_match=_contiguous_to_span_match,
+        type_match=_spanlike_to_span_match,
         contexts={CoercionContext.ARG},
     ),
     # Non-arg contexts require lvalue (can't take span of temporary)
     Coercion(
-        name="contiguous_to_span",
-        from_type=TpyType,  # Matches any type; _contiguous_to_span_match filters by protocol
+        name="spanlike_to_span",
+        from_type=TpyType,  # Matches any type; _spanlike_to_span_match filters by protocol
         to_type=SpanType,
-        type_match=_contiguous_to_span_match,
+        type_match=_spanlike_to_span_match,
         contexts={CoercionContext.INIT, CoercionContext.ASSIGN, CoercionContext.RETURN},
         requires_lvalue=True,
         forbid_return_local=True,

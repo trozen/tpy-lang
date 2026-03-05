@@ -91,17 +91,6 @@ concept Iterable = requires(T& t) {
 };
 
 /**
- * NativeContiguous concept - types with elements laid out contiguously in memory
- *
- * A type is NativeContiguous<ElemT> if it's a contiguous_range with elements
- * convertible to ElemT. Types conforming to NativeContiguous can be implicitly
- * converted to std::span.
- */
-template<typename T, typename ElemT>
-concept NativeContiguous = std::ranges::contiguous_range<T> &&
-    std::convertible_to<std::ranges::range_reference_t<T>, ElemT>;
-
-/**
  * ReadOnlySpanLike concept - types that expose contiguous storage as a readonly span
  *
  * A type is ReadOnlySpanLike<ElemT> if tpy::as_span(t) yields something convertible
