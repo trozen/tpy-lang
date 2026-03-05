@@ -27,9 +27,9 @@ struct Pair {
 
 inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     os << "Pair("
-       << "first=" << "\"" << obj.first << "\""
+       << "first=" << "'" << obj.first << "'"
        << ", "
-       << "second=" << "\"" << obj.second << "\""
+       << "second=" << "'" << obj.second << "'"
        << ")";
     return os;
 }

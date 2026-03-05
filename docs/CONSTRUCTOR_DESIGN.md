@@ -6,7 +6,7 @@
 |-------|-------|--------|
 | **Phase 1** | Auto-declare fields from `__init__` (infer type from parameter assignment, top-level only, no inheritance) | Done |
 | **Phase 2** | Warnings and safety: uninitialized field detection, init-list body-assign warning, conditional `= default` | Todo |
-| **Phase 3** | `@dataclass` decorator (auto-generate `__init__` from annotations) | Future |
+| **Phase 3** | `@dataclass` decorator (auto-generate `__init__` from annotations) | Done |
 | **Future** | Improved init-list extraction: ternary rewriting, lambda-in-init-list, cross-branch analysis | Future |
 
 ## Problem Statement

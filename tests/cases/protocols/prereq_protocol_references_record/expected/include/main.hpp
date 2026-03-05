@@ -51,7 +51,7 @@ struct Message {
 
 inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
     os << "Message("
-       << "text=" << "\"" << obj.text << "\""
+       << "text=" << "'" << obj.text << "'"
        << ")";
     return os;
 }

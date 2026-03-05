@@ -64,7 +64,7 @@ struct Dog : Animal {
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     os << "Dog("
-       << "_name=" << "\"" << obj._name << "\""
+       << "_name=" << "'" << obj._name << "'"
        << ")";
     return os;
 }
@@ -87,7 +87,7 @@ struct Cat : Animal {
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     os << "Cat("
-       << "_name=" << "\"" << obj._name << "\""
+       << "_name=" << "'" << obj._name << "'"
        << ")";
     return os;
 }

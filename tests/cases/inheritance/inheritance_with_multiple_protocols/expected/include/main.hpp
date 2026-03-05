@@ -51,7 +51,7 @@ struct Vehicle {
 
 inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
     os << "Vehicle("
-       << "brand=" << "\"" << obj.brand << "\""
+       << "brand=" << "'" << obj.brand << "'"
        << ", "
        << "year=" << obj.year
        << ")";

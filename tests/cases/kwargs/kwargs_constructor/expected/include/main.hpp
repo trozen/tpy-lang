@@ -50,7 +50,7 @@ struct Config {
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     os << "Config("
-       << "host=" << "\"" << obj.host << "\""
+       << "host=" << "'" << obj.host << "'"
        << ", "
        << "port=" << obj.port
        << ", "

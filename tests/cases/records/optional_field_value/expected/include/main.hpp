@@ -32,7 +32,7 @@ struct Config {
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     os << "Config("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ", "
        << "max_retries=" << tpy::print_optional_val(obj.max_retries)
        << ")";

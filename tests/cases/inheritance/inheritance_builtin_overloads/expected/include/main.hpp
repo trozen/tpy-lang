@@ -26,7 +26,7 @@ struct MyList : StaticList<int32_t, 10> {
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
     os << "MyList("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }

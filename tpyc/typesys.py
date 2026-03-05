@@ -1684,6 +1684,7 @@ class FieldInfo:
     name: str
     type: TpyType
     default_value: Optional[str] = None
+    default_expr: Optional[Any] = None  # TpyExpr from parser (avoid circular import)
     loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
 
 

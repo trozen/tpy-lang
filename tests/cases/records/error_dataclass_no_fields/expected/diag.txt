@@ -1,0 +1,1 @@
+main.py:5: error: @dataclass class 'Empty' must have at least one field annotation

@@ -45,7 +45,7 @@ struct Base {
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     os << "Base("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }
@@ -62,7 +62,7 @@ struct Child : Base {
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     os << "Child("
-       << "tag=" << "\"" << obj.tag << "\""
+       << "tag=" << "'" << obj.tag << "'"
        << ")";
     return os;
 }

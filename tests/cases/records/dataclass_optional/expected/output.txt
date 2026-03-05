@@ -1,0 +1,2 @@
+Node(value=42, label=None)
+Node(value=10, label='hello')

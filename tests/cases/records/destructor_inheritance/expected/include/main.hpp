@@ -78,7 +78,7 @@ struct Child : Base {
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     os << "Child("
-       << "label=" << "\"" << obj.label << "\""
+       << "label=" << "'" << obj.label << "'"
        << ")";
     return os;
 }

@@ -43,7 +43,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
 | B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
 | B7 | Float32 type | S | Done | [I](#float32-type) |
-| B8 | Dataclasses | M | Not started | [VII](#dataclasses) |
+| B8 | Dataclasses | M | Partial | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
 | B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
@@ -1409,12 +1409,15 @@ class Point:
     # auto-generates __init__, __eq__, __repr__
 ```
 
-**Current state**: Not started. TPy classes have partial overlap (fields from annotations,
-auto-declare from `__init__`). See `docs/CONSTRUCTOR_DESIGN.md` Decision 5 for design notes.
+**Current state**: Phase 1 done. `@dataclass` auto-generates `__init__` from field
+annotations with default value support. `from dataclasses import dataclass` import,
+field ordering validation, user `__init__` wins over synthesis. CPython-compatible.
+See `docs/DATACLASS_DESIGN.md` for full design and remaining phases (auto `__eq__`,
+`frozen=True`, auto `__hash__`).
 
-**Dependencies**: None for basic form. Full `@dataclass` needs default values.
+**Dependencies**: None for basic form. Full `@dataclass` needs default values (done).
 
-**Effort**: M
+**Effort**: M (Phase 1 done; Phases 2-4 incremental)
 
 ---
 

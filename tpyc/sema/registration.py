@@ -14,7 +14,10 @@ from ..typesys import (
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT,
     register_value_type_record,
 )
-from ..parse import TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyStmt, TpyVarDecl, RecordLinkage
+from ..parse import (
+    TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
+    TpyAssign, TpyFieldAccess, TpyName,
+)
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 
@@ -266,6 +269,51 @@ class TypeRegistrar:
                     f"'__del__' cannot have type parameters",
                     del_method.loc or record.loc,
                 )
+
+        # Synthesize __init__ for @dataclass classes without explicit __init__
+        if record.is_dataclass and record.init_method:
+            self.ctx.warning_from_loc(
+                f"@dataclass class '{record.name}' has an explicit __init__; "
+                f"@dataclass will not generate __init__",
+                record.init_method.loc or record.loc,
+            )
+        elif record.is_dataclass and not record.init_method:
+            if not record.fields:
+                raise SemanticError(
+                    f"@dataclass class '{record.name}' must have at least one field annotation",
+                    record.loc,
+                )
+            # Validate field ordering: fields with defaults must come after fields without
+            seen_default = False
+            for fld in record.fields:
+                if fld.default_expr is not None:
+                    seen_default = True
+                elif seen_default:
+                    raise SemanticError(
+                        f"Field '{fld.name}' without default follows field with default "
+                        f"in @dataclass class '{record.name}'",
+                        fld.loc or record.loc,
+                    )
+            # Build synthetic __init__ from field annotations
+            params: list[tuple[str, TpyType]] = []
+            defaults: list[TpyExpr | None] = []
+            body: list[TpyStmt] = []
+            for fld in record.fields:
+                params.append((fld.name, fld.type))
+                defaults.append(fld.default_expr)
+                body.append(TpyAssign(
+                    target=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
+                    value=TpyName(fld.name),
+                ))
+            init_fn = TpyFunction(
+                name="__init__",
+                params=params,
+                return_type=VoidType(),
+                body=body,
+                is_method=True,
+                defaults=defaults,
+            )
+            record.methods.insert(0, init_fn)
 
         init_params = []
         if record.init_method:

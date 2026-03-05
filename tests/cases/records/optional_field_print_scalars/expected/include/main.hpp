@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
        << ", "
        << "ratio=" << tpy::print_optional_val<tpy::print_float, double>(obj.ratio)
        << ", "
-       << "label=" << (obj.label.has_value() ? std::string("\"") + std::string(obj.label.value()) + "\"" : std::string("None"))
+       << "label=" << (obj.label.has_value() ? std::string("'") + std::string(obj.label.value()) + "'" : std::string("None"))
        << ")";
     return os;
 }

@@ -439,7 +439,7 @@ class Parser:
                     self.registry.register_record(RecordInfo(
                         name=result.name,
                         fields=result.fields,
-                        has_init=result.init_method is not None
+                        has_init=result.init_method is not None or result.is_dataclass
                     ))
             elif isinstance(node, ast.FunctionDef):
                 seen_non_import = True
@@ -620,10 +620,11 @@ class Parser:
             if has_protocol:
                 return self._parse_protocol(node)
 
-        # Parse record decorators (@native, @native_c, @nocopy)
+        # Parse record decorators (@native, @native_c, @nocopy, @dataclass)
         linkage = RecordLinkage.DEFAULT
         native_name: str | None = None
         is_nocopy = False
+        is_dataclass = False
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
             if qname in self._RECORD_LINKAGE_MAP:
@@ -641,6 +642,10 @@ class Parser:
                 if arg is not None:
                     raise ParseError("@nocopy does not take arguments", dec)
                 is_nocopy = True
+            elif qname == "dataclasses.dataclass":
+                if arg is not None and arg is not self._EMPTY_CALL:
+                    raise ParseError("@dataclass does not take arguments (frozen=True is not yet supported)", dec)
+                is_dataclass = True
             else:
                 dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on class '{node.name}'", dec)
@@ -695,9 +700,12 @@ class Parser:
                 field_name = item.target.id
                 field_type = self._parse_type_annotation(item.annotation, type_param_scope)
                 default_val = None
+                default_expr = None
                 if item.value is not None:
                     default_val = self._get_default_value(item.value)
-                fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
+                    default_expr = self._parse_expr(item.value)
+                    self._validate_const_default(default_expr, item.value)
+                fields.append(FieldInfo(field_name, field_type, default_val, default_expr=default_expr, loc=self._loc(item)))
             elif isinstance(item, ast.Assign):
                 # Field with inferred type: name = Int32(0)
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):
@@ -755,7 +763,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, is_dataclass=is_dataclass, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
@@ -1971,12 +1979,17 @@ class Parser:
         """Convert a field default value AST node to a C++ literal string (for FieldInfo.default_value)."""
         if isinstance(node, ast.Constant):
             val = node.value
+            if val is None:
+                return "std::nullopt"
             if isinstance(val, bool):
                 return "true" if val else "false"
             elif isinstance(val, str):
                 escaped = val.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
                 return f'"{escaped}"'
             return str(val)
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+            inner = self._get_default_value(node.operand)
+            return f"-{inner}"
         elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             # Int32(x) just becomes x in C++
             if node.func.id in _FIXED_INT_MAP:

@@ -73,7 +73,7 @@ struct Builder {
 
 inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
     os << "Builder("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ", "
        << "value=" << obj.value
        << ")";
@@ -113,7 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
     os << "Stack("
        << "items=" << tpy::ListPrinter(obj.items)
        << ", "
-       << "label=" << "\"" << obj.label << "\""
+       << "label=" << "'" << obj.label << "'"
        << ")";
     return os;
 }

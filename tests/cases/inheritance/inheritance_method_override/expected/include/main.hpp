@@ -38,7 +38,7 @@ struct Shape {
 
 inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
     os << "Shape("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }

@@ -43,7 +43,7 @@ struct B {
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     os << "B("
-       << "y=" << "\"" << obj.y << "\""
+       << "y=" << "'" << obj.y << "'"
        << ")";
     return os;
 }

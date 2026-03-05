@@ -159,7 +159,7 @@ struct Widget {
 
 inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     os << "Widget("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ", "
        << "val=" << obj.val
        << ")";

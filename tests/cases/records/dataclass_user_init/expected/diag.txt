@@ -1,0 +1,1 @@
+main.py:9: warning: @dataclass class 'Point' has an explicit __init__; @dataclass will not generate __init__

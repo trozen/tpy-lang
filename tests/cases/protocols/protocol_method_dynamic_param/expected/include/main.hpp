@@ -63,7 +63,7 @@ struct Dog : Speaker {
 
 inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     os << "Dog("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }
@@ -86,7 +86,7 @@ struct Cat : Speaker {
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     os << "Cat("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }
@@ -103,7 +103,7 @@ struct Recorder {
 
 inline std::ostream& operator<<(std::ostream& os, const Recorder& obj) {
     os << "Recorder("
-       << "message=" << "\"" << obj.message << "\""
+       << "message=" << "'" << obj.message << "'"
        << ")";
     return os;
 }
@@ -126,7 +126,7 @@ struct Announcer {
 
 inline std::ostream& operator<<(std::ostream& os, const Announcer& obj) {
     os << "Announcer("
-       << "prefix=" << "\"" << obj.prefix << "\""
+       << "prefix=" << "'" << obj.prefix << "'"
        << ")";
     return os;
 }

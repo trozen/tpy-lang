@@ -99,7 +99,7 @@ struct Leaf : Middle<T> {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Leaf<T>& obj) {
     os << "Leaf("
-       << "extra=" << "\"" << obj.extra << "\""
+       << "extra=" << "'" << obj.extra << "'"
        << ")";
     return os;
 }

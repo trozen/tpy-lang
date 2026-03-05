@@ -1,0 +1,17 @@
+# @dataclass with user-defined __init__ (user wins, no synthesis)
+from dataclasses import dataclass
+from tpy import Int32
+
+@dataclass
+class Point:
+    x: Int32
+    y: Int32
+    def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: warning(/will not generate __init__/)
+        self.x = x * 2
+        self.y = y
+
+def main() -> None:
+    p = Point(1, 2)
+    print(p.x, p.y)
+
+main()

@@ -4,7 +4,7 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Core `@dataclass`: auto `__init__` from annotations, field defaults, ordering validation | Not started |
+| 1 | Core `@dataclass`: auto `__init__` from annotations, field defaults, ordering validation | Done |
 | 2 | Auto `__eq__` (field-by-field comparison, `operator==`/`operator!=`) | Not started |
 | 3 | `frozen=True` (immutable instances -- all fields readonly) | Not started |
 | 4 | Auto `__hash__` for frozen dataclasses | Not started |
@@ -364,14 +364,13 @@ semantics. This is consistent with how `@readonly` already works in TPy.
 
 ### D5: `= default` Constructor for Dataclasses
 
-**Chosen: No `= default` constructor.**
+**Current: `= default` is emitted (shared with all records).**
 
-Dataclasses always have a synthesized `__init__`, so a no-arg default constructor is
-not emitted. If all fields have defaults, the user can call `Point()` -- this goes
-through the synthesized `__init__` with all defaults applied, not through `= default`.
-
-This avoids the existing problem where `= default` fails for non-default-constructible
-field types.
+The existing codegen emits `ClassName() = default;` for all records that have a
+parameterized constructor. This applies to dataclasses too. The `= default` constructor
+is never callable from TPy code (sema requires the correct number of arguments), but
+it exists in the C++ header. Suppressing it specifically for dataclasses would require
+changes to the shared record codegen -- deferred to a future cleanup.
 
 ---
 

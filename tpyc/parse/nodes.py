@@ -546,6 +546,7 @@ class TpyRecord:
     linkage: RecordLinkage = RecordLinkage.DEFAULT
     native_name: str | None = None
     is_nocopy: bool = False
+    is_dataclass: bool = False
     loc: SourceLocation | None = None
 
     @property

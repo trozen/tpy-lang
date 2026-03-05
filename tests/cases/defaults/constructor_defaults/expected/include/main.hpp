@@ -46,7 +46,7 @@ struct Named {
 
 inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
     os << "Named("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ", "
        << "value=" << obj.value
        << ")";

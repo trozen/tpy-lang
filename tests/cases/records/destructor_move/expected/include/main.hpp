@@ -44,7 +44,7 @@ struct Tracker {
 
 inline std::ostream& operator<<(std::ostream& os, const Tracker& obj) {
     os << "Tracker("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }

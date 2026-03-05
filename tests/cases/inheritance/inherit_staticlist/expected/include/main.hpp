@@ -29,7 +29,7 @@ struct IntStack : StaticList<int32_t, 100> {
 
 inline std::ostream& operator<<(std::ostream& os, const IntStack& obj) {
     os << "IntStack("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }

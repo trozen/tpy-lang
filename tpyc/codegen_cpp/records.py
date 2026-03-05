@@ -381,7 +381,8 @@ class RecordGenerator:
                 out.write(f'\n{INDENT}   << "{fld.name}="')
                 # Handle strings - quote them
                 if is_any_str_type(fld.type):
-                    out.write(f' << "\\"" << obj.{cpp_fld} << "\\""')
+                    out.write(f" << \"'\" << obj.{cpp_fld} << \"'\"")
+
                 elif isinstance(fld.type, OptionalType):
                     inner = fld.type.inner
                     inner_cpp = inner.to_cpp()
@@ -390,8 +391,8 @@ class RecordGenerator:
                     elif isinstance(inner, (FloatType, Float32Type)):
                         out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{cpp_fld})')
                     elif is_any_str_type(inner):
-                        # Quoted string: None or "value"
-                        out.write(f' << (obj.{cpp_fld}.has_value() ? std::string("\\"") + std::string(obj.{cpp_fld}.value()) + "\\"" : std::string("None"))')
+                        # Quoted string: None or 'value'
+                        out.write(f' << (obj.{cpp_fld}.has_value() ? std::string("\'") + std::string(obj.{cpp_fld}.value()) + "\'" : std::string("None"))')
                     elif isinstance(inner, TupleType):
                         out.write(f';\n{INDENT}if (obj.{cpp_fld}.has_value()) os << tpy::TuplePrinter(obj.{cpp_fld}.value()); else os << "None";\n{INDENT}os')
                     elif isinstance(inner, DictType):

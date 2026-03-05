@@ -54,7 +54,7 @@ struct LabeledContainer : Container<int32_t> {
 
 inline std::ostream& operator<<(std::ostream& os, const LabeledContainer& obj) {
     os << "LabeledContainer("
-       << "label=" << "\"" << obj.label << "\""
+       << "label=" << "'" << obj.label << "'"
        << ")";
     return os;
 }

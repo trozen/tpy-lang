@@ -31,7 +31,7 @@ struct Formatter {
 
 inline std::ostream& operator<<(std::ostream& os, const Formatter& obj) {
     os << "Formatter("
-       << "prefix=" << "\"" << obj.prefix << "\""
+       << "prefix=" << "'" << obj.prefix << "'"
        << ")";
     return os;
 }

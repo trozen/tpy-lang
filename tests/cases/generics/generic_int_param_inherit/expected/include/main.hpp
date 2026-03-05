@@ -73,7 +73,7 @@ struct GrandChild : Child<T, N> {
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const GrandChild<T, N>& obj) {
     os << "GrandChild("
-       << "name=" << "\"" << obj.name << "\""
+       << "name=" << "'" << obj.name << "'"
        << ")";
     return os;
 }

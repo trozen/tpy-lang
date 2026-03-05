@@ -78,7 +78,7 @@ struct StrBox {
 
 inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
     os << "StrBox("
-       << "value=" << "\"" << obj.value << "\""
+       << "value=" << "'" << obj.value << "'"
        << ")";
     return os;
 }
