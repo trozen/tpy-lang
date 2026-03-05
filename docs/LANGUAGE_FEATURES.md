@@ -493,6 +493,8 @@ Key features:
 - `unchecked_get(index)` for raw unchecked access (no bounds check, no negative index normalization)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
 - Constructors: `Span(Ptr[T], Int32)` and `ReadOnlySpan(ReadOnlyPtr[T], Int32)` for low-level span creation
+- Explicit construction from containers: `Span[T](arr)`, `ReadOnlySpan[T](lst)` for any `ReadOnlySpanLike[T]` source (list, Array, StaticList)
+- Containers coerce to `Optional[Span[T]]` / `Optional[ReadOnlySpan[T]]` at call sites
 - `Ptr[T].span(length)` returns `Span[T]`, `ReadOnlyPtr[T].span(length)` returns `ReadOnlySpan[T]`
 
 #### Tuples (Working)

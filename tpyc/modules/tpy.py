@@ -242,6 +242,9 @@ def init_module() -> BuiltinModule:
                     MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
                               returns=VOID,
                               cpp="std::span<{T}>({0}, static_cast<size_t>({1}))"),
+                    MethodDef(params=[ParamDef("source", SpanType(T))],
+                              returns=VOID,
+                              cpp="std::span<{T}>({0})"),
                 ],
                 methods={
         "__len__": [MethodDef(
@@ -282,6 +285,9 @@ def init_module() -> BuiltinModule:
                     MethodDef(params=[ParamDef("ptr", PtrType(T, is_readonly=True)), ParamDef("length", INT32)],
                               returns=VOID,
                               cpp="std::span<const {T}>({0}, static_cast<size_t>({1}))"),
+                    MethodDef(params=[ParamDef("source", SpanType(T, is_readonly=True))],
+                              returns=VOID,
+                              cpp="std::span<const {T}>({0})"),
                 ],
                 methods={
         "__len__": [MethodDef(

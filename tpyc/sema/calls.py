@@ -947,6 +947,9 @@ class CallAnalyzer:
                         if arg_elem is None:
                             rejected = True
                             break
+                        if not p.type.is_readonly and isinstance(at, SpanType) and at.is_readonly:
+                            rejected = True
+                            break
                         expected_elem = expr.call_type.get_element_type() if expr.call_type else None
                         if expected_elem is not None and not type_matches_numeric(arg_elem, expected_elem):
                             rejected = True

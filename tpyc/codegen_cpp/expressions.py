@@ -305,13 +305,18 @@ class ExpressionGenerator:
             return "nullptr"
 
         elif isinstance(expr, TpyCoerce):
-            if expr.coercion.name == "int_literal_to_fixed_int" or isinstance(expr.expected_type, SpanType):
-                inner_target = expr.expected_type
+            # Unwrap Optional to detect span coercion inside Optional[Span[T]].
+            # Single-level unwrap suffices: Span is a value type, never wrapped in Own.
+            coerce_target = expr.expected_type
+            if isinstance(coerce_target, OptionalType) and isinstance(coerce_target.inner, SpanType):
+                coerce_target = coerce_target.inner
+            if expr.coercion.name == "int_literal_to_fixed_int" or isinstance(coerce_target, SpanType):
+                inner_target = coerce_target
             else:
                 inner_target = expr.actual_type
             gen_inner = self.gen_expr(expr.expr, inner_target)
-            if isinstance(expr.expected_type, SpanType):
-                return self._gen_span_coercion(expr.expr, expr.expected_type, gen_inner)
+            if isinstance(coerce_target, SpanType):
+                return self._gen_span_coercion(expr.expr, coerce_target, gen_inner)
             # IntLiteralType may be runtime BigInt; sema records this on the coercion.
             if expr.coercion.name == "int_literal_to_fixed_int":
                 return gen_inner
