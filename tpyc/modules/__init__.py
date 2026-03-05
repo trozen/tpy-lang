@@ -674,23 +674,31 @@ def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
 
 def get_extends_protocol_type_arg(
     tpy_type: "TpyType", protocol_name: str,
+    registry: "TypeRegistry | None" = None,
 ) -> "TpyType | None":
     """Extract the first type arg from a type's extends declaration for a protocol.
 
     For example, Ptr[Int32] extends Deref[T] with T=Int32, so
     get_extends_protocol_type_arg(Ptr[Int32], "Deref") returns Int32.
+
+    Checks builtin type extends strings first, then user record
+    implemented_protocols if a registry is provided.
     """
     type_def = lookup_type(tpy_type)
-    if type_def is None:
-        # Only handles builtin types. User records store protocols in
-        # TypeRegistry; callers needing user-record support must query
-        # the registry separately.
-        return None
-    type_params = extract_type_params(tpy_type)
-    for ext in type_def.extends:
-        match = re.match(r"(\w+)\[(.+)\]", ext)
-        if match and match.group(1) == protocol_name:
-            return _resolve_extends_type_arg(match.group(2), type_params)
+    if type_def is not None:
+        type_params = extract_type_params(tpy_type)
+        for ext in type_def.extends:
+            match = re.match(r"(\w+)\[(.+)\]", ext)
+            if match and match.group(1) == protocol_name:
+                return _resolve_extends_type_arg(match.group(2), type_params)
+
+    if registry is not None:
+        record_info = registry.get_record_for_type(tpy_type)
+        if record_info is not None:
+            for impl_proto in record_info.implemented_protocols:
+                if impl_proto.name == protocol_name and impl_proto.type_args:
+                    return impl_proto.type_args[0]
+
     return None
 
 

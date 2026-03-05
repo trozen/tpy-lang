@@ -17,7 +17,6 @@ from ..typesys import (
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
-from .protocols import record_extends_any
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -538,14 +537,14 @@ class TypeOperations:
             if is_protocol_type(arg_type) and arg_type.name == protocol_name and arg_type.type_args:
                 elem_type = arg_type.type_args[0]
             else:
-                # Check extends declarations (e.g., Ptr[Int32] extends Deref[T])
+                # Check extends declarations (builtins and user records)
                 elem_type = builtin_modules.get_extends_protocol_type_arg(
-                    arg_type, protocol_name)
+                    arg_type, protocol_name, registry=self.ctx.registry)
+                # Structural inference: unify protocol method signatures against
+                # actual type's methods to extract type args
                 if elem_type is None:
-                    elem_type = self._get_iterable_element_type_or_none(arg_type)
-                    if elem_type is not None:
-                        if not record_extends_any(arg_type, protocol_name, self.ctx.registry):
-                            elem_type = None
+                    elem_type = self._infer_protocol_type_arg_structurally(
+                        arg_type, protocol_name)
         if elem_type is None:
             return False
         # Single type_arg: use recursive matching to handle compound types
@@ -560,6 +559,48 @@ class TypeOperations:
                 else:
                     inferred[ta.name] = elem_type
         return True
+
+    def _infer_protocol_type_arg_structurally(
+        self, arg_type: TpyType, protocol_name: str,
+    ) -> TpyType | None:
+        """Infer a protocol's type arg by matching method signatures structurally.
+
+        Uses match_type_with_inference to unify protocol method signatures
+        (containing TypeParamRefs like T) against the record's concrete method
+        signatures. Handles all compound return/param types (Span, Optional, etc.).
+        """
+        protocol_info = self.ctx.registry.get_protocol(protocol_name)
+        if protocol_info is None or not protocol_info.type_params:
+            return None
+        record = self.ctx.registry.get_record_for_type(arg_type)
+        if record is None:
+            return None
+
+        type_subst: dict[str, TpyType] = {}
+        if record.type_params and isinstance(arg_type, NamedType) and arg_type.type_args:
+            type_subst = dict(zip(record.type_params, arg_type.type_args))
+
+        def _substitute(t: TpyType) -> TpyType:
+            if isinstance(t, TypeParamRef) and t.name in type_subst:
+                return type_subst[t.name]
+            return t
+
+        inferred: dict[str, TpyType] = {}
+        for method_sig in protocol_info.methods:
+            for method_info in record.get_method_overloads(method_sig.name):
+                if len(method_info.params) != len(method_sig.params):
+                    continue
+                ret = _substitute(method_info.return_type)
+                self.match_type_with_inference(method_sig.return_type, ret, inferred)
+                for (_, proto_ptype), (_, record_ptype) in zip(
+                    method_sig.params, method_info.params
+                ):
+                    self.match_type_with_inference(
+                        proto_ptype, _substitute(record_ptype), inferred)
+                break
+
+        first_param = protocol_info.type_params[0]
+        return inferred.get(first_param)
 
     def _match_array_with_inference(
         self,

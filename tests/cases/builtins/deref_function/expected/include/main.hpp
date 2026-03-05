@@ -5,16 +5,45 @@
 
 namespace tpy_user::main {
 
+struct Box;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(T_p& p);
 void main();
 
-// 4: def deref_protocol(p: Deref[Int32]) -> Int32:
+// 4: class Box:
+struct Box {
+    // 5:     _val: Int32
+    int32_t _val;
+
+    // 6:     def __init__(self, v: Int32) -> None:
+    Box() = default;
+    explicit Box(int32_t v) : _val(v) {}
+
+    // 8:     def __deref__(self) -> Int32:
+    int32_t __deref__() {
+        // 9:         return self._val
+        return this->_val;
+    }
+
+    auto operator*() -> decltype(__deref__()) {
+        return __deref__();
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
+    os << "Box("
+       << "_val=" << obj._val
+       << ")";
+    return os;
+}
+
+// 11: def deref_protocol(p: Deref[Int32]) -> Int32:
 template<tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(T_p& p) {
-    // 5:     return deref(p)
+    // 12:     return deref(p)
     return tpy::deref_check(p);
 }
 
