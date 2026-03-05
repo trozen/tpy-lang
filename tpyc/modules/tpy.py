@@ -202,8 +202,14 @@ def init_module() -> BuiltinModule:
     module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
                 type_factory=lambda t, n: ArrayType(t, n),
-                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]"],
+                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
                 methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
@@ -237,7 +243,7 @@ def init_module() -> BuiltinModule:
     module.type("Span", cpp_type="std::span<{T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: SpanType(t),
-                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]"],
+                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
                 constructors=[
                     MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
                               returns=VOID,
@@ -247,6 +253,12 @@ def init_module() -> BuiltinModule:
                               cpp="std::span<{T}>({0})"),
                 ],
                 methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
@@ -280,7 +292,7 @@ def init_module() -> BuiltinModule:
     module.type("ReadOnlySpan", cpp_type="std::span<const {T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: SpanType(t, is_readonly=True),
-                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]"],
+                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
                 constructors=[
                     MethodDef(params=[ParamDef("ptr", PtrType(T, is_readonly=True)), ParamDef("length", INT32)],
                               returns=VOID,
@@ -290,6 +302,12 @@ def init_module() -> BuiltinModule:
                               cpp="std::span<const {T}>({0})"),
                 ],
                 methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
@@ -350,12 +368,18 @@ def init_module() -> BuiltinModule:
     module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
                 param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
                 type_factory=lambda t, n: NamedType("StaticList", (t, n), _module_qname="tpy.StaticList"),
-                extends=["NativeIterable[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]"],
+                extends=["NativeIterable[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
                 constructors=[
                     MethodDef(params=[], returns=VOID, cpp=""),
                     MethodDef(params=[ParamDef("items", SpanType(T, is_readonly=True))], returns=VOID, cpp="{0}"),
                 ],
                 methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
@@ -551,7 +575,7 @@ def init_module() -> BuiltinModule:
 
     # String: Explicit owned string type (std::string)
     module.register_type(STRING, cpp_type="std::string",
-        extends=["NativeIterable[Char]"],
+        extends=["NativeIterable[Char]", "Iterable[Char]"],
         constructors=[
             MethodDef(params=[], returns=STRING, cpp="std::string()"),
             MethodDef(params=[ParamDef("x", STR)], returns=STRING, cpp="std::string({0})"),
@@ -567,6 +591,12 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("x", FLOAT32)], returns=STRING, cpp="tpy::float_to_str(static_cast<double>({0}))"),
         ],
         methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (CHAR,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
@@ -713,7 +743,7 @@ def init_module() -> BuiltinModule:
 
     # StrView: Explicit string view type (std::string_view)
     module.register_type(STRVIEW, cpp_type="std::string_view",
-        extends=["NativeIterable[Char]"],
+        extends=["NativeIterable[Char]", "Iterable[Char]"],
         constructors=[
             MethodDef(params=[], returns=STRVIEW, cpp='std::string_view()'),
             MethodDef(params=[ParamDef("x", STR)], returns=STRVIEW, cpp="std::string_view({0})"),
@@ -721,6 +751,12 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("x", STRVIEW)], returns=STRVIEW, cpp="{0}"),
         ],
         methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (CHAR,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,

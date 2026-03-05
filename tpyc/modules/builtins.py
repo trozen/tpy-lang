@@ -228,8 +228,14 @@ def init_module() -> BuiltinModule:
     module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: ListType(t),
-                extends=["NativeIterable[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]"],
+                extends=["NativeIterable[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
                 methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
@@ -363,7 +369,7 @@ def init_module() -> BuiltinModule:
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (K,), is_protocol=True),
-            cpp="{self}.__iter__()",
+            cpp="tpy::__iter__({self})",
             is_readonly=True,
         )],
         "__getitem__": [MethodDef(
@@ -474,7 +480,7 @@ def init_module() -> BuiltinModule:
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (K,), is_protocol=True),
-            cpp="{self}.__iter__()",
+            cpp="tpy::__iter__({self})",
             is_readonly=True,
         )],
     })
@@ -495,7 +501,7 @@ def init_module() -> BuiltinModule:
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (V,), is_protocol=True),
-            cpp="{self}.__iter__()",
+            cpp="tpy::__iter__({self})",
             is_readonly=True,
         )],
     })
@@ -516,13 +522,13 @@ def init_module() -> BuiltinModule:
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (TupleType((K, V)),), is_protocol=True),
-            cpp="{self}.__iter__()",
+            cpp="tpy::__iter__({self})",
             is_readonly=True,
         )],
     })
 
     module.register_type(STR, cpp_type="std::string",
-        extends=["NativeIterable[Char]"],
+        extends=["NativeIterable[Char]", "Iterable[Char]"],
         constructors=[
             MethodDef(params=[], returns=STR, cpp='std::string()'),
             MethodDef(params=[ParamDef("x", STR)], returns=STR, cpp="std::string({0})"),
@@ -540,6 +546,12 @@ def init_module() -> BuiltinModule:
                       cpp="std::string(tpy::__repr__({0}))", is_readonly=True),
         ],
         methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (CHAR,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
@@ -839,8 +851,15 @@ def init_module() -> BuiltinModule:
     module.type("Range", cpp_type="tpy::Range<{T}>", type_params=["T"],
         param_kinds=[TypeParamKind.TYPE],
         type_factory=lambda t: RangeType(t),
-        extends=["NativeIterable[T]"],
-        methods={},
+        extends=["NativeIterable[T]", "Iterable[T]"],
+        methods={
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True,
+        )],
+    },
     )
 
     # print() - variadic print function
@@ -877,7 +896,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[ParamDef("x", NamedType("Iterable", (T,), is_protocol=True))],
             returns=NamedType("Iterator", (T,), is_protocol=True),
-            cpp="{0}.__iter__()",
+            cpp="tpy::__iter__({0})",
             is_readonly=True,
         ),
     ], type_params=["T"])

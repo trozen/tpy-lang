@@ -66,7 +66,7 @@ def init_module() -> BuiltinModule:
         type_params=["T"],
         methods={
             "__iter__": MethodDef(params=[], returns=NamedType("Iterator", (T,), is_protocol=True),
-                                  cpp="{self}.__iter__()"),
+                                  cpp="tpy::__iter__({self})"),
         },
         cpp_concept="tpy::Iterable",
     )

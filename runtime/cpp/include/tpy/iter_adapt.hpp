@@ -18,6 +18,9 @@
 #include <cstddef>
 #include <iterator>
 #include <optional>
+#include <ranges>
+
+#include "dunder.hpp"
 
 namespace tpy {
 
@@ -65,14 +68,14 @@ public:
     IterAdaptSentinel end() { return {}; }
 };
 
-// Adapts a container (type with __iter__()) into a C++ range.
-// Owns the iterator returned by __iter__().
+// Adapts a container (type with tpy::__iter__()) into a C++ range.
+// Owns the iterator returned by tpy::__iter__().
 template<typename Container>
 class IterAdaptContainerRange {
-    using IterT = decltype(std::declval<Container&>().__iter__());
+    using IterT = decltype(tpy::__iter__(std::declval<Container&>()));
     IterT iter_;
 public:
-    explicit IterAdaptContainerRange(Container& c) : iter_(c.__iter__()) {}
+    explicit IterAdaptContainerRange(Container& c) : iter_(tpy::__iter__(c)) {}
     IterAdaptContainerRange(const IterAdaptContainerRange&) = delete;
     IterAdaptContainerRange& operator=(const IterAdaptContainerRange&) = delete;
     IterAdaptContainerRange(IterAdaptContainerRange&&) = default;
@@ -81,12 +84,36 @@ public:
     IterAdaptSentinel end() { return {}; }
 };
 
+// Lightweight wrapper that forwards begin/end from a native C++ range.
+// Zero overhead -- no __next_opt__/optional round-trip.
+template<typename Container>
+class NativeRangeRef {
+    Container& c_;
+public:
+    explicit NativeRangeRef(Container& c) : c_(c) {}
+    NativeRangeRef(const NativeRangeRef&) = delete;
+    NativeRangeRef& operator=(const NativeRangeRef&) = delete;
+    NativeRangeRef(NativeRangeRef&&) = default;
+    NativeRangeRef& operator=(NativeRangeRef&&) = default;
+    auto begin() { return c_.begin(); }
+    auto end() { return c_.end(); }
+};
+
 template<typename Iter>
 IterAdaptRange<Iter> iter_adapt(Iter& iter) {
     return IterAdaptRange<Iter>(iter);
 }
 
+// Native C++ ranges: bypass __iter__/optional, forward begin/end directly
 template<typename Container>
+    requires std::ranges::input_range<Container>
+NativeRangeRef<Container> iter_adapt_container(Container& c) {
+    return NativeRangeRef<Container>(c);
+}
+
+// Non-range types (user iterables): go through __iter__() + adapter
+template<typename Container>
+    requires (!std::ranges::input_range<Container>)
 IterAdaptContainerRange<Container> iter_adapt_container(Container& c) {
     return IterAdaptContainerRange<Container>(c);
 }

@@ -13,6 +13,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -356,6 +358,96 @@ template<typename T, typename... Rest>
 uint64_t hash_combine(uint64_t seed, const T& val, const Rest&... rest) {
     seed ^= __hash__(val) + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
     return hash_combine(seed, rest...);
+}
+
+// =============================================
+// native_iterator: wraps C++ begin/end into __next_opt__()
+// =============================================
+
+template<typename Iter, typename T>
+struct native_iterator {
+    Iter current_;
+    Iter end_;
+
+    std::optional<T> __next_opt__() {
+        if (current_ == end_) return std::nullopt;
+        return std::optional<T>{*current_++};
+    }
+
+    native_iterator& __iter__() { return *this; }
+};
+
+// =============================================
+// tpy::__iter__
+// =============================================
+
+// Overload: std::vector
+template<typename T>
+auto __iter__(const std::vector<T>& x) {
+    return native_iterator<typename std::vector<T>::const_iterator, T>{x.begin(), x.end()};
+}
+
+// Overload: std::array
+template<typename T, std::size_t N>
+auto __iter__(const std::array<T, N>& x) {
+    return native_iterator<typename std::array<T, N>::const_iterator, T>{x.begin(), x.end()};
+}
+
+// Overload: std::span (const)
+template<typename T>
+auto __iter__(std::span<const T> x) {
+    return native_iterator<typename std::span<const T>::iterator, T>{x.begin(), x.end()};
+}
+
+// Overload: std::span (mutable)
+template<typename T>
+auto __iter__(std::span<T> x) {
+    return native_iterator<typename std::span<T>::iterator, T>{x.begin(), x.end()};
+}
+
+// Overload: std::string
+inline auto __iter__(const std::string& x) {
+    return native_iterator<std::string::const_iterator, char>{x.begin(), x.end()};
+}
+
+// Overload: std::string_view
+inline auto __iter__(std::string_view x) {
+    return native_iterator<std::string_view::const_iterator, char>{x.begin(), x.end()};
+}
+
+// Overload: const char* (string literals)
+inline auto __iter__(const char* x) {
+    return __iter__(std::string_view(x));
+}
+
+// Overload: StaticList
+template<typename T, std::size_t N>
+auto __iter__(const StaticList<T, N>& x) {
+    return native_iterator<typename StaticList<T, N>::const_iterator, T>{x.begin(), x.end()};
+}
+
+// Generic overload: any C++ range type not covered above (e.g., tpy::Range<T>)
+// Constrained to types without __iter__() to avoid ambiguity with user types.
+template<typename T>
+    requires std::ranges::input_range<const T>
+          && (!requires(const T& t) { t.__iter__(); })
+auto __iter__(const T& x) {
+    using ElemT = std::remove_cvref_t<decltype(*x.begin())>;
+    return native_iterator<decltype(x.begin()), ElemT>{x.begin(), x.end()};
+}
+
+// Default template: user types that define __iter__() method
+template<typename T>
+    requires requires(T& t) { t.__iter__(); }
+auto __iter__(T& x) {
+    return x.__iter__();
+}
+
+// Const overload for user types
+template<typename T>
+    requires requires(const T& t) { t.__iter__(); }
+auto __iter__(const T& x) {
+    return x.__iter__();
 }
 
 } // namespace tpy

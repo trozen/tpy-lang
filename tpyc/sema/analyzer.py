@@ -41,19 +41,31 @@ from tpyc import modules as builtin_modules
 from ..typesys import TypeParamRef, TupleType
 
 
-def _parse_extends_type_args(args_str: str) -> tuple[TpyType, ...]:
+def _parse_extends_type_args(
+    args_str: str, type_params: dict[str, TpyType],
+) -> tuple[TpyType, ...]:
     """Parse extends type arg string into TpyType instances.
 
-    Handles simple names ("K") and tuple types ("tuple[K, V]").
+    Resolves type parameter names ("T") and concrete type names ("Char")
+    via the module system. Handles tuple types ("tuple[K, V]").
     """
     args_str = args_str.strip()
+    resolve = builtin_modules._resolve_extends_type_arg
     tuple_match = re.match(r"tuple\[(.+)\]$", args_str)
     if tuple_match:
         inner = tuple_match.group(1)
         parts = [p.strip() for p in inner.split(",")]
-        return (TupleType(tuple(TypeParamRef(p) for p in parts)),)
-    # Simple comma-separated type param refs
-    return tuple(TypeParamRef(a.strip()) for a in args_str.split(","))
+        resolved = []
+        for p in parts:
+            t = resolve(p, type_params)
+            resolved.append(t if t is not None else TypeParamRef(p))
+        return (TupleType(tuple(resolved)),)
+    results = []
+    for a in args_str.split(","):
+        a = a.strip()
+        t = resolve(a, type_params)
+        results.append(t if t is not None else TypeParamRef(a))
+    return tuple(results)
 
 
 class SemanticAnalyzer:
@@ -219,6 +231,13 @@ class SemanticAnalyzer:
                 else:
                     continue
 
+                # Build type_params dict for resolving extends args
+                tp_dict: dict[str, TpyType] = {}
+                if type_def.type_params:
+                    for tp, kind in zip(type_def.type_params, type_def.param_kinds):
+                        if kind != TypeParamKind.INT:
+                            tp_dict[tp] = TypeParamRef(tp)
+
                 for ext_str in type_def.extends:
                     match = re.match(r"(\w+)(?:\[(.+)\])?", ext_str)
                     if not match:
@@ -228,7 +247,7 @@ class SemanticAnalyzer:
                     if proto_info is None or proto_info.is_marker:
                         continue
                     # Build protocol NamedType with matching type args
-                    proto_args = _parse_extends_type_args(match.group(2)) if match.group(2) else ()
+                    proto_args = _parse_extends_type_args(match.group(2), tp_dict) if match.group(2) else ()
                     protocol = NamedType(proto_name, proto_args, is_protocol=True)
 
                     if not self.protocols.type_conforms_to_protocol(actual_type, protocol):

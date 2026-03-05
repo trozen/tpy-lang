@@ -2221,7 +2221,7 @@ val = try_next(it)  # Int32 | None
 
 **Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
 
-**Built-in `Iterable[T]` conformance**: `dict[K,V]`, `dict_keys`, `dict_values`, `dict_items` conform to `Iterable[T]` for their respective element types. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`); the `Iterable[T]` conformance enables passing them to generic functions.
+**Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `ReadOnlySpan[T]`, `StaticList[T, N]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
 
 #### Working: `__span__` Protocol (Zero-Cost User-Defined Iteration)
 

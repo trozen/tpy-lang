@@ -10,7 +10,7 @@ void main() {
     // 30:     c = Counter(4)
     Counter c = Counter(4);
     // 31:     it = iter(c)
-    auto it = c.__iter__();
+    auto it = tpy::__iter__(c);
     // 33:     # try_next() returns next value or None
     // 34:     v = try_next(it)
     std::optional<int32_t> v = it.__next_opt__();

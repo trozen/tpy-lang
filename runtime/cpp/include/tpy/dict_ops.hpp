@@ -22,20 +22,7 @@
 
 namespace tpy {
 
-// -- native_iterator: wraps C++ begin/end into Python-style __next_opt__() --
-
-template<typename Iter, typename T>
-struct native_iterator {
-    Iter current_;
-    Iter end_;
-
-    std::optional<T> __next_opt__() {
-        if (current_ == end_) return std::nullopt;
-        return std::optional<T>{*current_++};
-    }
-
-    native_iterator& __iter__() { return *this; }
-};
+// native_iterator is defined in dunder.hpp
 
 // -- Constructors -----------------------------------------------------------
 

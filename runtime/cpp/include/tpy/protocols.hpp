@@ -69,25 +69,25 @@ concept OptIterator = requires(T& t) {
 
 /**
  * Iterator concept - types that produce values lazily via __next_opt__()
- * and support __iter__() (returning self).
+ * and support tpy::__iter__() (returning self).
  *
  * Maps to Python's Iterator[T] protocol.
  */
 template<typename T, typename ElemT>
 concept Iterator = requires(T& t) {
     { t.__next_opt__() } -> std::same_as<std::optional<ElemT>>;
-    t.__iter__();
+    tpy::__iter__(t);
 };
 
 /**
- * Iterable concept - types that support __iter__() returning an Iterator
+ * Iterable concept - types that support tpy::__iter__() returning an Iterator
  *
  * Maps to Python's Iterable[T] protocol.
  */
 template<typename T, typename ElemT>
 concept Iterable = requires(T& t) {
-    t.__iter__();
-    requires Iterator<decltype(t.__iter__()), ElemT>;
+    tpy::__iter__(t);
+    requires Iterator<decltype(tpy::__iter__(t)), ElemT>;
 };
 
 /**
