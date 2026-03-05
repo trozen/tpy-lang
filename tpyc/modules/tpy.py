@@ -430,7 +430,7 @@ def init_module() -> BuiltinModule:
             cpp="tpy::__setitem__({self}, {0}, {1})",
         )],
         "extend": [MethodDef(
-            params=[ParamDef("other", NamedType("NativeIterable", (T,), is_protocol=True))],
+            params=[ParamDef("other", NamedType("Iterable", (T,), is_protocol=True))],
             returns=VOID,
             cpp="tpy::staticlist_extend({self}, {0})",
         )],
@@ -647,7 +647,7 @@ def init_module() -> BuiltinModule:
             ),
         ],
         "join": [MethodDef(
-            params=[ParamDef("items", NamedType("NativeIterable", (STR,), is_protocol=True))],
+            params=[ParamDef("items", NamedType("Iterable", (STR,), is_protocol=True))],
             returns=STR,
             cpp="tpy::str_join({self}, {0})",
             is_readonly=True,
@@ -807,7 +807,7 @@ def init_module() -> BuiltinModule:
             ),
         ],
         "join": [MethodDef(
-            params=[ParamDef("items", NamedType("NativeIterable", (STR,), is_protocol=True))],
+            params=[ParamDef("items", NamedType("Iterable", (STR,), is_protocol=True))],
             returns=STR,
             cpp="tpy::str_join({self}, {0})",
             is_readonly=True,

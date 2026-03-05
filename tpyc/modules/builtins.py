@@ -297,7 +297,7 @@ def init_module() -> BuiltinModule:
             cpp="tpy::list_remove({self}, {0})",
         )],
         "extend": [MethodDef(
-            params=[ParamDef("other", NamedType("NativeIterable", (T,), is_protocol=True))],
+            params=[ParamDef("other", NamedType("Iterable", (T,), is_protocol=True))],
             returns=VOID,
             cpp="tpy::list_extend({self}, {0})",
         )],
@@ -335,18 +335,19 @@ def init_module() -> BuiltinModule:
             cpp="tpy::as_span({self})", is_readonly=True,
         )],
     }, constructors=[
-        # list(iterable) - create list from any iterable, inferring element type
-        MethodDef(
-            params=[ParamDef("x", NamedType("NativeIterable", (T,), is_protocol=True))],
-            returns=T,  # Placeholder - sema infers actual list[T] from argument
-            cpp="tpy::from_range<std::vector<{T}>>({0})",
-            is_readonly=True,
-        ),
         # list(iterator) - create list from OptIterator (user-defined iterators)
+        # Checked first: OptIterator types also match Iterable, so must be tried before.
         MethodDef(
             params=[ParamDef("x", NamedType("OptIterator", (T,), is_protocol=True))],
             returns=T,
             cpp="tpy::collect<std::vector<{T}>>({0})",
+            is_readonly=True,
+        ),
+        # list(iterable) - create list from any iterable, inferring element type
+        MethodDef(
+            params=[ParamDef("x", NamedType("Iterable", (T,), is_protocol=True))],
+            returns=T,  # Placeholder - sema infers actual list[T] from argument
+            cpp="tpy::from_range<std::vector<{T}>>({0})",
             is_readonly=True,
         ),
     ])
@@ -448,18 +449,19 @@ def init_module() -> BuiltinModule:
             is_readonly=True,
         )],
     }, constructors=[
-        # dict(iterable) - create dict from iterable of tuple[K, V]
-        MethodDef(
-            params=[ParamDef("x", NamedType("NativeIterable", (TupleType((K, V)),), is_protocol=True))],
-            returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
-            cpp="tpy::dict_from_pairs<{K}, {V}>({0})",
-            is_readonly=True,
-        ),
         # dict(iterator) - create dict from OptIterator of tuple[K, V]
+        # Checked first: OptIterator types also match Iterable, so must be tried before.
         MethodDef(
             params=[ParamDef("x", NamedType("OptIterator", (TupleType((K, V)),), is_protocol=True))],
             returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
             cpp="tpy::dict_collect_pairs<{K}, {V}>({0})",
+            is_readonly=True,
+        ),
+        # dict(iterable) - create dict from iterable of tuple[K, V]
+        MethodDef(
+            params=[ParamDef("x", NamedType("Iterable", (TupleType((K, V)),), is_protocol=True))],
+            returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
+            cpp="tpy::dict_from_pairs<{K}, {V}>({0})",
             is_readonly=True,
         ),
     ])
@@ -602,7 +604,7 @@ def init_module() -> BuiltinModule:
             ),
         ],
         "join": [MethodDef(
-            params=[ParamDef("items", NamedType("NativeIterable", (STR,), is_protocol=True))],
+            params=[ParamDef("items", NamedType("Iterable", (STR,), is_protocol=True))],
             returns=STR,
             cpp="tpy::str_join({self}, {0})",
             is_readonly=True,

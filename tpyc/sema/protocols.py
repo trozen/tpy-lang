@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
-    ListType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, BIGINT,
+    ListType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
     EnumType, IntEnumType,
 )
 from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
@@ -76,6 +76,10 @@ class ProtocolChecker:
         if isinstance(actual, IntLiteralType):
             return self.type_conforms_to_protocol(BIGINT, protocol)
 
+        # PendingListType: delegate to list[T] (resolves to list or Array, both conform)
+        if isinstance(actual, PendingListType):
+            return self.type_conforms_to_protocol(ListType(actual.element_type), protocol)
+
         # Enum/IntEnum: hashable and comparable at C++ level
         if isinstance(actual, (EnumType, IntEnumType)):
             if protocol.name in ("Hashable", "Comparable"):
@@ -110,12 +114,11 @@ class ProtocolChecker:
                 return True
             return self._check_record_extends(actual, protocol)
 
-        # Check extends_protocols for builtin types (e.g. NativeIterable[T]).
-        # For marker protocols this is the only check; for protocols with methods
-        # we fall through to the structural check below.
+        # For builtin types, extends_protocols strings are maintained by the compiler
+        # and are always consistent with the actual C++ implementation. Treat as
+        # authoritative to avoid re-checking methods we know exist.
         if self._check_builtin_extends(actual, protocol):
-            if not protocol_info.methods:
-                return True
+            return True
 
         # Build type substitution map
         type_subst: dict[str, TpyType] = {"Self": actual}

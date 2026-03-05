@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <optional>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -267,6 +268,7 @@ inline std::vector<std::string> str_split_whitespace(std::string_view s, int32_t
 }
 
 template<typename Container>
+    requires std::ranges::input_range<const Container>
 inline std::string str_join(std::string_view sep, const Container& items) {
     std::string result;
     bool first = true;

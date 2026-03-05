@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <ranges>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -129,6 +130,7 @@ void list_remove(std::vector<T>& v, const T& value) {
  * Overloads handle both iterator-based containers and initializer_list.
  */
 template<typename T, typename Container>
+    requires std::ranges::input_range<const Container>
 void list_extend(std::vector<T>& v, const Container& other) {
     v.insert(v.end(), other.begin(), other.end());
 }
@@ -221,6 +223,7 @@ std::vector<T> list_copy(const std::vector<T>& v) {
  * Panics if capacity would be exceeded.
  */
 template<typename T, std::size_t N, typename Container>
+    requires std::ranges::input_range<const Container>
 void staticlist_extend(StaticList<T, N>& sl, const Container& other) {
     for (const auto& elem : other) {
         sl.push_back(elem);

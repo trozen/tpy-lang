@@ -509,18 +509,28 @@ class TypeOperations:
         if protocol_name == "OptIterator":
             elem_type = builtin_modules.get_native_iterator_element_type(
                 arg_type, registry=self.ctx.registry)
-        elif protocol_name in ("Iterator", "Iterable"):
+        elif protocol_name == "Iterator":
             # Direct protocol-to-protocol match (e.g., Iterator[Int32] matches Iterator[T])
-            if is_protocol_type(arg_type) and arg_type.name in ("Iterator", "Iterable") and arg_type.type_args:
+            if is_protocol_type(arg_type) and arg_type.name == "Iterator" and arg_type.type_args:
                 elem_type = arg_type.type_args[0]
             else:
                 # Iterator[T]: type has __next_opt__() -> Optional[T]
-                # Iterable[T]: type has __iter__() -> (something with __next_opt__())
                 elem_type = builtin_modules.get_native_iterator_element_type(
                     arg_type, registry=self.ctx.registry)
                 if elem_type is None:
                     elem_type = builtin_modules.get_iter_element_type(
                         arg_type, registry=self.ctx.registry)
+                if elem_type is None:
+                    elem_type = self._get_iterable_element_type_or_none(arg_type)
+        elif protocol_name == "Iterable":
+            # Direct protocol-to-protocol match
+            if is_protocol_type(arg_type) and arg_type.name in ("Iterator", "Iterable") and arg_type.type_args:
+                elem_type = arg_type.type_args[0]
+            else:
+                # Iterable[T]: type has __iter__() returning Iterator[T]
+                # Try __iter__() first, then fallback to element type extraction
+                elem_type = builtin_modules.get_iter_element_type(
+                    arg_type, registry=self.ctx.registry)
                 if elem_type is None:
                     elem_type = self._get_iterable_element_type_or_none(arg_type)
         else:

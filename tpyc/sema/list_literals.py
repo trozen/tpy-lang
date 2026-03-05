@@ -39,8 +39,10 @@ class IterableHelper:
         # NativeIterable[T], OptIterator[T], Iterator[T], Iterable[T], ReadOnlySpanLike[T] protocol type
         if is_protocol_type(typ) and typ.name in ("NativeIterable", "OptIterator", "Iterator", "Iterable", "ReadOnlySpanLike"):
             return True
-        # Check if type extends NativeIterable or OptIterator
+        # Check if type extends NativeIterable or Iterable
         if record_extends_any(typ, "NativeIterable", self.ctx.registry):
+            return True
+        if record_extends_any(typ, "Iterable", self.ctx.registry):
             return True
         if builtin_modules.get_native_iterator_element_type(typ, registry=self.ctx.registry) is not None:
             return True

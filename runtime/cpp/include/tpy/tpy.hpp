@@ -55,6 +55,9 @@
 // Iterator adapter: __next_opt__() -> C++ begin/end (depends on <optional>)
 #include "iter_adapt.hpp"
 
+// Non-range overloads for container ops (depends on iter_adapt, container_ops)
+#include "iterable_ops.hpp"
+
 // Collection printing (depends on static_list, bigint)
 #include "printing.hpp"
 

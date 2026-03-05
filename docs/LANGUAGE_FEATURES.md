@@ -2006,14 +2006,15 @@ class ArrayList[T, N: int]:
 
 **`T()` deprecation warning:** Using `T()` for default construction of type parameters emits a warning recommending `make_default()` instead, since `T()` is not supported in CPython.
 
-#### Working: `NativeIterable[T]` (C++ range-for iteration)
+#### Working: `NativeIterable[T]` (C++ range-for optimization marker)
 
-`NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol.
+`NativeIterable[T]` is a **marker protocol** for types that support C++ range-based for loops. It's defined in the `tpy` module (not `typing`) because it maps to C++ `begin()`/`end()` iteration rather than Python's `__iter__`/`__next__` protocol. It is used internally by the compiler for codegen optimization (choosing direct range-for vs iterator adapter) but should generally not appear in user-facing function signatures -- use `Iterable[T]` from `typing` instead.
 
 ```python
-from tpy import Int32, NativeIterable
+from typing import Iterable
+from tpy import Int32
 
-def sum_all(items: NativeIterable[Int32]) -> Int32:
+def sum_all(items: Iterable[Int32]) -> Int32:
     total: Int32 = 0
     for x in items:
         total += x
@@ -2022,19 +2023,13 @@ def sum_all(items: NativeIterable[Int32]) -> Int32:
 # All built-in containers work:
 nums: list[Int32] = [1, 2, 3]
 print(sum_all(nums))  # 6
-
-arr: Array[Int32, 3] = [10, 20, 30]
-print(sum_all(arr))   # 60
 ```
 
 **Key characteristics**:
 - **Marker protocol**: Types declare conformance via `extends`, no methods required
-- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]`, `Range[T]` extend `NativeIterable[T]`
-- **str**: Extends `NativeIterable[Char]` (iterates over characters)
-- **Zero overhead**: Compiles to C++ range-based for loops
-- **Not user-extensible**: Requires C++ `begin()`/`end()` support
-
-**Difference from `OptIterator[T]`**: `NativeIterable[T]` is for containers with `begin()`/`end()` (C++ range-for). `OptIterator[T]` is for lazy producers with `next()` (while-loop). See below.
+- **Built-in conformance**: All built-in container types extend both `NativeIterable[T]` and `Iterable[T]`
+- **Codegen optimization**: The compiler uses NativeIterable extends to select zero-overhead C++ range-based for loops for built-in types
+- **API methods use `Iterable[T]`**: `list.extend()`, `str.join()`, `list()` constructor, `dict()` constructor, `StaticList.extend()` all accept `Iterable[T]`
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 
@@ -2351,11 +2346,12 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 
 - `len(x)` works on any type conforming to `Sized` ✓ (working)
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
+- `for` loops work on `Iterable[T]`-typed parameters ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
 - `for` loops work on `OptIterator[T]`-typed parameters ✓ (working)
 - Implicit coercion to `Span[T]` works on types extending `ReadOnlySpanLike[T]` ✓ (working)
 - `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
-- `for` loops work on `Iterable[T]`-typed parameters ✓ (working)
+- `list.extend()`, `str.join()`, `list()`, `dict()` accept `Iterable[T]` params ✓ (working)
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 
@@ -2730,10 +2726,10 @@ struct SortedContainer {
 - `Sequence[T]` - has `__len__()` and `__getitem__()`
 - `Deref[T]` - has `__deref__() -> T` (auto-deref for field/method access)
 - `Covariant[T]` - marker: type param T is covariant, enables `G[Child] -> G[Parent]` coercion
-- `NativeIterable[T]` - supports C++ range-for iteration
-- `OptIterator[T]` - lazy iteration via `next() -> Optional[T]`
+- `Iterable[T]` - has `__iter__` returning `Iterator[T]` (standard Python iterable protocol, used in method signatures)
 - `Iterator[T]` - has `__next__` and `__iter__` (Python iterator protocol)
-- `Iterable[T]` - has `__iter__` returning `Iterator[T]` (Python iterable protocol)
+- `OptIterator[T]` - lazy iteration via `next() -> Optional[T]`
+- `NativeIterable[T]` - codegen optimization marker for C++ range-for iteration
 - User-defined protocols (including protocols with inheritance)
 
 **Protocol Inheritance with Bounds**: When using a child protocol as a bound (e.g., `T: PrintableAndSized`), methods from all ancestor protocols are available on `T`.
@@ -3386,7 +3382,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
-- **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from NativeIterable containers, `list(range(...))`, `list(iterator)` from OptIterator
+- **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from Iterable containers, `list(range(...))`, `list(iterator)` from OptIterator
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Working**: `str()` → string conversions for scalars, containers, and Stringable/Representable types (see below)
@@ -3428,7 +3424,7 @@ Generated C++:
 // list([1, 2, 3]) - from literal
 std::vector<tpy::BigInt> x({1, 2, 3});
 
-// list(container) - from NativeIterable (range, array, list, etc.)
+// list(container) - from Iterable (range, array, list, etc.)
 auto y = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
 
 // list(iterator) - from OptIterator (user-defined)
