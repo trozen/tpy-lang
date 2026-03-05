@@ -12,6 +12,7 @@ from ..typesys import (
     ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
+    NoneType, VoidType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -163,13 +164,26 @@ class TypeOperations:
                         loc,
                     )
         elif isinstance(typ, UnionType):
+            non_none = [m for m in typ.members if not isinstance(m, (NoneType, VoidType))]
+            protocols = [m for m in non_none if is_protocol_type(m)]
+            concrete = [m for m in non_none if not is_protocol_type(m)]
+            if protocols and concrete:
+                proto_names = ", ".join(f"'{m.name}'" for m in protocols)
+                raise SemanticError(
+                    f"Cannot mix protocol types ({proto_names}) with concrete types in a union",
+                    loc,
+                )
+            if protocols:
+                for p in protocols:
+                    proto_def = self.ctx.registry.get_protocol(p.name)
+                    if proto_def and proto_def.is_dynamic:
+                        raise SemanticError(
+                            f"@dynamic protocol '{p.name}' cannot be used in a protocol union; "
+                            f"only static protocols are supported",
+                            loc,
+                        )
             for member in typ.members:
                 self.validate_type(member, allow_type_param_ref, loc)
-                if is_protocol_type(member):
-                    raise SemanticError(
-                        f"Protocol type '{member.name}' cannot be used as a union member",
-                        loc,
-                    )
         elif isinstance(typ, ReadonlyType):
             self.validate_type(typ.wrapped, allow_type_param_ref, loc)
         elif isinstance(typ, PtrType):

@@ -9,7 +9,8 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, OptionalType,
-    MethodSignature, is_protocol_type, unwrap_readonly,
+    UnionType, MethodSignature, is_protocol_type, unwrap_readonly,
+    is_protocol_union, protocol_union_protocols, protocol_union_has_none,
 )
 from ..parse import TpyProtocol, TpyRecord
 from .context import INDENT, DUNDER_TO_BINARY_OP, qualified_cpp_name
@@ -57,6 +58,7 @@ class ProtocolGenerator:
         Returns (param_name, protocol_type, is_optional) tuples.
         Excludes @dynamic protocols -- those use concrete base class ref params
         instead of template parameters.
+        Does NOT handle protocol unions -- use get_protocol_union_params() for those.
         """
         result = []
         for pname, ptype in params:
@@ -70,6 +72,37 @@ class ProtocolGenerator:
                 if protocol_info and protocol_info.is_dynamic:
                     continue
                 result.append((pname, resolved, is_optional))
+        return result
+
+    def is_protocol_union_param(self, typ: TpyType) -> bool:
+        """Check if a type is a protocol union (2+ protocols, optionally with None)."""
+        unwrapped = unwrap_readonly(typ)
+        if not isinstance(unwrapped, UnionType):
+            return False
+        resolved_members = tuple(self.resolve_type_for_codegen(m) for m in unwrapped.members)
+        resolved_union = UnionType(resolved_members)
+        return is_protocol_union(resolved_union)
+
+    def get_protocol_union_params(
+        self, params: list[tuple[str, TpyType]]
+    ) -> list[tuple[str, list[NamedType], bool]]:
+        """Get list of protocol-union parameters.
+
+        Returns (param_name, protocol_list, has_none) tuples for params
+        whose type is a union of 2+ static protocols (optionally with None).
+        """
+        result: list[tuple[str, list[NamedType], bool]] = []
+        for pname, ptype in params:
+            unwrapped = unwrap_readonly(ptype)
+            if not isinstance(unwrapped, UnionType):
+                continue
+            resolved_members = tuple(self.resolve_type_for_codegen(m) for m in unwrapped.members)
+            resolved_union = UnionType(resolved_members)
+            if not is_protocol_union(resolved_union):
+                continue
+            protos = [m for m in protocol_union_protocols(resolved_union) if isinstance(m, NamedType)]
+            has_none = protocol_union_has_none(resolved_union)
+            result.append((pname, protos, has_none))
         return result
 
     def get_concept_name(self, protocol: NamedType) -> str:
@@ -194,12 +227,14 @@ class ProtocolGenerator:
         protocol_params: list[tuple[str, NamedType, bool]],
         type_param_bounds: dict[str, NamedType] | None = None,
         *, emit_defaults: bool = True,
+        protocol_union_params: list[tuple[str, list[NamedType], bool]] | None = None,
     ) -> str:
         """Generate template header combining type parameters and concept constraints.
 
         For generic functions: template<typename T>
         For generic functions with protocols: template<typename T, tpy::Sized T_items>
         For bounded type params: template<Comparable T>
+        For protocol unions: template<typename T_items> requires (A<T_items> || B<T_items>)
         """
         template_parts = []
 
@@ -216,7 +251,7 @@ class ProtocolGenerator:
             else:
                 template_parts.append(f"typename {tp}")
 
-        # Add protocol params with concept constraints
+        # Add single-protocol params with concept constraints
         requires_parts = []
         for pname, ptype, is_optional in protocol_params:
             concept_name = self.get_concept_name(ptype)
@@ -233,6 +268,18 @@ class ProtocolGenerator:
                     template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
                 else:
                     template_parts.append(f"{concept_name} T_{pname}")
+
+        # Add protocol union params with disjunctive concept constraints
+        if protocol_union_params:
+            for pname, proto_list, has_none in protocol_union_params:
+                default_part = " = std::nullptr_t" if has_none and emit_defaults else ""
+                template_parts.append(f"typename T_{pname}{default_part}")
+                constraints = []
+                if has_none:
+                    constraints.append(f"std::same_as<T_{pname}, std::nullptr_t>")
+                for proto in proto_list:
+                    constraints.append(self._concept_constraint(pname, proto))
+                requires_parts.append(f"({' || '.join(constraints)})")
 
         if not template_parts:
             return ""

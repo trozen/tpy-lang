@@ -2364,7 +2364,13 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - `A | None` with single non-None type still produces `Optional[T]` (backward compatible)
   - Member type compatibility: `T` assignable to `T | U`, `T | U` assignable to `T | U | V`
   - `make_union()` normalizes: flattens nested unions, deduplicates, collapses single-type unions
-  - Protocol types cannot be union members (sema error)
+  - **Protocol unions**: all non-None members must be static protocols (2+ protocols, optionally with None)
+    - `Sized | Sequence[int]` -- required protocol union, generates template with disjunctive concept constraints
+    - `Sized | Sequence[int] | None` -- nullable protocol union, pointer repr with `if constexpr` guards
+    - `isinstance(x, Protocol)` dispatches via `if constexpr (Concept<T_x>)` inside protocol union bodies
+    - Mixed protocol + concrete types in unions is a sema error
+    - `@dynamic` protocols cannot appear in unions (sema error)
+    - **Limitation**: `isinstance()` on protocol unions not yet supported in ternary expressions (use if/elif/else statements)
   - Mixed `readonly`/non-`readonly` in unions is a parse error
   - Generic functions returning `T | U` where `T == U` at instantiation produce a sema error (duplicate variant members)
   - `isinstance(x, T)` narrowing in if/elif/else branches: narrows union variable to member type

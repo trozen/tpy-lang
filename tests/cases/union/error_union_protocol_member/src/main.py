@@ -1,7 +1,7 @@
-# Protocol types cannot be used as union members
+# Mixing protocol and concrete types in a union is an error
 from tpy import Int32
 from typing import Sized
 
 
-def foo(x: Sized | Int32) -> None:  # tpyc: error(/Protocol type.*cannot be used as a union member/)
+def foo(x: Sized | Int32) -> None:  # tpyc: error(/Cannot mix protocol/)
     pass

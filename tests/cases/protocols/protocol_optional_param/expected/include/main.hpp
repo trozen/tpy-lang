@@ -33,11 +33,9 @@ struct Container {
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
     explicit Container(const T_items* items = nullptr) {
         // 10:         if items is not None:
-        if ((items != nullptr)) {
-            if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-                // 11:             self.count = len(items)
-                this->count = tpy::BigInt(tpy::__len__((*items)));
-            }
+        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+            // 11:             self.count = len(items)
+            this->count = tpy::BigInt(tpy::__len__((*items)));
         } else {
             // 13:             self.count = 0
             this->count = tpy::BigInt(0);
@@ -51,11 +49,9 @@ struct Container {
         // 16:         self.count = len(items)
         this->count = tpy::BigInt(tpy::__len__(items));
         // 17:         if extra is not None:
-        if ((extra != nullptr)) {
-            if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-                // 18:             self.count = self.count + len(extra)
-                this->count = ((this->count) + (tpy::BigInt(tpy::__len__((*extra)))));
-            }
+        if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
+            // 18:             self.count = self.count + len(extra)
+            this->count = ((this->count) + (tpy::BigInt(tpy::__len__((*extra)))));
         }
     }
 };
@@ -79,11 +75,9 @@ struct MixedContainer {
   requires (std::same_as<T_extra, std::nullptr_t> || tpy::Sized<T_extra>)
     explicit MixedContainer(const T_items& items, const T_extra* extra = nullptr) : count(tpy::BigInt(tpy::__len__(items))) {
         // 37:         if extra is not None:
-        if ((extra != nullptr)) {
-            if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-                // 38:             self.count = self.count + len(extra)
-                this->count = ((this->count) + (tpy::BigInt(tpy::__len__((*extra)))));
-            }
+        if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
+            // 38:             self.count = self.count + len(extra)
+            this->count = ((this->count) + (tpy::BigInt(tpy::__len__((*extra)))));
         }
     }
 };
@@ -108,11 +102,9 @@ struct GenericContainer {
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
     explicit GenericContainer(const T_items* items = nullptr) {
         // 45:         if items is not None:
-        if ((items != nullptr)) {
-            if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-                // 46:             self.count = len(items)
-                this->count = tpy::BigInt(tpy::__len__((*items)));
-            }
+        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+            // 46:             self.count = len(items)
+            this->count = tpy::BigInt(tpy::__len__((*items)));
         } else {
             // 48:             self.count = 0
             this->count = tpy::BigInt(0);
@@ -135,11 +127,9 @@ tpy::BigInt count_items(T_items& items, const T_extra* extra) {
     // 21:     result: int = len(items)
     tpy::BigInt result = tpy::BigInt(tpy::__len__(items));
     // 22:     if extra is not None:
-    if ((extra != nullptr)) {
-        if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-            // 23:         result = result + len(extra)
-            result = ((result) + (tpy::BigInt(tpy::__len__((*extra)))));
-        }
+    if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
+        // 23:         result = result + len(extra)
+        result = ((result) + (tpy::BigInt(tpy::__len__((*extra)))));
     }
     // 24:     return result
     return result;
@@ -149,11 +139,9 @@ template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
 tpy::BigInt only_optional(const T_items* items) {
     // 27:     if items is not None:
-    if ((items != nullptr)) {
-        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            // 28:         return len(items)
-            return tpy::BigInt(tpy::__len__((*items)));
-        }
+    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        // 28:         return len(items)
+        return tpy::BigInt(tpy::__len__((*items)));
     }
     // 29:     return 0
     return tpy::BigInt(0);
@@ -175,17 +163,15 @@ tpy::BigInt sum_optional(T_items& items, const T_extra* extra) {
         i = ((i) + (tpy::BigInt(1)));
     }
     // 57:     if extra is not None:
-    if ((extra != nullptr)) {
-        if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-            // 58:         j: int = 0
-            tpy::BigInt j = tpy::BigInt(0);
-            // 59:         while j < len(extra):
-            while ((j < tpy::__len__((*extra)))) {
-                // 60:             result = result + extra[j]
-                result = ((result) + ((*extra)[j.to_fixed_check<int32_t>()]));
-                // 61:             j = j + 1
-                j = ((j) + (tpy::BigInt(1)));
-            }
+    if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
+        // 58:         j: int = 0
+        tpy::BigInt j = tpy::BigInt(0);
+        // 59:         while j < len(extra):
+        while ((j < tpy::__len__((*extra)))) {
+            // 60:             result = result + extra[j]
+            result = ((result) + ((*extra)[j.to_fixed_check<int32_t>()]));
+            // 61:             j = j + 1
+            j = ((j) + (tpy::BigInt(1)));
         }
     }
     // 62:     return result

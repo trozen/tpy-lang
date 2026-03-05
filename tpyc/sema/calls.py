@@ -15,6 +15,7 @@ from ..typesys import (
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, container_to_str_template,
+    is_protocol_union, protocol_union_protocols,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
@@ -765,14 +766,35 @@ class CallAnalyzer:
                 "but the variable type could not be resolved",
                 expr
             )
-        if not is_protocol_type(var_type):
+
+        # Accept both plain protocol params and protocol union params
+        if is_protocol_type(var_type):
+            protocol_type = NamedType(protocol_name, is_protocol=True)
+        elif is_protocol_union(var_type):
+            # Find the matching member in the union, preserving type_args
+            members = protocol_union_protocols(var_type)
+            matched = None
+            for m in members:
+                if isinstance(m, NamedType) and m.name == protocol_name:
+                    matched = m
+                    break
+            if matched is None:
+                member_names = ", ".join(m.name for m in members if isinstance(m, NamedType))
+                raise self.ctx.error(
+                    f"Protocol '{protocol_name}' is not a member of the protocol union "
+                    f"({member_names})",
+                    expr
+                )
+            protocol_type = NamedType(
+                protocol_name, is_protocol=True, type_args=matched.type_args
+            )
+        else:
             raise self.ctx.error(
                 f"isinstance() with a protocol requires a protocol-typed parameter, "
                 f"got '{var_type}'",
                 expr
             )
 
-        protocol_type = NamedType(protocol_name, is_protocol=True)
         expr.isinstance_var = first_arg.name
         expr.isinstance_type = protocol_type
         expr.isinstance_is_protocol = True

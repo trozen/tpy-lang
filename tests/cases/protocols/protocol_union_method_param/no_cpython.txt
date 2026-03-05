@@ -1,0 +1,1 @@
+User-defined protocols require @runtime_checkable for CPython isinstance

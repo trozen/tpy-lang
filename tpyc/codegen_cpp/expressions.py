@@ -14,7 +14,7 @@ from ..typesys import (
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, container_to_str_template,
-    ResolvedBinop, get_covariant_params,
+    ResolvedBinop, get_covariant_params, is_protocol_union, protocol_union_has_none,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -89,6 +89,24 @@ class ExpressionGenerator:
                 return f"tpy::optional_to_ptr({arg_gen})"
             return arg_gen
         return f"&({self.gen_expr(arg, ptype)})"
+
+    def _gen_protocol_union_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
+        """Generate argument for a protocol union param, or None if not applicable."""
+        actual = unwrap_readonly(ptype) if ptype else ptype
+        if not (isinstance(actual, UnionType) and is_protocol_union(actual)):
+            return None
+        has_none = protocol_union_has_none(actual)
+        if has_none:
+            if isinstance(arg, TpyNoneLiteral):
+                return "static_cast<std::nullptr_t*>(nullptr)"
+            # If the arg is already a pointer-local (e.g. forwarding a nullable
+            # protocol union param), pass it directly instead of taking &.
+            if self.ctx.is_indirect_name(arg):
+                return self.gen_expr(arg)
+            return f"&({self.gen_expr(arg)})"
+        # Required protocol union: pass by reference, template deduction works.
+        # Return the expression directly to prevent the UnionType variant-wrapping path.
+        return self.gen_expr(arg)
 
     def gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression, dereferencing globals.
@@ -486,6 +504,16 @@ class ExpressionGenerator:
                     return f"(!{val}.has_value())"
                 else:
                     return f"({val}.has_value())"
+            # Nullable protocol union: pointer comparison (same as Optional[Protocol])
+            pu_expr = None
+            if isinstance(left_type, UnionType) and is_protocol_union(left_type) and isinstance(expr.right, TpyNoneLiteral):
+                pu_expr = expr.left
+            elif isinstance(right_type, UnionType) and is_protocol_union(right_type) and isinstance(expr.left, TpyNoneLiteral):
+                pu_expr = expr.right
+            if pu_expr is not None:
+                val = self.gen_expr(pu_expr)
+                cpp_op = "==" if expr.op == "is" else "!="
+                return f"({val} {cpp_op} nullptr)"
             # Union types with NoneType member: std::holds_alternative<std::monostate>
             union_expr = None
             if isinstance(left_type, UnionType) and isinstance(expr.right, TpyNoneLiteral):
@@ -794,8 +822,7 @@ class ExpressionGenerator:
         """Generate function call code."""
         # isinstance(x, Protocol) -> Concept<T_x>  (compile-time)
         if expr.isinstance_var is not None and expr.isinstance_is_protocol and expr.isinstance_type is not None:
-            concept = self.protocols.get_concept_name(expr.isinstance_type)
-            return f"{concept}<T_{expr.isinstance_var}>"
+            return self.protocols._concept_constraint(expr.isinstance_var, expr.isinstance_type)
         # isinstance(x, T) -> std::holds_alternative<CppT>(x)
         if expr.isinstance_var is not None and expr.isinstance_type is not None:
             cpp_type = self.types.type_to_cpp(expr.isinstance_type)
@@ -896,6 +923,12 @@ class ExpressionGenerator:
                     gen_args.append(covariant_arg)
                     continue
 
+                # Protocol union params: None -> nullptr, concrete -> &(expr)
+                pu_arg = self._gen_protocol_union_arg(arg, resolved_ptype)
+                if pu_arg is not None:
+                    gen_args.append(pu_arg)
+                    continue
+
                 opt_arg = self._gen_optional_ptr_arg(arg, resolved_ptype)
                 if opt_arg is not None:
                     gen_args.append(opt_arg)
@@ -992,6 +1025,10 @@ class ExpressionGenerator:
                     if covariant_arg is not None:
                         gen_args.append(covariant_arg)
                         continue
+                pu_arg = self._gen_protocol_union_arg(a, ptype)
+                if pu_arg is not None:
+                    gen_args.append(pu_arg)
+                    continue
                 opt_arg = self._gen_optional_ptr_arg(a, ptype)
                 if opt_arg is not None:
                     gen_args.append(opt_arg)
@@ -1028,8 +1065,10 @@ class ExpressionGenerator:
                     if covariant_arg is not None:
                         gen_args.append(covariant_arg)
                         continue
-                opt_arg = self._gen_optional_ptr_arg(a, ptype)
-                if opt_arg is not None:
+                pu_arg = self._gen_protocol_union_arg(a, ptype)
+                if pu_arg is not None:
+                    gen_args.append(pu_arg)
+                elif (opt_arg := self._gen_optional_ptr_arg(a, ptype)) is not None:
                     gen_args.append(opt_arg)
                 else:
                     gen_args.append(self.gen_call_arg(a, ptype))
@@ -1071,6 +1110,10 @@ class ExpressionGenerator:
                         if covariant_arg is not None:
                             gen_args.append(covariant_arg)
                             continue
+                    pu_arg = self._gen_protocol_union_arg(arg, ptype)
+                    if pu_arg is not None:
+                        gen_args.append(pu_arg)
+                        continue
                     opt_arg = self._gen_optional_ptr_arg(arg, ptype)
                     if opt_arg is not None:
                         gen_args.append(opt_arg)
@@ -1259,8 +1302,10 @@ class ExpressionGenerator:
                                 gen_args.append(self.gen_expr_deref(arg))
                         else:
                             rptype = resolved_params[i].type if i < len(resolved_params) else ptype
-                            opt_arg = self._gen_optional_ptr_arg(arg, rptype)
-                            if opt_arg is not None:
+                            pu_arg = self._gen_protocol_union_arg(arg, rptype)
+                            if pu_arg is not None:
+                                gen_args.append(pu_arg)
+                            elif (opt_arg := self._gen_optional_ptr_arg(arg, rptype)) is not None:
                                 gen_args.append(opt_arg)
                             else:
                                 # None literals need target type to decide nullptr vs std::nullopt

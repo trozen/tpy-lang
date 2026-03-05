@@ -13,7 +13,7 @@ from ..typesys import (
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
-    INT32, VOID, BIGINT, STRVIEW, is_protocol_type,
+    INT32, VOID, BIGINT, STRVIEW, is_protocol_type, is_protocol_union,
 )
 from ..parse import (
     TpyExpr,
@@ -1137,7 +1137,8 @@ class StatementAnalyzer:
                         and self.compat._is_movable_var(stmt.init.name)
                         and var_type is not None
                         and not var_type.is_value_type()
-                        and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())):
+                        and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
+                        and not is_protocol_union(var_type)):
                     self.ctx.rvalue_vars.add(stmt.name)
                     self.ctx.move_through_vars.add(stmt.name)
                 else:

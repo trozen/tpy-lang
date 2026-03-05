@@ -1619,6 +1619,28 @@ def is_protocol_type(typ: TpyType) -> bool:
     return isinstance(typ, NamedType) and typ.is_protocol
 
 
+def is_protocol_union(typ: TpyType) -> bool:
+    """Check if a type is a union where all non-None members are static protocols.
+
+    Matches UnionType with 2+ protocol members (with or without None).
+    Does NOT match OptionalType(protocol) -- that has its own codegen paths.
+    """
+    if not isinstance(typ, UnionType):
+        return False
+    non_none = [m for m in typ.members if not isinstance(m, (NoneType, VoidType))]
+    return len(non_none) >= 2 and all(is_protocol_type(m) for m in non_none)
+
+
+def protocol_union_protocols(typ: UnionType) -> list[TpyType]:
+    """Get non-None protocol members from a protocol union."""
+    return [m for m in typ.members if not isinstance(m, (NoneType, VoidType))]
+
+
+def protocol_union_has_none(typ: UnionType) -> bool:
+    """Check if a protocol union includes None."""
+    return any(isinstance(m, (NoneType, VoidType)) for m in typ.members)
+
+
 def container_to_str_template(typ: TpyType) -> str | None:
     """Return the C++ to_str template for a container type, or None."""
     if isinstance(typ, TupleType):

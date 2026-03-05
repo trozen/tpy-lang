@@ -15,6 +15,7 @@ from ..typesys import (
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
+    is_protocol_union, protocol_union_has_none,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
@@ -116,6 +117,12 @@ class StatementGenerator:
                 self.ctx.pointer_locals.add(pname)
                 if isinstance(ptype, ReadonlyType):
                     self.ctx.const_indirect_locals.add(pname)
+            # Nullable protocol union params use const T* pointer repr
+            elif (isinstance(actual, UnionType)
+                  and is_protocol_union(actual)
+                  and protocol_union_has_none(actual)):
+                self.ctx.pointer_locals.add(pname)
+                self.ctx.const_indirect_locals.add(pname)
             # Own[T] and Own[T] | None params are movable (caller gave up ownership)
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
@@ -357,11 +364,12 @@ class StatementGenerator:
         return protocol_info is not None and protocol_info.is_dynamic
 
     def _get_nullproto_constexpr_guards(self, condition: TpyExpr) -> list[str]:
-        """Get param names that need if constexpr guards for Optional[StaticProtocol].
+        """Get param names that need if constexpr guards for nullable protocol params.
 
-        When an Optional[StaticProtocol] param is narrowed (e.g. `if items is not None:`),
-        the narrowing body must be wrapped in `if constexpr (!std::same_as<T_X, std::nullptr_t>)`
-        to prevent instantiation of protocol operations on nullptr_t.
+        When an Optional[StaticProtocol] or nullable protocol union param is narrowed
+        (e.g. `if items is not None:`), the narrowing body must be wrapped in
+        `if constexpr (!std::same_as<T_X, std::nullptr_t>)` to prevent instantiation
+        of protocol operations on nullptr_t.
         """
         guards = []
         match = match_is_none(condition)
@@ -369,8 +377,14 @@ class StatementGenerator:
             var_name, is_not_none = match
             if is_not_none and '.' not in var_name:
                 declared = self.ctx.current_func_params.get(var_name)
-                if declared and self.protocols.is_optional_static_protocol(unwrap_readonly(declared)):
-                    guards.append(var_name)
+                if declared:
+                    unwrapped = unwrap_readonly(declared)
+                    if self.protocols.is_optional_static_protocol(unwrapped):
+                        guards.append(var_name)
+                    elif (isinstance(unwrapped, UnionType)
+                          and is_protocol_union(unwrapped)
+                          and protocol_union_has_none(unwrapped)):
+                        guards.append(var_name)
         return guards
 
     def _is_protocol_isinstance_condition(self, condition: 'TpyExpr') -> bool:
@@ -1084,6 +1098,10 @@ class StatementGenerator:
         for var_name, narrowed_type in type_facts.items():
             if isinstance(narrowed_type, (UnionType, NoneType)):
                 continue
+            # Protocol isinstance narrows the concept constraint, not the value;
+            # no std::get extraction needed (the variable is already a T& ref).
+            if is_protocol_type(narrowed_type):
+                continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
             var_ref = var_name
             if var_name in self.ctx.narrowed_vars:
@@ -1238,47 +1256,59 @@ class StatementGenerator:
 
         # Emit if / else if / else chain
         for i, node in enumerate(chain):
-            cond = self.expressions.gen_truthy_expr(node.condition)
-            is_constexpr = self._is_protocol_isinstance_condition(node.condition)
-            if_kw = "if constexpr" if is_constexpr else "if"
-            if i == 0:
-                self.ctx.temps.flush(out, indent)
-                out.write(f"{indent}{if_kw} ({cond}) {{\n")
-            elif not self.ctx.temps._pending:
-                else_kw = "else if constexpr" if is_constexpr else "else if"
-                out.write(f"{indent}}} {else_kw} ({cond}) {{\n")
+            # Nullable protocol param narrowing: replace runtime `x != nullptr`
+            # with compile-time `if constexpr (!std::same_as<T_x, nullptr_t>)`.
+            # The pointer is guaranteed non-null for real types (call site passes &expr),
+            # so the constexpr check alone is sufficient and avoids a redundant branch.
+            constexpr_guards = self._get_nullproto_constexpr_guards(node.condition)
+
+            if constexpr_guards:
+                # Replace the runtime condition with if constexpr
+                guard_conds = " && ".join(
+                    f"!std::same_as<T_{gvar}, std::nullptr_t>" for gvar in constexpr_guards
+                )
+                if i == 0:
+                    self.ctx.temps.flush(out, indent)
+                    out.write(f"{indent}if constexpr ({guard_conds}) {{\n")
+                elif not self.ctx.temps._pending:
+                    out.write(f"{indent}}} else if constexpr ({guard_conds}) {{\n")
+                else:
+                    self.ctx.temps._pending.clear()
+                    out.write(f"{indent}}} else {{\n")
+                    self.ctx.indent_level += 1
+                    self._gen_if(out, node, self.ctx.indent())
+                    self.ctx.indent_level -= 1
+                    out.write(f"{indent}}}\n")
+                    return
             else:
-                # Elif condition produced temp vars -- can't use flat
-                # else-if (no statements allowed between } and else).
-                # Discard the orphan temps and let _gen_if regenerate
-                # the condition in the correct nested scope.
-                self.ctx.temps._pending.clear()
-                out.write(f"{indent}}} else {{\n")
-                self.ctx.indent_level += 1
-                self._gen_if(out, node, self.ctx.indent())
-                self.ctx.indent_level -= 1
-                out.write(f"{indent}}}\n")
-                return
+                cond = self.expressions.gen_truthy_expr(node.condition)
+                is_constexpr = self._is_protocol_isinstance_condition(node.condition)
+                if_kw = "if constexpr" if is_constexpr else "if"
+                if i == 0:
+                    self.ctx.temps.flush(out, indent)
+                    out.write(f"{indent}{if_kw} ({cond}) {{\n")
+                elif not self.ctx.temps._pending:
+                    else_kw = "else if constexpr" if is_constexpr else "else if"
+                    out.write(f"{indent}}} {else_kw} ({cond}) {{\n")
+                else:
+                    # Elif condition produced temp vars -- can't use flat
+                    # else-if (no statements allowed between } and else).
+                    # Discard the orphan temps and let _gen_if regenerate
+                    # the condition in the correct nested scope.
+                    self.ctx.temps._pending.clear()
+                    out.write(f"{indent}}} else {{\n")
+                    self.ctx.indent_level += 1
+                    self._gen_if(out, node, self.ctx.indent())
+                    self.ctx.indent_level -= 1
+                    out.write(f"{indent}}}\n")
+                    return
 
             then_saved = self._emit_isinstance_extractions(out, node.then_type_facts)
 
-            # Optional[StaticProtocol] narrowing: wrap body in if constexpr to
-            # prevent instantiation of protocol operations when T = nullptr_t
-            constexpr_guards = self._get_nullproto_constexpr_guards(node.condition)
-
             self.ctx.indent_level += 1
-            if constexpr_guards:
-                inner_indent = self.ctx.indent()
-                for gvar in constexpr_guards:
-                    out.write(f"{inner_indent}if constexpr (!std::same_as<T_{gvar}, std::nullptr_t>) {{\n")
-                    self.ctx.indent_level += 1
             for s in node.then_body:
                 self.gen_stmt(out, s)
             self.ctx.emit_block_trailing_comments(out, node.then_body, self.ctx.indent())
-            if constexpr_guards:
-                for _ in constexpr_guards:
-                    self.ctx.indent_level -= 1
-                    out.write(f"{self.ctx.indent()}}}\n")
             self.ctx.indent_level -= 1
 
             self._restore_narrowed_vars(then_saved)
@@ -1324,7 +1354,7 @@ class StatementGenerator:
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
         """Check if type_facts contain any concrete types that would emit extractions."""
         return any(
-            not isinstance(ty, (UnionType, NoneType))
+            not isinstance(ty, (UnionType, NoneType)) and not is_protocol_type(ty)
             for ty in type_facts.values()
         )
 

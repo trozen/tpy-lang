@@ -1,0 +1,1 @@
+main.py:9: error: @dynamic protocol 'Printable' cannot be used in a protocol union; only static protocols are supported

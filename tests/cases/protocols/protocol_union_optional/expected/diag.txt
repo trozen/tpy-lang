@@ -1,0 +1,2 @@
+main.py:30: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
+main.py:32: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch

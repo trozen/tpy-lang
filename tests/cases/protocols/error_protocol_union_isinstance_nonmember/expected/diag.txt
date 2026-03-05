@@ -1,0 +1,1 @@
+main.py:16: error: Protocol 'Printable' is not a member of the protocol union (Measurable, Walkable)

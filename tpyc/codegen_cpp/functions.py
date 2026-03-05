@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
-    resolve_int_literals,
+    resolve_int_literals, is_protocol_union, protocol_union_has_none,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -192,6 +192,14 @@ class FunctionGenerator:
                             part = f"const T_{pname}& {cpp_pname}"
                         else:
                             part = f"T_{pname}& {cpp_pname}"
+                elif self.protocols.is_protocol_union_param(unwrapped):
+                    has_none = protocol_union_has_none(unwrapped)
+                    if has_none:
+                        part = f"const T_{pname}* {cpp_pname}"
+                    elif const_params or isinstance(ptype, ReadonlyType):
+                        part = f"const T_{pname}& {cpp_pname}"
+                    else:
+                        part = f"T_{pname}& {cpp_pname}"
                 else:
                     if const_params:
                         part = ptype.to_cpp_const_param(cpp_pname)
@@ -242,7 +250,11 @@ class FunctionGenerator:
         """Check if a function needs a C++ template (generic type params or protocol params)."""
         if func.type_params:
             return True
-        return bool(self.protocols.get_protocol_params(func.params))
+        if self.protocols.get_protocol_params(func.params):
+            return True
+        if self.protocols.get_protocol_union_params(func.params):
+            return True
+        return False
 
     def gen_function_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
         """Generate a function forward declaration (signature only, no body).
@@ -258,19 +270,22 @@ class FunctionGenerator:
             return False
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        pu_params = self.protocols.get_protocol_union_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
+        has_proto_params = bool(protocol_params or pu_params)
 
         dfl = func.defaults if func.defaults else None
-        if is_generic or protocol_params:
+        if is_generic or has_proto_params:
             out.write(self.protocols.gen_combined_template_header(
-                func.type_params, protocol_params, func.type_param_bounds
+                func.type_params, protocol_params, func.type_param_bounds,
+                protocol_union_params=pu_params,
             ))
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      defaults=dfl, emit_defaults=True)
-                      if protocol_params or has_dynamic
+                      if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
                                            defaults=dfl, emit_defaults=True))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
@@ -303,20 +318,23 @@ class FunctionGenerator:
             return True
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        pu_params = self.protocols.get_protocol_union_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
+        has_proto_params = bool(protocol_params or pu_params)
 
-        if is_generic or protocol_params:
+        if is_generic or has_proto_params:
             # Template functions: emit full definition in header so that
             # importing modules can instantiate them.
             if func.is_stub:
                 out.write(self.protocols.gen_combined_template_header(
-                    func.type_params, protocol_params, func.type_param_bounds
+                    func.type_params, protocol_params, func.type_param_bounds,
+                    protocol_union_params=pu_params,
                 ))
                 ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params)
-                          if protocol_params or has_dynamic
+                          if has_proto_params or has_dynamic
                           else self.gen_params(func.params, func.type_params, reassigned_params=rp))
                 out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
             else:
@@ -373,20 +391,23 @@ class FunctionGenerator:
             return
 
         protocol_params = self.protocols.get_protocol_params(func.params)
+        pu_params = self.protocols.get_protocol_union_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
+        has_proto_params = bool(protocol_params or pu_params)
 
-        if is_generic or protocol_params:
+        if is_generic or has_proto_params:
             # Generate combined template header for generic functions and/or protocol params
             # Skip default template args -- already emitted in the forward declaration
             out.write(self.protocols.gen_combined_template_header(
                 func.type_params, protocol_params, func.type_param_bounds,
                 emit_defaults=False,
+                protocol_union_params=pu_params,
             ))
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)
-                      if protocol_params or has_dynamic
+                      if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
@@ -495,7 +516,8 @@ class FunctionGenerator:
 
         protocol_params = self.protocols.get_protocol_params(method.params)
         has_dynamic = self._has_dynamic_protocol_params(method.params)
-        use_protocol_params = bool(protocol_params) or has_dynamic
+        has_pu_params = bool(self.protocols.get_protocol_union_params(method.params))
+        use_protocol_params = bool(protocol_params) or has_dynamic or has_pu_params
 
         # Determine method-level type params (not in the class template)
         record_info = self.ctx.analyzer.registry.get_record(record_name)
@@ -540,7 +562,8 @@ class FunctionGenerator:
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent=INDENT)
         self.ctx.emit_source_comment(out, method.loc, indent=INDENT)
-        if protocol_params or new_method_params:
+        pu_params = self.protocols.get_protocol_union_params(method.params)
+        if protocol_params or pu_params or new_method_params:
             # Bounds for new method type params only (class param bounds go on the requires clause)
             bounds_for_header = dict(record_type_param_bounds) if record_type_param_bounds else {}
             bounds_for_header.update(
@@ -548,7 +571,8 @@ class FunctionGenerator:
                  if k in set(new_method_params)}
             )
             template_header = self.protocols.gen_combined_template_header(
-                new_method_params, protocol_params, bounds_for_header
+                new_method_params, protocol_params, bounds_for_header,
+                protocol_union_params=pu_params,
             )
             out.write(f"{INDENT}{template_header}")
         out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix}{requires_clause} {{\n")

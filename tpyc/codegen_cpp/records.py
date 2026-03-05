@@ -210,16 +210,20 @@ class RecordGenerator:
                 # protocol param is optional, delegate to the template ctor with
                 # nullptr so the __init__ body executes (else branch runs via
                 # if constexpr). Otherwise use = default.
+                pu_params_for_ctor = self.functions.protocols.get_protocol_union_params(
+                    record.init_method.params)
                 all_protocols_optional = (
-                    protocol_params
+                    (protocol_params or pu_params_for_ctor)
                     and not has_required_params
-                    and all(is_opt for _, _, is_opt in protocol_params))
-                if has_required_params or protocol_params:
+                    and all(is_opt for _, _, is_opt in protocol_params)
+                    and all(has_n for _, _, has_n in pu_params_for_ctor))
+                if has_required_params or protocol_params or pu_params_for_ctor:
                     if all_protocols_optional:
                         out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
                     else:
                         out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
-                if protocol_params or has_dynamic:
+                pu_params = pu_params_for_ctor
+                if protocol_params or pu_params or has_dynamic:
                     cpp_params = self.functions.gen_params_with_protocols(
                         record.init_method.params,
                         record.init_method.type_params,
@@ -227,10 +231,11 @@ class RecordGenerator:
                         defaults=init_defaults,
                         emit_defaults=True,
                     )
-                    if protocol_params:
+                    if protocol_params or pu_params:
                         template_header = self.functions.protocols.gen_combined_template_header(
                             record.init_method.type_params or [], protocol_params,
                             record.type_param_bounds or None,
+                            protocol_union_params=pu_params,
                         )
                         out.write(f"{INDENT}{template_header}")
                 else:
