@@ -547,6 +547,7 @@ class TpyRecord:
     native_name: str | None = None
     is_nocopy: bool = False
     is_dataclass: bool = False
+    is_frozen: bool = False
     loc: SourceLocation | None = None
 
     @property

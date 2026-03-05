@@ -580,6 +580,20 @@ class Parser:
             return (arg, not arg)
         raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
 
+    def _extract_dataclass_frozen(self, call: ast.Call) -> bool | None:
+        """Extract frozen=True/False from @dataclass(...) keyword args.
+
+        Returns the frozen value if valid, None if the keywords are not recognized.
+        """
+        if len(call.keywords) != 1:
+            return None
+        kw = call.keywords[0]
+        if kw.arg != "frozen":
+            return None
+        if isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, bool):
+            return kw.value.value
+        return None
+
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol | TpyEnum:
         """Parse a class definition as a record, protocol, or enum."""
         if node.bases:
@@ -624,6 +638,7 @@ class Parser:
         native_name: str | None = None
         is_nocopy = False
         is_dataclass = False
+        is_frozen = False
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
             if qname in self._RECORD_LINKAGE_MAP:
@@ -642,9 +657,20 @@ class Parser:
                     raise ParseError("@nocopy does not take arguments", dec)
                 is_nocopy = True
             elif qname == "dataclasses.dataclass":
-                if arg is not None and arg is not self._EMPTY_CALL:
-                    raise ParseError("@dataclass does not take arguments (frozen=True is not yet supported)", dec)
                 is_dataclass = True
+                if arg is self._BAD_ARGS:
+                    if isinstance(dec, ast.Call) and not dec.args:
+                        frozen_val = self._extract_dataclass_frozen(dec)
+                        if frozen_val is not None:
+                            is_frozen = frozen_val
+                        else:
+                            raise ParseError(
+                                "@dataclass only supports frozen=True keyword argument", dec)
+                    else:
+                        raise ParseError(
+                            "@dataclass does not take positional arguments", dec)
+                elif arg is not None and arg is not self._EMPTY_CALL:
+                    raise ParseError("@dataclass does not take positional arguments", dec)
             else:
                 dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on class '{node.name}'", dec)
@@ -762,7 +788,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, is_dataclass=is_dataclass, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, is_dataclass=is_dataclass, is_frozen=is_frozen, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

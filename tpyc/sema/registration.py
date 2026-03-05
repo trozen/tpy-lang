@@ -413,6 +413,8 @@ class TypeRegistrar:
                     )
             resolved_readonly = method.is_readonly or (
                 method.name in IMPLICIT_READONLY_METHODS and not method.readonly_opt_out
+            ) or (
+                record.is_frozen and method.name != "__init__"
             )
             method.is_readonly = resolved_readonly
             method_type_param_bounds = self._resolve_type_param_bounds(
@@ -509,6 +511,7 @@ class TypeRegistrar:
             is_native=is_native,
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,
+            is_frozen=record.is_frozen,
             has_del=record.del_method is not None,
             has_copy=has_copy,
         )

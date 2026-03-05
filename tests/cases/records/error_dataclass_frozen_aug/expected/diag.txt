@@ -1,0 +1,1 @@
+main.py:12: error: Cannot assign to field 'x' of frozen dataclass 'Point'

@@ -279,7 +279,7 @@ class StatementAnalyzer:
             self._sync_ns_var_type(name, target)
 
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
-        """Reject assignments through readonly references (type-based check)."""
+        """Reject assignments through readonly references and frozen fields."""
         if isinstance(target, (TpyFieldAccess, TpySubscript)):
             obj_type = self.ctx.get_expr_type(target.obj)
             if obj_type is not None:
@@ -288,6 +288,24 @@ class StatementAnalyzer:
                     check_type = check_type.inner
                 if isinstance(check_type, ReadonlyType):
                     raise self.ctx.error("Cannot mutate readonly reference", target)
+                # Frozen dataclass: reject field assignment except self.field in __init__
+                if isinstance(target, TpyFieldAccess):
+                    actual = unwrap_readonly(check_type)
+                    if isinstance(actual, NamedType):
+                        info = self.ctx.registry.get_record(actual.name)
+                        if info is not None and info.is_frozen:
+                            cur = self.ctx.current_function
+                            rec = self.ctx.record_ctx.record
+                            in_own_init = (
+                                isinstance(cur, TpyFunction) and cur.name == "__init__"
+                                and isinstance(target.obj, TpyName) and target.obj.name == "self"
+                                and rec is not None and rec.name == actual.name
+                            )
+                            if not in_own_init:
+                                raise self.ctx.error(
+                                    f"Cannot assign to field '{target.field}' of frozen dataclass '{actual.name}'",
+                                    target,
+                                )
 
     def _resolve_enum_iterable(self, stmt: TpyForEach) -> EnumType | None:
         """Check if for-each iterates over an enum type (e.g. `for c in Color`).

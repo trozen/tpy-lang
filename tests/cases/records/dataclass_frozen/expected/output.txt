@@ -1,0 +1,5 @@
+Point(x=1, y=2)
+1 2
+True
+False
+Config(name='test', value=42)
