@@ -580,19 +580,23 @@ class Parser:
             return (arg, not arg)
         raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
 
-    def _extract_dataclass_frozen(self, call: ast.Call) -> bool | None:
-        """Extract frozen=True/False from @dataclass(...) keyword args.
+    def _extract_dataclass_kwargs(self, call: ast.Call) -> dict[str, bool]:
+        """Extract keyword args from @dataclass(...).
 
-        Returns the frozen value if valid, None if the keywords are not recognized.
+        Supported kwargs: frozen, order. All must be bool literals.
+        Raises ParseError with specific message for unsupported or invalid args.
         """
-        if len(call.keywords) != 1:
-            return None
-        kw = call.keywords[0]
-        if kw.arg != "frozen":
-            return None
-        if isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, bool):
-            return kw.value.value
-        return None
+        _SUPPORTED = {"frozen", "order"}
+        result: dict[str, bool] = {}
+        for kw in call.keywords:
+            if kw.arg not in _SUPPORTED:
+                raise ParseError(
+                    f"@dataclass got unsupported keyword argument '{kw.arg}'", call)
+            if not (isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, bool)):
+                raise ParseError(
+                    f"@dataclass: '{kw.arg}' must be True or False", call)
+            result[kw.arg] = kw.value.value
+        return result
 
     def _try_parse_dataclass_field(self, node: ast.expr,
                                        is_dataclass: bool) -> tuple[str | None, TpyExpr, bool] | None:
@@ -704,6 +708,7 @@ class Parser:
         is_nocopy = False
         is_dataclass = False
         is_frozen = False
+        is_ordered = False
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
             if qname in self._RECORD_LINKAGE_MAP:
@@ -725,12 +730,9 @@ class Parser:
                 is_dataclass = True
                 if arg is self._BAD_ARGS:
                     if isinstance(dec, ast.Call) and not dec.args:
-                        frozen_val = self._extract_dataclass_frozen(dec)
-                        if frozen_val is not None:
-                            is_frozen = frozen_val
-                        else:
-                            raise ParseError(
-                                "@dataclass only supports frozen=True keyword argument", dec)
+                        dc_kwargs = self._extract_dataclass_kwargs(dec)
+                        is_frozen = dc_kwargs.get("frozen", False)
+                        is_ordered = dc_kwargs.get("order", False)
                     else:
                         raise ParseError(
                             "@dataclass does not take positional arguments", dec)
@@ -858,7 +860,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, is_dataclass=is_dataclass, is_frozen=is_frozen, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, is_dataclass=is_dataclass, is_frozen=is_frozen, is_ordered=is_ordered, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

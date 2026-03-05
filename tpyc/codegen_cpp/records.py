@@ -331,6 +331,9 @@ class RecordGenerator:
         # Generate __hash__ for frozen dataclasses
         self._gen_hash_method(out, record)
 
+        # Generate operator<=> for @dataclass(order=True)
+        self._gen_order_operator(out, record)
+
         # Synthesize __iter__() -> self for iterator types (has __next__ but no explicit __iter__)
         has_next = any(m.name == "__next__" for m in record.methods)
         has_iter = any(m.name == "__iter__" for m in record.methods)
@@ -758,7 +761,21 @@ class RecordGenerator:
         record_info = self.ctx.analyzer.registry.get_record(record.name)
         if record_info is None or not record_info.is_frozen or not record_info.fields:
             return
-        hash_fields = ", ".join(f"this->{fld.name}" for fld in record_info.fields)
+        hash_fields = ", ".join(f"this->{escape_cpp_name(fld.name)}" for fld in record_info.fields)
         out.write(f"\n{INDENT}uint64_t __hash__() const {{\n")
         out.write(f"{INDENT}{INDENT}return tpy::hash_combine(0, {hash_fields});\n")
+        out.write(f"{INDENT}}}\n")
+
+    def _gen_order_operator(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate operator<=> for @dataclass(order=True)."""
+        if any(m.name == "__lt__" for m in record.methods):
+            return
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        if record_info is None or not record_info.is_ordered or not record_info.fields:
+            return
+        name = escape_cpp_name(record.name)
+        lhs_fields = ", ".join(f"lhs.{escape_cpp_name(fld.name)}" for fld in record_info.fields)
+        rhs_fields = ", ".join(f"rhs.{escape_cpp_name(fld.name)}" for fld in record_info.fields)
+        out.write(f"\n{INDENT}friend auto operator<=>(const {name}& lhs, const {name}& rhs) {{\n")
+        out.write(f"{INDENT}{INDENT}return std::tie({lhs_fields}) <=> std::tie({rhs_fields});\n")
         out.write(f"{INDENT}}}\n")

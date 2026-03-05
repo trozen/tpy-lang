@@ -1759,6 +1759,7 @@ class RecordInfo:
     is_native_c: bool = False     # True for @native_c specifically
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
     is_frozen: bool = False       # True for @dataclass(frozen=True) (field mutation rejected)
+    is_ordered: bool = False      # True for @dataclass(order=True) (auto __lt__ etc.)
     is_value_type: bool = False   # True for ValueType marker protocol
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)

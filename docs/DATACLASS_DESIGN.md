@@ -17,7 +17,7 @@
 | `__post_init__` | 1 use in compiler source (`Scope` sets `self.depth` from parent). Low priority |
 | `field(default_factory=...)` | Done. `field(default=X)` and `field(default_factory=X)` where X is a Default-constructible type |
 | `field(kw_only=True)` | 2 uses in compiler source. Low priority |
-| `order=True` | Auto-generate `__lt__`, `__le__`, `__gt__`, `__ge__` |
+| `order=True` | Done. `@dataclass(order=True)` generates `operator<=>` via `std::tie` for lexicographic field comparison |
 | Dataclass inheritance | Child `@dataclass` inherits parent fields into `__init__` |
 | `slots=True` | No-op in TPy (all records already use fixed struct layout) |
 

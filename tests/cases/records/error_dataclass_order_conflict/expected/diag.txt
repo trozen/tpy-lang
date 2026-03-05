@@ -1,0 +1,1 @@
+main.py:6: error: @dataclass(order=True) cannot overwrite '__lt__' defined in class 'Bad'

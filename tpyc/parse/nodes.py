@@ -548,6 +548,7 @@ class TpyRecord:
     is_nocopy: bool = False
     is_dataclass: bool = False
     is_frozen: bool = False
+    is_ordered: bool = False
     loc: SourceLocation | None = None
 
     @property

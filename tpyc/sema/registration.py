@@ -537,6 +537,26 @@ class TypeRegistrar:
                 is_readonly=True,
             )]
 
+        # Synthesize ordering methods for @dataclass(order=True)
+        _ORDER_DUNDERS = ("__lt__", "__le__", "__gt__", "__ge__")
+        if record.is_ordered and record.fields:
+            for dunder in _ORDER_DUNDERS:
+                if dunder in methods:
+                    raise SemanticError(
+                        f"@dataclass(order=True) cannot overwrite '{dunder}' "
+                        f"defined in class '{record.name}'",
+                        record.loc,
+                    )
+            other_type = NamedType(record.name)
+            for dunder in _ORDER_DUNDERS:
+                methods[dunder] = [FunctionInfo(
+                    name=dunder,
+                    params=[("other", other_type)],
+                    return_type=BoolType(),
+                    is_method=True,
+                    is_readonly=True,
+                )]
+
         # Don't classify bases here - defer to validate_record_inheritance
         # (so forward-referenced protocols are properly recognized)
         info = RecordInfo(
@@ -555,6 +575,7 @@ class TypeRegistrar:
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,
             is_frozen=record.is_frozen,
+            is_ordered=record.is_ordered,
             has_del=record.del_method is not None,
             has_copy=has_copy,
         )
