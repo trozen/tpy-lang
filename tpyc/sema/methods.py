@@ -20,7 +20,10 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
-from .calls import arity_error_msg, resolve_kwargs, validate_generic_defaults, validate_type_param_bounds
+from .calls import (
+    arity_error_msg, resolve_kwargs, validate_generic_defaults,
+    validate_type_param_bounds, prefer_strview_for_literals,
+)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -610,6 +613,11 @@ class MethodAnalyzer:
                 self.protocols.type_conforms_to_protocol,
                 lambda msg: self.ctx.error(msg, expr),
             )
+
+        # Prefer StrView for string literal args (skip fully-explicit)
+        if not expr.type_args:
+            prefer_strview_for_literals(method_subst, partial_func, expr.args,
+                                       self.protocols.type_conforms_to_protocol)
 
         # Store inferred type args (new params only) for codegen
         expr.inferred_type_args = tuple(method_subst[p] for p in new_params)

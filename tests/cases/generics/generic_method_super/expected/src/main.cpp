@@ -11,7 +11,7 @@ void main() {
     // 22:     print(c.wrap(42))
     std::cout << c.wrap<int32_t>(42) << "\n";
     // 23:     print(c.wrap("hello"))
-    std::cout << c.wrap<std::string>("hello") << "\n";
+    std::cout << c.wrap<std::string_view>("hello") << "\n";
 }
 
 void __tpy_init() {

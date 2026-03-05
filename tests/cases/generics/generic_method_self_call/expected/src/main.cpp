@@ -11,7 +11,7 @@ void main() {
     // 18:     print(p.process())
     std::cout << p.process() << "\n";
     // 19:     print(p.wrap("hello"))
-    std::cout << p.wrap<std::string>("hello") << "\n";
+    std::cout << p.wrap<std::string_view>("hello") << "\n";
 }
 
 void __tpy_init() {

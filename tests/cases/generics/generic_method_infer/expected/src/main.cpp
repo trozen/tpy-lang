@@ -13,7 +13,7 @@ void main() {
     // 16:     print(r1)
     std::cout << r1 << "\n";
     // 17:     r2 = b.transform("hello")
-    std::string r2 = b.transform<std::string>("hello");
+    std::string_view r2 = b.transform<std::string_view>("hello");
     // 18:     print(r2)
     std::cout << r2 << "\n";
     // 19:     r3 = b.transform(True)

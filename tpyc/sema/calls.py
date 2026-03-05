@@ -16,6 +16,7 @@ from ..typesys import (
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, container_to_str_template,
     is_protocol_union, protocol_union_protocols,
+    StrViewType, STRVIEW,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
@@ -37,6 +38,54 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 from tpyc.modules import MethodDef
+
+
+def _tp_in_record_type(name: str, typ: TpyType) -> bool:
+    """Check if type param `name` appears as a direct type arg of a record."""
+    if isinstance(typ, NamedType) and typ.is_record:
+        for inner in typ.inner_types():
+            if isinstance(inner, TypeParamRef) and inner.name == name:
+                return True
+    for inner in typ.inner_types():
+        if _tp_in_record_type(name, inner):
+            return True
+    return False
+
+
+def prefer_strview_for_literals(
+    type_subst: dict[str, TpyType],
+    func: FunctionInfo,
+    args: list,
+    type_conforms_to_protocol: 'Callable',
+    explicit_count: int = 0,
+) -> None:
+    """Downgrade T=StrType to T=StrViewType when all args at bare-T
+    positions are string literals (static lifetime, safe as string_view)."""
+    explicit_params = set(func.type_params[:explicit_count])
+    for tp, inferred_type in list(type_subst.items()):
+        if tp in explicit_params:
+            continue
+        if not isinstance(inferred_type, StrType):
+            continue
+        # Skip if T would become a record field (StrView not allowed as field)
+        if _tp_in_record_type(tp, func.return_type):
+            continue
+        if any(_tp_in_record_type(tp, ptype) for _, ptype in func.params):
+            continue
+        all_literals = True
+        any_match = False
+        for (pname, ptype), arg in zip(func.params, args):
+            if isinstance(ptype, TypeParamRef) and ptype.name == tp:
+                any_match = True
+                if not isinstance(arg, TpyStrLiteral):
+                    all_literals = False
+                    break
+        if any_match and all_literals:
+            # Re-check bounds if present
+            if tp in func.type_param_bounds:
+                if not type_conforms_to_protocol(STRVIEW, func.type_param_bounds[tp]):
+                    continue
+            type_subst[tp] = STRVIEW
 
 
 def arity_error_msg(name: str, min_args: int, max_args: int, got: int) -> str:
@@ -1164,6 +1213,10 @@ class CallAnalyzer:
                 explicit_type_args=explicit,
             )
             if type_subst is not None:
+                n_explicit = len(explicit) if explicit else 0
+                if n_explicit < len(overload.type_params):
+                    prefer_strview_for_literals(type_subst, overload, expr.args,
+                                               protocol_checker, n_explicit)
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
                 # Catch ReadOnlyPtr-to-Ptr const-drop for unsafe_cast before
                 # the generic "type mismatch" at the assignment level.
@@ -1409,6 +1462,13 @@ class CallAnalyzer:
                     f"Specify explicitly: {func.name}[{', '.join(func.type_params)}](...)",
                     expr
                 )
+
+        # Prefer StrView for string literal args (skip fully-explicit)
+        n_explicit = len(expr.type_args) if expr.type_args else 0
+        if n_explicit < len(func.type_params):
+            prefer_strview_for_literals(type_subst, func, expr.args,
+                                        self.protocols.type_conforms_to_protocol,
+                                        n_explicit)
 
         # Store inferred type args for codegen
         expr.inferred_type_args = tuple(type_subst[p] for p in func.type_params)

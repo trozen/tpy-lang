@@ -14,8 +14,8 @@ void main() {
     std::cout << tpy::__len__(items) << "\n";
     // 13:     # str satisfies Sized too
     // 14:     s = identity("hello")
-    std::string __tmp_2 = "hello";
-    std::string s = identity<std::string>(__tmp_2);
+    std::string_view __tmp_2 = "hello";
+    std::string_view s = identity<std::string_view>(__tmp_2);
     // 15:     print(len(s))  # Should print 5
     std::cout << tpy::__len__(s) << "\n";
 }
