@@ -161,6 +161,9 @@ class SemanticContext:
     param_provenance_vars: set[str] = field(default_factory=set)
     non_null_ptr_vars: set[str] = field(default_factory=set)
 
+    # --- Consumed variable tracking (use-after-consume detection) ---
+    consumed_vars: set[str] = field(default_factory=set)
+
     # --- Expression type hint (for context-dependent functions like unsafe_cast) ---
     expr_type_hint: TpyType | None = None
 
@@ -311,3 +314,4 @@ class SemanticContext:
         self.global_declarations.clear()
         self.param_provenance_vars.clear()
         self.non_null_ptr_vars.clear()
+        self.consumed_vars.clear()

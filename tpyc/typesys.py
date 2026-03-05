@@ -1866,6 +1866,7 @@ class FunctionInfo:
     return_type: TpyType
     is_noalloc: bool = False
     is_readonly: bool = False
+    is_consuming: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
@@ -1949,7 +1950,7 @@ IMPLICIT_READONLY_METHODS = frozenset({
     "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
     "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
     "__neg__", "__pos__", "__invert__",
-    "__copy__",
+    "__copy__", "__deref__",
 })
 
 

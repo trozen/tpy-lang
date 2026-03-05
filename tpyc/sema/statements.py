@@ -1120,6 +1120,8 @@ class StatementAnalyzer:
             self.ctx.current_scope.define(stmt.name, var_type)
         else:
             self.ctx.current_scope.define(stmt.name, var_type)
+        # Reassignment revives a consumed variable
+        self.ctx.consumed_vars.discard(stmt.name)
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
@@ -1345,6 +1347,8 @@ class StatementAnalyzer:
                 if isinstance(value_type, ReadonlyType) and not target_type.is_value_type():
                     target_type = ReadonlyType(target_type)
             self.ctx.current_scope.define(stmt.target.name, target_type)
+            # Reassignment revives a consumed variable
+            self.ctx.consumed_vars.discard(stmt.target.name)
             if self.ctx.current_ns:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)

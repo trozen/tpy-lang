@@ -1316,6 +1316,16 @@ class ExpressionGenerator:
         obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
         obj_type = self.types.get_resolved_type(expr.obj)
 
+        # Consuming method: wrap receiver in std::move() for rvalue-qualified call.
+        # For pointer-locals (T* internally), dereference before moving.
+        is_consuming = (expr.resolved_function_info is not None
+                        and expr.resolved_function_info.is_consuming)
+        if is_consuming and isinstance(expr.obj, TpyName):
+            if self.ctx.is_indirect_name(expr.obj) and not is_assign_narrowed:
+                obj = f"std::move(*{obj})"
+            else:
+                obj = f"std::move({obj})"
+
         # Unwrap OwnType for method lookup - Own[T] behaves as T for method calls
         if isinstance(obj_type, OwnType):
             obj_type = obj_type.wrapped
@@ -1407,7 +1417,8 @@ class ExpressionGenerator:
             if expr.ptr_non_null:
                 return f"{obj}->{expr.method}{method_targs}({args})"
             return f"tpy::deref_check({obj}).{expr.method}{method_targs}({args})"
-        use_arrow = (self.ctx.is_indirect_name(expr.obj) and not is_narrowed) or is_optional_ptr
+        use_arrow = ((self.ctx.is_indirect_name(expr.obj) and not is_narrowed and not is_consuming)
+                     or is_optional_ptr)
         accessor = "->" if use_arrow else "."
         # Use native method name if available (for @native/@native_c class methods)
         cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method

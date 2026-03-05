@@ -591,7 +591,7 @@ Restrictions:
 - **Working**: `Ptr[T]` -> `T*`
 - **Working**: `ReadOnlyPtr[T]` -> `const T*` (also available as `Ptr[readonly[T]]`)
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
-- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`)
+- **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
 - **Planned**: `Ref[T]` -> `T&` (explicit reference)
 - **Planned**: `ConstRef[T]` -> `const T&`
@@ -1231,6 +1231,44 @@ sv: StrView = unsafe_str_view(p, UInt32(5))   # Ptr[Char], UInt32 -> StrView
 
 Generates `std::string_view(p, size)` in C++. Also accepts `ConstPtr[Char]`. The caller must ensure the pointer remains valid for the lifetime of the returned view.
 
+**`unsafe_alloc`** / **`unsafe_alloc_n`** -- allocate raw memory for one or N elements:
+
+```python
+from tpy.unsafe import unsafe_alloc, unsafe_alloc_n
+p: Ptr[Int32] = unsafe_alloc()        # allocate space for 1 element
+q: Ptr[Int32] = unsafe_alloc_n(UInt32(10))  # allocate space for 10 elements
+```
+
+**`unsafe_free`** -- free raw memory allocated by `unsafe_alloc`/`unsafe_alloc_n`:
+
+```python
+from tpy.unsafe import unsafe_free
+unsafe_free(p)  # Ptr[T] -> None
+```
+
+**`unsafe_init`** -- placement-construct an object at a pointer location:
+
+```python
+from tpy.unsafe import unsafe_init
+unsafe_init(p, Int32(42))  # Ptr[T], Own[T] -> None
+```
+
+**`unsafe_drop`** -- call the destructor on an object at a pointer location (no-op for trivially destructible types):
+
+```python
+from tpy.unsafe import unsafe_drop
+unsafe_drop(p)  # Ptr[T] -> None
+```
+
+**`unsafe_move_out`** -- move a value out of a pointer location without calling the destructor. The pointed-to memory is left in a moved-from state:
+
+```python
+from tpy.unsafe import unsafe_move_out
+val: Int32 = unsafe_move_out(p)  # Ptr[T] -> Own[T]
+```
+
+Generates `std::move(*p)` in C++. Used by `Box[T].take()` to extract the contained value before freeing the raw memory.
+
 #### Uninitialized Storage -- `tpy.mem` (Working)
 
 The `tpy.mem` module provides low-level uninitialized storage types for building containers. Elements are not default-constructed -- the caller manages element lifetimes explicitly via `init`/`drop`. Debug builds include lifetime tracking that panics on misuse (double-init, use-after-drop, leak on destruction).
@@ -1665,9 +1703,52 @@ class Stack[T]:
 - `Self` cannot be used in `@staticmethod` methods (no `self` to refer to)
 - `Self` cannot be used in free functions (must be inside a class)
 - `Self` in `@dynamic` protocols is not allowed (vtable dispatch can't vary return types)
-- `self: Own[Self]` (consuming methods) is not yet supported
+- `self: Own[Self]` cannot be combined with `@readonly` or used on `__init__`/`__del__`
 
 **Inheritance note**: `Self` resolves to the class that *defines* the method, matching C++ static dispatch semantics. A parent method returning `Self` returns the parent type, not the subclass type.
+
+#### Working: Consuming Methods (`self: Own[Self]`)
+
+Methods annotated with `self: Own[Self]` take ownership of the receiver. After calling a consuming method, the variable is consumed and cannot be used again. This generates a C++ rvalue-qualified method (`&&`), and call sites emit `std::move(obj).method()`.
+
+```python
+from typing import Self
+from tpy import Own
+
+class Wrapper:
+    _value: int
+
+    def __init__(self, value: int):
+        self._value = value
+
+    def take(self: Own[Self]) -> int:
+        return self._value
+
+w = Wrapper(42)
+result = w.take()   # w is consumed, moves self
+# w.get()           # ERROR: w was consumed
+```
+
+**Rules**:
+- Can only be called on local variables and temporaries (not fields, not `self`)
+- Calling through `Ptr[T]` is an error (pointers don't own pointees)
+- Use after consume is a compile error
+- Reassignment revives a consumed variable
+- Branch-aware: consuming in one `if` branch makes the variable consumed after the `if`
+- Field accesses on `self` inside the method body are automatically moved on return
+- For classes with `__del__`, the compiler auto-inserts destructor suppression (`__tpy_owned_ = false`) at the top of the consuming method body, preventing double-free of moved-from objects
+
+**Real-world example**: `Box[T].take()` uses consuming methods to safely extract the contained value:
+
+```python
+from tplib.box import Box
+from tpy import Int32
+
+b = Box(Int32(42))
+val = b.take()      # Moves out value, destroys box
+print(val)          # 42
+# b is consumed -- any further use is a compile error
+```
 
 #### Working: Regular Method Calls on Protocol Types
 
@@ -3774,6 +3855,7 @@ print(b.get())    # 42
 b.set(100)
 print(b.get())    # 100
 c = b.clone()     # Explicit clone (Box is non-copyable)
+val = c.take()    # Consuming: moves out value, destroys box (c cannot be used after this)
 ```
 
 **Covariant Box for @dynamic protocols**: `Box[T]` declares `Covariant[T]`, so

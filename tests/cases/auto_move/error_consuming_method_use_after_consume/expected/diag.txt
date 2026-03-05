@@ -1,0 +1,1 @@
+main.py:20: error: Cannot use 'w' after it was consumed by a consuming method call

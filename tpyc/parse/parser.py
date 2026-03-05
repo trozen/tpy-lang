@@ -10,7 +10,7 @@ import ast
 from typing import NoReturn, Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, OwnType, ReadonlyType, FinalType,
+    TpyType, NamedType, PtrType, OwnType, ReadonlyType, FinalType, SelfType,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -1193,12 +1193,34 @@ class Parser:
 
         params = []
         has_self = not is_staticmethod
+        is_consuming = False
         args_iter = iter(enumerate(node.args.args))
         for i, arg in args_iter:
             if i == 0 and has_self:
                 # Non-static methods must have 'self' as first parameter
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
+                # Check for self: Own[Self] annotation (consuming method)
+                if arg.annotation is not None:
+                    self_ann = self._parse_type_annotation(arg.annotation, type_param_scope)
+                    if isinstance(self_ann, OwnType) and isinstance(self_ann.wrapped, SelfType):
+                        if node.name in ("__init__", "__del__"):
+                            raise ParseError(
+                                f"Own[Self] is not allowed on '{node.name}'",
+                                node,
+                            )
+                        if is_readonly:
+                            raise ParseError(
+                                f"Own[Self] cannot be combined with @readonly on method '{node.name}'",
+                                node,
+                            )
+                        is_consuming = True
+                    else:
+                        raise ParseError(
+                            f"Only 'Own[Self]' is allowed as a type annotation for 'self', "
+                            f"got '{self_ann}'",
+                            node,
+                        )
                 continue
             if arg.annotation is None:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
@@ -1228,6 +1250,7 @@ class Parser:
             body=body,
             is_method=True,
             is_staticmethod=is_staticmethod,
+            is_consuming=is_consuming,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_stub=is_stub,

@@ -185,6 +185,14 @@ def unsafe_init(p, value) -> None:
     obj[0] = value
 
 
+def unsafe_move_out(p):
+    """Move a value out of a pointer location without calling destructor."""
+    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    val = obj[0]
+    obj[0] = None
+    return val
+
+
 def unsafe_drop(p) -> None:
     """Call destructor on an object at a pointer location."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj

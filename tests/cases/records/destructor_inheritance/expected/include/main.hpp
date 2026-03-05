@@ -50,7 +50,6 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 struct Child : Base {
     // 9:     label: str
     std::string label;
-    bool __tpy_owned_ = true;
 
     // 10:     def __init__(self, label: str):
     Child() = default;

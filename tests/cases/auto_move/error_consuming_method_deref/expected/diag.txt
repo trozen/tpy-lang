@@ -1,0 +1,1 @@
+main.py:25: error: Cannot call consuming method 'take' through a Deref chain; consuming methods must be called directly on the owning type

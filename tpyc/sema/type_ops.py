@@ -844,6 +844,7 @@ class TypeOperations:
             return_type=substituted_return,
             is_noalloc=method.is_noalloc,
             is_readonly=method.is_readonly,
+            is_consuming=method.is_consuming,
             is_method=method.is_method,
             is_staticmethod=method.is_staticmethod,
             is_builtin_function=method.is_builtin_function,

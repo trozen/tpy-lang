@@ -47,7 +47,6 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // 7: class Child(Base):
 struct Child : Base {
-    bool __tpy_owned_ = true;
 
     Child() = default;
     Child(const Child&) = delete;

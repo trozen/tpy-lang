@@ -195,6 +195,17 @@ def init_module() -> BuiltinModule:
         ),
     ])
 
+    # unsafe_move_out: move a value out of a pointer location without calling destructor
+    # The pointed-to memory is left in a moved-from state (caller must not use it again
+    # unless re-initialized). Returns Own[T] so the value is moved by value.
+    module.function("unsafe_move_out", type_params=["T"], overloads=[
+        MethodDef(
+            params=[ParamDef("p", PtrType(T))],
+            returns=OwnType(T),
+            cpp="std::move(*{0})",
+        ),
+    ])
+
     # unsafe_str_view: create a StrView from a Ptr[Char] and length
     module.function("unsafe_str_view", overloads=[
         MethodDef(

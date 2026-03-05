@@ -498,6 +498,7 @@ class TpyFunction:
     readonly_opt_out: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
+    is_consuming: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     is_stub: bool = False

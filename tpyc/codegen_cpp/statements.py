@@ -269,6 +269,12 @@ class StatementGenerator:
                     expr_type = self.types.get_resolved_type(stmt.value)
                     if isinstance(expr_type, StrViewType):
                         ret_expr = f"std::string({ret_expr})"
+                # Consuming method: move self fields on return (this->field is lvalue)
+                if (self.ctx.in_consuming_method
+                        and isinstance(stmt.value, TpyFieldAccess)
+                        and isinstance(stmt.value.obj, TpyName)
+                        and stmt.value.obj.name == "self"):
+                    ret_expr = f"std::move({ret_expr})"
                 return f"{indent}return {ret_expr};\n"
             return f"{indent}return;\n"
         elif isinstance(stmt, TpyBreak):

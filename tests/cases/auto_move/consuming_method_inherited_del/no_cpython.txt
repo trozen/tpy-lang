@@ -1,0 +1,1 @@
+Destructor suppression after consuming method is C++-only behavior

@@ -1,0 +1,8 @@
+Base.init 42
+Child.init
+take
+got 42
+Base.init 99
+Child.init
+take
+got 99

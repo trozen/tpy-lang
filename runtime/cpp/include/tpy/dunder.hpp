@@ -12,10 +12,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <functional>
 #include <optional>
 #include <ranges>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -312,6 +314,27 @@ auto __str__(const T& x) {
     return x.__repr__();
 }
 
+// Fallback for formattable types without __str__/__repr__ (e.g. int, double).
+template<typename T>
+    requires (!requires(const T& t) { t.__str__(); })
+          && (!requires(const T& t) { t.__repr__(); })
+          && std::formattable<T, char>
+auto __str__(const T& x) {
+    return std::format("{}", x);
+}
+
+// Fallback for types with operator<< but no __str__/__repr__/formattable.
+template<typename T>
+    requires (!requires(const T& t) { t.__str__(); })
+          && (!requires(const T& t) { t.__repr__(); })
+          && (!std::formattable<T, char>)
+          && requires(std::ostream& os, const T& t) { os << t; }
+std::string __str__(const T& x) {
+    std::ostringstream ss;
+    ss << x;
+    return ss.str();
+}
+
 // =============================================
 // tpy::__repr__
 // =============================================
@@ -321,6 +344,35 @@ template<typename T>
     requires requires(const T& t) { t.__repr__(); }
 auto __repr__(const T& x) {
     return x.__repr__();
+}
+
+// Strings: Python repr wraps in single quotes
+inline std::string __repr__(const std::string& x) {
+    return "'" + x + "'";
+}
+inline std::string __repr__(std::string_view x) {
+    return "'" + std::string(x) + "'";
+}
+
+// Fallback for formattable types without __repr__ (e.g. int, double).
+template<typename T>
+    requires (!requires(const T& t) { t.__repr__(); })
+          && (!std::same_as<T, std::string>)
+          && (!std::same_as<T, std::string_view>)
+          && std::formattable<T, char>
+auto __repr__(const T& x) {
+    return std::format("{}", x);
+}
+
+// Fallback for types with operator<< but no __repr__/formattable.
+template<typename T>
+    requires (!requires(const T& t) { t.__repr__(); })
+          && (!std::formattable<T, char>)
+          && requires(std::ostream& os, const T& t) { os << t; }
+std::string __repr__(const T& x) {
+    std::ostringstream ss;
+    ss << x;
+    return ss.str();
 }
 
 // =============================================

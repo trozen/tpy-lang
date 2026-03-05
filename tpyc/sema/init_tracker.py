@@ -14,10 +14,11 @@ if TYPE_CHECKING:
     from .context import SemanticContext
 
 # (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars,
-#  non_null_ptr_vars, narrowed_types)
+#  non_null_ptr_vars, narrowed_types, consumed_vars)
 FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str],
                   frozenset[str],
-                  frozenset[tuple[str, 'TpyType']]]
+                  frozenset[tuple[str, 'TpyType']],
+                  frozenset[str]]
 
 
 class InitTracker:
@@ -32,7 +33,8 @@ class InitTracker:
                 frozenset(self.ctx.rvalue_vars),
                 frozenset(self.ctx.param_provenance_vars),
                 frozenset(self.ctx.non_null_ptr_vars),
-                frozenset(self.ctx.narrowed_types.items()))
+                frozenset(self.ctx.narrowed_types.items()),
+                frozenset(self.ctx.consumed_vars))
 
     def restore(self, state: FlowState) -> None:
         self.ctx.definitely_assigned = set(state[0])
@@ -41,6 +43,7 @@ class InitTracker:
         self.ctx.param_provenance_vars = set(state[3])
         self.ctx.non_null_ptr_vars = set(state[4])
         self.ctx.narrowed_types = dict(state[5])
+        self.ctx.consumed_vars = set(state[6])
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -88,12 +91,13 @@ class InitTracker:
         # Restore outer narrowing from saved state, then layer on any
         # narrowing the loop condition itself proves.
         self.ctx.narrowed_types = dict(before[5])
+        self.ctx.consumed_vars = set(before[6])
         if condition_type_facts is not None:
             self.ctx.narrowed_types.update(condition_type_facts)
 
     def merge_branches(self, then_state: FlowState, else_state: FlowState) -> None:
-        then_assigned, then_term, then_rvalue, then_prov, then_nn_ptr, then_narrowed = then_state
-        else_assigned, else_term, else_rvalue, else_prov, else_nn_ptr, else_narrowed = else_state
+        then_assigned, then_term, then_rvalue, then_prov, then_nn_ptr, then_narrowed, then_consumed = then_state
+        else_assigned, else_term, else_rvalue, else_prov, else_nn_ptr, else_narrowed, else_consumed = else_state
         if then_term and else_term:
             self.ctx.definitely_assigned = set(then_assigned | else_assigned)
             self.ctx.init_terminated = True
@@ -148,3 +152,13 @@ class InitTracker:
             merged = {k: v for k, v in then_narrowed_dict.items()
                       if k in else_narrowed_dict and else_narrowed_dict[k] == v}
         self.ctx.narrowed_types = merged
+        # Consumed-vars merge: union when both branches live (conservative --
+        # if either path consumed a variable, it may be consumed after the if).
+        if then_term and else_term:
+            self.ctx.consumed_vars = set(then_consumed | else_consumed)
+        elif then_term:
+            self.ctx.consumed_vars = set(else_consumed)
+        elif else_term:
+            self.ctx.consumed_vars = set(then_consumed)
+        else:
+            self.ctx.consumed_vars = set(then_consumed | else_consumed)

@@ -1,0 +1,6 @@
+init 42
+take
+got 42
+init 99
+take
+got 99

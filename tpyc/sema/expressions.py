@@ -254,6 +254,13 @@ class ExpressionAnalyzer:
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
+        # Use-after-consume: variable was consumed by a consuming method call
+        if expr.name in self.ctx.consumed_vars:
+            raise self.ctx.error(
+                f"Cannot use '{expr.name}' after it was consumed by a consuming method call",
+                expr,
+            )
+
         # Check for INT type parameter references in generic class context
         # INT type params can be used as values in expressions (e.g., Int32(N))
         if self.ctx.record_ctx.type_params and self.ctx.record_ctx.type_param_kinds:

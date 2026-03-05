@@ -92,7 +92,6 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // 38: class Child(Base):
 struct Child : Base {
-    bool __tpy_owned_ = true;
 
     // 39:     def __init__(self, tag: str):
     Child() = default;

@@ -1,0 +1,1 @@
+main.py:17: error: Cannot consume 'w' inside a loop; the variable is not re-bound each iteration

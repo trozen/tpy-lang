@@ -23,7 +23,7 @@ struct Box {
     explicit Box(int32_t v) : _val(v) {}
 
     // 8:     def __deref__(self) -> Int32:
-    int32_t __deref__() {
+    int32_t __deref__() const {
         // 9:         return self._val
         return this->_val;
     }

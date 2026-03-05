@@ -1,0 +1,1 @@
+main.py:21: error: Cannot call consuming method 'take' on a field; only local variables and temporaries are allowed

@@ -1,0 +1,1 @@
+main.py:15: error: Cannot call consuming method 'take' on 'self'; only local variables and temporaries are allowed

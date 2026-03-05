@@ -222,6 +222,7 @@ class CodeGenContext:
     global_names: set[str] = field(default_factory=set)
     current_ns: Namespace | None = None
     in_method: bool = False
+    in_consuming_method: bool = False
     current_return_type: TpyType | None = None
     force_readonly_span: bool = False
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
@@ -325,6 +326,30 @@ class CodeGenContext:
     def indent(self) -> str:
         """Get current indentation string."""
         return INDENT * self.indent_level
+
+    def any_ancestor_has_del(self, record_name: str) -> bool:
+        """Check if any ancestor of the named record has __del__."""
+        record_info = self.analyzer.registry.get_record(record_name)
+        if record_info is None:
+            return False
+        parent = record_info.parent
+        while parent is not None:
+            parent_rec = self.analyzer.registry.get_record_for_type(parent)
+            if parent_rec is None:
+                break
+            if parent_rec.has_del:
+                return True
+            parent = parent_rec.parent
+        return False
+
+    def record_or_ancestor_has_del(self, record_name: str) -> bool:
+        """Check if the named record or any ancestor has __del__."""
+        record_info = self.analyzer.registry.get_record(record_name)
+        if record_info is None:
+            return False
+        if record_info.has_del:
+            return True
+        return self.any_ancestor_has_del(record_name)
 
     def emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
         """Emit the original Python source line as a comment if enabled."""

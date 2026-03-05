@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
-    PtrType, ReadonlyType,
+    PtrType, ReadonlyType, unwrap_readonly,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -285,6 +285,10 @@ class MethodAnalyzer:
                         raise self.ctx.error(
                             f"Cannot call non-readonly method '{expr.method}' on readonly reference",
                             expr)
+                # Enforce consuming methods: receiver must be a local variable
+                info = expr.resolved_function_info
+                if info is not None and info.is_consuming:
+                    self._validate_consuming_call(expr)
                 return result
 
             deref_target = self.expr.get_deref_target_type(current_type)
@@ -294,6 +298,56 @@ class MethodAnalyzer:
             deref_depth += 1
 
         raise self.ctx.error(f"Cannot call method '{expr.method}' on type {original_type}", expr)
+
+    def _validate_consuming_call(self, expr: TpyMethodCall) -> None:
+        """Validate a consuming method call (self: Own[Self]).
+
+        The receiver must be a local variable (not a field or other expression).
+        Temporaries are also allowed (e.g. Box(value).take()).
+        After the call, the variable is marked as consumed.
+        """
+        if expr.deref_depth > 0:
+            raise self.ctx.error(
+                f"Cannot call consuming method '{expr.method}' through a Deref chain; "
+                f"consuming methods must be called directly on the owning type",
+                expr,
+            )
+        if isinstance(expr.obj, TpyFieldAccess):
+            raise self.ctx.error(
+                f"Cannot call consuming method '{expr.method}' on a field; "
+                f"only local variables and temporaries are allowed",
+                expr,
+            )
+        if isinstance(expr.obj, TpyName):
+            name = expr.obj.name
+            if name == "self":
+                raise self.ctx.error(
+                    f"Cannot call consuming method '{expr.method}' on 'self'; "
+                    f"only local variables and temporaries are allowed",
+                    expr,
+                )
+            # Reject consuming through pointers -- pointer doesn't own the pointee
+            obj_type = self.ctx.current_scope.lookup(name)
+            if obj_type is not None and (isinstance(obj_type, PtrType)
+                                         or isinstance(unwrap_readonly(obj_type), PtrType)):
+                raise self.ctx.error(
+                    f"Cannot call consuming method '{expr.method}' on pointer '{name}'; "
+                    f"pointers do not own the pointee",
+                    expr,
+                )
+            # Reject consuming outer variables inside a loop -- the variable
+            # won't be re-bound on the next iteration, causing use-after-move.
+            if self.ctx.loop_depth > 0:
+                var_depth = self.ctx.var_scope_depth.get(name, 0)
+                loop_scope_depth = self.ctx.current_scope.depth
+                if var_depth < loop_scope_depth:
+                    raise self.ctx.error(
+                        f"Cannot consume '{name}' inside a loop; "
+                        f"the variable is not re-bound each iteration",
+                        expr,
+                    )
+            # Use-after-consume is already caught by _analyze_name before we get here.
+            self.ctx.consumed_vars.add(name)
 
     def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for ClassName.staticmethod() pattern. Returns type or None if not a static call."""

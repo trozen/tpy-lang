@@ -553,6 +553,7 @@ class FunctionGenerator:
                 params = self.gen_params(method.params, method.type_params,
                                          defaults=dfl, emit_defaults=True)
         const_suffix = " const" if const else ""
+        rvalue_suffix = " &&" if method.is_consuming else ""
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
 
@@ -583,16 +584,24 @@ class FunctionGenerator:
                 new_method_params, proto_params, bounds_for_header,
             )
             out.write(f"{INDENT}{template_header}")
-        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix}{requires_clause} {{\n")
+        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{rvalue_suffix}{override_suffix}{requires_clause} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:
             local_ns.bind_variable("self", NamedType(record_name))
         for pname, ptype in method.params:
             local_ns.bind_variable(pname, ptype)
+        # Consuming methods on types with __del__: suppress destructor at method entry.
+        # Walk the parent chain since __del__ may be inherited.
+        if method.is_consuming and record_info is not None and self.ctx.record_or_ancestor_has_del(record_name):
+            out.write(f"{INDENT}{INDENT}this->__tpy_owned_ = false;\n")
+
+        prev_consuming = self.ctx.in_consuming_method
+        self.ctx.in_consuming_method = method.is_consuming
         self.statements.gen_body(out, method.body, method.params, method.return_type,
                                  method, local_ns, indent_level=2, is_method=True,
                                  record_type_param_bounds=record_type_param_bounds)
+        self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{INDENT}}}\n")
 

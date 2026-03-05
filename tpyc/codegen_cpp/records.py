@@ -177,11 +177,9 @@ class RecordGenerator:
             out.write(f"{INDENT}{cpp_type} {escape_cpp_name(fld.name)}{default};\n")
 
         # Drop flag for classes with __del__ -- prevents double-drop after move.
-        # NOTE: in inheritance chains where both parent and child have __del__, each
-        # class emits its own __tpy_owned_ (child's shadows parent's). This works
-        # because each destructor reads its own class's flag, but it's fragile --
-        # ideally only the root __del__ class should emit the flag.
-        if record.del_method is not None:
+        # Only emit on the root class; children inherit the parent's flag so that
+        # all destructors in the chain check the same field.
+        if record.del_method is not None and not self.ctx.any_ancestor_has_del(record.name):
             out.write(f"{INDENT}bool __tpy_owned_ = true;\n")
 
         out.write("\n")

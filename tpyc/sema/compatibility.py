@@ -350,6 +350,12 @@ class TypeCompatibility:
             # Generic deref coercion: any type with __deref__() -> T coerces to T
             if self.type_ops:
                 deref_target = self.type_ops.get_deref_coercion_target(actual)
+                if deref_target is None and is_readonly_ptr(actual):
+                    # ReadOnlyPtr[T] -> T via deref is safe for returns and
+                    # assignments (the value is copied); reject only in ARG
+                    # context where the callee may need a mutable reference.
+                    if ctx != CoercionContext.ARG:
+                        deref_target = self.type_ops.get_deref_target_type(actual)
                 if deref_target is not None and deref_target == expected:
                     from ..coercions import DEREF_COERCION
                     coercion = DEREF_COERCION
