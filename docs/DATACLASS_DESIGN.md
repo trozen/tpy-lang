@@ -15,7 +15,7 @@
 |---------|-------|
 | `__repr__` auto-generation | Not needed initially -- TPy already auto-generates `operator<<` for all records with `TypeName(field=value, ...)` format |
 | `__post_init__` | 1 use in compiler source (`Scope` sets `self.depth` from parent). Low priority |
-| `field(default_factory=...)` | Needed for mutable defaults (`list`, `dict`). 30 uses in compiler source |
+| `field(default_factory=...)` | Done. `field(default=X)` and `field(default_factory=X)` where X is a Default-constructible type |
 | `field(kw_only=True)` | 2 uses in compiler source. Low priority |
 | `order=True` | Auto-generate `__lt__`, `__le__`, `__gt__`, `__ge__` |
 | Dataclass inheritance | Child `@dataclass` inherits parent fields into `__init__` |

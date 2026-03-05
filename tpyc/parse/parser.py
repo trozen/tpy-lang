@@ -594,6 +594,71 @@ class Parser:
             return kw.value.value
         return None
 
+    def _try_parse_dataclass_field(self, node: ast.expr,
+                                       is_dataclass: bool) -> tuple[str | None, TpyExpr, bool] | None:
+        """Try to parse a field(default=...) or field(default_factory=...) call.
+
+        Returns (default_value_cpp, default_expr, is_factory) if this is a field() call,
+        or None if it's not a field() call (caller uses the normal default path).
+        """
+        if not isinstance(node, ast.Call):
+            return None
+        # Resolve the function name to check if it's dataclasses.field
+        func = node.func
+        if isinstance(func, ast.Name):
+            source = self._resolve_type_name(func.id)
+            if source is None or source != ("dataclasses", "field"):
+                return None
+        elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+            source = self._resolve_qualified_type_name(func)
+            if source is None or source != ("dataclasses", "field"):
+                return None
+        else:
+            return None
+
+        if not is_dataclass:
+            raise ParseError("field() can only be used in @dataclass classes", node)
+        if node.args:
+            raise ParseError("field() does not accept positional arguments", node)
+
+        default_node = None
+        factory_node = None
+        for kw in node.keywords:
+            if kw.arg is None:
+                raise ParseError("field() does not support **kwargs", node)
+            elif kw.arg == "default":
+                default_node = kw.value
+            elif kw.arg == "default_factory":
+                factory_node = kw.value
+            else:
+                raise ParseError(
+                    f"field() got unsupported keyword argument '{kw.arg}'", node)
+
+        if default_node is not None and factory_node is not None:
+            raise ParseError(
+                "field() cannot specify both 'default' and 'default_factory'", node)
+        if default_node is None and factory_node is None:
+            raise ParseError(
+                "field() requires 'default' or 'default_factory'", node)
+
+        if default_node is not None:
+            # field(default=X) -- same as writing = X directly
+            default_val = self._get_default_value(default_node)
+            default_expr = self._parse_expr(default_node)
+            self._validate_const_default(default_expr, default_node)
+            return (default_val, default_expr, False)
+
+        # field(default_factory=X) -- X must be a name (type or callable)
+        if not isinstance(factory_node, ast.Name):
+            raise ParseError(
+                "default_factory must be a type name (e.g., list, dict, MyRecord)", node)
+        factory_name = factory_node.id
+        # Create a synthetic zero-arg call as the default expression
+        default_expr = TpyCall(func=factory_name, args=[])
+        default_expr.loc = self._loc(node)
+        # default_value is None -- codegen generates the C++ default from the type
+        return (None, default_expr, True)
+
     def _parse_class(self, node: ast.ClassDef) -> TpyRecord | TpyProtocol | TpyEnum:
         """Parse a class definition as a record, protocol, or enum."""
         if node.bases:
@@ -726,11 +791,16 @@ class Parser:
                 field_type = self._parse_type_annotation(item.annotation, type_param_scope)
                 default_val = None
                 default_expr = None
+                is_factory = False
                 if item.value is not None:
-                    default_val = self._get_default_value(item.value)
-                    default_expr = self._parse_expr(item.value)
-                    self._validate_const_default(default_expr, item.value)
-                fields.append(FieldInfo(field_name, field_type, default_val, default_expr=default_expr, loc=self._loc(item)))
+                    field_result = self._try_parse_dataclass_field(item.value, is_dataclass)
+                    if field_result is not None:
+                        default_val, default_expr, is_factory = field_result
+                    else:
+                        default_val = self._get_default_value(item.value)
+                        default_expr = self._parse_expr(item.value)
+                        self._validate_const_default(default_expr, item.value)
+                fields.append(FieldInfo(field_name, field_type, default_val, default_expr=default_expr, is_factory_default=is_factory, loc=self._loc(item)))
             elif isinstance(item, ast.Assign):
                 # Field with inferred type: name = Int32(0)
                 if len(item.targets) != 1 or not isinstance(item.targets[0], ast.Name):

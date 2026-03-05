@@ -1,0 +1,11 @@
+test
+42
+0
+0
+prod
+99
+2
+1
+2
+Point(x=0, y=0)
+Point(x=10, y=20)

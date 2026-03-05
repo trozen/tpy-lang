@@ -17,7 +17,7 @@ from ..namespace import Namespace
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
 from .registration import build_record_self_type
 from ..parse.nodes import (
-    TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName,
+    TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
 )
 
 from .diagnostics import Scope, Diagnostic, SemanticError
@@ -357,6 +357,9 @@ class SemanticAnalyzer:
         for record in module.records:
             self.registrar.validate_value_type_fields(record)
 
+        # Validate default_factory fields conform to Default protocol
+        self._validate_factory_defaults(module)
+
         # Propagate @nocopy from fields to containing records.
         # Done after inheritance validation so parent types are resolved.
         # Definition order handles transitive propagation naturally.
@@ -401,6 +404,31 @@ class SemanticAnalyzer:
     def _is_type_nocopy(self, typ: TpyType) -> bool:
         """Delegate to canonical is_type_nocopy on context."""
         return self.ctx.is_type_nocopy(typ)
+
+    def _validate_factory_defaults(self, module: TpyModule) -> None:
+        """Validate that field(default_factory=X) fields have Default-constructible types."""
+        default_proto = NamedType("Default", (), is_protocol=True)
+        for record in module.records:
+            if not record.is_dataclass:
+                continue
+            for fld in record.fields:
+                if not fld.is_factory_default:
+                    continue
+                if not self.protocols.type_conforms_to_protocol(fld.type, default_proto):
+                    raise SemanticError(
+                        f"Field '{fld.name}' in @dataclass '{record.name}' uses "
+                        f"default_factory but type '{fld.type}' is not default-constructible",
+                        fld.loc or record.loc,
+                    )
+                # Validate factory name matches field type
+                expr = fld.default_expr
+                if isinstance(expr, TpyCall) and isinstance(fld.type, NamedType):
+                    if expr.func != fld.type.name:
+                        raise SemanticError(
+                            f"default_factory '{expr.func}' does not match "
+                            f"field type '{fld.type}'",
+                            fld.loc or record.loc,
+                        )
 
     def _propagate_nocopy(self, module: TpyModule) -> None:
         """Propagate nocopy from fields/parents to containing records.

@@ -1400,7 +1400,8 @@ class StatementAnalyzer:
             self._annotate_tuple_elem_capture(
                 stmt.value, target_type, is_field=is_field)
         if isinstance(stmt.target, TpyFieldAccess):
-            if self.compat.needs_copy_warning(stmt.value, target_type):
+            # Skip copy warning for synthesized dataclass __init__ assignments (no loc)
+            if stmt.loc is not None and self.compat.needs_copy_warning(stmt.value, target_type):
                 if isinstance(target_type, TypeParamRef):
                     msg = f"may copy {target_type} into field if not a value type; use copy() to make this explicit"
                 else:

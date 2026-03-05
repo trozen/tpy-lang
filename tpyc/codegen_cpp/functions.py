@@ -28,6 +28,23 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator, ProtocolParamInfo
     from .statements import StatementGenerator
 
+_FIXED_INT_NAMES = {
+    "Int8", "Int16", "Int32", "Int64",
+    "UInt8", "UInt16", "UInt32", "UInt64",
+    "int", "float", "bool",
+}
+
+
+def factory_default_to_cpp(field_type: TpyType) -> str:
+    """Return the C++ default value for a factory-default field.
+
+    User records need explicit ctor call (their ctors are explicit);
+    containers (list, dict, etc.) use aggregate init.
+    """
+    inner = field_type.wrapped if isinstance(field_type, OwnType) else field_type
+    if isinstance(inner, NamedType) and inner.is_user_record:
+        return f"{inner.to_cpp()}()"
+    return "{}"
 
 
 class FunctionGenerator:
@@ -89,7 +106,10 @@ class FunctionGenerator:
             # Int32(5) -> just the literal value
             if expr.args:
                 return FunctionGenerator.default_to_cpp(expr.args[0], ptype)
-            return "0"
+            # Zero-arg call: Int32() -> 0, list()/dict()/Record() -> {}
+            if expr.func in _FIXED_INT_NAMES:
+                return "0"
+            return factory_default_to_cpp(ptype)
         return "0"
 
     def gen_params(self, params: list[tuple[str, TpyType]],

@@ -299,8 +299,12 @@ class TypeRegistrar:
             defaults: list[TpyExpr | None] = []
             body: list[TpyStmt] = []
             for fld in record.fields:
-                params.append((fld.name, fld.type))
+                # Non-value types get Own[T] for move semantics
+                param_type = fld.type if fld.type.is_value_type() else OwnType(fld.type)
+                params.append((fld.name, param_type))
                 defaults.append(fld.default_expr)
+                # loc intentionally omitted -- suppresses copy-into-field warning
+                # in statements.py (synthetic init doesn't need user-facing warnings)
                 body.append(TpyAssign(
                     target=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
                     value=TpyName(fld.name),

@@ -20,6 +20,7 @@ from ..parse import (
 from ..namespace import Namespace
 
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name
+from .functions import factory_default_to_cpp
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -171,6 +172,8 @@ class RecordGenerator:
             default = ""
             if fld.default_value is not None:
                 default = f" = {fld.default_value}"
+            elif fld.is_factory_default:
+                default = f" = {factory_default_to_cpp(fld.type)}"
             out.write(f"{INDENT}{cpp_type} {escape_cpp_name(fld.name)}{default};\n")
 
         # Drop flag for classes with __del__ -- prevents double-drop after move.

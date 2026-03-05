@@ -1,0 +1,1 @@
+T() as default parameter value is not valid in CPython
