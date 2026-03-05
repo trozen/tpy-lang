@@ -87,6 +87,8 @@ class ProtocolChecker:
 
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):
+            if protocol.name in ("Stringable", "Representable"):
+                return True
             bound = self.type_ops.get_type_param_bound(actual.name)
             if bound is not None and is_protocol_type(bound):
                 return self.type_conforms_to_protocol(bound, protocol)

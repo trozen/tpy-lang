@@ -235,4 +235,16 @@ std::string tuple_to_str(const std::tuple<Ts...>& t) {
     return oss.str();
 }
 
+// --- __str__ / __repr__ overloads for std::tuple ---
+
+template <typename... Ts>
+std::string __str__(const std::tuple<Ts...>& t) {
+    return tuple_to_str(t);
+}
+
+template <typename... Ts>
+std::string __repr__(const std::tuple<Ts...>& t) {
+    return tuple_to_str(t);
+}
+
 } // namespace tpy

@@ -14,7 +14,7 @@
 # TODO: emptiness check for pop
 from __future__ import annotations
 from typing import MutableSequence, Iterable
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, make_default
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, make_default, span
 from tpy.mem import UninitArrayStorage
 
 
@@ -28,12 +28,10 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         self._size = 0
         if isinstance(items, ReadOnlySpanLike):
             # TODO: memcpy for primitive/trivial types
-            # TODO: span() method?
-            span = items.__span__()
-            # TODO: call len on items?
-            size = len(span)
+            items_span = span(items)
+            size = len(items_span)
             for i in range(size):
-                self._storage.init(UInt32(i), copy(span[i]))
+                self._storage.init(UInt32(i), copy(items_span[i]))
             self._size = size
         elif isinstance(items, Iterable):
             for item in items:
@@ -132,3 +130,15 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         for i in range(self._size):
             self._storage.drop(UInt32(i))
         self._size = 0
+
+    def __str__(self) -> str:
+        s = "["
+        sep = False
+        for item in self:
+            if sep:
+                s += ", "
+            else:
+                sep = True
+            s += str(item)
+        s += "]"
+        return s

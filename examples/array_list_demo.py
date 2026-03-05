@@ -84,7 +84,7 @@ def main() -> None:
     from_dict = ArrayList[tuple[str, Int32], 16](d.items())
     for p in from_dict:
         print(p)
-    print(from_dict)
+    print("from_dict:", from_dict)
 
 
 main()
