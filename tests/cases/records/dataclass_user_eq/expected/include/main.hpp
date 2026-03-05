@@ -12,18 +12,20 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 6: class Point:
+// 7: class Point:
 struct Point {
-    // 7:     x: Int32
+    // 8:     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    // 9:     y: Int32
     int32_t y;
 
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
+    // 10:     def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
     bool __eq__(const Point& other) const {
-        return ((this->x == other.x) && (this->y == other.y));
+        // 11:         return self.x == other.x
+        return (this->x == other.x);
     }
 
     friend bool operator==(const Point& lhs, const Point& other) {

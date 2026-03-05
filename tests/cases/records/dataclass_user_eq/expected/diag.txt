@@ -1,0 +1,1 @@
+main.py:10: warning: @dataclass class 'Point' has an explicit __eq__; @dataclass will not generate __eq__

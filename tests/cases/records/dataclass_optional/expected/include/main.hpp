@@ -21,6 +21,14 @@ struct Node {
 
     Node() = default;
     explicit Node(int32_t value, std::optional<std::string> label = std::nullopt) : value(value), label(label) {}
+
+    bool __eq__(const Node& other) const {
+        return ((this->value == other.value) && (this->label == other.label));
+    }
+
+    friend bool operator==(const Node& lhs, const Node& other) {
+        return lhs.__eq__(other);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {

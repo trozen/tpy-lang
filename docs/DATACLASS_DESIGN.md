@@ -5,7 +5,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Core `@dataclass`: auto `__init__` from annotations, field defaults, ordering validation | Done |
-| 2 | Auto `__eq__` (field-by-field comparison, `operator==`/`operator!=`) | Not started |
+| 2 | Auto `__eq__` (field-by-field comparison, `operator==`/`operator!=`) | Done |
 | 3 | `frozen=True` (immutable instances -- all fields readonly) | Not started |
 | 4 | Auto `__hash__` for frozen dataclasses | Not started |
 

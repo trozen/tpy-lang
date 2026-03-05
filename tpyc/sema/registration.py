@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType,
-    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT,
+    IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType, BoolType,
+    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL,
     register_value_type_record,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
-    TpyAssign, TpyFieldAccess, TpyName,
+    TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn,
 )
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
@@ -314,6 +314,45 @@ class TypeRegistrar:
                 defaults=defaults,
             )
             record.methods.insert(0, init_fn)
+
+        # Synthesize __eq__ for @dataclass classes without explicit __eq__
+        if record.is_dataclass and record.fields:
+            eq_method = next((m for m in record.methods if m.name == "__eq__"), None)
+            if eq_method is not None:
+                self.ctx.warning_from_loc(
+                    f"@dataclass class '{record.name}' has an explicit __eq__; "
+                    f"@dataclass will not generate __eq__",
+                    eq_method.loc or record.loc,
+                )
+            else:
+                other_type = NamedType(record.name)
+                # Build field-by-field equality: self.f1 == other.f1 and self.f2 == other.f2 ...
+                if len(record.fields) == 1:
+                    eq_expr: TpyExpr = TpyBinOp(
+                        left=TpyFieldAccess(obj=TpyName("self"), field=record.fields[0].name),
+                        op="==",
+                        right=TpyFieldAccess(obj=TpyName("other"), field=record.fields[0].name),
+                    )
+                else:
+                    comparisons = [
+                        TpyBinOp(
+                            left=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
+                            op="==",
+                            right=TpyFieldAccess(obj=TpyName("other"), field=fld.name),
+                        )
+                        for fld in record.fields
+                    ]
+                    eq_expr = comparisons[0]
+                    for cmp in comparisons[1:]:
+                        eq_expr = TpyBinOp(left=eq_expr, op="&&", right=cmp)
+                eq_fn = TpyFunction(
+                    name="__eq__",
+                    params=[("other", other_type)],
+                    return_type=BoolType(),
+                    body=[TpyReturn(value=eq_expr)],
+                    is_method=True,
+                )
+                record.methods.append(eq_fn)
 
         init_params = []
         if record.init_method:

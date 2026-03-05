@@ -35,6 +35,14 @@ struct Rect {
         // 15:         self.height = self.height * factor
         this->height = (tpy::mul_check<int32_t>(this->height, factor));
     }
+
+    bool __eq__(const Rect& other) const {
+        return ((this->width == other.width) && (this->height == other.height));
+    }
+
+    friend bool operator==(const Rect& lhs, const Rect& other) {
+        return lhs.__eq__(other);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
