@@ -534,10 +534,18 @@ class TypeOperations:
                 if elem_type is None:
                     elem_type = self._get_iterable_element_type_or_none(arg_type)
         else:
-            elem_type = self._get_iterable_element_type_or_none(arg_type)
-            if elem_type is not None:
-                if not record_extends_any(arg_type, protocol_name, self.ctx.registry):
-                    elem_type = None
+            # Direct protocol-to-protocol match (e.g., ReadOnlySpanLike[Int32] matches ReadOnlySpanLike[T])
+            if is_protocol_type(arg_type) and arg_type.name == protocol_name and arg_type.type_args:
+                elem_type = arg_type.type_args[0]
+            else:
+                # Check extends declarations (e.g., Ptr[Int32] extends Deref[T])
+                elem_type = builtin_modules.get_extends_protocol_type_arg(
+                    arg_type, protocol_name)
+                if elem_type is None:
+                    elem_type = self._get_iterable_element_type_or_none(arg_type)
+                    if elem_type is not None:
+                        if not record_extends_any(arg_type, protocol_name, self.ctx.registry):
+                            elem_type = None
         if elem_type is None:
             return False
         # Single type_arg: use recursive matching to handle compound types

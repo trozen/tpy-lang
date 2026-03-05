@@ -26,7 +26,6 @@
 ## Builtins
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32
-- deref()
 - ptr() function? Auto-select Ptr vs ReadOnlyPtr based on binding mutability. Needs sema-level magic (mutability not in type, it's in binding context).
 
 ## Hard Problems

@@ -672,6 +672,28 @@ def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
     return False
 
 
+def get_extends_protocol_type_arg(
+    tpy_type: "TpyType", protocol_name: str,
+) -> "TpyType | None":
+    """Extract the first type arg from a type's extends declaration for a protocol.
+
+    For example, Ptr[Int32] extends Deref[T] with T=Int32, so
+    get_extends_protocol_type_arg(Ptr[Int32], "Deref") returns Int32.
+    """
+    type_def = lookup_type(tpy_type)
+    if type_def is None:
+        # Only handles builtin types. User records store protocols in
+        # TypeRegistry; callers needing user-record support must query
+        # the registry separately.
+        return None
+    type_params = extract_type_params(tpy_type)
+    for ext in type_def.extends:
+        match = re.match(r"(\w+)\[(.+)\]", ext)
+        if match and match.group(1) == protocol_name:
+            return _resolve_extends_type_arg(match.group(2), type_params)
+    return None
+
+
 def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistry | None" = None) -> "TpyType | None":
     """If type is/extends OptIterator[T], return T. Otherwise None."""
     from tpyc.typesys import is_protocol_type

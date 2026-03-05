@@ -125,15 +125,16 @@ concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
 };
 
 /**
- * Deref concept -- types that can be dereferenced via operator* or __deref__().
+ * Deref concept -- types that can be dereferenced via tpy::deref_check().
  *
- * Ptr[T] and ReadOnlyPtr[T] use tpy::deref_check() which dereferences raw pointers.
- * User types implementing Deref[T] provide __deref__() -> T& directly.
+ * Covers both raw pointers (Ptr[T], ReadOnlyPtr[T]) and user types with __deref__().
  */
 template<typename T, typename TargetT>
 concept Deref = requires(T& t) {
-    { t.__deref__() } -> std::convertible_to<TargetT&>;
-};
+    { tpy::deref_check(t) };
+} && std::same_as<
+    std::remove_cvref_t<decltype(tpy::deref_check(std::declval<T&>()))>,
+    TargetT>;
 
 /**
  * Comparable concept - types that support the < operator

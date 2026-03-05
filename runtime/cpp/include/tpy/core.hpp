@@ -45,6 +45,13 @@ const T& deref_check(const T* ptr) {
     return *ptr;
 }
 
+// User types with __deref__() method
+template <typename T>
+    requires requires(T& t) { t.__deref__(); }
+decltype(auto) deref_check(T& obj) {
+    return obj.__deref__();
+}
+
 /**
  * Checked optional dereference - panics if optional is empty.
  */

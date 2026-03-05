@@ -687,3 +687,11 @@ def try_next(it) -> object | None:
         return it.__next__()
     except StopIteration:
         return None
+
+def span(x):
+    """Get a readonly span from a ReadOnlySpanLike type."""
+    return x.__span__()
+
+def deref(x):
+    """Dereference a Deref[T] type to get the underlying value."""
+    return x.__deref__()
