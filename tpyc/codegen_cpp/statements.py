@@ -1164,6 +1164,10 @@ class StatementGenerator:
                     else:
                         out.write(f"{indent}{cpp_type}& {cpp_name} = "
                                   f"{get_expr};\n")
+                elif (stmt.is_const_ref and i < len(stmt.is_const_ref)
+                        and stmt.is_const_ref[i]):
+                    out.write(f"{indent}const {cpp_type}& {cpp_name} = "
+                              f"{get_expr};\n")
                 else:
                     out.write(f"{indent}{cpp_type} {cpp_name} = "
                               f"{get_expr};\n")

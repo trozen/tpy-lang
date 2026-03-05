@@ -30,7 +30,7 @@ void main() {
         // 15:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
-        tpy::BigInt v = std::get<1>(__tup_1);
+        const tpy::BigInt& v = std::get<1>(__tup_1);
         // 16:         print(k, v)
         std::cout << k << " " << v << "\n";
     }

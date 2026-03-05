@@ -92,6 +92,10 @@ class TpyType:
         """
         return False
 
+    def is_expensive_copy(self) -> bool:
+        """Return True if copying this value type involves heap allocation."""
+        return False
+
     def to_cpp_return(self) -> str:
         """Return the C++ representation for function return types.
 
@@ -293,6 +297,9 @@ class StringType(TpyType):
     def is_value_type(self) -> bool:
         return True
 
+    def is_expensive_copy(self) -> bool:
+        return True
+
     def to_cpp_param(self, name: str) -> str:
         return f"const std::string& {name}"
 
@@ -410,6 +417,9 @@ class BigIntType(TpyType):
         return "builtins.int"
 
     def is_value_type(self) -> bool:
+        return True
+
+    def is_expensive_copy(self) -> bool:
         return True
 
     def to_cpp_param(self, name: str) -> str:
@@ -1105,6 +1115,9 @@ class TupleType(TpyType):
 
     def is_value_type(self) -> bool:
         return True
+
+    def is_expensive_copy(self) -> bool:
+        return any(t.is_expensive_copy() for t in self.element_types)
 
     def to_cpp_return(self) -> str:
         args = ", ".join(t.to_cpp_return() for t in self.element_types)

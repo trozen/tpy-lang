@@ -303,6 +303,7 @@ class TpyTupleUnpack(TpyStmt):
     is_new: list[bool] = field(default_factory=list)
     is_owned: list[bool] = field(default_factory=list)
     is_ref: list[bool] = field(default_factory=list)
+    is_const_ref: list[bool] = field(default_factory=list)
 
 
 @dataclass

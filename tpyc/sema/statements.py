@@ -1251,6 +1251,32 @@ class StatementAnalyzer:
                 self.init.mark_assigned(name)
                 stmt.is_new.append(True)
 
+        # Determine const-ref eligibility per element for expensive value types.
+        # Safe because tuples are immutable -- no in-place mutation possible.
+        if not self.ctx.is_top_level:
+            source_is_lvalue = isinstance(stmt.value, TpyName)
+            source_safe = True
+            if source_is_lvalue:
+                source_name = stmt.value.name
+                source_safe = (source_name not in self.ctx.current_reassigned_vars)
+            for i, name in enumerate(stmt.targets):
+                if name is None:
+                    stmt.is_const_ref.append(False)
+                    continue
+                target_type = stmt.target_types[i]
+                eligible = (
+                    stmt.is_new[i]
+                    and not stmt.is_ref[i]
+                    and not stmt.is_owned[i]
+                    and not isinstance(target_type, PendingStrType)
+                    and target_type.is_value_type()
+                    and target_type.is_expensive_copy()
+                    and name not in self.ctx.current_reassigned_vars
+                    and name not in self.ctx.current_aug_assigned_vars
+                    and source_safe
+                )
+                stmt.is_const_ref.append(eligible)
+
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
         target_type = self.expr.analyze_expr(stmt.target)

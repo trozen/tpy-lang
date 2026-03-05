@@ -130,6 +130,8 @@ class SemanticContext:
     current_reassigned_vars: set[str] = field(default_factory=set)
     # Reassigned vars with at least one lvalue (non-rvalue) reassignment
     current_lvalue_reassigned: set[str] = field(default_factory=set)
+    # Vars targeted by augmented assignment (+=, -=, etc.)
+    current_aug_assigned_vars: set[str] = field(default_factory=set)
 
     # --- Definite-assignment tracking ---
     definitely_assigned: set[str] = field(default_factory=set)
@@ -297,6 +299,7 @@ class SemanticContext:
         self.move_through_vars.clear()
         self.current_reassigned_vars.clear()
         self.current_lvalue_reassigned.clear()
+        self.current_aug_assigned_vars.clear()
         self.definitely_assigned.clear()
         self.init_terminated = False
         self.narrowed_types.clear()
