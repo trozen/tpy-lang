@@ -505,43 +505,29 @@ class TypeOperations:
         from tpyc import modules as builtin_modules
 
         protocol_name = param_type.name
-        if protocol_name == "OptIterator":
-            elem_type = builtin_modules.get_native_iterator_element_type(
-                arg_type, registry=self.ctx.registry)
-        elif protocol_name == "Iterator":
-            # Direct protocol-to-protocol match (e.g., Iterator[Int32] matches Iterator[T])
+        if protocol_name == "Iterator":
+            # Iterator[T] needs special handling: types may implement
+            # __next_opt__() (OptIterator) instead of __next__() (Iterator).
+            # Check OptIterator conformance as a bridge.
             if is_protocol_type(arg_type) and arg_type.name == "Iterator" and arg_type.type_args:
                 elem_type = arg_type.type_args[0]
             else:
-                # Iterator[T]: type has __next_opt__() -> Optional[T]
                 elem_type = builtin_modules.get_native_iterator_element_type(
                     arg_type, registry=self.ctx.registry)
                 if elem_type is None:
-                    elem_type = builtin_modules.get_iter_element_type(
-                        arg_type, registry=self.ctx.registry)
+                    elem_type = builtin_modules.get_extends_protocol_type_arg(
+                        arg_type, protocol_name, registry=self.ctx.registry)
                 if elem_type is None:
-                    elem_type = self._get_iterable_element_type_or_none(arg_type)
-        elif protocol_name == "Iterable":
-            # Direct protocol-to-protocol match
-            if is_protocol_type(arg_type) and arg_type.name in ("Iterator", "Iterable") and arg_type.type_args:
-                elem_type = arg_type.type_args[0]
-            else:
-                # Iterable[T]: type has __iter__() returning Iterator[T]
-                # Try __iter__() first, then fallback to element type extraction
-                elem_type = builtin_modules.get_iter_element_type(
-                    arg_type, registry=self.ctx.registry)
-                if elem_type is None:
-                    elem_type = self._get_iterable_element_type_or_none(arg_type)
+                    elem_type = self._infer_protocol_type_arg_structurally(
+                        arg_type, protocol_name)
         else:
-            # Direct protocol-to-protocol match (e.g., ReadOnlySpanLike[Int32] matches ReadOnlySpanLike[T])
+            # General path: direct protocol match, extends declarations,
+            # then structural inference from method signatures.
             if is_protocol_type(arg_type) and arg_type.name == protocol_name and arg_type.type_args:
                 elem_type = arg_type.type_args[0]
             else:
-                # Check extends declarations (builtins and user records)
                 elem_type = builtin_modules.get_extends_protocol_type_arg(
                     arg_type, protocol_name, registry=self.ctx.registry)
-                # Structural inference: unify protocol method signatures against
-                # actual type's methods to extract type args
                 if elem_type is None:
                     elem_type = self._infer_protocol_type_arg_structurally(
                         arg_type, protocol_name)
@@ -886,27 +872,4 @@ class TypeOperations:
             return None
         return self.get_deref_target_type(typ)
 
-    def _get_iterable_element_type_or_none(self, iterable_type: TpyType) -> TpyType | None:
-        """Get the element type of an iterable, or None if not iterable.
 
-        For types extending NativeIterable[T], returns T.
-        """
-        from ..typesys import is_any_str_type, CharType, CHAR
-
-        # Handle NativeIterable[T] protocol type
-        if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterable":
-            if iterable_type.type_args:
-                first_arg = iterable_type.type_args[0]
-                return first_arg if isinstance(first_arg, TpyType) else None
-            return None
-
-        # Handle str/String/StrView -> Char
-        if is_any_str_type(iterable_type):
-            return CHAR
-
-        # Use iteration element type for NativeIterable protocol matching
-        # (dict_items yields tuple[K,V] via get_iteration_element_type, not get_element_type)
-        iter_elem = iterable_type.get_iteration_element_type()
-        if iter_elem is not None:
-            return iter_elem
-        return iterable_type.get_element_type()
