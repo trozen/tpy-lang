@@ -15,7 +15,6 @@ from ..typesys import (
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
-    is_protocol_union, protocol_union_has_none,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
@@ -113,16 +112,16 @@ class StatementGenerator:
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             actual = unwrap_readonly(ptype)
-            if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+            if self.protocols.is_static_protocol_param(ptype):
+                # Static protocol params: check if nullable (uses pointer repr)
+                infos = self.protocols.get_all_protocol_params([(pname, ptype)])
+                if infos and infos[0].has_none:
+                    self.ctx.pointer_locals.add(pname)
+                    self.ctx.const_indirect_locals.add(pname)
+            elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                 self.ctx.pointer_locals.add(pname)
                 if isinstance(ptype, ReadonlyType):
                     self.ctx.const_indirect_locals.add(pname)
-            # Nullable protocol union params use const T* pointer repr
-            elif (isinstance(actual, UnionType)
-                  and is_protocol_union(actual)
-                  and protocol_union_has_none(actual)):
-                self.ctx.pointer_locals.add(pname)
-                self.ctx.const_indirect_locals.add(pname)
             # Own[T] and Own[T] | None params are movable (caller gave up ownership)
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
@@ -366,10 +365,9 @@ class StatementGenerator:
     def _get_nullproto_constexpr_guards(self, condition: TpyExpr) -> list[str]:
         """Get param names that need if constexpr guards for nullable protocol params.
 
-        When an Optional[StaticProtocol] or nullable protocol union param is narrowed
-        (e.g. `if items is not None:`), the narrowing body must be wrapped in
-        `if constexpr (!std::same_as<T_X, std::nullptr_t>)` to prevent instantiation
-        of protocol operations on nullptr_t.
+        When a nullable static protocol param is narrowed (e.g. `if items is not None:`),
+        the narrowing body must be wrapped in `if constexpr (!std::same_as<T_X, std::nullptr_t>)`
+        to prevent instantiation of protocol operations on nullptr_t.
         """
         guards = []
         match = match_is_none(condition)
@@ -377,13 +375,9 @@ class StatementGenerator:
             var_name, is_not_none = match
             if is_not_none and '.' not in var_name:
                 declared = self.ctx.current_func_params.get(var_name)
-                if declared:
-                    unwrapped = unwrap_readonly(declared)
-                    if self.protocols.is_optional_static_protocol(unwrapped):
-                        guards.append(var_name)
-                    elif (isinstance(unwrapped, UnionType)
-                          and is_protocol_union(unwrapped)
-                          and protocol_union_has_none(unwrapped)):
+                if declared and self.protocols.is_static_protocol_param(declared):
+                    infos = self.protocols.get_all_protocol_params([(var_name, declared)])
+                    if infos and infos[0].has_none:
                         guards.append(var_name)
         return guards
 

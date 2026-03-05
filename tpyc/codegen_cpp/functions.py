@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
-    resolve_int_literals, is_protocol_union, protocol_union_has_none,
+    resolve_int_literals,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -159,56 +159,49 @@ class FunctionGenerator:
 
         Static protocols use template types (T_paramname).
         @dynamic protocols use concrete base class& reference params.
-        Optional[Protocol] emits const T_paramname* (pointer repr with nullptr default).
+        Nullable protocol params emit const T_paramname* (pointer repr).
         const_params: emit const T_x& for static protocols, const Base& for @dynamic,
         and to_cpp_const_param for non-protocol params.
         """
         result = []
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
-            # Resolve type in case it's a NamedType that's actually a protocol
             unwrapped = unwrap_readonly(ptype)
             if (isinstance(unwrapped, OwnType) and isinstance(unwrapped.wrapped, TypeParamRef)
                     and func_type_params and unwrapped.wrapped.name in func_type_params):
                 part = f"{unwrapped.wrapped.name}&& {cpp_pname}"
-            else:
-                is_optional = isinstance(unwrapped, OptionalType)
-                inner_unwrapped = unwrapped.inner if is_optional else unwrapped
-                resolved = self.protocols.resolve_type_for_codegen(inner_unwrapped)
-                if is_protocol_type(resolved):
-                    protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
-                    if protocol_info and protocol_info.is_dynamic:
-                        base_type = self.protocols.get_dynamic_base_name(resolved.name)
-                        # @dynamic: const only from explicit readonly[P], not from const_params
-                        # (virtual methods aren't const-qualified)
-                        if isinstance(ptype, ReadonlyType):
-                            part = f"const {base_type}& {cpp_pname}"
-                        else:
-                            part = f"{base_type}& {cpp_pname}"
-                    elif is_optional:
-                        part = f"const T_{pname}* {cpp_pname}"
-                    else:
-                        if const_params or isinstance(ptype, ReadonlyType):
-                            part = f"const T_{pname}& {cpp_pname}"
-                        else:
-                            part = f"T_{pname}& {cpp_pname}"
-                elif self.protocols.is_protocol_union_param(unwrapped):
-                    has_none = protocol_union_has_none(unwrapped)
-                    if has_none:
-                        part = f"const T_{pname}* {cpp_pname}"
-                    elif const_params or isinstance(ptype, ReadonlyType):
-                        part = f"const T_{pname}& {cpp_pname}"
-                    else:
-                        part = f"T_{pname}& {cpp_pname}"
+            elif self.protocols.is_static_protocol_param(ptype):
+                # Unified static protocol handling (single, optional, or union)
+                info = self._find_protocol_param_info(pname, ptype)
+                if info and info.has_none:
+                    part = f"const T_{pname}* {cpp_pname}"
+                elif const_params or isinstance(ptype, ReadonlyType):
+                    part = f"const T_{pname}& {cpp_pname}"
                 else:
-                    if const_params:
-                        part = ptype.to_cpp_const_param(cpp_pname)
+                    part = f"T_{pname}& {cpp_pname}"
+            else:
+                # Check for @dynamic protocol
+                inner_unwrapped = unwrapped.inner if isinstance(unwrapped, OptionalType) else unwrapped
+                resolved = self.protocols.resolve_type_for_codegen(inner_unwrapped)
+                if (is_protocol_type(resolved)
+                        and (pi := self.ctx.analyzer.registry.get_protocol(resolved.name))
+                        and pi.is_dynamic):
+                    base_type = self.protocols.get_dynamic_base_name(resolved.name)
+                    if isinstance(ptype, ReadonlyType):
+                        part = f"const {base_type}& {cpp_pname}"
                     else:
-                        part = ptype.to_cpp_param(cpp_pname)
+                        part = f"{base_type}& {cpp_pname}"
+                else:
+                    part = ptype.to_cpp_const_param(cpp_pname) if const_params else ptype.to_cpp_param(cpp_pname)
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                 part += f" = {self.default_to_cpp(defaults[i], ptype)}"
             result.append(part)
         return ", ".join(result)
+
+    def _find_protocol_param_info(self, pname: str, ptype: TpyType):
+        """Find ProtocolParamInfo for a single param (helper for gen_params_with_protocols)."""
+        infos = self.protocols.get_all_protocol_params([(pname, ptype)])
+        return infos[0] if infos else None
 
     def _resolve_return_type(self, return_type: TpyType, *, const: bool = False) -> str:
         """Map a return type to C++, using Base& for @dynamic protocols."""
@@ -250,9 +243,7 @@ class FunctionGenerator:
         """Check if a function needs a C++ template (generic type params or protocol params)."""
         if func.type_params:
             return True
-        if self.protocols.get_protocol_params(func.params):
-            return True
-        if self.protocols.get_protocol_union_params(func.params):
+        if self.protocols.get_all_protocol_params(func.params):
             return True
         return False
 
@@ -269,18 +260,16 @@ class FunctionGenerator:
         if func.is_stub:
             return False
 
-        protocol_params = self.protocols.get_protocol_params(func.params)
-        pu_params = self.protocols.get_protocol_union_params(func.params)
+        proto_params = self.protocols.get_all_protocol_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
-        has_proto_params = bool(protocol_params or pu_params)
+        has_proto_params = bool(proto_params)
 
         dfl = func.defaults if func.defaults else None
         if is_generic or has_proto_params:
             out.write(self.protocols.gen_combined_template_header(
-                func.type_params, protocol_params, func.type_param_bounds,
-                protocol_union_params=pu_params,
+                func.type_params, proto_params, func.type_param_bounds,
             ))
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
@@ -317,20 +306,18 @@ class FunctionGenerator:
             out.write(f'extern "C" {ret_type} {c_name}({params});\n')
             return True
 
-        protocol_params = self.protocols.get_protocol_params(func.params)
-        pu_params = self.protocols.get_protocol_union_params(func.params)
+        proto_params = self.protocols.get_all_protocol_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
-        has_proto_params = bool(protocol_params or pu_params)
+        has_proto_params = bool(proto_params)
 
         if is_generic or has_proto_params:
             # Template functions: emit full definition in header so that
             # importing modules can instantiate them.
             if func.is_stub:
                 out.write(self.protocols.gen_combined_template_header(
-                    func.type_params, protocol_params, func.type_param_bounds,
-                    protocol_union_params=pu_params,
+                    func.type_params, proto_params, func.type_param_bounds,
                 ))
                 ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params)
@@ -390,20 +377,18 @@ class FunctionGenerator:
             out.write("}\n")
             return
 
-        protocol_params = self.protocols.get_protocol_params(func.params)
-        pu_params = self.protocols.get_protocol_union_params(func.params)
+        proto_params = self.protocols.get_all_protocol_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
-        has_proto_params = bool(protocol_params or pu_params)
+        has_proto_params = bool(proto_params)
 
         if is_generic or has_proto_params:
             # Generate combined template header for generic functions and/or protocol params
             # Skip default template args -- already emitted in the forward declaration
             out.write(self.protocols.gen_combined_template_header(
-                func.type_params, protocol_params, func.type_param_bounds,
+                func.type_params, proto_params, func.type_param_bounds,
                 emit_defaults=False,
-                protocol_union_params=pu_params,
             ))
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)
@@ -514,10 +499,9 @@ class FunctionGenerator:
         ret_type = self._resolve_return_type(cpp_return_type, const=const)
         dfl = method.defaults if method.defaults else None
 
-        protocol_params = self.protocols.get_protocol_params(method.params)
+        proto_params = self.protocols.get_all_protocol_params(method.params)
         has_dynamic = self._has_dynamic_protocol_params(method.params)
-        has_pu_params = bool(self.protocols.get_protocol_union_params(method.params))
-        use_protocol_params = bool(protocol_params) or has_dynamic or has_pu_params
+        use_protocol_params = bool(proto_params) or has_dynamic
 
         # Determine method-level type params (not in the class template)
         record_info = self.ctx.analyzer.registry.get_record(record_name)
@@ -562,8 +546,7 @@ class FunctionGenerator:
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent=INDENT)
         self.ctx.emit_source_comment(out, method.loc, indent=INDENT)
-        pu_params = self.protocols.get_protocol_union_params(method.params)
-        if protocol_params or pu_params or new_method_params:
+        if proto_params or new_method_params:
             # Bounds for new method type params only (class param bounds go on the requires clause)
             bounds_for_header = dict(record_type_param_bounds) if record_type_param_bounds else {}
             bounds_for_header.update(
@@ -571,8 +554,7 @@ class FunctionGenerator:
                  if k in set(new_method_params)}
             )
             template_header = self.protocols.gen_combined_template_header(
-                new_method_params, protocol_params, bounds_for_header,
-                protocol_union_params=pu_params,
+                new_method_params, proto_params, bounds_for_header,
             )
             out.write(f"{INDENT}{template_header}")
         out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{override_suffix}{requires_clause} {{\n")

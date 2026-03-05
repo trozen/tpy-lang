@@ -5,6 +5,7 @@ C++20 concept generation from TurboPython protocols and template header utilitie
 """
 
 from __future__ import annotations
+from collections import namedtuple
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -17,6 +18,9 @@ from .context import INDENT, DUNDER_TO_BINARY_OP, qualified_cpp_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
+
+# Unified protocol parameter info: name, list of protocol types (1+), nullable flag
+ProtocolParamInfo = namedtuple('ProtocolParamInfo', ['name', 'protocols', 'has_none'])
 
 
 class ProtocolGenerator:
@@ -38,71 +42,79 @@ class ProtocolGenerator:
                 return typ.with_protocol_flag(is_protocol=True)
         return typ
 
-    def is_optional_static_protocol(self, typ: TpyType) -> bool:
-        """Check if a type is Optional[StaticProtocol].
+    def is_static_protocol_param(self, typ: TpyType) -> bool:
+        """Check if a type is a static protocol parameter (single or union, optional or not).
 
-        These use pointer repr (const T*) in codegen, with a nullptr_t default
-        template argument and requires clause for deduction.
+        Returns True for:
+        - NamedType that is a static protocol
+        - OptionalType(static protocol)
+        - UnionType of 2+ static protocols (optionally with None)
+        Excludes @dynamic protocols.
         """
-        if not isinstance(typ, OptionalType):
-            return False
-        resolved = self.resolve_type_for_codegen(typ.inner)
-        if not is_protocol_type(resolved):
-            return False
-        protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
-        return not (protocol_info and protocol_info.is_dynamic)
-
-    def get_protocol_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[str, NamedType, bool]]:
-        """Get list of static protocol-typed parameters (unwraps readonly/Optional).
-
-        Returns (param_name, protocol_type, is_optional) tuples.
-        Excludes @dynamic protocols -- those use concrete base class ref params
-        instead of template parameters.
-        Does NOT handle protocol unions -- use get_protocol_union_params() for those.
-        """
-        result = []
-        for pname, ptype in params:
-            unwrapped = unwrap_readonly(ptype)
-            is_optional = isinstance(unwrapped, OptionalType)
-            if is_optional:
-                unwrapped = unwrapped.inner
-            resolved = self.resolve_type_for_codegen(unwrapped)
+        unwrapped = unwrap_readonly(typ)
+        # Optional[Protocol]
+        if isinstance(unwrapped, OptionalType):
+            resolved = self.resolve_type_for_codegen(unwrapped.inner)
             if is_protocol_type(resolved):
                 protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
                 if protocol_info and protocol_info.is_dynamic:
-                    continue
-                result.append((pname, resolved, is_optional))
-        return result
-
-    def is_protocol_union_param(self, typ: TpyType) -> bool:
-        """Check if a type is a protocol union (2+ protocols, optionally with None)."""
-        unwrapped = unwrap_readonly(typ)
-        if not isinstance(unwrapped, UnionType):
+                    return False
+                return True
             return False
-        resolved_members = tuple(self.resolve_type_for_codegen(m) for m in unwrapped.members)
-        resolved_union = UnionType(resolved_members)
-        return is_protocol_union(resolved_union)
-
-    def get_protocol_union_params(
-        self, params: list[tuple[str, TpyType]]
-    ) -> list[tuple[str, list[NamedType], bool]]:
-        """Get list of protocol-union parameters.
-
-        Returns (param_name, protocol_list, has_none) tuples for params
-        whose type is a union of 2+ static protocols (optionally with None).
-        """
-        result: list[tuple[str, list[NamedType], bool]] = []
-        for pname, ptype in params:
-            unwrapped = unwrap_readonly(ptype)
-            if not isinstance(unwrapped, UnionType):
-                continue
+        # Protocol union (2+ protocols, optionally with None)
+        if isinstance(unwrapped, UnionType):
             resolved_members = tuple(self.resolve_type_for_codegen(m) for m in unwrapped.members)
             resolved_union = UnionType(resolved_members)
-            if not is_protocol_union(resolved_union):
+            return is_protocol_union(resolved_union)
+        # Single bare protocol
+        resolved = self.resolve_type_for_codegen(unwrapped)
+        if is_protocol_type(resolved):
+            protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+            if protocol_info and protocol_info.is_dynamic:
+                return False
+            return True
+        return False
+
+    def get_all_protocol_params(
+        self, params: list[tuple[str, TpyType]]
+    ) -> list[ProtocolParamInfo]:
+        """Get unified list of all static protocol parameters.
+
+        Handles single protocols (bare or Optional) and protocol unions.
+        Returns ProtocolParamInfo(name, protocols, has_none) for each.
+        """
+        result: list[ProtocolParamInfo] = []
+        for pname, ptype in params:
+            unwrapped = unwrap_readonly(ptype)
+
+            # Optional[Protocol] -- single protocol, nullable
+            if isinstance(unwrapped, OptionalType):
+                resolved = self.resolve_type_for_codegen(unwrapped.inner)
+                if is_protocol_type(resolved) and isinstance(resolved, NamedType):
+                    protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                    if protocol_info and protocol_info.is_dynamic:
+                        continue
+                    result.append(ProtocolParamInfo(pname, [resolved], True))
                 continue
-            protos = [m for m in protocol_union_protocols(resolved_union) if isinstance(m, NamedType)]
-            has_none = protocol_union_has_none(resolved_union)
-            result.append((pname, protos, has_none))
+
+            # Protocol union (2+ protocols, optionally with None)
+            if isinstance(unwrapped, UnionType):
+                resolved_members = tuple(self.resolve_type_for_codegen(m) for m in unwrapped.members)
+                resolved_union = UnionType(resolved_members)
+                if is_protocol_union(resolved_union):
+                    protos = [m for m in protocol_union_protocols(resolved_union) if isinstance(m, NamedType)]
+                    has_none = protocol_union_has_none(resolved_union)
+                    result.append(ProtocolParamInfo(pname, protos, has_none))
+                continue
+
+            # Single bare protocol
+            resolved = self.resolve_type_for_codegen(unwrapped)
+            if is_protocol_type(resolved) and isinstance(resolved, NamedType):
+                protocol_info = self.ctx.analyzer.registry.get_protocol(resolved.name)
+                if protocol_info and protocol_info.is_dynamic:
+                    continue
+                result.append(ProtocolParamInfo(pname, [resolved], False))
+
         return result
 
     def get_concept_name(self, protocol: NamedType) -> str:
@@ -224,10 +236,9 @@ class ProtocolGenerator:
     def gen_combined_template_header(
         self,
         type_params: list[str],
-        protocol_params: list[tuple[str, NamedType, bool]],
+        protocol_params: list[ProtocolParamInfo],
         type_param_bounds: dict[str, NamedType] | None = None,
         *, emit_defaults: bool = True,
-        protocol_union_params: list[tuple[str, list[NamedType], bool]] | None = None,
     ) -> str:
         """Generate template header combining type parameters and concept constraints.
 
@@ -251,33 +262,27 @@ class ProtocolGenerator:
             else:
                 template_parts.append(f"typename {tp}")
 
-        # Add single-protocol params with concept constraints
+        # Add protocol params with concept constraints
         requires_parts = []
-        for pname, ptype, is_optional in protocol_params:
-            concept_name = self.get_concept_name(ptype)
-
-            if is_optional:
-                default_part = " = std::nullptr_t" if emit_defaults else ""
-                template_parts.append(f"typename T_{pname}{default_part}")
-                constraint = self._concept_constraint(pname, ptype)
-                requires_parts.append(
-                    f"(std::same_as<T_{pname}, std::nullptr_t> || {constraint})")
-            else:
+        for info in protocol_params:
+            pname = info.name
+            # Single required protocol: clean `Concept T_x` syntax
+            if len(info.protocols) == 1 and not info.has_none:
+                ptype = info.protocols[0]
+                concept_name = self.get_concept_name(ptype)
                 if ptype.type_args:
                     type_args_cpp = ", ".join(t.to_cpp() for t in ptype.type_args)
                     template_parts.append(f"{concept_name}<{type_args_cpp}> T_{pname}")
                 else:
                     template_parts.append(f"{concept_name} T_{pname}")
-
-        # Add protocol union params with disjunctive concept constraints
-        if protocol_union_params:
-            for pname, proto_list, has_none in protocol_union_params:
-                default_part = " = std::nullptr_t" if has_none and emit_defaults else ""
+            else:
+                # Multiple protocols or nullable: typename + requires clause
+                default_part = " = std::nullptr_t" if info.has_none and emit_defaults else ""
                 template_parts.append(f"typename T_{pname}{default_part}")
                 constraints = []
-                if has_none:
+                if info.has_none:
                     constraints.append(f"std::same_as<T_{pname}, std::nullptr_t>")
-                for proto in proto_list:
+                for proto in info.protocols:
                     constraints.append(self._concept_constraint(pname, proto))
                 requires_parts.append(f"({' || '.join(constraints)})")
 
