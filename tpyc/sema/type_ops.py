@@ -273,6 +273,15 @@ class TypeOperations:
                     return typ
                 return replacement
             raise SemanticError(f"Unknown type parameter '{typ.name}'")
+        # Special handling for OptionalType: preserve T* repr from the template.
+        # When the template used T* (unbounded TypeParamRef -> not a value type),
+        # but the concrete type after substitution is a value type, force pointer
+        # repr so the caller matches the template's representation.
+        if isinstance(typ, OptionalType) and typ.uses_pointer_repr():
+            new_inner = self.substitute_type_params(typ.inner, subst)
+            if new_inner.is_value_type():
+                return OptionalType(new_inner, force_pointer_repr=True)
+            return OptionalType(new_inner)
         # Special handling for ArrayType: substitute size if it's a TypeParamRef
         if isinstance(typ, ArrayType):
             new_elem = self.substitute_type_params(typ.element_type, subst)

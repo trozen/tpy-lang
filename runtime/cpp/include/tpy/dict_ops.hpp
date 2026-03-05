@@ -48,12 +48,20 @@ ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
 
 // -- Methods ----------------------------------------------------------------
 
-// d.get(key) -> Optional[V]
+// d.get(key) -> V* (nullptr if missing, pointer into the map)
 template<typename K, typename V, typename KeyArg>
-std::optional<V> dict_get(const ordered_map<K, V>& m, const KeyArg& key) {
+V* dict_get(ordered_map<K, V>& m, const KeyArg& key) {
     auto it = m.find(K(key));
-    if (it == m.items_end()) return std::nullopt;
-    return (*it).second;
+    if (it == m.items_end()) return nullptr;
+    return &((*it).second);
+}
+
+// const overload for readonly dict access
+template<typename K, typename V, typename KeyArg>
+const V* dict_get(const ordered_map<K, V>& m, const KeyArg& key) {
+    auto it = m.find(K(key));
+    if (it == m.items_end()) return nullptr;
+    return &((*it).second);
 }
 
 // d.pop(key) -> V (panics on missing)

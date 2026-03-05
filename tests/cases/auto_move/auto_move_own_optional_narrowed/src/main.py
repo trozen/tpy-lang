@@ -1,6 +1,4 @@
-# Own[T] | None narrowed field access: codegen regression test.
-# Known bug: generates p.x instead of (*p).x for std::optional<Point>.
-# No expected/output.txt until the narrowing codegen is fixed.
+# Own[T] | None narrowed field access: after narrowing, (*p).x unwraps std::optional.
 from tpy import Int32, Own
 
 

@@ -12,7 +12,7 @@ from ..typesys import (
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType, BoolType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
-    register_value_type_record,
+    register_value_type_record, attach_type_param_bounds,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
@@ -420,7 +420,15 @@ class TypeRegistrar:
             method_type_param_bounds = self._resolve_type_param_bounds(
                 method.type_param_bounds, method.loc or record.loc)
             method_defaults = method.defaults if method.defaults else []
-            # Propagate resolved types back to AST so analyzer/codegen see concrete types
+            # Propagate resolved types back to AST so analyzer/codegen see concrete types.
+            # Attach class-level type param bounds to TypeParamRef instances so that
+            # codegen can check bounds (e.g. T: ValueType) without context lookup.
+            if record.type_param_bounds:
+                method_params = [
+                    (n, attach_type_param_bounds(t, record.type_param_bounds))
+                    for n, t in method_params
+                ]
+                method_return = attach_type_param_bounds(method_return, record.type_param_bounds)
             method.params = method_params
             method.return_type = method_return
             methods[method.name] = [FunctionInfo(
@@ -470,6 +478,27 @@ class TypeRegistrar:
                     record.loc,
                 )
             type_param_bounds[param_name] = bound_type
+
+        # Attach bounds to TypeParamRef instances in method signatures so that
+        # downstream code (codegen, type_ops) can check bounds without context lookup.
+        if type_param_bounds:
+            for method_list in methods.values():
+                for i, func_info in enumerate(method_list):
+                    new_params = [
+                        ParamInfo(p.name, attach_type_param_bounds(p.type, type_param_bounds),
+                                  p.requires_lvalue, p.requires_mutable, default_expr=p.default_expr)
+                        for p in func_info.params
+                    ]
+                    new_return = attach_type_param_bounds(func_info.return_type, type_param_bounds)
+                    if (any(np.type is not op.type for np, op in zip(new_params, func_info.params))
+                            or new_return is not func_info.return_type):
+                        method_list[i] = FunctionInfo(
+                            name=func_info.name, params=new_params, return_type=new_return,
+                            is_readonly=func_info.is_readonly, is_method=func_info.is_method,
+                            is_staticmethod=func_info.is_staticmethod, linkage=func_info.linkage,
+                            native_name=func_info.native_name, cpp_template=func_info.cpp_template,
+                            type_params=func_info.type_params, type_param_bounds=func_info.type_param_bounds,
+                        )
 
         # Validate __copy__ signature
         has_copy = "__copy__" in methods

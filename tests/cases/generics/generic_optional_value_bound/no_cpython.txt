@@ -1,0 +1,1 @@
+ValueType protocol not available in CPython stubs

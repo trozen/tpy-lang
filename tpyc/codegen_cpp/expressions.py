@@ -120,12 +120,21 @@ class ExpressionGenerator:
             return self._nullptr_for_optional(ptype)
         if self.ctx.is_indirect_name(arg):
             return self.gen_expr(arg, ptype)
-        if isinstance(self.ctx.get_expr_type(arg), OptionalType):
+        arg_type = self.ctx.get_expr_type(arg)
+        if isinstance(arg_type, OptionalType):
             arg_gen = self.gen_expr(arg, ptype)
             if isinstance(arg, TpyFieldAccess):
                 return f"tpy::optional_to_ptr({arg_gen})"
+            # std::optional<T> -> T* conversion (generic return passed to concrete param)
+            if not arg_type.uses_pointer_repr():
+                return f"tpy::optional_to_ptr({arg_gen})"
             return arg_gen
-        return f"&({self.gen_expr(arg, ptype)})"
+        gen = self.gen_expr(arg, ptype)
+        if self.ctx.is_temporary_expr(arg):
+            arg_type = self.ctx.get_expr_type(arg)
+            tmp = self.ctx.temps.create(arg_type, gen) if arg_type else self.ctx.temps.create_typed("auto", gen)
+            return f"&({tmp})"
+        return f"&({gen})"
 
     def gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression, dereferencing globals.
@@ -1374,6 +1383,11 @@ class ExpressionGenerator:
         # (OptionalType non-value expressions like function calls return T*)
         obj_type = self.ctx.get_expr_type(expr.obj)
         is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
+        # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>
+        if not isinstance(obj_type, OptionalType):
+            cpp_decl = self._get_cpp_declared_type(expr.obj)
+            if isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr():
+                obj = f"(*{obj})"
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
@@ -1463,6 +1477,11 @@ class ExpressionGenerator:
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         is_indirect = self.ctx.is_indirect_name(expr.obj) and not is_narrowed
         is_optional_ptr = isinstance(obj_type, OptionalType) and obj_type.uses_pointer_repr()
+        # Narrowed std::optional<T>: sema sees T but C++ var is still std::optional<T>
+        if not isinstance(obj_type, OptionalType):
+            cpp_decl = self._get_cpp_declared_type(expr.obj)
+            if isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr():
+                obj = f"(*{obj})"
         deref_chain = ".__deref__()" * expr.deref_depth
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:

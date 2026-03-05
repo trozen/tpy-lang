@@ -1,5 +1,5 @@
-# Generic Optional codegen: T | None and Optional[T] should use std::optional<T>
-# in generic contexts, while concrete Record | None still uses T* pointer repr.
+# Generic Optional codegen: T | None uses T* in generic templates (reference into
+# stored data), while concrete value-type Optional (e.g. Int32 | None) uses std::optional.
 from typing import Optional
 from tpy import Int32
 

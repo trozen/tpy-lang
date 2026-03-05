@@ -1,0 +1,3 @@
+got: 42
+cleared: ok
+bool: True

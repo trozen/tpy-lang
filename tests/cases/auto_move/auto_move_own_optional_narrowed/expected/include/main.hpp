@@ -12,11 +12,11 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t use_optional(std::optional<Point> p);
 void main();
 
-// 7: class Point:
+// 5: class Point:
 struct Point {
-    // 8:     x: Int32
+    // 6:     x: Int32
     int32_t x;
-    // 9:     y: Int32
+    // 7:     y: Int32
     int32_t y;
 
 };

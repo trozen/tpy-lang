@@ -11,13 +11,13 @@ void main() {
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 10}, {"b", 20}, {"c", 30}});
     // 5:     # get returns Optional
     // 6:     v = d.get("a")
-    std::optional<int32_t> v = tpy::dict_get(d, "a");
+    int32_t* v = tpy::dict_get(d, "a");
     // 7:     print(v)
-    std::cout << tpy::print_optional_val(v) << "\n";
+    std::cout << tpy::print_optional(v) << "\n";
     // 8:     v2 = d.get("missing")
-    std::optional<int32_t> v2 = tpy::dict_get(d, "missing");
+    int32_t* v2 = tpy::dict_get(d, "missing");
     // 9:     print(v2)
-    std::cout << tpy::print_optional_val(v2) << "\n";
+    std::cout << tpy::print_optional(v2) << "\n";
     // 11:     # pop removes and returns
     // 12:     p = d.pop("c")
     int32_t p = tpy::dict_pop(d, "c");

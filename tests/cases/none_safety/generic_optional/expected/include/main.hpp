@@ -20,18 +20,18 @@ struct Container {
 
     // 9:     def __init__(self, val: T | None):
     Container() = default;
-    explicit Container(std::optional<T> val) : _val(val) {}
+    explicit Container(const T* val) : _val(tpy::ptr_to_optional(val)) {}
 
     // 12:     def get(self) -> T | None:
-    std::optional<T> get() {
+    T* get() {
         // 13:         return self._val
-        return this->_val;
+        return tpy::optional_to_ptr(this->_val);
     }
 
     // 15:     def set(self, val: T | None) -> None:
-    void set(std::optional<T> val) {
+    void set(T* val) {
         // 16:         self._val = val
-        this->_val = val;
+        this->_val = tpy::ptr_to_optional(val);
     }
 };
 

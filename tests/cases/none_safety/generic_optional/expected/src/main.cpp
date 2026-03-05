@@ -14,45 +14,48 @@ std::optional<int32_t> maybe_val(std::optional<int32_t> x) {
 void main() {
     // 22:     # Generic Optional with value type
     // 23:     c = Container[Int32](Int32(42))
-    Container<int32_t> c = Container<int32_t>(42);
+    int32_t __tmp_1 = 42;
+    Container<int32_t> c = Container<int32_t>(&(__tmp_1));
     // 24:     v = c.get()
-    std::optional<int32_t> v = c.get();
+    int32_t* v = c.get();
     // 25:     if v is not None:
-    if ((v.has_value())) {
+    if ((v != nullptr)) {
         // 26:         print("got:", v)
-        std::cout << "got:" << " " << tpy::print_optional_val(v) << "\n";
+        std::cout << "got:" << " " << tpy::print_optional(v) << "\n";
     } else {
         // 28:         print("got: None")
         std::cout << "got: None" << "\n";
     }
     // 30:     c.set(None)
-    c.set(std::nullopt);
+    c.set(nullptr);
     // 31:     v2 = c.get()
-    std::optional<int32_t> v2 = c.get();
+    int32_t* v2 = c.get();
     // 32:     if v2 is not None:
-    if ((v2.has_value())) {
+    if ((v2 != nullptr)) {
         // 33:         print("after set:", v2)
-        std::cout << "after set:" << " " << tpy::print_optional_val(v2) << "\n";
+        std::cout << "after set:" << " " << tpy::print_optional(v2) << "\n";
     } else {
         // 35:         print("after set: None")
         std::cout << "after set: None" << "\n";
     }
     // 37:     c.set(Int32(99))
-    c.set(99);
+    int32_t __tmp_2 = 99;
+    int32_t __tmp_3 = 99;
+    c.set(&(__tmp_3));
     // 38:     v3 = c.get()
-    std::optional<int32_t> v3 = c.get();
+    int32_t* v3 = c.get();
     // 39:     if v3 is not None:
-    if ((v3.has_value())) {
+    if ((v3 != nullptr)) {
         // 40:         print("restored:", v3)
-        std::cout << "restored:" << " " << tpy::print_optional_val(v3) << "\n";
+        std::cout << "restored:" << " " << tpy::print_optional(v3) << "\n";
     }
     // 42:     # None-initialized container
     // 43:     c2 = Container[Int32](None)
-    Container<int32_t> c2 = Container<int32_t>(std::nullopt);
+    Container<int32_t> c2 = Container<int32_t>(nullptr);
     // 44:     v4 = c2.get()
-    std::optional<int32_t> v4 = c2.get();
+    int32_t* v4 = c2.get();
     // 45:     if v4 is None:
-    if ((!v4.has_value())) {
+    if ((v4 == nullptr)) {
         // 46:         print("none init: ok")
         std::cout << "none init: ok" << "\n";
     }

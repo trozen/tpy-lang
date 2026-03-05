@@ -569,7 +569,9 @@ class TypeParamRef(TpyType):
     Bounded type parameters (e.g., T: Comparable) store the bound protocol.
     """
     name: str
-    bound: Optional['NamedType'] = None  # Must be a protocol (is_protocol=True)
+    # Codegen concern only: excluded from eq/hash so TypeParamRef("T") with and
+    # without bound are considered the same type for type-checking purposes.
+    bound: Optional['NamedType'] = field(default=None, compare=False, hash=False)
     kind: TypeParamKind = TypeParamKind.TYPE
 
     def to_cpp(self) -> str:
@@ -581,6 +583,8 @@ class TypeParamRef(TpyType):
     def is_value_type(self) -> bool:
         if self.kind == TypeParamKind.INT:
             # INT type params are std::size_t values
+            return True
+        if self.bound is not None and isinstance(self.bound, NamedType) and self.bound.name == "ValueType":
             return True
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
@@ -982,11 +986,28 @@ class NoneType(TpyType):
         return True
 
 
-def _contains_type_param(t: TpyType) -> bool:
+def contains_type_param(t: TpyType) -> bool:
     """Return True if the type contains any TypeParamRef (recursively)."""
     if isinstance(t, TypeParamRef):
         return True
-    return any(_contains_type_param(inner) for inner in t.inner_types())
+    return any(contains_type_param(inner) for inner in t.inner_types())
+
+
+def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NamedType']) -> TpyType:
+    """Attach bounds to TypeParamRef instances in a type tree.
+
+    Returns a new type with bounds set on matching TypeParamRef nodes.
+    Used during registration to propagate class/function-level bounds
+    into the types stored in method signatures.
+    """
+    if isinstance(t, TypeParamRef):
+        if t.bound is None and t.name in bounds:
+            return TypeParamRef(t.name, bound=bounds[t.name], kind=t.kind)
+        return t
+    new_inners = tuple(attach_type_param_bounds(inner, bounds) for inner in t.inner_types())
+    if any(new is not old for new, old in zip(new_inners, t.inner_types())):
+        return t.with_inner_types(new_inners)
+    return t
 
 
 @dataclass(frozen=True)
@@ -997,6 +1018,11 @@ class OptionalType(TpyType):
     The canonical storage form (std::optional<T>) is reserved for future class members.
     """
     inner: TpyType
+    # Locks representation to T* even when the concrete inner type is a value type.
+    # Set during generic type substitution when the template used T* (unbounded
+    # TypeParamRef) but the concrete type would normally use std::optional<T>.
+    # Excluded from eq/hash: codegen concern only.
+    force_pointer_repr: bool = field(default=False, compare=False, hash=False)
 
     def to_cpp(self) -> str:
         return f"std::optional<{self.inner.to_cpp()}>"
@@ -1007,12 +1033,15 @@ class OptionalType(TpyType):
     def uses_pointer_repr(self) -> bool:
         """Whether this Optional uses T* (pointer) repr instead of std::optional<T>.
 
-        Returns True only for concrete non-value inner types (e.g. records).
-        Returns False for value types, type parameters, or types containing
-        type parameters -- generic Optional must always use std::optional<T>
-        since C++ templates cannot conditionally switch representations.
+        True when inner is not a value type: records, unbounded TypeParamRef.
+        False for value types (Int32, bool) and ValueType-bounded TypeParamRef.
+        force_pointer_repr overrides: set during generic substitution when the
+        template used T* but the concrete inner is a value type (e.g. Container[Int32]
+        where the template committed to T* for all instantiations).
         """
-        return not self.inner.is_value_type() and not _contains_type_param(self.inner)
+        if self.force_pointer_repr:
+            return True
+        return not self.inner.is_value_type()
 
     def to_cpp_return(self) -> str:
         if self.uses_pointer_repr():
@@ -1048,7 +1077,7 @@ class OptionalType(TpyType):
         return (self.inner,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return OptionalType(types[0])
+        return OptionalType(types[0], force_pointer_repr=self.force_pointer_repr)
 
 
 @dataclass(frozen=True)

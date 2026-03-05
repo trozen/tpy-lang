@@ -1243,7 +1243,13 @@ class CallAnalyzer:
                             f"members with these type arguments (resolves to '{resolved_ret}')",
                             expr,
                         )
-                return resolved.return_type
+                ret = resolved.return_type
+                # Built-in generic functions (e.g. try_next) delegate to
+                # concrete methods whose C++ returns std::optional<T>, not T*.
+                if (overload.is_builtin_function and overload.type_params
+                        and isinstance(ret, OptionalType) and ret.force_pointer_repr):
+                    ret = OptionalType(ret.inner)
+                return ret
 
         # repr(container) fallback: containers have runtime to_str helpers
         if expr.func == "repr" and len(arg_types) == 1:
@@ -1512,6 +1518,13 @@ class CallAnalyzer:
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
+
+        # Built-in generic functions (e.g. try_next) delegate to concrete methods
+        # whose C++ returns std::optional<T>, not T*. Strip force_pointer_repr
+        # that substitute_type_params sets for unbounded TypeParamRef -> value type.
+        if (func.is_builtin_function and func.type_params
+                and isinstance(resolved_return, OptionalType) and resolved_return.force_pointer_repr):
+            resolved_return = OptionalType(resolved_return.inner)
 
         # Detect duplicate union members after generic substitution:
         # e.g. T | U | str with T=U=Int32 would emit std::variant<int, int, str> (ill-formed)
