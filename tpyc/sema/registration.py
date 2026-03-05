@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType, BoolType,
-    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL,
+    FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record,
 )
 from ..parse import (
@@ -493,6 +493,16 @@ class TypeRegistrar:
                     f"__copy__ must return {record.name}, got {ret}",
                     copy_loc,
                 )
+
+        # Synthesize __hash__ for frozen dataclasses without explicit __hash__
+        if record.is_frozen and record.fields and "__hash__" not in methods:
+            methods["__hash__"] = [FunctionInfo(
+                name="__hash__",
+                params=[],
+                return_type=UINT64,
+                is_method=True,
+                is_readonly=True,
+            )]
 
         # Don't classify bases here - defer to validate_record_inheritance
         # (so forward-referenced protocols are properly recognized)

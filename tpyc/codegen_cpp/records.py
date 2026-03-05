@@ -325,6 +325,9 @@ class RecordGenerator:
         # Generate operator*() for types with __deref__ (C++ interop)
         self._gen_deref_operators(out, record)
 
+        # Generate __hash__ for frozen dataclasses
+        self._gen_hash_method(out, record)
+
         # Synthesize __iter__() -> self for iterator types (has __next__ but no explicit __iter__)
         has_next = any(m.name == "__next__" for m in record.methods)
         has_iter = any(m.name == "__iter__" for m in record.methods)
@@ -742,4 +745,17 @@ class RecordGenerator:
 
         out.write(f"\n{INDENT}auto operator*() -> decltype(__deref__()) {{\n")
         out.write(f"{INDENT}{INDENT}return __deref__();\n")
+        out.write(f"{INDENT}}}\n")
+
+    def _gen_hash_method(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate __hash__() for frozen dataclasses."""
+        # Skip if user defined __hash__ in source (it will be in record.methods)
+        if any(m.name == "__hash__" for m in record.methods):
+            return
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        if record_info is None or not record_info.is_frozen or not record_info.fields:
+            return
+        hash_fields = ", ".join(f"this->{fld.name}" for fld in record_info.fields)
+        out.write(f"\n{INDENT}uint64_t __hash__() const {{\n")
+        out.write(f"{INDENT}{INDENT}return tpy::hash_combine(0, {hash_fields});\n")
         out.write(f"{INDENT}}}\n")

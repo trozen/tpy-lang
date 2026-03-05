@@ -344,4 +344,18 @@ uint64_t __hash__(const T& x) {
     return x.__hash__();
 }
 
+// =============================================
+// tpy::hash_combine -- Boost-style hash combining for dataclass __hash__
+// =============================================
+
+inline uint64_t hash_combine(uint64_t seed) {
+    return seed;
+}
+
+template<typename T, typename... Rest>
+uint64_t hash_combine(uint64_t seed, const T& val, const Rest&... rest) {
+    seed ^= __hash__(val) + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+    return hash_combine(seed, rest...);
+}
+
 } // namespace tpy

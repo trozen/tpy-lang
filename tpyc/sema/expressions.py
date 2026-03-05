@@ -988,12 +988,16 @@ class ExpressionAnalyzer:
             return
         if isinstance(key_type, PendingStrType):
             return
-        # User records: even with __hash__, codegen doesn't emit std::hash<T>/operator==
+        # User records: allow frozen dataclasses (have synthesized __hash__ + __eq__)
         if isinstance(key_type, NamedType) and key_type.is_user_record:
-            raise self.ctx.error(
-                f"Type '{key_type}' cannot be used as a dict key "
-                f"(user-defined types as dict keys are not yet supported)", expr,
-            )
+            info = self.ctx.registry.get_record(key_type.name)
+            if not (info is not None and info.is_frozen
+                    and "__hash__" in info.methods and "__eq__" in info.methods):
+                raise self.ctx.error(
+                    f"Type '{key_type}' cannot be used as a dict key "
+                    f"(requires @dataclass(frozen=True) for __hash__ support)", expr,
+                )
+            return
         if self.protocols.type_conforms_to_protocol(key_type, self._HASHABLE):
             return
         raise self.ctx.error(

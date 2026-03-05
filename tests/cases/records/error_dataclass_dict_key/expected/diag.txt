@@ -1,0 +1,1 @@
+main.py:11: error: Type 'Point' cannot be used as a dict key (requires @dataclass(frozen=True) for __hash__ support)

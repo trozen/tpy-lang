@@ -2768,7 +2768,7 @@ class Container[T]:
 - **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)
 - **Working**: Docstrings in class and method bodies (silently ignored)
-- **Working**: `@dataclass` decorator (`from dataclasses import dataclass`) -- auto-generates `__init__` and `__eq__` from field annotations with default value support; `frozen=True` for immutable instances
+- **Working**: `@dataclass` decorator (`from dataclasses import dataclass`) -- auto-generates `__init__`, `__eq__`, and `__hash__` (frozen only) from field annotations; `frozen=True` for immutable instances usable as dict keys
 - **Open**: `@classmethod` → if use case is clear
 - **Open**: `@property` → getter/setter methods
 

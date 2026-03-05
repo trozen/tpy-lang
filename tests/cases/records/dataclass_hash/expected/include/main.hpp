@@ -6,7 +6,6 @@
 namespace tpy_user::main {
 
 struct Point;
-struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -45,48 +44,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// @dataclass(frozen=True)
-// 11: class Config:
-struct Config {
-    // 12:     name: str
-    std::string name;
-    // 13:     value: Int32
-    int32_t value;
-
-    Config() = default;
-    explicit Config(std::string_view name, int32_t value) : name(name), value(value) {}
-
-    bool __eq__(const Config& other) const {
-        return ((this->name == other.name) && (this->value == other.value));
-    }
-
-    friend bool operator==(const Config& lhs, const Config& other) {
-        return lhs.__eq__(other);
-    }
-
-    uint64_t __hash__() const {
-        return tpy::hash_combine(0, this->name, this->value);
-    }
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    os << "Config("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "value=" << obj.value
-       << ")";
-    return os;
-}
-
 } // namespace tpy_user::main
 
 template<> struct std::hash<tpy_user::main::Point> {
     size_t operator()(const tpy_user::main::Point& val) const noexcept {
-        return static_cast<size_t>(val.__hash__());
-    }
-};
-template<> struct std::hash<tpy_user::main::Config> {
-    size_t operator()(const tpy_user::main::Config& val) const noexcept {
         return static_cast<size_t>(val.__hash__());
     }
 };

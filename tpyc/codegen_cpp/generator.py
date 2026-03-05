@@ -564,6 +564,26 @@ class CodeGenerator:
                     hpp.write(f"template<> struct tpy::is_value_type<{ns}::{record.name}> : std::true_type {{}};\n")
             hpp.write(f"\nnamespace {ns} {{\n\n")
 
+        # std::hash specializations for records with __hash__ (frozen dataclasses)
+        hashable_records = [
+            r for r in module.records
+            if (info := self.analyzer.registry.get_record(r.name))
+            and info.is_frozen and info.fields
+            and "__hash__" in info.methods
+            and not r.type_params
+        ]
+        if hashable_records:
+            ns = module_to_cpp_namespace(self.ctx.module_name)
+            hpp.write(f"}} // namespace {ns}\n\n")
+            for record in hashable_records:
+                cpp_name = f"{ns}::{record.name}"
+                hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
+                hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
+                hpp.write(f"        return static_cast<size_t>(val.__hash__());\n")
+                hpp.write(f"    }}\n")
+                hpp.write(f"}};\n")
+            hpp.write(f"\nnamespace {ns} {{\n\n")
+
         # Module-local type alias definitions (after record definitions
         # so member types are complete for std::variant)
         emitted_alias = False

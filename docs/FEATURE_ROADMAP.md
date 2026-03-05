@@ -43,7 +43,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
 | B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
 | B7 | Float32 type | S | Done | [I](#float32-type) |
-| B8 | Dataclasses | M | Partial | [VII](#dataclasses) |
+| B8 | Dataclasses | M | Done | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
 | B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
