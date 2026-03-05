@@ -250,7 +250,7 @@ class Parser:
                 raise ParseError("'Protocol' cannot be used as a type annotation", node)
         return None
 
-    def _resolve_registered_type(self, name: str, node: ast.expr) -> TpyType | None:
+    def _resolve_registered_type(self, name: str, node: ast.expr, *, resolved: bool = False) -> TpyType | None:
         """Look up a name in the type registry (protocols, aliases, records).
 
         Raises ParseError for generic protocols used without type arguments,
@@ -268,7 +268,7 @@ class Parser:
             return enum_type
         elif (alias := self.registry.get_type_alias(name)) is not None:
             return alias
-        elif (protocol_def := lookup_builtin_protocol(name)) is not None:
+        elif resolved and (protocol_def := lookup_builtin_protocol(name)) is not None:
             if protocol_def.type_params:
                 raise ParseError(
                     f"Generic protocol '{name}' requires type arguments: "
@@ -276,7 +276,9 @@ class Parser:
                     node
                 )
             return NamedType(name, is_protocol=True)
-        elif self.registry.is_known_type(name) or name[0].isupper():
+        elif not resolved:
+            self._raise_unresolved_import_error(name, node)
+        if self.registry.is_known_type(name) or name[0].isupper():
             return NamedType(name)
         return None
 
@@ -285,10 +287,7 @@ class Parser:
         if raw_name in TYPING_NAMES:
             raise ParseError(f"'{raw_name}' requires: from typing import {raw_name}", node)
         if raw_name in TPY_TYPES:
-            raise ParseError(
-                f"'{raw_name}' is not defined. Did you mean: from tpy import {raw_name}",
-                node
-            )
+            raise ParseError(f"'{raw_name}' requires: from tpy import {raw_name}", node)
 
     def _raise_unresolved_qualified_error(self, node: ast.expr) -> None:
         """Raise error for qualified names where the module wasn't imported."""
@@ -1291,12 +1290,10 @@ class Parser:
                 primitive = self._resolve_primitive_type(*resolved, node)
                 if primitive is not None:
                     return primitive
-            else:
-                self._raise_unresolved_import_error(name, node)
 
             # Registry lookups (user protocols, type aliases, builtin protocols, user records)
             resolved_name = resolved[1] if resolved else name
-            registered = self._resolve_registered_type(resolved_name, node)
+            registered = self._resolve_registered_type(resolved_name, node, resolved=bool(resolved))
             if registered is not None:
                 return registered
             raise ParseError(f"Unknown type: {name}", node)
@@ -1342,8 +1339,6 @@ class Parser:
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return FinalType(inner)
             else:
-                if raw_name:
-                    self._raise_unresolved_import_error(raw_name, node)
                 # Qualified name with missing module import
                 if isinstance(node.value, ast.Attribute):
                     self._raise_unresolved_qualified_error(node.value)
@@ -1352,14 +1347,17 @@ class Parser:
             resolved_container = resolved[1] if resolved else raw_name
 
             if resolved_container:
-                # Generic protocols (e.g., Sequence[Int32])
-                if protocol_def := lookup_builtin_protocol(resolved_container):
+                # Generic protocols (e.g., Sequence[Int32]) -- only when imported
+                if resolved and (protocol_def := lookup_builtin_protocol(resolved_container)):
                     if protocol_def.type_params:
                         type_args = self._parse_protocol_type_args(node, resolved_container, protocol_def.type_params, type_param_scope)
                         return NamedType(resolved_container, type_args, is_protocol=True)
 
                 # Module-defined generic types (list, Array, Span, etc.)
                 if lookup := lookup_generic_type(resolved_container):
+                    # tpy generic types require explicit import
+                    if not resolved and lookup.qualified_name.startswith("tpy."):
+                        self._raise_unresolved_import_error(raw_name, node)
                     return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
 
                 # Generic types from explicitly imported builtin submodules (tpy.mem, etc.)
@@ -1380,6 +1378,8 @@ class Parser:
                         return NamedType(resolved_container, type_args, is_protocol=True)
 
                 # User-defined generic records (e.g., Stack[Int32])
+                if not resolved and raw_name:
+                    self._raise_unresolved_import_error(raw_name, node)
                 if self.registry.get_record(resolved_container) is not None or resolved_container[0].isupper():
                     type_args = self._parse_record_type_args(node, resolved_container, type_param_scope)
                     return NamedType(resolved_container, type_args)
@@ -1393,7 +1393,7 @@ class Parser:
                 if primitive is not None:
                     return primitive
                 # Registry lookups for qualified names
-                registered = self._resolve_registered_type(resolved[1], node)
+                registered = self._resolve_registered_type(resolved[1], node, resolved=True)
                 if registered is not None:
                     return registered
             # Not resolved -- check if module exists but wasn't imported

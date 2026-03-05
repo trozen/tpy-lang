@@ -1,0 +1,1 @@
+main.py:4: error: 'Hashable' requires: from tpy import Hashable

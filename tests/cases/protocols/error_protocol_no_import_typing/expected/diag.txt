@@ -1,0 +1,1 @@
+main.py:4: error: 'Sequence' requires: from typing import Sequence

@@ -3526,7 +3526,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 
 - **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `StaticList`)
   - **Note**: tpy types require explicit import -- using `Int32` without `from tpy import Int32` produces an error with a helpful suggestion
-- **Working**: `from typing import ...` (type annotations like `Optional`, `Protocol`, `Self`, `Sized`, `Sequence`, `MutableSequence`)
+- **Working**: `from typing import ...` (type annotations like `Optional`, `Protocol`, `Self`, `Sized`, `Sequence`, `MutableSequence`, `Iterator`, `Iterable`)
   - **Note**: typing names require explicit import -- using `Optional` without `from typing import Optional` produces an error with a helpful suggestion
 - **Working**: `import time` and `from time import time`
 - **Working**: Import aliases: `from time import time as get_time`, `from tpy import Int32 as I32`, `from typing import Optional as Opt`

@@ -27,13 +27,15 @@ TPY_TYPES = {
     "Char",  # Character type
     "Span", "Array", "StaticList",  # Container types
     "Ptr", "ReadOnlyPtr", "Own",  # Pointer types
+    "Hashable", "Comparable", "Deref", "Default",  # Protocols (user-facing)
+    "Truthy", "Stringable", "Representable",  # Protocols (less common)
 }
 
 # Python builtins -- always available without import
 PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple"})
 
 # Names from typing that require explicit import
-TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Final"})
+TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final"})
 
 # All tpy type names (union of TPY_TYPES + decorators/modifiers)
 TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic"}

@@ -93,8 +93,6 @@
 - make a doc with TPy vs Python differences
 
 ## Code Review Items (2026-03-04)
-- Hashable protocol params generate non-const refs (`T_x&` instead of `const T_x&`) in non-`@readonly` functions. Pre-existing issue for all readonly protocols used in non-readonly functions.
-- `Hashable` (and other protocols like `Sized`, `Comparable`) are usable as type annotations without `from tpy import Hashable`. Undocumented implicit availability.
 - User records as dict keys: sema now blocks them, but the complete feature needs codegen to emit `std::hash<T>` specialization and `operator==` for records with `__hash__`/`__eq__`.
 
 ## Code Review Items (2026-01-27)

@@ -1,1 +1,1 @@
-main.py:2: error: 'Int32' is not defined. Did you mean: from tpy import Int32
+main.py:2: error: 'Int32' requires: from tpy import Int32

@@ -500,14 +500,14 @@ class CallAnalyzer:
             if record_info := self.ctx.registry.get_builtin_record(tpy_qname):
                 if record_info.constructors and not record_info.type_params:
                     raise self.ctx.error(
-                        f"'{expr.func}' is not defined. Did you mean: from tpy import {expr.func}",
+                        f"'{expr.func}' requires: from tpy import {expr.func}",
                         expr
                     )
             # Also check generic tpy types (StaticList, Array, Span)
             if lookup := builtin_modules.lookup_generic_type(expr.func):
                 if lookup.qualified_name.startswith("tpy."):
                     raise self.ctx.error(
-                        f"'{expr.func}' is not defined. Did you mean: from tpy import {expr.func}",
+                        f"'{expr.func}' requires: from tpy import {expr.func}",
                         expr
                     )
 
