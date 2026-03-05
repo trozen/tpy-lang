@@ -50,7 +50,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B12 | `Self` type | S | Done | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
-| B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Not started | [II](#isinstance-on-static-protocols) |
+| B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Done | [II](#isinstance-on-static-protocols) |
 
 ### Phase C: Error Handling + Effects
 
@@ -805,12 +805,15 @@ protocol (protocol narrowing), enabling calls like `len(items)` that require `Si
 this, the only options are separate overloads (needs union dispatch flattening B10) or
 losing the size information.
 
-**Current state**: Not started.
+**Current state**: Done. `isinstance(x, Protocol)` on protocol-typed parameters generates
+`if constexpr (tpy::Concept<T>)` in C++. Works for same-protocol checks, cross-protocol
+checks (e.g. `Sequence` param checking `Hashable`), and negation (`not isinstance`).
+Concrete types are rejected with a clear error. Protocol operations inside the `if constexpr`
+branch are available at the C++ template instantiation level.
 
-**Dependencies**: `Optional[StaticProtocol]` codegen (B14). Protocol narrowing is new
--- current narrowing only handles `Optional[T]` -> `T` via `is None` checks.
+**Dependencies**: `Optional[StaticProtocol]` codegen (B14, done).
 
-**Effort**: M (isinstance mapping is S; protocol narrowing in branches is the bulk)
+**Effort**: M (done)
 
 ---
 

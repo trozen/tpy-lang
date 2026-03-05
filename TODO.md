@@ -7,7 +7,6 @@
 - Generic string inference: `first[T]("hello", "world")` deduces `T=str` (std::string) instead of `T=StrView` (std::string_view). String literals passed to generic functions create unnecessary copies. The inference should prefer StrView when the literal is only read.
 - Container element str copies: `b = t[1]` where `t` is `tuple[Int32, str]` generates `std::string b = std::get<1>(t)`, copying the string. Same for list/array subscript. The element type is `StrType` (std::string), bypassing PendingStrType inference. Fix: wrap str-typed container element access results in PendingStrType so locals get string_view when never mutated.
 - Avoid copying expensive value types in for-loops and tuple unpack. `for x in items` where `items: list[int]` generates `for (tpy::BigInt x : items)`, copying every element. Same for tuple unpack: `a, b = get_pair()` with `b: BigInt` copies out of the tuple. For small value types (int32_t, double, string_view) copying is fine, but BigInt is heap-allocated and the copy is wasteful since the container/tuple outlives the usage scope. Fix: use `const auto&` binding for read-only "expensive" value types. Could use the same PendingType pattern as str inference -- resolve to `const&` when never mutated. Needs a way to distinguish cheap vs expensive value types (size threshold or explicit trait).
-- Iterable[T] conformance for built-in containers: `list[T]`, `Array[T,N]`, `StaticList[T,N]`, `Span[T]`, `str` don't conform to `Iterable[T]` because their iteration is handled by NativeIterable codegen, not explicit `__iter__` methods. Protocol conformance checker needs to recognize these types as implicitly satisfying `Iterable[T]`.
 - int/bool value provenance (e.g. assert i > 0, then cast to uint without check)
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr narrowing: after `p is not None`, skip `deref_check()` and use direct `->` access (same idea as Optional narrowing but for raw pointers)
@@ -94,7 +93,6 @@
 
 ## Code Review Items (2026-01-27)
 - Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
-- `list.extend` lacks type validation: element type mismatch not checked when types are related but not identical (e.g. `list[Int32].extend(list[int])` passes sema, fails C++)
 - `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
 
 ## Low Priority
@@ -108,7 +106,7 @@
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.
 - Destructor drop flag shadowing in inheritance: when both parent and child have `__del__`, each class emits its own `bool __tpy_owned_ = true` field. The child's shadows the parent's, creating two independent flags that must stay in sync. Currently correct (each move op/destructor operates on its own class's flag), but fragile. Fix: emit `__tpy_owned_` only on the root class that introduces `__del__`; children inherit it without shadowing.
 - Functions don't currently support INT type params (only TYPE)
-- `readonly[T]` field type is silently ignored: `name: readonly[str]` emits `std::string` (no `const`), and sema does not reject mutation of the field. The syntax is accepted but has no effect.
+- `readonly[T]` field mutation: sema enforces readonly on assignment targets, but codegen may not emit `const` for `readonly[str]` fields. Verify codegen emits `const` qualifier.
 - Union isinstance narrowing in ternary: `x if isinstance(x, str) else ...` where `x: str | int` would need `std::get<T>()` extraction, which requires statement-level codegen (variable declaration for the extracted value).
 
 ## ShedSkin examples
