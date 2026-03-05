@@ -992,6 +992,16 @@ class CallAnalyzer:
                     if not self.protocols.type_extends_any_protocol(at, p.type.name):
                         rejected = True
                         break
+                    # Protocol matches structurally, but if it has type params
+                    # (e.g. Iterable[T]), verify element type compatibility
+                    # against the target type.
+                    if _has_type_param_ref(p.type) and expr.call_type:
+                        expected_elem = expr.call_type.get_element_type()
+                        arg_elem = at.get_iteration_element_type()
+                        if expected_elem is not None and arg_elem is not None:
+                            if not type_matches_numeric(arg_elem, expected_elem):
+                                rejected = True
+                                break
                 elif _has_type_param_ref(p.type):
                     # Can't fully resolve T, but reject clearly incompatible
                     # types. For Span[T]: arg must have an element type, and

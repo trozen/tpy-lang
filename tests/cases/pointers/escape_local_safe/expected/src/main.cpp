@@ -51,7 +51,7 @@ void foreach_outer_container() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto& p = *__beg_0;
+        auto&& p = *__beg_0;
         // 30:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -96,7 +96,7 @@ void foreach_shadow_safe() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto& p = *__beg_1;
+        auto&& p = *__beg_1;
         // 51:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -118,7 +118,7 @@ void param_reused_as_loop_var(Point& p) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto& p = *__beg_0;
+        auto&& p = *__beg_0;
         // 60:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -146,7 +146,7 @@ void sequential_loops_same_var() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto& p = *__beg_0;
+        auto&& p = *__beg_0;
         // 73:         pass
     }
     // 74:     for p in items2:
@@ -154,7 +154,7 @@ void sequential_loops_same_var() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto& p = *__beg_1;
+        auto&& p = *__beg_1;
         // 75:         saved = p  # tpyc: ok
         saved = &(p);
     }
@@ -187,7 +187,7 @@ void lvalue_init_rvalue_rebind() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto& p = *__beg_0;
+        auto&& p = *__beg_0;
         // 90:         if p.x > best.x:
         if ((p.x > best->x)) {
             // 91:             best = copy(p)  # tpyc: ok

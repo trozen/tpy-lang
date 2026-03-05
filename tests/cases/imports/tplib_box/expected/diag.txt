@@ -1,0 +1,1 @@
+array_list.py:37: warning: field '_size' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch

@@ -27,7 +27,7 @@ Point* find_point(std::vector<Point>& points, int32_t target) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto& p = *__beg_0;
+        auto&& p = *__beg_0;
         // 48:         if p.x == target:
         if ((p.x == target)) {
             // 49:             return p

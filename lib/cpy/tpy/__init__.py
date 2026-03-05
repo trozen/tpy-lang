@@ -643,6 +643,7 @@ class Hashable(_Protocol):
     def __hash__(self) -> int: ...
 
 
+@_runtime_checkable
 class ReadOnlySpanLike(_Protocol[T]):
     """Protocol for types exposing contiguous storage via __span__() (readonly).
 
