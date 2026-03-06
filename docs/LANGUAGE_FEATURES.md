@@ -3371,6 +3371,14 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: List repetition: `[element] * N` and `[elements...] * N`
   - Single-element: uses efficient fill constructor
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
+  - Deferred resolution for untyped locals via `PendingListType`:
+    - Constant count, unmutated -> `Array[T, N]` (stack-allocated, supports subscript)
+    - Variable count, unmutated -> lazy `repeat[T]` (`tpy::repeat_range<T>`, no allocation)
+    - Variable count with subscript -> auto-promoted to `list[T]`
+    - Mutated (`.append()`, etc.) -> auto-promoted to `list[T]`
+  - Lazy `repeat[T]` conforms to `Iterable[T]`, `Sized`, `NativeIterable[T]`
+  - Explicit annotation (`z: list[T] = [v]*N`) always produces `list[T]`
+  - Inline repeat cannot be passed directly to `Span` -- assign to a variable first
 - **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
 - **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
 - **Working**: `abs()`, `min()`, `max()`, `ord()`, `pow()`, `round()`, `divmod()` for numeric types

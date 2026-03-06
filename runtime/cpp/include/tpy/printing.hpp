@@ -144,6 +144,15 @@ std::ostream& operator<<(std::ostream& os, const ListPrinter<StaticList<T, N>>& 
     return os;
 }
 
+// Generic fallback for any iterable container (e.g. repeat_range)
+template <typename C>
+    requires std::ranges::input_range<C>
+             && (!requires { typename std::tuple_size<C>::type; })  // exclude array
+std::ostream& operator<<(std::ostream& os, const ListPrinter<C>& p) {
+    detail::print_list_contents(os, std::ranges::begin(p.value), std::ranges::end(p.value));
+    return os;
+}
+
 // --- Generic value printing for type parameters ---
 
 /**

@@ -1578,17 +1578,42 @@ class PendingListType(TpyType):
         return "builtins.list"
 
 
+@dataclass(frozen=True)
+class ListRepeatType(TpyType):
+    """Lazy list repeat type -- [val]*N that hasn't been materialized.
+
+    Produced by _resolve_pending_list_types when a list repeat with variable
+    count is never mutated or passed to a container param. Conforms to
+    Iterable[T], Sized, NativeIterable[T]. Materializes to list[T] or
+    Array[T, N] when assigned to those types.
+    """
+    element_type: TpyType
+
+    def to_cpp(self) -> str:
+        return f"tpy::repeat_range<{self.element_type.to_cpp()}>"
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def __str__(self) -> str:
+        return f"repeat[{self.element_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return None
+
+
 @dataclass
 class ListLiteralInfo:
     """Tracks usage information for a list literal to determine its resolved type."""
     literal_id: int
-    expr: 'TpyArrayLiteral'  # Forward reference to avoid circular import
+    expr: 'TpyArrayLiteral | TpyListRepeat'  # Forward reference to avoid circular import
     element_type: TpyType
-    size: int
+    size: int  # -1 for unknown (variable count repeat)
     variable_name: Optional[str] = None
     decl_line: Optional[int] = None
     is_global: bool = False
     is_mutated: bool = False
+    needs_indexing: bool = False
     passed_to_list_param: bool = False
     passed_to_span_param: bool = False
     has_explicit_annotation: bool = False

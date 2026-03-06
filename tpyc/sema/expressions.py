@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, DictType, PendingListType, TupleType, SpanType,
+    NamedType, PtrType, OwnType, ListType, DictType, PendingListType, ListRepeatType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
@@ -1182,8 +1182,31 @@ class ExpressionAnalyzer:
             if first_type != elem_type:
                 raise self.ctx.error(f"List repetition element {i} has type {elem_type}, expected {first_type}", expr)
 
-        # Keep IntLiteralType so it can coerce to annotated type (list[Int32] or list[int])
-        return ListType(first_type)
+        # Global context -> ListType (no deferred resolution)
+        if self.ctx.current_function is None:
+            return ListType(first_type)
+
+        # Function-local context -> PendingListType for deferred resolution
+        # Compute size if count is compile-time constant
+        if isinstance(expr.count, TpyIntLiteral):
+            size = len(expr.elements) * expr.count.value
+        else:
+            size = -1  # Variable count -- cannot resolve to Array
+
+        literal_id = self.ctx.literal_counter
+        self.ctx.literal_counter += 1
+
+        info = ListLiteralInfo(
+            literal_id=literal_id,
+            expr=expr,
+            element_type=first_type,
+            size=size,
+            is_global=self.ctx.is_top_level,
+        )
+        self.ctx.list_literals[literal_id] = info
+        self.ctx.pending_resolutions.append(literal_id)
+
+        return PendingListType(first_type, size, literal_id)
 
     def _analyze_tuple_literal(
         self, expr: TpyTupleLiteral, element_hints: list[TpyType | None] | None = None
@@ -1288,6 +1311,12 @@ class ExpressionAnalyzer:
         # Use get_element_type() trait for containers and strings
         elem_type = actual_type.get_element_type()
         if elem_type is not None:
+            # Subscript on a repeat-sourced pending list needs indexing support
+            # (repeat_range doesn't have operator[], but Array does).
+            if isinstance(actual_type, PendingListType):
+                info = self.ctx.list_literals.get(actual_type.literal_id)
+                if info and isinstance(info.expr, TpyListRepeat):
+                    info.needs_indexing = True
             if is_readonly_obj and not elem_type.is_value_type():
                 elem_type = ReadonlyType(unwrap_readonly(elem_type))
             return elem_type

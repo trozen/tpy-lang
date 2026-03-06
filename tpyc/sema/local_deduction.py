@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..coercions import CoercionContext
-from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction
+from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
 from ..parse.nodes import TpyStrLiteral, TpySubscript
 from ..typesys import (
     ArrayType,
@@ -18,6 +18,7 @@ from ..typesys import (
     FixedIntType,
     IntLiteralType,
     ListLiteralInfo,
+    ListRepeatType,
     ListType,
     NoneType,
     OptionalType,
@@ -346,6 +347,7 @@ class LocalTypeDeduction:
                     elem_type = self.ctx.default_int_for_literal(elem_type)
 
             # Determine resolved type
+            is_repeat = isinstance(info.expr, TpyListRepeat)
             if info.has_explicit_annotation and info.explicit_type:
                 resolved = info.explicit_type
             elif info.is_mutated:
@@ -355,6 +357,15 @@ class LocalTypeDeduction:
             elif info.is_global:
                 # Globals can be imported and mutated by other modules
                 resolved = ListType(elem_type)
+            elif info.passed_to_span_param and is_repeat and info.size < 0:
+                # Variable count repeat to Span -- needs contiguous memory, materialize
+                resolved = ListType(elem_type)
+            elif info.size < 0 and info.needs_indexing:
+                # Variable count repeat with subscript access -- materialize for operator[]
+                resolved = ListType(elem_type)
+            elif info.size < 0:
+                # Variable count (repeat with non-constant N) -- stays lazy
+                resolved = ListRepeatType(elem_type)
             else:
                 # Default: Array (stack-allocated, no mutation detected)
                 resolved = ArrayType(elem_type, info.size)

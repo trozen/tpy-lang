@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
-    TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, DictType,
+    TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType,
     PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
@@ -269,6 +269,34 @@ class TypeCompatibility:
             # Compatible with Array[T, N] if element types and sizes match
             if isinstance(expected, ArrayType):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
+                    return None
+                # Specific error for list repeat size mismatch
+                if (isinstance(source_expr, TpyListRepeat)
+                        and actual.size >= 0 and actual.size != expected.size):
+                    raise SemanticError(
+                        f"List repeat produces {actual.size} elements but "
+                        f"Array[..., {expected.size}] expects {expected.size}",
+                        loc,
+                    )
+            # Inline repeat cannot be passed directly to Span -- assign to a variable first
+            if isinstance(expected, SpanType) and isinstance(source_expr, TpyListRepeat):
+                raise SemanticError(
+                    f"Cannot pass list repeat directly to {expected}: "
+                    f"assign to a variable first",
+                    loc,
+                )
+
+        # ListRepeatType materializes to list[T] or Array[T, N]
+        if isinstance(actual, ListRepeatType):
+            if isinstance(expected, ListType):
+                if actual.element_type == expected.element_type:
+                    return None
+                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
+                    return None
+            if isinstance(expected, ArrayType):
+                if actual.element_type == expected.element_type:
+                    return None
+                if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                     return None
 
         # DictType compatibility: key and value types must be compatible

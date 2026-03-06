@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
-    ListType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
+    ListType, ListRepeatType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
     EnumType, IntEnumType,
 )
 from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
@@ -244,12 +244,19 @@ class ProtocolChecker:
         # the standard bound-propagation path in type_conforms_to_protocol)
         return False
 
+    # Protocols that ListRepeatType conforms to (lazy repeat range)
+    _LIST_REPEAT_PROTOCOLS = {"Iterable", "Sized", "NativeIterable", "NativeRangeConstructible"}
+
     def type_extends_any_protocol(self, actual: TpyType, protocol_name: str) -> bool:
         """Check if a type extends any variant of a protocol (ignoring type args).
 
         Unified check for both user records and builtin types.
         Replaces builtin_modules.type_extends_any().
         """
+        # ListRepeatType conforms to iteration/sizing protocols
+        if isinstance(actual, ListRepeatType):
+            return protocol_name in self._LIST_REPEAT_PROTOCOLS
+
         record_info = self.ctx.registry.get_record_for_type(actual)
         if record_info is None:
             return False

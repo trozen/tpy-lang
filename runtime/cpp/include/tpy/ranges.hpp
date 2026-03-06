@@ -74,6 +74,9 @@ public:
     iterator end() const { return iterator(this, count_, 0); }
 
     std::size_t size() const { return count_ * elements_.size(); }
+
+    // Support tpy::__len__() for len() calls on lazy repeat ranges
+    int32_t __len__() const { return static_cast<int32_t>(size()); }
 };
 
 /**

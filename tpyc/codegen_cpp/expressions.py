@@ -10,7 +10,7 @@ from typing import Final, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, DictKeysViewType,
-    PendingListType,
+    PendingListType, ListRepeatType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, container_to_str_template,
@@ -1557,8 +1557,14 @@ class ExpressionGenerator:
         if isinstance(count_type, BigIntType):
             count = f"{count}.to_fixed_check<int32_t>()"
 
-        # Determine result type and element type
-        if target_type is not None:
+        # Determine result type and element type.
+        # For protocol targets and Span targets, use the resolved expr type:
+        # protocols don't map to concrete C++ container types, and Span can't
+        # be constructed from a range (needs contiguous memory from Array/list).
+        use_resolved = (target_type is None
+                        or is_protocol_type(target_type)
+                        or isinstance(target_type, SpanType))
+        if not use_resolved:
             result_type = target_type
             elem_type = target_type.get_element_type()
         else:
@@ -1576,7 +1582,11 @@ class ExpressionGenerator:
         cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
         range_expr = f"tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
 
-        # Use unified from_range template for all range-constructible types
+        # Lazy: resolved to ListRepeatType -- emit bare repeat_range (no materialization)
+        if isinstance(result_type, ListRepeatType):
+            return range_expr
+
+        # Materialized: wrap in from_range to construct the target container
         cpp_type = result_type.to_cpp()
         return f"tpy::from_range<{cpp_type}>({range_expr})"
 

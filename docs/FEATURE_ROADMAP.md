@@ -28,7 +28,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A9 | Iterable[T] protocol | M | Done | [I](#iterablet-protocol) |
 | A10 | Tuple type + unpacking | M-L | Done | [I](#tuple-type) |
 | A10a | Reference elements in tuples | M | Done | [I](#reference-elements-in-tuples) |
-| A10b | Lazy list repeat (`[val]*N`) | S | Not started | [I](#lazy-list-repeat-valn) |
+| A10b | Lazy list repeat (`[val]*N`) | S | Done | [I](#lazy-list-repeat-valn) |
 | A11 | dict type | L | Done | [VII](#dict-type) |
 | A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Done | [I](#mutable-span--readonlyspan--__span__-protocol) |
 
@@ -360,33 +360,20 @@ overhead. `ArrayList[T, N]` now uses `__span__` instead of `__iter__`/`ArrayList
 
 ### Lazy List Repeat (`[val]*N`)
 
-```python
-items = [0] * 10                       # deduces to list[Int32] (as today)
-a = ArrayList[Int32, 10]([0] * 10)     # no intermediate list -- iterates lazily
-fill_container(items=[1] * 100)        # items: Iterable[Int32] -- lazy
-```
+**Done.** `[val]*N` uses deferred resolution via `PendingListType`, with three-tier
+outcome based on usage:
 
-Make `[val]*N` produce a lazy `RepeatRange[T]` type instead of eagerly allocating a
-`list[T]`. The codegen already emits `tpy::repeat_range<T>(count, {val})` which is
-lazy -- the only change is in sema, which currently resolves `[val]*N` to `ListType(T)`
-immediately.
+- **Constant count, unmutated** -> `Array[T, N]` (stack-allocated, supports subscript)
+- **Variable count, unmutated** -> `ListRepeatType` (lazy `tpy::repeat_range<T>`, no allocation)
+- **Variable count with subscript** -> `list[T]` (auto-promoted, repeat_range has no operator[])
+- **Mutated** (e.g. `.append()`) -> `list[T]` (auto-promoted)
 
-With a lazy type that conforms to `Iterable[T]`:
-- **Assigned to `list[T]`** or untyped local: materializes to list (default, as today)
-- **Passed to `Iterable[T]` param**: stays lazy, consumer iterates without allocation
-- **Passed to `Span[T]` param**: materializes to contiguous storage
+`ListRepeatType` conforms to `Iterable[T]`, `Sized`, `NativeIterable[T]`, and
+`NativeRangeConstructible`. Inline repeat cannot be passed directly to `Span` --
+assign to a variable first. Assigned variables materialize to `list[T]` when passed
+to `Span` params.
 
-**Why it matters**: Without this, `ArrayList[Int32, 10]([0]*10)` would first heap-allocate
-a `std::vector`, copy into the ArrayList's stack storage, then destroy the vector.
-With lazy repeat, the constructor iterates the range directly -- zero heap allocation.
-Benefits any container constructor that accepts `Iterable[T]`.
-
-**Current state**: Not started. Codegen (`tpy::repeat_range`) is already lazy; sema
-eagerly resolves to `ListType` which forces materialization.
-
-**Dependencies**: Iterable[T] protocol (A9) for the lazy type to conform to.
-
-**Effort**: S (sema type change + deferred materialization in codegen)
+Explicit annotation (`z: list[T] = [v]*N`) always produces `list[T]`.
 
 ---
 
