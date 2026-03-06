@@ -14,7 +14,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <new>
+#include <span>
+#include <type_traits>
 #include <utility>
 
 #include "core.hpp"
@@ -30,8 +33,8 @@ class UninitHeapStorage {
 public:
     UninitHeapStorage(uint32_t capacity)
         : data_(static_cast<T*>(::operator new(sizeof(T) * capacity, std::align_val_t(alignof(T)))))
-#ifndef NDEBUG
         , capacity_(capacity)
+#ifndef NDEBUG
         , alive_(capacity, false)
 #endif
     {}
@@ -56,15 +59,13 @@ public:
     // Movable (transfers ownership, source becomes empty)
     UninitHeapStorage(UninitHeapStorage&& other) noexcept
         : data_(other.data_)
-#ifndef NDEBUG
         , capacity_(other.capacity_)
+#ifndef NDEBUG
         , alive_(std::move(other.alive_))
 #endif
     {
         other.data_ = nullptr;
-#ifndef NDEBUG
         other.capacity_ = 0;
-#endif
     }
 
     UninitHeapStorage& operator=(UninitHeapStorage&& other) noexcept {
@@ -80,14 +81,12 @@ public:
                 ::operator delete(data_, std::align_val_t(alignof(T)));
             }
             data_ = other.data_;
-#ifndef NDEBUG
             capacity_ = other.capacity_;
+#ifndef NDEBUG
             alive_ = std::move(other.alive_);
 #endif
             other.data_ = nullptr;
-#ifndef NDEBUG
             other.capacity_ = 0;
-#endif
         }
         return *this;
     }
@@ -183,13 +182,94 @@ public:
     T* ptr() { return data_; }
     const T* ptr() const { return data_; }
 
+    uint32_t capacity() const { return capacity_; }
+
+    void init_from_span(std::span<const T> src) {
+#ifndef NDEBUG
+        if (src.size() > capacity_) {
+            tpy_panic("UninitHeapStorage::init_from_span: span exceeds capacity");
+        }
+        for (std::size_t i = 0; i < src.size(); ++i) {
+            if (alive_[i]) {
+                tpy_panic("UninitHeapStorage::init_from_span on already-alive slot");
+            }
+            alive_[i] = true;
+        }
+#endif
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memcpy(static_cast<void*>(&data_[0]), src.data(), src.size() * sizeof(T));
+        } else {
+            for (std::size_t i = 0; i < src.size(); ++i) {
+                ::new (static_cast<void*>(&data_[i])) T(src[i]);
+            }
+        }
+    }
+
+    void drop_n(uint32_t start, uint32_t count) {
+#ifndef NDEBUG
+        for (uint32_t i = 0; i < count; ++i) {
+            uint32_t idx = start + i;
+            if (idx >= capacity_) {
+                tpy_panic("UninitHeapStorage::drop_n index out of bounds");
+            }
+            if (!alive_[idx]) {
+                tpy_panic("UninitHeapStorage::drop_n on dead slot");
+            }
+            alive_[idx] = false;
+        }
+#endif
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+            for (uint32_t i = 0; i < count; ++i) {
+                data_[start + i].~T();
+            }
+        }
+    }
+
+    void shift(uint32_t src, uint32_t dst, uint32_t count) {
+        if (count == 0 || src == dst) return;
+#ifndef NDEBUG
+        for (uint32_t i = 0; i < count; ++i) {
+            if (src + i >= capacity_ || dst + i >= capacity_) {
+                tpy_panic("UninitHeapStorage::shift index out of bounds");
+            }
+            if (!alive_[src + i]) {
+                tpy_panic("UninitHeapStorage::shift on dead source slot");
+            }
+        }
+        for (uint32_t i = 0; i < count; ++i) {
+            alive_[src + i] = false;
+        }
+        for (uint32_t i = 0; i < count; ++i) {
+            alive_[dst + i] = true;
+        }
+#endif
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memmove(static_cast<void*>(&data_[dst]),
+                         static_cast<const void*>(&data_[src]),
+                         static_cast<std::size_t>(count) * sizeof(T));
+        } else if (dst < src) {
+            for (uint32_t i = 0; i < count; ++i) {
+                ::new (static_cast<void*>(&data_[dst + i]))
+                    T(std::move(data_[src + i]));
+                data_[src + i].~T();
+            }
+        } else {
+            for (uint32_t i = count; i > 0; --i) {
+                uint32_t idx = i - 1;
+                ::new (static_cast<void*>(&data_[dst + idx]))
+                    T(std::move(data_[src + idx]));
+                data_[src + idx].~T();
+            }
+        }
+    }
+
     // TODO: emplace(i, args...) for perfect-forwarding construction
 
 private:
     T* data_;
+    uint32_t capacity_;
 
 #ifndef NDEBUG
-    std::size_t capacity_;
     std::vector<bool> alive_;
 #endif
 };

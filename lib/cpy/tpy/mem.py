@@ -41,6 +41,8 @@ class UninitArrayStorage(metaclass=_StorageMeta):
 
     def __init__(self):
         self._slots: dict[int, object] = {}
+        import sys
+        self._resolved_capacity = self._capacity if isinstance(self._capacity, int) else sys.maxsize
 
     def init(self, index: int, value: object) -> None:
         self._slots[index] = value
@@ -66,6 +68,24 @@ class UninitArrayStorage(metaclass=_StorageMeta):
 
     def take0(self) -> object:
         return self.take(0)
+
+    def capacity(self) -> int:
+        return self._resolved_capacity
+
+    def init_from_span(self, src) -> None:
+        for i, val in enumerate(src):
+            self._slots[i] = val
+
+    def drop_n(self, start: int, count: int) -> None:
+        for i in range(start, start + count):
+            del self._slots[i]
+
+    def shift(self, src: int, dst: int, count: int) -> None:
+        if count <= 0 or src == dst:
+            return
+        items = [self._slots.pop(src + i) for i in range(count)]
+        for i, val in enumerate(items):
+            self._slots[dst + i] = val
 
     def __getitem__(self, index: int) -> object:
         return self._slots[index]
@@ -109,6 +129,25 @@ class UninitHeapStorage(metaclass=_StorageMeta):
 
     def take0(self) -> object:
         return self.take(0)
+
+    def capacity(self) -> int:
+        return self._capacity
+
+    def init_from_span(self, src) -> None:
+        for i, val in enumerate(src):
+            self._slots[i] = val
+
+    def drop_n(self, start: int, count: int) -> None:
+        for i in range(start, start + count):
+            if i in self._slots:
+                del self._slots[i]
+
+    def shift(self, src: int, dst: int, count: int) -> None:
+        if count <= 0 or src == dst:
+            return
+        items = [self._slots.pop(src + i) for i in range(count)]
+        for i, val in enumerate(items):
+            self._slots[dst + i] = val
 
     def ptr(self):
         from tpy import Ptr

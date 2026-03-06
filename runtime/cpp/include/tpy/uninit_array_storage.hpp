@@ -17,6 +17,8 @@
 #include <cstdint>
 #include <cstring>
 #include <new>
+#include <span>
+#include <type_traits>
 #include <utility>
 
 #include "core.hpp"
@@ -153,6 +155,87 @@ public:
 
     T* ptr() { return elems_; }
     const T* ptr() const { return elems_; }
+
+    static constexpr uint32_t capacity() { return static_cast<uint32_t>(N); }
+
+    void init_from_span(std::span<const T> src) {
+#ifndef NDEBUG
+        if (src.size() > N) {
+            tpy_panic("UninitArrayStorage::init_from_span: span exceeds capacity");
+        }
+        for (std::size_t i = 0; i < src.size(); ++i) {
+            if (alive_.test(i)) {
+                tpy_panic("UninitArrayStorage::init_from_span on already-alive slot");
+            }
+            alive_.set(i);
+        }
+#endif
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memcpy(static_cast<void*>(&elems_[0]), src.data(), src.size() * sizeof(T));
+        } else {
+            for (std::size_t i = 0; i < src.size(); ++i) {
+                ::new (static_cast<void*>(&elems_[i])) T(src[i]);
+            }
+        }
+    }
+
+    void drop_n(uint32_t start, uint32_t count) {
+#ifndef NDEBUG
+        for (uint32_t i = 0; i < count; ++i) {
+            uint32_t idx = start + i;
+            if (idx >= N) {
+                tpy_panic("UninitArrayStorage::drop_n index out of bounds");
+            }
+            if (!alive_.test(idx)) {
+                tpy_panic("UninitArrayStorage::drop_n on dead slot");
+            }
+            alive_.reset(idx);
+        }
+#endif
+        if constexpr (!std::is_trivially_destructible_v<T>) {
+            for (uint32_t i = 0; i < count; ++i) {
+                elems_[start + i].~T();
+            }
+        }
+    }
+
+    void shift(uint32_t src, uint32_t dst, uint32_t count) {
+        if (count == 0 || src == dst) return;
+#ifndef NDEBUG
+        for (uint32_t i = 0; i < count; ++i) {
+            if (src + i >= N || dst + i >= N) {
+                tpy_panic("UninitArrayStorage::shift index out of bounds");
+            }
+            if (!alive_.test(src + i)) {
+                tpy_panic("UninitArrayStorage::shift on dead source slot");
+            }
+        }
+        for (uint32_t i = 0; i < count; ++i) {
+            alive_.reset(src + i);
+        }
+        for (uint32_t i = 0; i < count; ++i) {
+            alive_.set(dst + i);
+        }
+#endif
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memmove(static_cast<void*>(&elems_[dst]),
+                         static_cast<const void*>(&elems_[src]),
+                         static_cast<std::size_t>(count) * sizeof(T));
+        } else if (dst < src) {
+            for (uint32_t i = 0; i < count; ++i) {
+                ::new (static_cast<void*>(&elems_[dst + i]))
+                    T(std::move(elems_[src + i]));
+                elems_[src + i].~T();
+            }
+        } else {
+            for (uint32_t i = count; i > 0; --i) {
+                uint32_t idx = i - 1;
+                ::new (static_cast<void*>(&elems_[dst + idx]))
+                    T(std::move(elems_[src + idx]));
+                elems_[src + idx].~T();
+            }
+        }
+    }
 
     // TODO: emplace(i, args...) for perfect-forwarding construction
 

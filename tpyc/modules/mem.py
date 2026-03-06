@@ -7,7 +7,7 @@ Low-level uninitialized storage types for building containers.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.typesys import (
     VOID, UINT32,
-    NamedType, TypeParamRef, PtrType, OwnType,
+    NamedType, TypeParamRef, PtrType, OwnType, SpanType,
 )
 
 T = TypeParamRef("T")
@@ -64,6 +64,29 @@ def init_module() -> BuiltinModule:
                 params=[],
                 returns=OwnType(T),
                 cpp="{self}.take0()",
+            )],
+            # Capacity (compile-time constant N)
+            "capacity": [MethodDef(
+                params=[],
+                returns=UINT32,
+                cpp="{self}.capacity()",
+                is_readonly=True,
+            )],
+            # Bulk operations
+            "init_from_span": [MethodDef(
+                params=[ParamDef("src", SpanType(T, is_readonly=True))],
+                returns=VOID,
+                cpp="{self}.init_from_span({0})",
+            )],
+            "drop_n": [MethodDef(
+                params=[ParamDef("start", UINT32), ParamDef("count", UINT32)],
+                returns=VOID,
+                cpp="{self}.drop_n({0}, {1})",
+            )],
+            "shift": [MethodDef(
+                params=[ParamDef("src", UINT32), ParamDef("dst", UINT32), ParamDef("count", UINT32)],
+                returns=VOID,
+                cpp="{self}.shift({0}, {1}, {2})",
             )],
             # Raw pointer access
             "ptr": [MethodDef(
